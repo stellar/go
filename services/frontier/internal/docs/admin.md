@@ -22,7 +22,7 @@ Frontier is dependent upon a digitalbits-core server.  Frontier needs access to 
 
 ## Installing
 
-To install Frontier, you have a choice: either downloading a [prebuilt release for your target architecture](https://github.com/xdbfoundation/go/releases) and operation system, or [building Frontier yourself](#building).  When either approach is complete, you will find yourself with a directory containing a file named `frontier`.  This file is a native binary.
+To install Frontier, you have a choice: either downloading a [prebuilt release for your target architecture](https://cloudsmith.io/~xdb-foundation/repos/digitalbits-frontier/packages/) and operation system, or [building Frontier yourself](#building).  When either approach is complete, you will find yourself with a directory containing a file named `frontier`.  This file is a native binary.
 
 After building or unpacking Frontier, you simply need to copy the native binary into a directory that is part of your PATH.  Most unix-like systems have `/usr/local/bin` in PATH by default, so unless you have a preference or know better, we recommend you copy the binary there.
 
