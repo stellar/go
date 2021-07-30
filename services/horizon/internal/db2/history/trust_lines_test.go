@@ -363,7 +363,7 @@ func TestGetSortedTrustLinesByAccountsID(t *testing.T) {
 		lastIssuer = record.AssetIssuer
 		xtl, ok := m[record.AccountID]
 		tt.Assert.True(ok)
-		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer)
+		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer).ToTrustLineAsset()
 		tt.Assert.Equal(xtl.Data.TrustLine.Asset, asset)
 		tt.Assert.Equal(xtl.Data.TrustLine.AccountId.Address(), record.AccountID)
 		delete(m, record.AccountID)
@@ -384,7 +384,7 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 	record, err := q.GetSortedTrustLinesByAccountID(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	tt.Assert.NoError(err)
 
-	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer)
+	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer).ToTrustLineAsset()
 	tt.Assert.Equal(eurTrustLine.Data.TrustLine.Asset, asset)
 	tt.Assert.Equal(eurTrustLine.Data.TrustLine.AccountId.Address(), record[0].AccountID)
 	tt.Assert.Equal(int64(eurTrustLine.Data.TrustLine.Balance), record[0].Balance)

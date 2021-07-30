@@ -97,7 +97,7 @@ func (i *tradeBatchInsertBuilder) Add(ctx context.Context, entries ...InsertTrad
 			"history_operation_id": entry.HistoryOperationID,
 			"\"order\"":            entry.Order,
 			"ledger_closed_at":     entry.LedgerCloseTime,
-			"offer_id":             entry.Trade.OfferId,
+			"offer_id":             entry.Trade.OfferId(),
 			"base_offer_id":        baseOfferID,
 			"base_account_id":      baseAccountID,
 			"base_asset_id":        baseAssetID,

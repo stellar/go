@@ -14,7 +14,7 @@ import (
 func GetTestAsset(code string) xdr.Asset {
 	var codeBytes [4]byte
 	copy(codeBytes[:], []byte(code))
-	ca4 := xdr.AssetAlphaNum4{Issuer: GetTestAccount(), AssetCode: codeBytes}
+	ca4 := xdr.AlphaNum4{Issuer: GetTestAccount(), AssetCode: codeBytes}
 	return xdr.Asset{Type: xdr.AssetTypeAssetTypeCreditAlphanum4, AlphaNum4: &ca4, AlphaNum12: nil}
 }
 
@@ -39,12 +39,16 @@ func IngestTestTrade(
 	timestamp time.Millis,
 	opCounter int64) error {
 
-	trade := xdr.ClaimOfferAtom{}
-	trade.AmountBought = xdr.Int64(amountBought)
-	trade.SellerId = seller
-	trade.AmountSold = xdr.Int64(amountSold)
-	trade.AssetBought = assetBought
-	trade.AssetSold = assetSold
+	trade := xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			AmountBought: xdr.Int64(amountBought),
+			SellerId:     seller,
+			AmountSold:   xdr.Int64(amountSold),
+			AssetBought:  assetBought,
+			AssetSold:    assetSold,
+		},
+	}
 
 	price := xdr.Price{
 		N: xdr.Int32(amountBought),
