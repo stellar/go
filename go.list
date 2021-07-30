@@ -10,13 +10,13 @@ github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 github.com/aws/aws-sdk-go v1.39.5
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/davecgh/go-spew v1.1.1
-github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/elazarl/go-bindata-assetfs v1.0.0
 github.com/fatih/structs v1.0.0
 github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
 github.com/go-chi/chi v4.0.3+incompatible
 github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
+github.com/golang-jwt/jwt v3.2.1+incompatible
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 github.com/golang/protobuf v1.5.2
 github.com/google/go-cmp v0.5.6

@@ -55,25 +55,24 @@ func (kp *FromAddress) SignDecorated(input []byte) (xdr.DecoratedSignature, erro
 	return xdr.DecoratedSignature{}, ErrCannotSign
 }
 
-func (kp *FromAddress) Equal(o KP) bool {
-	if a, ok := o.(*FromAddress); ok {
-		if kp == nil && a == nil {
-			return true
-		}
-		if kp == nil || a == nil {
-			return false
-		}
-		return kp.address == a.address
+func (kp *FromAddress) Equal(a *FromAddress) bool {
+	if kp == nil && a == nil {
+		return true
 	}
-	return false
+	if kp == nil || a == nil {
+		return false
+	}
+	return kp.address == a.address
 }
 
 func (kp *FromAddress) publicKey() ed25519.PublicKey {
 	return ed25519.PublicKey(strkey.MustDecode(strkey.VersionByteAccountID, kp.address))
 }
 
-var _ = encoding.TextMarshaler(&FromAddress{})
-var _ = encoding.TextUnmarshaler(&FromAddress{})
+var (
+	_ = encoding.TextMarshaler(&FromAddress{})
+	_ = encoding.TextUnmarshaler(&FromAddress{})
+)
 
 func (kp *FromAddress) UnmarshalText(text []byte) error {
 	textKP, err := ParseAddress(string(text))
