@@ -5,6 +5,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase. ([3783](https://github.com/stellar/go/pull/3783))
 * Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance ([3750](https://github.com/stellar/go/pull/3750)).
 
 ## v2.6.1

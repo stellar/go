@@ -20,6 +20,7 @@ type Config struct {
 	AdminPort          uint
 
 	EnableCaptiveCoreIngestion  bool
+	UsingDefaultPubnetConfig    bool
 	CaptiveCoreBinaryPath       string
 	RemoteCaptiveCoreURL        string
 	CaptiveCoreConfigPath       string

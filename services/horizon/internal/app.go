@@ -119,6 +119,23 @@ func (a *App) Serve() {
 	// configure shutdown signal handler
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	if a.config.UsingDefaultPubnetConfig {
+		const warnMsg = "Horizon started using the default pubnet configuration. " +
+			"This is not safe! Please provide a custom --captive-core-config-path."
+		log.Warn(warnMsg)
+		go func() {
+			for {
+				select {
+				case <-time.After(time.Hour):
+					log.Warn(warnMsg)
+				case <-a.done:
+					return
+				}
+			}
+		}()
+	}
+
 	go func() {
 		select {
 		case <-signalChan:
