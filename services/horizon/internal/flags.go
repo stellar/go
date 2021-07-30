@@ -6,12 +6,14 @@ import (
 	stdLog "log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
@@ -389,7 +391,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Name:        "ingest",
 			ConfigKey:   &config.Ingest,
 			OptType:     types.Bool,
-			FlagDefault: false,
+			FlagDefault: true,
 			Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 		},
 		&support.ConfigOption{
@@ -538,8 +540,41 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
 				if options.RequireCaptiveCoreConfig {
-					stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
-						StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint)
+					var err error
+					errorMessage := fmt.Sprintf(
+						"Invalid config: captive core requires that both --%s and --%s are set. %s",
+						StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint,
+					)
+
+					var configFileName string
+					// Default config files will be located along the binary in the release archive.
+					switch config.NetworkPassphrase {
+					case network.TestNetworkPassphrase:
+						configFileName = "captive-core-testnet.cfg"
+						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"}
+					case network.PublicNetworkPassphrase:
+						configFileName = "captive-core-pubnet.cfg"
+						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-live/core_live_001/"}
+						config.UsingDefaultPubnetConfig = true
+					default:
+						stdLog.Fatal(errorMessage)
+					}
+
+					executablePath, err := os.Executable()
+					if err != nil {
+						stdLog.Fatal(errorMessage)
+					}
+
+					config.CaptiveCoreConfigPath = filepath.Join(filepath.Dir(executablePath), configFileName)
+					if _, err = os.Stat(config.CaptiveCoreConfigPath); os.IsNotExist(err) {
+						stdLog.Fatal(errorMessage)
+					}
+
+					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
+					if err != nil {
+						stdLog.Fatalf("Invalid captive core toml file %v", err)
+					}
 				} else {
 					var err error
 					config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
