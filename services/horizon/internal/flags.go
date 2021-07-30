@@ -566,6 +566,10 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 					}
 
 					config.CaptiveCoreConfigPath = filepath.Join(filepath.Dir(executablePath), configFileName)
+					if _, err := os.Stat(config.CaptiveCoreConfigPath); os.IsNotExist(err) {
+						stdLog.Fatal(errorMessage)
+					}
+
 					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
 					if err != nil {
