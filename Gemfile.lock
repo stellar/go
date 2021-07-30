@@ -91,7 +91,7 @@ GEM
       faraday (> 0.8, < 2.0)
     sequel (5.5.0)
     slop (3.6.0)
-    digitalbits-base (0.22.0)
+    xdb-digitalbits-base (0.22.0)
       activesupport (>= 5.0.0)
       base32
       digest-crc
@@ -102,7 +102,7 @@ GEM
       contracts (~> 0.16)
       excon (~> 0.44, >= 0.44.4)
       hyperclient (~> 0.7)
-      digitalbits-base (>= 0.22.0)
+      xdb-digitalbits-base (>= 0.22.0)
       toml-rb (~> 1.1, >= 1.1.1)
     thread_safe (0.3.6)
     toml-rb (1.1.2)
