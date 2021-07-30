@@ -39,7 +39,7 @@ var _ = Describe("xdr.Asset#Extract()", func() {
 	Context("asset is credit_alphanum4", func() {
 		BeforeEach(func() {
 			var err error
-			an := AssetAlphaNum4{}
+			an := AlphaNum4{}
 			err = an.Issuer.SetAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 			Expect(err).To(BeNil())
 			copy(an.AssetCode[:], []byte("USD"))
@@ -90,7 +90,7 @@ var _ = Describe("xdr.Asset#String()", func() {
 	Context("asset is credit_alphanum4", func() {
 		BeforeEach(func() {
 			var err error
-			an := AssetAlphaNum4{}
+			an := AlphaNum4{}
 			err = an.Issuer.SetAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 			Expect(err).To(BeNil())
 			copy(an.AssetCode[:], []byte("USD"))
@@ -140,25 +140,25 @@ var _ = Describe("xdr.Asset#Equals()", func() {
 		native, err = NewAsset(AssetTypeAssetTypeNative, nil)
 		Expect(err).To(BeNil())
 
-		usd4_issuer1, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AssetAlphaNum4{
+		usd4_issuer1, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AlphaNum4{
 			Issuer:    issuer1,
 			AssetCode: usd4,
 		})
 		Expect(err).To(BeNil())
 
-		usd4_issuer2, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AssetAlphaNum4{
+		usd4_issuer2, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AlphaNum4{
 			Issuer:    issuer2,
 			AssetCode: usd4,
 		})
 		Expect(err).To(BeNil())
 
-		usd12_issuer1, err = NewAsset(AssetTypeAssetTypeCreditAlphanum12, AssetAlphaNum12{
+		usd12_issuer1, err = NewAsset(AssetTypeAssetTypeCreditAlphanum12, AlphaNum12{
 			Issuer:    issuer1,
 			AssetCode: usd12,
 		})
 		Expect(err).To(BeNil())
 
-		eur4_issuer1, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AssetAlphaNum4{
+		eur4_issuer1, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AlphaNum4{
 			Issuer:    issuer1,
 			AssetCode: eur4,
 		})
