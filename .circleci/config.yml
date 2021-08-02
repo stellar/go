@@ -390,10 +390,8 @@ jobs:
             docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
             # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
             docker run -ti -e BRANCH=${CIRCLE_SHA1} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
-            <<#parameters.publish>>
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker push stellar/horizon-verify-range
-            <</parameters.publish>>
+            <<#parameters.publish>>docker push stellar/horizon-verify-range<</parameters.publish>>
 
 
   publish_latest_horizon_docker_image:
