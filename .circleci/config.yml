@@ -374,32 +374,26 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile.dev -t stellar/horizon:$VERSION .
             docker push stellar/horizon:$VERSION
 
-  publish_verify_range_docker_image:
-    docker:
-      - image: docker:18.04-git
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run:
-          name: Build, test and Push Verify Range Docker image
-          command: |
-            docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
-            # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-            docker run -ti -e BRANCH=${CIRCLE_SHA1} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
-            docker push stellar/horizon-verify-range
-
   test_verify_range_docker_image:
+    parameters:
+      publish:
+        type: boolean
+        default: false
     docker:
       - image: docker:18.04-git
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: Build and test Verify Range Docker image
+          name: Build, test<<#parameters.publish>> and Push<</parameters.publish>> the Verify Range Docker image
           command: |
             docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
             # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
             docker run -ti -e BRANCH=${CIRCLE_SHA1} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
+            <<#parameters.publish>>
+            docker push stellar/horizon-verify-range
+            <</parameters.publish>>
+
 
   publish_latest_horizon_docker_image:
     docker:
@@ -487,7 +481,7 @@ workflows:
           enable-captive-core: true
       - test_verify_range_docker_image:
           filters:
-              # we use publish_verify_range_docker_image in master
+              # we use test_verify_range_docker_image with publish in master
               branches:
                 ignore: master
       - publish_state_diff_docker_image:
@@ -533,7 +527,9 @@ workflows:
           # Pushing stellar/horizon:latest to docker hub requires manual approval
           requires:
             - hold
-      - publish_verify_range_docker_image:
+      - test_verify_range_docker_image:
+          name: test_and_publish_verify_range_docker_image
+          publish: true
           filters:
               tags:
                 ignore: /.*/
