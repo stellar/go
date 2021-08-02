@@ -374,6 +374,20 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile.dev -t stellar/horizon:$VERSION .
             docker push stellar/horizon:$VERSION
 
+  publish_verify_range_docker_image:
+    docker:
+      - image: docker:18.04-git
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build, test and Push Verify Range Docker image
+          command: |
+            docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
+            # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
+            docker run -ti -e BRANCH=${CIRCLE_SHA1} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
+            docker push stellar/horizon-verify-range
+
   test_verify_range_docker_image:
     docker:
       - image: docker:18.04-git
@@ -471,12 +485,15 @@ workflows:
       - test_horizon_integration:
           name: test_horizon_integration_with_captive_core
           enable-captive-core: true
-      - test_verify_range_docker_image
+      - test_verify_range_docker_image:
+          filters:
+              # we use publish_verify_range_docker_image in master
+              branches:
+                ignore: master
       - publish_state_diff_docker_image:
           filters:
               branches:
-                only:
-                  - master
+                only: master
 
   build_and_deploy:
     jobs:
@@ -516,3 +533,10 @@ workflows:
           # Pushing stellar/horizon:latest to docker hub requires manual approval
           requires:
             - hold
+      - publish_verify_range_docker_image:
+          filters:
+              tags:
+                ignore: /.*/
+              branches:
+                only: master
+
