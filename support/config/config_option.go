@@ -168,7 +168,7 @@ func SetURL(co *ConfigOption) {
 // value indicates the flag was not explicitly set
 func SetOptionalUint(co *ConfigOption) {
 	key := co.ConfigKey.(**uint)
-	if isExplicitlySet(co) {
+	if IsExplicitlySet(co) {
 		*key = new(uint)
 		**key = uint(viper.GetInt(co.Name))
 	} else {
@@ -187,7 +187,9 @@ func parseEnvVars(entries []string) map[string]bool {
 
 var envVars = parseEnvVars(os.Environ())
 
-func isExplicitlySet(co *ConfigOption) bool {
+// IsExplicitlySet returns true if and only if the given config option was set explicitly either
+// via a command line argument or via an environment variable
+func IsExplicitlySet(co *ConfigOption) bool {
 	// co.flag.Changed is only set to true when the configuration is set via command line parameter.
 	// In the case where a variable is configured via environment variable we need to check envVars.
 	return co.flag.Changed || envVars[co.EnvVar]
@@ -197,7 +199,7 @@ func isExplicitlySet(co *ConfigOption) bool {
 // value indicates the flag was not explicitly set
 func SetOptionalString(co *ConfigOption) {
 	key := co.ConfigKey.(**string)
-	if isExplicitlySet(co) {
+	if IsExplicitlySet(co) {
 		*key = new(string)
 		**key = viper.GetString(co.Name)
 	} else {
