@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/corestate"
@@ -413,22 +412,23 @@ func (a *App) DeleteUnretainedHistory(ctx context.Context) error {
 // Tick triggers horizon to update all of it's background processes such as
 // transaction submission, metrics, ingestion and reaping.
 func (a *App) Tick(ctx context.Context) error {
-	wg, ctx := errgroup.WithContext(ctx)
+	var wg sync.WaitGroup
 	log.Debug("ticking app")
 
 	// update ledger state, operation fee state, and stellar-core info in parallel
-	wg.Go(func() error { a.UpdateLedgerState(ctx); return nil })
-	wg.Go(func() error { a.UpdateFeeStatsState(ctx); return nil })
-	wg.Go(func() error { return a.UpdateStellarCoreInfo(ctx) })
-	if err := wg.Wait(); err != nil {
+	wg.Add(3)
+	var err error
+	go func() { a.UpdateLedgerState(ctx); wg.Done() }()
+	go func() { a.UpdateFeeStatsState(ctx); wg.Done() }()
+	go func() { err = a.UpdateStellarCoreInfo(ctx); wg.Done() }()
+	wg.Wait()
+	if err != nil {
 		return err
 	}
-	if ctx.Err() != nil {
-		// Failure to launch
-		return ctx.Err()
-	}
 
-	a.submitter.Tick(ctx)
+	wg.Add(1)
+	go func() { a.submitter.Tick(ctx); wg.Done() }()
+	wg.Wait()
 
 	log.Debug("finished ticking app")
 	return ctx.Err()
