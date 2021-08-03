@@ -313,14 +313,12 @@ var dbReingestRangeCmd = &cobra.Command{
 		err := runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
 		if err != nil {
 			if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
-				return fmt.Errorf(`
-			The range you have provided overlaps with Horizon's most recently ingested ledger.
-			It is not possible to run the reingest command on this range in parallel with
-			Horizon's ingestion system.
-			Either reduce the range so that it doesn't overlap with Horizon's ingestion system,
-			or, use the force flag to ensure that Horizon's ingestion system is blocked until
-			the reingest command completes.
-			`)
+				return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
+It is not possible to run the reingest command on this range in parallel with
+Horizon's ingestion system.
+Either reduce the range so that it doesn't overlap with Horizon's ingestion system,
+or, use the force flag to ensure that Horizon's ingestion system is blocked until
+the reingest command completes.`)
 			}
 
 			return err

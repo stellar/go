@@ -73,11 +73,10 @@ func applyMigrations(config Config) error {
 func checkMigrations(config Config) error {
 	migrationsToApplyUp := schema.GetMigrationsUp(config.DatabaseURL)
 	if len(migrationsToApplyUp) > 0 {
-		return fmt.Errorf(`
-		There are %v migrations to apply in the "up" direction.
-		The necessary migrations are: %v
-		A database migration is required to run this version (%v) of Horizon. Run "horizon db migrate up" to update your DB. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.
-			`,
+		return fmt.Errorf(
+			`There are %v migrations to apply in the "up" direction.
+The necessary migrations are: %v
+A database migration is required to run this version (%v) of Horizon. Run "horizon db migrate up" to update your DB. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.`,
 			len(migrationsToApplyUp),
 			migrationsToApplyUp,
 			apkg.Version(),
@@ -86,10 +85,9 @@ func checkMigrations(config Config) error {
 
 	nMigrationsDown := schema.GetNumMigrationsDown(config.DatabaseURL)
 	if nMigrationsDown > 0 {
-		return fmt.Errorf(`
-		A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.
-		In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run "horizon db migrate down %v".
-			`,
+		return fmt.Errorf(
+			`A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.
+In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run "horizon db migrate down %v".`,
 			apkg.Version(),
 			nMigrationsDown,
 		)
