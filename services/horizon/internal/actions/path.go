@@ -149,7 +149,7 @@ func (handler FindPathsHandler) GetResource(w HeaderWriter, r *http.Request) (in
 	records := []paths.Path{}
 	if len(query.SourceAssets) > 0 {
 		var lastIngestedLedger uint32
-		records, lastIngestedLedger, err = handler.PathFinder.Find(query, handler.MaxPathLength)
+		records, lastIngestedLedger, err = handler.PathFinder.Find(ctx, query, handler.MaxPathLength)
 		if err == simplepath.ErrEmptyInMemoryOrderBook {
 			err = horizonProblem.StillIngesting
 		}
@@ -306,6 +306,7 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 	if len(destinationAssets) > 0 {
 		var lastIngestedLedger uint32
 		records, lastIngestedLedger, err = handler.PathFinder.FindFixedPaths(
+			ctx,
 			sourceAsset,
 			amountToSpend,
 			destinationAssets,

@@ -39,6 +39,7 @@ type Config struct {
 
 	SSEUpdateFrequency time.Duration
 	ConnectionTimeout  time.Duration
+	PathFindTimeout    time.Duration
 	RateQuota          *throttled.RateQuota
 	FriendbotURL       *url.URL
 	LogLevel           logrus.Level

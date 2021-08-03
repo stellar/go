@@ -1,6 +1,8 @@
 package orderbook
 
 import (
+	"context"
+
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
 )
@@ -58,6 +60,7 @@ type searchState interface {
 }
 
 func dfs(
+	ctx context.Context,
 	state searchState,
 	maxPathLength int,
 	visited map[string]bool,
@@ -66,6 +69,12 @@ func dfs(
 	currentAsset xdr.Asset,
 	currentAssetAmount xdr.Int64,
 ) error {
+	select {
+	case <-ctx.Done():
+		return context.DeadlineExceeded
+	default:
+		// do not block
+	}
 	if currentAssetAmount <= 0 {
 		return nil
 	}
@@ -103,6 +112,7 @@ func dfs(
 		}
 
 		err = dfs(
+			ctx,
 			state,
 			maxPathLength,
 			visited,

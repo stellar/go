@@ -290,6 +290,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout, does not apply to POST /transactions",
 		},
 		&support.ConfigOption{
+			Name:           "path-find-timeout",
+			ConfigKey:      &config.PathFindTimeout,
+			OptType:        types.Int,
+			FlagDefault:    20,
+			CustomSetValue: support.SetDuration,
+			Usage:          "defines the timeout for path-finding requests (/paths/*) after which 504 response will be sent",
+		},
+		&support.ConfigOption{
 			Name:        "per-hour-rate-limit",
 			ConfigKey:   &config.RateQuota,
 			OptType:     types.Int,
