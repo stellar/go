@@ -268,10 +268,14 @@ func (i *Test) StartHorizon() error {
 		Use:   "horizon",
 		Short: "Client-facing API server for the Stellar network",
 		Long:  "Client-facing API server for the Stellar network.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			i.app, err = horizon.NewAppFromFlags(config, configOpts)
-			return err
+			if err != nil {
+				// Explicitly exit here as that's how these tests are structured for now.
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		},
 	}
 
