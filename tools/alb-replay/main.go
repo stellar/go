@@ -139,7 +139,7 @@ func queryURLs(timeout time.Duration, urlChan chan NumberedURL, stop chan struct
 				log.Printf("(%d) unexpected status code: %d %q", numURL.Number, resp.StatusCode, numURL.URL)
 				continue
 			}
-			log.Printf("(%d) %s %s", numURL.Number, time.Now().Sub(start), numURL.URL)
+			log.Printf("(%d) %s %s", numURL.Number, time.Since(start), numURL.URL)
 		}
 	}
 }
