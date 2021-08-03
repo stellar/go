@@ -486,7 +486,10 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
-	ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
+	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
+	if err != nil {
+		return nil, err
+	}
 	// Validate app-specific arguments
 	if config.StellarCoreURL == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreURLFlagName)
@@ -512,7 +515,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if err := flags.RequireE(); err != nil {
 		return err
 	}
-	flags.SetValues()
+	if err := flags.SetValues(); err != nil {
+		return err
+	}
 
 	// Validate options that should be provided together
 	if err := validateBothOrNeither("tls-cert", "tls-key"); err != nil {
