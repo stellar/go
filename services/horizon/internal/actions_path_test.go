@@ -81,9 +81,9 @@ func TestPathActionsStillIngesting(t *testing.T) {
 
 	assertions := &test.Assertions{tt.Assert}
 	finder := paths.MockFinder{}
-	finder.On("Find", mock.Anything, uint(3)).
+	finder.On("Find", mock.Anything, mock.Anything, uint(3)).
 		Return([]paths.Path{}, uint32(0), simplepath.ErrEmptyInMemoryOrderBook).Times(2)
-	finder.On("FindFixedPaths", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+	finder.On("FindFixedPaths", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return([]paths.Path{}, uint32(0), simplepath.ErrEmptyInMemoryOrderBook).Times(1)
 
 	rh := mockPathFindingClient(
@@ -212,8 +212,8 @@ func TestPathActionsStrictReceive(t *testing.T) {
 	finder := paths.MockFinder{}
 	withSourceAssetsBalance := true
 
-	finder.On("Find", mock.Anything, uint(3)).Return([]paths.Path{}, uint32(1234), nil).Run(func(args mock.Arguments) {
-		query := args.Get(0).(paths.Query)
+	finder.On("Find", mock.Anything, mock.Anything, uint(3)).Return([]paths.Path{}, uint32(1234), nil).Run(func(args mock.Arguments) {
+		query := args.Get(1).(paths.Query)
 		for _, asset := range query.SourceAssets {
 			var assetType, code, issuer string
 
@@ -571,8 +571,8 @@ func TestPathActionsStrictSend(t *testing.T) {
 	// withSourceAssetsBalance := true
 	sourceAsset := xdr.MustNewCreditAsset("USD", "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
 
-	finder.On("FindFixedPaths", sourceAsset, xdr.Int64(100000000), mock.Anything, uint(3)).Return([]paths.Path{}, uint32(1234), nil).Run(func(args mock.Arguments) {
-		destinationAssets := args.Get(2).([]xdr.Asset)
+	finder.On("FindFixedPaths", mock.Anything, sourceAsset, xdr.Int64(100000000), mock.Anything, uint(3)).Return([]paths.Path{}, uint32(1234), nil).Run(func(args mock.Arguments) {
+		destinationAssets := args.Get(3).([]xdr.Asset)
 		for _, asset := range destinationAssets {
 			var assetType, code, issuer string
 
