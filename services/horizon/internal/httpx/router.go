@@ -39,7 +39,6 @@ type RouterConfig struct {
 	SSEUpdateFrequency    time.Duration
 	StaleThreshold        uint
 	ConnectionTimeout     time.Duration
-	PathFindTimeout       time.Duration
 	NetworkPassphrase     string
 	MaxPathLength         uint
 	PathFinder            paths.Finder
@@ -185,12 +184,9 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			MaxAssetsParamLength: maxAssetsForPathFinding,
 			PathFinder:           config.PathFinder,
 		}}
-		r.Route("/paths", func(r chi.Router) {
-			r.Use(timeoutMiddleware(config.PathFindTimeout))
-			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/", findPaths)
-			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/strict-receive", findPaths)
-			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/strict-send", findFixedPaths)
-		})
+		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths", findPaths)
+		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths/strict-receive", findPaths)
+		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
 		r.With(stateMiddleware.Wrap).Method(
 			http.MethodGet,
 			"/order_book",
