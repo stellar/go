@@ -101,15 +101,13 @@ var dbMigrateDownCmd = &cobra.Command{
 
 		// Only allow invokations with 1 args.
 		if len(args) != 1 {
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		count, err := strconv.Atoi(args[0])
 		if err != nil {
 			log.Println(err)
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		return migrate(schema.MigrateDown, count)
@@ -127,15 +125,13 @@ var dbMigrateRedoCmd = &cobra.Command{
 
 		// Only allow invokations with 1 args.
 		if len(args) != 1 {
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		count, err := strconv.Atoi(args[0])
 		if err != nil {
 			log.Println(err)
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		return migrate(schema.MigrateRedo, count)
@@ -154,8 +150,7 @@ var dbMigrateStatusCmd = &cobra.Command{
 		// Only allow invokations with 0 args.
 		if len(args) != 0 {
 			fmt.Println(args)
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		dbConn, err := db.Open("postgres", config.DatabaseURL)
@@ -184,8 +179,7 @@ var dbMigrateUpCmd = &cobra.Command{
 
 		// Only allow invokations with 0-1 args.
 		if len(args) > 1 {
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		count := 0
@@ -194,8 +188,7 @@ var dbMigrateUpCmd = &cobra.Command{
 			count, err = strconv.Atoi(args[0])
 			if err != nil {
 				log.Println(err)
-				cmd.Usage()
-				return ErrUsage
+				return ErrUsage{cmd}
 			}
 		}
 
@@ -224,8 +217,7 @@ var dbReingestCmd = &cobra.Command{
 	Long:  "reingest ingests historical data for every ledger or ledgers specified by subcommand",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Use one of the subcomands...")
-		cmd.Usage()
-		return ErrUsage
+		return ErrUsage{cmd}
 	},
 }
 
@@ -293,8 +285,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		if len(args) != 2 {
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 
 		argsUInt32 := make([]uint32, 2)
@@ -400,8 +391,7 @@ var dbDetectGapsCmd = &cobra.Command{
 		}
 
 		if len(args) != 0 {
-			cmd.Usage()
-			return ErrUsage
+			return ErrUsage{cmd}
 		}
 		gaps, err := runDBDetectGaps(*config)
 		if err != nil {
