@@ -1,6 +1,7 @@
 package orderbook
 
 import (
+	"context"
 	"sort"
 	"sync"
 
@@ -296,6 +297,7 @@ func (graph *OrderBookGraph) IsEmpty() bool {
 // FindPaths returns a list of payment paths originating from a source account
 // and ending with a given destinaton asset and amount.
 func (graph *OrderBookGraph) FindPaths(
+	ctx context.Context,
 	maxPathLength int,
 	destinationAsset xdr.Asset,
 	destinationAmount xdr.Int64,
@@ -323,6 +325,7 @@ func (graph *OrderBookGraph) FindPaths(
 	}
 	graph.lock.RLock()
 	err := dfs(
+		ctx,
 		searchState,
 		maxPathLength,
 		map[string]bool{},
@@ -351,6 +354,7 @@ func (graph *OrderBookGraph) FindPaths(
 // `sourceAccountID` is optional. if `sourceAccountID` is provided then no offers
 // created by `sourceAccountID` will be considered when evaluating payment paths
 func (graph *OrderBookGraph) FindFixedPaths(
+	ctx context.Context,
 	maxPathLength int,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
@@ -372,6 +376,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	}
 	graph.lock.RLock()
 	err := dfs(
+		ctx,
 		searchState,
 		maxPathLength,
 		map[string]bool{},
