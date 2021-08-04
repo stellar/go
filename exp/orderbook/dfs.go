@@ -69,11 +69,9 @@ func dfs(
 	currentAsset xdr.Asset,
 	currentAssetAmount xdr.Int64,
 ) error {
-	select {
-	case <-ctx.Done():
-		return context.DeadlineExceeded
-	default:
-		// do not block
+	// exit early if the context was cancelled
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	if currentAssetAmount <= 0 {
 		return nil
