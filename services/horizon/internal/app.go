@@ -374,6 +374,9 @@ func (a *App) UpdateFeeStatsState(ctx context.Context) {
 // UpdateStellarCoreInfo updates the value of CoreVersion,
 // CurrentProtocolVersion, and CoreSupportedProtocolVersion from the Stellar
 // core API.
+//
+// Warning: This method should only return an error if it is fatal. See usage
+// in `App.Tick`
 func (a *App) UpdateStellarCoreInfo(ctx context.Context) error {
 	if a.config.StellarCoreURL == "" {
 		return nil
