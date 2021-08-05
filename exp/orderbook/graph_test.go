@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"bytes"
+	"context"
 	"encoding"
 	"math"
 	"testing"
@@ -1523,6 +1524,7 @@ func TestFindPaths(t *testing.T) {
 	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 
 	paths, lastLedger, err := graph.FindPaths(
+		context.TODO(),
 		3,
 		nativeAsset,
 		20,
@@ -1547,6 +1549,7 @@ func TestFindPaths(t *testing.T) {
 	}
 
 	paths, lastLedger, err = graph.FindPaths(
+		context.TODO(),
 		3,
 		nativeAsset,
 		20,
@@ -1601,6 +1604,7 @@ func TestFindPaths(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindPaths(
+		context.TODO(),
 		3,
 		nativeAsset,
 		20,
@@ -1625,6 +1629,7 @@ func TestFindPaths(t *testing.T) {
 	}
 
 	paths, lastLedger, err = graph.FindPaths(
+		context.TODO(),
 		4,
 		nativeAsset,
 		20,
@@ -1691,6 +1696,7 @@ func TestFindPaths(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindPaths(
+		context.TODO(),
 		4,
 		nativeAsset,
 		20,
@@ -1842,6 +1848,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	}
 
 	paths, lastLedger, err := graph.FindFixedPaths(
+		context.TODO(),
 		3,
 		usdAsset,
 		5,
@@ -1877,6 +1884,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindFixedPaths(
+		context.TODO(),
 		2,
 		yenAsset,
 		5,
@@ -1895,6 +1903,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindFixedPaths(
+		context.TODO(),
 		3,
 		yenAsset,
 		5,
@@ -1924,6 +1933,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindFixedPaths(
+		context.TODO(),
 		5,
 		yenAsset,
 		5,
@@ -1964,6 +1974,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindFixedPaths(
+		context.TODO(),
 		5,
 		yenAsset,
 		5,
