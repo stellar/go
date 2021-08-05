@@ -269,7 +269,13 @@ func (i *Test) StartHorizon() error {
 		Short: "Client-facing API server for the Stellar network",
 		Long:  "Client-facing API server for the Stellar network.",
 		Run: func(cmd *cobra.Command, args []string) {
-			i.app = horizon.NewAppFromFlags(config, configOpts)
+			var err error
+			i.app, err = horizon.NewAppFromFlags(config, configOpts)
+			if err != nil {
+				// Explicitly exit here as that's how these tests are structured for now.
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		},
 	}
 
