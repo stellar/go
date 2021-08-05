@@ -41,48 +41,58 @@ const (
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
-func validateBothOrNeither(option1, option2 string) {
+func validateBothOrNeither(option1, option2 string) error {
 	arg1, arg2 := viper.GetString(option1), viper.GetString(option2)
 	if arg1 != "" && arg2 == "" {
-		stdLog.Fatalf("Invalid config: %s = %s, but corresponding option %s is not configured", option1, arg1, option2)
+		return fmt.Errorf("Invalid config: %s = %s, but corresponding option %s is not configured", option1, arg1, option2)
 	}
 	if arg1 == "" && arg2 != "" {
-		stdLog.Fatalf("Invalid config: %s = %s, but corresponding option %s is not configured", option2, arg2, option1)
+		return fmt.Errorf("Invalid config: %s = %s, but corresponding option %s is not configured", option2, arg2, option1)
 	}
+	return nil
 }
 
-func applyMigrations(config Config) {
+func applyMigrations(config Config) error {
 	dbConn, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
-		stdLog.Fatalf("could not connect to horizon db: %v", err)
+		return fmt.Errorf("could not connect to horizon db: %v", err)
 	}
 	defer dbConn.Close()
 
 	numMigrations, err := schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
 	if err != nil {
-		stdLog.Fatalf("could not apply migrations: %v", err)
+		return fmt.Errorf("could not apply migrations: %v", err)
 	}
 	if numMigrations > 0 {
 		stdLog.Printf("successfully applied %v horizon migrations\n", numMigrations)
 	}
+	return nil
 }
 
 // checkMigrations looks for necessary database migrations and fails with a descriptive error if migrations are needed.
-func checkMigrations(config Config) {
+func checkMigrations(config Config) error {
 	migrationsToApplyUp := schema.GetMigrationsUp(config.DatabaseURL)
 	if len(migrationsToApplyUp) > 0 {
-		stdLog.Printf(`There are %v migrations to apply in the "up" direction.`, len(migrationsToApplyUp))
-		stdLog.Printf("The necessary migrations are: %v", migrationsToApplyUp)
-		stdLog.Printf("A database migration is required to run this version (%v) of Horizon. Run \"horizon db migrate up\" to update your DB. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.", apkg.Version())
-		os.Exit(1)
+		return fmt.Errorf(
+			`There are %v migrations to apply in the "up" direction.
+The necessary migrations are: %v
+A database migration is required to run this version (%v) of Horizon. Run "horizon db migrate up" to update your DB. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.`,
+			len(migrationsToApplyUp),
+			migrationsToApplyUp,
+			apkg.Version(),
+		)
 	}
 
 	nMigrationsDown := schema.GetNumMigrationsDown(config.DatabaseURL)
 	if nMigrationsDown > 0 {
-		stdLog.Printf("A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.", apkg.Version())
-		stdLog.Printf("In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run \"horizon db migrate down %v\".", nMigrationsDown)
-		os.Exit(1)
+		return fmt.Errorf(
+			`A database migration DOWN to an earlier version of the schema is required to run this version (%v) of Horizon. Consult the Changelog (https://github.com/stellar/go/blob/master/services/horizon/CHANGELOG.md) for more information.
+In order to migrate the database DOWN, using the HIGHEST version number of Horizon you have installed (not this binary), run "horizon db migrate down %v".`,
+			apkg.Version(),
+			nMigrationsDown,
+		)
 	}
+	return nil
 }
 
 // Flags returns a Config instance and a list of commandline flags which modify the Config instance
@@ -129,7 +139,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: "",
 			Required:    false,
 			Usage:       "DEPRECATED in favor of " + CaptiveCoreConfigPathName,
-			CustomSetValue: func(opt *support.ConfigOption) {
+			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetString(opt.Name); val != "" {
 					if viper.GetString(CaptiveCoreConfigPathName) != "" {
 						stdLog.Printf(
@@ -143,6 +153,7 @@ func Flags() (*Config, support.ConfigOptions) {
 						config.CaptiveCoreConfigPath = val
 					}
 				}
+				return nil
 			},
 		},
 		&support.ConfigOption{
@@ -151,11 +162,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: "",
 			Required:    false,
 			Usage:       "path to the configuration file used by captive core. It must, at least, include enough details to define a quorum set. Any fields in the configuration file which are not supported by captive core will be rejected.",
-			CustomSetValue: func(opt *support.ConfigOption) {
+			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetString(opt.Name); val != "" {
 					config.CaptiveCoreConfigPath = val
 					config.CaptiveCoreTomlParams.Strict = true
 				}
+				return nil
 			},
 		},
 		&support.ConfigOption{
@@ -178,16 +190,17 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:    "captive-core-storage-path",
 			OptType: types.String,
-			CustomSetValue: func(opt *support.ConfigOption) {
+			CustomSetValue: func(opt *support.ConfigOption) error {
 				existingValue := viper.GetString(opt.Name)
 				if existingValue == "" || existingValue == "." {
 					cwd, err := os.Getwd()
 					if err != nil {
-						stdLog.Fatalf("Unable to determine the current directory: %s", err)
+						return fmt.Errorf("Unable to determine the current directory: %s", err)
 					}
 					existingValue = cwd
 				}
 				*opt.ConfigKey.(*string) = existingValue
+				return nil
 			},
 			Required:  false,
 			Usage:     "Storage location for Captive Core bucket data",
@@ -230,11 +243,11 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			Required:    false,
 			FlagDefault: "",
-			CustomSetValue: func(co *support.ConfigOption) {
+			CustomSetValue: func(co *support.ConfigOption) error {
 				stringOfUrls := viper.GetString(co.Name)
 				urlStrings := strings.Split(stringOfUrls, ",")
-
 				*(co.ConfigKey.(*[]string)) = urlStrings
+				return nil
 			},
 			Usage: "comma-separated list of stellar history archives to connect with",
 		},
@@ -294,7 +307,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.RateQuota,
 			OptType:     types.Int,
 			FlagDefault: 3600,
-			CustomSetValue: func(co *support.ConfigOption) {
+			CustomSetValue: func(co *support.ConfigOption) error {
 				var rateLimit *throttled.RateQuota = nil
 				perHourRateLimit := viper.GetInt(co.Name)
 				if perHourRateLimit != 0 {
@@ -304,6 +317,7 @@ func Flags() (*Config, support.ConfigOptions) {
 					}
 					*(co.ConfigKey.(**throttled.RateQuota)) = rateLimit
 				}
+				return nil
 			},
 			Usage: "max count of requests allowed in a one hour period, by remote ip address",
 		},
@@ -319,12 +333,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.LogLevel,
 			OptType:     types.String,
 			FlagDefault: "info",
-			CustomSetValue: func(co *support.ConfigOption) {
+			CustomSetValue: func(co *support.ConfigOption) error {
 				ll, err := logrus.ParseLevel(viper.GetString(co.Name))
 				if err != nil {
-					stdLog.Fatalf("Could not parse log-level: %v", viper.GetString(co.Name))
+					return fmt.Errorf("Could not parse log-level: %v", viper.GetString(co.Name))
 				}
 				*(co.ConfigKey.(*logrus.Level)) = ll
+				return nil
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
@@ -476,20 +491,23 @@ func Flags() (*Config, support.ConfigOptions) {
 }
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
-func NewAppFromFlags(config *Config, flags support.ConfigOptions) *App {
-	ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
+func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) {
+	err := ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
+	if err != nil {
+		return nil, err
+	}
 	// Validate app-specific arguments
 	if config.StellarCoreURL == "" {
-		log.Fatalf("flag --%s cannot be empty", StellarCoreURLFlagName)
+		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreURLFlagName)
 	}
 	if config.Ingest && !config.EnableCaptiveCoreIngestion && config.StellarCoreDatabaseURL == "" {
-		log.Fatalf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
+		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
 	}
 	app, err := NewApp(*config)
 	if err != nil {
-		log.Fatalf("cannot initialize app: %s", err)
+		return nil, fmt.Errorf("cannot initialize app: %s", err)
 	}
-	return app
+	return app, nil
 }
 
 type ApplyOptions struct {
@@ -498,13 +516,19 @@ type ApplyOptions struct {
 }
 
 // ApplyFlags applies the command line flags on the given Config instance
-func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) {
+func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
 	// Verify required options and load the config struct
-	flags.Require()
-	flags.SetValues()
+	if err := flags.RequireE(); err != nil {
+		return err
+	}
+	if err := flags.SetValues(); err != nil {
+		return err
+	}
 
 	// Validate options that should be provided together
-	validateBothOrNeither("tls-cert", "tls-key")
+	if err := validateBothOrNeither("tls-cert", "tls-key"); err != nil {
+		return err
+	}
 
 	if options.AlwaysIngest {
 		config.Ingest = true
@@ -515,14 +539,18 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		// only on ingesting instances which are required to have write-access
 		// to the DB.
 		if config.ApplyMigrations {
-			applyMigrations(*config)
+			if err := applyMigrations(*config); err != nil {
+				return err
+			}
 		}
-		checkMigrations(*config)
+		if err := checkMigrations(*config); err != nil {
+			return err
+		}
 
 		// config.HistoryArchiveURLs contains a single empty value when empty so using
 		// viper.GetString is easier.
 		if len(config.HistoryArchiveURLs) == 0 {
-			stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
+			return fmt.Errorf("--history-archive-urls must be set when --ingest is set")
 		}
 
 		if config.EnableCaptiveCoreIngestion {
@@ -542,14 +570,14 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			//       defaults for the binary path), the Remote Captive Core URL
 			//       takes precedence.
 			if binaryPath == "" && config.RemoteCaptiveCoreURL == "" {
-				stdLog.Fatalf("Invalid config: captive core requires that either --%s or --remote-captive-core-url is set. %s",
+				return fmt.Errorf("Invalid config: captive core requires that either --%s or --remote-captive-core-url is set. %s",
 					StellarCoreBinaryPathName, captiveCoreMigrationHint)
 			}
 
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
 				if options.RequireCaptiveCoreConfig {
 					var err error
-					errorMessage := fmt.Sprintf(
+					errorMessage := fmt.Errorf(
 						"Invalid config: captive core requires that both --%s and --%s are set. %s",
 						StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint,
 					)
@@ -565,23 +593,23 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-live/core_live_001/"}
 						config.UsingDefaultPubnetConfig = true
 					default:
-						stdLog.Fatal(errorMessage)
+						return errorMessage
 					}
 
 					executablePath, err := os.Executable()
 					if err != nil {
-						stdLog.Fatal(errorMessage)
+						return errorMessage
 					}
 
 					config.CaptiveCoreConfigPath = filepath.Join(filepath.Dir(executablePath), configFileName)
 					if _, err = os.Stat(config.CaptiveCoreConfigPath); os.IsNotExist(err) {
-						stdLog.Fatal(errorMessage)
+						return errorMessage
 					}
 
 					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
 					if err != nil {
-						stdLog.Fatalf("Invalid captive core toml file %v", err)
+						return fmt.Errorf("Invalid captive core toml file %v", err)
 					}
 				} else {
 					var err error
@@ -589,7 +617,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
 					if err != nil {
-						stdLog.Fatalf("Invalid captive core toml file %v", err)
+						return fmt.Errorf("Invalid captive core toml file %v", err)
 					}
 				}
 			} else if config.RemoteCaptiveCoreURL == "" {
@@ -598,7 +626,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 				config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
 				if err != nil {
-					stdLog.Fatalf("Invalid captive core toml file %v", err)
+					return fmt.Errorf("Invalid captive core toml file %v", err)
 				}
 			}
 
@@ -615,11 +643,11 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			if viper.GetString(CaptiveCoreConfigPathName) != "" {
 				captiveCoreConfigFlag = CaptiveCoreConfigPathName
 			}
-			stdLog.Fatalf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
+			return fmt.Errorf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
 				StellarCoreBinaryPathName, captiveCoreConfigFlag)
 		}
 		if config.StellarCoreDatabaseURL != "" {
-			stdLog.Fatalf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
 		}
 	}
 
@@ -629,7 +657,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		if err == nil {
 			log.DefaultLogger.Logger.Out = logFile
 		} else {
-			stdLog.Fatalf("Failed to open file to log: %s", err)
+			return fmt.Errorf("Failed to open file to log: %s", err)
 		}
 	}
 
@@ -644,6 +672,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	}
 
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
-		stdLog.Fatal("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
+		return fmt.Errorf("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
 	}
+
+	return nil
 }

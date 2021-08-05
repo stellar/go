@@ -38,24 +38,37 @@ func (cos ConfigOptions) Require() {
 	}
 }
 
-// SetValues calls SetValue on each ConfigOption.
-func (cos ConfigOptions) SetValues() {
+// RequireE is like Require, but returns the error instead of Fatal
+func (cos ConfigOptions) RequireE() error {
 	for _, co := range cos {
-		co.SetValue()
+		if err := co.RequireE(); err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+// SetValues calls SetValue on each ConfigOption.
+func (cos ConfigOptions) SetValues() error {
+	for _, co := range cos {
+		if err := co.SetValue(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ConfigOption is a complete description of the configuration of a command line option
 type ConfigOption struct {
-	Name           string              // e.g. "db-url"
-	EnvVar         string              // e.g. "DATABASE_URL". Defaults to uppercase/underscore representation of name
-	OptType        types.BasicKind     // The type of this option, e.g. types.Bool
-	FlagDefault    interface{}         // A default if no option is provided. Omit or set to `nil` if no default
-	Required       bool                // Whether this option must be set for Horizon to run
-	Usage          string              // Help text
-	CustomSetValue func(*ConfigOption) // Optional function for custom validation/transformation
-	ConfigKey      interface{}         // Pointer to the final key in the linked Config struct
-	flag           *pflag.Flag         // The persistent flag that the config option is attached to
+	Name           string                    // e.g. "db-url"
+	EnvVar         string                    // e.g. "DATABASE_URL". Defaults to uppercase/underscore representation of name
+	OptType        types.BasicKind           // The type of this option, e.g. types.Bool
+	FlagDefault    interface{}               // A default if no option is provided. Omit or set to `nil` if no default
+	Required       bool                      // Whether this option must be set for Horizon to run
+	Usage          string                    // Help text
+	CustomSetValue func(*ConfigOption) error // Optional function for custom validation/transformation
+	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
+	flag           *pflag.Flag               // The persistent flag that the config option is attached to
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -77,23 +90,34 @@ func (co *ConfigOption) Bind() {
 
 // Require checks that a required string configuration option is not empty, raising a user error if it is.
 func (co *ConfigOption) Require() {
-	co.Bind()
-	if co.Required && viper.GetString(co.Name) == "" {
-		stdLog.Fatalf("Invalid config: %s is blank. Please specify --%s on the command line or set the %s environment variable.", co.Name, co.Name, co.EnvVar)
+	if err := co.RequireE(); err != nil {
+		stdLog.Fatal(err.Error())
 	}
 }
 
+// RequireE is like Require, but returns the error instead of Fatal
+func (co *ConfigOption) RequireE() error {
+	co.Bind()
+	if co.Required && viper.GetString(co.Name) == "" {
+		return fmt.Errorf("Invalid config: %s is blank. Please specify --%s on the command line or set the %s environment variable.", co.Name, co.Name, co.EnvVar)
+	}
+	return nil
+}
+
 // SetValue sets a value in the global config, using a custom function, if one was provided.
-func (co *ConfigOption) SetValue() {
+func (co *ConfigOption) SetValue() error {
 	co.Bind()
 
 	// Use a custom setting function, if one is provided
 	if co.CustomSetValue != nil {
-		co.CustomSetValue(co)
+		if err := co.CustomSetValue(co); err != nil {
+			return err
+		}
 		// Otherwise, just set the provided arg directly
 	} else if co.ConfigKey != nil {
 		co.setSimpleValue()
 	}
+	return nil
 }
 
 // UsageText returns the string to use for the usage text of the option. The
@@ -148,25 +172,27 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 }
 
 // SetDuration converts a command line int to a duration, and stores it in the final config.
-func SetDuration(co *ConfigOption) {
+func SetDuration(co *ConfigOption) error {
 	*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Second
+	return nil
 }
 
 // SetURL converts a command line string to a URL, and stores it in the final config.
-func SetURL(co *ConfigOption) {
+func SetURL(co *ConfigOption) error {
 	urlString := viper.GetString(co.Name)
 	if urlString != "" {
 		urlType, err := url.Parse(urlString)
 		if err != nil {
-			stdLog.Fatalf("Unable to parse URL: %s/%v", urlString, err)
+			return fmt.Errorf("Unable to parse URL: %s/%v", urlString, err)
 		}
 		*(co.ConfigKey.(**url.URL)) = urlType
 	}
+	return nil
 }
 
 // SetOptionalUint converts a command line uint to a *uint where the nil
 // value indicates the flag was not explicitly set
-func SetOptionalUint(co *ConfigOption) {
+func SetOptionalUint(co *ConfigOption) error {
 	key := co.ConfigKey.(**uint)
 	if IsExplicitlySet(co) {
 		*key = new(uint)
@@ -174,6 +200,7 @@ func SetOptionalUint(co *ConfigOption) {
 	} else {
 		*key = nil
 	}
+	return nil
 }
 
 func parseEnvVars(entries []string) map[string]bool {
@@ -197,7 +224,7 @@ func IsExplicitlySet(co *ConfigOption) bool {
 
 // SetOptionalString converts a command line uint to a *string where the nil
 // value indicates the flag was not explicitly set
-func SetOptionalString(co *ConfigOption) {
+func SetOptionalString(co *ConfigOption) error {
 	key := co.ConfigKey.(**string)
 	if IsExplicitlySet(co) {
 		*key = new(string)
@@ -205,4 +232,5 @@ func SetOptionalString(co *ConfigOption) {
 	} else {
 		*key = nil
 	}
+	return nil
 }

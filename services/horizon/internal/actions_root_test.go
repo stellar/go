@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRootAction(t *testing.T) {
@@ -28,7 +29,7 @@ func TestRootAction(t *testing.T) {
 
 	ht.App.config.StellarCoreURL = server.URL
 	ht.App.config.NetworkPassphrase = "test"
-	ht.App.UpdateStellarCoreInfo(ht.Ctx)
+	assert.NoError(t, ht.App.UpdateStellarCoreInfo(ht.Ctx))
 	ht.App.UpdateLedgerState(ht.Ctx)
 
 	w := ht.Get("/")
