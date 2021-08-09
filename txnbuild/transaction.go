@@ -367,11 +367,10 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	//
 	// Note that the source account must be *unmuxed* for this to work.
 	muxedAccountId := xdr.MustMuxedAddress(t.sourceAccount.AccountID).ToAccountId()
-	gAddress := muxedAccountId.Address()
 	operationId := xdr.OperationId{
 		Type: xdr.EnvelopeTypeEnvelopeTypeOpId,
 		Id: &xdr.OperationIdId{
-			SourceAccount: xdr.MustMuxedAddress(gAddress),
+			SourceAccount: muxedAccountId,
 			SeqNum:        xdr.SequenceNumber(t.sourceAccount.Sequence),
 			OpNum:         xdr.Uint32(operationIndex),
 		},

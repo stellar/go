@@ -116,7 +116,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(accountOne),
-				Asset:     euro,
+				Asset:     euro.ToTrustLineAsset(),
 				Balance:   20000,
 				Limit:     223456789,
 				Flags:     1,
@@ -139,7 +139,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(accountTwo),
-				Asset:     usd,
+				Asset:     usd.ToTrustLineAsset(),
 				Balance:   10000,
 				Limit:     123456789,
 				Flags:     0,
@@ -255,7 +255,7 @@ func TestAccountInfo(t *testing.T) {
 				Asset: xdr.MustNewCreditAsset(
 					"USD",
 					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				),
+				).ToTrustLineAsset(),
 				Balance: 0,
 				Limit:   9223372036854775807,
 				Flags:   1,
@@ -273,7 +273,7 @@ func TestAccountInfo(t *testing.T) {
 				Asset: xdr.MustNewCreditAsset(
 					"EUR",
 					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				),
+				).ToTrustLineAsset(),
 				Balance: 0,
 				Limit:   9223372036854775807,
 				Flags:   1,

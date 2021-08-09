@@ -26,13 +26,13 @@ type TradeProcessorTestSuiteLedger struct {
 	unmuxedOpSourceAccount     xdr.AccountId
 	sourceAccount              xdr.MuxedAccount
 	opSourceAccount            xdr.MuxedAccount
-	strictReceiveTrade         xdr.ClaimOfferAtom
-	strictSendTrade            xdr.ClaimOfferAtom
-	buyOfferTrade              xdr.ClaimOfferAtom
-	sellOfferTrade             xdr.ClaimOfferAtom
-	passiveSellOfferTrade      xdr.ClaimOfferAtom
-	otherPassiveSellOfferTrade xdr.ClaimOfferAtom
-	allTrades                  []xdr.ClaimOfferAtom
+	strictReceiveTrade         xdr.ClaimAtom
+	strictSendTrade            xdr.ClaimAtom
+	buyOfferTrade              xdr.ClaimAtom
+	sellOfferTrade             xdr.ClaimAtom
+	passiveSellOfferTrade      xdr.ClaimAtom
+	otherPassiveSellOfferTrade xdr.ClaimAtom
+	allTrades                  []xdr.ClaimAtom
 	sellPrices                 []xdr.Price
 
 	assets []xdr.Asset
@@ -67,53 +67,71 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 			Ed25519: *s.unmuxedOpSourceAccount.Ed25519,
 		},
 	}
-	s.strictReceiveTrade = xdr.ClaimOfferAtom{
-		SellerId:     xdr.MustAddress("GA2YS6YBWIBUMUJCNYROC5TXYTTUA4TCZF7A4MJ2O4TTGT3LFNWIOMY4"),
-		OfferId:      11,
-		AssetSold:    xdr.MustNewNativeAsset(),
-		AmountSold:   111,
-		AmountBought: 211,
-		AssetBought:  xdr.MustNewCreditAsset("HUF", s.unmuxedSourceAccount.Address()),
+	s.strictReceiveTrade = xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     xdr.MustAddress("GA2YS6YBWIBUMUJCNYROC5TXYTTUA4TCZF7A4MJ2O4TTGT3LFNWIOMY4"),
+			OfferId:      11,
+			AssetSold:    xdr.MustNewNativeAsset(),
+			AmountSold:   111,
+			AmountBought: 211,
+			AssetBought:  xdr.MustNewCreditAsset("HUF", s.unmuxedSourceAccount.Address()),
+		},
 	}
-	s.strictSendTrade = xdr.ClaimOfferAtom{
-		SellerId:     xdr.MustAddress("GALOBQKDZUSAEUDE7F4OYUIQTUZBL62G6TRCXU2ED6SA7TL72MBUQSYJ"),
-		OfferId:      12,
-		AssetSold:    xdr.MustNewCreditAsset("USD", s.unmuxedSourceAccount.Address()),
-		AmountSold:   112,
-		AmountBought: 212,
-		AssetBought:  xdr.MustNewCreditAsset("RUB", s.unmuxedSourceAccount.Address()),
+	s.strictSendTrade = xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     xdr.MustAddress("GALOBQKDZUSAEUDE7F4OYUIQTUZBL62G6TRCXU2ED6SA7TL72MBUQSYJ"),
+			OfferId:      12,
+			AssetSold:    xdr.MustNewCreditAsset("USD", s.unmuxedSourceAccount.Address()),
+			AmountSold:   112,
+			AmountBought: 212,
+			AssetBought:  xdr.MustNewCreditAsset("RUB", s.unmuxedSourceAccount.Address()),
+		},
 	}
-	s.buyOfferTrade = xdr.ClaimOfferAtom{
-		SellerId:     xdr.MustAddress("GCWRLPH5X5A3GABFDLDILZ4RLY6O76AYOIIR5H2PAI6TNZZZNLZWBXSH"),
-		OfferId:      13,
-		AssetSold:    xdr.MustNewCreditAsset("EUR", s.unmuxedSourceAccount.Address()),
-		AmountSold:   113,
-		AmountBought: 213,
-		AssetBought:  xdr.MustNewCreditAsset("NOK", s.unmuxedSourceAccount.Address()),
+	s.buyOfferTrade = xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     xdr.MustAddress("GCWRLPH5X5A3GABFDLDILZ4RLY6O76AYOIIR5H2PAI6TNZZZNLZWBXSH"),
+			OfferId:      13,
+			AssetSold:    xdr.MustNewCreditAsset("EUR", s.unmuxedSourceAccount.Address()),
+			AmountSold:   113,
+			AmountBought: 213,
+			AssetBought:  xdr.MustNewCreditAsset("NOK", s.unmuxedSourceAccount.Address()),
+		},
 	}
-	s.sellOfferTrade = xdr.ClaimOfferAtom{
-		SellerId:     xdr.MustAddress("GAVOLNFXVVUJOELN4T3YVSH2FFA3VSP2XN4NJRYF2ZWVCHS77C5KXLHZ"),
-		OfferId:      14,
-		AssetSold:    xdr.MustNewCreditAsset("PLN", s.unmuxedSourceAccount.Address()),
-		AmountSold:   114,
-		AmountBought: 214,
-		AssetBought:  xdr.MustNewCreditAsset("UAH", s.unmuxedSourceAccount.Address()),
+	s.sellOfferTrade = xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     xdr.MustAddress("GAVOLNFXVVUJOELN4T3YVSH2FFA3VSP2XN4NJRYF2ZWVCHS77C5KXLHZ"),
+			OfferId:      14,
+			AssetSold:    xdr.MustNewCreditAsset("PLN", s.unmuxedSourceAccount.Address()),
+			AmountSold:   114,
+			AmountBought: 214,
+			AssetBought:  xdr.MustNewCreditAsset("UAH", s.unmuxedSourceAccount.Address()),
+		},
 	}
-	s.passiveSellOfferTrade = xdr.ClaimOfferAtom{
-		SellerId:     xdr.MustAddress("GDQWI6FKB72DPOJE4CGYCFQZKRPQQIOYXRMZ5KEVGXMG6UUTGJMBCASH"),
-		OfferId:      15,
-		AssetSold:    xdr.MustNewCreditAsset("SEK", s.unmuxedSourceAccount.Address()),
-		AmountSold:   115,
-		AmountBought: 215,
-		AssetBought:  xdr.MustNewCreditAsset("GBP", s.unmuxedSourceAccount.Address()),
+	s.passiveSellOfferTrade = xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     xdr.MustAddress("GDQWI6FKB72DPOJE4CGYCFQZKRPQQIOYXRMZ5KEVGXMG6UUTGJMBCASH"),
+			OfferId:      15,
+			AssetSold:    xdr.MustNewCreditAsset("SEK", s.unmuxedSourceAccount.Address()),
+			AmountSold:   115,
+			AmountBought: 215,
+			AssetBought:  xdr.MustNewCreditAsset("GBP", s.unmuxedSourceAccount.Address()),
+		},
 	}
-	s.otherPassiveSellOfferTrade = xdr.ClaimOfferAtom{
-		SellerId:     xdr.MustAddress("GCPZFOJON3PSSYUBNT7MCGEDSGP47UTSJSB4XGCVEWEJO4XQ6U4XN3N2"),
-		OfferId:      16,
-		AssetSold:    xdr.MustNewCreditAsset("CHF", s.unmuxedSourceAccount.Address()),
-		AmountSold:   116,
-		AmountBought: 216,
-		AssetBought:  xdr.MustNewCreditAsset("JPY", s.unmuxedSourceAccount.Address()),
+	s.otherPassiveSellOfferTrade = xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     xdr.MustAddress("GCPZFOJON3PSSYUBNT7MCGEDSGP47UTSJSB4XGCVEWEJO4XQ6U4XN3N2"),
+			OfferId:      16,
+			AssetSold:    xdr.MustNewCreditAsset("CHF", s.unmuxedSourceAccount.Address()),
+			AmountSold:   116,
+			AmountBought: 216,
+			AssetBought:  xdr.MustNewCreditAsset("JPY", s.unmuxedSourceAccount.Address()),
+		},
 	}
 
 	s.unmuxedAccountToID = map[string]int64{
@@ -121,7 +139,7 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 		s.unmuxedOpSourceAccount.Address(): 1001,
 	}
 	s.assetToID = map[string]history.Asset{}
-	s.allTrades = []xdr.ClaimOfferAtom{
+	s.allTrades = []xdr.ClaimAtom{
 		s.strictReceiveTrade,
 		s.strictSendTrade,
 		s.buyOfferTrade,
@@ -133,10 +151,10 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 	s.assets = []xdr.Asset{}
 	s.sellPrices = []xdr.Price{}
 	for i, trade := range s.allTrades {
-		s.unmuxedAccountToID[trade.SellerId.Address()] = int64(1002 + i)
-		s.assetToID[trade.AssetSold.String()] = history.Asset{ID: int64(10000 + i)}
-		s.assetToID[trade.AssetBought.String()] = history.Asset{ID: int64(100 + i)}
-		s.assets = append(s.assets, trade.AssetSold, trade.AssetBought)
+		s.unmuxedAccountToID[trade.SellerId().Address()] = int64(1002 + i)
+		s.assetToID[trade.AssetSold().String()] = history.Asset{ID: int64(10000 + i)}
+		s.assetToID[trade.AssetBought().String()] = history.Asset{ID: int64(100 + i)}
+		s.assets = append(s.assets, trade.AssetSold(), trade.AssetBought())
 		n := xdr.Int32(i + 1)
 		s.sellPrices = append(s.sellPrices, xdr.Price{N: n, D: 100})
 	}
@@ -176,11 +194,11 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LedgerCloseTime:    closeTime,
 			BuyOfferExists:     false,
 			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.strictReceiveTrade.SellerId.Address()],
+			SellerAccountID:    s.unmuxedAccountToID[s.strictReceiveTrade.SellerId().Address()],
 			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
 			Trade:              s.strictReceiveTrade,
-			SoldAssetID:        s.assetToID[s.strictReceiveTrade.AssetSold.String()].ID,
-			BoughtAssetID:      s.assetToID[s.strictReceiveTrade.AssetBought.String()].ID,
+			SoldAssetID:        s.assetToID[s.strictReceiveTrade.AssetSold().String()].ID,
+			BoughtAssetID:      s.assetToID[s.strictReceiveTrade.AssetBought().String()].ID,
 			SellPrice:          s.sellPrices[0],
 		},
 		{
@@ -189,11 +207,11 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LedgerCloseTime:    closeTime,
 			BuyOfferExists:     false,
 			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.strictSendTrade.SellerId.Address()],
+			SellerAccountID:    s.unmuxedAccountToID[s.strictSendTrade.SellerId().Address()],
 			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
 			Trade:              s.strictSendTrade,
-			SoldAssetID:        s.assetToID[s.strictSendTrade.AssetSold.String()].ID,
-			BoughtAssetID:      s.assetToID[s.strictSendTrade.AssetBought.String()].ID,
+			SoldAssetID:        s.assetToID[s.strictSendTrade.AssetSold().String()].ID,
+			BoughtAssetID:      s.assetToID[s.strictSendTrade.AssetBought().String()].ID,
 			SellPrice:          s.sellPrices[1],
 		},
 		{
@@ -202,11 +220,11 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LedgerCloseTime:    closeTime,
 			BuyOfferExists:     true,
 			BuyOfferID:         879136,
-			SellerAccountID:    s.unmuxedAccountToID[s.buyOfferTrade.SellerId.Address()],
+			SellerAccountID:    s.unmuxedAccountToID[s.buyOfferTrade.SellerId().Address()],
 			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
 			Trade:              s.buyOfferTrade,
-			SoldAssetID:        s.assetToID[s.buyOfferTrade.AssetSold.String()].ID,
-			BoughtAssetID:      s.assetToID[s.buyOfferTrade.AssetBought.String()].ID,
+			SoldAssetID:        s.assetToID[s.buyOfferTrade.AssetSold().String()].ID,
+			BoughtAssetID:      s.assetToID[s.buyOfferTrade.AssetBought().String()].ID,
 			SellPrice:          s.sellPrices[2],
 		},
 		{
@@ -215,11 +233,11 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LedgerCloseTime:    closeTime,
 			BuyOfferExists:     false,
 			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.sellOfferTrade.SellerId.Address()],
+			SellerAccountID:    s.unmuxedAccountToID[s.sellOfferTrade.SellerId().Address()],
 			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
 			Trade:              s.sellOfferTrade,
-			SoldAssetID:        s.assetToID[s.sellOfferTrade.AssetSold.String()].ID,
-			BoughtAssetID:      s.assetToID[s.sellOfferTrade.AssetBought.String()].ID,
+			SoldAssetID:        s.assetToID[s.sellOfferTrade.AssetSold().String()].ID,
+			BoughtAssetID:      s.assetToID[s.sellOfferTrade.AssetBought().String()].ID,
 			SellPrice:          s.sellPrices[3],
 		},
 		{
@@ -228,11 +246,11 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LedgerCloseTime:    closeTime,
 			BuyOfferExists:     false,
 			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.passiveSellOfferTrade.SellerId.Address()],
+			SellerAccountID:    s.unmuxedAccountToID[s.passiveSellOfferTrade.SellerId().Address()],
 			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedSourceAccount.Address()],
 			Trade:              s.passiveSellOfferTrade,
-			SoldAssetID:        s.assetToID[s.passiveSellOfferTrade.AssetSold.String()].ID,
-			BoughtAssetID:      s.assetToID[s.passiveSellOfferTrade.AssetBought.String()].ID,
+			SoldAssetID:        s.assetToID[s.passiveSellOfferTrade.AssetSold().String()].ID,
+			BoughtAssetID:      s.assetToID[s.passiveSellOfferTrade.AssetBought().String()].ID,
 			SellPrice:          s.sellPrices[4],
 		},
 		{
@@ -241,22 +259,25 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LedgerCloseTime:    closeTime,
 			BuyOfferExists:     false,
 			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.otherPassiveSellOfferTrade.SellerId.Address()],
+			SellerAccountID:    s.unmuxedAccountToID[s.otherPassiveSellOfferTrade.SellerId().Address()],
 			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
 			Trade:              s.otherPassiveSellOfferTrade,
-			SoldAssetID:        s.assetToID[s.otherPassiveSellOfferTrade.AssetSold.String()].ID,
-			BoughtAssetID:      s.assetToID[s.otherPassiveSellOfferTrade.AssetBought.String()].ID,
+			SoldAssetID:        s.assetToID[s.otherPassiveSellOfferTrade.AssetSold().String()].ID,
+			BoughtAssetID:      s.assetToID[s.otherPassiveSellOfferTrade.AssetBought().String()].ID,
 			SellPrice:          s.sellPrices[5],
 		},
 	}
 
-	emptyTrade := xdr.ClaimOfferAtom{
-		SellerId:     s.sourceAccount.ToAccountId(),
-		OfferId:      123,
-		AssetSold:    xdr.MustNewNativeAsset(),
-		AmountSold:   0,
-		AssetBought:  xdr.MustNewCreditAsset("EUR", s.unmuxedSourceAccount.Address()),
-		AmountBought: 0,
+	emptyTrade := xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+		OrderBook: &xdr.ClaimOfferAtom{
+			SellerId:     s.sourceAccount.ToAccountId(),
+			OfferId:      123,
+			AssetSold:    xdr.MustNewNativeAsset(),
+			AmountSold:   0,
+			AssetBought:  xdr.MustNewCreditAsset("EUR", s.unmuxedSourceAccount.Address()),
+			AmountBought: 0,
+		},
 	}
 
 	operationResults := []xdr.OperationResult{
@@ -274,7 +295,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
 					Code: xdr.PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSuccess,
 					Success: &xdr.PathPaymentStrictReceiveResultSuccess{
-						Offers: []xdr.ClaimOfferAtom{
+						Offers: []xdr.ClaimAtom{
 							emptyTrade,
 							s.strictReceiveTrade,
 						},
@@ -288,7 +309,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
 					Code: xdr.PathPaymentStrictSendResultCodePathPaymentStrictSendSuccess,
 					Success: &xdr.PathPaymentStrictSendResultSuccess{
-						Offers: []xdr.ClaimOfferAtom{
+						Offers: []xdr.ClaimAtom{
 							s.strictSendTrade,
 							emptyTrade,
 						},
@@ -302,7 +323,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
 					Code: xdr.ManageBuyOfferResultCodeManageBuyOfferSuccess,
 					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: []xdr.ClaimOfferAtom{
+						OffersClaimed: []xdr.ClaimAtom{
 							emptyTrade,
 							s.buyOfferTrade,
 							emptyTrade,
@@ -322,7 +343,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				ManageSellOfferResult: &xdr.ManageSellOfferResult{
 					Code: xdr.ManageSellOfferResultCodeManageSellOfferSuccess,
 					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: []xdr.ClaimOfferAtom{
+						OffersClaimed: []xdr.ClaimAtom{
 							emptyTrade,
 							emptyTrade,
 							s.sellOfferTrade,
@@ -340,7 +361,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				ManageSellOfferResult: &xdr.ManageSellOfferResult{
 					Code: xdr.ManageSellOfferResultCodeManageSellOfferSuccess,
 					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: []xdr.ClaimOfferAtom{
+						OffersClaimed: []xdr.ClaimAtom{
 							s.passiveSellOfferTrade,
 							emptyTrade,
 							emptyTrade,
@@ -358,7 +379,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				CreatePassiveSellOfferResult: &xdr.ManageSellOfferResult{
 					Code: xdr.ManageSellOfferResultCodeManageSellOfferSuccess,
 					Success: &xdr.ManageOfferSuccessResult{
-						OffersClaimed: []xdr.ClaimOfferAtom{
+						OffersClaimed: []xdr.ClaimAtom{
 							s.otherPassiveSellOfferTrade,
 						},
 						Offer: xdr.ManageOfferSuccessResultOffer{
@@ -462,8 +483,8 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 							Type: xdr.LedgerEntryTypeOffer,
 							Offer: &xdr.OfferEntry{
 								Price:    s.sellPrices[i],
-								SellerId: trade.SellerId,
-								OfferId:  trade.OfferId,
+								SellerId: trade.SellerId(),
+								OfferId:  trade.OfferId(),
 							},
 						},
 					},
@@ -473,8 +494,8 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 					Removed: &xdr.LedgerKey{
 						Type: xdr.LedgerEntryTypeOffer,
 						Offer: &xdr.LedgerKeyOffer{
-							SellerId: trade.SellerId,
-							OfferId:  trade.OfferId,
+							SellerId: trade.SellerId(),
+							OfferId:  trade.OfferId(),
 						},
 					},
 				},

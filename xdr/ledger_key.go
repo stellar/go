@@ -79,7 +79,7 @@ func (key *LedgerKey) SetOffer(account AccountId, id uint64) error {
 
 // SetTrustline mutates `key` such that it represents the identity of the
 // trustline owned by `account` and for `asset`.
-func (key *LedgerKey) SetTrustline(account AccountId, line Asset) error {
+func (key *LedgerKey) SetTrustline(account AccountId, line TrustLineAsset) error {
 	data := LedgerKeyTrustLine{account, line}
 	nkey, err := NewLedgerKey(LedgerEntryTypeTrustline, data)
 	if err != nil {

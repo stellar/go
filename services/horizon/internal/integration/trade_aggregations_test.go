@@ -67,11 +67,14 @@ func TestTradeAggregations(t *testing.T) {
 					BuyerAccountID:     accounts[itest.Master().Address()],
 					SoldAssetID:        baseAssetId,
 					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimOfferAtom{
-						AssetSold:    base,
-						AmountSold:   xdr.Int64(4_263_291_501),
-						AssetBought:  counter,
-						AmountBought: xdr.Int64(100),
+					Trade: xdr.ClaimAtom{
+						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+						OrderBook: &xdr.ClaimOfferAtom{
+							AssetSold:    base,
+							AmountSold:   xdr.Int64(4_263_291_501),
+							AssetBought:  counter,
+							AmountBought: xdr.Int64(100),
+						},
 					},
 					SellPrice: xdr.Price{N: 23456, D: 10000},
 				},
@@ -107,11 +110,14 @@ func TestTradeAggregations(t *testing.T) {
 					BuyerAccountID:     accounts[itest.Master().Address()],
 					SoldAssetID:        baseAssetId,
 					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimOfferAtom{
-						AssetSold:    base,
-						AmountSold:   xdr.Int64(4_263_291_501),
-						AssetBought:  counter,
-						AmountBought: xdr.Int64(100),
+					Trade: xdr.ClaimAtom{
+						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+						OrderBook: &xdr.ClaimOfferAtom{
+							AssetSold:    base,
+							AmountSold:   xdr.Int64(4_263_291_501),
+							AssetBought:  counter,
+							AmountBought: xdr.Int64(100),
+						},
 					},
 					SellPrice: xdr.Price{N: 23456, D: 10000},
 				},
@@ -123,11 +129,14 @@ func TestTradeAggregations(t *testing.T) {
 					BuyerAccountID:     accounts[itest.Master().Address()],
 					SoldAssetID:        baseAssetId,
 					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimOfferAtom{
-						AssetSold:    base,
-						AmountSold:   xdr.Int64(4_263_291_501),
-						AssetBought:  counter,
-						AmountBought: xdr.Int64(1000),
+					Trade: xdr.ClaimAtom{
+						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+						OrderBook: &xdr.ClaimOfferAtom{
+							AssetSold:    base,
+							AmountSold:   xdr.Int64(4_263_291_501),
+							AssetBought:  counter,
+							AmountBought: xdr.Int64(1000),
+						},
 					},
 					SellPrice: xdr.Price{N: 13456, D: 10000},
 				},
@@ -163,11 +172,14 @@ func TestTradeAggregations(t *testing.T) {
 					BuyerAccountID:     accounts[itest.Master().Address()],
 					SoldAssetID:        baseAssetId,
 					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimOfferAtom{
-						AssetSold:    base,
-						AmountSold:   xdr.Int64(4_263_301_501),
-						AssetBought:  counter,
-						AmountBought: xdr.Int64(100),
+					Trade: xdr.ClaimAtom{
+						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+						OrderBook: &xdr.ClaimOfferAtom{
+							AssetSold:    base,
+							AmountSold:   xdr.Int64(4_263_301_501),
+							AssetBought:  counter,
+							AmountBought: xdr.Int64(100),
+						},
 					},
 					SellPrice: xdr.Price{N: 23456, D: 10000},
 				},
@@ -179,11 +191,14 @@ func TestTradeAggregations(t *testing.T) {
 					BuyerAccountID:     accounts[itest.Master().Address()],
 					SoldAssetID:        baseAssetId,
 					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimOfferAtom{
-						AssetSold:    base,
-						AmountSold:   xdr.Int64(4_263_291_501),
-						AssetBought:  counter,
-						AmountBought: xdr.Int64(1000),
+					Trade: xdr.ClaimAtom{
+						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
+						OrderBook: &xdr.ClaimOfferAtom{
+							AssetSold:    base,
+							AmountSold:   xdr.Int64(4_263_291_501),
+							AssetBought:  counter,
+							AmountBought: xdr.Int64(1000),
+						},
 					},
 					SellPrice: xdr.Price{N: 13456, D: 10000},
 				},

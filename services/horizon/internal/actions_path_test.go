@@ -187,7 +187,7 @@ func TestPathActionsStrictReceive(t *testing.T) {
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(sourceAccount),
-					Asset:     asset,
+					Asset:     asset.ToTrustLineAsset(),
 					Balance:   10000,
 					Limit:     123456789,
 					Flags:     0,
@@ -545,7 +545,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(destinationAccount),
-					Asset:     asset,
+					Asset:     asset.ToTrustLineAsset(),
 					Balance:   10000,
 					Limit:     123456789,
 					Flags:     0,

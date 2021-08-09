@@ -1,8 +1,9 @@
 package processors
 
 import (
-	"github.com/stellar/go/ingest"
 	"math/big"
+
+	"github.com/stellar/go/ingest"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -120,7 +121,12 @@ func (d delta) isEmpty() bool {
 }
 
 // addDelta adds a delta balance and delta accounts to a given asset trustline.
-func (s AssetStatSet) addDelta(asset xdr.Asset, deltaBalances, deltaAccounts delta) error {
+func (s AssetStatSet) addDelta(asset *xdr.Asset, trustLineAsset *xdr.TrustLineAsset, deltaBalances, deltaAccounts delta) error {
+	if trustLineAsset != nil {
+		convertedAsset := trustLineAsset.ToAsset()
+		asset = &convertedAsset
+	}
+
 	if deltaBalances.isEmpty() && deltaAccounts.isEmpty() {
 		return nil
 	}
@@ -180,7 +186,7 @@ func (s AssetStatSet) AddTrustline(change ingest.Change) error {
 		return ingest.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
 	}
 
-	var asset xdr.Asset
+	var asset xdr.TrustLineAsset
 	if pre != nil {
 		asset = pre.Asset
 		deltaAccounts.addByFlags(pre.Flags, -1)
@@ -192,7 +198,7 @@ func (s AssetStatSet) AddTrustline(change ingest.Change) error {
 		deltaBalances.addByFlags(post.Flags, int64(post.Balance))
 	}
 
-	err := s.addDelta(asset, deltaBalances, deltaAccounts)
+	err := s.addDelta(nil, &asset, deltaBalances, deltaAccounts)
 	if err != nil {
 		return errors.Wrap(err, "error running AssetStatSet.addDelta")
 	}
@@ -233,7 +239,7 @@ func (s AssetStatSet) AddClaimableBalance(change ingest.Change) error {
 		return nil
 	}
 
-	err := s.addDelta(asset, deltaBalances, deltaAccounts)
+	err := s.addDelta(&asset, nil, deltaBalances, deltaAccounts)
 	if err != nil {
 		return errors.Wrap(err, "error running AssetStatSet.addDelta")
 	}

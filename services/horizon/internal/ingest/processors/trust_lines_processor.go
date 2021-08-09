@@ -79,7 +79,8 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 					rowsAffected,
 					action,
 					ledgerKey.TrustLine.AccountId.Address(),
-					ledgerKey.TrustLine.Asset.String(),
+					// TODO fix before Protocol 18
+					ledgerKey.TrustLine.Asset.ToAsset().String(),
 				))
 			}
 		default:
