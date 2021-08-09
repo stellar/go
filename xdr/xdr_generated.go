@@ -1,13 +1,10 @@
-//lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
-//lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
 // Package xdr is generated from:
 //
-//  Stellar-SCP.x
-//  Stellar-ledger-entries.x
-//  Stellar-ledger.x
-//  Stellar-overlay.x
-//  Stellar-transaction.x
-//  Stellar-types.x
+//  xdr/Stellar-ledger-entries.x
+//  xdr/Stellar-ledger.x
+//  xdr/Stellar-overlay.x
+//  xdr/Stellar-transaction.x
+//  xdr/Stellar-types.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
@@ -18,7 +15,7 @@ import (
 	"fmt"
 	"io"
 
-	xdr "github.com/stellar/go-xdr/xdr3"
+	"github.com/stellar/go-xdr/xdr3"
 )
 
 // Unmarshal reads an xdr element from `r` into `v`.
@@ -32,607 +29,6 @@ func Marshal(w io.Writer, v interface{}) (int, error) {
 	// delegate to xdr package's Marshal
 	return xdr.Marshal(w, v)
 }
-
-// Value is an XDR Typedef defines as:
-//
-//   typedef opaque Value<>;
-//
-type Value []byte
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s Value) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *Value) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*Value)(nil)
-	_ encoding.BinaryUnmarshaler = (*Value)(nil)
-)
-
-// ScpBallot is an XDR Struct defines as:
-//
-//   struct SCPBallot
-//    {
-//        uint32 counter; // n
-//        Value value;    // x
-//    };
-//
-type ScpBallot struct {
-	Counter Uint32
-	Value   Value
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpBallot) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpBallot) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpBallot)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpBallot)(nil)
-)
-
-// ScpStatementType is an XDR Enum defines as:
-//
-//   enum SCPStatementType
-//    {
-//        SCP_ST_PREPARE = 0,
-//        SCP_ST_CONFIRM = 1,
-//        SCP_ST_EXTERNALIZE = 2,
-//        SCP_ST_NOMINATE = 3
-//    };
-//
-type ScpStatementType int32
-
-const (
-	ScpStatementTypeScpStPrepare     ScpStatementType = 0
-	ScpStatementTypeScpStConfirm     ScpStatementType = 1
-	ScpStatementTypeScpStExternalize ScpStatementType = 2
-	ScpStatementTypeScpStNominate    ScpStatementType = 3
-)
-
-var scpStatementTypeMap = map[int32]string{
-	0: "ScpStatementTypeScpStPrepare",
-	1: "ScpStatementTypeScpStConfirm",
-	2: "ScpStatementTypeScpStExternalize",
-	3: "ScpStatementTypeScpStNominate",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScpStatementType
-func (e ScpStatementType) ValidEnum(v int32) bool {
-	_, ok := scpStatementTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ScpStatementType) String() string {
-	name, _ := scpStatementTypeMap[int32(e)]
-	return name
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpStatementType) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpStatementType) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpStatementType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpStatementType)(nil)
-)
-
-// ScpNomination is an XDR Struct defines as:
-//
-//   struct SCPNomination
-//    {
-//        Hash quorumSetHash; // D
-//        Value votes<>;      // X
-//        Value accepted<>;   // Y
-//    };
-//
-type ScpNomination struct {
-	QuorumSetHash Hash
-	Votes         []Value
-	Accepted      []Value
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpNomination) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpNomination) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpNomination)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpNomination)(nil)
-)
-
-// ScpStatementPrepare is an XDR NestedStruct defines as:
-//
-//   struct
-//            {
-//                Hash quorumSetHash;       // D
-//                SCPBallot ballot;         // b
-//                SCPBallot* prepared;      // p
-//                SCPBallot* preparedPrime; // p'
-//                uint32 nC;                // c.n
-//                uint32 nH;                // h.n
-//            }
-//
-type ScpStatementPrepare struct {
-	QuorumSetHash Hash
-	Ballot        ScpBallot
-	Prepared      *ScpBallot
-	PreparedPrime *ScpBallot
-	NC            Uint32
-	NH            Uint32
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpStatementPrepare) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpStatementPrepare) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpStatementPrepare)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpStatementPrepare)(nil)
-)
-
-// ScpStatementConfirm is an XDR NestedStruct defines as:
-//
-//   struct
-//            {
-//                SCPBallot ballot;   // b
-//                uint32 nPrepared;   // p.n
-//                uint32 nCommit;     // c.n
-//                uint32 nH;          // h.n
-//                Hash quorumSetHash; // D
-//            }
-//
-type ScpStatementConfirm struct {
-	Ballot        ScpBallot
-	NPrepared     Uint32
-	NCommit       Uint32
-	NH            Uint32
-	QuorumSetHash Hash
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpStatementConfirm) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpStatementConfirm) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpStatementConfirm)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpStatementConfirm)(nil)
-)
-
-// ScpStatementExternalize is an XDR NestedStruct defines as:
-//
-//   struct
-//            {
-//                SCPBallot commit;         // c
-//                uint32 nH;                // h.n
-//                Hash commitQuorumSetHash; // D used before EXTERNALIZE
-//            }
-//
-type ScpStatementExternalize struct {
-	Commit              ScpBallot
-	NH                  Uint32
-	CommitQuorumSetHash Hash
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpStatementExternalize) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpStatementExternalize) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpStatementExternalize)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpStatementExternalize)(nil)
-)
-
-// ScpStatementPledges is an XDR NestedUnion defines as:
-//
-//   union switch (SCPStatementType type)
-//        {
-//        case SCP_ST_PREPARE:
-//            struct
-//            {
-//                Hash quorumSetHash;       // D
-//                SCPBallot ballot;         // b
-//                SCPBallot* prepared;      // p
-//                SCPBallot* preparedPrime; // p'
-//                uint32 nC;                // c.n
-//                uint32 nH;                // h.n
-//            } prepare;
-//        case SCP_ST_CONFIRM:
-//            struct
-//            {
-//                SCPBallot ballot;   // b
-//                uint32 nPrepared;   // p.n
-//                uint32 nCommit;     // c.n
-//                uint32 nH;          // h.n
-//                Hash quorumSetHash; // D
-//            } confirm;
-//        case SCP_ST_EXTERNALIZE:
-//            struct
-//            {
-//                SCPBallot commit;         // c
-//                uint32 nH;                // h.n
-//                Hash commitQuorumSetHash; // D used before EXTERNALIZE
-//            } externalize;
-//        case SCP_ST_NOMINATE:
-//            SCPNomination nominate;
-//        }
-//
-type ScpStatementPledges struct {
-	Type        ScpStatementType
-	Prepare     *ScpStatementPrepare
-	Confirm     *ScpStatementConfirm
-	Externalize *ScpStatementExternalize
-	Nominate    *ScpNomination
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u ScpStatementPledges) SwitchFieldName() string {
-	return "Type"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScpStatementPledges
-func (u ScpStatementPledges) ArmForSwitch(sw int32) (string, bool) {
-	switch ScpStatementType(sw) {
-	case ScpStatementTypeScpStPrepare:
-		return "Prepare", true
-	case ScpStatementTypeScpStConfirm:
-		return "Confirm", true
-	case ScpStatementTypeScpStExternalize:
-		return "Externalize", true
-	case ScpStatementTypeScpStNominate:
-		return "Nominate", true
-	}
-	return "-", false
-}
-
-// NewScpStatementPledges creates a new  ScpStatementPledges.
-func NewScpStatementPledges(aType ScpStatementType, value interface{}) (result ScpStatementPledges, err error) {
-	result.Type = aType
-	switch ScpStatementType(aType) {
-	case ScpStatementTypeScpStPrepare:
-		tv, ok := value.(ScpStatementPrepare)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScpStatementPrepare")
-			return
-		}
-		result.Prepare = &tv
-	case ScpStatementTypeScpStConfirm:
-		tv, ok := value.(ScpStatementConfirm)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScpStatementConfirm")
-			return
-		}
-		result.Confirm = &tv
-	case ScpStatementTypeScpStExternalize:
-		tv, ok := value.(ScpStatementExternalize)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScpStatementExternalize")
-			return
-		}
-		result.Externalize = &tv
-	case ScpStatementTypeScpStNominate:
-		tv, ok := value.(ScpNomination)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScpNomination")
-			return
-		}
-		result.Nominate = &tv
-	}
-	return
-}
-
-// MustPrepare retrieves the Prepare value from the union,
-// panicing if the value is not set.
-func (u ScpStatementPledges) MustPrepare() ScpStatementPrepare {
-	val, ok := u.GetPrepare()
-
-	if !ok {
-		panic("arm Prepare is not set")
-	}
-
-	return val
-}
-
-// GetPrepare retrieves the Prepare value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScpStatementPledges) GetPrepare() (result ScpStatementPrepare, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Prepare" {
-		result = *u.Prepare
-		ok = true
-	}
-
-	return
-}
-
-// MustConfirm retrieves the Confirm value from the union,
-// panicing if the value is not set.
-func (u ScpStatementPledges) MustConfirm() ScpStatementConfirm {
-	val, ok := u.GetConfirm()
-
-	if !ok {
-		panic("arm Confirm is not set")
-	}
-
-	return val
-}
-
-// GetConfirm retrieves the Confirm value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScpStatementPledges) GetConfirm() (result ScpStatementConfirm, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Confirm" {
-		result = *u.Confirm
-		ok = true
-	}
-
-	return
-}
-
-// MustExternalize retrieves the Externalize value from the union,
-// panicing if the value is not set.
-func (u ScpStatementPledges) MustExternalize() ScpStatementExternalize {
-	val, ok := u.GetExternalize()
-
-	if !ok {
-		panic("arm Externalize is not set")
-	}
-
-	return val
-}
-
-// GetExternalize retrieves the Externalize value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScpStatementPledges) GetExternalize() (result ScpStatementExternalize, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Externalize" {
-		result = *u.Externalize
-		ok = true
-	}
-
-	return
-}
-
-// MustNominate retrieves the Nominate value from the union,
-// panicing if the value is not set.
-func (u ScpStatementPledges) MustNominate() ScpNomination {
-	val, ok := u.GetNominate()
-
-	if !ok {
-		panic("arm Nominate is not set")
-	}
-
-	return val
-}
-
-// GetNominate retrieves the Nominate value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScpStatementPledges) GetNominate() (result ScpNomination, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Nominate" {
-		result = *u.Nominate
-		ok = true
-	}
-
-	return
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpStatementPledges) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpStatementPledges) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpStatementPledges)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpStatementPledges)(nil)
-)
-
-// ScpStatement is an XDR Struct defines as:
-//
-//   struct SCPStatement
-//    {
-//        NodeID nodeID;    // v
-//        uint64 slotIndex; // i
-//
-//        union switch (SCPStatementType type)
-//        {
-//        case SCP_ST_PREPARE:
-//            struct
-//            {
-//                Hash quorumSetHash;       // D
-//                SCPBallot ballot;         // b
-//                SCPBallot* prepared;      // p
-//                SCPBallot* preparedPrime; // p'
-//                uint32 nC;                // c.n
-//                uint32 nH;                // h.n
-//            } prepare;
-//        case SCP_ST_CONFIRM:
-//            struct
-//            {
-//                SCPBallot ballot;   // b
-//                uint32 nPrepared;   // p.n
-//                uint32 nCommit;     // c.n
-//                uint32 nH;          // h.n
-//                Hash quorumSetHash; // D
-//            } confirm;
-//        case SCP_ST_EXTERNALIZE:
-//            struct
-//            {
-//                SCPBallot commit;         // c
-//                uint32 nH;                // h.n
-//                Hash commitQuorumSetHash; // D used before EXTERNALIZE
-//            } externalize;
-//        case SCP_ST_NOMINATE:
-//            SCPNomination nominate;
-//        }
-//        pledges;
-//    };
-//
-type ScpStatement struct {
-	NodeId    NodeId
-	SlotIndex Uint64
-	Pledges   ScpStatementPledges
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpStatement) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpStatement) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpStatement)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpStatement)(nil)
-)
-
-// ScpEnvelope is an XDR Struct defines as:
-//
-//   struct SCPEnvelope
-//    {
-//        SCPStatement statement;
-//        Signature signature;
-//    };
-//
-type ScpEnvelope struct {
-	Statement ScpStatement
-	Signature Signature
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpEnvelope) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpEnvelope) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpEnvelope)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpEnvelope)(nil)
-)
-
-// ScpQuorumSet is an XDR Struct defines as:
-//
-//   struct SCPQuorumSet
-//    {
-//        uint32 threshold;
-//        NodeID validators<>;
-//        SCPQuorumSet innerSets<>;
-//    };
-//
-type ScpQuorumSet struct {
-	Threshold  Uint32
-	Validators []NodeId
-	InnerSets  []ScpQuorumSet
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScpQuorumSet) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScpQuorumSet) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScpQuorumSet)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScpQuorumSet)(nil)
-)
 
 // AccountId is an XDR Typedef defines as:
 //
@@ -1619,6 +1015,24 @@ const MaxSigners = 20
 //
 type SponsorshipDescriptor *AccountId
 
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SponsorshipDescriptor) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SponsorshipDescriptor) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SponsorshipDescriptor)(nil)
+	_ encoding.BinaryUnmarshaler = (*SponsorshipDescriptor)(nil)
+)
+
 // AccountEntryExtensionV2Ext is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -2300,16 +1714,112 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineAsset)(nil)
 )
 
+// TrustLineEntryExtensionV2Ext is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type TrustLineEntryExtensionV2Ext struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u TrustLineEntryExtensionV2Ext) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of TrustLineEntryExtensionV2Ext
+func (u TrustLineEntryExtensionV2Ext) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewTrustLineEntryExtensionV2Ext creates a new  TrustLineEntryExtensionV2Ext.
+func NewTrustLineEntryExtensionV2Ext(v int32, value interface{}) (result TrustLineEntryExtensionV2Ext, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrustLineEntryExtensionV2Ext) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrustLineEntryExtensionV2Ext) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrustLineEntryExtensionV2Ext)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExtensionV2Ext)(nil)
+)
+
+// TrustLineEntryExtensionV2 is an XDR Struct defines as:
+//
+//   struct TrustLineEntryExtensionV2
+//    {
+//        int32_t liquidityPoolUseCount;
+//
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type TrustLineEntryExtensionV2 struct {
+	LiquidityPoolUseCount Int32T
+	Ext                   TrustLineEntryExtensionV2Ext
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrustLineEntryExtensionV2) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrustLineEntryExtensionV2) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrustLineEntryExtensionV2)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExtensionV2)(nil)
+)
+
 // TrustLineEntryV1Ext is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //
 type TrustLineEntryV1Ext struct {
-	V int32
+	V  int32
+	V2 *TrustLineEntryExtensionV2
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2324,6 +1834,8 @@ func (u TrustLineEntryV1Ext) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "", true
+	case 2:
+		return "V2", true
 	}
 	return "-", false
 }
@@ -2334,7 +1846,39 @@ func NewTrustLineEntryV1Ext(v int32, value interface{}) (result TrustLineEntryV1
 	switch int32(v) {
 	case 0:
 		// void
+	case 2:
+		tv, ok := value.(TrustLineEntryExtensionV2)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TrustLineEntryExtensionV2")
+			return
+		}
+		result.V2 = &tv
 	}
+	return
+}
+
+// MustV2 retrieves the V2 value from the union,
+// panicing if the value is not set.
+func (u TrustLineEntryV1Ext) MustV2() TrustLineEntryExtensionV2 {
+	val, ok := u.GetV2()
+
+	if !ok {
+		panic("arm V2 is not set")
+	}
+
+	return val
+}
+
+// GetV2 retrieves the V2 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TrustLineEntryV1Ext) GetV2() (result TrustLineEntryExtensionV2, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V2" {
+		result = *u.V2
+		ok = true
+	}
+
 	return
 }
 
@@ -2366,6 +1910,8 @@ var (
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //                ext;
 //            }
@@ -2408,6 +1954,8 @@ var (
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //                ext;
 //            } v1;
@@ -2522,6 +2070,8 @@ var (
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //                ext;
 //            } v1;
@@ -9199,7 +8749,8 @@ var (
 //        REVOKE_SPONSORSHIP = 18,
 //        CLAWBACK = 19,
 //        CLAWBACK_CLAIMABLE_BALANCE = 20,
-//        SET_TRUST_LINE_FLAGS = 21
+//        SET_TRUST_LINE_FLAGS = 21,
+//        LIQUIDITY_POOL_DEPOSIT = 22
 //    };
 //
 type OperationType int32
@@ -9227,6 +8778,7 @@ const (
 	OperationTypeClawback                      OperationType = 19
 	OperationTypeClawbackClaimableBalance      OperationType = 20
 	OperationTypeSetTrustLineFlags             OperationType = 21
+	OperationTypeLiquidityPoolDeposit          OperationType = 22
 )
 
 var operationTypeMap = map[int32]string{
@@ -9252,6 +8804,7 @@ var operationTypeMap = map[int32]string{
 	19: "OperationTypeClawback",
 	20: "OperationTypeClawbackClaimableBalance",
 	21: "OperationTypeSetTrustLineFlags",
+	22: "OperationTypeLiquidityPoolDeposit",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -10306,6 +9859,43 @@ var (
 //
 const LiquidityPoolFeeV18 = 30
 
+// LiquidityPoolDepositOp is an XDR Struct defines as:
+//
+//   struct LiquidityPoolDepositOp
+//    {
+//        PoolID liquidityPoolID;
+//        int64 maxAmountA;     // maximum amount of first asset to deposit
+//        int64 maxAmountB;     // maximum amount of second asset to deposit
+//        Price minPrice;       // minimum depositA/depositB
+//        Price maxPrice;       // maximum depositA/depositB
+//    };
+//
+type LiquidityPoolDepositOp struct {
+	LiquidityPoolId PoolId
+	MaxAmountA      Int64
+	MaxAmountB      Int64
+	MinPrice        Price
+	MaxPrice        Price
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolDepositOp) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolDepositOp) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolDepositOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositOp)(nil)
+)
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -10354,6 +9944,8 @@ const LiquidityPoolFeeV18 = 30
 //            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsOp setTrustLineFlagsOp;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositOp liquidityPoolDepositOp;
 //        }
 //
 type OperationBody struct {
@@ -10378,6 +9970,7 @@ type OperationBody struct {
 	ClawbackOp                      *ClawbackOp
 	ClawbackClaimableBalanceOp      *ClawbackClaimableBalanceOp
 	SetTrustLineFlagsOp             *SetTrustLineFlagsOp
+	LiquidityPoolDepositOp          *LiquidityPoolDepositOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -10434,6 +10027,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "ClawbackClaimableBalanceOp", true
 	case OperationTypeSetTrustLineFlags:
 		return "SetTrustLineFlagsOp", true
+	case OperationTypeLiquidityPoolDeposit:
+		return "LiquidityPoolDepositOp", true
 	}
 	return "-", false
 }
@@ -10586,6 +10181,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.SetTrustLineFlagsOp = &tv
+	case OperationTypeLiquidityPoolDeposit:
+		tv, ok := value.(LiquidityPoolDepositOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LiquidityPoolDepositOp")
+			return
+		}
+		result.LiquidityPoolDepositOp = &tv
 	}
 	return
 }
@@ -11090,6 +10692,31 @@ func (u OperationBody) GetSetTrustLineFlagsOp() (result SetTrustLineFlagsOp, ok 
 	return
 }
 
+// MustLiquidityPoolDepositOp retrieves the LiquidityPoolDepositOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustLiquidityPoolDepositOp() LiquidityPoolDepositOp {
+	val, ok := u.GetLiquidityPoolDepositOp()
+
+	if !ok {
+		panic("arm LiquidityPoolDepositOp is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPoolDepositOp retrieves the LiquidityPoolDepositOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetLiquidityPoolDepositOp() (result LiquidityPoolDepositOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPoolDepositOp" {
+		result = *u.LiquidityPoolDepositOp
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationBody) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -11163,6 +10790,8 @@ var (
 //            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsOp setTrustLineFlagsOp;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositOp liquidityPoolDepositOp;
 //        }
 //        body;
 //    };
@@ -13132,7 +12761,8 @@ var (
 
 // PathPaymentStrictReceiveResult is an XDR Union defines as:
 //
-//   union PathPaymentStrictReceiveResult switch (PathPaymentStrictReceiveResultCode code)
+//   union PathPaymentStrictReceiveResult switch (
+//        PathPaymentStrictReceiveResultCode code)
 //    {
 //    case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
 //        struct
@@ -15138,7 +14768,8 @@ var (
 
 // CreateClaimableBalanceResult is an XDR Union defines as:
 //
-//   union CreateClaimableBalanceResult switch (CreateClaimableBalanceResultCode code)
+//   union CreateClaimableBalanceResult switch (
+//        CreateClaimableBalanceResultCode code)
 //    {
 //    case CREATE_CLAIMABLE_BALANCE_SUCCESS:
 //        ClaimableBalanceID balanceID;
@@ -15415,7 +15046,8 @@ var (
 
 // BeginSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union BeginSponsoringFutureReservesResult switch (BeginSponsoringFutureReservesResultCode code)
+//   union BeginSponsoringFutureReservesResult switch (
+//        BeginSponsoringFutureReservesResultCode code)
 //    {
 //    case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
@@ -15530,7 +15162,8 @@ var (
 
 // EndSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union EndSponsoringFutureReservesResult switch (EndSponsoringFutureReservesResultCode code)
+//   union EndSponsoringFutureReservesResult switch (
+//        EndSponsoringFutureReservesResultCode code)
 //    {
 //    case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
@@ -15902,7 +15535,8 @@ var (
 
 // ClawbackClaimableBalanceResult is an XDR Union defines as:
 //
-//   union ClawbackClaimableBalanceResult switch (ClawbackClaimableBalanceResultCode code)
+//   union ClawbackClaimableBalanceResult switch (
+//        ClawbackClaimableBalanceResultCode code)
 //    {
 //    case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
 //        void;
@@ -16085,6 +15719,144 @@ var (
 	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsResult)(nil)
 )
 
+// LiquidityPoolDepositResultCode is an XDR Enum defines as:
+//
+//   enum LiquidityPoolDepositResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        LIQUIDITY_POOL_DEPOSIT_SUCCESS = 0,
+//
+//        // codes considered as "failure" for the operation
+//        LIQUIDITY_POOL_DEPOSIT_MALFORMED = -1,      // bad input
+//        LIQUIDITY_POOL_DEPOSIT_NO_TRUST = -2,       // no trust line for one of the
+//                                                    // assets
+//        LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED = -3, // not authorized for one of the
+//                                                    // assets
+//        LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED = -4,    // not enough balance for one of
+//                                                    // the assets
+//        LIQUIDITY_POOL_DEPOSIT_LINE_FULL = -5,      // pool share trust line doesn't
+//                                                    // have sufficient limit
+//        LIQUIDITY_POOL_DEPOSIT_BAD_PRICE = -6,      // deposit price outside bounds
+//        LIQUIDITY_POOL_DEPOSIT_POOL_FULL = -7       // pool reserves are full
+//    };
+//
+type LiquidityPoolDepositResultCode int32
+
+const (
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess       LiquidityPoolDepositResultCode = 0
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed     LiquidityPoolDepositResultCode = -1
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust       LiquidityPoolDepositResultCode = -2
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized LiquidityPoolDepositResultCode = -3
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded   LiquidityPoolDepositResultCode = -4
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull      LiquidityPoolDepositResultCode = -5
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice      LiquidityPoolDepositResultCode = -6
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull      LiquidityPoolDepositResultCode = -7
+)
+
+var liquidityPoolDepositResultCodeMap = map[int32]string{
+	0:  "LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess",
+	-1: "LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed",
+	-2: "LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust",
+	-3: "LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized",
+	-4: "LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded",
+	-5: "LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull",
+	-6: "LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice",
+	-7: "LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for LiquidityPoolDepositResultCode
+func (e LiquidityPoolDepositResultCode) ValidEnum(v int32) bool {
+	_, ok := liquidityPoolDepositResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e LiquidityPoolDepositResultCode) String() string {
+	name, _ := liquidityPoolDepositResultCodeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolDepositResultCode) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolDepositResultCode) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolDepositResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositResultCode)(nil)
+)
+
+// LiquidityPoolDepositResult is an XDR Union defines as:
+//
+//   union LiquidityPoolDepositResult switch (
+//        LiquidityPoolDepositResultCode code)
+//    {
+//    case LIQUIDITY_POOL_DEPOSIT_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type LiquidityPoolDepositResult struct {
+	Code LiquidityPoolDepositResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u LiquidityPoolDepositResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of LiquidityPoolDepositResult
+func (u LiquidityPoolDepositResult) ArmForSwitch(sw int32) (string, bool) {
+	switch LiquidityPoolDepositResultCode(sw) {
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewLiquidityPoolDepositResult creates a new  LiquidityPoolDepositResult.
+func NewLiquidityPoolDepositResult(code LiquidityPoolDepositResultCode, value interface{}) (result LiquidityPoolDepositResult, err error) {
+	result.Code = code
+	switch LiquidityPoolDepositResultCode(code) {
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolDepositResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolDepositResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolDepositResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositResult)(nil)
+)
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //   enum OperationResultCode
@@ -16200,6 +15972,8 @@ var (
 //            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsResult setTrustLineFlagsResult;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositResult liquidityPoolDepositResult;
 //        }
 //
 type OperationResultTr struct {
@@ -16226,6 +16000,7 @@ type OperationResultTr struct {
 	ClawbackResult                      *ClawbackResult
 	ClawbackClaimableBalanceResult      *ClawbackClaimableBalanceResult
 	SetTrustLineFlagsResult             *SetTrustLineFlagsResult
+	LiquidityPoolDepositResult          *LiquidityPoolDepositResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -16282,6 +16057,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "ClawbackClaimableBalanceResult", true
 	case OperationTypeSetTrustLineFlags:
 		return "SetTrustLineFlagsResult", true
+	case OperationTypeLiquidityPoolDeposit:
+		return "LiquidityPoolDepositResult", true
 	}
 	return "-", false
 }
@@ -16444,6 +16221,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.SetTrustLineFlagsResult = &tv
+	case OperationTypeLiquidityPoolDeposit:
+		tv, ok := value.(LiquidityPoolDepositResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LiquidityPoolDepositResult")
+			return
+		}
+		result.LiquidityPoolDepositResult = &tv
 	}
 	return
 }
@@ -16998,6 +16782,31 @@ func (u OperationResultTr) GetSetTrustLineFlagsResult() (result SetTrustLineFlag
 	return
 }
 
+// MustLiquidityPoolDepositResult retrieves the LiquidityPoolDepositResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustLiquidityPoolDepositResult() LiquidityPoolDepositResult {
+	val, ok := u.GetLiquidityPoolDepositResult()
+
+	if !ok {
+		panic("arm LiquidityPoolDepositResult is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPoolDepositResult retrieves the LiquidityPoolDepositResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetLiquidityPoolDepositResult() (result LiquidityPoolDepositResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPoolDepositResult" {
+		result = *u.LiquidityPoolDepositResult
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationResultTr) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -17067,6 +16876,8 @@ var (
 //            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsResult setTrustLineFlagsResult;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositResult liquidityPoolDepositResult;
 //        }
 //        tr;
 //    default:
