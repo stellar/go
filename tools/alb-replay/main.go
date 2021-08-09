@@ -175,30 +175,18 @@ func main() {
 	for i := 0; i < *workers; i++ {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
 			queryURLs(*timeout, urlChan, stop)
+			wg.Done()
 		}()
 	}
 
 	// spawn url producer
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		// signal the consumers there won't be more urls
-		defer close(urlChan)
 		parseURLs(*startFromURLNum, baseURL, logReader, urlChan, stop)
-		// Wait for the consumers to empty the url channel before closing it.
-		ticker := time.NewTicker(1 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				if len(urlChan) == 0 {
-					return
-				}
-			case <-stop:
-				return
-			}
-		}
+		// signal the consumers there won't be more urls
+		close(urlChan)
+		wg.Done()
 	}()
 
 	// setup interrupt cleanup code
