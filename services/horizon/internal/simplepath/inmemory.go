@@ -1,6 +1,8 @@
 package simplepath
 
 import (
+	"context"
+
 	"github.com/go-errors/errors"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/paths"
@@ -32,7 +34,7 @@ func NewInMemoryFinder(graph *orderbook.OrderBookGraph) InMemoryFinder {
 }
 
 // Find implements the path payments finder interface
-func (finder InMemoryFinder) Find(q paths.Query, maxLength uint) ([]paths.Path, uint32, error) {
+func (finder InMemoryFinder) Find(ctx context.Context, q paths.Query, maxLength uint) ([]paths.Path, uint32, error) {
 	if finder.graph.IsEmpty() {
 		return nil, 0, ErrEmptyInMemoryOrderBook
 	}
@@ -45,6 +47,7 @@ func (finder InMemoryFinder) Find(q paths.Query, maxLength uint) ([]paths.Path, 
 	}
 
 	orderbookPaths, lastLedger, err := finder.graph.FindPaths(
+		ctx,
 		int(maxLength),
 		q.DestinationAsset,
 		q.DestinationAmount,
@@ -73,6 +76,7 @@ func (finder InMemoryFinder) Find(q paths.Query, maxLength uint) ([]paths.Path, 
 // `sourceAccountID` is optional. if `sourceAccountID` is provided then no offers
 // created by `sourceAccountID` will be considered when evaluating payment paths
 func (finder InMemoryFinder) FindFixedPaths(
+	ctx context.Context,
 	sourceAsset xdr.Asset,
 	amountToSpend xdr.Int64,
 	destinationAssets []xdr.Asset,
@@ -90,6 +94,7 @@ func (finder InMemoryFinder) FindFixedPaths(
 	}
 
 	orderbookPaths, lastLedger, err := finder.graph.FindFixedPaths(
+		ctx,
 		int(maxLength),
 		sourceAsset,
 		amountToSpend,
