@@ -123,24 +123,26 @@ func queryURLs(timeout time.Duration, urlChan chan NumberedURL, stop chan struct
 	client := http.Client{
 		Timeout: timeout,
 	}
-	for {
+	for numURL := range urlChan {
 		select {
 		case <-stop:
 			return
-		case numURL := <-urlChan:
-			start := time.Now()
-			resp, err := client.Get(numURL.URL)
-			if err != nil {
-				log.Printf("(%d) unexpected request error: %v %q", numURL.Number, err, numURL.URL)
-				continue
-			}
-			resp.Body.Close()
-			if !isSuccesfulStatusCode(resp.StatusCode) {
-				log.Printf("(%d) unexpected status code: %d %q", numURL.Number, resp.StatusCode, numURL.URL)
-				continue
-			}
-			log.Printf("(%d) %s %s", numURL.Number, time.Since(start), numURL.URL)
+		default:
+			// do not block
 		}
+
+		start := time.Now()
+		resp, err := client.Get(numURL.URL)
+		if err != nil {
+			log.Printf("(%d) unexpected request error: %v %q", numURL.Number, err, numURL.URL)
+			continue
+		}
+		resp.Body.Close()
+		if !isSuccesfulStatusCode(resp.StatusCode) {
+			log.Printf("(%d) unexpected status code: %d %q", numURL.Number, resp.StatusCode, numURL.URL)
+			continue
+		}
+		log.Printf("(%d) %s %s", numURL.Number, time.Since(start), numURL.URL)
 	}
 }
 
@@ -169,18 +171,34 @@ func main() {
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 
-	// spawn workers
+	// spawn url consumers
 	for i := 0; i < *workers; i++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			queryURLs(*timeout, urlChan, stop)
-			wg.Done()
 		}()
 	}
+
+	// spawn url producer
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// signal the consumers there won't be more urls
+		defer close(urlChan)
 		parseURLs(*startFromURLNum, baseURL, logReader, urlChan, stop)
-		wg.Done()
+		// Wait for the consumers to empty the url channel before closing it.
+		ticker := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				if len(urlChan) == 0 {
+					return
+				}
+			case <-stop:
+				return
+			}
+		}
 	}()
 
 	// setup interrupt cleanup code
