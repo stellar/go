@@ -353,7 +353,7 @@ type TrustLineAsset struct {
 }
 
 type TrustLineEntryExtensionV2 struct {
-	LiquidityPoolUseCount Int32_t
+	LiquidityPoolUseCount Int32
 	Ext                   XdrAnon_TrustLineEntryExtensionV2_Ext
 }
 type XdrAnon_TrustLineEntryExtensionV2_Ext struct {
@@ -4876,7 +4876,7 @@ func (v *TrustLineEntryExtensionV2) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sliquidityPoolUseCount", name), XDR_Int32_t(&v.LiquidityPoolUseCount))
+	x.Marshal(x.Sprintf("%sliquidityPoolUseCount", name), XDR_Int32(&v.LiquidityPoolUseCount))
 	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_TrustLineEntryExtensionV2_Ext(&v.Ext))
 }
 func XDR_TrustLineEntryExtensionV2(v *TrustLineEntryExtensionV2) *TrustLineEntryExtensionV2 { return v }
