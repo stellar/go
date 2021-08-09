@@ -77,7 +77,7 @@ github.com/stretchr/testify v1.6.1
 github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6
-github.com/xdrpp/goxdr v0.1.0
+github.com/xdrpp/goxdr v0.1.1
 github.com/xeipuuv/gojsonpointer v0.0.0-20151027082146-e0fe6f683076
 github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c
 github.com/xeipuuv/gojsonschema v0.0.0-20161231055540-f06f290571ce
