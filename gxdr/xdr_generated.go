@@ -13524,6 +13524,9 @@ var _XdrComments_CreateAccountResultCode = map[int32]string{
 func (e CreateAccountResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_CreateAccountResultCode
 }
+func (_ CreateAccountResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u CreateAccountResult) XdrValid() bool {
 	return true
 }
@@ -13646,6 +13649,9 @@ var _XdrComments_PaymentResultCode = map[int32]string{
 
 func (e PaymentResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_PaymentResultCode
+}
+func (_ PaymentResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u PaymentResult) XdrValid() bool {
 	return true
@@ -13879,6 +13885,9 @@ func (v *XdrAnon_PathPaymentStrictReceiveResult_Success) XdrRecurse(x XDR, name 
 func XDR_XdrAnon_PathPaymentStrictReceiveResult_Success(v *XdrAnon_PathPaymentStrictReceiveResult_Success) *XdrAnon_PathPaymentStrictReceiveResult_Success {
 	return v
 }
+func (_ PathPaymentStrictReceiveResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u *PathPaymentStrictReceiveResult) Success() *XdrAnon_PathPaymentStrictReceiveResult_Success {
 	switch u.Code {
 	case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
@@ -14075,6 +14084,9 @@ func (v *XdrAnon_PathPaymentStrictSendResult_Success) XdrRecurse(x XDR, name str
 }
 func XDR_XdrAnon_PathPaymentStrictSendResult_Success(v *XdrAnon_PathPaymentStrictSendResult_Success) *XdrAnon_PathPaymentStrictSendResult_Success {
 	return v
+}
+func (_ PathPaymentStrictSendResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u *PathPaymentStrictSendResult) Success() *XdrAnon_PathPaymentStrictSendResult_Success {
 	switch u.Code {
@@ -14297,6 +14309,9 @@ func (v *ManageOfferEffect) XdrMarshal(x XDR, name string) { x.Marshal(name, v) 
 type XdrType_ManageOfferEffect = *ManageOfferEffect
 
 func XDR_ManageOfferEffect(v *ManageOfferEffect) *ManageOfferEffect { return v }
+func (_ XdrAnon_ManageOfferSuccessResult_Offer) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u *XdrAnon_ManageOfferSuccessResult_Offer) Offer() *OfferEntry {
 	switch u.Effect {
 	case MANAGE_OFFER_CREATED, MANAGE_OFFER_UPDATED:
@@ -14377,6 +14392,9 @@ func (v *ManageOfferSuccessResult) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%soffer", name), XDR_XdrAnon_ManageOfferSuccessResult_Offer(&v.Offer))
 }
 func XDR_ManageOfferSuccessResult(v *ManageOfferSuccessResult) *ManageOfferSuccessResult { return v }
+func (_ ManageSellOfferResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u *ManageSellOfferResult) Success() *ManageOfferSuccessResult {
 	switch u.Code {
 	case MANAGE_SELL_OFFER_SUCCESS:
@@ -14525,6 +14543,9 @@ var _XdrComments_ManageBuyOfferResultCode = map[int32]string{
 func (e ManageBuyOfferResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_ManageBuyOfferResultCode
 }
+func (_ ManageBuyOfferResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u *ManageBuyOfferResult) Success() *ManageOfferSuccessResult {
 	switch u.Code {
 	case MANAGE_BUY_OFFER_SUCCESS:
@@ -14667,6 +14688,9 @@ var _XdrComments_SetOptionsResultCode = map[int32]string{
 func (e SetOptionsResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_SetOptionsResultCode
 }
+func (_ SetOptionsResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u SetOptionsResult) XdrValid() bool {
 	return true
 }
@@ -14787,6 +14811,9 @@ var _XdrComments_ChangeTrustResultCode = map[int32]string{
 func (e ChangeTrustResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_ChangeTrustResultCode
 }
+func (_ ChangeTrustResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u ChangeTrustResult) XdrValid() bool {
 	return true
 }
@@ -14897,6 +14924,9 @@ var _XdrComments_AllowTrustResultCode = map[int32]string{
 
 func (e AllowTrustResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_AllowTrustResultCode
+}
+func (_ AllowTrustResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u AllowTrustResult) XdrValid() bool {
 	return true
@@ -15014,6 +15044,9 @@ var _XdrComments_AccountMergeResultCode = map[int32]string{
 
 func (e AccountMergeResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_AccountMergeResultCode
+}
+func (_ AccountMergeResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 
 // how much got transferred from source account
@@ -15204,6 +15237,9 @@ func (_XdrVec_unbounded_InflationPayout) XdrTypeName() string              { ret
 func (v *_XdrVec_unbounded_InflationPayout) XdrPointer() interface{}       { return (*[]InflationPayout)(v) }
 func (v _XdrVec_unbounded_InflationPayout) XdrValue() interface{}          { return ([]InflationPayout)(v) }
 func (v *_XdrVec_unbounded_InflationPayout) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (_ InflationResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u *InflationResult) Payouts() *[]InflationPayout {
 	switch u.Code {
 	case INFLATION_SUCCESS:
@@ -15328,6 +15364,9 @@ var _XdrComments_ManageDataResultCode = map[int32]string{
 func (e ManageDataResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_ManageDataResultCode
 }
+func (_ ManageDataResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u ManageDataResult) XdrValid() bool {
 	return true
 }
@@ -15426,6 +15465,9 @@ var _XdrComments_BumpSequenceResultCode = map[int32]string{
 
 func (e BumpSequenceResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_BumpSequenceResultCode
+}
+func (_ BumpSequenceResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u BumpSequenceResult) XdrValid() bool {
 	return true
@@ -15528,6 +15570,9 @@ type XdrType_CreateClaimableBalanceResultCode = *CreateClaimableBalanceResultCod
 
 func XDR_CreateClaimableBalanceResultCode(v *CreateClaimableBalanceResultCode) *CreateClaimableBalanceResultCode {
 	return v
+}
+func (_ CreateClaimableBalanceResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u *CreateClaimableBalanceResult) BalanceID() *ClaimableBalanceID {
 	switch u.Code {
@@ -15647,6 +15692,9 @@ type XdrType_ClaimClaimableBalanceResultCode = *ClaimClaimableBalanceResultCode
 func XDR_ClaimClaimableBalanceResultCode(v *ClaimClaimableBalanceResultCode) *ClaimClaimableBalanceResultCode {
 	return v
 }
+func (_ ClaimClaimableBalanceResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u ClaimClaimableBalanceResult) XdrValid() bool {
 	return true
 }
@@ -15758,6 +15806,9 @@ var _XdrComments_BeginSponsoringFutureReservesResultCode = map[int32]string{
 func (e BeginSponsoringFutureReservesResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_BeginSponsoringFutureReservesResultCode
 }
+func (_ BeginSponsoringFutureReservesResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u BeginSponsoringFutureReservesResult) XdrValid() bool {
 	return true
 }
@@ -15866,6 +15917,9 @@ var _XdrComments_EndSponsoringFutureReservesResultCode = map[int32]string{
 
 func (e EndSponsoringFutureReservesResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_EndSponsoringFutureReservesResultCode
+}
+func (_ EndSponsoringFutureReservesResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u EndSponsoringFutureReservesResult) XdrValid() bool {
 	return true
@@ -15980,6 +16034,9 @@ var _XdrComments_RevokeSponsorshipResultCode = map[int32]string{
 func (e RevokeSponsorshipResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_RevokeSponsorshipResultCode
 }
+func (_ RevokeSponsorshipResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u RevokeSponsorshipResult) XdrValid() bool {
 	return true
 }
@@ -16084,6 +16141,9 @@ var _XdrComments_ClawbackResultCode = map[int32]string{
 
 func (e ClawbackResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_ClawbackResultCode
+}
+func (_ ClawbackResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u ClawbackResult) XdrValid() bool {
 	return true
@@ -16194,6 +16254,9 @@ var _XdrComments_ClawbackClaimableBalanceResultCode = map[int32]string{
 func (e ClawbackClaimableBalanceResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_ClawbackClaimableBalanceResultCode
 }
+func (_ ClawbackClaimableBalanceResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u ClawbackClaimableBalanceResult) XdrValid() bool {
 	return true
 }
@@ -16302,6 +16365,9 @@ var _XdrComments_SetTrustLineFlagsResultCode = map[int32]string{
 
 func (e SetTrustLineFlagsResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_SetTrustLineFlagsResultCode
+}
+func (_ SetTrustLineFlagsResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u SetTrustLineFlagsResult) XdrValid() bool {
 	return true
@@ -16421,6 +16487,9 @@ var _XdrComments_LiquidityPoolDepositResultCode = map[int32]string{
 
 func (e LiquidityPoolDepositResultCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_LiquidityPoolDepositResultCode
+}
+func (_ LiquidityPoolDepositResult) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u LiquidityPoolDepositResult) XdrValid() bool {
 	return true
@@ -17116,6 +17185,9 @@ func (u *XdrAnon_OperationResult_Tr) XdrRecurse(x XDR, name string) {
 func XDR_XdrAnon_OperationResult_Tr(v *XdrAnon_OperationResult_Tr) *XdrAnon_OperationResult_Tr {
 	return v
 }
+func (_ OperationResult) XdrValidTags() map[int32]bool {
+	return nil
+}
 func (u *OperationResult) Tr() *XdrAnon_OperationResult_Tr {
 	switch u.Code {
 	case OpINNER:
@@ -17513,6 +17585,9 @@ func (v *InnerTransactionResultPair) XdrRecurse(x XDR, name string) {
 }
 func XDR_InnerTransactionResultPair(v *InnerTransactionResultPair) *InnerTransactionResultPair {
 	return v
+}
+func (_ XdrAnon_TransactionResult_Result) XdrValidTags() map[int32]bool {
+	return nil
 }
 func (u *XdrAnon_TransactionResult_Result) InnerResultPair() *InnerTransactionResultPair {
 	switch u.Code {
