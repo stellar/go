@@ -56,7 +56,8 @@ enum OperationType
     CLAWBACK = 19,
     CLAWBACK_CLAIMABLE_BALANCE = 20,
     SET_TRUST_LINE_FLAGS = 21,
-    LIQUIDITY_POOL_DEPOSIT = 22
+    LIQUIDITY_POOL_DEPOSIT = 22,
+    LIQUIDITY_POOL_WITHDRAW = 23
 };
 
 /* CreateAccount
@@ -450,6 +451,20 @@ struct LiquidityPoolDepositOp
     Price maxPrice;       // maximum depositA/depositB
 };
 
+/* Withdraw assets from a liquidity pool
+
+    Threshold: med
+
+    Result: LiquidityPoolWithdrawResult
+*/
+struct LiquidityPoolWithdrawOp
+{
+    PoolID liquidityPoolID;
+    int64 amount;         // amount of pool shares to withdraw
+    int64 minAmountA;     // minimum amount of first asset to withdraw
+    int64 minAmountB;     // minimum amount of second asset to withdraw
+};
+
 /* An operation is the lowest unit of work that a transaction does */
 struct Operation
 {
@@ -506,6 +521,8 @@ struct Operation
         SetTrustLineFlagsOp setTrustLineFlagsOp;
     case LIQUIDITY_POOL_DEPOSIT:
         LiquidityPoolDepositOp liquidityPoolDepositOp;
+    case LIQUIDITY_POOL_WITHDRAW:
+        LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
     }
     body;
 };
@@ -519,6 +536,15 @@ case ENVELOPE_TYPE_OP_ID:
         SequenceNumber seqNum;
         uint32 opNum;
     } id;
+case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
+    struct
+    {
+        AccountID sourceAccount;
+        SequenceNumber seqNum;
+        uint32 opNum;
+        PoolID liquidityPoolID;
+        Asset asset;
+    } revokeId;
 };
 
 enum MemoType
@@ -681,7 +707,8 @@ struct TransactionSignaturePayload
 enum ClaimAtomType
 {
     CLAIM_ATOM_TYPE_V0 = 0,
-    CLAIM_ATOM_TYPE_ORDER_BOOK = 1
+    CLAIM_ATOM_TYPE_ORDER_BOOK = 1,
+    CLAIM_ATOM_TYPE_LIQUIDITY_POOL = 2
 };
 
 // ClaimOfferAtomV0 is a ClaimOfferAtom with the AccountID discriminant stripped
@@ -719,6 +746,19 @@ struct ClaimOfferAtom
     int64 amountBought;
 };
 
+struct ClaimLiquidityAtom
+{
+    PoolID liquidityPoolID;
+
+    // amount and asset taken from the pool
+    Asset assetSold;
+    int64 amountSold;
+
+    // amount and asset sent to the pool
+    Asset assetBought;
+    int64 amountBought;
+};
+
 /* This result is used when offers are taken or liquidity is exchanged with a
    liquidity pool during an operation
 */
@@ -728,6 +768,8 @@ case CLAIM_ATOM_TYPE_V0:
     ClaimOfferAtomV0 v0;
 case CLAIM_ATOM_TYPE_ORDER_BOOK:
     ClaimOfferAtom orderBook;
+case CLAIM_ATOM_TYPE_LIQUIDITY_POOL:
+    ClaimLiquidityAtom liquidityPool;
 };
 
 /******* CreateAccount Result ********/
@@ -1038,7 +1080,9 @@ enum AllowTrustResultCode
                                     // source account does not require trust
     ALLOW_TRUST_TRUST_NOT_REQUIRED = -3,
     ALLOW_TRUST_CANT_REVOKE = -4,     // source account can't revoke trust,
-    ALLOW_TRUST_SELF_NOT_ALLOWED = -5 // trusting self is not allowed
+    ALLOW_TRUST_SELF_NOT_ALLOWED = -5, // trusting self is not allowed
+    ALLOW_TRUST_LOW_RESERVE = -6 // claimable balances can't be created
+                                 // on revoke due to low reserves 
 };
 
 union AllowTrustResult switch (AllowTrustResultCode code)
@@ -1301,7 +1345,9 @@ enum SetTrustLineFlagsResultCode
     SET_TRUST_LINE_FLAGS_MALFORMED = -1,
     SET_TRUST_LINE_FLAGS_NO_TRUST_LINE = -2,
     SET_TRUST_LINE_FLAGS_CANT_REVOKE = -3,
-    SET_TRUST_LINE_FLAGS_INVALID_STATE = -4
+    SET_TRUST_LINE_FLAGS_INVALID_STATE = -4,
+    SET_TRUST_LINE_FLAGS_LOW_RESERVE = -5 // claimable balances can't be created
+                                          // on revoke due to low reserves
 };
 
 union SetTrustLineFlagsResult switch (SetTrustLineFlagsResultCode code)
@@ -1341,6 +1387,34 @@ case LIQUIDITY_POOL_DEPOSIT_SUCCESS:
 default:
     void;
 };
+
+/******* LiquidityPoolWithdraw Result ********/
+
+enum LiquidityPoolWithdrawResultCode
+{
+    // codes considered as "success" for the operation
+    LIQUIDITY_POOL_WITHDRAW_SUCCESS = 0,
+
+    // codes considered as "failure" for the operation
+    LIQUIDITY_POOL_WITHDRAW_MALFORMED = -1,      // bad input
+    LIQUIDITY_POOL_WITHDRAW_NO_TRUST = -2,       // no trust line for one of the
+                                                 // assets
+    LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED = -3,    // not enough balance of the
+                                                 // pool share
+    LIQUIDITY_POOL_WITHDRAW_LINE_FULL = -4,      // would go above limit for one
+                                                 // of the assets
+    LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM = -5   // didn't withdraw enough
+};
+
+union LiquidityPoolWithdrawResult switch (
+    LiquidityPoolWithdrawResultCode code)
+{
+case LIQUIDITY_POOL_WITHDRAW_SUCCESS:
+    void;
+default:
+    void;
+};
+
 
 /* High level Operation Result */
 enum OperationResultCode
@@ -1406,6 +1480,8 @@ case opINNER:
         SetTrustLineFlagsResult setTrustLineFlagsResult;
     case LIQUIDITY_POOL_DEPOSIT:
         LiquidityPoolDepositResult liquidityPoolDepositResult;
+    case LIQUIDITY_POOL_WITHDRAW:
+        LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
     }
     tr;
 default:
