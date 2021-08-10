@@ -20,8 +20,8 @@ CREATE TABLE liquidity_pool_assets (
     FOREIGN KEY (liquidity_pool_id) REFERENCES liquidity_pools(id)
 );
 
-CREATE INDEX liquidity_pools_assets_by_asset ON liquidity_pool_assets USING BTREE(asset);
-CREATE INDEX liquidity_pools_assets_by_pool ON liquidity_pool_assets USING BTREE(liquidity_pool_id);
+CREATE INDEX liquidity_pool_assets_by_asset ON liquidity_pool_assets USING BTREE(asset);
+CREATE INDEX liquidity_pool_assets_by_pool ON liquidity_pool_assets USING BTREE(liquidity_pool_id);
 
 -- +migrate Down
 
