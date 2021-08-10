@@ -17,7 +17,8 @@ CREATE TABLE liquidity_pool_assets (
     liquidity_pool_id TEXT NOT NULL,
     asset text NOT NULL,
     reserve bigint DEFAULT 0 CHECK(reserve >= 0),
-    FOREIGN KEY (liquidity_pool_id) REFERENCES liquidity_pools(id)
+    FOREIGN KEY (liquidity_pool_id) REFERENCES liquidity_pools(id),
+    UNIQUE(liquidity_pool_id, asset)
 );
 
 CREATE INDEX liquidity_pool_assets_by_asset ON liquidity_pool_assets USING BTREE(asset);
