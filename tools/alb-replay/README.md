@@ -1,6 +1,6 @@
-# Horizon cmp
+# ALB log replayer
 
-Tool that replays the successful GET requests found in an [AWS ALB log file](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html).
+Tool that replays the successful GET requests found in an [AWS Application Load Balancer log file](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html).
 
 ## Install
 
