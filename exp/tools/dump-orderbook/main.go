@@ -35,7 +35,8 @@ func main() {
 
 	sequence := uint32(*checkpointLedger)
 	if sequence == 0 {
-		root, err := archive.GetRootHAS()
+		var root historyarchive.HistoryArchiveState
+		root, err = archive.GetRootHAS()
 		if err != nil {
 			log.WithField("err", err).Fatal("could not fetch root has")
 		}
@@ -44,7 +45,8 @@ func main() {
 	log.WithField("ledger", sequence).
 		Info("Processing entries from History Archive Snapshot")
 
-	changeReader, err := ingest.NewCheckpointChangeReader(
+	var changeReader ingest.ChangeReader
+	changeReader, err = ingest.NewCheckpointChangeReader(
 		context.Background(),
 		archive,
 		sequence,
@@ -53,7 +55,8 @@ func main() {
 		log.WithField("err", err).Fatal("cannot construct change reader")
 	}
 	defer changeReader.Close()
-	file, err := os.Create(*output)
+	var file *os.File
+	file, err = os.Create(*output)
 	if err != nil {
 		log.WithField("err", err).Fatal("could not create offers file")
 	}
@@ -61,7 +64,8 @@ func main() {
 	var offerXDRs []string
 
 	for {
-		change, err := changeReader.Read()
+		var change ingest.Change
+		change, err = changeReader.Read()
 		if err == io.EOF {
 			break
 		}
@@ -72,14 +76,15 @@ func main() {
 		if change.Type != xdr.LedgerEntryTypeOffer {
 			continue
 		}
-		serialized, err := xdr.MarshalBase64(change.Post.Data.MustOffer())
+		var serialized string
+		serialized, err = xdr.MarshalBase64(change.Post.Data.MustOffer())
 		if err != nil {
 			log.WithField("err", err).Fatal("could not marshall offer")
 		}
 		offerXDRs = append(offerXDRs, serialized)
 	}
 
-	if _, err := io.Copy(file, bytes.NewBufferString(strings.Join(offerXDRs, "\n"))); err != nil {
+	if _, err = io.Copy(file, bytes.NewBufferString(strings.Join(offerXDRs, "\n"))); err != nil {
 		log.WithField("err", err).Fatal("could not write dump file")
 	}
 }
