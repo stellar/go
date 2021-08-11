@@ -35,6 +35,11 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 		body = LedgerKeyClaimableBalance{
 			BalanceId: cBalance.BalanceId,
 		}
+	case LedgerEntryTypeLiquidityPool:
+		lPool := entry.Data.MustLiquidityPool()
+		body = LedgerKeyLiquidityPool{
+			LiquidityPoolId: lPool.LiquidityPoolId,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}

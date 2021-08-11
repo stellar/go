@@ -103,6 +103,19 @@ func (key *LedgerKey) SetClaimableBalance(balanceID ClaimableBalanceId) error {
 	return nil
 }
 
+// SetL LquidityPool mutates `key` such that it represents the identity of a
+// liquidity pool.
+func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
+	data := LedgerKeyLiquidityPool{poolID}
+	nkey, err := NewLedgerKey(LedgerEntryTypeLiquidityPool, data)
+	if err != nil {
+		return err
+	}
+
+	*key = nkey
+	return nil
+}
+
 // MarshalBinaryCompress marshals LedgerKey to []byte but unlike
 // MarshalBinary() it removes all unnecessary bytes, exploting the fact
 // that XDR is padding data to 4 bytes in union discriminants etc.

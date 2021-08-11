@@ -133,7 +133,7 @@ type LiquidityPoolsBatchInsertBuilder interface {
 	Exec(ctx context.Context) error
 }
 
-// QLiquidityPools defines account related queries.
+// QLiquidityPools defines liquidity-pool-related queries.
 type QLiquidityPools interface {
 	NewLiquidityPoolsBatchInsertBuilder(maxBatchSize int) LiquidityPoolsBatchInsertBuilder
 	UpdateLiquidityPool(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
