@@ -661,7 +661,7 @@ func addLiquidityPoolsToStateVerifier(
 
 	for _, row := range lPools {
 		if len(row.AssetReserves) != 2 {
-			fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
+			return fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
 		}
 		var lPoolEntry = xdr.LiquidityPoolEntry{
 			LiquidityPoolId: row.PoolID,
