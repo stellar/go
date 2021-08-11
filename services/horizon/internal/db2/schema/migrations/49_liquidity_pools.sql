@@ -6,7 +6,7 @@ CREATE TABLE liquidity_pools (
     fee integer NOT NULL,
     trustline_count bigint NOT NULL CHECK (trustline_count > 0),
     share_count bigint NOT NULL DEFAULT 0 CHECK(share_count >= 0),
-    assets jsonb NOT NULL,
+    asset_reserves jsonb NOT NULL,
     sponsor text,
     last_modified_ledger integer NOT NULL,
     PRIMARY KEY (id)

@@ -70,23 +70,23 @@ func (cbq LiquidityPoolsQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuild
 
 // LiquidityPool is a row of data from the `liquidity_pools`.
 type LiquidityPool struct {
-	PoolID             xdr.PoolId            `db:"id"`
-	Type               xdr.LiquidityPoolType `db:"type"`
-	Fee                uint32                `db:"fee"`
-	TrustlineCount     uint64                `db:"trustline_count"`
-	ShareCount         uint64                `db:"share_count"`
-	Assets             LiquidityPoolAssets   `db:"assets"`
-	Sponsor            null.String           `db:"sponsor"`
-	LastModifiedLedger uint32                `db:"last_modified_ledger"`
+	PoolID             xdr.PoolId                 `db:"id"`
+	Type               xdr.LiquidityPoolType      `db:"type"`
+	Fee                uint32                     `db:"fee"`
+	TrustlineCount     uint64                     `db:"trustline_count"`
+	ShareCount         uint64                     `db:"share_count"`
+	AssetReserves      LiquidityPoolAssetReserves `db:"asset_reserves"`
+	Sponsor            null.String                `db:"sponsor"`
+	LastModifiedLedger uint32                     `db:"last_modified_ledger"`
 }
 
-type LiquidityPoolAssets []LiquidityPoolAsset
+type LiquidityPoolAssetReserves []LiquidityPoolAssetReserve
 
-func (c LiquidityPoolAssets) Value() (driver.Value, error) {
+func (c LiquidityPoolAssetReserves) Value() (driver.Value, error) {
 	return json.Marshal(c)
 }
 
-func (c *LiquidityPoolAssets) Scan(value interface{}) error {
+func (c *LiquidityPoolAssetReserves) Scan(value interface{}) error {
 	b, ok := value.([]byte)
 	if !ok {
 		return errors.New("type assertion to []byte failed")
@@ -95,9 +95,37 @@ func (c *LiquidityPoolAssets) Scan(value interface{}) error {
 	return json.Unmarshal(b, &c)
 }
 
-type LiquidityPoolAsset struct {
-	Asset   xdr.Asset `json:"asset"`
-	Reserve uint64    `json:"reserve,string"` // use string-encoding to avoid problems with pgx https://github.com/jackc/pgx/issues/289
+type LiquidityPoolAssetReserve struct {
+	Asset   xdr.Asset
+	Reserve uint64
+}
+
+// liquidityPoolAssetReserveJSON  is an intermediate representation to allow encoding assets as base64 when stored in the DB
+type liquidityPoolAssetReserveJSON struct {
+	Asset   string `json:"asset"`
+	Reserve uint64 `json:"reserve,string"` // use string-encoding to avoid problems with pgx https://github.com/jackc/pgx/issues/289
+}
+
+func (lpar LiquidityPoolAssetReserve) MarshalJSON() ([]byte, error) {
+	asset, err := xdr.MarshalBase64(lpar.Asset)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(liquidityPoolAssetReserveJSON{asset, lpar.Reserve})
+}
+
+func (lpar *LiquidityPoolAssetReserve) UnmarshalJSON(data []byte) error {
+	var lparJSON liquidityPoolAssetReserveJSON
+	if err := json.Unmarshal(data, &lparJSON); err != nil {
+		return err
+	}
+	var asset xdr.Asset
+	if err := xdr.SafeUnmarshalBase64(lparJSON.Asset, &asset); err != nil {
+		return err
+	}
+	lpar.Reserve = lparJSON.Reserve
+	lpar.Asset = asset
+	return nil
 }
 
 type LiquidityPoolsBatchInsertBuilder interface {
@@ -144,8 +172,8 @@ func (q *Q) GetLiquidityPoolsByID(ctx context.Context, ids []xdr.PoolId) ([]Liqu
 	return cBalances, err
 }
 
-func buildLiquidityPoolAssets(lpCP xdr.LiquidityPoolEntryConstantProduct) LiquidityPoolAssets {
-	return LiquidityPoolAssets{
+func buildLiquidityPoolAssetReserves(lpCP xdr.LiquidityPoolEntryConstantProduct) LiquidityPoolAssetReserves {
+	return LiquidityPoolAssetReserves{
 		{
 			Asset:   lpCP.Params.AssetA,
 			Reserve: uint64(lpCP.ReserveA),
@@ -162,15 +190,16 @@ func buildLiquidityPoolAssets(lpCP xdr.LiquidityPoolEntryConstantProduct) Liquid
 func (q *Q) UpdateLiquidityPool(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
 	lPool := entry.Data.MustLiquidityPool()
 	cp := lPool.Body.MustConstantProduct()
+	// only these fields are mutable at this point
 	lPoolMap := map[string]interface{}{
 		"share_count":          cp.TotalPoolShares,
 		"trustline_count":      cp.PoolSharesTrustLineCount,
-		"assets":               buildLiquidityPoolAssets(cp),
+		"asset_reserves":       buildLiquidityPoolAssetReserves(cp),
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
 		"sponsor":              ledgerEntrySponsorToNullString(entry),
 	}
 
-	sql := sq.Update("claimable_balances").SetMap(lPoolMap).Where("id = ?", lPool.LiquidityPoolId)
+	sql := sq.Update("liquidity_pools").SetMap(lPoolMap).Where("id = ?", lPool.LiquidityPoolId)
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
@@ -195,7 +224,7 @@ func (q *Q) RemoveLiquidityPool(ctx context.Context, lPool xdr.LiquidityPoolEntr
 // FindLiquidityPoolByID returns a claimable balance.
 func (q *Q) FindLiquidityPoolByID(ctx context.Context, balanceID xdr.PoolId) (LiquidityPool, error) {
 	var claimableBalance LiquidityPool
-	sql := selectLiquidityPools.Limit(1).Where("cb.id = ?", balanceID)
+	sql := selectLiquidityPools.Limit(1).Where("lp.id = ?", balanceID)
 	err := q.Get(ctx, &claimableBalance, sql)
 	return claimableBalance, err
 }
@@ -208,8 +237,12 @@ func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([
 	}
 
 	for _, asset := range query.Assets {
+		assetB64, err := xdr.MarshalBase64(asset)
+		if err != nil {
+			return nil, err
+		}
 		sql = sql.
-			Where(`lp.assets @> '[{"asset": "` + asset.String() + `"}]'`)
+			Where(`lp.asset_reserves @> '[{"asset": "` + assetB64 + `"}]'`)
 	}
 
 	if query.Sponsor != nil {
@@ -247,7 +280,7 @@ func (i *liquidityPoolsBatchInsertBuilder) Add(ctx context.Context, entry *xdr.L
 		Fee:                uint32(cp.Params.Fee),
 		TrustlineCount:     uint64(cp.PoolSharesTrustLineCount),
 		ShareCount:         uint64(cp.TotalPoolShares),
-		Assets:             buildLiquidityPoolAssets(cp),
+		AssetReserves:      buildLiquidityPoolAssetReserves(cp),
 		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 	}
@@ -263,7 +296,7 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.fee, " +
 	"lp.trustline_count, " +
 	"lp.share_count, " +
-	"lp.assets, " +
+	"lp.asset_reserves, " +
 	"lp.sponsor, " +
 	"lp.last_modified_ledger"
 
