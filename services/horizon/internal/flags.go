@@ -408,12 +408,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:   types.Bool,
 			// Action needed in release: horizon-v2.9.0: make --ingest default true
 			FlagDefault: false,
-			CustomSetValue: func(opt *support.ConfigOption) {
+			CustomSetValue: func(opt *support.ConfigOption) error {
 				if support.IsExplicitlySet(opt) {
 					*opt.ConfigKey.(*bool) = viper.GetBool(opt.Name)
 				} else {
 					stdLog.Println("WARNING: in the 2.9.0 Horizon release the --ingest flag will default to true. Update your configuration so that --ingest is explicitly set to false.")
 				}
+				return nil
 			},
 			Usage: "causes this horizon process to ingest data from stellar-core into horizon's db",
 		},
