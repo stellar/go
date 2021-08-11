@@ -60,9 +60,9 @@ func TestFindLiquidityPool(t *testing.T) {
 
 	cp := lPoolEntry.Body.ConstantProduct
 	tt.Assert.Equal(lPoolEntry.LiquidityPoolId, lp.PoolID)
-	tt.Assert.Equal(uint32(cp.Params.Fee), lp.Fee)
-	tt.Assert.Equal(uint64(cp.TotalPoolShares), lp.ShareCount)
-	tt.Assert.Equal(uint64(cp.PoolSharesTrustLineCount), lp.TrustlineCount)
+	tt.Assert.Equal(cp.Params.Fee, lp.Fee)
+	tt.Assert.Equal(cp.TotalPoolShares, lp.ShareCount)
+	tt.Assert.Equal(cp.PoolSharesTrustLineCount, lp.TrustlineCount)
 	tt.Assert.Len(lp.AssetReserves, 2)
 	tt.Assert.Equal(buildLiquidityPoolAssetReserves(*cp), lp.AssetReserves)
 	tt.Assert.Equal(null.NewString("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", true), lp.Sponsor)
@@ -301,9 +301,9 @@ func TestUpdateLiquidityPool(t *testing.T) {
 	cp := updatedPoolEntry.Body.ConstantProduct
 
 	tt.Assert.Equal(updatedPoolEntry.LiquidityPoolId, lp.PoolID)
-	tt.Assert.Equal(uint32(cp.Params.Fee), lp.Fee)
-	tt.Assert.Equal(uint64(cp.TotalPoolShares), lp.ShareCount)
-	tt.Assert.Equal(uint64(cp.PoolSharesTrustLineCount), lp.TrustlineCount)
+	tt.Assert.Equal(cp.Params.Fee, lp.Fee)
+	tt.Assert.Equal(cp.TotalPoolShares, lp.ShareCount)
+	tt.Assert.Equal(cp.PoolSharesTrustLineCount, lp.TrustlineCount)
 	tt.Assert.Len(lp.AssetReserves, 2)
 	tt.Assert.Equal(buildLiquidityPoolAssetReserves(*cp), lp.AssetReserves)
 	tt.Assert.Equal(null.NewString("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", true), lp.Sponsor)

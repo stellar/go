@@ -8,10 +8,50 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
+
+func TestFuzzLiquidityPools(t *testing.T) {
+	tt := test.Start(t)
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
+	pp := NewLiquidityPoolsProcessor(q)
+	gen := randxdr.NewGenerator()
+
+	var changes []xdr.LedgerEntryChange
+	for i := 0; i < 1000; i++ {
+		change := xdr.LedgerEntryChange{}
+		shape := &gxdr.LedgerEntryChange{}
+		gen.Next(
+			shape,
+			[]randxdr.Preset{
+				{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+				// the offers postgres table is configured with some database constraints which validate the following
+				// fields:
+				{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32()},
+				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.fee"), randxdr.SetPositiveNum32()},
+				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.reserveA"), randxdr.SetPositiveNum64()},
+				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.reserveB"), randxdr.SetPositiveNum64()},
+				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.totalPoolShares"), randxdr.SetPositiveNum64()},
+				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.poolSharesTrustLineCount"), randxdr.SetPositiveNum64()},
+			},
+		)
+		tt.Assert.NoError(gxdr.Convert(shape, &change))
+		changes = append(changes, change)
+	}
+
+	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
+		tt.Assert.NoError(pp.ProcessChange(tt.Ctx, change))
+	}
+
+	tt.Assert.NoError(pp.Commit(tt.Ctx))
+}
 
 func TestLiquidityPoolsChangeProcessorTestSuiteState(t *testing.T) {
 	suite.Run(t, new(LiquidityPoolsChangeProcessorTestSuiteState))

@@ -72,9 +72,9 @@ func (cbq LiquidityPoolsQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuild
 type LiquidityPool struct {
 	PoolID             xdr.PoolId                 `db:"id"`
 	Type               xdr.LiquidityPoolType      `db:"type"`
-	Fee                uint32                     `db:"fee"`
-	TrustlineCount     uint64                     `db:"trustline_count"`
-	ShareCount         uint64                     `db:"share_count"`
+	Fee                xdr.Int32                  `db:"fee"`
+	TrustlineCount     xdr.Int64                  `db:"trustline_count"`
+	ShareCount         xdr.Int64                  `db:"share_count"`
 	AssetReserves      LiquidityPoolAssetReserves `db:"asset_reserves"`
 	Sponsor            null.String                `db:"sponsor"`
 	LastModifiedLedger uint32                     `db:"last_modified_ledger"`
@@ -97,13 +97,13 @@ func (c *LiquidityPoolAssetReserves) Scan(value interface{}) error {
 
 type LiquidityPoolAssetReserve struct {
 	Asset   xdr.Asset
-	Reserve uint64
+	Reserve xdr.Int64
 }
 
 // liquidityPoolAssetReserveJSON  is an intermediate representation to allow encoding assets as base64 when stored in the DB
 type liquidityPoolAssetReserveJSON struct {
-	Asset   string `json:"asset"`
-	Reserve uint64 `json:"reserve,string"` // use string-encoding to avoid problems with pgx https://github.com/jackc/pgx/issues/289
+	Asset   string    `json:"asset"`
+	Reserve xdr.Int64 `json:"reserve,string"` // use string-encoding to avoid problems with pgx https://github.com/jackc/pgx/issues/289
 }
 
 func (lpar LiquidityPoolAssetReserve) MarshalJSON() ([]byte, error) {
@@ -176,11 +176,11 @@ func buildLiquidityPoolAssetReserves(lpCP xdr.LiquidityPoolEntryConstantProduct)
 	return LiquidityPoolAssetReserves{
 		{
 			Asset:   lpCP.Params.AssetA,
-			Reserve: uint64(lpCP.ReserveA),
+			Reserve: lpCP.ReserveA,
 		},
 		{
 			Asset:   lpCP.Params.AssetB,
-			Reserve: uint64(lpCP.ReserveB),
+			Reserve: lpCP.ReserveB,
 		},
 	}
 }
@@ -277,9 +277,9 @@ func (i *liquidityPoolsBatchInsertBuilder) Add(ctx context.Context, entry *xdr.L
 	row := LiquidityPool{
 		PoolID:             lPool.LiquidityPoolId,
 		Type:               lPool.Body.Type,
-		Fee:                uint32(cp.Params.Fee),
-		TrustlineCount:     uint64(cp.PoolSharesTrustLineCount),
-		ShareCount:         uint64(cp.TotalPoolShares),
+		Fee:                cp.Params.Fee,
+		TrustlineCount:     cp.PoolSharesTrustLineCount,
+		ShareCount:         cp.TotalPoolShares,
 		AssetReserves:      buildLiquidityPoolAssetReserves(cp),
 		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
