@@ -20,7 +20,7 @@ func TestLiquidityPoolsChangeProcessorTestSuiteState(t *testing.T) {
 type LiquidityPoolsChangeProcessorTestSuiteState struct {
 	suite.Suite
 	ctx                    context.Context
-	processor              *LiquidityPoolsChangeProcessor
+	processor              *LiquidityPoolsProcessor
 	mockQ                  *history.MockQLiquidityPools
 	mockBatchInsertBuilder *history.MockLiquidityPoolsBatchInsertBuilder
 }
@@ -34,7 +34,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) SetupTest() {
 		On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder)
 
-	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ)
+	s.processor = NewLiquidityPoolsProcessor(s.mockQ)
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) TearDownTest() {
@@ -97,7 +97,7 @@ func TestLiquidityPoolsChangeProcessorTestSuiteLedger(t *testing.T) {
 type LiquidityPoolsChangeProcessorTestSuiteLedger struct {
 	suite.Suite
 	ctx                    context.Context
-	processor              *LiquidityPoolsChangeProcessor
+	processor              *LiquidityPoolsProcessor
 	mockQ                  *history.MockQLiquidityPools
 	mockBatchInsertBuilder *history.MockLiquidityPoolsBatchInsertBuilder
 }
@@ -111,7 +111,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) SetupTest() {
 		On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder)
 
-	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ)
+	s.processor = NewLiquidityPoolsProcessor(s.mockQ)
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TearDownTest() {
