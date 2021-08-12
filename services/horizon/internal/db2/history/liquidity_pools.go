@@ -18,21 +18,6 @@ type LiquidityPoolsQuery struct {
 	Assets    []xdr.Asset
 }
 
-// Cursor validates and returns the query page cursor
-func (cbq LiquidityPoolsQuery) Cursor() (string, error) {
-	p := cbq.PageQuery
-
-	if p.Cursor != "" {
-		// validate the cursor
-		var poolID xdr.PoolId
-		if err := xdr.SafeUnmarshalHex(p.Cursor, &poolID); err != nil {
-			return "", errors.Wrap(err, "Invalid cursor - value should be a valid liquidity pool id")
-		}
-	}
-
-	return p.Cursor, nil
-}
-
 // ApplyCursor applies cursor to the given sql. For performance reason the limit
 // is not applied here. This allows us to hint the planner later to use the right
 // indexes.
