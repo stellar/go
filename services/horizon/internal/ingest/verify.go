@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -653,8 +654,11 @@ func addLiquidityPoolsToStateVerifier(
 	if len(ids) == 0 {
 		return nil
 	}
-
-	lPools, err := q.GetLiquidityPoolsByID(ctx, ids)
+	var idsHex = make([]string, len(ids), len(ids))
+	for i, id := range ids {
+		idsHex[i] = hex.EncodeToString(id[:])
+	}
+	lPools, err := q.GetLiquidityPoolsByID(ctx, idsHex)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
 	}
@@ -663,8 +667,18 @@ func addLiquidityPoolsToStateVerifier(
 		if len(row.AssetReserves) != 2 {
 			return fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
 		}
+		id, err := hex.DecodeString(row.PoolID)
+		if err != nil {
+			return errors.Wrap(err, "Error decoding pool ID")
+		}
+		var poolID xdr.PoolId
+		if len(id) != len(poolID) {
+			return fmt.Errorf("Error decoding pool ID, incorrect length (%d)", len(id))
+		}
+		copy(poolID[:], id)
+
 		var lPoolEntry = xdr.LiquidityPoolEntry{
-			LiquidityPoolId: row.PoolID,
+			LiquidityPoolId: poolID,
 			Body: xdr.LiquidityPoolEntryBody{
 				Type: row.Type,
 				ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{

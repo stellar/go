@@ -139,18 +139,6 @@ func (t *TransactionResultPair) Scan(src interface{}) error {
 	return safeBase64Scan(src, t)
 }
 
-// Scan reads from src into a ClaimableBalanceId
-// This method decodes values from hex.
-func (c *PoolId) Scan(src interface{}) error {
-	return safeHexScan(src, c)
-}
-
-// Value implements the database/sql/driver Valuer interface.
-// This method encodes values to hex.
-func (c PoolId) Value() (driver.Value, error) {
-	return MarshalHex(c)
-}
-
 // safeBase64Scan scans from src (which should be either a []byte or string)
 // into dest by using `SafeUnmarshalBase64`.
 func safeBase64Scan(src, dest interface{}) error {

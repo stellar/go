@@ -15,58 +15,37 @@ func TestFindLiquidityPool(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-	lPoolEntry := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewCreditAsset("USD", accountID),
-					AssetB: xdr.MustNewNativeAsset(),
-					Fee:    34,
-				},
-				ReserveA:                 450,
-				ReserveB:                 123,
-				TotalPoolShares:          412241,
-				PoolSharesTrustLineCount: 52115,
+	lp := LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
 			},
 		},
-	}
-	entry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPoolEntry,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		LastModifiedLedger: 123,
 	}
 
 	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
 
-	err := builder.Add(tt.Ctx, &entry)
+	err := builder.Add(tt.Ctx, lp)
 	tt.Assert.NoError(err)
 
 	err = builder.Exec(tt.Ctx)
 
-	lp, err := q.FindLiquidityPoolByID(tt.Ctx, lPoolEntry.LiquidityPoolId)
+	lpObtained, err := q.FindLiquidityPoolByID(tt.Ctx, lp.PoolID)
 	tt.Assert.NoError(err)
 
-	cp := lPoolEntry.Body.ConstantProduct
-	tt.Assert.Equal(lPoolEntry.LiquidityPoolId, lp.PoolID)
-	tt.Assert.Equal(cp.Params.Fee, lp.Fee)
-	tt.Assert.Equal(cp.TotalPoolShares, lp.ShareCount)
-	tt.Assert.Equal(cp.PoolSharesTrustLineCount, lp.TrustlineCount)
-	tt.Assert.Len(lp.AssetReserves, 2)
-	tt.Assert.Equal(buildLiquidityPoolAssetReserves(*cp), lp.AssetReserves)
-	tt.Assert.Equal(null.NewString("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", true), lp.Sponsor)
-	tt.Assert.Equal(uint32(lastModifiedLedgerSeq), lp.LastModifiedLedger)
+	tt.Assert.Equal(lp, lpObtained)
 }
 
 func TestRemoveLiquidityPool(t *testing.T) {
@@ -75,51 +54,38 @@ func TestRemoveLiquidityPool(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-	lPoolEntry := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewCreditAsset("USD", accountID),
-					AssetB: xdr.MustNewNativeAsset(),
-					Fee:    34,
-				},
-				ReserveA:                 450,
-				ReserveB:                 123,
-				TotalPoolShares:          412241,
-				PoolSharesTrustLineCount: 52115,
+	lp := LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
 			},
 		},
-	}
-	entry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPoolEntry,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		LastModifiedLedger: 123,
 	}
 
 	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
 
-	err := builder.Add(tt.Ctx, &entry)
+	err := builder.Add(tt.Ctx, lp)
 	tt.Assert.NoError(err)
 
 	err = builder.Exec(tt.Ctx)
 
-	lp, err := q.FindLiquidityPoolByID(tt.Ctx, lPoolEntry.LiquidityPoolId)
+	lpObtained, err := q.FindLiquidityPoolByID(tt.Ctx, lp.PoolID)
 	tt.Assert.NoError(err)
-	tt.Assert.NotNil(lp)
+	tt.Assert.NotNil(lpObtained)
 
-	removed, err := q.RemoveLiquidityPool(tt.Ctx, lPoolEntry)
+	removed, err := q.RemoveLiquidityPool(tt.Ctx, lp.PoolID)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), removed)
 
@@ -137,42 +103,29 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-	lPoolEntry := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewCreditAsset("USD", accountID),
-					AssetB: xdr.MustNewNativeAsset(),
-					Fee:    34,
-				},
-				ReserveA:                 450,
-				ReserveB:                 123,
-				TotalPoolShares:          412241,
-				PoolSharesTrustLineCount: 52115,
+	lp := LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
 			},
 		},
-	}
-	entry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPoolEntry,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		LastModifiedLedger: 123,
 	}
 
 	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
 
-	err := builder.Add(tt.Ctx, &entry)
+	err := builder.Add(tt.Ctx, lp)
 	tt.Assert.NoError(err)
 
 	err = builder.Exec(tt.Ctx)
@@ -189,7 +142,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by one asset
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("USD", accountID)},
+		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -199,7 +152,10 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by two assets
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("USD", accountID), xdr.MustNewNativeAsset()},
+		Assets: []xdr.Asset{
+			xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			xdr.MustNewNativeAsset(),
+		},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -209,7 +165,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by an asset not present
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("EUR", accountID)},
+		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("EUR", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -223,73 +179,53 @@ func TestUpdateLiquidityPool(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-	initialPoolEntry := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewCreditAsset("USD", accountID),
-					AssetB: xdr.MustNewNativeAsset(),
-					Fee:    34,
-				},
-				ReserveA:                 450,
-				ReserveB:                 123,
-				TotalPoolShares:          412241,
-				PoolSharesTrustLineCount: 52115,
+	initialLP := LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
 			},
 		},
-	}
-	initialEntry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &initialPoolEntry,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		LastModifiedLedger: 123,
 	}
 
 	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
 
-	err := builder.Add(tt.Ctx, &initialEntry)
+	err := builder.Add(tt.Ctx, initialLP)
 	tt.Assert.NoError(err)
 
 	err = builder.Exec(tt.Ctx)
 
-	updatedLastModifiedLedgerSeq := xdr.Uint32(124)
-	updatedPoolEntry := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewCreditAsset("USD", accountID),
-					AssetB: xdr.MustNewNativeAsset(),
-					Fee:    34,
-				},
-				ReserveA:                 500,
-				ReserveB:                 600,
-				TotalPoolShares:          100000,
-				PoolSharesTrustLineCount: 52116,
+	updatedLP := LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52116,
+		ShareCount:     100000,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 500,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 600,
 			},
 		},
-	}
-	updatedEntry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &updatedPoolEntry,
-		},
-		LastModifiedLedgerSeq: updatedLastModifiedLedgerSeq,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		LastModifiedLedger: 124,
 	}
 
-	updated, err := q.UpdateLiquidityPool(tt.Ctx, updatedEntry)
+	updated, err := q.UpdateLiquidityPool(tt.Ctx, updatedLP)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), updated)
 
@@ -298,16 +234,7 @@ func TestUpdateLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 1)
 	lp := lps[0]
-	cp := updatedPoolEntry.Body.ConstantProduct
-
-	tt.Assert.Equal(updatedPoolEntry.LiquidityPoolId, lp.PoolID)
-	tt.Assert.Equal(cp.Params.Fee, lp.Fee)
-	tt.Assert.Equal(cp.TotalPoolShares, lp.ShareCount)
-	tt.Assert.Equal(cp.PoolSharesTrustLineCount, lp.TrustlineCount)
-	tt.Assert.Len(lp.AssetReserves, 2)
-	tt.Assert.Equal(buildLiquidityPoolAssetReserves(*cp), lp.AssetReserves)
-	tt.Assert.Equal(null.NewString("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", true), lp.Sponsor)
-	tt.Assert.Equal(uint32(updatedLastModifiedLedgerSeq), lp.LastModifiedLedger)
+	tt.Assert.Equal(updatedLP, lp)
 }
 
 func TestGetLiquidityPoolsByID(t *testing.T) {
@@ -316,55 +243,42 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-	lPoolEntry := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewCreditAsset("USD", accountID),
-					AssetB: xdr.MustNewNativeAsset(),
-					Fee:    34,
-				},
-				ReserveA:                 450,
-				ReserveB:                 123,
-				TotalPoolShares:          412241,
-				PoolSharesTrustLineCount: 52115,
+	lp := LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
 			},
 		},
-	}
-	entry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPoolEntry,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		LastModifiedLedger: 123,
 	}
 
 	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
 
-	err := builder.Add(tt.Ctx, &entry)
+	err := builder.Add(tt.Ctx, lp)
 	tt.Assert.NoError(err)
 
 	err = builder.Exec(tt.Ctx)
 
-	r, err := q.GetLiquidityPoolsByID(tt.Ctx, []xdr.PoolId{lPoolEntry.LiquidityPoolId})
+	r, err := q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 1)
 
-	removed, err := q.RemoveLiquidityPool(tt.Ctx, lPoolEntry)
+	removed, err := q.RemoveLiquidityPool(tt.Ctx, lp.PoolID)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), removed)
 
-	r, err = q.GetLiquidityPoolsByID(tt.Ctx, []xdr.PoolId{lPoolEntry.LiquidityPoolId})
+	r, err = q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 0)
 }

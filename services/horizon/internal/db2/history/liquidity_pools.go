@@ -13,7 +13,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LiquidityPoolsQuery is a helper struct to configure queries to claimable balances
+// LiquidityPoolsQuery is a helper struct to configure queries to liquidity pools
 type LiquidityPoolsQuery struct {
 	PageQuery db2.PageQuery
 	Assets    []xdr.Asset
@@ -21,20 +21,18 @@ type LiquidityPoolsQuery struct {
 }
 
 // Cursor validates and returns the query page cursor
-func (cbq LiquidityPoolsQuery) Cursor() (*xdr.PoolId, error) {
+func (cbq LiquidityPoolsQuery) Cursor() (string, error) {
 	p := cbq.PageQuery
-	var r *xdr.PoolId
-	var err error
 
 	if p.Cursor != "" {
+		// validate the cursor
 		var poolID xdr.PoolId
-		if err = xdr.SafeUnmarshalHex(p.Cursor, &poolID); err != nil {
-			return r, errors.Wrap(err, "Invalid cursor - value should be a valid liquidity pool id")
+		if err := xdr.SafeUnmarshalHex(p.Cursor, &poolID); err != nil {
+			return "", errors.Wrap(err, "Invalid cursor - value should be a valid liquidity pool id")
 		}
-		r = &poolID
 	}
 
-	return r, nil
+	return p.Cursor, nil
 }
 
 // ApplyCursor applies cursor to the given sql. For performance reason the limit
@@ -49,13 +47,13 @@ func (cbq LiquidityPoolsQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuild
 
 	switch p.Order {
 	case db2.OrderAscending:
-		if r != nil {
+		if r != "" {
 			sql = sql.
 				Where(sq.Expr("lp.id > ?", r))
 		}
 		sql = sql.OrderBy("lp.id asc")
 	case db2.OrderDescending:
-		if r != nil {
+		if r != "" {
 			sql = sql.
 				Where(sq.Expr("lp.id < ?", r))
 		}
@@ -70,11 +68,11 @@ func (cbq LiquidityPoolsQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuild
 
 // LiquidityPool is a row of data from the `liquidity_pools`.
 type LiquidityPool struct {
-	PoolID             xdr.PoolId                 `db:"id"`
+	PoolID             string                     `db:"id"`
 	Type               xdr.LiquidityPoolType      `db:"type"`
-	Fee                xdr.Int32                  `db:"fee"`
-	TrustlineCount     xdr.Int64                  `db:"trustline_count"`
-	ShareCount         xdr.Int64                  `db:"share_count"`
+	Fee                uint32                     `db:"fee"`
+	TrustlineCount     uint64                     `db:"trustline_count"`
+	ShareCount         uint64                     `db:"share_count"`
 	AssetReserves      LiquidityPoolAssetReserves `db:"asset_reserves"`
 	Sponsor            null.String                `db:"sponsor"`
 	LastModifiedLedger uint32                     `db:"last_modified_ledger"`
@@ -97,13 +95,13 @@ func (c *LiquidityPoolAssetReserves) Scan(value interface{}) error {
 
 type LiquidityPoolAssetReserve struct {
 	Asset   xdr.Asset
-	Reserve xdr.Int64
+	Reserve uint64
 }
 
 // liquidityPoolAssetReserveJSON  is an intermediate representation to allow encoding assets as base64 when stored in the DB
 type liquidityPoolAssetReserveJSON struct {
-	Asset   string    `json:"asset"`
-	Reserve xdr.Int64 `json:"reserve,string"` // use string-encoding to avoid problems with pgx https://github.com/jackc/pgx/issues/289
+	Asset   string `json:"asset"`
+	Reserve uint64 `json:"reserve,string"` // use string-encoding to avoid problems with pgx https://github.com/jackc/pgx/issues/289
 }
 
 func (lpar LiquidityPoolAssetReserve) MarshalJSON() ([]byte, error) {
@@ -129,16 +127,16 @@ func (lpar *LiquidityPoolAssetReserve) UnmarshalJSON(data []byte) error {
 }
 
 type LiquidityPoolsBatchInsertBuilder interface {
-	Add(ctx context.Context, entry *xdr.LedgerEntry) error
+	Add(ctx context.Context, lp LiquidityPool) error
 	Exec(ctx context.Context) error
 }
 
 // QLiquidityPools defines liquidity-pool-related queries.
 type QLiquidityPools interface {
 	NewLiquidityPoolsBatchInsertBuilder(maxBatchSize int) LiquidityPoolsBatchInsertBuilder
-	UpdateLiquidityPool(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	RemoveLiquidityPool(ctx context.Context, pool xdr.LiquidityPoolEntry) (int64, error)
-	GetLiquidityPoolsByID(ctx context.Context, ids []xdr.PoolId) ([]LiquidityPool, error)
+	UpdateLiquidityPool(ctx context.Context, lp LiquidityPool) (int64, error)
+	RemoveLiquidityPool(ctx context.Context, liquidityPoolID string) (int64, error)
+	GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error)
 	CountLiquidityPools(ctx context.Context) (int, error)
 }
 
@@ -164,43 +162,19 @@ func (q *Q) CountLiquidityPools(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// GetLiquidityPoolsByID finds all claimable balances by PoolId
-func (q *Q) GetLiquidityPoolsByID(ctx context.Context, ids []xdr.PoolId) ([]LiquidityPool, error) {
+// GetLiquidityPoolsByID finds all liquidity pools by PoolId
+func (q *Q) GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error) {
 	var cBalances []LiquidityPool
-	sql := selectLiquidityPools.Where(map[string]interface{}{"lp.id": ids})
+	sql := selectLiquidityPools.Where(map[string]interface{}{"lp.id": poolIDs})
 	err := q.Select(ctx, &cBalances, sql)
 	return cBalances, err
 }
 
-func buildLiquidityPoolAssetReserves(lpCP xdr.LiquidityPoolEntryConstantProduct) LiquidityPoolAssetReserves {
-	return LiquidityPoolAssetReserves{
-		{
-			Asset:   lpCP.Params.AssetA,
-			Reserve: lpCP.ReserveA,
-		},
-		{
-			Asset:   lpCP.Params.AssetB,
-			Reserve: lpCP.ReserveB,
-		},
-	}
-}
-
 // UpdateLiquidityPool updates a row in the liquidity_pools table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateLiquidityPool(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
-	lPool := entry.Data.MustLiquidityPool()
-	cp := lPool.Body.MustConstantProduct()
-	// only these fields are mutable at this point
-	lPoolMap := map[string]interface{}{
-		"share_count":          cp.TotalPoolShares,
-		"trustline_count":      cp.PoolSharesTrustLineCount,
-		"asset_reserves":       buildLiquidityPoolAssetReserves(cp),
-		"last_modified_ledger": entry.LastModifiedLedgerSeq,
-		"sponsor":              ledgerEntrySponsorToNullString(entry),
-	}
-
-	sql := sq.Update("liquidity_pools").SetMap(lPoolMap).Where("id = ?", lPool.LiquidityPoolId)
-	result, err := q.Exec(ctx, sql)
+func (q *Q) UpdateLiquidityPool(ctx context.Context, lp LiquidityPool) (int64, error) {
+	updateBuilder := q.GetTable("liquidity_pools").Update()
+	result, err := updateBuilder.SetStruct(lp, []string{}).Where("id = ?", lp.PoolID).Exec(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -208,11 +182,11 @@ func (q *Q) UpdateLiquidityPool(ctx context.Context, entry xdr.LedgerEntry) (int
 	return result.RowsAffected()
 }
 
-// RemoveLiquidityPool deletes a row in the claimable_balances table.
+// RemoveLiquidityPool deletes a row in the liquidity_pools table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveLiquidityPool(ctx context.Context, lPool xdr.LiquidityPoolEntry) (int64, error) {
+func (q *Q) RemoveLiquidityPool(ctx context.Context, liquidityPoolID string) (int64, error) {
 	sql := sq.Delete("liquidity_pools").
-		Where(sq.Eq{"id": lPool.LiquidityPoolId})
+		Where(sq.Eq{"id": liquidityPoolID})
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
@@ -221,15 +195,15 @@ func (q *Q) RemoveLiquidityPool(ctx context.Context, lPool xdr.LiquidityPoolEntr
 	return result.RowsAffected()
 }
 
-// FindLiquidityPoolByID returns a claimable balance.
-func (q *Q) FindLiquidityPoolByID(ctx context.Context, balanceID xdr.PoolId) (LiquidityPool, error) {
+// FindLiquidityPoolByID returns a liquidity pool.
+func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error) {
 	var claimableBalance LiquidityPool
-	sql := selectLiquidityPools.Limit(1).Where("lp.id = ?", balanceID)
+	sql := selectLiquidityPools.Limit(1).Where("lp.id = ?", liquidityPoolID)
 	err := q.Get(ctx, &claimableBalance, sql)
 	return claimableBalance, err
 }
 
-// GetLiquidityPools finds all claimable balances where accountID is one of the claimants
+// GetLiquidityPools finds all liquidity pools where accountID is one of the claimants
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
 	sql, err := query.ApplyCursor(selectLiquidityPools)
 	if err != nil {
@@ -249,16 +223,6 @@ func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([
 		sql = sql.Where("lp.sponsor = ?", query.Sponsor.Address())
 	}
 
-	// we need to use WITH syntax to force the query planner to use the right
-	// indexes, otherwise when the limit is small, it will use an index scan
-	// which will be very slow once we have millions of records
-	sql = sql.
-		Prefix("WITH lp AS (").
-		Suffix(
-			") select "+liquidityPoolsSelectStatement+" from lp LIMIT ?",
-			query.PageQuery.Limit,
-		)
-
 	var results []LiquidityPool
 	if err := q.Select(ctx, &results, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
@@ -271,20 +235,8 @@ type liquidityPoolsBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
 
-func (i *liquidityPoolsBatchInsertBuilder) Add(ctx context.Context, entry *xdr.LedgerEntry) error {
-	lPool := entry.Data.MustLiquidityPool()
-	cp := lPool.Body.MustConstantProduct()
-	row := LiquidityPool{
-		PoolID:             lPool.LiquidityPoolId,
-		Type:               lPool.Body.Type,
-		Fee:                cp.Params.Fee,
-		TrustlineCount:     cp.PoolSharesTrustLineCount,
-		ShareCount:         cp.TotalPoolShares,
-		AssetReserves:      buildLiquidityPoolAssetReserves(cp),
-		Sponsor:            ledgerEntrySponsorToNullString(*entry),
-		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
-	}
-	return i.builder.RowStruct(ctx, row)
+func (i *liquidityPoolsBatchInsertBuilder) Add(ctx context.Context, lp LiquidityPool) error {
+	return i.builder.RowStruct(ctx, lp)
 }
 
 func (i *liquidityPoolsBatchInsertBuilder) Exec(ctx context.Context) error {

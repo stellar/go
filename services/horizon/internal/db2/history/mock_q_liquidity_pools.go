@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/mock"
-
-	"github.com/stellar/go/xdr"
 )
 
 // MockQLiquidityPools is a mock implementation of the QAccounts interface
@@ -23,18 +21,18 @@ func (m *MockQLiquidityPools) CountLiquidityPools(ctx context.Context) (int, err
 	return a.Get(0).(int), a.Error(1)
 }
 
-func (m *MockQLiquidityPools) GetLiquidityPoolsByID(ctx context.Context, ids []xdr.PoolId) ([]LiquidityPool, error) {
-	a := m.Called(ctx, ids)
+func (m *MockQLiquidityPools) GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error) {
+	a := m.Called(ctx, poolIDs)
 	return a.Get(0).([]LiquidityPool), a.Error(1)
 }
 
-func (m *MockQLiquidityPools) UpdateLiquidityPool(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
-	a := m.Called(ctx, entry)
+func (m *MockQLiquidityPools) UpdateLiquidityPool(ctx context.Context, lp LiquidityPool) (int64, error) {
+	a := m.Called(ctx, lp)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQLiquidityPools) RemoveLiquidityPool(ctx context.Context, cBalance xdr.LiquidityPoolEntry) (int64, error) {
-	a := m.Called(ctx, cBalance)
+func (m *MockQLiquidityPools) RemoveLiquidityPool(ctx context.Context, liquidityPoolID string) (int64, error) {
+	a := m.Called(ctx, liquidityPoolID)
 	return a.Get(0).(int64), a.Error(1)
 }
 
@@ -42,8 +40,8 @@ type MockLiquidityPoolsBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockLiquidityPoolsBatchInsertBuilder) Add(ctx context.Context, entry *xdr.LedgerEntry) error {
-	a := m.Called(ctx, entry)
+func (m *MockLiquidityPoolsBatchInsertBuilder) Add(ctx context.Context, lp LiquidityPool) error {
+	a := m.Called(ctx, lp)
 	return a.Error(0)
 }
 

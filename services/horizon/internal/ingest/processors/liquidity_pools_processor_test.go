@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -90,8 +91,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestNoEntries() {
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestCreatesLiquidityPools() {
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	lPool := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+	lpoolEntry := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
 		Body: xdr.LiquidityPoolEntryBody{
 			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
@@ -101,20 +102,32 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestCreatesLiquidityPools(
 					Fee:    34,
 				},
 				ReserveA:                 450,
-				ReserveB:                 123,
+				ReserveB:                 500,
 				TotalPoolShares:          412241,
 				PoolSharesTrustLineCount: 52115,
 			},
 		},
 	}
-
-	s.mockBatchInsertBuilder.On("Add", s.ctx, &xdr.LedgerEntry{
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Data: xdr.LedgerEntryData{
-			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPool,
+	lp := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				450,
+			},
+			{
+				xdr.MustNewNativeAsset(),
+				500,
+			},
 		},
-	}).Return(nil).Once()
+		LastModifiedLedger: 123,
+	}
+
+	s.mockBatchInsertBuilder.On("Add", s.ctx, lp).Return(nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
@@ -122,7 +135,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestCreatesLiquidityPools(
 		Post: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
 				Type:          xdr.LedgerEntryTypeLiquidityPool,
-				LiquidityPool: &lPool,
+				LiquidityPool: &lpoolEntry,
 			},
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 		},
@@ -166,8 +179,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNoTransactions() {
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	lPool := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+	lpEntry := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
 		Body: xdr.LiquidityPoolEntryBody{
 			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
@@ -177,16 +190,16 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 					Fee:    34,
 				},
 				ReserveA:                 450,
-				ReserveB:                 123,
+				ReserveB:                 500,
 				TotalPoolShares:          412241,
 				PoolSharesTrustLineCount: 52115,
 			},
 		},
 	}
-	entry := xdr.LedgerEntry{
+	pre := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPool,
+			LiquidityPool: &lpEntry,
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 		Ext: xdr.LedgerEntryExt{
@@ -199,15 +212,15 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
 		Pre:  nil,
-		Post: &entry,
+		Post: &pre,
 	})
 	s.Assert().NoError(err)
 
 	// add sponsor
-	updated := xdr.LedgerEntry{
+	post := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPool,
+			LiquidityPool: &lpEntry,
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 		Ext: xdr.LedgerEntryExt{
@@ -218,25 +231,44 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 		},
 	}
 
-	entry.LastModifiedLedgerSeq = entry.LastModifiedLedgerSeq - 1
+	pre.LastModifiedLedgerSeq = pre.LastModifiedLedgerSeq - 1
 	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
-		Pre:  &entry,
-		Post: &updated,
+		Pre:  &pre,
+		Post: &post,
 	})
 	s.Assert().NoError(err)
 
+	postLP := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				450,
+			},
+			{
+				xdr.MustNewNativeAsset(),
+				500,
+			},
+		},
+		LastModifiedLedger: 123,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+	}
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockBatchInsertBuilder.On(
 		"Add",
 		s.ctx,
-		&updated,
+		postLP,
 	).Return(nil).Once()
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool() {
-	lPool := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+	lpEntry := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
 		Body: xdr.LiquidityPoolEntryBody{
 			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
@@ -246,7 +278,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 					Fee:    34,
 				},
 				ReserveA:                 450,
-				ReserveB:                 123,
+				ReserveB:                 500,
 				TotalPoolShares:          412241,
 				PoolSharesTrustLineCount: 52115,
 			},
@@ -257,7 +289,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 	pre := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPool,
+			LiquidityPool: &lpEntry,
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 		Ext: xdr.LedgerEntryExt{
@@ -269,10 +301,10 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 	}
 
 	// add sponsor
-	updated := xdr.LedgerEntry{
+	post := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPool,
+			LiquidityPool: &lpEntry,
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 		Ext: xdr.LedgerEntryExt{
@@ -286,20 +318,40 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
 		Pre:  &pre,
-		Post: &updated,
+		Post: &post,
 	})
 	s.Assert().NoError(err)
+
+	postLP := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				450,
+			},
+			{
+				xdr.MustNewNativeAsset(),
+				500,
+			},
+		},
+		LastModifiedLedger: 123,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+	}
 
 	s.mockQ.On(
 		"UpdateLiquidityPool",
 		s.ctx,
-		updated,
+		postLP,
 	).Return(int64(1), nil).Once()
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestRemoveLiquidityPool() {
-	lPool := xdr.LiquidityPoolEntry{
-		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+	lpEntry := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
 		Body: xdr.LiquidityPoolEntryBody{
 			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
@@ -319,7 +371,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestRemoveLiquidityPool()
 	pre := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type:          xdr.LedgerEntryTypeLiquidityPool,
-			LiquidityPool: &lPool,
+			LiquidityPool: &lpEntry,
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 		Ext: xdr.LedgerEntryExt{
@@ -339,6 +391,6 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestRemoveLiquidityPool()
 	s.mockQ.On(
 		"RemoveLiquidityPool",
 		s.ctx,
-		lPool,
+		"cafebabedeadbeef000000000000000000000000000000000000000000000000",
 	).Return(int64(1), nil).Once()
 }

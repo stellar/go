@@ -1,7 +1,7 @@
 -- +migrate Up
 
 CREATE TABLE liquidity_pools (
-    id text NOT NULL, -- PoolID in base64
+    id text NOT NULL, -- hex-encoded PoolID
     type smallint NOT NULL,
     fee integer NOT NULL,
     trustline_count bigint NOT NULL CHECK (trustline_count > 0),

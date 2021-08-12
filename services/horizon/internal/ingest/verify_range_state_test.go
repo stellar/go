@@ -423,7 +423,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		},
 	}
 	liquidityPool := history.LiquidityPool{
-		PoolID:         xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
 		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 		Fee:            34,
 		TrustlineCount: 52115,
@@ -448,7 +448,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeLiquidityPool,
 				LiquidityPool: &xdr.LiquidityPoolEntry{
-					LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+					LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
 					Body: xdr.LiquidityPoolEntryBody{
 						Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 						ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
@@ -550,7 +550,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 
 	clonedQ.MockQLiquidityPools.On("CountLiquidityPools", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQLiquidityPools.
-		On("GetLiquidityPoolsByID", s.ctx, []xdr.PoolId{liquidityPool.PoolID}).
+		On("GetLiquidityPoolsByID", s.ctx, []string{liquidityPool.PoolID}).
 		Return([]history.LiquidityPool{liquidityPool}, nil).Once()
 
 	next, err := verifyRangeState{

@@ -2,6 +2,7 @@ package processors
 
 import (
 	"context"
+	"encoding/hex"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -61,7 +62,7 @@ func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = batch.Add(ctx, change.Post)
+			err = batch.Add(ctx, p.ledgerEntryToRow(change.Post))
 			rowsAffected = 1
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -71,7 +72,7 @@ func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(ctx, lPool)
+			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(ctx, hex.EncodeToString(lPool.LiquidityPoolId[:]))
 		default:
 			// Updated
 			action = "updating"
@@ -80,7 +81,7 @@ func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qLiquidityPools.UpdateLiquidityPool(ctx, *change.Post)
+			rowsAffected, err = p.qLiquidityPools.UpdateLiquidityPool(ctx, p.ledgerEntryToRow(change.Post))
 		}
 
 		if err != nil {
@@ -107,4 +108,29 @@ func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (p *LiquidityPoolsProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.LiquidityPool {
+	lPool := entry.Data.MustLiquidityPool()
+	cp := lPool.Body.MustConstantProduct()
+	ar := history.LiquidityPoolAssetReserves{
+		{
+			Asset:   cp.Params.AssetA,
+			Reserve: uint64(cp.ReserveA),
+		},
+		{
+			Asset:   cp.Params.AssetB,
+			Reserve: uint64(cp.ReserveB),
+		},
+	}
+	return history.LiquidityPool{
+		PoolID:             hex.EncodeToString(lPool.LiquidityPoolId[:]),
+		Type:               lPool.Body.Type,
+		Fee:                uint32(cp.Params.Fee),
+		TrustlineCount:     uint64(cp.PoolSharesTrustLineCount),
+		ShareCount:         uint64(cp.TotalPoolShares),
+		AssetReserves:      ar,
+		Sponsor:            ledgerEntrySponsorToNullString(*entry),
+		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
+	}
 }
