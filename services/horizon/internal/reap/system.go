@@ -70,28 +70,49 @@ func (r *System) runOnce(ctx context.Context) {
 	}
 }
 
+// Work backwards in 100k ledger blocks to prevent using all the CPU.
+//
+// This runs every hour, so we need to make sure it doesn't
+// run for longer than an hour.
+//
+// Current ledger at 2021-08-12 is 36,827,497, so 100k means 368 batches. At 1
+// batch/second, that seems like a reasonable balance between running well
+// under an hour, and slowing it down enough to leave some CPU for other
+// processes.
+var batchSize = int32(100_000)
+var sleep = 1 * time.Second
+
 func (r *System) clearBefore(ctx context.Context, seq int32) error {
 	log.WithField("new_elder", seq).Info("reaper: clearing")
 
-	start, end, err := toid.LedgerRangeInclusive(1, seq-1)
-	if err != nil {
-		return err
-	}
+	for endSeq := seq - 1; endSeq >= 1; endSeq -= batchSize {
+		startSeq := endSeq - batchSize
+		if startSeq < 1 {
+			startSeq = 1
+		}
 
-	err = r.HistoryQ.Begin()
-	if err != nil {
-		return errors.Wrap(err, "Error in begin")
-	}
-	defer r.HistoryQ.Rollback()
+		start, end, err := toid.LedgerRangeInclusive(startSeq, endSeq)
+		if err != nil {
+			return err
+		}
 
-	err = r.HistoryQ.DeleteRangeAll(ctx, start, end)
-	if err != nil {
-		return errors.Wrap(err, "Error in DeleteRangeAll")
-	}
+		err = r.HistoryQ.Begin()
+		if err != nil {
+			return errors.Wrap(err, "Error in begin")
+		}
+		defer r.HistoryQ.Rollback()
 
-	err = r.HistoryQ.Commit()
-	if err != nil {
-		return errors.Wrap(err, "Error in commit")
+		err = r.HistoryQ.DeleteRangeAll(ctx, start, end)
+		if err != nil {
+			return errors.Wrap(err, "Error in DeleteRangeAll")
+		}
+
+		err = r.HistoryQ.Commit()
+		if err != nil {
+			return errors.Wrap(err, "Error in commit")
+		}
+
+		time.Sleep(sleep)
 	}
 
 	return nil
