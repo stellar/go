@@ -38,22 +38,19 @@ func (cbq LiquidityPoolsQuery) Cursor() (string, error) {
 // indexes.
 func (cbq LiquidityPoolsQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
 	p := cbq.PageQuery
-	r, err := cbq.Cursor()
-	if err != nil {
-		return sql, err
-	}
+	liquidityPoolCursor := cbq.PageQuery.Cursor
 
 	switch p.Order {
 	case db2.OrderAscending:
-		if r != "" {
+		if liquidityPoolCursor != "" {
 			sql = sql.
-				Where(sq.Expr("lp.id > ?", r))
+				Where(sq.Expr("lp.id > ?", liquidityPoolCursor))
 		}
 		sql = sql.OrderBy("lp.id asc")
 	case db2.OrderDescending:
-		if r != "" {
+		if liquidityPoolCursor != "" {
 			sql = sql.
-				Where(sq.Expr("lp.id < ?", r))
+				Where(sq.Expr("lp.id < ?", liquidityPoolCursor))
 		}
 
 		sql = sql.OrderBy("lp.id desc")
@@ -194,10 +191,10 @@ func (q *Q) RemoveLiquidityPool(ctx context.Context, liquidityPoolID string) (in
 
 // FindLiquidityPoolByID returns a liquidity pool.
 func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error) {
-	var claimableBalance LiquidityPool
+	var lp LiquidityPool
 	sql := selectLiquidityPools.Limit(1).Where("lp.id = ?", liquidityPoolID)
-	err := q.Get(ctx, &claimableBalance, sql)
-	return claimableBalance, err
+	err := q.Get(ctx, &lp, sql)
+	return lp, err
 }
 
 // GetLiquidityPools finds all liquidity pools where accountID is one of the claimants
