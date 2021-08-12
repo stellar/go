@@ -6,19 +6,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/stellar/go/gxdr"
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/randxdr"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 )
 
 func TestFuzzLiquidityPools(t *testing.T) {
 	tt := test.Start(t)
+	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 	pp := NewLiquidityPoolsProcessor(q)
@@ -52,7 +53,6 @@ func TestFuzzLiquidityPools(t *testing.T) {
 
 	tt.Assert.NoError(pp.Commit(tt.Ctx))
 }
-
 func TestLiquidityPoolsChangeProcessorTestSuiteState(t *testing.T) {
 	suite.Run(t, new(LiquidityPoolsChangeProcessorTestSuiteState))
 }
