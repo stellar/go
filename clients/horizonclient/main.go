@@ -50,6 +50,9 @@ type AssetType string
 // join represents `join` param in queries
 type join string
 
+// reserves represents `reserves` param in queries
+type reserves []string
+
 const (
 	// OrderAsc represents an ascending order parameter
 	OrderAsc Order = "asc"
@@ -208,6 +211,10 @@ type ClientInterface interface {
 	HomeDomainForAccount(aid string) (string, error)
 	NextTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
 	PrevTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
+	LiquidityPoolDetail(request LiquidityPoolRequest) (hProtocol.LiquidityPool, error)
+	LiquidityPools(request LiquidityPoolsRequest) (hProtocol.LiquidityPoolsPage, error)
+	NextLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
+	PrevLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
