@@ -2044,7 +2044,7 @@ func TestReadChallengeTx_validTimeboundsWithGracePeriod(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimebounds(unixNow + 5 * 59, unixNow + 60 * 60),
+			Timebounds:           NewTimebounds(unixNow+5*59, unixNow+60*60),
 		},
 	)
 	assert.NoError(t, err)
@@ -2080,7 +2080,7 @@ func TestReadChallengeTx_invalidTimeboundsWithGracePeriod(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimebounds(unixNow + 5 * 61, unixNow + 60 * 60),
+			Timebounds:           NewTimebounds(unixNow+5*61, unixNow+60*60),
 		},
 	)
 	assert.NoError(t, err)
