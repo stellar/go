@@ -130,7 +130,6 @@ func (p *LiquidityPoolsProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) histo
 		TrustlineCount:     uint64(cp.PoolSharesTrustLineCount),
 		ShareCount:         uint64(cp.TotalPoolShares),
 		AssetReserves:      ar,
-		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 	}
 }

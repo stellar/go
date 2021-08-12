@@ -3,7 +3,6 @@ package history
 import (
 	"testing"
 
-	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
@@ -30,7 +29,6 @@ func TestAddLiquidityPool(t *testing.T) {
 				Reserve: 450,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 123,
 	}
 

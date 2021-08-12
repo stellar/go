@@ -6,7 +6,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/guregu/null"
 	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -256,7 +255,6 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 			},
 		},
 		LastModifiedLedger: 123,
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockBatchInsertBuilder.On(
@@ -339,7 +337,6 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 			},
 		},
 		LastModifiedLedger: 123,
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 
 	s.mockQ.On(

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -17,7 +16,6 @@ import (
 type LiquidityPoolsQuery struct {
 	PageQuery db2.PageQuery
 	Assets    []xdr.Asset
-	Sponsor   *xdr.AccountId
 }
 
 // Cursor validates and returns the query page cursor
@@ -74,7 +72,6 @@ type LiquidityPool struct {
 	TrustlineCount     uint64                     `db:"trustline_count"`
 	ShareCount         uint64                     `db:"share_count"`
 	AssetReserves      LiquidityPoolAssetReserves `db:"asset_reserves"`
-	Sponsor            null.String                `db:"sponsor"`
 	LastModifiedLedger uint32                     `db:"last_modified_ledger"`
 }
 
@@ -219,10 +216,6 @@ func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([
 			Where(`lp.asset_reserves @> '[{"asset": "` + assetB64 + `"}]'`)
 	}
 
-	if query.Sponsor != nil {
-		sql = sql.Where("lp.sponsor = ?", query.Sponsor.Address())
-	}
-
 	var results []LiquidityPool
 	if err := q.Select(ctx, &results, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
@@ -249,7 +242,6 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.trustline_count, " +
 	"lp.share_count, " +
 	"lp.asset_reserves, " +
-	"lp.sponsor, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")

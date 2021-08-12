@@ -3,7 +3,6 @@ package history
 import (
 	"testing"
 
-	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -31,7 +30,6 @@ func TestFindLiquidityPool(t *testing.T) {
 				Reserve: 450,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 123,
 	}
 
@@ -70,7 +68,6 @@ func TestRemoveLiquidityPool(t *testing.T) {
 				Reserve: 450,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 123,
 	}
 
@@ -119,7 +116,6 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 				Reserve: 450,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 123,
 	}
 
@@ -221,7 +217,6 @@ func TestUpdateLiquidityPool(t *testing.T) {
 				Reserve: 600,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 124,
 	}
 
@@ -259,7 +254,6 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 				Reserve: 450,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 123,
 	}
 

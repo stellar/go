@@ -438,7 +438,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				Reserve: 123,
 			},
 		},
-		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		LastModifiedLedger: 62,
 	}
 	liquidityPoolChange := ingest.Change{
@@ -466,12 +465,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				},
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
-			Ext: xdr.LedgerEntryExt{
-				V: 1,
-				V1: &xdr.LedgerEntryExtensionV1{
-					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				},
-			},
 		},
 	}
 

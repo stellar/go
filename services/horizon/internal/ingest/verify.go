@@ -702,7 +702,6 @@ func addLiquidityPoolsToStateVerifier(
 				LiquidityPool: &lPoolEntry,
 			},
 		}
-		addLedgerEntrySponsor(&entry, row.Sponsor)
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
