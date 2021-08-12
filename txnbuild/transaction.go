@@ -1098,8 +1098,10 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 	if tx.Timebounds().MaxTime == TimeoutInfinite {
 		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction requires non-infinite timebounds")
 	}
+	// Apply a grace period to the challenge MinTime to account for clock drift between the server and client
+	var gracePeriod int64 = 5 // seconds
 	currentTime := time.Now().UTC().Unix()
-	if currentTime < tx.Timebounds().MinTime || currentTime > tx.Timebounds().MaxTime {
+	if currentTime + gracePeriod < tx.Timebounds().MinTime || currentTime > tx.Timebounds().MaxTime {
 		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
 			currentTime, tx.Timebounds().MinTime, tx.Timebounds().MaxTime)
 	}
