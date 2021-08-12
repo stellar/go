@@ -654,7 +654,7 @@ func addLiquidityPoolsToStateVerifier(
 	if len(ids) == 0 {
 		return nil
 	}
-	var idsHex = make([]string, len(ids), len(ids))
+	var idsHex = make([]string, len(ids))
 	for i, id := range ids {
 		idsHex[i] = hex.EncodeToString(id[:])
 	}
