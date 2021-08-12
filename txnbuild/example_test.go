@@ -978,3 +978,11 @@ func ExampleRevokeSponsorship() {
 
 	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAMgAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUVGR0gAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUlKS0wAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAeoucsUAAABA9YO+xRc5Vb8ueP1U8go7ka+u/gZJd2z075c2pdFxYb+4AvQUQGvg+N4wvtNll43lPwXq5XAz74BfP99wugplDQ==
 }
+
+func ExampleLiquidityPoolDeposit() {
+	check(fmt.Errorf("TODO: Implement ExampleLiquidityPoolDeposit"))
+}
+
+func ExampleLiquidityPoolWithdraw() {
+	check(fmt.Errorf("TODO: Implement ExampleLiquidityPoolWithdraw"))
+}
