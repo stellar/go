@@ -55,7 +55,7 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, *xdr.ClaimableBalanceId, erro
 }
 
 // ApplyCursor applies cursor to the given sql. For performance reason the limit
-// is not apply here. This allows us to hint the planner later to use the right
+// is not applied here. This allows us to hint the planner later to use the right
 // indexes.
 func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
 	p := cbq.PageQuery
@@ -121,7 +121,7 @@ type ClaimableBalancesBatchInsertBuilder interface {
 	Exec(ctx context.Context) error
 }
 
-// QClaimableBalances defines account related queries.
+// QClaimableBalances defines claimable-balance-related queries.
 type QClaimableBalances interface {
 	NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder
 	UpdateClaimableBalance(ctx context.Context, entry xdr.LedgerEntry) (int64, error)

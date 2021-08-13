@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -166,6 +167,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		offers := make([]int64, 0, verifyBatchSize)
 		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
 		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
+		lPools := make([]xdr.PoolId, 0, verifyBatchSize)
 		for _, key := range keys {
 			switch key.Type {
 			case xdr.LedgerEntryTypeAccount:
@@ -178,6 +180,8 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				trustLines = append(trustLines, *key.TrustLine)
 			case xdr.LedgerEntryTypeClaimableBalance:
 				cBalances = append(cBalances, key.ClaimableBalance.BalanceId)
+			case xdr.LedgerEntryTypeLiquidityPool:
+				lPools = append(lPools, key.LiquidityPool.LiquidityPoolId)
 			default:
 				return errors.New("GetLedgerKeys return unexpected type")
 			}
@@ -206,6 +210,11 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		err = addClaimableBalanceToStateVerifier(s.ctx, verifier, assetStats, historyQ, cBalances)
 		if err != nil {
 			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
+		}
+
+		err = addLiquidityPoolsToStateVerifier(s.ctx, verifier, historyQ, lPools)
+		if err != nil {
+			return errors.Wrap(err, "addLiquidityPoolsToStateVerifier failed")
 		}
 
 		total += len(keys)
@@ -239,7 +248,12 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running historyQ.CountClaimableBalances")
 	}
 
-	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances)
+	countLiquidityPools, err := historyQ.CountLiquidityPools(s.ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountLiquidityPools")
+	}
+
+	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances + countLiquidityPools)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
@@ -626,6 +640,72 @@ func addClaimableBalanceToStateVerifier(
 				errors.Wrap(err, "could not add claimable balance to asset stats"),
 			)
 		}
+	}
+
+	return nil
+}
+
+func addLiquidityPoolsToStateVerifier(
+	ctx context.Context,
+	verifier *verify.StateVerifier,
+	q history.IngestionQ,
+	ids []xdr.PoolId,
+) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	var idsHex = make([]string, len(ids))
+	for i, id := range ids {
+		idsHex[i] = hex.EncodeToString(id[:])
+	}
+	lPools, err := q.GetLiquidityPoolsByID(ctx, idsHex)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetLiquidityPoolsByID")
+	}
+
+	for _, row := range lPools {
+		if len(row.AssetReserves) != 2 {
+			return fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
+		}
+		id, err := hex.DecodeString(row.PoolID)
+		if err != nil {
+			return errors.Wrap(err, "Error decoding pool ID")
+		}
+		var poolID xdr.PoolId
+		if len(id) != len(poolID) {
+			return fmt.Errorf("Error decoding pool ID, incorrect length (%d)", len(id))
+		}
+		copy(poolID[:], id)
+
+		var lPoolEntry = xdr.LiquidityPoolEntry{
+			LiquidityPoolId: poolID,
+			Body: xdr.LiquidityPoolEntryBody{
+				Type: row.Type,
+				ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+					Params: xdr.LiquidityPoolConstantProductParameters{
+						AssetA: row.AssetReserves[0].Asset,
+						AssetB: row.AssetReserves[1].Asset,
+						Fee:    xdr.Int32(row.Fee),
+					},
+					ReserveA:                 xdr.Int64(row.AssetReserves[0].Reserve),
+					ReserveB:                 xdr.Int64(row.AssetReserves[1].Reserve),
+					TotalPoolShares:          xdr.Int64(row.ShareCount),
+					PoolSharesTrustLineCount: xdr.Int64(row.TrustlineCount),
+				},
+			},
+		}
+
+		entry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+			Data: xdr.LedgerEntryData{
+				Type:          xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &lPoolEntry,
+			},
+		}
+		if err := verifier.Write(entry); err != nil {
+			return err
+		}
+
 	}
 
 	return nil

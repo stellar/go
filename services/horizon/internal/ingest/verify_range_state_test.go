@@ -422,10 +422,56 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			},
 		},
 	}
+	liquidityPool := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 123,
+			},
+		},
+		LastModifiedLedger: 62,
+	}
+	liquidityPoolChange := ingest.Change{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &xdr.LiquidityPoolEntry{
+					LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+					Body: xdr.LiquidityPoolEntryBody{
+						Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+						ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+							Params: xdr.LiquidityPoolConstantProductParameters{
+								AssetA: xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+								AssetB: xdr.MustNewNativeAsset(),
+								Fee:    34,
+							},
+							ReserveA:                 450,
+							ReserveB:                 123,
+							TotalPoolShares:          412241,
+							PoolSharesTrustLineCount: 52115,
+						},
+					},
+				},
+			},
+			LastModifiedLedgerSeq: xdr.Uint32(62),
+		},
+	}
 
 	mockChangeReader.On("Read").Return(accountChange, nil).Once()
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
 	mockChangeReader.On("Read").Return(claimableBalanceChange, nil).Once()
+	mockChangeReader.On("Read").Return(liquidityPoolChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	s.historyAdapter.On("GetState", s.ctx, uint32(63)).Return(mockChangeReader, nil).Once()
@@ -494,6 +540,11 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	clonedQ.MockQClaimableBalances.
 		On("GetClaimableBalancesByID", s.ctx, []xdr.ClaimableBalanceId{claimableBalanceChange.Post.Data.ClaimableBalance.BalanceId}).
 		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
+
+	clonedQ.MockQLiquidityPools.On("CountLiquidityPools", s.ctx).Return(1, nil).Once()
+	clonedQ.MockQLiquidityPools.
+		On("GetLiquidityPoolsByID", s.ctx, []string{liquidityPool.PoolID}).
+		Return([]history.LiquidityPool{liquidityPool}, nil).Once()
 
 	next, err := verifyRangeState{
 		fromLedger: 100, toLedger: 110, verifyState: true,

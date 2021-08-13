@@ -42,6 +42,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
+	mockLiquidityPoolsBatchInsertBuilder := &history.MockLiquidityPoolsBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockLiquidityPoolsBatchInsertBuilder)
+	mockLiquidityPoolsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQLiquidityPools.On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
+		Return(mockLiquidityPoolsBatchInsertBuilder).Once()
+
 	q.MockQAccounts.On("UpsertAccounts", ctx, []xdr.LedgerEntry{
 		{
 			LastModifiedLedgerSeq: 1,
@@ -130,6 +136,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
+
+	mockLiquidityPoolsBatchInsertBuilder := &history.MockLiquidityPoolsBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockLiquidityPoolsBatchInsertBuilder)
+	mockLiquidityPoolsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQLiquidityPools.On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
+		Return(mockLiquidityPoolsBatchInsertBuilder).Once()
 
 	q.MockQAccounts.On("UpsertAccounts", ctx, []xdr.LedgerEntry{
 		{
@@ -365,6 +377,12 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
+	mockLiquidityPoolsBatchInsertBuilder := &history.MockLiquidityPoolsBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockLiquidityPoolsBatchInsertBuilder)
+	mockLiquidityPoolsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQLiquidityPools.On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
+		Return(mockLiquidityPoolsBatchInsertBuilder).Once()
+
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
@@ -429,6 +447,11 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
+
+	mockLiquidityPoolsBatchInsertBuilder := &history.MockLiquidityPoolsBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockLiquidityPoolsBatchInsertBuilder)
+	q.MockQLiquidityPools.On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
+		Return(mockLiquidityPoolsBatchInsertBuilder).Once()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,

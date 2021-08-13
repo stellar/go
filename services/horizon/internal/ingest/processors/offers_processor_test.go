@@ -21,6 +21,7 @@ import (
 
 func TestFuzzOffers(t *testing.T) {
 	tt := test.Start(t)
+	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 	pp := NewOffersProcessor(q, 10)
