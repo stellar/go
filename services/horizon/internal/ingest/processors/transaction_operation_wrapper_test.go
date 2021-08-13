@@ -1778,8 +1778,6 @@ func TestSetTrustLineFlagsTestSuite(t *testing.T) {
 }
 
 func TestParticipantsCoversAllOperationTypes(t *testing.T) {
-	// TODO remove skip after amm ingestion is complete
-	t.Skip()
 	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	for typ, s := range xdr.OperationTypeToStringMap {
 		op := xdr.Operation{
@@ -1865,7 +1863,7 @@ func TestDetailsCoversAllOperationTypes(t *testing.T) {
 				err2 := recover()
 				if err2 != nil {
 					if err3, ok := err2.(error); ok {
-						assert.NotContains(t, "Unknown operation type", err3.Error())
+						assert.NotContains(t, err3.Error(), "Unknown operation type")
 					}
 				}
 				assert.True(t, err2 != nil || err == nil, s)

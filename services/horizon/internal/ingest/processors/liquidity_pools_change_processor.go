@@ -10,24 +10,24 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type LiquidityPoolsProcessor struct {
+type LiquidityPoolsChangeProcessor struct {
 	qLiquidityPools history.QLiquidityPools
 	cache           *ingest.ChangeCompactor
 }
 
-func NewLiquidityPoolsProcessor(Q history.QLiquidityPools) *LiquidityPoolsProcessor {
-	p := &LiquidityPoolsProcessor{
+func NewLiquidityPoolsChangeProcessor(Q history.QLiquidityPools) *LiquidityPoolsChangeProcessor {
+	p := &LiquidityPoolsChangeProcessor{
 		qLiquidityPools: Q,
 	}
 	p.reset()
 	return p
 }
 
-func (p *LiquidityPoolsProcessor) reset() {
+func (p *LiquidityPoolsChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *LiquidityPoolsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
+func (p *LiquidityPoolsChangeProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeLiquidityPool {
 		return nil
 	}
@@ -48,7 +48,7 @@ func (p *LiquidityPoolsProcessor) ProcessChange(ctx context.Context, change inge
 	return nil
 }
 
-func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
+func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
 	batch := p.qLiquidityPools.NewLiquidityPoolsBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()
@@ -110,7 +110,7 @@ func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
-func (p *LiquidityPoolsProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.LiquidityPool {
+func (p *LiquidityPoolsChangeProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.LiquidityPool {
 	lPool := entry.Data.MustLiquidityPool()
 	cp := lPool.Body.MustConstantProduct()
 	ar := history.LiquidityPoolAssetReserves{
