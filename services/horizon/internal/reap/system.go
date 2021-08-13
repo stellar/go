@@ -26,7 +26,7 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 		return nil
 	}
 
-	err := r.clearBefore(ctx, targetElder)
+	err := r.clearBefore(ctx, latest.HistoryElder, targetElder)
 	if err != nil {
 		return err
 	}
@@ -82,16 +82,15 @@ func (r *System) runOnce(ctx context.Context) {
 var batchSize = int32(100_000)
 var sleep = 1 * time.Second
 
-func (r *System) clearBefore(ctx context.Context, seq int32) error {
-	log.WithField("new_elder", seq).Info("reaper: clearing")
-
-	for endSeq := seq - 1; endSeq >= 1; endSeq -= batchSize {
-		startSeq := endSeq - batchSize
-		if startSeq < 1 {
-			startSeq = 1
+func (r *System) clearBefore(ctx context.Context, startSeq, endSeq int32) error {
+	for batchEndSeq := endSeq - 1; batchEndSeq >= startSeq; batchEndSeq -= batchSize {
+		batchStartSeq := batchEndSeq - batchSize
+		if batchStartSeq < startSeq {
+			batchStartSeq = startSeq
 		}
+		log.WithField("start_ledger", batchStartSeq).WithField("end_ledger", batchEndSeq).Info("reaper: clearing")
 
-		start, end, err := toid.LedgerRangeInclusive(startSeq, endSeq)
+		batchStart, batchEnd, err := toid.LedgerRangeInclusive(batchStartSeq, batchEndSeq)
 		if err != nil {
 			return err
 		}
@@ -102,7 +101,7 @@ func (r *System) clearBefore(ctx context.Context, seq int32) error {
 		}
 		defer r.HistoryQ.Rollback()
 
-		err = r.HistoryQ.DeleteRangeAll(ctx, start, end)
+		err = r.HistoryQ.DeleteRangeAll(ctx, batchStart, batchEnd)
 		if err != nil {
 			return errors.Wrap(err, "Error in DeleteRangeAll")
 		}
