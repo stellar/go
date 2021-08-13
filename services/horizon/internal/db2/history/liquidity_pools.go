@@ -18,34 +18,6 @@ type LiquidityPoolsQuery struct {
 	Assets    []xdr.Asset
 }
 
-// ApplyCursor applies cursor to the given sql. For performance reason the limit
-// is not applied here. This allows us to hint the planner later to use the right
-// indexes.
-func (cbq LiquidityPoolsQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
-	p := cbq.PageQuery
-	liquidityPoolCursor := cbq.PageQuery.Cursor
-
-	switch p.Order {
-	case db2.OrderAscending:
-		if liquidityPoolCursor != "" {
-			sql = sql.
-				Where(sq.Expr("lp.id > ?", liquidityPoolCursor))
-		}
-		sql = sql.OrderBy("lp.id asc")
-	case db2.OrderDescending:
-		if liquidityPoolCursor != "" {
-			sql = sql.
-				Where(sq.Expr("lp.id < ?", liquidityPoolCursor))
-		}
-
-		sql = sql.OrderBy("lp.id desc")
-	default:
-		return sql, errors.Errorf("invalid order: %s", p.Order)
-	}
-
-	return sql, nil
-}
-
 // LiquidityPool is a row of data from the `liquidity_pools`.
 type LiquidityPool struct {
 	PoolID             string                     `db:"id"`
@@ -184,7 +156,7 @@ func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (
 
 // GetLiquidityPools finds all liquidity pools where accountID is one of the claimants
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
-	sql, err := query.ApplyCursor(selectLiquidityPools)
+	sql, err := query.PageQuery.ApplyRawTo(selectLiquidityPools, "lp.id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}

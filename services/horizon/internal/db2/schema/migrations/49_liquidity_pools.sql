@@ -11,6 +11,8 @@ CREATE TABLE liquidity_pools (
     PRIMARY KEY (id)
 );
 
+CREATE INDEX liquidity_pools_by_asset_reserves ON liquidity_pools USING gin(asset_reserves jsonb_path_ops);
+
 -- +migrate Down
 
 DROP TABLE liquidity_pools cascade;

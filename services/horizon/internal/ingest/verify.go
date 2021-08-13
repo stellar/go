@@ -660,7 +660,7 @@ func addLiquidityPoolsToStateVerifier(
 	}
 	lPools, err := q.GetLiquidityPoolsByID(ctx, idsHex)
 	if err != nil {
-		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
+		return errors.Wrap(err, "Error running history.Q.GetLiquidityPoolsByID")
 	}
 
 	for _, row := range lPools {

@@ -33,8 +33,6 @@ func TestFuzzLiquidityPools(t *testing.T) {
 			shape,
 			[]randxdr.Preset{
 				{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
-				// the offers postgres table is configured with some database constraints which validate the following
-				// fields:
 				{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32()},
 				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.fee"), randxdr.SetPositiveNum32()},
 				{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.reserveA"), randxdr.SetPositiveNum64()},

@@ -62,6 +62,14 @@ func (p PageQuery) ApplyTo(
 	return p.ApplyToUsingCursor(sql, col, cursor)
 }
 
+// ApplyRawTo applies the raw PageQuery.Cursor cursor to the builder
+func (p PageQuery) ApplyRawTo(
+	sql sq.SelectBuilder,
+	col string,
+) (sq.SelectBuilder, error) {
+	return p.ApplyToUsingCursor(sql, col, p.Cursor)
+}
+
 // ApplyToUsingCursor returns a new SelectBuilder after applying the paging effects of
 // `p` to `sql`.  This method allows any type of cursor by a single column
 func (p PageQuery) ApplyToUsingCursor(
