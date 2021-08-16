@@ -437,10 +437,18 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
-		// TODO fix before Protocol 18
-		addAssetDetails(details, op.Line.ToAsset(), "")
+		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
+			details["asset_type"] = "liquidity_pool_shares"
+			if op.Line.LiquidityPool.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, fmt.Errorf("unkown liquidity pool type %d", op.Line.LiquidityPool.Type)
+			}
+			// TODO: we need the hashing function in order to obtain the id (it's not provided directly)
+			// details["liquidity_pool_id"] = op.Line.LiquidityPool.ConstantProduct.
+		} else {
+			addAssetDetails(details, op.Line.ToAsset(), "")
+			details["trustee"] = details["asset_issuer"]
+		}
 		addAccountAndMuxedAccountDetails(details, *source, "trustor")
-		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
