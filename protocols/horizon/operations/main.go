@@ -325,40 +325,28 @@ type LiquidityPoolAssetAmount struct {
 	Amount string `json:"amount"`
 }
 
-// LiquidityMaxDepositAssetAmount is the maximum amount of an asset to deposit into a liquidity pool
-type LiquidityPoolMaxDepositAssetAmount struct {
-	Asset            string `json:"asset"`
-	MaxDepositAmount string `json:"max_deposit_amount"`
-}
-
 // LiquidityPoolDeposit is the json resource representing a single operation whose type is
 // LiquidityPoolDeposit.
 type LiquidityPoolDeposit struct {
 	Base
-	LiquidityPoolID   string                               `json:"liquidty_pool_id"`
-	Reserves          []LiquidityPoolMaxDepositAssetAmount `json:"reserves"`
-	MinPrice          string                               `json:"min_price"`
-	MinPriceR         base.Price                           `json:"min_price_r"`
-	MaxPrice          string                               `json:"max_price"`
-	MaxPriceR         base.Price                           `json:"max_price_r"`
-	ReservesDeposited []LiquidityPoolAssetAmount           `json:"reserves_deposited"`
-	SharesReceived    uint64                               `json:"shares_received,string"`
-}
-
-// LiquidityPoolMinWithdrawAssetAmount is the maximum amount of an asset to withdraw from a liquidity pool
-type LiquidityPoolMinWithdrawAssetAmount struct {
-	Asset            string `json:"asset"`
-	MinDepositAmount string `json:"min_amount"`
+	LiquidityPoolID   string                     `json:"liquidty_pool_id"`
+	ReservesMax       []LiquidityPoolAssetAmount `json:"reserves_max"`
+	MinPrice          string                     `json:"min_price"`
+	MinPriceR         base.Price                 `json:"min_price_r"`
+	MaxPrice          string                     `json:"max_price"`
+	MaxPriceR         base.Price                 `json:"max_price_r"`
+	ReservesDeposited []LiquidityPoolAssetAmount `json:"reserves_deposited"`
+	SharesReceived    uint64                     `json:"shares_received,string"`
 }
 
 // LiquidityPoolWithdraw is the json resource representing a single operation whose type is
 // LiquidityPoolWithdraw.
 type LiquidityPoolWithdraw struct {
 	Base
-	LiquidityPoolID  string                                `json:"liquidty_pool_id"`
-	Reserves         []LiquidityPoolMinWithdrawAssetAmount `json:"reserves"`
-	Shares           uint64                                `json:"shares,string"`
-	ReservesReceived []LiquidityPoolAssetAmount            `json:"reserves_received"`
+	LiquidityPoolID  string                     `json:"liquidty_pool_id"`
+	ReservesMin      []LiquidityPoolAssetAmount `json:"reserves_min"`
+	Shares           uint64                     `json:"shares,string"`
+	ReservesReceived []LiquidityPoolAssetAmount `json:"reserves_received"`
 }
 
 // Operation interface contains methods implemented by the operation types

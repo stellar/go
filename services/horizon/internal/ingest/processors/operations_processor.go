@@ -543,7 +543,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		if err != nil {
 			return nil, err
 		}
-		details["reserves"] = []operations.LiquidityPoolMaxDepositAssetAmount{
+		details["reserves_max"] = []operations.LiquidityPoolAssetAmount{
 			{assetA.String(), amount.String(op.MaxAmountA)},
 			{assetB.String(), amount.String(op.MaxAmountB)},
 		}
@@ -577,7 +577,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		if err != nil {
 			return nil, err
 		}
-		details["reserves"] = []operations.LiquidityPoolMinWithdrawAssetAmount{
+		details["reserves_min"] = []operations.LiquidityPoolAssetAmount{
 			{assetA.String(), amount.String(op.MinAmountA)},
 			{assetB.String(), amount.String(op.MinAmountB)},
 		}
