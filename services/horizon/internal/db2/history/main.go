@@ -711,7 +711,9 @@ type TrustLine struct {
 	AssetIssuer        string        `db:"asset_issuer"`
 	AssetCode          string        `db:"asset_code"`
 	Balance            int64         `db:"balance"`
+	LedgerKey          string        `db:"ledger_key"`
 	Limit              int64         `db:"trust_line_limit"`
+	LiquidityPoolID    string        `db:"liquidity_pool_id"`
 	BuyingLiabilities  int64         `db:"buying_liabilities"`
 	SellingLiabilities int64         `db:"selling_liabilities"`
 	Flags              uint32        `db:"flags"`
@@ -722,15 +724,13 @@ type TrustLine struct {
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
-	GetTrustLinesByKeys(ctx context.Context, keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
-	InsertTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	UpdateTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	UpsertTrustLines(ctx context.Context, entries []xdr.LedgerEntry) error
-	RemoveTrustLine(ctx context.Context, key xdr.LedgerKeyTrustLine) (int64, error)
+	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
+	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
+	RemoveTrustLine(ctx context.Context, ledgerKey string) (int64, error)
 }
 
 type TrustLinesBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
+	Add(ctx context.Context, trustline TrustLine) error
 	Exec(ctx context.Context) error
 }
 

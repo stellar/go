@@ -47,7 +47,7 @@ func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.C
 }
 
 func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
-	batchUpsertTrustLines := []xdr.LedgerEntry{}
+	var batchUpsertTrustLines []history.TrustLine
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -59,7 +59,43 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 		switch {
 		case change.Post != nil:
 			// Created and updated
-			batchUpsertTrustLines = append(batchUpsertTrustLines, *change.Post)
+			trustLine := change.Post.Data.MustTrustLine()
+			err = ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
+			if err != nil {
+				return errors.Wrap(err, "Error creating ledger key")
+			}
+			var ledgerKeyString string
+			ledgerKeyString, err = ledgerKey.MarshalBinaryBase64()
+			if err != nil {
+				return errors.Wrap(err, "Error marshalling ledger key")
+			}
+
+			assetType := trustLine.Asset.Type
+			var assetCode, assetIssuer, poolID string
+			if assetType == xdr.AssetTypeAssetTypePoolShare {
+				poolID = poolIDToString(trustLine.Asset.MustLiquidityPoolId())
+			} else {
+				if err = trustLine.Asset.ToAsset().Extract(&assetType, &assetCode, &assetIssuer); err != nil {
+					return errors.Wrap(err, "Error extracting asset from trustline")
+				}
+			}
+
+			liabilities := trustLine.Liabilities()
+			batchUpsertTrustLines = append(batchUpsertTrustLines, history.TrustLine{
+				AccountID:          trustLine.AccountId.Address(),
+				AssetType:          assetType,
+				AssetIssuer:        assetIssuer,
+				AssetCode:          assetCode,
+				Balance:            int64(trustLine.Balance),
+				LedgerKey:          ledgerKeyString,
+				Limit:              int64(trustLine.Limit),
+				LiquidityPoolID:    poolID,
+				BuyingLiabilities:  int64(liabilities.Buying),
+				SellingLiabilities: int64(liabilities.Selling),
+				Flags:              uint32(trustLine.Flags),
+				LastModifiedLedger: uint32(change.Post.LastModifiedLedgerSeq),
+				Sponsor:            ledgerEntrySponsorToNullString(*change.Post),
+			})
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			action = "removing"
@@ -68,7 +104,12 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.trustLinesQ.RemoveTrustLine(ctx, *ledgerKey.TrustLine)
+			ledgerKeyString, err := ledgerKey.MarshalBinaryBase64()
+			if err != nil {
+				return errors.Wrap(err, "Error marshalling ledger key")
+			}
+
+			rowsAffected, err = p.trustLinesQ.RemoveTrustLine(ctx, ledgerKeyString)
 			if err != nil {
 				return err
 			}
@@ -79,8 +120,7 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 					rowsAffected,
 					action,
 					ledgerKey.TrustLine.AccountId.Address(),
-					// TODO fix before Protocol 18
-					ledgerKey.TrustLine.Asset.ToAsset().String(),
+					ledgerKeyString,
 				))
 			}
 		default:

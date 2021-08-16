@@ -255,6 +255,30 @@ func (q *Q) AccountsForAsset(ctx context.Context, asset xdr.Asset, page db2.Page
 	return results, nil
 }
 
+// AccountsForLiquidityPool returns a list of `AccountEntry` rows who are trustee to a
+// liquidity pool share asset
+func (q *Q) AccountsForLiquidityPool(ctx context.Context, poolID string, page db2.PageQuery) ([]AccountEntry, error) {
+	sql := sq.
+		Select("accounts.*").
+		From("accounts").
+		Join("trust_lines ON accounts.account_id = trust_lines.account_id").
+		Where(map[string]interface{}{
+			"trust_lines.liquidity_pool_id": poolID,
+		})
+
+	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.account_id", page.Cursor)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	var results []AccountEntry
+	if err := q.Select(ctx, &results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
 func selectBySponsor(table, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
 	sql := sq.
 		Select("account_id").

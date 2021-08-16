@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/guregu/null"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -110,50 +111,36 @@ var (
 		},
 	}
 
-	eurTrustLine = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: xdr.MustAddress(accountOne),
-				Asset:     euro.ToTrustLineAsset(),
-				Balance:   20000,
-				Limit:     223456789,
-				Flags:     1,
-				Ext: xdr.TrustLineEntryExt{
-					V: 1,
-					V1: &xdr.TrustLineEntryV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  3,
-							Selling: 4,
-						},
-					},
-				},
-			},
-		},
+	eurTrustLine = history.TrustLine{
+		AccountID:          accountOne,
+		AssetType:          euro.Type,
+		AssetIssuer:        trustLineIssuer,
+		AssetCode:          "EUR",
+		Balance:            20000,
+		LedgerKey:          "eur-trustline1",
+		Limit:              223456789,
+		LiquidityPoolID:    "",
+		BuyingLiabilities:  3,
+		SellingLiabilities: 4,
+		Flags:              1,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
 	}
 
-	usdTrustLine = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: xdr.MustAddress(accountTwo),
-				Asset:     usd.ToTrustLineAsset(),
-				Balance:   10000,
-				Limit:     123456789,
-				Flags:     0,
-				Ext: xdr.TrustLineEntryExt{
-					V: 1,
-					V1: &xdr.TrustLineEntryV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  1,
-							Selling: 2,
-						},
-					},
-				},
-			},
-		},
+	usdTrustLine = history.TrustLine{
+		AccountID:          accountTwo,
+		AssetType:          usd.Type,
+		AssetIssuer:        trustLineIssuer,
+		AssetCode:          "USD",
+		Balance:            10000,
+		LedgerKey:          "usd-trustline1",
+		Limit:              123456789,
+		LiquidityPoolID:    "",
+		BuyingLiabilities:  1,
+		SellingLiabilities: 2,
+		Flags:              0,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
 	}
 
 	data1 = xdr.LedgerEntry{
@@ -246,38 +233,36 @@ func TestAccountInfo(t *testing.T) {
 
 	tt.Assert.NoError(err)
 
-	_, err = q.InsertTrustLine(tt.Ctx, xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 6,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: accountID,
-				Asset: xdr.MustNewCreditAsset(
-					"USD",
-					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				).ToTrustLineAsset(),
-				Balance: 0,
-				Limit:   9223372036854775807,
-				Flags:   1,
-			},
+	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		{
+			AccountID:          accountID.Address(),
+			AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetIssuer:        "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+			AssetCode:          "USD",
+			Balance:            0,
+			LedgerKey:          "test-usd-tl-1",
+			Limit:              9223372036854775807,
+			LiquidityPoolID:    "",
+			BuyingLiabilities:  0,
+			SellingLiabilities: 0,
+			Flags:              1,
+			LastModifiedLedger: 6,
+			Sponsor:            null.String{},
 		},
-	})
-	assert.NoError(t, err)
-
-	_, err = q.InsertTrustLine(tt.Ctx, xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: accountID,
-				Asset: xdr.MustNewCreditAsset(
-					"EUR",
-					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				).ToTrustLineAsset(),
-				Balance: 0,
-				Limit:   9223372036854775807,
-				Flags:   1,
-			},
+		{
+			AccountID:          accountID.Address(),
+			AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetIssuer:        "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+			AssetCode:          "EUR",
+			Balance:            0,
+			LedgerKey:          "test-eur-tl-1",
+			Limit:              9223372036854775807,
+			LiquidityPoolID:    "",
+			BuyingLiabilities:  0,
+			SellingLiabilities: 0,
+			Flags:              1,
+			LastModifiedLedger: 1234,
+			Sponsor:            null.String{},
 		},
 	})
 	assert.NoError(t, err)
@@ -518,9 +503,10 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(0, len(records))
 
-	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
-	assert.NoError(t, err)
-	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
+	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		eurTrustLine,
+		usdTrustLine,
+	})
 	assert.NoError(t, err)
 
 	records, err = handler.GetResourcePage(

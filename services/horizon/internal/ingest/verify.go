@@ -521,16 +521,50 @@ func addTrustLinesToStateVerifier(
 		return nil
 	}
 
-	trustLines, err := q.GetTrustLinesByKeys(ctx, keys)
+	var ledgerKeyStrings []string
+	for _, key := range keys {
+		var ledgerKey xdr.LedgerKey
+		if err := ledgerKey.SetTrustline(key.AccountId, key.Asset); err != nil {
+			return errors.Wrap(err, "Error running ledgerKey.SetTrustline")
+		}
+		b64, err := ledgerKey.MarshalBinaryBase64()
+		if err != nil {
+			return errors.Wrap(err, "Error running ledgerKey.MarshalBinaryBase64")
+		}
+		ledgerKeyStrings = append(ledgerKeyStrings, b64)
+	}
+
+	trustLines, err := q.GetTrustLinesByKeys(ctx, ledgerKeyStrings)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetTrustLinesByKeys")
 	}
 
 	for _, row := range trustLines {
-		asset := xdr.MustNewCreditAsset(row.AssetCode, row.AssetIssuer)
+		var asset xdr.TrustLineAsset
+		switch row.AssetType {
+		case xdr.AssetTypeAssetTypePoolShare:
+			asset = xdr.TrustLineAsset{
+				Type:            xdr.AssetTypeAssetTypePoolShare,
+				LiquidityPoolId: &xdr.PoolId{},
+			}
+			_, err = hex.Decode((*asset.LiquidityPoolId)[:], []byte(row.LiquidityPoolID))
+			if err != nil {
+				return errors.Wrap(err, "Error decoding liquidity pool id")
+			}
+		case xdr.AssetTypeAssetTypeNative:
+			asset = xdr.MustNewNativeAsset().ToTrustLineAsset()
+		default:
+			var creditAsset xdr.Asset
+			creditAsset, err = xdr.NewCreditAsset(row.AssetCode, row.AssetIssuer)
+			if err != nil {
+				return errors.Wrap(err, "Error decoding credit asset")
+			}
+			asset = creditAsset.ToTrustLineAsset()
+		}
+
 		trustline := xdr.TrustLineEntry{
 			AccountId: xdr.MustAddress(row.AccountID),
-			Asset:     asset.ToTrustLineAsset(),
+			Asset:     asset,
 			Balance:   xdr.Int64(row.Balance),
 			Limit:     xdr.Int64(row.Limit),
 			Flags:     xdr.Uint32(row.Flags),

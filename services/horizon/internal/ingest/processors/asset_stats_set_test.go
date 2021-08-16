@@ -84,12 +84,12 @@ func TestAddPoolShareTrustline(t *testing.T) {
 		t,
 		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-			Asset:     xdr.TrustLineAsset{
+			Asset: xdr.TrustLineAsset{
 				Type:            xdr.AssetTypeAssetTypePoolShare,
-				LiquidityPoolId: &xdr.PoolId{1,2,3},
+				LiquidityPoolId: &xdr.PoolId{1, 2, 3},
 			},
-			Balance:   1,
-			Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+			Balance: 1,
+			Flags:   xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 		},
 		)),
 	)

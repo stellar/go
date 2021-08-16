@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -47,6 +48,17 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
+	poolShareTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		Asset: xdr.TrustLineAsset{
+			Type:            xdr.AssetTypeAssetTypePoolShare,
+			LiquidityPoolId: &xdr.PoolId{1, 2, 3, 4},
+		},
+		Balance: 12365,
+		Limit:   123659,
+		Flags:   xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
@@ -60,16 +72,47 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 	})
 	s.Assert().NoError(err)
 
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &poolShareTrustLine,
+			},
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		},
+	})
+	s.Assert().NoError(err)
+
 	s.mockQ.On(
 		"UpsertTrustLines",
 		s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.TrustLine{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &trustLine,
-				},
+				AccountID:          trustLine.AccountId.Address(),
+				AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AssetIssuer:        trustLineIssuer.Address(),
+				AssetCode:          "EUR",
+				Balance:            int64(trustLine.Balance),
+				LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFFVVIAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+				Limit:              int64(trustLine.Limit),
+				LiquidityPoolID:    "",
+				BuyingLiabilities:  int64(trustLine.Liabilities().Buying),
+				SellingLiabilities: int64(trustLine.Liabilities().Selling),
+				Flags:              uint32(trustLine.Flags),
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				Sponsor:            null.String{},
+			},
+			{
+				AccountID:          poolShareTrustLine.AccountId.Address(),
+				AssetType:          xdr.AssetTypeAssetTypePoolShare,
+				Balance:            int64(poolShareTrustLine.Balance),
+				LedgerKey:          "AAAAAQAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWgAAAAMBAgMEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+				Limit:              int64(poolShareTrustLine.Limit),
+				LiquidityPoolID:    "0102030400000000000000000000000000000000000000000000000000000000",
+				Flags:              uint32(poolShareTrustLine.Flags),
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
 			},
 		},
 	).Return(nil).Once()
@@ -97,13 +140,21 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.TrustLine{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &trustLine,
-				},
+				AccountID:          trustLine.AccountId.Address(),
+				AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
+				AssetIssuer:        trustLineIssuer.Address(),
+				AssetCode:          "EUR",
+				Balance:            int64(trustLine.Balance),
+				LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFFVVIAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+				Limit:              int64(trustLine.Limit),
+				LiquidityPoolID:    "",
+				BuyingLiabilities:  int64(trustLine.Liabilities().Buying),
+				SellingLiabilities: int64(trustLine.Liabilities().Selling),
+				Flags:              uint32(trustLine.Flags),
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				Sponsor:            null.String{},
 			},
 		},
 	).Return(nil).Once()
@@ -245,24 +296,40 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		s.ctx,
-		mock.AnythingOfType("[]xdr.LedgerEntry"),
+		mock.AnythingOfType("[]history.TrustLine"),
 	).Run(func(args mock.Arguments) {
-		arg := args.Get(1).([]xdr.LedgerEntry)
+		arg := args.Get(1).([]history.TrustLine)
 		s.Assert().ElementsMatch(
-			[]xdr.LedgerEntry{
+			[]history.TrustLine{
 				{
-					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-					Data: xdr.LedgerEntryData{
-						Type:      xdr.LedgerEntryTypeTrustline,
-						TrustLine: &updatedTrustLine,
-					},
+					AccountID:          updatedTrustLine.AccountId.Address(),
+					AssetType:          updatedTrustLine.Asset.Type,
+					AssetIssuer:        trustLineIssuer.Address(),
+					AssetCode:          "EUR",
+					Balance:            int64(updatedTrustLine.Balance),
+					LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFFVVIAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+					Limit:              int64(updatedTrustLine.Limit),
+					LiquidityPoolID:    "",
+					BuyingLiabilities:  int64(updatedTrustLine.Liabilities().Buying),
+					SellingLiabilities: int64(updatedTrustLine.Liabilities().Selling),
+					Flags:              uint32(updatedTrustLine.Flags),
+					LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+					Sponsor:            null.String{},
 				},
 				{
-					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-					Data: xdr.LedgerEntryData{
-						Type:      xdr.LedgerEntryTypeTrustline,
-						TrustLine: &updatedUnauthorizedTrustline,
-					},
+					AccountID:          updatedUnauthorizedTrustline.AccountId.Address(),
+					AssetType:          updatedUnauthorizedTrustline.Asset.Type,
+					AssetIssuer:        trustLineIssuer.Address(),
+					AssetCode:          "USD",
+					Balance:            int64(updatedUnauthorizedTrustline.Balance),
+					LedgerKey:          "AAAAAQAAAAC2LgFRDBZ3J52nLm30kq2iMgrO7dYzYAN3hvjtf1IHWgAAAAFVU0QAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+					Limit:              int64(updatedUnauthorizedTrustline.Limit),
+					LiquidityPoolID:    "",
+					BuyingLiabilities:  int64(updatedUnauthorizedTrustline.Liabilities().Buying),
+					SellingLiabilities: int64(updatedUnauthorizedTrustline.Liabilities().Selling),
+					Flags:              uint32(updatedUnauthorizedTrustline.Flags),
+					LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+					Sponsor:            null.String{},
 				},
 			},
 			arg,
@@ -309,13 +376,21 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.TrustLine{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &updatedTrustLine,
-				},
+				AccountID:          updatedTrustLine.AccountId.Address(),
+				AssetType:          updatedTrustLine.Asset.Type,
+				AssetIssuer:        trustLineIssuer.Address(),
+				AssetCode:          "EUR",
+				Balance:            int64(updatedTrustLine.Balance),
+				LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFFVVIAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+				Limit:              int64(updatedTrustLine.Limit),
+				LiquidityPoolID:    "",
+				BuyingLiabilities:  int64(updatedTrustLine.Liabilities().Buying),
+				SellingLiabilities: int64(updatedTrustLine.Liabilities().Selling),
+				Flags:              uint32(updatedTrustLine.Flags),
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				Sponsor:            null.String{},
 			},
 		},
 	).Return(nil).Once()
@@ -390,24 +465,40 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 	s.mockQ.On(
 		"UpsertTrustLines",
 		s.ctx,
-		mock.AnythingOfType("[]xdr.LedgerEntry"),
+		mock.AnythingOfType("[]history.TrustLine"),
 	).Run(func(args mock.Arguments) {
-		arg := args.Get(1).([]xdr.LedgerEntry)
+		arg := args.Get(1).([]history.TrustLine)
 		s.Assert().ElementsMatch(
-			[]xdr.LedgerEntry{
+			[]history.TrustLine{
 				{
-					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-					Data: xdr.LedgerEntryData{
-						Type:      xdr.LedgerEntryTypeTrustline,
-						TrustLine: &updatedTrustLine,
-					},
+					AccountID:          updatedTrustLine.AccountId.Address(),
+					AssetType:          updatedTrustLine.Asset.Type,
+					AssetIssuer:        trustLineIssuer.Address(),
+					AssetCode:          "EUR",
+					Balance:            int64(updatedTrustLine.Balance),
+					LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFFVVIAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+					Limit:              int64(updatedTrustLine.Limit),
+					LiquidityPoolID:    "",
+					BuyingLiabilities:  int64(updatedTrustLine.Liabilities().Buying),
+					SellingLiabilities: int64(updatedTrustLine.Liabilities().Selling),
+					Flags:              uint32(updatedTrustLine.Flags),
+					LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+					Sponsor:            null.String{},
 				},
 				{
-					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-					Data: xdr.LedgerEntryData{
-						Type:      xdr.LedgerEntryTypeTrustline,
-						TrustLine: &otherUpdatedTrustLine,
-					},
+					AccountID:          otherUpdatedTrustLine.AccountId.Address(),
+					AssetType:          otherUpdatedTrustLine.Asset.Type,
+					AssetIssuer:        trustLineIssuer.Address(),
+					AssetCode:          "USD",
+					Balance:            int64(otherUpdatedTrustLine.Balance),
+					LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFVU0QAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+					Limit:              int64(otherUpdatedTrustLine.Limit),
+					LiquidityPoolID:    "",
+					BuyingLiabilities:  int64(otherUpdatedTrustLine.Liabilities().Buying),
+					SellingLiabilities: int64(otherUpdatedTrustLine.Liabilities().Selling),
+					Flags:              uint32(otherUpdatedTrustLine.Flags),
+					LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+					Sponsor:            null.String{},
 				},
 			},
 			arg,
@@ -452,20 +543,30 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On(
-		"RemoveTrustLine", s.ctx,
-		xdr.LedgerKeyTrustLine{
+	lkStr, err := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeTrustline,
+		TrustLine: &xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
-	).Return(int64(1), nil).Once()
+	}.MarshalBinaryBase64()
+	s.Assert().NoError(err)
 	s.mockQ.On(
-		"RemoveTrustLine", s.ctx,
-		xdr.LedgerKeyTrustLine{
+		"RemoveTrustLine", s.ctx, lkStr,
+	).Return(int64(1), nil).Once()
+
+	lkStr, err = xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeTrustline,
+		TrustLine: &xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
+	}.MarshalBinaryBase64()
+	s.Assert().NoError(err)
+	s.mockQ.On(
+		"RemoveTrustLine", s.ctx, lkStr,
 	).Return(int64(1), nil).Once()
+
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
@@ -519,13 +620,21 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 
 	s.mockQ.On(
 		"UpsertTrustLines", s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.TrustLine{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:      xdr.LedgerEntryTypeTrustline,
-					TrustLine: &updatedTrustLine,
-				},
+				AccountID:          updatedTrustLine.AccountId.Address(),
+				AssetType:          updatedTrustLine.Asset.Type,
+				AssetIssuer:        trustLineIssuer.Address(),
+				AssetCode:          "EUR",
+				Balance:            int64(updatedTrustLine.Balance),
+				LedgerKey:          "AAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8wAAAAFFVVIAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3",
+				Limit:              int64(updatedTrustLine.Limit),
+				LiquidityPoolID:    "",
+				BuyingLiabilities:  int64(updatedTrustLine.Liabilities().Buying),
+				SellingLiabilities: int64(updatedTrustLine.Liabilities().Selling),
+				Flags:              uint32(updatedTrustLine.Flags),
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				Sponsor:            null.String{},
 			},
 		},
 	).Return(nil).Once()
@@ -550,16 +659,21 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On(
-		"RemoveTrustLine", s.ctx,
-		xdr.LedgerKeyTrustLine{
+	lkStr, err := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeTrustline,
+		TrustLine: &xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
+	}.MarshalBinaryBase64()
+	s.Assert().NoError(err)
+
+	s.mockQ.On(
+		"RemoveTrustLine", s.ctx, lkStr,
 	).Return(int64(0), nil).Once()
 
 	err = s.processor.Commit(s.ctx)
 	s.Assert().Error(err)
 	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "0 rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	s.Assert().EqualError(err, "0 rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB "+lkStr)
 }

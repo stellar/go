@@ -77,11 +77,11 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 func (s *AssetStatsProcessorTestSuiteState) TestCreatePoolShareTrustLine() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.TrustLineAsset{
+		Asset: xdr.TrustLineAsset{
 			Type:            xdr.AssetTypeAssetTypePoolShare,
-			LiquidityPoolId: &xdr.PoolId{1,2,3},
+			LiquidityPoolId: &xdr.PoolId{1, 2, 3},
 		},
-		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+		Flags: xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
