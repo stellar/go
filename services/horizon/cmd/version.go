@@ -12,9 +12,10 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "print horizon and Golang runtime version",
 	Long:  "",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println(apkg.Version())
 		fmt.Println(runtime.Version())
+		return nil
 	},
 }
 

@@ -54,6 +54,16 @@ func (na NativeAsset) ToXDR() (xdr.Asset, error) {
 	return xdrAsset, nil
 }
 
+// ToChangeTrustXDR for NativeAsset produces a corresponding XDR asset.
+func (na NativeAsset) ToChangeTrustXDR() (xdr.ChangeTrustAsset, error) {
+	xdrAsset := xdr.Asset{}
+	err := xdrAsset.SetNative()
+	if err != nil {
+		return xdr.ChangeTrustAsset{}, err
+	}
+	return xdrAsset.ToChangeTrustAsset(), nil
+}
+
 // CreditAsset represents non-XLM assets on the Stellar network.
 type CreditAsset struct {
 	Code   string
@@ -115,4 +125,12 @@ func assetFromXDR(xAsset xdr.Asset) (Asset, error) {
 	}
 
 	return nil, errors.New("invalid asset")
+}
+
+func assetFromChangeTrustAssetXDR(xAsset xdr.ChangeTrustAsset) (Asset, error) {
+	return assetFromXDR(xAsset.ToAsset())
+}
+
+func assetFromTrustLineAssetXDR(xAsset xdr.TrustLineAsset) (Asset, error) {
+	return assetFromXDR(xAsset.ToAsset())
 }

@@ -65,13 +65,17 @@ var ingestVerifyRangeCmd = &cobra.Command{
 	Use:   "verify-range",
 	Short: "runs ingestion pipeline within a range. warning! requires clean DB.",
 	Long:  "runs ingestion pipeline between X and Y sequence number (inclusive)",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		for _, co := range ingestVerifyRangeCmdOpts {
-			co.Require()
+			if err := co.RequireE(); err != nil {
+				return err
+			}
 			co.SetValue()
 		}
 
-		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+			return err
+		}
 
 		if ingestVerifyDebugServerPort != 0 {
 			go func() {
@@ -88,15 +92,15 @@ var ingestVerifyRangeCmd = &cobra.Command{
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
-			log.Fatalf("cannot open Horizon DB: %v", err)
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 		mngr := historyarchive.NewCheckpointManager(config.CheckpointFrequency)
 		if !mngr.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
-			log.Fatal("`--from` must be a checkpoint ledger")
+			return fmt.Errorf("`--from` must be a checkpoint ledger")
 		}
 
 		if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
-			log.Fatal("`--to` must be a checkpoint ledger when `--verify-state` is set.")
+			return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set.")
 		}
 
 		ingestConfig := ingest.Config{
@@ -113,19 +117,19 @@ var ingestVerifyRangeCmd = &cobra.Command{
 
 		if !ingestConfig.EnableCaptiveCore {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
+				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
 			if dbErr != nil {
-				log.Fatalf("cannot open Core DB: %v", dbErr)
+				return fmt.Errorf("cannot open Core DB: %v", dbErr)
 			}
 			ingestConfig.CoreSession = coreSession
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		err = system.VerifyRange(
@@ -134,10 +138,11 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			ingestVerifyState,
 		)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		log.Info("Range run successfully!")
+		return nil
 	},
 }
 
@@ -166,25 +171,29 @@ var ingestStressTestCmd = &cobra.Command{
 	Use:   "stress-test",
 	Short: "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
 	Long:  "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		for _, co := range stressTestCmdOpts {
-			co.Require()
+			if err := co.RequireE(); err != nil {
+				return err
+			}
 			co.SetValue()
 		}
 
-		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+			return err
+		}
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
-			log.Fatalf("cannot open Horizon DB: %v", err)
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
 		if stressTestNumTransactions <= 0 {
-			log.Fatal("`--transactions` must be positive")
+			return fmt.Errorf("`--transactions` must be positive")
 		}
 
 		if stressTestChangesPerTransaction <= 0 {
-			log.Fatal("`--changes` must be positive")
+			return fmt.Errorf("`--changes` must be positive")
 		}
 
 		ingestConfig := ingest.Config{
@@ -199,19 +208,19 @@ var ingestStressTestCmd = &cobra.Command{
 			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
+				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
 			if dbErr != nil {
-				log.Fatalf("cannot open Core DB: %v", dbErr)
+				return fmt.Errorf("cannot open Core DB: %v", dbErr)
 			}
 			ingestConfig.CoreSession = coreSession
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		err = system.StressTest(
@@ -219,56 +228,61 @@ var ingestStressTestCmd = &cobra.Command{
 			stressTestChangesPerTransaction,
 		)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		log.Info("Stress test completed successfully!")
+		return nil
 	},
 }
 
 var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Use:   "trigger-state-rebuild",
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+			return err
+		}
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
-			log.Fatalf("cannot open Horizon DB: %v", err)
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
 		historyQ := &history.Q{horizonSession}
-		err = historyQ.UpdateIngestVersion(ctx, 0)
-		if err != nil {
-			log.Fatalf("cannot trigger state rebuild: %v", err)
+		if err := historyQ.UpdateIngestVersion(ctx, 0); err != nil {
+			return fmt.Errorf("cannot trigger state rebuild: %v", err)
 		}
 
 		log.Info("Triggered state rebuild")
+		return nil
 	},
 }
 
 var ingestInitGenesisStateCmd = &cobra.Command{
 	Use:   "init-genesis-state",
 	Short: "ingests genesis state (ledger 1)",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
+			return err
+		}
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
-			log.Fatalf("cannot open Horizon DB: %v", err)
+			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
 		historyQ := &history.Q{horizonSession}
 
 		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(ctx)
 		if err != nil {
-			log.Fatalf("cannot get last ledger value: %v", err)
+			return fmt.Errorf("cannot get last ledger value: %v", err)
 		}
 
 		if lastIngestedLedger != 0 {
-			log.Fatalf("cannot run on non-empty DB")
+			return fmt.Errorf("cannot run on non-empty DB")
 		}
 
 		ingestConfig := ingest.Config{
@@ -283,27 +297,28 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
+				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
 			if dbErr != nil {
-				log.Fatalf("cannot open Core DB: %v", dbErr)
+				return fmt.Errorf("cannot open Core DB: %v", dbErr)
 			}
 			ingestConfig.CoreSession = coreSession
 		}
 
 		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		err = system.BuildGenesisState()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		log.Info("Genesis ledger stat successfully ingested!")
+		return nil
 	},
 }
 

@@ -402,7 +402,8 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 	case xdr.LedgerEntryTypeTrustline:
 		a := data.MustTrustLine().AccountId
 		accountID = &a
-		details["asset"] = data.MustTrustLine().Asset.StringCanonical()
+		// TODO ensure xdr.Asset is fine here.
+		details["asset"] = data.MustTrustLine().Asset.ToAsset().StringCanonical()
 	case xdr.LedgerEntryTypeData:
 		muxedAccount = e.operation.SourceAccount()
 		details["data_name"] = data.MustData().DataName
@@ -532,7 +533,7 @@ func (e *effectsWrapper) addCreatePassiveSellOfferEffect() {
 	result := e.operation.OperationResult()
 	source := e.operation.SourceAccount()
 
-	var claims []xdr.ClaimOfferAtom
+	var claims []xdr.ClaimAtom
 
 	// KNOWN ISSUE:  stellar-core creates results for CreatePassiveOffer operations
 	// with the wrong result arm set.
@@ -676,7 +677,8 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 	if len(changes) > 0 {
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		effect := history.EffectType(0)
-		addAssetDetails(details, op.Line, "")
+		// TODO Fix before Protocol 18
+		addAssetDetails(details, op.Line.ToAsset(), "")
 
 		for _, change := range changes {
 			if change.Type != xdr.LedgerEntryTypeTrustline {
@@ -951,13 +953,13 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 	return nil
 }
 
-func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []xdr.ClaimOfferAtom) {
+func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []xdr.ClaimAtom) {
 	for _, claim := range claims {
-		if claim.AmountSold == 0 && claim.AmountBought == 0 {
+		if claim.AmountSold() == 0 && claim.AmountBought() == 0 {
 			continue
 		}
 
-		seller := claim.SellerId
+		seller := claim.SellerId()
 		bd, sd := tradeDetails(buyer, seller, claim)
 
 		e.addMuxed(
@@ -1092,24 +1094,24 @@ func setAuthFlagDetails(flagDetails map[string]interface{}, flags xdr.AccountFla
 	}
 }
 
-func tradeDetails(buyer xdr.MuxedAccount, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map[string]interface{}, sd map[string]interface{}) {
+func tradeDetails(buyer xdr.MuxedAccount, seller xdr.AccountId, claim xdr.ClaimAtom) (bd map[string]interface{}, sd map[string]interface{}) {
 	bd = map[string]interface{}{
-		"offer_id":      claim.OfferId,
+		"offer_id":      claim.OfferId(),
 		"seller":        seller.Address(),
-		"bought_amount": amount.String(claim.AmountSold),
-		"sold_amount":   amount.String(claim.AmountBought),
+		"bought_amount": amount.String(claim.AmountSold()),
+		"sold_amount":   amount.String(claim.AmountBought()),
 	}
-	addAssetDetails(bd, claim.AssetSold, "bought_")
-	addAssetDetails(bd, claim.AssetBought, "sold_")
+	addAssetDetails(bd, claim.AssetSold(), "bought_")
+	addAssetDetails(bd, claim.AssetBought(), "sold_")
 
 	sd = map[string]interface{}{
-		"offer_id":      claim.OfferId,
-		"bought_amount": amount.String(claim.AmountBought),
-		"sold_amount":   amount.String(claim.AmountSold),
+		"offer_id":      claim.OfferId(),
+		"bought_amount": amount.String(claim.AmountBought()),
+		"sold_amount":   amount.String(claim.AmountSold()),
 	}
 	addAccountAndMuxedAccountDetails(sd, buyer, "seller")
-	addAssetDetails(sd, claim.AssetBought, "bought_")
-	addAssetDetails(sd, claim.AssetSold, "sold_")
+	addAssetDetails(sd, claim.AssetBought(), "bought_")
+	addAssetDetails(sd, claim.AssetSold(), "sold_")
 
 	return
 }

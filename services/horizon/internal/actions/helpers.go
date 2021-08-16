@@ -284,7 +284,7 @@ func getAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 
 	switch t {
 	case xdr.AssetTypeAssetTypeCreditAlphanum4:
-		a := xdr.AssetAlphaNum4{}
+		a := xdr.AlphaNum4{}
 		a.Issuer, err = getAccountID(r, prefix+"asset_issuer")
 		if err != nil {
 			return xdr.Asset{}, err
@@ -306,7 +306,7 @@ func getAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 		copy(a.AssetCode[:len(code)], []byte(code))
 		value = a
 	case xdr.AssetTypeAssetTypeCreditAlphanum12:
-		a := xdr.AssetAlphaNum12{}
+		a := xdr.AlphaNum12{}
 		a.Issuer, err = getAccountID(r, prefix+"asset_issuer")
 		if err != nil {
 			return xdr.Asset{}, err
@@ -512,9 +512,9 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 
 		return nil
 	case xdr.AssetTypeAssetTypeCreditAlphanum4:
-		validLen = len(xdr.AssetAlphaNum4{}.AssetCode)
+		validLen = len(xdr.AlphaNum4{}.AssetCode)
 	case xdr.AssetTypeAssetTypeCreditAlphanum12:
-		validLen = len(xdr.AssetAlphaNum12{}.AssetCode)
+		validLen = len(xdr.AlphaNum12{}.AssetCode)
 	}
 
 	codeLen := len(code)

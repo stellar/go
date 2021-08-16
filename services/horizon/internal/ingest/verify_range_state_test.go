@@ -517,7 +517,7 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 					TrustLine: &xdr.TrustLineEntry{
 						AccountId: xdr.MustAddress(keypair.MustRandom().Address()),
 						Balance:   123,
-						Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+						Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 						Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
 					},
 				},

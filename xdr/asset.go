@@ -189,12 +189,12 @@ func (a *Asset) SetCredit(code string, issuer AccountId) error {
 
 	switch {
 	case length >= 1 && length <= 4:
-		newbody := AssetAlphaNum4{Issuer: issuer}
+		newbody := AlphaNum4{Issuer: issuer}
 		copy(newbody.AssetCode[:], []byte(code)[:length])
 		typ = AssetTypeAssetTypeCreditAlphanum4
 		body = newbody
 	case length >= 5 && length <= 12:
-		newbody := AssetAlphaNum12{Issuer: issuer}
+		newbody := AlphaNum12{Issuer: issuer}
 		copy(newbody.AssetCode[:], []byte(code)[:length])
 		typ = AssetTypeAssetTypeCreditAlphanum12
 		body = newbody
@@ -386,4 +386,48 @@ func (a Asset) MustExtract(typ interface{}, code interface{}, issuer interface{}
 	if err != nil {
 		panic(err)
 	}
+}
+
+// ToChangeTrustAsset converts Asset to ChangeTrustAsset.
+func (a Asset) ToChangeTrustAsset() ChangeTrustAsset {
+	var cta ChangeTrustAsset
+
+	cta.Type = a.Type
+
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		// Empty branch
+	case AssetTypeAssetTypeCreditAlphanum4:
+		assetCode4 := *a.AlphaNum4
+		cta.AlphaNum4 = &assetCode4
+	case AssetTypeAssetTypeCreditAlphanum12:
+		assetCode12 := *a.AlphaNum12
+		cta.AlphaNum12 = &assetCode12
+	default:
+		panic(fmt.Errorf("Cannot transform type %v to Asset", a.Type))
+	}
+
+	return cta
+}
+
+// ToTrustLineAsset converts Asset to TrustLineAsset.
+func (a Asset) ToTrustLineAsset() TrustLineAsset {
+	var tla TrustLineAsset
+
+	tla.Type = a.Type
+
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		// Empty branch
+	case AssetTypeAssetTypeCreditAlphanum4:
+		assetCode4 := *a.AlphaNum4
+		tla.AlphaNum4 = &assetCode4
+	case AssetTypeAssetTypeCreditAlphanum12:
+		assetCode12 := *a.AlphaNum12
+		tla.AlphaNum12 = &assetCode12
+	default:
+		panic(fmt.Errorf("Cannot transform type %v to Asset", a.Type))
+	}
+
+	return tla
 }
