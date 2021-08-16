@@ -122,6 +122,14 @@ func validateChangeTrustAsset(asset ChangeTrustAsset) error {
 		return err
 	}
 
+	assetType, err := asset.GetType()
+	if err != nil {
+		return err
+	} else if assetType == AssetTypePoolShare {
+		// No issuer for these to validate.
+		return nil
+	}
+
 	err = validateStellarPublicKey(asset.GetIssuer())
 	if err != nil {
 		return errors.Errorf("asset issuer: %s", err.Error())

@@ -14,9 +14,8 @@ type LiquidityPoolDeposit struct {
 	LiquidityPoolID LiquidityPoolId
 	MaxAmountA      string
 	MaxAmountB      string
-	// TODO: Will these being private make this a pain to use?
-	MinPrice price
-	MaxPrice price
+	MinPrice        string
+	MaxPrice        string
 }
 
 // TODO: Problem here is you might not have the assets, just the liquidity pool id. so...
@@ -42,12 +41,20 @@ func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MaxAmountB'")
 	}
 
+	var minPrice, maxPrice price
+	if err := minPrice.parse(lpd.MinPrice); err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MinPrice'")
+	}
+	if err := maxPrice.parse(lpd.MaxPrice); err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MaxPrice'")
+	}
+
 	xdrOp := xdr.LiquidityPoolDepositOp{
 		LiquidityPoolId: xdrLiquidityPoolId,
 		MaxAmountA:      xdrMaxAmountA,
 		MaxAmountB:      xdrMaxAmountB,
-		MinPrice:        lpd.MinPrice.toXDR(),
-		MaxPrice:        lpd.MaxPrice.toXDR(),
+		MinPrice:        minPrice.toXDR(),
+		MaxPrice:        maxPrice.toXDR(),
 	}
 
 	opType := xdr.OperationTypeLiquidityPoolDeposit
@@ -80,8 +87,12 @@ func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 	lpd.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	lpd.MaxAmountA = amount.String(result.MaxAmountA)
 	lpd.MaxAmountB = amount.String(result.MaxAmountB)
-	lpd.MinPrice.fromXDR(result.MinPrice)
-	lpd.MaxPrice.fromXDR(result.MaxPrice)
+	if result.MinPrice != (xdr.Price{}) {
+		lpd.MinPrice = priceFromXDR(result.MinPrice).string()
+	}
+	if result.MaxPrice != (xdr.Price{}) {
+		lpd.MaxPrice = priceFromXDR(result.MaxPrice).string()
+	}
 
 	return nil
 }

@@ -20,8 +20,8 @@ func TestLiquidityPoolDepositRoundTrip(t *testing.T) {
 		LiquidityPoolID: poolId,
 		MaxAmountA:      "0.1000000",
 		MaxAmountB:      "0.2000000",
-		MinPrice:        price{n: 1, d: 2, s: "0.5"},
-		MaxPrice:        price{n: 1, d: 2, s: "0.5"},
+		MinPrice:        "0.3",
+		MaxPrice:        "0.4",
 	}
 
 	testOperationsMarshallingRoundtrip(t, []Operation{lpd}, false)
@@ -32,8 +32,8 @@ func TestLiquidityPoolDepositRoundTrip(t *testing.T) {
 		LiquidityPoolID: poolId,
 		MaxAmountA:      "0.1000000",
 		MaxAmountB:      "0.2000000",
-		MinPrice:        price{n: 1, d: 2, s: "0.5"},
-		MaxPrice:        price{n: 1, d: 2, s: "0.5"},
+		MinPrice:        "0.3",
+		MaxPrice:        "0.4",
 	}
 
 	testOperationsMarshallingRoundtrip(t, []Operation{lpd}, true)

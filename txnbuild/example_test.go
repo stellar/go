@@ -979,10 +979,105 @@ func ExampleRevokeSponsorship() {
 	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAMgAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUVGR0gAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUlKS0wAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAeoucsUAAABA9YO+xRc5Vb8ueP1U8go7ka+u/gZJd2z075c2pdFxYb+4AvQUQGvg+N4wvtNll43lPwXq5XAz74BfP99wugplDQ==
 }
 
+type LiquidityPoolTestConfig struct {
+	A        *keypair.Full
+	AAccount SimpleAccount
+	Assets   []CreditAsset
+}
+
+func InitLiquidityPoolTestConfig() LiquidityPoolTestConfig {
+	A := keypair.MustParseFull("SCZANGBA5YHTNYVVV4C3U252E2B6P6F5T3U6MM63WBSBZATAQI3EBTQ4")
+
+	return LiquidityPoolTestConfig{
+		A:        A,
+		AAccount: SimpleAccount{AccountID: A.Address()},
+		Assets: []CreditAsset{
+			{Code: "ABCD", Issuer: A.Address()},
+			{Code: "EFGH", Issuer: A.Address()},
+			{Code: "IJKL", Issuer: A.Address()},
+		},
+	}
+}
+
 func ExampleLiquidityPoolDeposit() {
-	check(fmt.Errorf("TODO: Implement ExampleLiquidityPoolDeposit"))
+	test := InitLiquidityPoolTestConfig()
+
+	poolId, err := NewLiquidityPoolId(test.Assets[0], test.Assets[1])
+	check(err)
+
+	depositOps := []Operation{
+		// Change of trust the first time ensures that the pool exists.
+		&ChangeTrust{
+			Line: LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: LiquidityPoolParameters{
+					AssetA: test.Assets[0],
+					AssetB: test.Assets[1],
+					Fee:    LiquidityPoolFeeV18,
+				},
+			},
+			SourceAccount: test.AAccount.AccountID,
+			Limit:         MaxTrustlineLimit,
+		},
+
+		// Add our deposit to the pool
+		&LiquidityPoolDeposit{
+			SourceAccount:   test.A.Address(),
+			LiquidityPoolID: poolId,
+			MaxAmountA:      "0.1000000",
+			MaxAmountB:      "0.1000000",
+			MinPrice:        "0.1000000",
+			MaxPrice:        "0.1000000",
+		},
+	}
+
+	// With revocation, only the new sponsor needs to sign.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.AAccount,
+			Operations:           depositOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.A,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: TODO: Fill these in once NewLiquidityPoolId is fixed
 }
 
 func ExampleLiquidityPoolWithdraw() {
-	check(fmt.Errorf("TODO: Implement ExampleLiquidityPoolWithdraw"))
+	test := InitLiquidityPoolTestConfig()
+
+	poolId, err := NewLiquidityPoolId(test.Assets[0], test.Assets[1])
+	check(err)
+
+	withdrawOps := []Operation{
+		&LiquidityPoolWithdraw{
+			SourceAccount:   test.A.Address(),
+			LiquidityPoolID: poolId,
+			Amount:          "0.1000000",
+			MinAmountA:      "0.1000000",
+			MinAmountB:      "0.1000000",
+		},
+	}
+
+	// With revocation, only the new sponsor needs to sign.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.AAccount,
+			Operations:           withdrawOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.A,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: TODO: Fill these in once NewLiquidityPoolId is fixed
 }

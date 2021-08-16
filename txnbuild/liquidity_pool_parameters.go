@@ -8,6 +8,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const LiquidityPoolFeeV18 = xdr.LiquidityPoolFeeV18
+
 // LiquidityPoolParameters represents the Stellar liquidity pool parameters
 type LiquidityPoolParameters struct {
 	AssetA Asset
