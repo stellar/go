@@ -363,6 +363,8 @@ func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, e
 	var balances []xdr.Int64
 
 	for _, trustline := range trustlines {
+		// Ignore pool share assets because pool shares are not transferable and cannot be traded.
+		// Therefore, it doesn't make sense to send path payments where the source / destination assets are pool shares.
 		if trustline.AssetType == xdr.AssetTypeAssetTypePoolShare {
 			continue
 		}

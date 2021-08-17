@@ -11,11 +11,6 @@ type MockQTrustLines struct {
 	mock.Mock
 }
 
-func (m *MockQTrustLines) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder {
-	a := m.Called(maxBatchSize)
-	return a.Get(0).(TrustLinesBatchInsertBuilder)
-}
-
 func (m *MockQTrustLines) GetTrustLinesByKeys(ctx context.Context, keys []string) ([]TrustLine, error) {
 	a := m.Called(ctx, keys)
 	return a.Get(0).([]TrustLine), a.Error(1)

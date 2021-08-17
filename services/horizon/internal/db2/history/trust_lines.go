@@ -56,11 +56,11 @@ func (q *Q) GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]Tru
 // accept other than 2GB limit of the query string length what should be enough
 // for each ledger with the current limits.
 func (q *Q) UpsertTrustLines(ctx context.Context, trustLines []TrustLine) error {
-	var ledgerKey, accountID, assetIssuer, assetCode, liquidityPoolIds []string
+	var ledgerKey, accountID, assetIssuer, assetCode []string
 	var balance, limit, buyingLiabilities, sellingLiabilities []int64
 	var flags, lastModifiedLedger []uint32
 	var assetType []xdr.AssetType
-	var sponsor []null.String
+	var liquidityPoolIds, sponsor []null.String
 
 	for _, entry := range trustLines {
 		ledgerKey = append(ledgerKey, entry.LedgerKey)
@@ -68,7 +68,7 @@ func (q *Q) UpsertTrustLines(ctx context.Context, trustLines []TrustLine) error 
 		assetType = append(assetType, entry.AssetType)
 		assetIssuer = append(assetIssuer, entry.AssetIssuer)
 		assetCode = append(assetCode, entry.AssetCode)
-		liquidityPoolIds = append(liquidityPoolIds, entry.LiquidityPoolID)
+		liquidityPoolIds = append(liquidityPoolIds, null.NewString(entry.LiquidityPoolID, len(entry.LiquidityPoolID) > 0))
 		balance = append(balance, entry.Balance)
 		limit = append(limit, entry.Limit)
 		buyingLiabilities = append(buyingLiabilities, entry.BuyingLiabilities)
@@ -173,7 +173,7 @@ var selectTrustLines = sq.Select(`
 	asset_type,
 	asset_issuer,
 	asset_code,
-	liquidity_pool_id,
+	COALESCE(liquidity_pool_id, '') as liquidity_pool_id,
 	balance,
 	trust_line_limit,
 	buying_liabilities,

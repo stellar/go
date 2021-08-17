@@ -723,20 +723,9 @@ type TrustLine struct {
 
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
-	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
 	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
 	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
 	RemoveTrustLine(ctx context.Context, ledgerKey string) (int64, error)
-}
-
-type TrustLinesBatchInsertBuilder interface {
-	Add(ctx context.Context, trustline TrustLine) error
-	Exec(ctx context.Context) error
-}
-
-// trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type trustLinesBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
 }
 
 func (q *Q) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
@@ -770,15 +759,6 @@ func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuild
 	return &offersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("offers"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
-func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder {
-	return &trustLinesBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("trust_lines"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

@@ -92,10 +92,7 @@ func TestInsertTrustLine(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	batch := q.NewTrustLinesBatchInsertBuilder(0)
-	tt.Assert.NoError(batch.Add(tt.Ctx, eurTrustLine))
-	tt.Assert.NoError(batch.Add(tt.Ctx, usdTrustLine))
-	tt.Assert.NoError(batch.Exec(tt.Ctx))
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTrustLine, usdTrustLine}))
 
 	lines, err := q.GetTrustLinesByKeys(tt.Ctx, []string{eurTrustLine.LedgerKey, usdTrustLine.LedgerKey})
 	tt.Assert.NoError(err)
@@ -111,9 +108,7 @@ func TestUpdateTrustLine(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	batch := q.NewTrustLinesBatchInsertBuilder(0)
-	tt.Assert.NoError(batch.Add(tt.Ctx, eurTrustLine))
-	tt.Assert.NoError(batch.Exec(tt.Ctx))
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTrustLine}))
 
 	lines, err := q.GetTrustLinesByKeys(tt.Ctx, []string{eurTrustLine.LedgerKey})
 	assert.NoError(t, err)
