@@ -74,6 +74,34 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 	}, maxBatchSize).Return(nil).Once()
 }
 
+func (s *AssetStatsProcessorTestSuiteState) TestCreatePoolShareTrustLine() {
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset: xdr.TrustLineAsset{
+			Type:            xdr.AssetTypeAssetTypePoolShare,
+			LiquidityPoolId: &xdr.PoolId{1, 2, 3},
+		},
+		Flags: xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+	s.mockQ.AssertExpectations(s.T())
+}
+
 func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),

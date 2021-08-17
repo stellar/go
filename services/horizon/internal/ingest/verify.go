@@ -521,45 +521,39 @@ func addTrustLinesToStateVerifier(
 		return nil
 	}
 
-	trustLines, err := q.GetTrustLinesByKeys(ctx, keys)
+	var ledgerKeyStrings []string
+	for _, key := range keys {
+		var ledgerKey xdr.LedgerKey
+		if err := ledgerKey.SetTrustline(key.AccountId, key.Asset); err != nil {
+			return errors.Wrap(err, "Error running ledgerKey.SetTrustline")
+		}
+		b64, err := ledgerKey.MarshalBinaryBase64()
+		if err != nil {
+			return errors.Wrap(err, "Error running ledgerKey.MarshalBinaryBase64")
+		}
+		ledgerKeyStrings = append(ledgerKeyStrings, b64)
+	}
+
+	trustLines, err := q.GetTrustLinesByKeys(ctx, ledgerKeyStrings)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetTrustLinesByKeys")
 	}
 
 	for _, row := range trustLines {
-		asset := xdr.MustNewCreditAsset(row.AssetCode, row.AssetIssuer)
-		trustline := xdr.TrustLineEntry{
-			AccountId: xdr.MustAddress(row.AccountID),
-			Asset:     asset.ToTrustLineAsset(),
-			Balance:   xdr.Int64(row.Balance),
-			Limit:     xdr.Int64(row.Limit),
-			Flags:     xdr.Uint32(row.Flags),
-			Ext: xdr.TrustLineEntryExt{
-				V: 1,
-				V1: &xdr.TrustLineEntryV1{
-					Liabilities: xdr.Liabilities{
-						Buying:  xdr.Int64(row.BuyingLiabilities),
-						Selling: xdr.Int64(row.SellingLiabilities),
-					},
-				},
-			},
-		}
-		entry := xdr.LedgerEntry{
-			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
-			Data: xdr.LedgerEntryData{
-				Type:      xdr.LedgerEntryTypeTrustline,
-				TrustLine: &trustline,
-			},
-		}
-		addLedgerEntrySponsor(&entry, row.Sponsor)
-		if err := verifier.Write(entry); err != nil {
+		var entry xdr.LedgerEntry
+		entry, err = trustLineToXDR(row)
+		if err != nil {
 			return err
 		}
-		if err := assetStats.AddTrustline(
+
+		if err = verifier.Write(entry); err != nil {
+			return err
+		}
+		if err = assetStats.AddTrustline(
 			ingest.Change{
 				Post: &xdr.LedgerEntry{
 					Data: xdr.LedgerEntryData{
-						TrustLine: &trustline,
+						TrustLine: entry.Data.TrustLine,
 					},
 				},
 			},
@@ -571,6 +565,55 @@ func addTrustLinesToStateVerifier(
 	}
 
 	return nil
+}
+
+func trustLineToXDR(row history.TrustLine) (xdr.LedgerEntry, error) {
+	var asset xdr.TrustLineAsset
+	switch row.AssetType {
+	case xdr.AssetTypeAssetTypePoolShare:
+		asset = xdr.TrustLineAsset{
+			Type:            xdr.AssetTypeAssetTypePoolShare,
+			LiquidityPoolId: &xdr.PoolId{},
+		}
+		_, err := hex.Decode((*asset.LiquidityPoolId)[:], []byte(row.LiquidityPoolID))
+		if err != nil {
+			return xdr.LedgerEntry{}, errors.Wrap(err, "Error decoding liquidity pool id")
+		}
+	case xdr.AssetTypeAssetTypeNative:
+		asset = xdr.MustNewNativeAsset().ToTrustLineAsset()
+	default:
+		creditAsset, err := xdr.NewCreditAsset(row.AssetCode, row.AssetIssuer)
+		if err != nil {
+			return xdr.LedgerEntry{}, errors.Wrap(err, "Error decoding credit asset")
+		}
+		asset = creditAsset.ToTrustLineAsset()
+	}
+
+	trustline := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress(row.AccountID),
+		Asset:     asset,
+		Balance:   xdr.Int64(row.Balance),
+		Limit:     xdr.Int64(row.Limit),
+		Flags:     xdr.Uint32(row.Flags),
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  xdr.Int64(row.BuyingLiabilities),
+					Selling: xdr.Int64(row.SellingLiabilities),
+				},
+			},
+		},
+	}
+	entry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+		Data: xdr.LedgerEntryData{
+			Type:      xdr.LedgerEntryTypeTrustline,
+			TrustLine: &trustline,
+		},
+	}
+	addLedgerEntrySponsor(&entry, row.Sponsor)
+	return entry, nil
 }
 
 func addClaimableBalanceToStateVerifier(
@@ -656,7 +699,8 @@ func addLiquidityPoolsToStateVerifier(
 	}
 	var idsHex = make([]string, len(ids))
 	for i, id := range ids {
-		idsHex[i] = hex.EncodeToString(id[:])
+		idsHex[i] = processors.PoolIDToString(id)
+
 	}
 	lPools, err := q.GetLiquidityPoolsByID(ctx, idsHex)
 	if err != nil {

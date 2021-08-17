@@ -308,8 +308,13 @@ func TestAccountsForAsset(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	eurTrustLine.Data.TrustLine.AccountId = account1.Data.Account.AccountId
-	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
+	eurTL := eurTrustLine
+	usdTL := usdTrustLine
+	psTL := poolShareTrustLine
+
+	eurTL.AccountID = account1.Data.Account.AccountId.Address()
+	usdTL.AccountID = account2.Data.Account.AccountId.Address()
+	psTL.AccountID = account1.Data.Account.AccountId.Address()
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
 	err := batch.Add(tt.Ctx, account1)
@@ -318,10 +323,11 @@ func TestAccountsForAsset(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
-	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []TrustLine{
+		eurTL,
+		usdTL,
+		psTL,
+	}))
 
 	pq := db2.PageQuery{
 		Order:  db2.OrderAscending,
@@ -329,18 +335,30 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
+	accounts, err := q.AccountsForAsset(
+		tt.Ctx,
+		xdr.MustNewCreditAsset(eurTL.AssetCode, eurTL.AssetIssuer),
+		pq,
+	)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
+	accounts, err = q.AccountsForAsset(
+		tt.Ctx,
+		xdr.MustNewCreditAsset(usdTL.AssetCode, usdTL.AssetIssuer),
+		pq,
+	)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
 	pq.Cursor = account2.Data.Account.AccountId.Address()
-	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
+	accounts, err = q.AccountsForAsset(
+		tt.Ctx,
+		xdr.MustNewCreditAsset(usdTL.AssetCode, usdTL.AssetIssuer),
+		pq,
+	)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
 
@@ -350,9 +368,59 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err = q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
+	accounts, err = q.AccountsForAsset(
+		tt.Ctx,
+		xdr.MustNewCreditAsset(usdTL.AssetCode, eurTL.AssetIssuer),
+		pq,
+	)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
+}
+
+func TestAccountsForLiquidityPool(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	eurTL := eurTrustLine
+	psTL := poolShareTrustLine
+
+	eurTL.AccountID = account1.Data.Account.AccountId.Address()
+	psTL.AccountID = account1.Data.Account.AccountId.Address()
+
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	assert.NoError(t, batch.Add(tt.Ctx, account1))
+	assert.NoError(t, batch.Exec(tt.Ctx))
+
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []TrustLine{
+		eurTL,
+		psTL,
+	}))
+
+	pq := db2.PageQuery{
+		Order:  db2.OrderAscending,
+		Limit:  db2.DefaultPageSize,
+		Cursor: "",
+	}
+
+	accounts, err := q.AccountsForLiquidityPool(
+		tt.Ctx,
+		psTL.LiquidityPoolID,
+		pq,
+	)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 1)
+	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
+
+	pq.Cursor = account1.Data.Account.AccountId.Address()
+	accounts, err = q.AccountsForLiquidityPool(
+		tt.Ctx,
+		psTL.LiquidityPoolID,
+		pq,
+	)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 0)
 }
 
 func TestAccountsForSponsor(t *testing.T) {
@@ -361,8 +429,11 @@ func TestAccountsForSponsor(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	eurTrustLine.Data.TrustLine.AccountId = account1.Data.Account.AccountId
-	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
+	eurTL := eurTrustLine
+	usdTL := usdTrustLine
+
+	eurTL.AccountID = account1.Data.Account.AccountId.Address()
+	usdTL.AccountID = account2.Data.Account.AccountId.Address()
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
 	err := batch.Add(tt.Ctx, account1)
@@ -373,10 +444,7 @@ func TestAccountsForSponsor(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
-	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTL, usdTL}))
 
 	_, err = q.CreateAccountSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
@@ -408,8 +476,11 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	eurTrustLine.Data.TrustLine.AccountId = account1.Data.Account.AccountId
-	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
+	eurTL := eurTrustLine
+	usdTL := usdTrustLine
+
+	eurTL.AccountID = account1.Data.Account.AccountId.Address()
+	usdTL.AccountID = account2.Data.Account.AccountId.Address()
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
 	err := batch.Add(tt.Ctx, account1)
@@ -420,10 +491,7 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
-	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTL, usdTL}))
 
 	_, err = q.CreateAccountSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)

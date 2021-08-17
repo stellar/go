@@ -121,12 +121,7 @@ func (d delta) isEmpty() bool {
 }
 
 // addDelta adds a delta balance and delta accounts to a given asset trustline.
-func (s AssetStatSet) addDelta(asset *xdr.Asset, trustLineAsset *xdr.TrustLineAsset, deltaBalances, deltaAccounts delta) error {
-	if trustLineAsset != nil {
-		convertedAsset := trustLineAsset.ToAsset()
-		asset = &convertedAsset
-	}
-
+func (s AssetStatSet) addDelta(asset xdr.Asset, deltaBalances, deltaAccounts delta) error {
 	if deltaBalances.isEmpty() && deltaAccounts.isEmpty() {
 		return nil
 	}
@@ -197,8 +192,11 @@ func (s AssetStatSet) AddTrustline(change ingest.Change) error {
 		deltaAccounts.addByFlags(post.Flags, 1)
 		deltaBalances.addByFlags(post.Flags, int64(post.Balance))
 	}
+	if asset.Type == xdr.AssetTypeAssetTypePoolShare {
+		return nil
+	}
 
-	err := s.addDelta(nil, &asset, deltaBalances, deltaAccounts)
+	err := s.addDelta(asset.ToAsset(), deltaBalances, deltaAccounts)
 	if err != nil {
 		return errors.Wrap(err, "error running AssetStatSet.addDelta")
 	}
@@ -239,7 +237,7 @@ func (s AssetStatSet) AddClaimableBalance(change ingest.Change) error {
 		return nil
 	}
 
-	err := s.addDelta(&asset, nil, deltaBalances, deltaAccounts)
+	err := s.addDelta(asset, deltaBalances, deltaAccounts)
 	if err != nil {
 		return errors.Wrap(err, "error running AssetStatSet.addDelta")
 	}

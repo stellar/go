@@ -79,7 +79,11 @@ func (p *AssetStatsProcessor) addToCache(ctx context.Context, change ingest.Chan
 
 func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 	if !p.useLedgerEntryCache {
-		return p.assetStatsQ.InsertAssetStats(ctx, p.assetStatSet.All(), maxBatchSize)
+		assetStatsDeltas := p.assetStatSet.All()
+		if len(assetStatsDeltas) == 0 {
+			return nil
+		}
+		return p.assetStatsQ.InsertAssetStats(ctx, assetStatsDeltas, maxBatchSize)
 	}
 
 	changes := p.cache.GetChanges()

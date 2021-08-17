@@ -72,7 +72,7 @@ func (p *LiquidityPoolsProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(ctx, hex.EncodeToString(lPool.LiquidityPoolId[:]))
+			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(ctx, PoolIDToString(lPool.LiquidityPoolId))
 		default:
 			// Updated
 			action = "updating"
@@ -124,7 +124,7 @@ func (p *LiquidityPoolsProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) histo
 		},
 	}
 	return history.LiquidityPool{
-		PoolID:             hex.EncodeToString(lPool.LiquidityPoolId[:]),
+		PoolID:             PoolIDToString(lPool.LiquidityPoolId),
 		Type:               lPool.Body.Type,
 		Fee:                uint32(cp.Params.Fee),
 		TrustlineCount:     uint64(cp.PoolSharesTrustLineCount),
@@ -132,4 +132,9 @@ func (p *LiquidityPoolsProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) histo
 		AssetReserves:      ar,
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 	}
+}
+
+// PoolIDToString encodes a liquidity pool id xdr value to its string form
+func PoolIDToString(id xdr.PoolId) string {
+	return hex.EncodeToString(id[:])
 }
