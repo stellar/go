@@ -213,7 +213,7 @@ func (i *Test) prepareShutdownHandlers() {
 	// stopped even if ingestion or testing fails.
 	i.t.Cleanup(i.Shutdown)
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
