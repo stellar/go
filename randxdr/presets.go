@@ -65,18 +65,13 @@ var IsNestedInnerSet Selector = func(name string, xdrType goxdr.XdrType) bool {
 	return false
 }
 
-// SetPtrToNil is a Setter which ensures that a given XDR pointer field is nil
-var SetPtrToNil Setter = func(m *randMarshaller, name string, xdrType goxdr.XdrType) {
-	p := goxdr.XdrBaseType(xdrType).(goxdr.XdrPtr)
-	p.SetPresent(false)
-	p.XdrMarshalValue(m, name)
-}
-
-// SetPtrToPresent is a Setter which ensures that a given XDR pointer field is not nil
-var SetPtrToPresent Setter = func(m *randMarshaller, name string, xdrType goxdr.XdrType) {
-	p := goxdr.XdrBaseType(xdrType).(goxdr.XdrPtr)
-	p.SetPresent(true)
-	p.XdrMarshalValue(m, name)
+// SetPtr is a Setter which sets the xdr pointer to null if present is false
+func SetPtr(present bool) Setter {
+	return func(m *randMarshaller, name string, xdrType goxdr.XdrType) {
+		p := goxdr.XdrBaseType(xdrType).(goxdr.XdrPtr)
+		p.SetPresent(present)
+		p.XdrMarshalValue(m, name)
+	}
 }
 
 // SetVecLen returns a Setter which sets the length of a variable length
@@ -114,20 +109,18 @@ const alphaNumeric = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 
 // SetAssetCode returns a Setter which sets an asset code XDR field to a
 // random alphanumeric string right-padded with 0 bytes
-func SetAssetCode() Setter {
-	return func(x *randMarshaller, field string, xdrType goxdr.XdrType) {
-		f := goxdr.XdrBaseType(xdrType).(goxdr.XdrBytes)
-		slice := f.GetByteSlice()
-		var end int
-		switch len(slice) {
-		case 4:
-			end = int(x.rand.Int31n(4))
-		case 12:
-			end = int(4 + x.rand.Int31n(8))
-		}
+var SetAssetCode Setter = func(x *randMarshaller, field string, xdrType goxdr.XdrType) {
+	f := goxdr.XdrBaseType(xdrType).(goxdr.XdrBytes)
+	slice := f.GetByteSlice()
+	var end int
+	switch len(slice) {
+	case 4:
+		end = int(x.rand.Int31n(4))
+	case 12:
+		end = int(4 + x.rand.Int31n(8))
+	}
 
-		for i := 0; i <= end; i++ {
-			slice[i] = alphaNumeric[x.rand.Int31n(int32(len(alphaNumeric)))]
-		}
+	for i := 0; i <= end; i++ {
+		slice[i] = alphaNumeric[x.rand.Int31n(int32(len(alphaNumeric)))]
 	}
 }

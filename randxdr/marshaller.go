@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"sort"
 
 	goxdr "github.com/xdrpp/goxdr/xdr"
 )
@@ -23,6 +24,12 @@ func (*randMarshaller) Sprintf(f string, args ...interface{}) string {
 
 func (rm *randMarshaller) randomKey(m interface{}) int32 {
 	keys := reflect.ValueOf(m).MapKeys()
+	// the keys of a map in golang are returned in random order
+	// here we sort the keys to ensure the selection is
+	// deterministic for the same rand seed
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].Int() < keys[j].Int()
+	})
 	return int32(keys[rm.rand.Intn(len(keys))].Int())
 }
 

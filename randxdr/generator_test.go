@@ -31,3 +31,25 @@ func TestRandLedgerCloseMeta(t *testing.T) {
 		assert.True(t, bytes.Equal(gxdr.Dump(shape), lcmBytes))
 	}
 }
+
+func TestGeneratorIsDeterministic(t *testing.T) {
+	gen := NewGenerator()
+	shape := &gxdr.LedgerCloseMeta{}
+	gen.Next(
+		shape,
+		[]Preset{
+			{IsNestedInnerSet, SetVecLen(0)},
+		},
+	)
+
+	otherGen := NewGenerator()
+	otherShape := &gxdr.LedgerCloseMeta{}
+	otherGen.Next(
+		otherShape,
+		[]Preset{
+			{IsNestedInnerSet, SetVecLen(0)},
+		},
+	)
+
+	assert.True(t, bytes.Equal(gxdr.Dump(shape), gxdr.Dump(otherShape)))
+}
