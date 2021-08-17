@@ -1,6 +1,6 @@
 module github.com/stellar/go
 
-go 1.15
+go 1.16
 
 require (
 	cloud.google.com/go/firestore v1.5.0 // indirect
@@ -30,7 +30,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jarcoal/httpmock v0.0.0-20161210151336-4442edb3db31
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd // indirect
 	github.com/klauspost/cpuid v0.0.0-20160302075316-09cded8978dc // indirect
 	github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6 // indirect

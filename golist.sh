@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-go list -deps -test -f '{{with .Module}}{{.Path}} {{.Version}}{{end}}' ./... | LC_ALL=C sort -u
+go list -f '{{with .Module}}{{.Path}} {{.Version}}{{end}}' all | LC_ALL=C sort -u
