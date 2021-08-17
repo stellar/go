@@ -84,13 +84,6 @@ func (q *Q) LiquidityPoolsByIDs(ctx context.Context, poolIDs []string) (dest []H
 	return dest, err
 }
 
-// LiquidityPoolByID loads a row from `history_liquidity_pools`, by liquidity_pool_id
-func (q *Q) LiquidityPoolByID(ctx context.Context, poolID string) (dest HistoryLiquidityPool, err error) {
-	sql := selectHistoryLiquidityPool.Limit(1).Where("hlp.liquidity_pool_id = ?", poolID)
-	err = q.Get(ctx, &dest, sql)
-	return dest, err
-}
-
 type OperationLiquidityPoolBatchInsertBuilder interface {
 	Add(ctx context.Context, operationID, internalID int64) error
 	Exec(ctx context.Context) error
