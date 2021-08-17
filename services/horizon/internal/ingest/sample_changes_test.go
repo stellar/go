@@ -1,3 +1,4 @@
+//go:build update
 // +build update
 
 package ingest
