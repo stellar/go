@@ -3,7 +3,6 @@
 package processors
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -552,6 +551,21 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "changeTrust with muxed accounts of liquidity pool",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAYAAAADAAAAAAAAAAFFVVIAAAAAAB0EmoAP2o+r6PadEN2N2nkpWhSHyuI+Q071q2jsE2zzAAAAAAAAAB5//////////wAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAKAAAAAAAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAACVAvjOAAAACYAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAKAAAAAAAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAACVAvjOAAAACYAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+M4AAAAJgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+M4AAAAJgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoAAAAAQAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAFVU0QAAAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAAAAAAAB//////////wAAAAAAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAAmAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+QAAAAAJgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+OcAAAAJgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"asset_type": "liquidity_pool_shares",
+				"limit":      "922337203685.4775807",
+				"trustor":    "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY", "trustor_muxed": "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"trustor_muxed_id": uint64(1234),
+				// TODO: add liquidity_pool_id
+			},
+		},
+		{
 			desc:          "allowTrust",
 			envelopeXDR:   "AAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAZAAAACYAAAACAAAAAAAAAAAAAAABAAAAAAAAAAcAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAABVVNEAAAAAAEAAAAAAAAAAUpI8/gAAABA6O2fe1gQBwoO0fMNNEUKH0QdVXVjEWbN5VL51DmRUedYMMXtbX5JKVSzla2kIGvWgls1dXuXHZY/IOlaK01rBQ==",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -754,28 +768,6 @@ func TestTransactionOperationDetails(t *testing.T) {
 		},
 	}
 
-	var tx1 xdr.TransactionEnvelope
-	err := xdr.SafeUnmarshalBase64("AAAAAI77mqNTy9VPgmgn+//uvjP8VJxJ1FHQ4jCrYS+K4+HvAAAAZAAAACsAAAABAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAYrj4e8AAABA3jJ7wBrRpsrcnqBQWjyzwvVz2v5UJ56G60IhgsaWQFSf+7om462KToc+HJ27aLVOQ83dGh1ivp+VIuREJq/SBw==", &tx1)
-	assert.NoError(t, err)
-	fmt.Printf("%#v\n", tx1)
-	destination := xdr.MustMuxedAddress("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ")
-	tx2 := xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-		V1: &xdr.TransactionV1Envelope{
-			Tx: xdr.Transaction{
-				SourceAccount: xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
-				Fee:           0,
-				SeqNum:        26,
-				TimeBounds:    nil,
-				Memo:          xdr.Memo{Type: xdr.MemoTypeMemoNone},
-				Operations:    []xdr.Operation{{Body: xdr.OperationBody{Type: xdr.OperationTypeAccountMerge, Destination: &destination}}},
-				Ext:           xdr.TransactionExt{},
-			},
-		},
-	}
-	str, err := xdr.MarshalBase64(&tx2)
-	assert.NoError(t, err)
-	fmt.Println(str)
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
