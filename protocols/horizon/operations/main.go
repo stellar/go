@@ -202,7 +202,7 @@ type ChangeTrust struct {
 	base.Asset
 	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
 	Limit           string `json:"limit"`
-	Trustee         string `json:"trustee"`
+	Trustee         string `json:"trustee,omitempty"`
 	Trustor         string `json:"trustor"`
 	TrustorMuxed    string `json:"trustor_muxed,omitempty"`
 	TrustorMuxedID  uint64 `json:"trustor_muxed_id,omitempty,string"`

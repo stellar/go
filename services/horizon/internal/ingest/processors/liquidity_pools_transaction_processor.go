@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"encoding/hex"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -121,11 +120,11 @@ func liquidityPoolsForChanges(
 
 		if c.Pre != nil {
 			poolID := c.Pre.Data.MustLiquidityPool().LiquidityPoolId
-			lps = append(lps, hex.EncodeToString(poolID[:]))
+			lps = append(lps, PoolIDToString(poolID))
 		}
 		if c.Post != nil {
 			poolID := c.Post.Data.MustLiquidityPool().LiquidityPoolId
-			lps = append(lps, hex.EncodeToString(poolID[:]))
+			lps = append(lps, PoolIDToString(poolID))
 		}
 	}
 
