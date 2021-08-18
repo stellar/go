@@ -2,8 +2,6 @@
 package txnbuild
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"sort"
 
@@ -31,19 +29,11 @@ func NewLiquidityPoolId(a, b Asset) (LiquidityPoolId, error) {
 		return LiquidityPoolId{}, errors.Wrap(err, "failed to build XDR AssetB ID")
 	}
 
-	params := xdr.LiquidityPoolConstantProductParameters{
-		AssetA: xdrAssetA,
-		AssetB: xdrAssetB,
-		// Hardcoded for now, as it must be this.
-		Fee: xdr.LiquidityPoolFeeV18,
-	}
-
-	buf := &bytes.Buffer{}
-	_, err = xdr.Marshal(buf, params)
+	id, err := xdr.NewPoolId(xdrAssetA, xdrAssetB, xdr.LiquidityPoolFeeV18)
 	if err != nil {
-		return LiquidityPoolId{}, errors.Wrap(err, "failed to build liquidity pool id")
+		return LiquidityPoolId{}, errors.Wrap(err, "failed to build XDR liquidity pool id")
 	}
-	return sha256.Sum256(buf.Bytes()), nil
+	return LiquidityPoolId(id), nil
 }
 
 func (lpi LiquidityPoolId) ToXDR() (xdr.PoolId, error) {
