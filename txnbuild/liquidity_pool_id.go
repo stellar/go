@@ -2,6 +2,7 @@
 package txnbuild
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -37,13 +38,12 @@ func NewLiquidityPoolId(a, b Asset) (LiquidityPoolId, error) {
 		Fee: xdr.LiquidityPoolFeeV18,
 	}
 
-	// TODO: Properly encode this as per:
-	// https://github.com/stellar/stellar-core/blob/9b0a18ed193c55bcbdeb22bd0e6a2364b032cef1/src/ledger/test/LedgerTxnTests.cpp#L3747
-	bin, err := params.MarshalBinary()
+	buf := &bytes.Buffer{}
+	_, err = xdr.Marshal(buf, params)
 	if err != nil {
 		return LiquidityPoolId{}, errors.Wrap(err, "failed to build liquidity pool id")
 	}
-	return sha256.Sum256([]byte(bin)), nil
+	return sha256.Sum256(buf.Bytes()), nil
 }
 
 func (lpi LiquidityPoolId) ToXDR() (xdr.PoolId, error) {
