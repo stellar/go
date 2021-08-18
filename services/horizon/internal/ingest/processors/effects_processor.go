@@ -680,8 +680,17 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 	if len(changes) > 0 {
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		effect := history.EffectType(0)
-		// TODO Fix before Protocol 18
-		addAssetDetails(details, op.Line.ToAsset(), "")
+		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
+			// TODO: we probably want to factor this out into a function with identical code from https://github.com/stellar/go/pull/3825
+			details["asset_type"] = "liquidity_pool_shares"
+			if op.Line.LiquidityPool.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return fmt.Errorf("unkown liquidity pool type %d", op.Line.LiquidityPool.Type)
+			}
+			// TODO: we need the hashing function in order to obtain the id (it's not provided directly)
+			// details["liquidity_pool_id"] = op.Line.LiquidityPool.ConstantProduct.
+		} else {
+			addAssetDetails(details, op.Line.ToAsset(), "")
+		}
 
 		for _, change := range changes {
 			if change.Type != xdr.LedgerEntryTypeTrustline {

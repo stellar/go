@@ -362,21 +362,28 @@ type SignerUpdated struct {
 	Key       string `json:"key"`
 }
 
+// TODO: we use this exact type in https://github.com/stellar/go/pull/3825 (ChangeTrust operation).
+//       Reuse it.
+type TrustlineAsset struct {
+	base.Asset
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+}
+
 type TrustlineCreated struct {
 	Base
-	base.Asset
+	TrustlineAsset
 	Limit string `json:"limit"`
 }
 
 type TrustlineRemoved struct {
 	Base
-	base.Asset
+	TrustlineAsset
 	Limit string `json:"limit"`
 }
 
 type TrustlineUpdated struct {
 	Base
-	base.Asset
+	TrustlineAsset
 	Limit string `json:"limit"`
 }
 
