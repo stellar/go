@@ -3,7 +3,6 @@ package processors
 import (
 	"context"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -503,14 +502,14 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		op := operation.operation.Body.MustLiquidityPoolDepositOp()
-		details["liquidity_pool_id"] = hex.EncodeToString(op.LiquidityPoolId[:])
+		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
 		delta, err := operation.getLiquidityPoolProductDelta(op.LiquidityPoolId)
 		if err != nil {
 			return nil, err
 		}
 		details["reserves_max"] = []map[string]string{
-			{"asset": delta.Params.AssetA.String(), "amount": amount.String(op.MaxAmountA)},
-			{"asset": delta.Params.AssetB.String(), "amount": amount.String(op.MaxAmountB)},
+			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(op.MaxAmountA)},
+			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(op.MaxAmountB)},
 		}
 		details["min_price"] = op.MinPrice.String()
 		details["min_price_r"] = map[string]interface{}{
@@ -526,8 +525,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			return nil, err
 		}
 		details["reserves_deposited"] = []map[string]string{
-			{"asset": delta.Params.AssetA.String(), "amount": amount.String(delta.ReserveA)},
-			{"asset": delta.Params.AssetB.String(), "amount": amount.String(delta.ReserveB)},
+			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
+			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
 		}
 		if err != nil {
 			return nil, err
@@ -535,22 +534,22 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["shares_recieved"] = strconv.FormatInt(int64(delta.TotalPoolShares), 10)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
-		details["liquidity_pool_id"] = hex.EncodeToString(op.LiquidityPoolId[:])
+		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
 		delta, err := operation.getLiquidityPoolProductDelta(op.LiquidityPoolId)
 		if err != nil {
 			return nil, err
 		}
 		details["reserves_min"] = []map[string]string{
-			{"asset": delta.Params.AssetA.String(), "amount": amount.String(op.MinAmountA)},
-			{"asset": delta.Params.AssetB.String(), "amount": amount.String(op.MinAmountB)},
+			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(op.MinAmountA)},
+			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(op.MinAmountB)},
 		}
 		details["shares"] = strconv.FormatInt(int64(op.Amount), 10)
 		if err != nil {
 			return nil, err
 		}
 		details["reserves_received"] = []map[string]string{
-			{"asset": delta.Params.AssetA.String(), "amount": amount.String(-delta.ReserveA)},
-			{"asset": delta.Params.AssetB.String(), "amount": amount.String(-delta.ReserveB)},
+			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(-delta.ReserveA)},
+			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(-delta.ReserveB)},
 		}
 
 	default:

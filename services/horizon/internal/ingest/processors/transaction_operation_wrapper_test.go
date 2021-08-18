@@ -1872,7 +1872,7 @@ func TestLiquidityPoolDepositDetails(t *testing.T) {
 		},
 		"reserves_deposited": []map[string]string{
 			{
-				"asset":  "credit_alphanum4/USD/GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 				"amount": "0.0000060",
 			},
 			{
@@ -1882,7 +1882,7 @@ func TestLiquidityPoolDepositDetails(t *testing.T) {
 		},
 		"reserves_max": []map[string]string{
 			{
-				"asset":  "credit_alphanum4/USD/GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 				"amount": "0.0000100",
 			},
 			{
@@ -1984,7 +1984,7 @@ func TestLiquidityPoolWithdrawDetails(t *testing.T) {
 		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
 		"reserves_received": []map[string]string{
 			{
-				"asset":  "credit_alphanum4/USD/GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 				"amount": "0.0000060",
 			},
 			{
@@ -1994,7 +1994,7 @@ func TestLiquidityPoolWithdrawDetails(t *testing.T) {
 		},
 		"reserves_min": []map[string]string{
 			{
-				"asset":  "credit_alphanum4/USD/GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 				"amount": "0.0000005",
 			},
 			{
