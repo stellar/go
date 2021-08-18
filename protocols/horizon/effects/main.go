@@ -548,23 +548,20 @@ type TrustlineFlagsUpdated struct {
 	ClawbackEnabled                 *bool  `json:"clawback_enabled_flag,omitempty"`
 }
 
-type LiquidityPool struct {
-	ID              string `json:"id"`
-	FeeBP           uint32 `json:"fee_bp"`
-	Type            string `json:"type"`
-	TotalTrustlines uint64 `json:"total_trustlines,string"`
-	TotalShares     uint64 `json:"total_shares,string"`
-	Reserves        []struct {
-		Balance string `json:"balance"`
-		Asset   string `json:"asset"`
-	} `json:"reserves"`
-}
-
 // TODO: this exact type exists at https://github.com/stellar/go/pull/3825
 //       should we reuse that? (we would probably have to place it at the top module)
 type LiquidityPoolAssetAmount struct {
 	Asset  string `json:"asset"`
 	Amount string `json:"amount"`
+}
+
+type LiquidityPool struct {
+	ID              string                     `json:"id"`
+	FeeBP           uint32                     `json:"fee_bp"`
+	Type            string                     `json:"type"`
+	TotalTrustlines uint64                     `json:"total_trustlines,string"`
+	TotalShares     uint64                     `json:"total_shares,string"`
+	Reserves        []LiquidityPoolAssetAmount `json:"reserves"`
 }
 
 type LiquidityPoolDeposited struct {
