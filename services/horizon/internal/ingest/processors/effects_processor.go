@@ -216,6 +216,9 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addClawbackClaimableBalanceEffects(changes)
 	case xdr.OperationTypeSetTrustLineFlags:
 		err = wrapper.addSetTrustLineFlagsEffects()
+	case xdr.OperationTypeLiquidityPoolDeposit:
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
