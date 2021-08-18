@@ -58,6 +58,12 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectSignerSponsorshipUpdated:           "signer_sponsorship_updated",
 	history.EffectSignerSponsorshipRemoved:           "signer_sponsorship_removed",
 	history.EffectClaimableBalanceClawedBack:         "claimable_balance_clawed_back",
+	history.EffectLiquidityPoolDeposited:             "liquidity_pool_deposited",
+	history.EffectLiquidityPoolWithdrew:              "liquidity_pool_withdrew",
+	history.EffectLiquidityPoolTrade:                 "liquidity_pool_trade",
+	history.EffectLiquidityPoolCreated:               "liquidity_pool_created",
+	history.EffectLiquidityPoolRemoved:               "liquidity_pool_removed",
+	history.EffectLiquidityPoolRevoked:               "liquidity_pool_revoked",
 }
 
 // NewEffect creates a new effect resource from the provided database representation
@@ -249,6 +255,30 @@ func NewEffect(
 		result = e
 	case history.EffectClaimableBalanceClawedBack:
 		e := effects.ClaimableBalanceClawedBack{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectLiquidityPoolDeposited:
+		e := effects.LiquidityPoolDeposited{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectLiquidityPoolWithdrew:
+		e := effects.LiquidityPoolWithdrew{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectLiquidityPoolTrade:
+		e := effects.LiquidityPoolTrade{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectLiquidityPoolCreated:
+		e := effects.LiquidityPoolCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectLiquidityPoolRemoved:
+		e := effects.LiquidityPoolRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectLiquidityPoolRevoked:
+		e := effects.LiquidityPoolRevoked{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountRemoved:

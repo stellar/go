@@ -186,6 +186,24 @@ const (
 
 	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
 	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
+
+	// EffectLiquidityPoolDeposited occurs when a liquidity pool incurs a deposit
+	EffectLiquidityPoolDeposited EffectType = 90 // from liquidity_pool_deposit
+
+	// EffectLiquidityPoolWithdrew occurs when a liquidity pool incurs a withdrawal
+	EffectLiquidityPoolWithdrew EffectType = 91 // from liquidity_pool_withdraw
+
+	// EffectLiquidityPoolTrade occurs when a trade happens in a liquidity pool
+	EffectLiquidityPoolTrade EffectType = 92
+
+	// EffectLiquidityPoolCreated occurs when a liquidity pool is created
+	EffectLiquidityPoolCreated EffectType = 93 // from change_trust
+
+	// EffectLiquidityPoolRemoved occurs when a liquidity pool is removed
+	EffectLiquidityPoolRemoved EffectType = 94 // from change_trust
+
+	// EffectLiquidityPoolRevoked occurs when a liquidity pool is revoked
+	EffectLiquidityPoolRevoked EffectType = 95 // from change_trust_line_flags and allow_trust
 )
 
 // Account is a row of data from the `history_accounts` table

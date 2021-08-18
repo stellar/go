@@ -182,6 +182,23 @@ const (
 	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
 	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
 
+	// EffectLiquidityPoolDeposited occurs when a liquidity pool incurs a deposit
+	EffectLiquidityPoolDeposited EffectType = 90 // from liquidity_pool_deposit
+
+	// EffectLiquidityPoolWithdrew occurs when a liquidity pool incurs a withdrawal
+	EffectLiquidityPoolWithdrew EffectType = 91 // from liquidity_pool_withdraw
+
+	// EffectLiquidityPoolTrade occurs when a trade happens in a liquidity pool
+	EffectLiquidityPoolTrade EffectType = 92
+
+	// EffectLiquidityPoolCreated occurs when a liquidity pool is created
+	EffectLiquidityPoolCreated EffectType = 93 // from change_trust
+
+	// EffectLiquidityPoolRemoved occurs when a liquidity pool is removed
+	EffectLiquidityPoolRemoved EffectType = 94 // from change_trust
+
+	// EffectLiquidityPoolRevoked occurs when a liquidity pool is revoked
+	EffectLiquidityPoolRevoked EffectType = 95 // from change_trust_line_flags and allow_trust
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -236,6 +253,12 @@ var EffectTypeNames = map[EffectType]string{
 	EffectSignerSponsorshipUpdated:           "signer_sponsorship_updated",
 	EffectSignerSponsorshipRemoved:           "signer_sponsorship_removed",
 	EffectClaimableBalanceClawedBack:         "claimable_balance_clawed_back",
+	EffectLiquidityPoolDeposited:             "liquidity_pool_deposited",
+	EffectLiquidityPoolWithdrew:              "liquidity_pool_withdrew",
+	EffectLiquidityPoolTrade:                 "liquidity_pool_trade",
+	EffectLiquidityPoolCreated:               "liquidity_pool_created",
+	EffectLiquidityPoolRemoved:               "liquidity_pool_removed",
+	EffectLiquidityPoolRevoked:               "liquidity_pool_revoked",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -523,6 +546,67 @@ type TrustlineFlagsUpdated struct {
 	Authorized                      *bool  `json:"authorized_flag,omitempty"`
 	AuthorizedToMaintainLiabilities *bool  `json:"authorized_to_maintain_liabilites_flag,omitempty"`
 	ClawbackEnabled                 *bool  `json:"clawback_enabled_flag,omitempty"`
+}
+
+type LiquidityPool struct {
+	ID              string `json:"id"`
+	FeeBP           uint32 `json:"fee_bp"`
+	Type            string `json:"type"`
+	TotalTrustlines uint64 `json:"total_trustlines,string"`
+	TotalShares     uint64 `json:"total_shares,string"`
+	Reserves        []struct {
+		Balance string `json:"balance"`
+		Asset   string `json:"asset"`
+	} `json:"reserves"`
+}
+
+// TODO: this exact type exists at https://github.com/stellar/go/pull/3825
+//       should we reuse that? (we would probably have to place it at the top module)
+type LiquidityPoolAssetAmount struct {
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
+}
+
+type LiquidityPoolDeposited struct {
+	Base
+	LiquidityPool     LiquidityPool              `json:"liquidity_pool"`
+	ReservesDeposited []LiquidityPoolAssetAmount `json:"reserves_deposited"`
+	SharesReceived    uint64                     `json:"shares_received"`
+}
+
+type LiquidityPoolWithdrew struct {
+	Base
+	LiquidityPool    LiquidityPool              `json:"liquidity_pool"`
+	ReservesReceived []LiquidityPoolAssetAmount `json:"reserves_received"`
+	SharesRedeemed   uint64                     `json:"shares_redeemed"`
+}
+
+type LiquidityPoolTrade struct {
+	Base
+	LiquidityPool LiquidityPool `json:"liquidity_pool"`
+}
+
+type LiquidityPoolCreated struct {
+	Base
+	LiquidityPool LiquidityPool `json:"liquidity_pool"`
+}
+
+type LiquidityPoolRemoved struct {
+	Base
+	LiquidityPoolID string `json:"liquidity_pool_id"`
+}
+
+type LiquidityPoolClaimableAssetAmount struct {
+	Asset              string `json:"asset"`
+	Amount             string `json:"amount"`
+	ClaimableBalanceID string `json:"claimable_balance_id"`
+}
+
+type LiquidityPoolRevoked struct {
+	Base
+	LiquidityPool   LiquidityPool                       `json:"liquidity_pool"`
+	ReservesRevoked []LiquidityPoolClaimableAssetAmount `json:"reserves_revoked"`
+	SharesRevoked   uint64                              `json:"shares_revoked"`
 }
 
 // Effect contains methods that are implemented by all effect types.
