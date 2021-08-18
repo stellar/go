@@ -42,10 +42,12 @@ func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation
 	}
 
 	var minPrice, maxPrice price
-	if err := minPrice.parse(lpd.MinPrice); err != nil {
+	err = minPrice.parse(lpd.MinPrice)
+	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MinPrice'")
 	}
-	if err := maxPrice.parse(lpd.MaxPrice); err != nil {
+	err = maxPrice.parse(lpd.MaxPrice)
+	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MaxPrice'")
 	}
 
