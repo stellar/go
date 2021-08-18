@@ -232,6 +232,7 @@ type mockDBQ struct {
 	history.MockQClaimableBalances
 	history.MockQHistoryClaimableBalances
 	history.MockQLiquidityPools
+	history.MockQHistoryLiquidityPools
 	history.MockQAssetStats
 	history.MockQData
 	history.MockQEffects

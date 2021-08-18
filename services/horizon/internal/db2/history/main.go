@@ -229,6 +229,7 @@ type IngestionQ interface {
 	QEffects
 	QLedgers
 	QLiquidityPools
+	QHistoryLiquidityPools
 	QOffers
 	QOperations
 	// QParticipants

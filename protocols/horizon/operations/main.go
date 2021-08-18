@@ -36,6 +36,8 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeClawback:                      "clawback",
 	xdr.OperationTypeClawbackClaimableBalance:      "clawback_claimable_balance",
 	xdr.OperationTypeSetTrustLineFlags:             "set_trust_line_flags",
+	xdr.OperationTypeLiquidityPoolDeposit:          "liquidity_pool_deposit",
+	xdr.OperationTypeLiquidityPoolWithdraw:         "liquidity_pool_withdraw",
 }
 
 // Base represents the common attributes of an operation resource
@@ -198,11 +200,12 @@ type SetOptions struct {
 type ChangeTrust struct {
 	Base
 	base.Asset
-	Limit          string `json:"limit"`
-	Trustee        string `json:"trustee"`
-	Trustor        string `json:"trustor"`
-	TrustorMuxed   string `json:"trustor_muxed,omitempty"`
-	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty,string"`
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+	Limit           string `json:"limit"`
+	Trustee         string `json:"trustee,omitempty"`
+	Trustor         string `json:"trustor"`
+	TrustorMuxed    string `json:"trustor_muxed,omitempty"`
+	TrustorMuxedID  uint64 `json:"trustor_muxed_id,omitempty,string"`
 }
 
 // Deprecated: use TrustlineFlagsUpdated instead.
@@ -315,6 +318,36 @@ type SetTrustLineFlags struct {
 	SetFlagsS   []string `json:"set_flags_s,omitempty"`
 	ClearFlags  []int    `json:"clear_flags,omitempty"`
 	ClearFlagsS []string `json:"clear_flags_s,omitempty"`
+}
+
+// LiquidityPoolAssetAmount is the amount of an asset in the context of a liquidity pool
+type LiquidityPoolAssetAmount struct {
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
+}
+
+// LiquidityPoolDeposit is the json resource representing a single operation whose type is
+// LiquidityPoolDeposit.
+type LiquidityPoolDeposit struct {
+	Base
+	LiquidityPoolID   string                     `json:"liquidty_pool_id"`
+	ReservesMax       []LiquidityPoolAssetAmount `json:"reserves_max"`
+	MinPrice          string                     `json:"min_price"`
+	MinPriceR         base.Price                 `json:"min_price_r"`
+	MaxPrice          string                     `json:"max_price"`
+	MaxPriceR         base.Price                 `json:"max_price_r"`
+	ReservesDeposited []LiquidityPoolAssetAmount `json:"reserves_deposited"`
+	SharesReceived    uint64                     `json:"shares_received,string"`
+}
+
+// LiquidityPoolWithdraw is the json resource representing a single operation whose type is
+// LiquidityPoolWithdraw.
+type LiquidityPoolWithdraw struct {
+	Base
+	LiquidityPoolID  string                     `json:"liquidty_pool_id"`
+	ReservesMin      []LiquidityPoolAssetAmount `json:"reserves_min"`
+	Shares           uint64                     `json:"shares,string"`
+	ReservesReceived []LiquidityPoolAssetAmount `json:"reserves_received"`
 }
 
 // Operation interface contains methods implemented by the operation types
@@ -522,6 +555,18 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeSetTrustLineFlags:
 		var op SetTrustLineFlags
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		var op LiquidityPoolDeposit
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		var op LiquidityPoolWithdraw
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
