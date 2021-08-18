@@ -200,11 +200,12 @@ type SetOptions struct {
 type ChangeTrust struct {
 	Base
 	base.Asset
-	Limit          string `json:"limit"`
-	Trustee        string `json:"trustee"`
-	Trustor        string `json:"trustor"`
-	TrustorMuxed   string `json:"trustor_muxed,omitempty"`
-	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty,string"`
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+	Limit           string `json:"limit"`
+	Trustee         string `json:"trustee"`
+	Trustor         string `json:"trustor"`
+	TrustorMuxed    string `json:"trustor_muxed,omitempty"`
+	TrustorMuxedID  uint64 `json:"trustor_muxed_id,omitempty,string"`
 }
 
 // Deprecated: use TrustlineFlagsUpdated instead.
