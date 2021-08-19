@@ -570,13 +570,17 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	return details, nil
 }
 
-func addLiquidityPoolAssetDetails(result map[string]interface{}, lp xdr.LiquidityPoolParameters, prefix string) error {
+func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters, prefix string) error {
 	result[prefix+"asset_type"] = "liquidity_pool_shares"
-	if lp.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-		return fmt.Errorf("unkown liquidity pool type %d", lp.Type)
+	if lpp.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+		return fmt.Errorf("unkown liquidity pool type %d", lpp.Type)
 	}
-	// TODO: we need the hashing function in order to obtain the id (it's not provided directly)
-	// details["liquidity_pool_id"] = op.Line.LiquidityPool.ConstantProduct.
+	cp := lpp.ConstantProduct
+	poolID, err := xdr.NewPoolId(cp.AssetA, cp.AssetB, cp.Fee)
+	if err != nil {
+		return err
+	}
+	result["liquidity_pool_id"] = PoolIDToString(poolID)
 	return nil
 }
 
