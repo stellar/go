@@ -396,7 +396,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
 		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
-			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool, ""); err != nil {
+			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool); err != nil {
 				return nil, err
 			}
 		} else {
@@ -570,8 +570,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	return details, nil
 }
 
-func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters, prefix string) error {
-	result[prefix+"asset_type"] = "liquidity_pool_shares"
+func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters) error {
+	result["asset_type"] = "liquidity_pool_shares"
 	if lpp.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
 		return fmt.Errorf("unkown liquidity pool type %d", lpp.Type)
 	}

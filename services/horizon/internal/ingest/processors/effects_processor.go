@@ -682,7 +682,7 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		effect := history.EffectType(0)
 		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
-			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool, ""); err != nil {
+			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool); err != nil {
 				return err
 			}
 		} else {

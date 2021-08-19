@@ -561,8 +561,8 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"asset_type": "liquidity_pool_shares",
 				"limit":      "922337203685.4775807",
 				"trustor":    "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY", "trustor_muxed": "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
-				"trustor_muxed_id": uint64(1234),
-				// TODO: add liquidity_pool_id
+				"trustor_muxed_id":  uint64(1234),
+				"liquidity_pool_id": "affb63cc2fb8b212c4768d6111d061e6523dcc3a14171f5d4596a38f1f391a07",
 			},
 		},
 		{
