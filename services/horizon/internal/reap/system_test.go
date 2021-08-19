@@ -17,6 +17,9 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 
 	sys := New(0, db, ledgerState)
 
+	// Disable sleeps for this.
+	sleep = 0
+
 	var (
 		prev int
 		cur  int
