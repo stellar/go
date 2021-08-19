@@ -32,9 +32,9 @@ func TestProblemRender(t *testing.T) {
 			500,
 		}, {
 			"renders the type correctly",
-			P{Type: "foo"},
+			P{Type: "foo", Status: 500},
 			[]string{"foo"},
-			0,
+			500,
 		}, {
 			"renders the status correctly",
 			P{Status: 201},
@@ -42,9 +42,9 @@ func TestProblemRender(t *testing.T) {
 			201,
 		}, {
 			"renders the extras correctly",
-			P{Extras: map[string]interface{}{"hello": "stellar"}},
+			P{Extras: map[string]interface{}{"hello": "stellar"}, Status: 500},
 			[]string{"hello", "stellar"},
-			0,
+			500,
 		},
 	}
 
@@ -112,7 +112,7 @@ func TestProblemInflate(t *testing.T) {
 		want string
 	}{
 		"renders the type correctly",
-		P{Type: "https://stellar.org/horizon-errors/not_found"},
+		P{Type: "https://stellar.org/horizon-errors/not_found", Status: 404},
 		"https://stellar.org/horizon-errors/not_found",
 	}
 
