@@ -362,28 +362,21 @@ type SignerUpdated struct {
 	Key       string `json:"key"`
 }
 
-// TODO: we use this exact type in https://github.com/stellar/go/pull/3825 (ChangeTrust operation).
-//       Reuse it.
-type TrustlineAsset struct {
-	base.Asset
-	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
-}
-
 type TrustlineCreated struct {
 	Base
-	TrustlineAsset
+	base.LiquidityPoolAsset
 	Limit string `json:"limit"`
 }
 
 type TrustlineRemoved struct {
 	Base
-	TrustlineAsset
+	base.LiquidityPoolAsset
 	Limit string `json:"limit"`
 }
 
 type TrustlineUpdated struct {
 	Base
-	TrustlineAsset
+	base.LiquidityPoolAsset
 	Limit string `json:"limit"`
 }
 
@@ -555,34 +548,27 @@ type TrustlineFlagsUpdated struct {
 	ClawbackEnabled                 *bool  `json:"clawback_enabled_flag,omitempty"`
 }
 
-// TODO: this exact type exists at https://github.com/stellar/go/pull/3825
-//       should we reuse that? (we would probably have to place it at the top module)
-type LiquidityPoolAssetAmount struct {
-	Asset  string `json:"asset"`
-	Amount string `json:"amount"`
-}
-
 type LiquidityPool struct {
-	ID              string                     `json:"id"`
-	FeeBP           uint32                     `json:"fee_bp"`
-	Type            string                     `json:"type"`
-	TotalTrustlines uint64                     `json:"total_trustlines,string"`
-	TotalShares     uint64                     `json:"total_shares,string"`
-	Reserves        []LiquidityPoolAssetAmount `json:"reserves"`
+	ID              string             `json:"id"`
+	FeeBP           uint32             `json:"fee_bp"`
+	Type            string             `json:"type"`
+	TotalTrustlines uint64             `json:"total_trustlines,string"`
+	TotalShares     uint64             `json:"total_shares,string"`
+	Reserves        []base.AssetAmount `json:"reserves"`
 }
 
 type LiquidityPoolDeposited struct {
 	Base
-	LiquidityPool     LiquidityPool              `json:"liquidity_pool"`
-	ReservesDeposited []LiquidityPoolAssetAmount `json:"reserves_deposited"`
-	SharesReceived    uint64                     `json:"shares_received"`
+	LiquidityPool     LiquidityPool      `json:"liquidity_pool"`
+	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
+	SharesReceived    uint64             `json:"shares_received"`
 }
 
 type LiquidityPoolWithdrew struct {
 	Base
-	LiquidityPool    LiquidityPool              `json:"liquidity_pool"`
-	ReservesReceived []LiquidityPoolAssetAmount `json:"reserves_received"`
-	SharesRedeemed   uint64                     `json:"shares_redeemed"`
+	LiquidityPool    LiquidityPool      `json:"liquidity_pool"`
+	ReservesReceived []base.AssetAmount `json:"reserves_received"`
+	SharesRedeemed   uint64             `json:"shares_redeemed"`
 }
 
 type LiquidityPoolTrade struct {

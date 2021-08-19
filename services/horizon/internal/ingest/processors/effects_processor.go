@@ -217,8 +217,9 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeSetTrustLineFlags:
 		err = wrapper.addSetTrustLineFlagsEffects()
 	case xdr.OperationTypeLiquidityPoolDeposit:
+		err = wrapper.addLiquidityPoolDepositEffect()
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-
+		err = wrapper.addLiquidityPoolWithdrawEffect()
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -681,13 +682,9 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		effect := history.EffectType(0)
 		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
-			// TODO: we probably want to factor this out into a function with identical code from https://github.com/stellar/go/pull/3825
-			details["asset_type"] = "liquidity_pool_shares"
-			if op.Line.LiquidityPool.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-				return fmt.Errorf("unkown liquidity pool type %d", op.Line.LiquidityPool.Type)
+			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool, ""); err != nil {
+				return err
 			}
-			// TODO: we need the hashing function in order to obtain the id (it's not provided directly)
-			// details["liquidity_pool_id"] = op.Line.LiquidityPool.ConstantProduct.
 		} else {
 			addAssetDetails(details, op.Line.ToAsset(), "")
 		}
@@ -1126,4 +1123,72 @@ func tradeDetails(buyer xdr.MuxedAccount, seller xdr.AccountId, claim xdr.ClaimA
 	addAssetDetails(sd, claim.AssetSold(), "sold_")
 
 	return
+}
+
+func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
+	return map[string]interface{}{
+		"id":               PoolIDToString(lp.LiquidityPoolId),
+		"fee_bp":           uint32(lp.Body.ConstantProduct.Params.Fee),
+		"type":             "constant_product",
+		"total_trustlines": lp.Body.ConstantProduct.PoolSharesTrustLineCount,
+		"total_shares":     lp.Body.ConstantProduct.PoolSharesTrustLineCount,
+		"reserves": []map[string]string{
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(lp.Body.ConstantProduct.ReserveA),
+			},
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(lp.Body.ConstantProduct.ReserveB),
+			},
+		},
+	}
+}
+
+func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
+	op := e.operation.operation.Body.MustLiquidityPoolDepositOp()
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(op.LiquidityPoolId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"liquidity_pool": liquidityPoolDetails(lp),
+		"reserves_deposited": []map[string]string{
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(delta.ReserveA),
+			},
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(delta.ReserveB),
+			},
+		},
+		"shares_received": amount.String(delta.TotalPoolShares),
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolDeposited, details)
+	return nil
+}
+
+func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
+	op := e.operation.operation.Body.MustLiquidityPoolDepositOp()
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(op.LiquidityPoolId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"liquidity_pool": liquidityPoolDetails(lp),
+		"reserves_received": []map[string]string{
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(-delta.ReserveA),
+			},
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(-delta.ReserveB),
+			},
+		},
+		"shares_redeemed": amount.String(-delta.TotalPoolShares),
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolDeposited, details)
+	return nil
 }

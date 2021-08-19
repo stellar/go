@@ -4,7 +4,6 @@ package processors
 
 import (
 	"context"
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -109,7 +108,7 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) testOperationInserts
 		ledgerSequence: s.sequence,
 	}).ID()
 
-	hexID := hex.EncodeToString(poolID[:])
+	hexID := PoolIDToString(poolID)
 
 	// Setup a q
 	s.mockQ.On("CreateHistoryLiquidityPools", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
