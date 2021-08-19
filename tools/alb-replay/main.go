@@ -139,7 +139,7 @@ func queryURLs(ctx context.Context, timeout time.Duration, urlChan chan Numbered
 		start := time.Now()
 		resp, err := client.Do(req)
 		if err != nil {
-			// we don't want to print cancel errors due to an interrupt happening
+			// we don't want to print cancel errors due to a signal interrupt
 			if errors.Unwrap(err) != context.Canceled {
 				log.Printf("(%d) unexpected request error: %v %q", numURL.Number, errors.Unwrap(err), numURL.URL)
 			}
@@ -191,15 +191,9 @@ func main() {
 		}()
 	}
 
-	// spawn url producer
-	wg.Add(1)
-	go func() {
-		parseURLs(ctx, *startFromURLNum, baseURL, logReader, urlChan)
-		// signal the consumers there won't be more urls
-		close(urlChan)
-		wg.Done()
-	}()
-
-	// just wait for the magic to happen
+	parseURLs(ctx, *startFromURLNum, baseURL, logReader, urlChan)
+	// signal the consumers there won't be more urls
+	close(urlChan)
+	// wait for to consumers to be done
 	wg.Wait()
 }
