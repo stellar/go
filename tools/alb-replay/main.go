@@ -132,7 +132,7 @@ func queryURLs(ctx context.Context, timeout time.Duration, urlChan chan Numbered
 
 		req, err := http.NewRequest(http.MethodGet, numURL.URL, nil)
 		if err != nil {
-			log.Printf("(%d) unexpected error creating request: %v", err)
+			log.Printf("(%d) unexpected error creating request: %v", numURL.Number, err)
 			continue
 		}
 		req = req.WithContext(ctx)
