@@ -326,8 +326,11 @@ func ExampleChangeTrust() {
 	sourceAccount, err := client.AccountDetail(ar)
 	check(err)
 
+	asset, err := CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"}.ToChangeTrustAsset()
+	check(err)
+
 	op := ChangeTrust{
-		Line:  CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"},
+		Line:  asset,
 		Limit: "10",
 	}
 
@@ -359,7 +362,7 @@ func ExampleChangeTrust_removeTrustline() {
 	sourceAccount, err := client.AccountDetail(ar)
 	check(err)
 
-	op := RemoveTrustlineOp(CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"})
+	op := RemoveTrustlineOp(CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"}.MustToChangeTrustAsset())
 
 	tx, err := NewTransaction(
 		TransactionParams{
@@ -869,13 +872,16 @@ func InitSponsorshipTestConfig() SponsorshipTestConfig {
 func ExampleBeginSponsoringFutureReserves() {
 	test := InitSponsorshipTestConfig()
 
+	asset, err := test.Assets[0].ToChangeTrustAsset()
+	check(err)
+
 	// If the sponsoree submits the transaction, the `SourceAccount` fields can
 	// be omitted for the "sponsor sandwich" operations.
 	sponsorTrustline := []Operation{
 		&BeginSponsoringFutureReserves{SponsoredID: test.A.Address()},
 		&ChangeTrust{
 			SourceAccount: test.Aaccount.AccountID,
-			Line:          &test.Assets[0],
+			Line:          asset,
 			Limit:         MaxTrustlineLimit,
 		},
 		&EndSponsoringFutureReserves{},
@@ -904,6 +910,9 @@ func ExampleBeginSponsoringFutureReserves() {
 func ExampleBeginSponsoringFutureReserves_transfer() {
 	test := InitSponsorshipTestConfig()
 
+	asset, err := test.Assets[1].ToTrustLineAsset()
+	check(err)
+
 	transferOps := []Operation{
 		&BeginSponsoringFutureReserves{
 			SourceAccount: test.S2account.AccountID,
@@ -914,7 +923,7 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 			Account:         &test.Aaccount.AccountID,
 			TrustLine: &TrustLineID{
 				Account: test.A.Address(),
-				Asset:   test.Assets[1],
+				Asset:   asset,
 			},
 		},
 		&EndSponsoringFutureReserves{},
@@ -942,13 +951,19 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 func ExampleRevokeSponsorship() {
 	test := InitSponsorshipTestConfig()
 
+	asset1, err := test.Assets[1].ToTrustLineAsset()
+	check(err)
+
+	asset2, err := test.Assets[2].ToTrustLineAsset()
+	check(err)
+
 	revokeOps := []Operation{
 		&RevokeSponsorship{
 			SponsorshipType: RevokeSponsorshipTypeTrustLine,
 			Account:         &test.Aaccount.AccountID,
 			TrustLine: &TrustLineID{
 				Account: test.A.Address(),
-				Asset:   test.Assets[1],
+				Asset:   asset1,
 			},
 		},
 		&RevokeSponsorship{
@@ -956,7 +971,7 @@ func ExampleRevokeSponsorship() {
 			Account:         &test.Aaccount.AccountID,
 			TrustLine: &TrustLineID{
 				Account: test.A.Address(),
-				Asset:   test.Assets[2],
+				Asset:   asset2,
 			},
 		},
 	}
@@ -977,4 +992,107 @@ func ExampleRevokeSponsorship() {
 	fmt.Println(txb64)
 
 	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAMgAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUVGR0gAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUlKS0wAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAeoucsUAAABA9YO+xRc5Vb8ueP1U8go7ka+u/gZJd2z075c2pdFxYb+4AvQUQGvg+N4wvtNll43lPwXq5XAz74BfP99wugplDQ==
+}
+
+type LiquidityPoolTestConfig struct {
+	A        *keypair.Full
+	AAccount SimpleAccount
+	Assets   []CreditAsset
+}
+
+func InitLiquidityPoolTestConfig() LiquidityPoolTestConfig {
+	A := keypair.MustParseFull("SCZANGBA5YHTNYVVV4C3U252E2B6P6F5T3U6MM63WBSBZATAQI3EBTQ4")
+
+	return LiquidityPoolTestConfig{
+		A:        A,
+		AAccount: SimpleAccount{AccountID: A.Address()},
+		Assets: []CreditAsset{
+			{Code: "ABCD", Issuer: A.Address()},
+			{Code: "EFGH", Issuer: A.Address()},
+			{Code: "IJKL", Issuer: A.Address()},
+		},
+	}
+}
+
+func ExampleLiquidityPoolDeposit() {
+	test := InitLiquidityPoolTestConfig()
+
+	poolId, err := NewLiquidityPoolId(test.Assets[0], test.Assets[1])
+	check(err)
+
+	depositOps := []Operation{
+		// Change of trust the first time ensures that the pool exists.
+		&ChangeTrust{
+			Line: LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: LiquidityPoolParameters{
+					AssetA: test.Assets[0],
+					AssetB: test.Assets[1],
+					Fee:    LiquidityPoolFeeV18,
+				},
+			},
+			SourceAccount: test.AAccount.AccountID,
+			Limit:         MaxTrustlineLimit,
+		},
+
+		// Add our deposit to the pool
+		&LiquidityPoolDeposit{
+			SourceAccount:   test.A.Address(),
+			LiquidityPoolID: poolId,
+			MaxAmountA:      "0.1000000",
+			MaxAmountB:      "0.1000000",
+			MinPrice:        "0.1000000",
+			MaxPrice:        "0.1000000",
+		},
+	}
+
+	// With revocation, only the new sponsor needs to sign.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.AAccount,
+			Operations:           depositOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.A,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAMgAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAABgAAAAB//////////wAAAAEAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAAWrtHNnTDp+zfU1j3Q9IJ/vRB55hMzLEUjA+vwpIffwboAAAAAAA9CQAAAAAAAD0JAAAAAAQAAAAoAAAABAAAACgAAAAAAAAABu9LOKAAAAEAr6P/BvyQ+gWOpZda6uQCmouh6TrX+kIx/HP9x56uN93U7QTqSoiv7krgRXJoTN7bQZq43HaBQjhJXXcUnuB4O
+}
+
+func ExampleLiquidityPoolWithdraw() {
+	test := InitLiquidityPoolTestConfig()
+
+	poolId, err := NewLiquidityPoolId(test.Assets[0], test.Assets[1])
+	check(err)
+
+	withdrawOps := []Operation{
+		&LiquidityPoolWithdraw{
+			SourceAccount:   test.A.Address(),
+			LiquidityPoolID: poolId,
+			Amount:          "0.1000000",
+			MinAmountA:      "0.1000000",
+			MinAmountB:      "0.1000000",
+		},
+	}
+
+	// With revocation, only the new sponsor needs to sign.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.AAccount,
+			Operations:           withdrawOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.A,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAF67RzZ0w6fs31NY90PSCf70QeeYTMyxFIwPr8KSH38G6AAAAAAAPQkAAAAAAAA9CQAAAAAAAD0JAAAAAAAAAAAG70s4oAAAAQD//xh4YLc0RQqA3+Xl/szbzj27ercg4nINoMpJyUF5cIEip7Xw/sltkssHEoNuOzWtzlj12QDDX3LI1PBFnJQw=
 }

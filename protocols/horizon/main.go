@@ -726,3 +726,33 @@ type Claimant struct {
 	Destination string             `json:"destination"`
 	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }
+
+// LiquidityPool represents a liquidity pool
+type LiquidityPool struct {
+	ID              string                 `json:"id"`
+	PT              string                 `json:"paging_token"`
+	FeeBP           uint64                 `json:"fee_bp"`
+	Type            string                 `json:"type"`
+	TotalTrustlines string                 `json:"total_trustlines"`
+	TotalShares     string                 `json:"total_shares"`
+	Reserves        []LiquidityPoolReserve `json:"reserves"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res LiquidityPool) PagingToken() string {
+	return res.PT
+}
+
+// LiquidityPoolsPage returns a list of liquidity pool records
+type LiquidityPoolsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []LiquidityPool `json:"records"`
+	} `json:"_embedded"`
+}
+
+// LiquidityPoolReserve represents a liquidity pool asset reserve
+type LiquidityPoolReserve struct {
+	Asset   string `json:"asset"`
+	Balance string `json:"balance"`
+}

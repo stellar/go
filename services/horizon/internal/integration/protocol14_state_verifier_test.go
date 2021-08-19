@@ -42,7 +42,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredSource.AccountID,
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()}.MustToChangeTrustAsset(),
 			Limit:         txnbuild.MaxTrustlineLimit,
 		},
 		&txnbuild.ManageSellOffer{

@@ -3,8 +3,9 @@ package txnbuild
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"github.com/stellar/go/network"
 	"testing"
+
+	"github.com/stellar/go/network"
 
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -334,7 +335,7 @@ func TestFeeBumpAddSignatureBase64(t *testing.T) {
 		base64.StdEncoding.EncodeToString(signatures[0].Signature),
 	)
 	assert.NoError(t, err)
-	otherTx, err = otherTx.AddSignatureBase64(
+	_, err = otherTx.AddSignatureBase64(
 		network.TestNetworkPassphrase,
 		kp2.Address(),
 		base64.StdEncoding.EncodeToString(signatures[1].Signature),
@@ -391,7 +392,7 @@ func TestFeeBumpMuxedAccounts(t *testing.T) {
 	assert.Equal(t, mx1.Address(), feeBumpTx.FeeAccount())
 
 	// It fails when not enabling muxed accounts
-	feeBumpTx, err = NewFeeBumpTransaction(
+	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
 			FeeAccount:          mx1.Address(),
 			BaseFee:             2 * MinBaseFee,

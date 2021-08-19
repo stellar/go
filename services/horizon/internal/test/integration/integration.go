@@ -562,8 +562,12 @@ func (i *Test) EstablishTrustline(
 	if asset.IsNative() {
 		return proto.Transaction{}, nil
 	}
+	line, err := asset.ToChangeTrustAsset()
+	if err != nil {
+		return proto.Transaction{}, err
+	}
 	return i.SubmitOperations(account, truster, &txnbuild.ChangeTrust{
-		Line:  asset,
+		Line:  line,
 		Limit: "2000",
 	})
 }
