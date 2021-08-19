@@ -83,10 +83,24 @@ func (lpd *LiquidityPoolWithdraw) FromXDR(xdrOp xdr.Operation, withMuxedAccounts
 
 // Validate for LiquidityPoolWithdraw validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-//
-// TODO: Implement this
 func (lpd *LiquidityPoolWithdraw) Validate(withMuxedAccounts bool) error {
+	err := validateAmount(lpd.Amount)
+	if err != nil {
+		return NewValidationError("Amount", err.Error())
+	}
+
+	err = validateAmount(lpd.MinAmountA)
+	if err != nil {
+		return NewValidationError("MinAmountA", err.Error())
+	}
+
+	err = validateAmount(lpd.MinAmountB)
+	if err != nil {
+		return NewValidationError("MinAmountB", err.Error())
+	}
+
 	return nil
+
 }
 
 // GetSourceAccount returns the source account of the operation, or nil if not

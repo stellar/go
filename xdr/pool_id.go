@@ -12,8 +12,7 @@ func NewPoolId(a, b Asset, fee Int32) (PoolId, error) {
 	params := LiquidityPoolConstantProductParameters{
 		AssetA: a,
 		AssetB: b,
-		// Hardcoded for now, as it must be this.
-		Fee: fee,
+		Fee:    fee,
 	}
 
 	buf := &bytes.Buffer{}

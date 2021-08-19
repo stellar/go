@@ -18,11 +18,6 @@ type LiquidityPoolDeposit struct {
 	MaxPrice        string
 }
 
-// TODO: Problem here is you might not have the assets, just the liquidity pool id. so...
-// func NewLiquidityPoolDeposit(sourceAccount string, assetA Asset, maxAmountA string, assetB Asset, maxAmountB string, minPrice, maxPrice string) (*LiquidityPoolDeposit, error) {
-// 	panic("not implemented")
-// }
-
 // BuildXDR for LiquidityPoolDeposit returns a fully configured XDR Operation.
 func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrLiquidityPoolId, err := lpd.LiquidityPoolID.ToXDR()
@@ -30,7 +25,6 @@ func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation
 		return xdr.Operation{}, errors.Wrap(err, "couldn't build liquidity pool ID XDR")
 	}
 
-	// TODO: We need to make sure that a and b are sorted here somehow. factory helper?
 	xdrMaxAmountA, err := amount.Parse(lpd.MaxAmountA)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MaxAmountA'")
@@ -101,9 +95,27 @@ func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 
 // Validate for LiquidityPoolDeposit validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-//
-// TODO: Implement this
 func (lpd *LiquidityPoolDeposit) Validate(withMuxedAccounts bool) error {
+	err := validateAmount(lpd.MaxAmountA)
+	if err != nil {
+		return NewValidationError("MaxAmountA", err.Error())
+	}
+
+	err = validateAmount(lpd.MaxAmountB)
+	if err != nil {
+		return NewValidationError("MaxAmountB", err.Error())
+	}
+
+	err = validateAmount(lpd.MinPrice)
+	if err != nil {
+		return NewValidationError("MinPrice", err.Error())
+	}
+
+	err = validateAmount(lpd.MaxPrice)
+	if err != nil {
+		return NewValidationError("MaxPrice", err.Error())
+	}
+
 	return nil
 }
 

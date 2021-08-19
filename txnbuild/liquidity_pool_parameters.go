@@ -18,12 +18,6 @@ type LiquidityPoolParameters struct {
 }
 
 func (lpi LiquidityPoolParameters) ToXDR() (xdr.LiquidityPoolParameters, error) {
-	// params := xdr.LiquidityPoolConstantProductParameters{
-	// 	AssetA: xdrAssetA,
-	// 	AssetB: xdrAssetB,
-	// 	// Hardcoded for now, as it must be this.
-	// 	Fee: xdr.LiquidityPoolFeeV18,
-	// }
 	xdrAssetA, err := lpi.AssetA.ToXDR()
 	if err != nil {
 		return xdr.LiquidityPoolParameters{}, errors.Wrap(err, "failed to build XDR AssetA ID")
