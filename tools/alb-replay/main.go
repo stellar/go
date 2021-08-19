@@ -3,7 +3,9 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -87,8 +89,8 @@ func (r *ALBLogEntryReader) GetRequestURI() (string, error) {
 	return parsed.RequestURI(), nil
 }
 
-func parseURLs(startFrom int, baseURL string, logReader *ALBLogEntryReader, urlChan chan NumberedURL, stop chan struct{}) {
-	counter := 1
+func parseURLs(ctx context.Context, startFrom int, baseURL string, logReader *ALBLogEntryReader, urlChan chan NumberedURL) {
+	counter := 0
 	for {
 		uri, err := logReader.GetRequestURI()
 		if err != nil {
@@ -102,39 +104,45 @@ func parseURLs(startFrom int, baseURL string, logReader *ALBLogEntryReader, urlC
 			// no usable URL found in the current log line
 			continue
 		}
-		url := NumberedURL{
-			Number: counter,
-			URL:    baseURL + uri,
-		}
 		counter++
 		if counter < startFrom {
 			// we haven't yet reached the expected start point
 			continue
 		}
+		url := NumberedURL{
+			Number: counter,
+			URL:    baseURL + uri,
+		}
 		select {
-		case <-stop:
+		case <-ctx.Done():
 			return
 		case urlChan <- url:
 		}
 	}
 }
 
-func queryURLs(timeout time.Duration, urlChan chan NumberedURL, stop chan struct{}) {
+func queryURLs(ctx context.Context, timeout time.Duration, urlChan chan NumberedURL) {
 	client := http.Client{
 		Timeout: timeout,
 	}
 	for numURL := range urlChan {
-		select {
-		case <-stop:
+		if ctx.Err() != nil {
 			return
-		default:
-			// do not block
 		}
 
-		start := time.Now()
-		resp, err := client.Get(numURL.URL)
+		req, err := http.NewRequest(http.MethodGet, numURL.URL, nil)
 		if err != nil {
-			log.Printf("(%d) unexpected request error: %v %q", numURL.Number, err, numURL.URL)
+			log.Printf("(%d) unexpected error creating request: %v", err)
+			continue
+		}
+		req = req.WithContext(ctx)
+		start := time.Now()
+		resp, err := client.Do(req)
+		if err != nil {
+			// we don't want to print cancel errors due to an interrupt happening
+			if errors.Unwrap(err) != context.Canceled {
+				log.Printf("(%d) unexpected request error: %v %q", numURL.Number, errors.Unwrap(err), numURL.URL)
+			}
 			continue
 		}
 		resp.Body.Close()
@@ -168,14 +176,17 @@ func main() {
 	baseURL := flag.Args()[1]
 	logReader := newALBLogEntryReader(file)
 	urlChan := make(chan NumberedURL, *workers)
-	stop := make(chan struct{})
 	var wg sync.WaitGroup
+
+	// setup interrupt cleanup code
+	ctx, stopped := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopped()
 
 	// spawn url consumers
 	for i := 0; i < *workers; i++ {
 		wg.Add(1)
 		go func() {
-			queryURLs(*timeout, urlChan, stop)
+			queryURLs(ctx, *timeout, urlChan)
 			wg.Done()
 		}()
 	}
@@ -183,19 +194,10 @@ func main() {
 	// spawn url producer
 	wg.Add(1)
 	go func() {
-		parseURLs(*startFromURLNum, baseURL, logReader, urlChan, stop)
+		parseURLs(ctx, *startFromURLNum, baseURL, logReader, urlChan)
 		// signal the consumers there won't be more urls
 		close(urlChan)
 		wg.Done()
-	}()
-
-	// setup interrupt cleanup code
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		close(stop)
-		wg.Wait()
 	}()
 
 	// just wait for the magic to happen
