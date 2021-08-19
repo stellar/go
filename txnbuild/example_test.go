@@ -326,8 +326,11 @@ func ExampleChangeTrust() {
 	sourceAccount, err := client.AccountDetail(ar)
 	check(err)
 
+	asset, err := CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"}.ToChangeTrustAsset()
+	check(err)
+
 	op := ChangeTrust{
-		Line:  CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"},
+		Line:  asset,
 		Limit: "10",
 	}
 
@@ -359,7 +362,7 @@ func ExampleChangeTrust_removeTrustline() {
 	sourceAccount, err := client.AccountDetail(ar)
 	check(err)
 
-	op := RemoveTrustlineOp(CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"})
+	op := RemoveTrustlineOp(CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"}.MustToChangeTrustAsset())
 
 	tx, err := NewTransaction(
 		TransactionParams{
@@ -869,13 +872,16 @@ func InitSponsorshipTestConfig() SponsorshipTestConfig {
 func ExampleBeginSponsoringFutureReserves() {
 	test := InitSponsorshipTestConfig()
 
+	asset, err := test.Assets[0].ToChangeTrustAsset()
+	check(err)
+
 	// If the sponsoree submits the transaction, the `SourceAccount` fields can
 	// be omitted for the "sponsor sandwich" operations.
 	sponsorTrustline := []Operation{
 		&BeginSponsoringFutureReserves{SponsoredID: test.A.Address()},
 		&ChangeTrust{
 			SourceAccount: test.Aaccount.AccountID,
-			Line:          &test.Assets[0],
+			Line:          asset,
 			Limit:         MaxTrustlineLimit,
 		},
 		&EndSponsoringFutureReserves{},
@@ -904,6 +910,9 @@ func ExampleBeginSponsoringFutureReserves() {
 func ExampleBeginSponsoringFutureReserves_transfer() {
 	test := InitSponsorshipTestConfig()
 
+	asset, err := test.Assets[1].ToTrustLineAsset()
+	check(err)
+
 	transferOps := []Operation{
 		&BeginSponsoringFutureReserves{
 			SourceAccount: test.S2account.AccountID,
@@ -914,7 +923,7 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 			Account:         &test.Aaccount.AccountID,
 			TrustLine: &TrustLineID{
 				Account: test.A.Address(),
-				Asset:   test.Assets[1],
+				Asset:   asset,
 			},
 		},
 		&EndSponsoringFutureReserves{},
@@ -942,13 +951,19 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 func ExampleRevokeSponsorship() {
 	test := InitSponsorshipTestConfig()
 
+	asset1, err := test.Assets[1].ToTrustLineAsset()
+	check(err)
+
+	asset2, err := test.Assets[2].ToTrustLineAsset()
+	check(err)
+
 	revokeOps := []Operation{
 		&RevokeSponsorship{
 			SponsorshipType: RevokeSponsorshipTypeTrustLine,
 			Account:         &test.Aaccount.AccountID,
 			TrustLine: &TrustLineID{
 				Account: test.A.Address(),
-				Asset:   test.Assets[1],
+				Asset:   asset1,
 			},
 		},
 		&RevokeSponsorship{
@@ -956,7 +971,7 @@ func ExampleRevokeSponsorship() {
 			Account:         &test.Aaccount.AccountID,
 			TrustLine: &TrustLineID{
 				Account: test.A.Address(),
-				Asset:   test.Assets[2],
+				Asset:   asset2,
 			},
 		},
 	}

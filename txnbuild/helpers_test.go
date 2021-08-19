@@ -230,26 +230,26 @@ func TestValidateChangeTrustAsset(t *testing.T) {
 	expectedErrMsg := "asset is undefined"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 
-	err = validateChangeTrustAsset(NativeAsset{})
+	err = validateChangeTrustAsset(NativeAsset{}.MustToChangeTrustAsset())
 	assert.Error(t, err)
 	expectedErrMsg = "native (XLM) asset type is not allowed"
 	require.EqualError(t, err, expectedErrMsg, "A custom asset is required")
 
 	kp0 := newKeypair0()
 	ctAsset0 := CreditAsset{Issuer: kp0.Address()}
-	err = validateChangeTrustAsset(ctAsset0)
+	err = validateChangeTrustAsset(ctAsset0.MustToChangeTrustAsset())
 	assert.Error(t, err)
 	expectedErrMsg = "asset code length must be between 1 and 12 characters"
 	require.EqualError(t, err, expectedErrMsg, "asset code is required")
 
 	ctAsset1 := CreditAsset{Code: "ABCD"}
-	err = validateChangeTrustAsset(ctAsset1)
+	err = validateChangeTrustAsset(ctAsset1.MustToChangeTrustAsset())
 	assert.Error(t, err)
 	expectedErrMsg = "asset issuer: public key is undefined"
 	require.EqualError(t, err, expectedErrMsg, "asset issuer is required")
 
 	ctAsset2 := CreditAsset{Code: "ABCD", Issuer: kp0.Address()}
-	err = validateChangeTrustAsset(ctAsset2)
+	err = validateChangeTrustAsset(ctAsset2.MustToChangeTrustAsset())
 	assert.NoError(t, err)
 }
 

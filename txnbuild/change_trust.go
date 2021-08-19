@@ -34,7 +34,7 @@ func (ct *ChangeTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	if ct.Line.IsNative() {
 		return xdr.Operation{}, errors.New("trustline cannot be extended to a native (XLM) asset")
 	}
-	xdrLine, err := ct.Line.ToChangeTrustXDR()
+	xdrLine, err := ct.Line.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "can't convert trustline asset to XDR")
 	}

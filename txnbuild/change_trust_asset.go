@@ -8,8 +8,11 @@ import (
 // ChangeTrustAsset represents a Stellar change trust asset.
 type ChangeTrustAsset interface {
 	BasicAsset
-	ToChangeTrustXDR() (xdr.ChangeTrustAsset, error)
-	ToTrustLineXDR() (xdr.TrustLineAsset, error)
+	GetLiquidityPoolID() (LiquidityPoolId, bool)
+	GetLiquidityPoolParameters() (LiquidityPoolParameters, bool)
+	ToXDR() (xdr.ChangeTrustAsset, error)
+	ToChangeTrustAsset() (ChangeTrustAsset, error)
+	ToTrustLineAsset() (TrustLineAsset, error)
 }
 
 // LiquidityPoolShareChangeTrustAsset represents non-XLM assets on the Stellar network.
@@ -43,7 +46,7 @@ func (lpsa LiquidityPoolShareChangeTrustAsset) GetLiquidityPoolParameters() (Liq
 }
 
 // ToXDR for LiquidityPoolShareChangeTrustAsset produces a corresponding XDR change trust asset.
-func (lpsa LiquidityPoolShareChangeTrustAsset) ToChangeTrustXDR() (xdr.ChangeTrustAsset, error) {
+func (lpsa LiquidityPoolShareChangeTrustAsset) ToXDR() (xdr.ChangeTrustAsset, error) {
 	xdrPoolParams, err := lpsa.LiquidityPoolParameters.ToXDR()
 	if err != nil {
 		return xdr.ChangeTrustAsset{}, errors.Wrap(err, "failed to build XDR liquidity pool parameters")
@@ -51,17 +54,44 @@ func (lpsa LiquidityPoolShareChangeTrustAsset) ToChangeTrustXDR() (xdr.ChangeTru
 	return xdr.ChangeTrustAsset{LiquidityPool: &xdrPoolParams}, nil
 }
 
-// ToXDR for LiquidityPoolShareChangeTrustAsset produces a corresponding XDR change trust asset.
-func (lpsa LiquidityPoolShareChangeTrustAsset) ToTrustLineXDR() (xdr.TrustLineAsset, error) {
-	poolId, ok := lpsa.GetLiquidityPoolID()
-	if !ok {
-		return xdr.TrustLineAsset{}, errors.New("failed to build XDR liquidity pool id")
-	}
-	xdrPoolId, err := poolId.ToXDR()
+// ToAsset for LiquidityPoolShareChangeTrustAsset returns an error.
+func (lpsa LiquidityPoolShareChangeTrustAsset) ToAsset() (Asset, error) {
+	return nil, errors.New("Cannot transform LiquidityPoolShare into Asset")
+}
+
+// MustToAsset for LiquidityPoolShareChangeTrustAsset panics.
+func (lpsa LiquidityPoolShareChangeTrustAsset) MustToAsset() Asset {
+	panic("Cannot transform LiquidityPoolShare into Asset")
+}
+
+// ToChangeTrustAsset for LiquidityPoolShareChangeTrustAsset returns itself unchanged.
+func (lpsa LiquidityPoolShareChangeTrustAsset) ToChangeTrustAsset() (ChangeTrustAsset, error) {
+	return lpsa, nil
+}
+
+// MustToChangeTrustAsset for LiquidityPoolShareChangeTrustAsset returns itself unchanged.
+func (lpsa LiquidityPoolShareChangeTrustAsset) MustToChangeTrustAsset() ChangeTrustAsset {
+	return lpsa
+}
+
+// ToTrustLineAsset for LiquidityPoolShareChangeTrustAsset hashes the pool parameters to get the pool id, and converts this to a TrustLineAsset.
+func (lpsa LiquidityPoolShareChangeTrustAsset) ToTrustLineAsset() (TrustLineAsset, error) {
+	poolId, err := NewLiquidityPoolId(lpsa.LiquidityPoolParameters.AssetA, lpsa.LiquidityPoolParameters.AssetB)
 	if err != nil {
-		return xdr.TrustLineAsset{}, errors.Wrap(err, "failed to build XDR liquidity pool id")
+		return nil, err
 	}
-	return xdr.TrustLineAsset{LiquidityPoolId: &xdrPoolId}, nil
+	return LiquidityPoolShareTrustLineAsset{
+		LiquidityPoolID: poolId,
+	}, nil
+}
+
+// MustToTrustLineAsset for LiquidityPoolShareChangeTrustAsset hashes the pool parameters to get the pool id, and converts this to a TrustLineAsset. It panics on failure.
+func (lpsa LiquidityPoolShareChangeTrustAsset) MustToTrustLineAsset() TrustLineAsset {
+	tla, err := lpsa.ToTrustLineAsset()
+	if err != nil {
+		panic(err)
+	}
+	return tla
 }
 
 func assetFromChangeTrustAssetXDR(xAsset xdr.ChangeTrustAsset) (ChangeTrustAsset, error) {
@@ -72,5 +102,33 @@ func assetFromChangeTrustAssetXDR(xAsset xdr.ChangeTrustAsset) (ChangeTrustAsset
 		}
 		return LiquidityPoolShareChangeTrustAsset{LiquidityPoolParameters: params}, nil
 	}
-	return assetFromXDR(xAsset.ToAsset())
+	a, err := assetFromXDR(xAsset.ToAsset())
+	if err != nil {
+		return nil, err
+	}
+	return ChangeTrustAssetWrapper{a}, nil
+}
+
+// ChangeTrustAssetWrapper wraps a native/credit Asset so it generates xdr to be used in a change trust operation.
+type ChangeTrustAssetWrapper struct {
+	Asset
+}
+
+// GetLiquidityPoolID for ChangeTrustAssetWrapper returns false.
+func (ctaw ChangeTrustAssetWrapper) GetLiquidityPoolID() (LiquidityPoolId, bool) {
+	return LiquidityPoolId{}, false
+}
+
+// GetLiquidityPoolParameters for ChangeTrustAssetWrapper returns false.
+func (ctaw ChangeTrustAssetWrapper) GetLiquidityPoolParameters() (LiquidityPoolParameters, bool) {
+	return LiquidityPoolParameters{}, false
+}
+
+// ToXDR for ChangeTrustAssetWrapper generates the xdr.TrustLineAsset.
+func (ctaw ChangeTrustAssetWrapper) ToXDR() (xdr.ChangeTrustAsset, error) {
+	x, err := ctaw.Asset.ToXDR()
+	if err != nil {
+		return xdr.ChangeTrustAsset{}, err
+	}
+	return x.ToChangeTrustAsset(), nil
 }

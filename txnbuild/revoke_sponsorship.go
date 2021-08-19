@@ -79,7 +79,7 @@ func (r *RevokeSponsorship) BuildXDR(withMuxedAccounts bool) (xdr.Operation, err
 		if err := key.AccountId.SetAddress(r.TrustLine.Account); err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect Account address")
 		}
-		asset, err := r.TrustLine.Asset.ToTrustLineXDR()
+		asset, err := r.TrustLine.Asset.ToXDR()
 		if err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect TrustLine asset")
 		}

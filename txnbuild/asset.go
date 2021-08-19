@@ -25,16 +25,22 @@ type BasicAsset interface {
 	IsNative() bool
 	GetCode() string
 	GetIssuer() string
-	GetLiquidityPoolID() (LiquidityPoolId, bool)
-	GetLiquidityPoolParameters() (LiquidityPoolParameters, bool)
+
+	// Conversions to the 3 asset types
+	ToAsset() (Asset, error)
+	MustToAsset() Asset
+
+	ToChangeTrustAsset() (ChangeTrustAsset, error)
+	MustToChangeTrustAsset() ChangeTrustAsset
+
+	ToTrustLineAsset() (TrustLineAsset, error)
+	MustToTrustLineAsset() TrustLineAsset
 }
 
 // Asset represents a Stellar asset.
 type Asset interface {
 	BasicAsset
 	ToXDR() (xdr.Asset, error)
-	ToChangeTrustXDR() (xdr.ChangeTrustAsset, error)
-	ToTrustLineXDR() (xdr.TrustLineAsset, error)
 }
 
 // NativeAsset represents the native XLM asset.
@@ -54,16 +60,6 @@ func (na NativeAsset) GetCode() string { return "" }
 // GetIssuer for NativeAsset returns an empty string (XLM doesn't have an issuer).
 func (na NativeAsset) GetIssuer() string { return "" }
 
-// GetLiquidityPoolID for NativeAsset returns empty.
-func (na NativeAsset) GetLiquidityPoolID() (LiquidityPoolId, bool) {
-	return LiquidityPoolId{}, false
-}
-
-// GetLiquidityPoolParameters for NativeAsset returns empty.
-func (na NativeAsset) GetLiquidityPoolParameters() (LiquidityPoolParameters, bool) {
-	return LiquidityPoolParameters{}, false
-}
-
 // ToXDR for NativeAsset produces a corresponding XDR asset.
 func (na NativeAsset) ToXDR() (xdr.Asset, error) {
 	xdrAsset := xdr.Asset{}
@@ -74,24 +70,34 @@ func (na NativeAsset) ToXDR() (xdr.Asset, error) {
 	return xdrAsset, nil
 }
 
-// ToChangeTrustXDR for NativeAsset produces a corresponding XDR asset.
-func (na NativeAsset) ToChangeTrustXDR() (xdr.ChangeTrustAsset, error) {
-	xdrAsset := xdr.Asset{}
-	err := xdrAsset.SetNative()
-	if err != nil {
-		return xdr.ChangeTrustAsset{}, err
-	}
-	return xdrAsset.ToChangeTrustAsset(), nil
+// ToAsset for NativeAsset returns itself unchanged.
+func (na NativeAsset) ToAsset() (Asset, error) {
+	return na, nil
 }
 
-// ToTrustLineXDR for NativeAsset produces a corresponding XDR asset.
-func (na NativeAsset) ToTrustLineXDR() (xdr.TrustLineAsset, error) {
-	xdrAsset := xdr.Asset{}
-	err := xdrAsset.SetNative()
-	if err != nil {
-		return xdr.TrustLineAsset{}, err
-	}
-	return xdrAsset.ToTrustLineAsset(), nil
+// MustToAsset for NativeAsset returns itself unchanged.
+func (na NativeAsset) MustToAsset() Asset {
+	return na
+}
+
+// ToChangeTrustAsset for NativeAsset produces a corresponding ChangeTrustAsset.
+func (na NativeAsset) ToChangeTrustAsset() (ChangeTrustAsset, error) {
+	return ChangeTrustAssetWrapper{na}, nil
+}
+
+// MustToChangeTrustAsset for NativeAsset produces a corresponding ChangeTrustAsset.
+func (na NativeAsset) MustToChangeTrustAsset() ChangeTrustAsset {
+	return ChangeTrustAssetWrapper{na}
+}
+
+// ToTrustLineAsset for NativeAsset produces a corresponding TrustLineAsset.
+func (na NativeAsset) ToTrustLineAsset() (TrustLineAsset, error) {
+	return TrustLineAssetWrapper{na}, nil
+}
+
+// MustToTrustLineAsset for NativeAsset produces a corresponding TrustLineAsset.
+func (na NativeAsset) MustToTrustLineAsset() TrustLineAsset {
+	return TrustLineAssetWrapper{na}
 }
 
 // CreditAsset represents non-XLM assets on the Stellar network.
@@ -121,16 +127,6 @@ func (ca CreditAsset) GetCode() string { return ca.Code }
 // GetIssuer for CreditAsset returns the address of the issuing account.
 func (ca CreditAsset) GetIssuer() string { return ca.Issuer }
 
-// GetLiquidityPoolID for CreditAsset returns empty.
-func (na CreditAsset) GetLiquidityPoolID() (LiquidityPoolId, bool) {
-	return LiquidityPoolId{}, false
-}
-
-// GetLiquidityPoolParameters for CreditAsset returns empty.
-func (na CreditAsset) GetLiquidityPoolParameters() (LiquidityPoolParameters, bool) {
-	return LiquidityPoolParameters{}, false
-}
-
 // ToXDR for CreditAsset produces a corresponding XDR asset.
 func (ca CreditAsset) ToXDR() (xdr.Asset, error) {
 	xdrAsset := xdr.Asset{}
@@ -149,16 +145,34 @@ func (ca CreditAsset) ToXDR() (xdr.Asset, error) {
 	return xdrAsset, nil
 }
 
-// ToChangeTrustXDR for CreditAsset produces a corresponding XDR asset.
-func (ca CreditAsset) ToChangeTrustXDR() (xdr.ChangeTrustAsset, error) {
-	xdrAsset, err := ca.ToXDR()
-	return xdrAsset.ToChangeTrustAsset(), err
+// ToAsset for CreditAsset returns itself unchanged.
+func (ca CreditAsset) ToAsset() (Asset, error) {
+	return ca, nil
 }
 
-// ToTrustLineXDR for CreditAsset produces a corresponding XDR asset.
-func (ca CreditAsset) ToTrustLineXDR() (xdr.TrustLineAsset, error) {
-	xdrAsset, err := ca.ToXDR()
-	return xdrAsset.ToTrustLineAsset(), err
+// MustToAsset for CreditAsset returns itself unchanged.
+func (ca CreditAsset) MustToAsset() Asset {
+	return ca
+}
+
+// ToChangeTrustAsset for CreditAsset produces a corresponding XDR asset.
+func (ca CreditAsset) ToChangeTrustAsset() (ChangeTrustAsset, error) {
+	return ChangeTrustAssetWrapper{ca}, nil
+}
+
+// MustToChangeTrustAsset for CreditAsset produces a corresponding XDR asset.
+func (ca CreditAsset) MustToChangeTrustAsset() ChangeTrustAsset {
+	return ChangeTrustAssetWrapper{ca}
+}
+
+// ToTrustLineAsset for CreditAsset produces a corresponding XDR asset.
+func (ca CreditAsset) ToTrustLineAsset() (TrustLineAsset, error) {
+	return TrustLineAssetWrapper{ca}, nil
+}
+
+// MustToTrustLineAsset for CreditAsset produces a corresponding XDR asset.
+func (ca CreditAsset) MustToTrustLineAsset() TrustLineAsset {
+	return TrustLineAssetWrapper{ca}
 }
 
 // to do: consider exposing function or adding it to asset interface

@@ -104,7 +104,7 @@ func setup(opts Options, hClient horizonclient.ClientInterface) error {
 			},
 			// a trustline is generated to the desired so horizon creates entry at `{horizon-url}/assets`. This was added as many Wallets reach that endpoint to check if a given asset exists.
 			&txnbuild.ChangeTrust{
-				Line:          asset,
+				Line:          asset.MustToChangeTrustAsset(),
 				SourceAccount: trustorKP.Address(),
 			},
 			&txnbuild.SetOptions{

@@ -621,7 +621,7 @@ func TestChangeTrust(t *testing.T) {
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484348))
 
 	changeTrust := ChangeTrust{
-		Line:  CreditAsset{"ABCD", kp1.Address()},
+		Line:  CreditAsset{"ABCD", kp1.Address()}.MustToChangeTrustAsset(),
 		Limit: "10",
 	}
 
@@ -647,7 +647,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484348))
 
 	changeTrust := ChangeTrust{
-		Line:  NativeAsset{},
+		Line:  NativeAsset{}.MustToChangeTrustAsset(),
 		Limit: "10",
 	}
 
@@ -671,7 +671,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484354))
 
 	issuedAsset := CreditAsset{"ABCD", kp1.Address()}
-	removeTrust := RemoveTrustlineOp(issuedAsset)
+	removeTrust := RemoveTrustlineOp(issuedAsset.MustToChangeTrustAsset())
 
 	received, err := newSignedTransaction(
 		TransactionParams{

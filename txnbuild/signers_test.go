@@ -104,7 +104,7 @@ func TestChangeTrustMultSigners(t *testing.T) {
 	kp1 := newKeypair1()
 
 	changeTrust := ChangeTrust{
-		Line:          CreditAsset{"ABCD", kp0.Address()},
+		Line:          CreditAsset{"ABCD", kp0.Address()}.MustToChangeTrustAsset(),
 		Limit:         "10",
 		SourceAccount: kp1.Address(),
 	}
