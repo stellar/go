@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.8.0
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* Limit reap to 100k ledgers/second, to prevent excess CPU usage ([3823](https://github.com/stellar/go/pull/3823)).
+* Improve performance of path finding endpoints ([3818](https://github.com/stellar/go/pull/3818)).
+
 ## v2.7.0
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
@@ -12,7 +20,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix bug in horizon reap system (used by `horizon db reap` command and when horizon is configured with `--history-retention-count`) which could lead to partial deletions. ([3754](https://github.com/stellar/go/pull/3754))
 * Log debug messages from captive core at the appropriate log level. ([3746](https://github.com/stellar/go/pull/3746))
 * Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance. ([3750](https://github.com/stellar/go/pull/3750))
-* Limit reap to 100k ledgers/second, to prevent excess CPU usage ([3823](https://github.com/stellar/go/pull/3823)).
 
 ## v2.6.1
 
