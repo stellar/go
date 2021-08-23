@@ -14,7 +14,7 @@ import (
 // BuildURL creates the endpoint to be queried based on the data in the TradeRequest struct.
 // If no data is set, it defaults to the build the URL for all trades
 func (tr TradeRequest) BuildURL() (endpoint string, err error) {
-	nParams := countParams(tr.ForAccount, tr.ForOfferID)
+	nParams := countParams(tr.ForAccount, tr.ForOfferID, tr.ForLiquidityPool)
 
 	if nParams > 1 {
 		return endpoint, errors.New("invalid request: too many parameters")
@@ -33,6 +33,10 @@ func (tr TradeRequest) BuildURL() (endpoint string, err error) {
 		endpoint = fmt.Sprintf("offers/%s/trades", tr.ForOfferID)
 	}
 
+	if tr.ForLiquidityPool != "" {
+		endpoint = fmt.Sprintf("liquidity_pools/%s/trades", tr.ForLiquidityPool)
+	}
+
 	var queryParams string
 
 	if endpoint != "trades" {
@@ -46,6 +50,7 @@ func (tr TradeRequest) BuildURL() (endpoint string, err error) {
 		paramMap["counter_asset_type"] = string(tr.CounterAssetType)
 		paramMap["counter_asset_code"] = tr.CounterAssetCode
 		paramMap["counter_asset_issuer"] = tr.CounterAssetIssuer
+		paramMap["trade_type"] = tr.TradeType
 		paramMap["offer_id"] = tr.ForOfferID
 
 		queryParams = addQueryParams(paramMap, cursor(tr.Cursor), limit(tr.Limit), tr.Order)

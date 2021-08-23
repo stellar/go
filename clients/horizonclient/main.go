@@ -398,12 +398,14 @@ type StrictSendPathsRequest struct {
 type TradeRequest struct {
 	ForOfferID         string
 	ForAccount         string
+	ForLiquidityPool   string
 	BaseAssetType      AssetType
 	BaseAssetCode      string
 	BaseAssetIssuer    string
 	CounterAssetType   AssetType
 	CounterAssetCode   string
 	CounterAssetIssuer string
+	TradeType          string
 	Order              Order
 	Cursor             string
 	Limit              uint
