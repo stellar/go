@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"encoding/hex"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -136,5 +135,5 @@ func (p *LiquidityPoolsChangeProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry)
 
 // PoolIDToString encodes a liquidity pool id xdr value to its string form
 func PoolIDToString(id xdr.PoolId) string {
-	return hex.EncodeToString(id[:])
+	return xdr.Hash(id).HexString()
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -195,7 +196,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeChangeTrust:
 		err = wrapper.addChangeTrustEffects()
 	case xdr.OperationTypeAllowTrust:
-		wrapper.addAllowTrustEffects()
+		err = wrapper.addAllowTrustEffects()
 	case xdr.OperationTypeAccountMerge:
 		wrapper.addAccountMergeEffects()
 	case xdr.OperationTypeInflation:
@@ -226,11 +227,14 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Effects generated for multiple operations
 	for _, change := range changes {
 		if err = wrapper.addLedgerEntrySponsorshipEffects(change); err != nil {
 			return nil, err
 		}
 		wrapper.addSignerSponsorshipEffects(change)
+		// Effects caused by ChangeTrust (creation), AllowTrust and SetTrustlineFlags (removal through revocation)
+		wrapper.addLedgerEntryLiquidityPoolEffects(change)
 	}
 
 	return wrapper.effects, nil
@@ -429,6 +433,34 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 	}
 
 	return nil
+}
+
+func (e *effectsWrapper) addLedgerEntryLiquidityPoolEffects(change ingest.Change) {
+	if change.Type != xdr.LedgerEntryTypeLiquidityPool {
+		return
+	}
+	var (
+		effectType history.EffectType
+		poolID     xdr.PoolId
+	)
+
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		effectType = history.EffectLiquidityPoolCreated
+		poolID = change.Post.Data.LiquidityPool.LiquidityPoolId
+	case change.Pre != nil && change.Post == nil:
+		effectType = history.EffectLiquidityPoolRemoved
+		poolID = change.Pre.Data.LiquidityPool.LiquidityPoolId
+	default:
+		return
+	}
+	e.addMuxed(
+		e.operation.SourceAccount(),
+		effectType,
+		map[string]interface{}{
+			"liquidity_pool_id": PoolIDToString(poolID),
+		},
+	)
 }
 
 func (e *effectsWrapper) addAccountCreatedEffects() {
@@ -713,7 +745,7 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 	return nil
 }
 
-func (e *effectsWrapper) addAllowTrustEffects() {
+func (e *effectsWrapper) addAllowTrustEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustAllowTrustOp()
 	asset := op.Asset.ToAsset(source.ToAccountId())
@@ -743,6 +775,7 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 		clearFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
 		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, nil, &clearFlags)
 	}
+	return e.addLiquidityPoolRevokedEffect()
 }
 
 func (e *effectsWrapper) addAccountMergeEffects() {
@@ -1047,7 +1080,7 @@ func (e *effectsWrapper) addSetTrustLineFlagsEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustSetTrustLineFlagsOp()
 	e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &op.SetFlags, &op.ClearFlags)
-	return nil
+	return e.addLiquidityPoolRevokedEffect()
 }
 
 func (e *effectsWrapper) addTrustLineFlagsEffect(
@@ -1086,6 +1119,68 @@ func setTrustLineFlagDetails(flagDetails map[string]interface{}, flags xdr.Trust
 	if flags.IsClawbackEnabledFlag() {
 		flagDetails["clawback_enabled_flag"] = setValue
 	}
+}
+
+func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(nil)
+	if err != nil {
+		if err == liquidtyPoolChangeNotFound {
+			// no revocation happened
+			return nil
+		}
+		return err
+	}
+	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
+	if err != nil {
+		return err
+	}
+	var assetToCBID map[string]string
+	for _, change := range changes {
+		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Post != nil &&
+			change.Post.Data.ClaimableBalance.BalanceId.Type == xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke {
+			// TODO: should we also emit claimable balance created effects for each claimable balance created?
+			cb := change.Post.Data.ClaimableBalance
+			id, err := xdr.MarshalHex(cb.BalanceId)
+			if err != nil {
+				return err
+			}
+			assetToCBID[cb.Asset.StringCanonical()] = id
+		}
+	}
+	if len(assetToCBID) == 0 {
+		// no claimable balances were created, and thus, revocation happened
+		return nil
+	}
+	// TODO: should we emit a liquidity pool removed effect if the liquidity pool was removed as part of the revocation?
+	// TODO: should we emit a liquidity pool withdrew effect for the shares implicitly withdrawn?
+
+	reservesRevoked := make([]map[string]string, 2, 0)
+	for _, aa := range []base.AssetAmount{
+		{
+			Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+			Amount: amount.String(-delta.ReserveA),
+		},
+		{
+			Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+			Amount: amount.String(-delta.ReserveB),
+		},
+	} {
+		if cbID, ok := assetToCBID[aa.Asset]; ok {
+			assetAmountDetail := map[string]string{
+				"asset":                aa.Asset,
+				"amount":               aa.Amount,
+				"claimable_balance_id": cbID,
+			}
+			reservesRevoked = append(reservesRevoked, assetAmountDetail)
+		}
+	}
+	details := map[string]interface{}{
+		"liquidity_pool":   liquidityPoolDetails(lp),
+		"reserves_revoked": reservesRevoked,
+		"shares_revoked":   amount.String(-delta.TotalPoolShares),
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolRevoked, details)
+	return nil
 }
 
 func setAuthFlagDetails(flagDetails map[string]interface{}, flags xdr.AccountFlags, setValue bool) {
@@ -1147,7 +1242,7 @@ func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
 
 func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
 	op := e.operation.operation.Body.MustLiquidityPoolDepositOp()
-	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(op.LiquidityPoolId)
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 	if err != nil {
 		return err
 	}
@@ -1171,7 +1266,7 @@ func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
 
 func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 	op := e.operation.operation.Body.MustLiquidityPoolDepositOp()
-	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(op.LiquidityPoolId)
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 	if err != nil {
 		return err
 	}

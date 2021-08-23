@@ -190,34 +190,55 @@ type liquidityPoolDelta struct {
 	TotalPoolShares xdr.Int64
 }
 
-func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lpID xdr.PoolId) (*xdr.LiquidityPoolEntry, *liquidityPoolDelta, error) {
+var liquidtyPoolChangeNotFound = errors.New("liquidity pool change not found")
+
+func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lpID *xdr.PoolId) (*xdr.LiquidityPoolEntry, *liquidityPoolDelta, error) {
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for _, c := range changes {
-		if c.Type != xdr.LedgerEntryTypeLiquidityPool || c.Pre == nil || c.Post == nil ||
-			c.Post.Data.LiquidityPool.LiquidityPoolId != lpID {
+		if c.Type != xdr.LedgerEntryTypeLiquidityPool || (c.Pre == nil && c.Post == nil) {
 			continue
 		}
-		if c.Pre.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-			return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Pre.Data.LiquidityPool.Body.Type)
+		// The delta can be caused by a full removal or full creation of the liquidity pool
+		var lp *xdr.LiquidityPoolEntry
+		var preA, preB, preShares xdr.Int64
+		if c.Pre != nil {
+			if lpID != nil && c.Pre.Data.LiquidityPool.LiquidityPoolId != *lpID {
+				// if we were looking for specific pool id, then check on it
+				continue
+			}
+			lp = c.Pre.Data.LiquidityPool
+			if c.Pre.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Pre.Data.LiquidityPool.Body.Type)
+			}
+			cpPre := c.Pre.Data.LiquidityPool.Body.ConstantProduct
+			preA, preB, preShares = cpPre.ReserveA, cpPre.ReserveB, cpPre.PoolSharesTrustLineCount
 		}
-		if c.Post.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-			return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Post.Data.LiquidityPool.Body.Type)
+		var postA, postB, postShares xdr.Int64
+		if c.Post != nil {
+			if lpID != nil && c.Post.Data.LiquidityPool.LiquidityPoolId != *lpID {
+				// if we were looking for specific pool id, then check on it
+				continue
+			}
+			lp = c.Post.Data.LiquidityPool
+			if c.Post.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Post.Data.LiquidityPool.Body.Type)
+			}
+			cpPost := c.Post.Data.LiquidityPool.Body.ConstantProduct
+			postA, postB, postShares = cpPost.ReserveA, cpPost.ReserveB, cpPost.PoolSharesTrustLineCount
 		}
-		cpPre := c.Pre.Data.LiquidityPool.Body.ConstantProduct
-		cpPost := c.Post.Data.LiquidityPool.Body.ConstantProduct
 		delta := &liquidityPoolDelta{
-			ReserveA:        cpPost.ReserveA - cpPre.ReserveA,
-			ReserveB:        cpPost.ReserveB - cpPre.ReserveB,
-			TotalPoolShares: cpPost.TotalPoolShares - cpPre.TotalPoolShares,
+			ReserveA:        postA - preA,
+			ReserveB:        postB - preB,
+			TotalPoolShares: postShares - preShares,
 		}
-		return c.Post.Data.LiquidityPool, delta, nil
+		return lp, delta, nil
 	}
 
-	return nil, nil, errors.New("liquidity pool change not found")
+	return nil, nil, liquidtyPoolChangeNotFound
 }
 
 // OperationResult returns the operation's result record
@@ -502,7 +523,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		op := operation.operation.Body.MustLiquidityPoolDepositOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
-		lp, delta, err := operation.getLiquidityPoolAndProductDelta(op.LiquidityPoolId)
+		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
 			return nil, err
 		}
@@ -536,7 +557,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
-		lp, delta, err := operation.getLiquidityPoolAndProductDelta(op.LiquidityPoolId)
+		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
 			return nil, err
 		}
