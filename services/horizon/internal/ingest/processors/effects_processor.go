@@ -1136,8 +1136,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	}
 	var assetToCBID map[string]string
 	for _, change := range changes {
-		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Post != nil &&
-			change.Post.Data.ClaimableBalance.BalanceId.Type == xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke {
+		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Pre == nil && change.Post != nil {
 			// TODO: should we also emit claimable balance created effects for each claimable balance created?
 			cb := change.Post.Data.ClaimableBalance
 			id, err := xdr.MarshalHex(cb.BalanceId)
@@ -1151,7 +1150,6 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 		// no claimable balances were created, and thus, revocation happened
 		return nil
 	}
-	// TODO: should we emit a liquidity pool removed effect if the liquidity pool was removed as part of the revocation?
 	// TODO: should we emit a liquidity pool withdrew effect for the shares implicitly withdrawn?
 
 	reservesRevoked := make([]map[string]string, 2, 0)
