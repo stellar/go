@@ -39,6 +39,13 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123/operations", endpoint)
 
+	op = OperationRequest{ForLiquidityPool: "123", endpoint: "operations"}
+	endpoint, err = op.BuildURL()
+
+	// It should return valid liquidity pool effects operations and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "liquidity_pools/123/operations", endpoint)
+
 	op = OperationRequest{forOperationID: "123", endpoint: "operations"}
 	endpoint, err = op.BuildURL()
 

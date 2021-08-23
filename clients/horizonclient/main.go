@@ -263,13 +263,14 @@ type AccountRequest struct {
 // can be set at a time. If none are set, the default is to return all effects.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type EffectRequest struct {
-	ForAccount     string
-	ForLedger      string
-	ForOperation   string
-	ForTransaction string
-	Order          Order
-	Cursor         string
-	Limit          uint
+	ForAccount       string
+	ForLedger        string
+	ForLiquidityPool string
+	ForOperation     string
+	ForTransaction   string
+	Order            Order
+	Cursor           string
+	Limit            uint
 }
 
 // AssetRequest struct contains data for getting asset details from a horizon server.
@@ -317,6 +318,7 @@ type OperationRequest struct {
 	ForAccount          string
 	ForClaimableBalance string
 	ForLedger           uint
+	ForLiquidityPool    string
 	ForTransaction      string
 	forOperationID      string
 	Order               Order
@@ -340,6 +342,7 @@ type TransactionRequest struct {
 	ForAccount          string
 	ForClaimableBalance string
 	ForLedger           uint
+	ForLiquidityPool    string
 	forTransactionHash  string
 	Order               Order
 	Cursor              string

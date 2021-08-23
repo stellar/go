@@ -39,6 +39,13 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123/transactions", endpoint)
 
+	tr = TransactionRequest{ForLiquidityPool: "123"}
+	endpoint, err = tr.BuildURL()
+
+	// It should return valid liquidity pool transactions endpoint and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "liquidity_pools/123/transactions", endpoint)
+
 	tr = TransactionRequest{forTransactionHash: "123"}
 	endpoint, err = tr.BuildURL()
 
