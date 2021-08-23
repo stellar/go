@@ -243,11 +243,13 @@ type HorizonRequest interface {
 // Either "Signer" or "Asset" fields should be set when retrieving Accounts.
 // At the moment, you can't use both filters at the same time.
 type AccountsRequest struct {
-	Signer string
-	Asset  string
-	Order  Order
-	Cursor string
-	Limit  uint
+	Signer        string
+	Asset         string
+	Sponsor       string
+	LiquidityPool string
+	Order         Order
+	Cursor        string
+	Limit         uint
 }
 
 // AccountRequest struct contains data for making requests to the show account endpoint of a horizon server.
