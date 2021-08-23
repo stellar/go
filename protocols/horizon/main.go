@@ -201,8 +201,8 @@ type AssetStatAccounts struct {
 type Balance struct {
 	Balance                           string `json:"balance"`
 	Limit                             string `json:"limit,omitempty"`
-	BuyingLiabilities                 string `json:"buying_liabilities"`
-	SellingLiabilities                string `json:"selling_liabilities"`
+	BuyingLiabilities                 string `json:"buying_liabilities,omitempty"`
+	SellingLiabilities                string `json:"selling_liabilities,omitempty"`
 	Sponsor                           string `json:"sponsor,omitempty"`
 	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
 	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
