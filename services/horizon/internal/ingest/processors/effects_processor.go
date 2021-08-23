@@ -182,15 +182,15 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypePayment:
 		wrapper.addPaymentEffects()
 	case xdr.OperationTypePathPaymentStrictReceive:
-		wrapper.pathPaymentStrictReceiveEffects()
+		err = wrapper.pathPaymentStrictReceiveEffects()
 	case xdr.OperationTypePathPaymentStrictSend:
-		wrapper.addPathPaymentStrictSendEffects()
+		err = wrapper.addPathPaymentStrictSendEffects()
 	case xdr.OperationTypeManageSellOffer:
-		wrapper.addManageSellOfferEffects()
+		err = wrapper.addManageSellOfferEffects()
 	case xdr.OperationTypeManageBuyOffer:
-		wrapper.addManageBuyOfferEffects()
+		err = wrapper.addManageBuyOfferEffects()
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		wrapper.addCreatePassiveSellOfferEffect()
+		err = wrapper.addCreatePassiveSellOfferEffect()
 	case xdr.OperationTypeSetOptions:
 		wrapper.addSetOptionsEffects()
 	case xdr.OperationTypeChangeTrust:
@@ -422,6 +422,9 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 		if err != nil {
 			return errors.Wrapf(err, "Invalid balanceId in change from op %d", e.operation.index)
 		}
+	case xdr.LedgerEntryTypeLiquidityPool:
+		// liquidity pools cannot be sponsored
+		fallthrough
 	default:
 		return errors.Errorf("invalid sponsorship ledger entry type %v", change.Type.String())
 	}
@@ -509,7 +512,7 @@ func (e *effectsWrapper) addPaymentEffects() {
 	)
 }
 
-func (e *effectsWrapper) pathPaymentStrictReceiveEffects() {
+func (e *effectsWrapper) pathPaymentStrictReceiveEffects() error {
 	op := e.operation.operation.Body.MustPathPaymentStrictReceiveOp()
 	resultSuccess := e.operation.OperationResult().MustPathPaymentStrictReceiveResult().MustSuccess()
 	source := e.operation.SourceAccount()
@@ -533,10 +536,10 @@ func (e *effectsWrapper) pathPaymentStrictReceiveEffects() {
 		details,
 	)
 
-	e.addIngestTradeEffects(*source, resultSuccess.Offers)
+	return e.addIngestTradeEffects(*source, resultSuccess.Offers)
 }
 
-func (e *effectsWrapper) addPathPaymentStrictSendEffects() {
+func (e *effectsWrapper) addPathPaymentStrictSendEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustPathPaymentStrictSendOp()
 	resultSuccess := e.operation.OperationResult().MustPathPaymentStrictSendResult().MustSuccess()
@@ -550,22 +553,22 @@ func (e *effectsWrapper) addPathPaymentStrictSendEffects() {
 	addAssetDetails(details, op.SendAsset, "")
 	e.addMuxed(source, history.EffectAccountDebited, details)
 
-	e.addIngestTradeEffects(*source, resultSuccess.Offers)
+	return e.addIngestTradeEffects(*source, resultSuccess.Offers)
 }
 
-func (e *effectsWrapper) addManageSellOfferEffects() {
+func (e *effectsWrapper) addManageSellOfferEffects() error {
 	source := e.operation.SourceAccount()
 	result := e.operation.OperationResult().MustManageSellOfferResult().MustSuccess()
-	e.addIngestTradeEffects(*source, result.OffersClaimed)
+	return e.addIngestTradeEffects(*source, result.OffersClaimed)
 }
 
-func (e *effectsWrapper) addManageBuyOfferEffects() {
+func (e *effectsWrapper) addManageBuyOfferEffects() error {
 	source := e.operation.SourceAccount()
 	result := e.operation.OperationResult().MustManageBuyOfferResult().MustSuccess()
-	e.addIngestTradeEffects(*source, result.OffersClaimed)
+	return e.addIngestTradeEffects(*source, result.OffersClaimed)
 }
 
-func (e *effectsWrapper) addCreatePassiveSellOfferEffect() {
+func (e *effectsWrapper) addCreatePassiveSellOfferEffect() error {
 	result := e.operation.OperationResult()
 	source := e.operation.SourceAccount()
 
@@ -579,7 +582,7 @@ func (e *effectsWrapper) addCreatePassiveSellOfferEffect() {
 		claims = result.MustCreatePassiveSellOfferResult().MustSuccess().OffersClaimed
 	}
 
-	e.addIngestTradeEffects(*source, claims)
+	return e.addIngestTradeEffects(*source, claims)
 }
 
 func (e *effectsWrapper) addSetOptionsEffects() error {
@@ -995,27 +998,58 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 	return nil
 }
 
-func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []xdr.ClaimAtom) {
+func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []xdr.ClaimAtom) error {
 	for _, claim := range claims {
 		if claim.AmountSold() == 0 && claim.AmountBought() == 0 {
 			continue
 		}
-
-		seller := claim.SellerId()
-		bd, sd := tradeDetails(buyer, seller, claim)
-
-		e.addMuxed(
-			&buyer,
-			history.EffectTrade,
-			bd,
-		)
-
-		e.addUnmuxed(
-			&seller,
-			history.EffectTrade,
-			sd,
-		)
+		switch claim.Type {
+		case xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool:
+			if err := e.addClaimLiquidityPoolTradeEffect(claim); err != nil {
+				return err
+			}
+		default:
+			e.addClaimTradeEffects(buyer, claim)
+		}
 	}
+	return nil
+}
+
+func (e *effectsWrapper) addClaimTradeEffects(buyer xdr.MuxedAccount, claim xdr.ClaimAtom) {
+	seller := claim.SellerId()
+	bd, sd := tradeDetails(buyer, seller, claim)
+
+	e.addMuxed(
+		&buyer,
+		history.EffectTrade,
+		bd,
+	)
+
+	e.addUnmuxed(
+		&seller,
+		history.EffectTrade,
+		sd,
+	)
+}
+
+func (e *effectsWrapper) addClaimLiquidityPoolTradeEffect(claim xdr.ClaimAtom) error {
+	lp, _, err := e.operation.getLiquidityPoolAndProductDelta(&claim.LiquidityPool.LiquidityPoolId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"liquidity_pool": liquidityPoolDetails(lp),
+		"sold": map[string]string{
+			"asset":  claim.LiquidityPool.AssetSold.StringCanonical(),
+			"amount": amount.String(claim.LiquidityPool.AmountSold),
+		},
+		"bought": map[string]string{
+			"asset":  claim.LiquidityPool.AssetBought.StringCanonical(),
+			"amount": amount.String(claim.LiquidityPool.AmountBought),
+		},
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolTrade, details)
+	return nil
 }
 
 func (e *effectsWrapper) addClawbackEffects() error {
