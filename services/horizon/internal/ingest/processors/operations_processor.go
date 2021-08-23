@@ -215,7 +215,7 @@ func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lp
 				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Pre.Data.LiquidityPool.Body.Type)
 			}
 			cpPre := c.Pre.Data.LiquidityPool.Body.ConstantProduct
-			preA, preB, preShares = cpPre.ReserveA, cpPre.ReserveB, cpPre.PoolSharesTrustLineCount
+			preA, preB, preShares = cpPre.ReserveA, cpPre.ReserveB, cpPre.TotalPoolShares
 		}
 		var postA, postB, postShares xdr.Int64
 		if c.Post != nil {
@@ -228,7 +228,7 @@ func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lp
 				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Post.Data.LiquidityPool.Body.Type)
 			}
 			cpPost := c.Post.Data.LiquidityPool.Body.ConstantProduct
-			postA, postB, postShares = cpPost.ReserveA, cpPost.ReserveB, cpPost.PoolSharesTrustLineCount
+			postA, postB, postShares = cpPost.ReserveA, cpPost.ReserveB, cpPost.TotalPoolShares
 		}
 		delta := &liquidityPoolDelta{
 			ReserveA:        postA - preA,
