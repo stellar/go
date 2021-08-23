@@ -1186,7 +1186,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	}
 	// TODO: should we emit a liquidity pool withdrew effect for the shares implicitly withdrawn?
 
-	reservesRevoked := make([]map[string]string, 2, 0)
+	reservesRevoked := make([]map[string]string, 0, 2)
 	for _, aa := range []base.AssetAmount{
 		{
 			Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
