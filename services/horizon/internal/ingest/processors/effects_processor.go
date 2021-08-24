@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
@@ -753,6 +754,10 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 			break
 		}
 
+		if effect == history.EffectType(0) {
+			return errors.New("trustline entry not found")
+		}
+
 		e.addMuxed(source, effect, details)
 	}
 	return nil
@@ -1184,7 +1189,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	if err != nil {
 		return err
 	}
-	var assetToCBID map[string]string
+	assetToCBID := map[string]string{}
 	for _, change := range changes {
 		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Pre == nil && change.Post != nil {
 			cb := change.Post.Data.ClaimableBalance
@@ -1227,7 +1232,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	details := map[string]interface{}{
 		"liquidity_pool":   liquidityPoolDetails(lp),
 		"reserves_revoked": reservesRevoked,
-		"shares_revoked":   amount.String(-delta.TotalPoolShares),
+		"shares_revoked":   strconv.FormatInt(int64(-delta.TotalPoolShares), 10),
 	}
 	e.addMuxed(source, history.EffectLiquidityPoolRevoked, details)
 	return nil
@@ -1275,15 +1280,15 @@ func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
 		"id":               PoolIDToString(lp.LiquidityPoolId),
 		"fee_bp":           uint32(lp.Body.ConstantProduct.Params.Fee),
 		"type":             "constant_product",
-		"total_trustlines": lp.Body.ConstantProduct.PoolSharesTrustLineCount,
-		"total_shares":     lp.Body.ConstantProduct.PoolSharesTrustLineCount,
+		"total_trustlines": strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
+		"total_shares":     strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
 		"reserves": []map[string]string{
 			{
 				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
 				"amount": amount.String(lp.Body.ConstantProduct.ReserveA),
 			},
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
 				"amount": amount.String(lp.Body.ConstantProduct.ReserveB),
 			},
 		},
@@ -1304,18 +1309,18 @@ func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
 				"amount": amount.String(delta.ReserveA),
 			},
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
 				"amount": amount.String(delta.ReserveB),
 			},
 		},
-		"shares_received": amount.String(delta.TotalPoolShares),
+		"shares_received": strconv.FormatInt(int64(delta.TotalPoolShares), 10),
 	}
 	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolDeposited, details)
 	return nil
 }
 
 func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
-	op := e.operation.operation.Body.MustLiquidityPoolDepositOp()
+	op := e.operation.operation.Body.MustLiquidityPoolWithdrawOp()
 	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 	if err != nil {
 		return err
@@ -1328,12 +1333,12 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 				"amount": amount.String(-delta.ReserveA),
 			},
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
 				"amount": amount.String(-delta.ReserveB),
 			},
 		},
-		"shares_redeemed": amount.String(-delta.TotalPoolShares),
+		"shares_redeemed": strconv.FormatInt(int64(-delta.TotalPoolShares), 10),
 	}
-	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolDeposited, details)
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolWithdrew, details)
 	return nil
 }
