@@ -2092,26 +2092,66 @@ type CreateClaimableBalanceEffectsTestSuite struct {
 func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	source := aid.ToMuxedAccount()
+	var balanceIDOp0, balanceIDOp1 xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp0)
+	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp1)
+	cb0 := xdr.ClaimableBalanceEntry{
+		BalanceId: balanceIDOp0,
+		Amount:    xdr.Int64(100000000),
+		Asset:     xdr.MustNewNativeAsset(),
+		Claimants: []xdr.Claimant{
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+		},
+		Ext: xdr.ClaimableBalanceEntryExt{
+			V: 1,
+			V1: &xdr.ClaimableBalanceEntryExtensionV1{
+				Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+			},
+		},
+	}
+	cb1 := xdr.ClaimableBalanceEntry{
+		BalanceId: balanceIDOp1,
+		Amount:    xdr.Int64(200000000),
+		Asset:     xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		Claimants: []xdr.Claimant{
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+		},
+	}
 	s.ops = []xdr.Operation{
 		{
 			SourceAccount: &source,
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeCreateClaimableBalance,
 				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
-					Amount: xdr.Int64(100000000),
-					Asset:  xdr.MustNewNativeAsset(),
-					Claimants: []xdr.Claimant{
-						{
-							Type: xdr.ClaimantTypeClaimantTypeV0,
-							V0: &xdr.ClaimantV0{
-								Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
-
-								Predicate: xdr.ClaimPredicate{
-									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-								},
-							},
-						},
-					},
+					Amount:    cb0.Amount,
+					Asset:     cb0.Asset,
+					Claimants: cb0.Claimants,
 				},
 			},
 		},
@@ -2120,35 +2160,13 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeCreateClaimableBalance,
 				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
-					Amount: xdr.Int64(200000000),
-					Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
-					Claimants: []xdr.Claimant{
-						{
-							Type: xdr.ClaimantTypeClaimantTypeV0,
-							V0: &xdr.ClaimantV0{
-								Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
-								Predicate: xdr.ClaimPredicate{
-									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-								},
-							},
-						},
-						{
-							Type: xdr.ClaimantTypeClaimantTypeV0,
-							V0: &xdr.ClaimantV0{
-								Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
-								Predicate: xdr.ClaimPredicate{
-									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-								},
-							},
-						},
-					},
+					Amount:    cb1.Amount,
+					Asset:     cb1.Asset,
+					Claimants: cb1.Claimants,
 				},
 			},
 		},
 	}
-	var balanceIDOp1, balanceIDOp2 xdr.ClaimableBalanceId
-	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1)
-	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2)
 
 	s.tx = ingest.LedgerTransaction{
 		Index: 0,
@@ -2160,35 +2178,6 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 				},
 			},
 		},
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Results: &[]xdr.OperationResult{
-						{
-							Code: xdr.OperationResultCodeOpInner,
-							Tr: &xdr.OperationResultTr{
-								Type: xdr.OperationTypeCreateClaimableBalance,
-								CreateClaimableBalanceResult: &xdr.CreateClaimableBalanceResult{
-									Code:      xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
-									BalanceId: &balanceIDOp1,
-								},
-							},
-						},
-						{
-							Code: xdr.OperationResultCodeOpInner,
-							Tr: &xdr.OperationResultTr{
-								Type: xdr.OperationTypeCreateClaimableBalance,
-								CreateClaimableBalanceResult: &xdr.CreateClaimableBalanceResult{
-									Code:      xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
-									BalanceId: &balanceIDOp2,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		FeeChanges: xdr.LedgerEntryChanges{},
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
@@ -2199,23 +2188,25 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 								Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 								Created: &xdr.LedgerEntry{
 									Data: xdr.LedgerEntryData{
-										Type: xdr.LedgerEntryTypeClaimableBalance,
-										ClaimableBalance: &xdr.ClaimableBalanceEntry{
-											BalanceId: balanceIDOp1,
-											Ext: xdr.ClaimableBalanceEntryExt{
-												V: 1,
-												V1: &xdr.ClaimableBalanceEntryExtensionV1{
-													Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
-												},
-											},
-										},
+										Type:             xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &cb0,
 									},
 								},
 							},
 						},
 					},
 					{
-						// Not used for the test
+						Changes: []xdr.LedgerEntryChange{
+							{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+								Created: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type:             xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &cb1,
+									},
+								},
+							},
+						},
 					},
 				},
 			},

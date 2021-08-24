@@ -460,21 +460,27 @@ type AccountSponsorshipRemoved struct {
 
 type TrustlineSponsorshipCreated struct {
 	Base
-	Asset   string `json:"asset"`
-	Sponsor string `json:"sponsor"`
+	Type            string `json:"asset_type"`
+	Asset           string `json:"asset,omitempty"`
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+	Sponsor         string `json:"sponsor"`
 }
 
 type TrustlineSponsorshipUpdated struct {
 	Base
-	Asset         string `json:"asset"`
-	FormerSponsor string `json:"former_sponsor"`
-	NewSponsor    string `json:"new_sponsor"`
+	Type            string `json:"asset_type"`
+	Asset           string `json:"asset,omitempty"`
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+	FormerSponsor   string `json:"former_sponsor"`
+	NewSponsor      string `json:"new_sponsor"`
 }
 
 type TrustlineSponsorshipRemoved struct {
 	Base
-	Asset         string `json:"asset"`
-	FormerSponsor string `json:"former_sponsor"`
+	Type            string `json:"asset_type"`
+	Asset           string `json:"asset,omitempty"`
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+	FormerSponsor   string `json:"former_sponsor"`
 }
 
 type DataSponsorshipCreated struct {

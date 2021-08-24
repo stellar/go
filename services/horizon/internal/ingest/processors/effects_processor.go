@@ -408,10 +408,20 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 		a := data.MustAccount().AccountId
 		accountID = &a
 	case xdr.LedgerEntryTypeTrustline:
-		a := data.MustTrustLine().AccountId
-		accountID = &a
-		// TODO ensure xdr.Asset is fine here.
-		details["asset"] = data.MustTrustLine().Asset.ToAsset().StringCanonical()
+		tl := data.MustTrustLine()
+		accountID = &tl.AccountId
+		if tl.Asset.Type == xdr.AssetTypeAssetTypePoolShare {
+			details["asset_type"] = "liquidity_pool"
+			details["liquidity_pool_id"] = PoolIDToString(*tl.Asset.LiquidityPoolId)
+		} else {
+			asset := tl.Asset.ToAsset()
+			var assetType string
+			if err := asset.Extract(&assetType, nil, nil); err != nil {
+				return err
+			}
+			details["asset_type"] = assetType
+			details["asset"] = asset.StringCanonical()
+		}
 	case xdr.LedgerEntryTypeData:
 		muxedAccount = e.operation.SourceAccount()
 		details["data_name"] = data.MustData().DataName
@@ -885,51 +895,24 @@ func setClaimableBalanceFlagDetails(details map[string]interface{}, flags xdr.Cl
 }
 
 func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Change) error {
-	op := e.operation.operation.Body.MustCreateClaimableBalanceOp()
-
-	result := e.operation.OperationResult().MustCreateClaimableBalanceResult()
-	balanceID, err := xdr.MarshalHex(result.BalanceId)
-	if err != nil {
-		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
-	}
-
-	details := map[string]interface{}{
-		"balance_id": balanceID,
-		"amount":     amount.String(op.Amount),
-		"asset":      op.Asset.StringCanonical(),
-	}
+	source := e.operation.SourceAccount()
+	var cb *xdr.ClaimableBalanceEntry
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.Post == nil {
 			continue
 		}
-		setClaimableBalanceFlagDetails(details, change.Post.Data.ClaimableBalance.Flags())
+		cb = change.Post.Data.ClaimableBalance
+		e.addClaimableBalanceEntryCreatedEffects(source, cb)
 		break
 	}
-	source := e.operation.SourceAccount()
-	e.addMuxed(
-		source,
-		history.EffectClaimableBalanceCreated,
-		details,
-	)
-
-	for _, c := range op.Claimants {
-		cv0 := c.MustV0()
-		e.addUnmuxed(
-			&cv0.Destination,
-			history.EffectClaimableBalanceClaimantCreated,
-			map[string]interface{}{
-				"balance_id": balanceID,
-				"amount":     amount.String(op.Amount),
-				"predicate":  cv0.Predicate,
-				"asset":      op.Asset.StringCanonical(),
-			},
-		)
+	if cb == nil {
+		return errors.New("claimable balance entry not found")
 	}
 
-	details = map[string]interface{}{
-		"amount": amount.String(op.Amount),
+	details := map[string]interface{}{
+		"amount": amount.String(cb.Amount),
 	}
-	addAssetDetails(details, op.Asset, "")
+	addAssetDetails(details, cb.Asset, "")
 	e.addMuxed(
 		source,
 		history.EffectAccountDebited,
@@ -937,6 +920,38 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Chang
 	)
 
 	return nil
+}
+
+func (e *effectsWrapper) addClaimableBalanceEntryCreatedEffects(source *xdr.MuxedAccount, cb *xdr.ClaimableBalanceEntry) error {
+	id, err := xdr.MarshalHex(cb.BalanceId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"balance_id": id,
+		"amount":     amount.String(cb.Amount),
+		"asset":      cb.Asset.StringCanonical(),
+	}
+	setClaimableBalanceFlagDetails(details, cb.Flags())
+	e.addMuxed(
+		source,
+		history.EffectClaimableBalanceCreated,
+		details,
+	)
+	for _, c := range cb.Claimants {
+		cv0 := c.MustV0()
+		e.addUnmuxed(
+			&cv0.Destination,
+			history.EffectClaimableBalanceClaimantCreated,
+			map[string]interface{}{
+				"balance_id": id,
+				"amount":     amount.String(cb.Amount),
+				"predicate":  cv0.Predicate,
+				"asset":      cb.Asset.StringCanonical(),
+			},
+		)
+	}
+	return err
 }
 
 func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change) error {
@@ -1156,6 +1171,7 @@ func setTrustLineFlagDetails(flagDetails map[string]interface{}, flags xdr.Trust
 }
 
 func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
+	source := e.operation.SourceAccount()
 	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(nil)
 	if err != nil {
 		if err == liquidtyPoolChangeNotFound {
@@ -1171,20 +1187,22 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	var assetToCBID map[string]string
 	for _, change := range changes {
 		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Pre == nil && change.Post != nil {
-			// TODO: should we also emit claimable balance created effects for each claimable balance created?
 			cb := change.Post.Data.ClaimableBalance
 			id, err := xdr.MarshalHex(cb.BalanceId)
 			if err != nil {
 				return err
 			}
 			assetToCBID[cb.Asset.StringCanonical()] = id
+			if err := e.addClaimableBalanceEntryCreatedEffects(source, cb); err != nil {
+				return err
+			}
+
 		}
 	}
 	if len(assetToCBID) == 0 {
-		// no claimable balances were created, and thus, revocation happened
+		// no claimable balances were created, and thus, no revocation happened
 		return nil
 	}
-	// TODO: should we emit a liquidity pool withdrew effect for the shares implicitly withdrawn?
 
 	reservesRevoked := make([]map[string]string, 0, 2)
 	for _, aa := range []base.AssetAmount{
@@ -1211,7 +1229,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 		"reserves_revoked": reservesRevoked,
 		"shares_revoked":   amount.String(-delta.TotalPoolShares),
 	}
-	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolRevoked, details)
+	e.addMuxed(source, history.EffectLiquidityPoolRevoked, details)
 	return nil
 }
 
