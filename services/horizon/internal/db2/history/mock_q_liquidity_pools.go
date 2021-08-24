@@ -36,6 +36,11 @@ func (m *MockQLiquidityPools) RemoveLiquidityPool(ctx context.Context, liquidity
 	return a.Get(0).(int64), a.Error(1)
 }
 
+func (m *MockQLiquidityPools) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error) {
+	a := m.Called(ctx, liquidityPoolID)
+	return a.Get(0).(LiquidityPool), a.Error(1)
+}
+
 type MockLiquidityPoolsBatchInsertBuilder struct {
 	mock.Mock
 }

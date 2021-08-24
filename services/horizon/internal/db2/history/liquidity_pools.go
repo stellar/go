@@ -89,6 +89,7 @@ type QLiquidityPools interface {
 	RemoveLiquidityPool(ctx context.Context, liquidityPoolID string) (int64, error)
 	GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error)
 	CountLiquidityPools(ctx context.Context) (int, error)
+	FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error)
 }
 
 // NewLiquidityPoolsBatchInsertBuilder constructs a new LiquidityPoolsBatchInsertBuilder instance
@@ -115,10 +116,10 @@ func (q *Q) CountLiquidityPools(ctx context.Context) (int, error) {
 
 // GetLiquidityPoolsByID finds all liquidity pools by PoolId
 func (q *Q) GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error) {
-	var cBalances []LiquidityPool
+	var liquidityPools []LiquidityPool
 	sql := selectLiquidityPools.Where(map[string]interface{}{"lp.id": poolIDs})
-	err := q.Select(ctx, &cBalances, sql)
-	return cBalances, err
+	err := q.Select(ctx, &liquidityPools, sql)
+	return liquidityPools, err
 }
 
 // UpdateLiquidityPool updates a row in the liquidity_pools table.
