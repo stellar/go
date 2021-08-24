@@ -190,7 +190,7 @@ type liquidityPoolDelta struct {
 	TotalPoolShares xdr.Int64
 }
 
-var liquidtyPoolChangeNotFound = errors.New("liquidity pool change not found")
+var errLiquidtyPoolChangeNotFound = errors.New("liquidity pool change not found")
 
 func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lpID *xdr.PoolId) (*xdr.LiquidityPoolEntry, *liquidityPoolDelta, error) {
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
@@ -238,7 +238,7 @@ func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lp
 		return lp, delta, nil
 	}
 
-	return nil, nil, liquidtyPoolChangeNotFound
+	return nil, nil, errLiquidtyPoolChangeNotFound
 }
 
 // OperationResult returns the operation's result record
