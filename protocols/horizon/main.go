@@ -737,7 +737,7 @@ type LiquidityPool struct {
 
 	ID                 string                 `json:"id"`
 	PT                 string                 `json:"paging_token"`
-	FeeBP              uint64                 `json:"fee_bp"`
+	FeeBP              uint32                 `json:"fee_bp"`
 	Type               string                 `json:"type"`
 	TotalTrustlines    uint64                 `json:"total_trustlines,string"`
 	TotalShares        uint64                 `json:"total_shares,string"`

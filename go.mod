@@ -10,7 +10,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
-	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.39.5
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/fatih/structs v1.0.0 // indirect

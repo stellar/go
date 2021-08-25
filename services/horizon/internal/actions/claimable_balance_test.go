@@ -58,8 +58,6 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
-	tt.Assert.NoError(err)
-
 	handler := GetClaimableBalanceByIDHandler{}
 	id, err := xdr.MarshalHex(cBalance.BalanceId)
 	tt.Assert.NoError(err)

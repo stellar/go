@@ -21,7 +21,7 @@ func PopulateLiquidityPool(
 	ledger *history.Ledger,
 ) error {
 	dest.ID = liquidityPool.PoolID
-	dest.FeeBP = uint64(liquidityPool.Fee)
+	dest.FeeBP = liquidityPool.Fee
 	typ, ok := xdr.LiquidityPoolTypeToString[liquidityPool.Type]
 	if !ok {
 		return errors.Errorf("unknown liquidity pool type: %d", liquidityPool.Type)
