@@ -40,8 +40,9 @@ type RouterConfig struct {
 	PathFinder         paths.Finder
 	PrometheusRegistry *prometheus.Registry
 	CoreGetter         actions.CoreSettingsGetter
-	FrontierVersion     string
+	FrontierVersion    string
 	FriendbotURL       *url.URL
+	HealthCheck        http.Handler
 }
 
 type Router struct {
@@ -104,12 +105,14 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		FrontierSession: config.DBSession,
 	}
 
+	r.Method(http.MethodGet, "/health", config.HealthCheck)
+
 	r.Method(http.MethodGet, "/", ObjectActionHandler{Action: actions.GetRootHandler{
 		LedgerState:        ledgerState,
 		CoreSettingsGetter: config.CoreGetter,
 		NetworkPassphrase:  config.NetworkPassphrase,
 		FriendbotURL:       config.FriendbotURL,
-		FrontierVersion:     config.FrontierVersion,
+		FrontierVersion:    config.FrontierVersion,
 	}})
 
 	streamHandler := sse.StreamHandler{

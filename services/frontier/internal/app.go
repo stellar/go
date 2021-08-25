@@ -57,7 +57,7 @@ type App struct {
 	historyQ        *history.Q
 	ctx             context.Context
 	cancel          func()
-	frontierVersion  string
+	frontierVersion string
 	coreSettings    coreSettingsStore
 	orderBookStream *ingest.OrderBookStream
 	submitter       *txsub.System
@@ -89,11 +89,11 @@ func (a *App) GetCoreSettings() actions.CoreSettings {
 // NewApp constructs an new App instance from the provided config.
 func NewApp(config Config) (*App, error) {
 	a := &App{
-		config:         config,
-		ledgerState:    &ledger.State{},
+		config:          config,
+		ledgerState:     &ledger.State{},
 		frontierVersion: app.Version(),
-		ticks:          time.NewTicker(1 * time.Second),
-		done:           make(chan struct{}),
+		ticks:           time.NewTicker(1 * time.Second),
+		done:            make(chan struct{}),
 	}
 
 	if err := a.init(); err != nil {
@@ -485,8 +485,17 @@ func (a *App) init() error {
 		PathFinder:         a.paths,
 		PrometheusRegistry: a.prometheusRegistry,
 		CoreGetter:         a,
-		FrontierVersion:     a.frontierVersion,
+		FrontierVersion:    a.frontierVersion,
 		FriendbotURL:       a.config.FriendbotURL,
+		HealthCheck: healthCheck{
+			session: a.historyQ.Session,
+			ctx:     a.ctx,
+			core: &digitalbitscore.Client{
+				HTTP: &http.Client{Timeout: infoRequestTimeout},
+				URL:  a.config.DigitalBitsCoreURL,
+			},
+			cache: newHealthCache(healthCacheTTL),
+		},
 	}
 
 	var err error
