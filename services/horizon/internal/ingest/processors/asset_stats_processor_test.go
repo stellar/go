@@ -74,6 +74,45 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 	}, maxBatchSize).Return(nil).Once()
 }
 
+func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineWithClawback() {
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsTrustlineClawbackEnabledFlag),
+	}
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.mockQ.On("InsertAssetStats", s.ctx, []history.ExpAssetStat{
+		{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetIssuer: trustLineIssuer.Address(),
+			AssetCode:   "EUR",
+			Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "0",
+				AuthorizedToMaintainLiabilities: "0",
+				Unauthorized:                    "0",
+				ClaimableBalances:               "0",
+			},
+			Amount:      "0",
+			NumAccounts: 1,
+		},
+	}, maxBatchSize).Return(nil).Once()
+}
+
 func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
