@@ -2594,6 +2594,224 @@ func TestClaimClaimableBalanceEffectsTestSuite(t *testing.T) {
 	suite.Run(t, new(ClaimClaimableBalanceEffectsTestSuite))
 }
 
+func TestTrustlineSponsorhipEffects(t *testing.T) {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	usdAsset := xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	poolIDStr := "19cc788419412926a11049b9fb1f87906b8f02bc6bf8f73d8fd347ede0b79fa5"
+	var poolID xdr.PoolId
+	poolIDBytes, err := hex.DecodeString(poolIDStr)
+	assert.NoError(t, err)
+	copy(poolID[:], poolIDBytes)
+	baseAssetTrustLineEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 20,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: source.ToAccountId(),
+				Asset:     usdAsset.ToTrustLineAsset(),
+				Balance:   100,
+				Limit:     1000,
+				Flags:     0,
+			},
+		},
+	}
+	baseLiquidityPoolTrustLineEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 20,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: source.ToAccountId(),
+				Asset: xdr.TrustLineAsset{
+					Type:            xdr.AssetTypeAssetTypePoolShare,
+					LiquidityPoolId: &poolID,
+				},
+				Balance: 100,
+				Limit:   1000,
+				Flags:   0,
+			},
+		},
+	}
+
+	sponsor1 := xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2")
+	sponsor2 := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	withSponsor := func(le *xdr.LedgerEntry, accID *xdr.AccountId) *xdr.LedgerEntry {
+		le2 := *le
+		le2.Ext = xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: accID,
+			},
+		}
+		return &le2
+	}
+
+	changes := xdr.LedgerEntryChanges{
+		// create asset sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &baseAssetTrustLineEntry,
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseAssetTrustLineEntry, &sponsor1),
+		},
+		// update asset sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseAssetTrustLineEntry, &sponsor1),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseAssetTrustLineEntry, &sponsor2),
+		},
+		// remove asset sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseAssetTrustLineEntry, &sponsor2),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &baseAssetTrustLineEntry,
+		},
+
+		// create liquidity pool sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &baseLiquidityPoolTrustLineEntry,
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor1),
+		},
+		// update liquidity pool sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor1),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor2),
+		},
+		// remove liquidity pool sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor2),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &baseLiquidityPoolTrustLineEntry,
+		},
+	}
+	expected := []effect{
+		{
+			effectType:  history.EffectTrustlineSponsorshipCreated,
+			order:       1,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset":      "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset_type": "credit_alphanum4",
+				"sponsor":    "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipUpdated,
+			order:       2,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset_type":     "credit_alphanum4",
+				"former_sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+				"new_sponsor":    "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipRemoved,
+			order:       3,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset_type":     "credit_alphanum4",
+				"former_sponsor": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipCreated,
+			order:       4,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"liquidity_pool_id": poolIDStr,
+				"asset_type":        "liquidity_pool",
+				"sponsor":           "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipUpdated,
+			order:       5,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"liquidity_pool_id": poolIDStr,
+				"asset_type":        "liquidity_pool",
+				"former_sponsor":    "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+				"new_sponsor":       "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipRemoved,
+			order:       6,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"liquidity_pool_id": poolIDStr,
+				"asset_type":        "liquidity_pool",
+				"former_sponsor":    "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+	}
+
+	// pick an operation with no intrinsic effects
+	// (the sponsosrhip effects are obtained from the changes, so it doesn't matter)
+	phonyOp := xdr.Operation{
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeEndSponsoringFutureReserves,
+		},
+	}
+	tx := ingest.LedgerTransaction{
+		Index: 0,
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: source,
+					Operations:    []xdr.Operation{phonyOp},
+				},
+			},
+		},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{{Changes: changes}},
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index:          0,
+		transaction:    tx,
+		operation:      phonyOp,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, effects)
+
+}
+
 func TestLiquidityPoolEffects(t *testing.T) {
 	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
 	usdAsset := xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
