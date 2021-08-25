@@ -294,6 +294,14 @@ func (s *Session) Rollback() error {
 	return err
 }
 
+// Ping verifies a connection to the database is still alive,
+// establishing a connection if necessary.
+func (s *Session) Ping(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(s.Ctx, timeout)
+	defer cancel()
+	return s.DB.PingContext(ctx)
+}
+
 // Select runs `query`, setting the results found on `dest`.
 func (s *Session) Select(dest interface{}, query sq.Sqlizer) error {
 	sql, args, err := s.build(query)
