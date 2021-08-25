@@ -31,8 +31,8 @@ func PopulateLiquidityPool(
 	dest.TotalShares = liquidityPool.ShareCount
 	for _, reserve := range liquidityPool.AssetReserves {
 		dest.Reserves = append(dest.Reserves, protocol.LiquidityPoolReserve{
-			Asset:   reserve.Asset.StringCanonical(),
-			Balance: amount.String(xdr.Int64(reserve.Reserve)),
+			Asset:  reserve.Asset.StringCanonical(),
+			Amount: amount.String(xdr.Int64(reserve.Reserve)),
 		})
 	}
 

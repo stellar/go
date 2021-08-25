@@ -60,10 +60,10 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	tt.Assert.Equal(uint64(200), resource.TotalShares)
 
 	tt.Assert.Equal("native", resource.Reserves[0].Asset)
-	tt.Assert.Equal("0.0000100", resource.Reserves[0].Balance)
+	tt.Assert.Equal("0.0000100", resource.Reserves[0].Amount)
 
 	tt.Assert.Equal("USD:GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Reserves[1].Asset)
-	tt.Assert.Equal("0.0000200", resource.Reserves[1].Balance)
+	tt.Assert.Equal("0.0000200", resource.Reserves[1].Amount)
 
 	// try to fetch pool which does not exist
 	_, err = handler.GetResource(httptest.NewRecorder(), makeRequest(

@@ -761,6 +761,6 @@ type LiquidityPoolsPage struct {
 
 // LiquidityPoolReserve represents a liquidity pool asset reserve
 type LiquidityPoolReserve struct {
-	Asset   string `json:"asset"`
-	Balance string `json:"balance"`
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
 }
