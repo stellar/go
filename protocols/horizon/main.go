@@ -201,8 +201,8 @@ type AssetStatAccounts struct {
 type Balance struct {
 	Balance                           string `json:"balance"`
 	Limit                             string `json:"limit,omitempty"`
-	BuyingLiabilities                 string `json:"buying_liabilities"`
-	SellingLiabilities                string `json:"selling_liabilities"`
+	BuyingLiabilities                 string `json:"buying_liabilities,omitempty"`
+	SellingLiabilities                string `json:"selling_liabilities,omitempty"`
 	Sponsor                           string `json:"sponsor,omitempty"`
 	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
 	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
@@ -360,24 +360,28 @@ type Trade struct {
 		Operation hal.Link `json:"operation"`
 	} `json:"_links"`
 
-	ID                 string    `json:"id"`
-	PT                 string    `json:"paging_token"`
-	LedgerCloseTime    time.Time `json:"ledger_close_time"`
-	OfferID            string    `json:"offer_id"`
-	BaseOfferID        string    `json:"base_offer_id"`
-	BaseAccount        string    `json:"base_account"`
-	BaseAmount         string    `json:"base_amount"`
-	BaseAssetType      string    `json:"base_asset_type"`
-	BaseAssetCode      string    `json:"base_asset_code,omitempty"`
-	BaseAssetIssuer    string    `json:"base_asset_issuer,omitempty"`
-	CounterOfferID     string    `json:"counter_offer_id"`
-	CounterAccount     string    `json:"counter_account"`
-	CounterAmount      string    `json:"counter_amount"`
-	CounterAssetType   string    `json:"counter_asset_type"`
-	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
-	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
-	BaseIsSeller       bool      `json:"base_is_seller"`
-	Price              *Price    `json:"price"`
+	ID                     string    `json:"id"`
+	PT                     string    `json:"paging_token"`
+	LedgerCloseTime        time.Time `json:"ledger_close_time"`
+	OfferID                string    `json:"offer_id"`
+	TradeType              string    `json:"trade_type"`
+	LiquidityPoolFeeBP     int32     `json:"liquidity_pool_fee_bp,omitempty"`
+	BaseLiquidityPoolID    string    `json:"base_liquidity_pool_id,omitempty"`
+	BaseOfferID            string    `json:"base_offer_id,omitempty"`
+	BaseAccount            string    `json:"base_account"`
+	BaseAmount             string    `json:"base_amount"`
+	BaseAssetType          string    `json:"base_asset_type"`
+	BaseAssetCode          string    `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer        string    `json:"base_asset_issuer,omitempty"`
+	CounterLiquidityPoolID string    `json:"counter_liquidity_pool_id,omitempty"`
+	CounterOfferID         string    `json:"counter_offer_id,omitempty"`
+	CounterAccount         string    `json:"counter_account"`
+	CounterAmount          string    `json:"counter_amount"`
+	CounterAssetType       string    `json:"counter_asset_type"`
+	CounterAssetCode       string    `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer     string    `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller           bool      `json:"base_is_seller"`
+	Price                  *Price    `json:"price"`
 }
 
 // PagingToken implementation for hal.Pageable

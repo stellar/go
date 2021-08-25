@@ -32,6 +32,13 @@ func TestEffectRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ledgers/123/effects", endpoint)
 
+	er = EffectRequest{ForLiquidityPool: "123"}
+	endpoint, err = er.BuildURL()
+
+	// It should return valid liquidity pool effects endpoint and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "liquidity_pools/123/effects", endpoint)
+
 	er = EffectRequest{ForOperation: "123"}
 	endpoint, err = er.BuildURL()
 

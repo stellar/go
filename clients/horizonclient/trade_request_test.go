@@ -32,12 +32,25 @@ func TestTradeRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "offers/123/trades", endpoint)
 
+	tr = TradeRequest{ForLiquidityPool: "123"}
+	endpoint, err = tr.BuildURL()
+
+	// It should return valid liquidity pool trades endpoint and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "liquidity_pools/123/trades", endpoint)
+
 	tr = TradeRequest{Cursor: "123"}
 	endpoint, err = tr.BuildURL()
 
 	// It should return valid trades endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "trades?cursor=123", endpoint)
+
+	// It should return valid trades endpoint and no errors for trade_type
+	tr = TradeRequest{TradeType: "orderbook"}
+	endpoint, err = tr.BuildURL()
+	require.NoError(t, err)
+	assert.Equal(t, "trades?trade_type=orderbook", endpoint)
 
 	tr = TradeRequest{ForOfferID: "123", ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	_, err = tr.BuildURL()

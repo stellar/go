@@ -9,10 +9,13 @@ import (
 
 func NewPoolId(a, b Asset, fee Int32) (PoolId, error) {
 	// Assume the assets are already sorted.
-	params := LiquidityPoolConstantProductParameters{
-		AssetA: a,
-		AssetB: b,
-		Fee:    fee,
+	params := LiquidityPoolParameters{
+		Type: LiquidityPoolTypeLiquidityPoolConstantProduct,
+		ConstantProduct: &LiquidityPoolConstantProductParameters{
+			AssetA: a,
+			AssetB: b,
+			Fee:    fee,
+		},
 	}
 
 	buf := &bytes.Buffer{}
