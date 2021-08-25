@@ -59,6 +59,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 type TransactionsQuery struct {
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
 	ClaimableBalanceID        string `schema:"claimable_balance_id" valid:"claimableBalanceID,optional"`
+	LiquidityPoolID           string `schema:"liquidity_pool_id" valid:"liquidityPoolID,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
 }
@@ -124,7 +125,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		}
 		cbID = &cb
 	}
-	records, err := loadTransactionRecords(ctx, historyQ, qp.AccountID, cbID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
+	records, err := loadTransactionRecords(ctx, historyQ, qp.AccountID, cbID, qp.LiquidityPoolID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -146,7 +147,15 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // loadTransactionRecords returns a slice of transaction records of an
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
-func loadTransactionRecords(ctx context.Context, hq *history.Q, accountID string, cbID *xdr.ClaimableBalanceId, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
+func loadTransactionRecords(
+	ctx context.Context,
+	hq *history.Q,
+	accountID string,
+	cbID *xdr.ClaimableBalanceId,
+	liquidityPoolID string,
+	ledgerID int32,
+	includeFailedTx bool,
+	pq db2.PageQuery) ([]history.Transaction, error) {
 	if accountID != "" && ledgerID != 0 {
 		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
 	}
@@ -159,6 +168,8 @@ func loadTransactionRecords(ctx context.Context, hq *history.Q, accountID string
 		txs.ForAccount(ctx, accountID)
 	case cbID != nil:
 		txs.ForClaimableBalance(ctx, *cbID)
+	case liquidityPoolID != "":
+		txs.ForLiquidityPool(ctx, liquidityPoolID)
 	case ledgerID > 0:
 		txs.ForLedger(ctx, ledgerID)
 	}
