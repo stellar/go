@@ -199,7 +199,7 @@ func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lp
 	}
 
 	for _, c := range changes {
-		if c.Type != xdr.LedgerEntryTypeLiquidityPool || (c.Pre == nil && c.Post == nil) {
+		if c.Type != xdr.LedgerEntryTypeLiquidityPool {
 			continue
 		}
 		// The delta can be caused by a full removal or full creation of the liquidity pool
