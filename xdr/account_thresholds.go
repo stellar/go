@@ -15,3 +15,7 @@ func (t Thresholds) ThresholdMedium() byte {
 func (t Thresholds) ThresholdHigh() byte {
 	return t[3]
 }
+
+func NewThreshold(masterKey, low, medium, high byte) Thresholds {
+	return Thresholds{masterKey, low, medium, high}
+}
