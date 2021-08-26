@@ -142,22 +142,6 @@ commands:
           name: Check dependencies
           command: ./gomod.sh
 
-  # install_stellar_core installs the latest unstable version of stellar core.
-  install_stellar_core:
-    parameters:
-      core-version:
-        type: string
-        default: "17.1.0-584.fbc0325.xenial"
-    steps:
-      - run:
-          name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
-          command: |
-            sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
-            sudo bash -c 'echo "deb https://apt.stellar.org xenial unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
-            sudo apt-get update && sudo apt-get install -y stellar-core<<#parameters.core-version>>=<<parameters.core-version>><</parameters.core-version>>
-            echo "using stellar core version $(stellar-core version)"
-            echo "export CAPTIVE_CORE_BIN=/usr/bin/stellar-core" >> $BASH_ENV
-
   check_ingest_state:
     steps:
       - run:
@@ -438,9 +422,6 @@ jobs:
       - run:
           name: Setting env variables
           command: echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
-      - run:
-          name: Pull latest Stellar Core image
-          command: docker pull stellar/stellar-core
       - install_golang
       - run:
           name: Start Horizon Postgres DB
@@ -448,7 +429,6 @@ jobs:
       - when:
           condition: <<parameters.enable-captive-core>>
           steps:
-            - install_stellar_core
             - run:
                 name: Setting Captive Core env variables
                 command: echo "export HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true" >> $BASH_ENV
