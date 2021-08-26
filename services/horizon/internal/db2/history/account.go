@@ -38,7 +38,7 @@ func (q *Q) CreateAccounts(ctx context.Context, addresses []string, batchSize in
 	sort.Strings(addresses)
 	var deduped []string
 	for i, address := range addresses {
-		if i > 0 && address[i] == address[i-1] {
+		if i > 0 && address == addresses[i-1] {
 			// skip duplicates
 			continue
 		}
@@ -56,7 +56,6 @@ func (q *Q) CreateAccounts(ctx context.Context, addresses []string, batchSize in
 		return nil, errors.Wrap(err, "could not exec asset insert builder")
 	}
 
-	var accounts []Account
 	addressToID := map[string]int64{}
 	const selectBatchSize = 10000
 
@@ -67,6 +66,7 @@ func (q *Q) CreateAccounts(ctx context.Context, addresses []string, batchSize in
 		}
 		subset := deduped[i:end]
 
+		var accounts []Account
 		if err := q.AccountsByAddresses(ctx, &accounts, subset); err != nil {
 			return nil, errors.Wrap(err, "could not select accounts")
 		}
