@@ -365,6 +365,7 @@ type Trade struct {
 	LedgerCloseTime        time.Time `json:"ledger_close_time"`
 	OfferID                string    `json:"offer_id"`
 	TradeType              string    `json:"trade_type"`
+	LiquidityPoolFeeBP     int32     `json:"liquidity_pool_fee_bp,omitempty"`
 	BaseLiquidityPoolID    string    `json:"base_liquidity_pool_id,omitempty"`
 	BaseOfferID            string    `json:"base_offer_id,omitempty"`
 	BaseAccount            string    `json:"base_account"`
