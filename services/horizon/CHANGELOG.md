@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v2.8.1
-**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
 **In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
 
