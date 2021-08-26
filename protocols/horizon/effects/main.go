@@ -364,19 +364,19 @@ type SignerUpdated struct {
 
 type TrustlineCreated struct {
 	Base
-	base.LiquidityPoolAsset
+	base.LiquidityPoolOrAsset
 	Limit string `json:"limit"`
 }
 
 type TrustlineRemoved struct {
 	Base
-	base.LiquidityPoolAsset
+	base.LiquidityPoolOrAsset
 	Limit string `json:"limit"`
 }
 
 type TrustlineUpdated struct {
 	Base
-	base.LiquidityPoolAsset
+	base.LiquidityPoolOrAsset
 	Limit string `json:"limit"`
 }
 
@@ -567,19 +567,21 @@ type LiquidityPoolDeposited struct {
 	Base
 	LiquidityPool     LiquidityPool      `json:"liquidity_pool"`
 	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
-	SharesReceived    uint64             `json:"shares_received"`
+	SharesReceived    uint64             `json:"shares_received,string"`
 }
 
 type LiquidityPoolWithdrew struct {
 	Base
 	LiquidityPool    LiquidityPool      `json:"liquidity_pool"`
 	ReservesReceived []base.AssetAmount `json:"reserves_received"`
-	SharesRedeemed   uint64             `json:"shares_redeemed"`
+	SharesRedeemed   uint64             `json:"shares_redeemed,string"`
 }
 
 type LiquidityPoolTrade struct {
 	Base
-	LiquidityPool LiquidityPool `json:"liquidity_pool"`
+	LiquidityPool LiquidityPool    `json:"liquidity_pool"`
+	Sold          base.AssetAmount `json:"sold"`
+	Bought        base.AssetAmount `json:"bought"`
 }
 
 type LiquidityPoolCreated struct {
@@ -602,7 +604,7 @@ type LiquidityPoolRevoked struct {
 	Base
 	LiquidityPool   LiquidityPool                       `json:"liquidity_pool"`
 	ReservesRevoked []LiquidityPoolClaimableAssetAmount `json:"reserves_revoked"`
-	SharesRevoked   uint64                              `json:"shares_revoked"`
+	SharesRevoked   uint64                              `json:"shares_revoked,string"`
 }
 
 // Effect contains methods that are implemented by all effect types.

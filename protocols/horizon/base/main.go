@@ -16,7 +16,7 @@ type AssetAmount struct {
 	Amount string `json:"amount"`
 }
 
-type LiquidityPoolAsset struct {
+type LiquidityPoolOrAsset struct {
 	Asset
 	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
 }

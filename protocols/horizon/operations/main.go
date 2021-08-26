@@ -199,7 +199,7 @@ type SetOptions struct {
 // is ChangeTrust.
 type ChangeTrust struct {
 	Base
-	base.LiquidityPoolAsset
+	base.LiquidityPoolOrAsset
 	Limit          string `json:"limit"`
 	Trustee        string `json:"trustee,omitempty"`
 	Trustor        string `json:"trustor"`
