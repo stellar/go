@@ -45,7 +45,7 @@ func PopulateLiquidityPool(
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
 	self := fmt.Sprintf("/liquidity_pools/%s", dest.ID)
 	dest.Links.Self = lb.Link(self)
-	dest.PT = fmt.Sprintf("%d-%s", liquidityPool.LastModifiedLedger, dest.ID)
+	dest.PT = dest.ID
 	dest.Links.Transactions = lb.PagedLink(self, "transactions")
 	dest.Links.Operations = lb.PagedLink(self, "operations")
 	return nil
