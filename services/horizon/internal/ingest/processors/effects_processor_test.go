@@ -2815,7 +2815,7 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 func TestLiquidityPoolEffects(t *testing.T) {
 	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
 	usdAsset := xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
-	poolIDStr := "19cc788419412926a11049b9fb1f87906b8f02bc6bf8f73d8fd347ede0b79fa5"
+	poolIDStr := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
 	var poolID xdr.PoolId
 	poolIDBytes, err := hex.DecodeString(poolIDStr)
 	assert.NoError(t, err)
