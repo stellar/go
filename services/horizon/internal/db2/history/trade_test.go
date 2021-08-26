@@ -60,8 +60,8 @@ func TestTradeQueries(t *testing.T) {
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
-	tt.Assert.Equal(xdr.Int64(2000000000), trades[0].BaseAmount)
-	tt.Assert.Equal(xdr.Int64(1000000000), trades[0].CounterAmount)
+	tt.Assert.Equal(int64(2000000000), trades[0].BaseAmount)
+	tt.Assert.Equal(int64(1000000000), trades[0].CounterAmount)
 	tt.Assert.Equal(true, trades[0].BaseIsSeller)
 
 	// reverse assets
@@ -69,8 +69,8 @@ func TestTradeQueries(t *testing.T) {
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
-	tt.Assert.Equal(xdr.Int64(1000000000), trades[0].BaseAmount)
-	tt.Assert.Equal(xdr.Int64(2000000000), trades[0].CounterAmount)
+	tt.Assert.Equal(int64(1000000000), trades[0].BaseAmount)
+	tt.Assert.Equal(int64(2000000000), trades[0].CounterAmount)
 	tt.Assert.Equal(false, trades[0].BaseIsSeller)
 }
 
@@ -81,53 +81,38 @@ func createInsertTrades(
 		HistoryOperationID: toid.New(ledger, 1, 1).ToInt64(),
 		Order:              1,
 		LedgerCloseTime:    supportTime.MillisFromSeconds(time.Now().Unix()).ToTime(),
-		BuyOfferExists:     true,
-		BuyOfferID:         32145,
-		SellerAccountID:    accountIDs[0],
-		BuyerAccountID:     accountIDs[1],
-		SoldAssetID:        assetIDs[0],
-		BoughtAssetID:      assetIDs[1],
-		SellPrice: xdr.Price{
-			N: 1,
-			D: 3,
-		},
-		Trade: xdr.ClaimAtom{
-			Type: xdr.ClaimAtomTypeClaimAtomTypeV0,
-			V0: &xdr.ClaimOfferAtomV0{
-				OfferId:      214515,
-				AmountSold:   7986,
-				AmountBought: 896,
-			},
-		},
+		CounterOfferID:     null.IntFrom(32145),
+		BaseAccountID:      null.IntFrom(accountIDs[0]),
+		CounterAccountID:   null.IntFrom(accountIDs[1]),
+		BaseAssetID:        assetIDs[0],
+		CounterAssetID:     assetIDs[1],
+		BaseOfferID:        null.IntFrom(214515),
+		BaseIsSeller:       true,
+		BaseAmount:         7986,
+		CounterAmount:      896,
+		PriceN:             1,
+		PriceD:             3,
 	}
 
 	second := first
-	second.BuyOfferExists = false
-	second.BuyOfferID = 89
+	second.CounterOfferID = null.Int{}
 	second.Order = 2
 
 	third := InsertTrade{
 		HistoryOperationID: toid.New(ledger, 2, 1).ToInt64(),
 		Order:              1,
 		LedgerCloseTime:    time.Now().UTC(),
-		BuyOfferExists:     true,
-		BuyOfferID:         2,
-		SellerAccountID:    accountIDs[1],
-		BuyerAccountID:     accountIDs[0],
-		SoldAssetID:        assetIDs[2],
-		BoughtAssetID:      assetIDs[1],
-		SellPrice: xdr.Price{
-			N: 1156,
-			D: 3,
-		},
-		Trade: xdr.ClaimAtom{
-			Type: xdr.ClaimAtomTypeClaimAtomTypeV0,
-			V0: &xdr.ClaimOfferAtomV0{
-				OfferId:      7,
-				AmountSold:   123,
-				AmountBought: 6,
-			},
-		},
+		CounterOfferID:     null.IntFrom(2),
+		BaseAccountID:      null.IntFrom(accountIDs[0]),
+		CounterAccountID:   null.IntFrom(accountIDs[1]),
+		BaseAssetID:        assetIDs[1],
+		CounterAssetID:     assetIDs[2],
+		BaseOfferID:        null.IntFrom(7),
+		BaseIsSeller:       false,
+		BaseAmount:         123,
+		CounterAmount:      6,
+		PriceN:             1156,
+		PriceD:             3,
 	}
 
 	return first, second, third
@@ -153,12 +138,6 @@ func createAccountsAndAssets(
 	}
 
 	return accountIDs, assetIDs
-}
-
-func newInt64(v int64) *int64 {
-	p := new(int64)
-	*p = v
-	return p
 }
 
 func buildIDtoAccountMapping(addresses []string, ids []int64) map[int64]xdr.AccountId {
@@ -211,102 +190,99 @@ func TestBatchInsertTrade(t *testing.T) {
 	idToAccount := buildIDtoAccountMapping(addresses, accountIDs)
 	idToAsset := buildIDtoAssetMapping(assets, assetIDs)
 
-	firstSellerAccount := idToAccount[first.SellerAccountID]
-	firstBuyerAccount := idToAccount[first.BuyerAccountID]
+	firstSellerAccount := idToAccount[first.BaseAccountID.Int64]
+	firstBuyerAccount := idToAccount[first.CounterAccountID.Int64]
 	var firstSoldAssetType, firstSoldAssetCode, firstSoldAssetIssuer string
-	idToAsset[first.SoldAssetID].MustExtract(
+	idToAsset[first.BaseAssetID].MustExtract(
 		&firstSoldAssetType, &firstSoldAssetCode, &firstSoldAssetIssuer,
 	)
 	var firstBoughtAssetType, firstBoughtAssetCode, firstBoughtAssetIssuer string
-	idToAsset[first.BoughtAssetID].MustExtract(
+	idToAsset[first.CounterAssetID].MustExtract(
 		&firstBoughtAssetType, &firstBoughtAssetCode, &firstBoughtAssetIssuer,
 	)
 
-	secondSellerAccount := idToAccount[second.SellerAccountID]
-	secondBuyerAccount := idToAccount[second.BuyerAccountID]
+	secondSellerAccount := idToAccount[second.BaseAccountID.Int64]
+	secondBuyerAccount := idToAccount[second.CounterAccountID.Int64]
 	var secondSoldAssetType, secondSoldAssetCode, secondSoldAssetIssuer string
-	idToAsset[second.SoldAssetID].MustExtract(
+	idToAsset[second.BaseAssetID].MustExtract(
 		&secondSoldAssetType, &secondSoldAssetCode, &secondSoldAssetIssuer,
 	)
 	var secondBoughtAssetType, secondBoughtAssetCode, secondBoughtAssetIssuer string
-	idToAsset[second.BoughtAssetID].MustExtract(
+	idToAsset[second.CounterAssetID].MustExtract(
 		&secondBoughtAssetType, &secondBoughtAssetCode, &secondBoughtAssetIssuer,
 	)
 
-	thirdSellerAccount := idToAccount[third.SellerAccountID]
-	thirdBuyerAccount := idToAccount[third.BuyerAccountID]
+	thirdSellerAccount := idToAccount[third.BaseAccountID.Int64]
+	thirdBuyerAccount := idToAccount[third.CounterAccountID.Int64]
 	var thirdSoldAssetType, thirdSoldAssetCode, thirdSoldAssetIssuer string
-	idToAsset[third.SoldAssetID].MustExtract(
+	idToAsset[third.BaseAssetID].MustExtract(
 		&thirdSoldAssetType, &thirdSoldAssetCode, &thirdSoldAssetIssuer,
 	)
 	var thirdBoughtAssetType, thirdBoughtAssetCode, thirdBoughtAssetIssuer string
-	idToAsset[third.BoughtAssetID].MustExtract(
+	idToAsset[third.CounterAssetID].MustExtract(
 		&thirdBoughtAssetType, &thirdBoughtAssetCode, &thirdBoughtAssetIssuer,
 	)
 
 	expected := []Trade{
-		Trade{
+		{
 			HistoryOperationID: first.HistoryOperationID,
 			Order:              first.Order,
 			LedgerCloseTime:    first.LedgerCloseTime,
-			OfferID:            int64(first.Trade.OfferId()),
-			BaseOfferID:        newInt64(EncodeOfferId(uint64(first.Trade.OfferId()), CoreOfferIDType)),
+			BaseOfferID:        first.BaseOfferID,
 			BaseAccount:        firstSellerAccount.Address(),
 			BaseAssetType:      firstSoldAssetType,
 			BaseAssetIssuer:    firstSoldAssetIssuer,
 			BaseAssetCode:      firstSoldAssetCode,
-			BaseAmount:         first.Trade.AmountSold(),
-			CounterOfferID:     newInt64(first.BuyOfferID),
+			BaseAmount:         first.BaseAmount,
+			CounterOfferID:     first.CounterOfferID,
 			CounterAccount:     firstBuyerAccount.Address(),
 			CounterAssetType:   firstBoughtAssetType,
 			CounterAssetIssuer: firstBoughtAssetIssuer,
 			CounterAssetCode:   firstBoughtAssetCode,
-			CounterAmount:      first.Trade.AmountBought(),
+			CounterAmount:      first.CounterAmount,
 			BaseIsSeller:       true,
-			PriceN:             null.NewInt(int64(first.SellPrice.N), true),
-			PriceD:             null.NewInt(int64(first.SellPrice.D), true),
+			PriceN:             null.IntFrom(first.PriceN),
+			PriceD:             null.IntFrom(first.PriceD),
 		},
-		Trade{
+		{
 			HistoryOperationID: second.HistoryOperationID,
 			Order:              second.Order,
 			LedgerCloseTime:    second.LedgerCloseTime,
-			OfferID:            int64(second.Trade.OfferId()),
-			BaseOfferID:        newInt64(EncodeOfferId(uint64(second.Trade.OfferId()), CoreOfferIDType)),
+			BaseOfferID:        second.BaseOfferID,
 			BaseAccount:        secondSellerAccount.Address(),
 			BaseAssetType:      secondSoldAssetType,
 			BaseAssetIssuer:    secondSoldAssetIssuer,
 			BaseAssetCode:      secondSoldAssetCode,
-			BaseAmount:         second.Trade.AmountSold(),
-			CounterOfferID:     newInt64(EncodeOfferId(uint64(second.HistoryOperationID), TOIDType)),
+			BaseAmount:         second.BaseAmount,
+			CounterOfferID:     null.Int{},
 			CounterAccount:     secondBuyerAccount.Address(),
 			CounterAssetType:   secondBoughtAssetType,
 			CounterAssetCode:   secondBoughtAssetCode,
 			CounterAssetIssuer: secondBoughtAssetIssuer,
-			CounterAmount:      second.Trade.AmountBought(),
+			CounterAmount:      second.CounterAmount,
 			BaseIsSeller:       true,
-			PriceN:             null.NewInt(int64(second.SellPrice.N), true),
-			PriceD:             null.NewInt(int64(second.SellPrice.D), true),
+			PriceN:             null.IntFrom(second.PriceN),
+			PriceD:             null.IntFrom(second.PriceD),
 		},
-		Trade{
+		{
 			HistoryOperationID: third.HistoryOperationID,
 			Order:              third.Order,
 			LedgerCloseTime:    third.LedgerCloseTime,
-			OfferID:            int64(third.Trade.OfferId()),
-			BaseOfferID:        newInt64(third.BuyOfferID),
-			BaseAccount:        thirdBuyerAccount.Address(),
-			BaseAssetType:      thirdBoughtAssetType,
-			BaseAssetCode:      thirdBoughtAssetCode,
-			BaseAssetIssuer:    thirdBoughtAssetIssuer,
-			BaseAmount:         third.Trade.AmountBought(),
-			CounterOfferID:     newInt64(EncodeOfferId(uint64(third.Trade.OfferId()), CoreOfferIDType)),
-			CounterAccount:     thirdSellerAccount.Address(),
-			CounterAssetType:   thirdSoldAssetType,
-			CounterAssetCode:   thirdSoldAssetCode,
-			CounterAssetIssuer: thirdSoldAssetIssuer,
-			CounterAmount:      third.Trade.AmountSold(),
+			BaseOfferID:        third.BaseOfferID,
+			BaseAccount:        thirdSellerAccount.Address(),
+			BaseAssetType:      thirdSoldAssetType,
+			BaseAssetCode:      thirdSoldAssetCode,
+			BaseAssetIssuer:    thirdSoldAssetIssuer,
+			BaseAmount:         third.BaseAmount,
+			CounterOfferID:     third.CounterOfferID,
+			CounterAccount:     thirdBuyerAccount.Address(),
+			CounterAssetType:   thirdBoughtAssetType,
+			CounterAssetCode:   thirdBoughtAssetCode,
+			CounterAssetIssuer: thirdBoughtAssetIssuer,
+			CounterAmount:      third.CounterAmount,
 			BaseIsSeller:       false,
-			PriceN:             null.NewInt(int64(third.SellPrice.D), true),
-			PriceD:             null.NewInt(int64(third.SellPrice.N), true),
+			PriceN:             null.IntFrom(third.PriceN),
+			PriceD:             null.IntFrom(third.PriceD),
 		},
 	}
 	tt.Assert.Len(rows, len(expected))
@@ -339,12 +315,12 @@ func TestTradesQueryForAccount(t *testing.T) {
 	// q.sql was reset in Page so should return error
 	tt.Assert.EqualError(err, "select statements must have at least one result column")
 
-	expectedRawSQL := `(SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.base_account_id = ? AND (
+	expectedRawSQL := `(SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.base_account_id = ? AND (
 				htrd.history_operation_id <= ?
 			AND (
 				htrd.history_operation_id < ? OR
 				(htrd.history_operation_id = ? AND htrd.order < ?)
-			)) ORDER BY htrd.history_operation_id desc, htrd.order desc) UNION (SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.counter_account_id = ? AND (
+			)) ORDER BY htrd.history_operation_id desc, htrd.order desc) UNION (SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.counter_account_id = ? AND (
 				htrd.history_operation_id <= ?
 			AND (
 				htrd.history_operation_id < ? OR
@@ -387,12 +363,12 @@ func TestTradesQueryForOffer(t *testing.T) {
 	// q.sql was reset in Page so should return error
 	tt.Assert.EqualError(err, "select statements must have at least one result column")
 
-	expectedRawSQL := `(SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.base_offer_id = ? AND (
+	expectedRawSQL := `(SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.base_offer_id = ? AND (
 				htrd.history_operation_id >= ?
 			AND (
 				htrd.history_operation_id > ? OR
 				(htrd.history_operation_id = ? AND htrd.order > ?)
-			)) ORDER BY htrd.history_operation_id asc, htrd.order asc) UNION (SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.counter_offer_id = ? AND (
+			)) ORDER BY htrd.history_operation_id asc, htrd.order asc) UNION (SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.counter_offer_id = ? AND (
 				htrd.history_operation_id >= ?
 			AND (
 				htrd.history_operation_id > ? OR
@@ -406,8 +382,8 @@ func TestTradesQueryForOffer(t *testing.T) {
 
 	// Ensure "asc" order and offer present
 	tt.Assert.Equal(int64(81604382721), trades[0].HistoryOperationID)
-	tt.Assert.Equal(offerID, trades[0].OfferID)
+	tt.Assert.Equal(offerID, trades[0].BaseOfferID.Int64)
 
 	tt.Assert.Equal(int64(85899350017), trades[1].HistoryOperationID)
-	tt.Assert.Equal(offerID, trades[1].OfferID)
+	tt.Assert.Equal(offerID, trades[1].BaseOfferID.Int64)
 }

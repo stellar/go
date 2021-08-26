@@ -222,7 +222,6 @@ var selectTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
-	"htrd.offer_id",
 	"htrd.base_offer_id",
 	"base_accounts.address as base_account",
 	"base_assets.asset_type as base_asset_type",
@@ -244,7 +243,6 @@ var selectReverseTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
-	"htrd.offer_id",
 	"htrd.counter_offer_id as base_offer_id",
 	"counter_accounts.address as base_account",
 	"counter_assets.asset_type as base_asset_type",
@@ -275,4 +273,5 @@ type QTrades interface {
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	RebuildTradeAggregationBuckets(ctx context.Context, fromledger, toLedger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
+	CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, batchSize int) (map[string]int64, error)
 }

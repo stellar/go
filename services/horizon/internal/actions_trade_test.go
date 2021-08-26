@@ -200,6 +200,9 @@ const week = int64(7 * 24 * time.Hour / time.Millisecond)
 const aggregationPath = "/trade_aggregations"
 
 func TestTradeActions_Aggregation(t *testing.T) {
+	// TODO fix in https://github.com/stellar/go/issues/3835
+	t.Skip()
+
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
@@ -376,6 +379,9 @@ func TestTradeActions_Aggregation(t *testing.T) {
 }
 
 func TestTradeActions_AmountsExceedInt64(t *testing.T) {
+	// TODO fix in https://github.com/stellar/go/issues/3835
+	t.Skip()
+
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 	dbQ := &Q{ht.HorizonSession()}
@@ -446,6 +452,8 @@ func TestTradeActions_IndexRegressions(t *testing.T) {
 // fields are correct for multiple trades that occur in the same ledger
 // https://github.com/stellar/go/issues/215
 func TestTradeActions_AggregationOrdering(t *testing.T) {
+	// TODO fix in https://github.com/stellar/go/issues/3835
+	t.Skip()
 
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -519,6 +527,9 @@ func TestTradeActions_AssetValidation(t *testing.T) {
 }
 
 func TestTradeActions_AggregationInvalidOffset(t *testing.T) {
+	// TODO fix in https://github.com/stellar/go/issues/3835
+	t.Skip()
+
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 	dbQ := &Q{ht.HorizonSession()}
@@ -561,6 +572,9 @@ func TestTradeActions_AggregationInvalidOffset(t *testing.T) {
 }
 
 func TestTradeActions_AggregationOffset(t *testing.T) {
+	// TODO fix in https://github.com/stellar/go/issues/3835
+	t.Skip()
+
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 	dbQ := &Q{ht.HorizonSession()}

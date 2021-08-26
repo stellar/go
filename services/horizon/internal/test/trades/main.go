@@ -3,6 +3,7 @@ package trades
 
 import (
 	"context"
+	"github.com/guregu/null"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -47,6 +48,7 @@ func IngestTestTrade(
 			AmountSold:   xdr.Int64(amountSold),
 			AssetBought:  assetBought,
 			AssetSold:    assetSold,
+			OfferId:      100,
 		},
 	}
 
@@ -69,15 +71,18 @@ func IngestTestTrade(
 	batch.Add(ctx, history.InsertTrade{
 		HistoryOperationID: opCounter,
 		Order:              0,
-		BuyOfferExists:     false,
-		BuyOfferID:         0,
-		BoughtAssetID:      assets[assetBought.String()].ID,
-		SoldAssetID:        assets[assetSold.String()].ID,
-		LedgerCloseTime:    timestamp.ToTime(),
-		SellPrice:          price,
-		Trade:              trade,
-		BuyerAccountID:     accounts[buyer.Address()],
-		SellerAccountID:    accounts[seller.Address()],
+		CounterAssetID:     assets[assetBought.String()].ID,
+		CounterAccountID:   null.IntFrom(accounts[buyer.Address()]),
+		CounterAmount:      amountBought,
+
+		BaseAssetID:     assets[assetSold.String()].ID,
+		BaseAccountID:   null.IntFrom(accounts[seller.Address()]),
+		BaseAmount:      amountSold,
+		BaseOfferID:     null.IntFrom(int64(trade.OfferId())),
+		BaseIsSeller:    true,
+		PriceN:          int64(price.N),
+		PriceD:          int64(price.D),
+		LedgerCloseTime: timestamp.ToTime(),
 	})
 	err = batch.Exec(ctx)
 	if err != nil {

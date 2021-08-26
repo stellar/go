@@ -5,6 +5,7 @@ package processors
 import (
 	"context"
 	"fmt"
+	"github.com/guregu/null"
 	"testing"
 	"time"
 
@@ -192,79 +193,94 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 2).ToInt64(),
 			Order:              1,
 			LedgerCloseTime:    closeTime,
-			BuyOfferExists:     false,
-			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.strictReceiveTrade.SellerId().Address()],
-			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
-			Trade:              s.strictReceiveTrade,
-			SoldAssetID:        s.assetToID[s.strictReceiveTrade.AssetSold().String()].ID,
-			BoughtAssetID:      s.assetToID[s.strictReceiveTrade.AssetBought().String()].ID,
-			SellPrice:          s.sellPrices[0],
+			BaseAmount:         int64(s.strictReceiveTrade.AmountBought()),
+			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			BaseAssetID:        s.assetToID[s.strictReceiveTrade.AssetBought().String()].ID,
+			CounterAmount:      int64(s.strictReceiveTrade.AmountSold()),
+			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.strictReceiveTrade.SellerId().Address()]),
+			CounterAssetID:     s.assetToID[s.strictReceiveTrade.AssetSold().String()].ID,
+			CounterOfferID:     null.IntFrom(int64(s.strictReceiveTrade.OfferId())),
+			BaseIsSeller:       false,
+			PriceN:             int64(s.sellPrices[0].D),
+			PriceD:             int64(s.sellPrices[0].N),
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 3).ToInt64(),
 			Order:              0,
 			LedgerCloseTime:    closeTime,
-			BuyOfferExists:     false,
-			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.strictSendTrade.SellerId().Address()],
-			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
-			Trade:              s.strictSendTrade,
-			SoldAssetID:        s.assetToID[s.strictSendTrade.AssetSold().String()].ID,
-			BoughtAssetID:      s.assetToID[s.strictSendTrade.AssetBought().String()].ID,
-			SellPrice:          s.sellPrices[1],
+			BaseAmount:         int64(s.strictSendTrade.AmountBought()),
+			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			BaseAssetID:        s.assetToID[s.strictSendTrade.AssetBought().String()].ID,
+			CounterAmount:      int64(s.strictSendTrade.AmountSold()),
+			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.strictSendTrade.SellerId().Address()]),
+			CounterAssetID:     s.assetToID[s.strictSendTrade.AssetSold().String()].ID,
+			BaseIsSeller:       false,
+			CounterOfferID:     null.IntFrom(int64(s.strictSendTrade.OfferId())),
+			PriceN:             int64(s.sellPrices[1].D),
+			PriceD:             int64(s.sellPrices[1].N),
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 4).ToInt64(),
 			Order:              1,
 			LedgerCloseTime:    closeTime,
-			BuyOfferExists:     true,
-			BuyOfferID:         879136,
-			SellerAccountID:    s.unmuxedAccountToID[s.buyOfferTrade.SellerId().Address()],
-			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
-			Trade:              s.buyOfferTrade,
-			SoldAssetID:        s.assetToID[s.buyOfferTrade.AssetSold().String()].ID,
-			BoughtAssetID:      s.assetToID[s.buyOfferTrade.AssetBought().String()].ID,
-			SellPrice:          s.sellPrices[2],
+			BaseOfferID:        null.IntFrom(879136),
+			BaseAmount:         int64(s.buyOfferTrade.AmountBought()),
+			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			BaseAssetID:        s.assetToID[s.buyOfferTrade.AssetBought().String()].ID,
+			CounterAmount:      int64(s.buyOfferTrade.AmountSold()),
+			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.buyOfferTrade.SellerId().Address()]),
+			CounterAssetID:     s.assetToID[s.buyOfferTrade.AssetSold().String()].ID,
+			BaseIsSeller:       false,
+			CounterOfferID:     null.IntFrom(int64(s.buyOfferTrade.OfferId())),
+			PriceN:             int64(s.sellPrices[2].D),
+			PriceD:             int64(s.sellPrices[2].N),
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 5).ToInt64(),
 			Order:              2,
 			LedgerCloseTime:    closeTime,
-			BuyOfferExists:     false,
-			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.sellOfferTrade.SellerId().Address()],
-			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
-			Trade:              s.sellOfferTrade,
-			SoldAssetID:        s.assetToID[s.sellOfferTrade.AssetSold().String()].ID,
-			BoughtAssetID:      s.assetToID[s.sellOfferTrade.AssetBought().String()].ID,
-			SellPrice:          s.sellPrices[3],
+			BaseAmount:         int64(s.sellOfferTrade.AmountBought()),
+			BaseAssetID:        s.assetToID[s.sellOfferTrade.AssetBought().String()].ID,
+			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			CounterAmount:      int64(s.sellOfferTrade.AmountSold()),
+			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.sellOfferTrade.SellerId().Address()]),
+			CounterAssetID:     s.assetToID[s.sellOfferTrade.AssetSold().String()].ID,
+			BaseIsSeller:       false,
+			CounterOfferID:     null.IntFrom(int64(s.sellOfferTrade.OfferId())),
+			PriceN:             int64(s.sellPrices[3].D),
+			PriceD:             int64(s.sellPrices[3].N),
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 6).ToInt64(),
 			Order:              0,
 			LedgerCloseTime:    closeTime,
-			BuyOfferExists:     false,
-			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.passiveSellOfferTrade.SellerId().Address()],
-			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedSourceAccount.Address()],
-			Trade:              s.passiveSellOfferTrade,
-			SoldAssetID:        s.assetToID[s.passiveSellOfferTrade.AssetSold().String()].ID,
-			BoughtAssetID:      s.assetToID[s.passiveSellOfferTrade.AssetBought().String()].ID,
-			SellPrice:          s.sellPrices[4],
+			BaseAmount:         int64(s.passiveSellOfferTrade.AmountBought()),
+			BaseAssetID:        s.assetToID[s.passiveSellOfferTrade.AssetBought().String()].ID,
+			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedSourceAccount.Address()]),
+			CounterAmount:      int64(s.passiveSellOfferTrade.AmountSold()),
+			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.passiveSellOfferTrade.SellerId().Address()]),
+			CounterAssetID:     s.assetToID[s.passiveSellOfferTrade.AssetSold().String()].ID,
+			BaseIsSeller:       false,
+			CounterOfferID:     null.IntFrom(int64(s.passiveSellOfferTrade.OfferId())),
+			PriceN:             int64(s.sellPrices[4].D),
+			PriceD:             int64(s.sellPrices[4].N),
 		},
+
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 7).ToInt64(),
 			Order:              0,
 			LedgerCloseTime:    closeTime,
-			BuyOfferExists:     false,
-			BuyOfferID:         0,
-			SellerAccountID:    s.unmuxedAccountToID[s.otherPassiveSellOfferTrade.SellerId().Address()],
-			BuyerAccountID:     s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()],
-			Trade:              s.otherPassiveSellOfferTrade,
-			SoldAssetID:        s.assetToID[s.otherPassiveSellOfferTrade.AssetSold().String()].ID,
-			BoughtAssetID:      s.assetToID[s.otherPassiveSellOfferTrade.AssetBought().String()].ID,
-			SellPrice:          s.sellPrices[5],
+
+			BaseAmount:       int64(s.otherPassiveSellOfferTrade.AmountBought()),
+			BaseAssetID:      s.assetToID[s.otherPassiveSellOfferTrade.AssetBought().String()].ID,
+			BaseAccountID:    null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			CounterAmount:    int64(s.otherPassiveSellOfferTrade.AmountSold()),
+			CounterAccountID: null.IntFrom(s.unmuxedAccountToID[s.otherPassiveSellOfferTrade.SellerId().Address()]),
+			CounterAssetID:   s.assetToID[s.otherPassiveSellOfferTrade.AssetSold().String()].ID,
+			BaseIsSeller:     false,
+			CounterOfferID:   null.IntFrom(int64(s.otherPassiveSellOfferTrade.OfferId())),
+			PriceN:           int64(s.sellPrices[5].D),
+			PriceD:           int64(s.sellPrices[5].N),
 		},
 	}
 
@@ -513,6 +529,27 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 	return inserts
 }
 
+func mapKeysToList(set map[string]int64) []string {
+	keys := make([]string, 0, len(set))
+	for key := range set {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func uniq(list []string) []string {
+	var deduped []string
+	set := map[string]bool{}
+	for _, s := range list {
+		if set[s] {
+			continue
+		}
+		deduped = append(deduped, s)
+		set[s] = true
+	}
+	return deduped
+}
+
 func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	ctx := context.Background()
 	inserts := s.mockReadTradeTransactions(s.processor.ledger)
@@ -522,7 +559,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
-				arg,
+				uniq(arg),
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
@@ -534,6 +571,12 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
+
+	s.mockQ.On("CreateHistoryLiquidityPools", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
+		Run(func(args mock.Arguments) {
+			arg := args.Get(1).([]string)
+			s.Assert().Empty(arg)
+		}).Return(map[string]int64{}, nil).Once()
 
 	for _, insert := range inserts {
 		s.mockBatchInsertBuilder.On("Add", ctx, []history.InsertTrade{
@@ -561,7 +604,7 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
 			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
-				arg,
+				uniq(arg),
 			)
 		}).Return(map[string]int64{}, fmt.Errorf("create accounts error")).Once()
 
@@ -584,7 +627,7 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
-				arg,
+				uniq(arg),
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
@@ -615,7 +658,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
-				arg,
+				uniq(arg),
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
@@ -627,6 +670,12 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
+
+	s.mockQ.On("CreateHistoryLiquidityPools", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
+		Run(func(args mock.Arguments) {
+			arg := args.Get(1).([]string)
+			s.Assert().Empty(arg)
+		}).Return(map[string]int64{}, nil).Once()
 
 	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
 		Return(fmt.Errorf("batch add error")).Once()
@@ -649,7 +698,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
-				arg,
+				uniq(arg),
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
@@ -661,6 +710,12 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
+
+	s.mockQ.On("CreateHistoryLiquidityPools", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
+		Run(func(args mock.Arguments) {
+			arg := args.Get(1).([]string)
+			s.Assert().Empty(arg)
+		}).Return(map[string]int64{}, nil).Once()
 
 	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
@@ -683,7 +738,7 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
-				arg,
+				uniq(arg),
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
@@ -695,6 +750,12 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
+
+	s.mockQ.On("CreateHistoryLiquidityPools", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
+		Run(func(args mock.Arguments) {
+			arg := args.Get(1).([]string)
+			s.Assert().Empty(arg)
+		}).Return(map[string]int64{}, nil).Once()
 
 	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
