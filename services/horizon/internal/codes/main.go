@@ -252,6 +252,12 @@ func String(code interface{}) (string, error) {
 			return OpLowReserve, nil
 		case xdr.ChangeTrustResultCodeChangeTrustSelfNotAllowed:
 			return "op_self_not_allowed", nil
+		case xdr.ChangeTrustResultCodeChangeTrustTrustLineMissing:
+			return "op_trust_line_missing", nil
+		case xdr.ChangeTrustResultCodeChangeTrustCannotDelete:
+			return "op_cannot_delete", nil
+		case xdr.ChangeTrustResultCodeChangeTrustNotAuthMaintainLiabilities:
+			return "op_not_aut_maintain_liabilities", nil
 		}
 	case xdr.AllowTrustResultCode:
 		switch code {

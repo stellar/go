@@ -51,7 +51,7 @@ func (lpsa LiquidityPoolShareChangeTrustAsset) ToXDR() (xdr.ChangeTrustAsset, er
 	if err != nil {
 		return xdr.ChangeTrustAsset{}, errors.Wrap(err, "failed to build XDR liquidity pool parameters")
 	}
-	return xdr.ChangeTrustAsset{LiquidityPool: &xdrPoolParams}, nil
+	return xdr.ChangeTrustAsset{Type: xdr.AssetTypeAssetTypePoolShare, LiquidityPool: &xdrPoolParams}, nil
 }
 
 // ToAsset for LiquidityPoolShareChangeTrustAsset returns an error.

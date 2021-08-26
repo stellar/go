@@ -405,19 +405,19 @@ func (i *Test) waitForCore() {
 }
 
 func (i *Test) WaitForHorizon() {
-	for t := 200; t >= 0; t -= 1 {
+	for t := 60; t >= 0; t -= 1 {
+		time.Sleep(time.Second)
+
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.horizonClient.Root()
 		if err != nil {
 			i.t.Logf("could not obtain root response %v", err)
-			time.Sleep(time.Second)
 			continue
 		}
 
 		if root.HorizonSequence < 3 ||
 			int(root.HorizonSequence) != int(root.IngestSequence) {
 			i.t.Logf("Horizon ingesting... %v", root)
-			time.Sleep(time.Second)
 			continue
 		}
 

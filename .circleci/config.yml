@@ -147,13 +147,13 @@ commands:
     parameters:
       core-version:
         type: string
-        default: "17.1.0-584.fbc0325.xenial"
+        default: "17.3.1-679.c5f6349.focal~protocol18~buildtests"
     steps:
       - run:
           name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
           command: |
             sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
-            sudo bash -c 'echo "deb https://apt.stellar.org xenial unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
+            sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
             sudo apt-get update && sudo apt-get install -y stellar-core<<#parameters.core-version>>=<<parameters.core-version>><</parameters.core-version>>
             echo "using stellar core version $(stellar-core version)"
             echo "export CAPTIVE_CORE_BIN=/usr/bin/stellar-core" >> $BASH_ENV
@@ -432,7 +432,7 @@ jobs:
         default: false
     working_directory: ~/go/src/github.com/stellar/go
     machine:
-      image: ubuntu-1604:202010-01
+      image: ubuntu-2004:202010-01
     steps:
       - checkout
       - run:
