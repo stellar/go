@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -181,21 +183,21 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypePayment:
 		wrapper.addPaymentEffects()
 	case xdr.OperationTypePathPaymentStrictReceive:
-		wrapper.pathPaymentStrictReceiveEffects()
+		err = wrapper.pathPaymentStrictReceiveEffects()
 	case xdr.OperationTypePathPaymentStrictSend:
-		wrapper.addPathPaymentStrictSendEffects()
+		err = wrapper.addPathPaymentStrictSendEffects()
 	case xdr.OperationTypeManageSellOffer:
-		wrapper.addManageSellOfferEffects()
+		err = wrapper.addManageSellOfferEffects()
 	case xdr.OperationTypeManageBuyOffer:
-		wrapper.addManageBuyOfferEffects()
+		err = wrapper.addManageBuyOfferEffects()
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		wrapper.addCreatePassiveSellOfferEffect()
+		err = wrapper.addCreatePassiveSellOfferEffect()
 	case xdr.OperationTypeSetOptions:
 		wrapper.addSetOptionsEffects()
 	case xdr.OperationTypeChangeTrust:
 		err = wrapper.addChangeTrustEffects()
 	case xdr.OperationTypeAllowTrust:
-		wrapper.addAllowTrustEffects()
+		err = wrapper.addAllowTrustEffects()
 	case xdr.OperationTypeAccountMerge:
 		wrapper.addAccountMergeEffects()
 	case xdr.OperationTypeInflation:
@@ -216,17 +218,24 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addClawbackClaimableBalanceEffects(changes)
 	case xdr.OperationTypeSetTrustLineFlags:
 		err = wrapper.addSetTrustLineFlagsEffects()
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		err = wrapper.addLiquidityPoolDepositEffect()
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		err = wrapper.addLiquidityPoolWithdrawEffect()
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
 	if err != nil {
 		return nil, err
 	}
+	// Effects generated for multiple operations
 	for _, change := range changes {
 		if err = wrapper.addLedgerEntrySponsorshipEffects(change); err != nil {
 			return nil, err
 		}
 		wrapper.addSignerSponsorshipEffects(change)
+		// Effects caused by ChangeTrust (creation), AllowTrust and SetTrustlineFlags (removal through revocation)
+		wrapper.addLedgerEntryLiquidityPoolEffects(change)
 	}
 
 	return wrapper.effects, nil
@@ -400,10 +409,20 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 		a := data.MustAccount().AccountId
 		accountID = &a
 	case xdr.LedgerEntryTypeTrustline:
-		a := data.MustTrustLine().AccountId
-		accountID = &a
-		// TODO ensure xdr.Asset is fine here.
-		details["asset"] = data.MustTrustLine().Asset.ToAsset().StringCanonical()
+		tl := data.MustTrustLine()
+		accountID = &tl.AccountId
+		if tl.Asset.Type == xdr.AssetTypeAssetTypePoolShare {
+			details["asset_type"] = "liquidity_pool"
+			details["liquidity_pool_id"] = PoolIDToString(*tl.Asset.LiquidityPoolId)
+		} else {
+			asset := tl.Asset.ToAsset()
+			var assetType string
+			if err := asset.Extract(&assetType, nil, nil); err != nil {
+				return err
+			}
+			details["asset_type"] = assetType
+			details["asset"] = asset.StringCanonical()
+		}
 	case xdr.LedgerEntryTypeData:
 		muxedAccount = e.operation.SourceAccount()
 		details["data_name"] = data.MustData().DataName
@@ -414,6 +433,9 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 		if err != nil {
 			return errors.Wrapf(err, "Invalid balanceId in change from op %d", e.operation.index)
 		}
+	case xdr.LedgerEntryTypeLiquidityPool:
+		// liquidity pools cannot be sponsored
+		fallthrough
 	default:
 		return errors.Errorf("invalid sponsorship ledger entry type %v", change.Type.String())
 	}
@@ -425,6 +447,34 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 	}
 
 	return nil
+}
+
+func (e *effectsWrapper) addLedgerEntryLiquidityPoolEffects(change ingest.Change) {
+	if change.Type != xdr.LedgerEntryTypeLiquidityPool {
+		return
+	}
+	var (
+		effectType history.EffectType
+		poolID     xdr.PoolId
+	)
+
+	switch {
+	case change.Pre == nil && change.Post != nil:
+		effectType = history.EffectLiquidityPoolCreated
+		poolID = change.Post.Data.LiquidityPool.LiquidityPoolId
+	case change.Pre != nil && change.Post == nil:
+		effectType = history.EffectLiquidityPoolRemoved
+		poolID = change.Pre.Data.LiquidityPool.LiquidityPoolId
+	default:
+		return
+	}
+	e.addMuxed(
+		e.operation.SourceAccount(),
+		effectType,
+		map[string]interface{}{
+			"liquidity_pool_id": PoolIDToString(poolID),
+		},
+	)
 }
 
 func (e *effectsWrapper) addAccountCreatedEffects() {
@@ -473,7 +523,7 @@ func (e *effectsWrapper) addPaymentEffects() {
 	)
 }
 
-func (e *effectsWrapper) pathPaymentStrictReceiveEffects() {
+func (e *effectsWrapper) pathPaymentStrictReceiveEffects() error {
 	op := e.operation.operation.Body.MustPathPaymentStrictReceiveOp()
 	resultSuccess := e.operation.OperationResult().MustPathPaymentStrictReceiveResult().MustSuccess()
 	source := e.operation.SourceAccount()
@@ -497,10 +547,10 @@ func (e *effectsWrapper) pathPaymentStrictReceiveEffects() {
 		details,
 	)
 
-	e.addIngestTradeEffects(*source, resultSuccess.Offers)
+	return e.addIngestTradeEffects(*source, resultSuccess.Offers)
 }
 
-func (e *effectsWrapper) addPathPaymentStrictSendEffects() {
+func (e *effectsWrapper) addPathPaymentStrictSendEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustPathPaymentStrictSendOp()
 	resultSuccess := e.operation.OperationResult().MustPathPaymentStrictSendResult().MustSuccess()
@@ -514,22 +564,22 @@ func (e *effectsWrapper) addPathPaymentStrictSendEffects() {
 	addAssetDetails(details, op.SendAsset, "")
 	e.addMuxed(source, history.EffectAccountDebited, details)
 
-	e.addIngestTradeEffects(*source, resultSuccess.Offers)
+	return e.addIngestTradeEffects(*source, resultSuccess.Offers)
 }
 
-func (e *effectsWrapper) addManageSellOfferEffects() {
+func (e *effectsWrapper) addManageSellOfferEffects() error {
 	source := e.operation.SourceAccount()
 	result := e.operation.OperationResult().MustManageSellOfferResult().MustSuccess()
-	e.addIngestTradeEffects(*source, result.OffersClaimed)
+	return e.addIngestTradeEffects(*source, result.OffersClaimed)
 }
 
-func (e *effectsWrapper) addManageBuyOfferEffects() {
+func (e *effectsWrapper) addManageBuyOfferEffects() error {
 	source := e.operation.SourceAccount()
 	result := e.operation.OperationResult().MustManageBuyOfferResult().MustSuccess()
-	e.addIngestTradeEffects(*source, result.OffersClaimed)
+	return e.addIngestTradeEffects(*source, result.OffersClaimed)
 }
 
-func (e *effectsWrapper) addCreatePassiveSellOfferEffect() {
+func (e *effectsWrapper) addCreatePassiveSellOfferEffect() error {
 	result := e.operation.OperationResult()
 	source := e.operation.SourceAccount()
 
@@ -543,7 +593,7 @@ func (e *effectsWrapper) addCreatePassiveSellOfferEffect() {
 		claims = result.MustCreatePassiveSellOfferResult().MustSuccess().OffersClaimed
 	}
 
-	e.addIngestTradeEffects(*source, claims)
+	return e.addIngestTradeEffects(*source, claims)
 }
 
 func (e *effectsWrapper) addSetOptionsEffects() error {
@@ -677,8 +727,13 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 	if len(changes) > 0 {
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		effect := history.EffectType(0)
-		// TODO Fix before Protocol 18
-		addAssetDetails(details, op.Line.ToAsset(), "")
+		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
+			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool); err != nil {
+				return err
+			}
+		} else {
+			addAssetDetails(details, op.Line.ToAsset(), "")
+		}
 
 		for _, change := range changes {
 			if change.Type != xdr.LedgerEntryTypeTrustline {
@@ -699,12 +754,16 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 			break
 		}
 
+		if effect == history.EffectType(0) {
+			return errors.New("trustline entry not found")
+		}
+
 		e.addMuxed(source, effect, details)
 	}
 	return nil
 }
 
-func (e *effectsWrapper) addAllowTrustEffects() {
+func (e *effectsWrapper) addAllowTrustEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustAllowTrustOp()
 	asset := op.Asset.ToAsset(source.ToAccountId())
@@ -734,6 +793,7 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 		clearFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
 		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, nil, &clearFlags)
 	}
+	return e.addLiquidityPoolRevokedEffect()
 }
 
 func (e *effectsWrapper) addAccountMergeEffects() {
@@ -840,51 +900,24 @@ func setClaimableBalanceFlagDetails(details map[string]interface{}, flags xdr.Cl
 }
 
 func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Change) error {
-	op := e.operation.operation.Body.MustCreateClaimableBalanceOp()
-
-	result := e.operation.OperationResult().MustCreateClaimableBalanceResult()
-	balanceID, err := xdr.MarshalHex(result.BalanceId)
-	if err != nil {
-		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
-	}
-
-	details := map[string]interface{}{
-		"balance_id": balanceID,
-		"amount":     amount.String(op.Amount),
-		"asset":      op.Asset.StringCanonical(),
-	}
+	source := e.operation.SourceAccount()
+	var cb *xdr.ClaimableBalanceEntry
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.Post == nil {
 			continue
 		}
-		setClaimableBalanceFlagDetails(details, change.Post.Data.ClaimableBalance.Flags())
+		cb = change.Post.Data.ClaimableBalance
+		e.addClaimableBalanceEntryCreatedEffects(source, cb)
 		break
 	}
-	source := e.operation.SourceAccount()
-	e.addMuxed(
-		source,
-		history.EffectClaimableBalanceCreated,
-		details,
-	)
-
-	for _, c := range op.Claimants {
-		cv0 := c.MustV0()
-		e.addUnmuxed(
-			&cv0.Destination,
-			history.EffectClaimableBalanceClaimantCreated,
-			map[string]interface{}{
-				"balance_id": balanceID,
-				"amount":     amount.String(op.Amount),
-				"predicate":  cv0.Predicate,
-				"asset":      op.Asset.StringCanonical(),
-			},
-		)
+	if cb == nil {
+		return errors.New("claimable balance entry not found")
 	}
 
-	details = map[string]interface{}{
-		"amount": amount.String(op.Amount),
+	details := map[string]interface{}{
+		"amount": amount.String(cb.Amount),
 	}
-	addAssetDetails(details, op.Asset, "")
+	addAssetDetails(details, cb.Asset, "")
 	e.addMuxed(
 		source,
 		history.EffectAccountDebited,
@@ -892,6 +925,38 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Chang
 	)
 
 	return nil
+}
+
+func (e *effectsWrapper) addClaimableBalanceEntryCreatedEffects(source *xdr.MuxedAccount, cb *xdr.ClaimableBalanceEntry) error {
+	id, err := xdr.MarshalHex(cb.BalanceId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"balance_id": id,
+		"amount":     amount.String(cb.Amount),
+		"asset":      cb.Asset.StringCanonical(),
+	}
+	setClaimableBalanceFlagDetails(details, cb.Flags())
+	e.addMuxed(
+		source,
+		history.EffectClaimableBalanceCreated,
+		details,
+	)
+	for _, c := range cb.Claimants {
+		cv0 := c.MustV0()
+		e.addUnmuxed(
+			&cv0.Destination,
+			history.EffectClaimableBalanceClaimantCreated,
+			map[string]interface{}{
+				"balance_id": id,
+				"amount":     amount.String(cb.Amount),
+				"predicate":  cv0.Predicate,
+				"asset":      cb.Asset.StringCanonical(),
+			},
+		)
+	}
+	return err
 }
 
 func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change) error {
@@ -953,27 +1018,58 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 	return nil
 }
 
-func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []xdr.ClaimAtom) {
+func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []xdr.ClaimAtom) error {
 	for _, claim := range claims {
 		if claim.AmountSold() == 0 && claim.AmountBought() == 0 {
 			continue
 		}
-
-		seller := claim.SellerId()
-		bd, sd := tradeDetails(buyer, seller, claim)
-
-		e.addMuxed(
-			&buyer,
-			history.EffectTrade,
-			bd,
-		)
-
-		e.addUnmuxed(
-			&seller,
-			history.EffectTrade,
-			sd,
-		)
+		switch claim.Type {
+		case xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool:
+			if err := e.addClaimLiquidityPoolTradeEffect(claim); err != nil {
+				return err
+			}
+		default:
+			e.addClaimTradeEffects(buyer, claim)
+		}
 	}
+	return nil
+}
+
+func (e *effectsWrapper) addClaimTradeEffects(buyer xdr.MuxedAccount, claim xdr.ClaimAtom) {
+	seller := claim.SellerId()
+	bd, sd := tradeDetails(buyer, seller, claim)
+
+	e.addMuxed(
+		&buyer,
+		history.EffectTrade,
+		bd,
+	)
+
+	e.addUnmuxed(
+		&seller,
+		history.EffectTrade,
+		sd,
+	)
+}
+
+func (e *effectsWrapper) addClaimLiquidityPoolTradeEffect(claim xdr.ClaimAtom) error {
+	lp, _, err := e.operation.getLiquidityPoolAndProductDelta(&claim.LiquidityPool.LiquidityPoolId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"liquidity_pool": liquidityPoolDetails(lp),
+		"sold": map[string]string{
+			"asset":  claim.LiquidityPool.AssetSold.StringCanonical(),
+			"amount": amount.String(claim.LiquidityPool.AmountSold),
+		},
+		"bought": map[string]string{
+			"asset":  claim.LiquidityPool.AssetBought.StringCanonical(),
+			"amount": amount.String(claim.LiquidityPool.AmountBought),
+		},
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolTrade, details)
+	return nil
 }
 
 func (e *effectsWrapper) addClawbackEffects() error {
@@ -1038,7 +1134,7 @@ func (e *effectsWrapper) addSetTrustLineFlagsEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustSetTrustLineFlagsOp()
 	e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &op.SetFlags, &op.ClearFlags)
-	return nil
+	return e.addLiquidityPoolRevokedEffect()
 }
 
 func (e *effectsWrapper) addTrustLineFlagsEffect(
@@ -1079,6 +1175,69 @@ func setTrustLineFlagDetails(flagDetails map[string]interface{}, flags xdr.Trust
 	}
 }
 
+func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
+	source := e.operation.SourceAccount()
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(nil)
+	if err != nil {
+		if err == errLiquidtyPoolChangeNotFound {
+			// no revocation happened
+			return nil
+		}
+		return err
+	}
+	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
+	if err != nil {
+		return err
+	}
+	assetToCBID := map[string]string{}
+	for _, change := range changes {
+		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Pre == nil && change.Post != nil {
+			cb := change.Post.Data.ClaimableBalance
+			id, err := xdr.MarshalHex(cb.BalanceId)
+			if err != nil {
+				return err
+			}
+			assetToCBID[cb.Asset.StringCanonical()] = id
+			if err := e.addClaimableBalanceEntryCreatedEffects(source, cb); err != nil {
+				return err
+			}
+
+		}
+	}
+	if len(assetToCBID) == 0 {
+		// no claimable balances were created, and thus, no revocation happened
+		return nil
+	}
+
+	reservesRevoked := make([]map[string]string, 0, 2)
+	for _, aa := range []base.AssetAmount{
+		{
+			Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+			Amount: amount.String(-delta.ReserveA),
+		},
+		{
+			Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+			Amount: amount.String(-delta.ReserveB),
+		},
+	} {
+		if cbID, ok := assetToCBID[aa.Asset]; ok {
+			assetAmountDetail := map[string]string{
+				"asset":                aa.Asset,
+				"amount":               aa.Amount,
+				"claimable_balance_id": cbID,
+			}
+			reservesRevoked = append(reservesRevoked, assetAmountDetail)
+		}
+	}
+	details := map[string]interface{}{
+		"liquidity_pool":   liquidityPoolDetails(lp),
+		"reserves_revoked": reservesRevoked,
+		"shares_revoked":   strconv.FormatInt(int64(-delta.TotalPoolShares), 10),
+	}
+	e.addMuxed(source, history.EffectLiquidityPoolRevoked, details)
+	return nil
+}
+
 func setAuthFlagDetails(flagDetails map[string]interface{}, flags xdr.AccountFlags, setValue bool) {
 	if flags.IsAuthRequired() {
 		flagDetails["auth_required_flag"] = setValue
@@ -1114,4 +1273,72 @@ func tradeDetails(buyer xdr.MuxedAccount, seller xdr.AccountId, claim xdr.ClaimA
 	addAssetDetails(sd, claim.AssetSold(), "sold_")
 
 	return
+}
+
+func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
+	return map[string]interface{}{
+		"id":               PoolIDToString(lp.LiquidityPoolId),
+		"fee_bp":           uint32(lp.Body.ConstantProduct.Params.Fee),
+		"type":             "constant_product",
+		"total_trustlines": strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
+		"total_shares":     strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
+		"reserves": []map[string]string{
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(lp.Body.ConstantProduct.ReserveA),
+			},
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				"amount": amount.String(lp.Body.ConstantProduct.ReserveB),
+			},
+		},
+	}
+}
+
+func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
+	op := e.operation.operation.Body.MustLiquidityPoolDepositOp()
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"liquidity_pool": liquidityPoolDetails(lp),
+		"reserves_deposited": []map[string]string{
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(delta.ReserveA),
+			},
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				"amount": amount.String(delta.ReserveB),
+			},
+		},
+		"shares_received": strconv.FormatInt(int64(delta.TotalPoolShares), 10),
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolDeposited, details)
+	return nil
+}
+
+func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
+	op := e.operation.operation.Body.MustLiquidityPoolWithdrawOp()
+	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+	if err != nil {
+		return err
+	}
+	details := map[string]interface{}{
+		"liquidity_pool": liquidityPoolDetails(lp),
+		"reserves_received": []map[string]string{
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				"amount": amount.String(-delta.ReserveA),
+			},
+			{
+				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				"amount": amount.String(-delta.ReserveB),
+			},
+		},
+		"shares_redeemed": strconv.FormatInt(int64(-delta.TotalPoolShares), 10),
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolWithdrew, details)
+	return nil
 }

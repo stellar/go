@@ -199,13 +199,12 @@ type SetOptions struct {
 // is ChangeTrust.
 type ChangeTrust struct {
 	Base
-	base.Asset
-	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
-	Limit           string `json:"limit"`
-	Trustee         string `json:"trustee,omitempty"`
-	Trustor         string `json:"trustor"`
-	TrustorMuxed    string `json:"trustor_muxed,omitempty"`
-	TrustorMuxedID  uint64 `json:"trustor_muxed_id,omitempty,string"`
+	base.LiquidityPoolOrAsset
+	Limit          string `json:"limit"`
+	Trustee        string `json:"trustee,omitempty"`
+	Trustor        string `json:"trustor"`
+	TrustorMuxed   string `json:"trustor_muxed,omitempty"`
+	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty,string"`
 }
 
 // Deprecated: use TrustlineFlagsUpdated instead.
@@ -320,34 +319,28 @@ type SetTrustLineFlags struct {
 	ClearFlagsS []string `json:"clear_flags_s,omitempty"`
 }
 
-// LiquidityPoolAssetAmount is the amount of an asset in the context of a liquidity pool
-type LiquidityPoolAssetAmount struct {
-	Asset  string `json:"asset"`
-	Amount string `json:"amount"`
-}
-
 // LiquidityPoolDeposit is the json resource representing a single operation whose type is
 // LiquidityPoolDeposit.
 type LiquidityPoolDeposit struct {
 	Base
-	LiquidityPoolID   string                     `json:"liquidty_pool_id"`
-	ReservesMax       []LiquidityPoolAssetAmount `json:"reserves_max"`
-	MinPrice          string                     `json:"min_price"`
-	MinPriceR         base.Price                 `json:"min_price_r"`
-	MaxPrice          string                     `json:"max_price"`
-	MaxPriceR         base.Price                 `json:"max_price_r"`
-	ReservesDeposited []LiquidityPoolAssetAmount `json:"reserves_deposited"`
-	SharesReceived    uint64                     `json:"shares_received,string"`
+	LiquidityPoolID   string             `json:"liquidty_pool_id"`
+	ReservesMax       []base.AssetAmount `json:"reserves_max"`
+	MinPrice          string             `json:"min_price"`
+	MinPriceR         base.Price         `json:"min_price_r"`
+	MaxPrice          string             `json:"max_price"`
+	MaxPriceR         base.Price         `json:"max_price_r"`
+	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
+	SharesReceived    uint64             `json:"shares_received,string"`
 }
 
 // LiquidityPoolWithdraw is the json resource representing a single operation whose type is
 // LiquidityPoolWithdraw.
 type LiquidityPoolWithdraw struct {
 	Base
-	LiquidityPoolID  string                     `json:"liquidty_pool_id"`
-	ReservesMin      []LiquidityPoolAssetAmount `json:"reserves_min"`
-	Shares           uint64                     `json:"shares,string"`
-	ReservesReceived []LiquidityPoolAssetAmount `json:"reserves_received"`
+	LiquidityPoolID  string             `json:"liquidty_pool_id"`
+	ReservesMin      []base.AssetAmount `json:"reserves_min"`
+	Shares           uint64             `json:"shares,string"`
+	ReservesReceived []base.AssetAmount `json:"reserves_received"`
 }
 
 // Operation interface contains methods implemented by the operation types

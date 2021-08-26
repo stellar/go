@@ -96,6 +96,15 @@ func (q *EffectsQ) ForOperation(id int64) *EffectsQ {
 	return q
 }
 
+// ForLiquidityPoolID filters the query to only effects in a specific liquidity pool,
+// specified by its id.
+func (q *EffectsQ) ForLiquidityPool(id string) *EffectsQ {
+	q.sql = q.sql.InnerJoin("history_operation_liquidity_pools holp ON holp.history_operation_id = heff.history_operation_id")
+	q.sql = q.sql.InnerJoin("history_liquidity_pools hlp ON hlp.id = holp.history_liquidity_pool_id")
+	q.sql = q.sql.Where("hlp.liquidity_pool_id = ?", id)
+	return q
+}
+
 // ForTransaction filters the query to only effects in a specific
 // transaction, specified by the transactions's hex-encoded hash.
 func (q *EffectsQ) ForTransaction(ctx context.Context, hash string) *EffectsQ {

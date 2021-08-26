@@ -4,6 +4,7 @@ package processors
 
 import (
 	"context"
+	"encoding/hex"
 	"testing"
 
 	"github.com/guregu/null"
@@ -435,8 +436,6 @@ func getRevokeSponsorshipMeta(t *testing.T) (string, []effect) {
 }
 
 func TestEffectsCoversAllOperationTypes(t *testing.T) {
-	// TODO remove skip after amm ingestion is complete
-	t.Skip()
 	for typ, s := range xdr.OperationTypeToStringMap {
 		op := xdr.Operation{
 			Body: xdr.OperationBody{
@@ -2094,26 +2093,66 @@ type CreateClaimableBalanceEffectsTestSuite struct {
 func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	source := aid.ToMuxedAccount()
+	var balanceIDOp0, balanceIDOp1 xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp0)
+	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp1)
+	cb0 := xdr.ClaimableBalanceEntry{
+		BalanceId: balanceIDOp0,
+		Amount:    xdr.Int64(100000000),
+		Asset:     xdr.MustNewNativeAsset(),
+		Claimants: []xdr.Claimant{
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+		},
+		Ext: xdr.ClaimableBalanceEntryExt{
+			V: 1,
+			V1: &xdr.ClaimableBalanceEntryExtensionV1{
+				Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+			},
+		},
+	}
+	cb1 := xdr.ClaimableBalanceEntry{
+		BalanceId: balanceIDOp1,
+		Amount:    xdr.Int64(200000000),
+		Asset:     xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		Claimants: []xdr.Claimant{
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+		},
+	}
 	s.ops = []xdr.Operation{
 		{
 			SourceAccount: &source,
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeCreateClaimableBalance,
 				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
-					Amount: xdr.Int64(100000000),
-					Asset:  xdr.MustNewNativeAsset(),
-					Claimants: []xdr.Claimant{
-						{
-							Type: xdr.ClaimantTypeClaimantTypeV0,
-							V0: &xdr.ClaimantV0{
-								Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
-
-								Predicate: xdr.ClaimPredicate{
-									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-								},
-							},
-						},
-					},
+					Amount:    cb0.Amount,
+					Asset:     cb0.Asset,
+					Claimants: cb0.Claimants,
 				},
 			},
 		},
@@ -2122,35 +2161,13 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeCreateClaimableBalance,
 				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
-					Amount: xdr.Int64(200000000),
-					Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
-					Claimants: []xdr.Claimant{
-						{
-							Type: xdr.ClaimantTypeClaimantTypeV0,
-							V0: &xdr.ClaimantV0{
-								Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
-								Predicate: xdr.ClaimPredicate{
-									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-								},
-							},
-						},
-						{
-							Type: xdr.ClaimantTypeClaimantTypeV0,
-							V0: &xdr.ClaimantV0{
-								Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
-								Predicate: xdr.ClaimPredicate{
-									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-								},
-							},
-						},
-					},
+					Amount:    cb1.Amount,
+					Asset:     cb1.Asset,
+					Claimants: cb1.Claimants,
 				},
 			},
 		},
 	}
-	var balanceIDOp1, balanceIDOp2 xdr.ClaimableBalanceId
-	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1)
-	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2)
 
 	s.tx = ingest.LedgerTransaction{
 		Index: 0,
@@ -2162,35 +2179,6 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 				},
 			},
 		},
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Results: &[]xdr.OperationResult{
-						{
-							Code: xdr.OperationResultCodeOpInner,
-							Tr: &xdr.OperationResultTr{
-								Type: xdr.OperationTypeCreateClaimableBalance,
-								CreateClaimableBalanceResult: &xdr.CreateClaimableBalanceResult{
-									Code:      xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
-									BalanceId: &balanceIDOp1,
-								},
-							},
-						},
-						{
-							Code: xdr.OperationResultCodeOpInner,
-							Tr: &xdr.OperationResultTr{
-								Type: xdr.OperationTypeCreateClaimableBalance,
-								CreateClaimableBalanceResult: &xdr.CreateClaimableBalanceResult{
-									Code:      xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
-									BalanceId: &balanceIDOp2,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		FeeChanges: xdr.LedgerEntryChanges{},
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
@@ -2201,23 +2189,25 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 								Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 								Created: &xdr.LedgerEntry{
 									Data: xdr.LedgerEntryData{
-										Type: xdr.LedgerEntryTypeClaimableBalance,
-										ClaimableBalance: &xdr.ClaimableBalanceEntry{
-											BalanceId: balanceIDOp1,
-											Ext: xdr.ClaimableBalanceEntryExt{
-												V: 1,
-												V1: &xdr.ClaimableBalanceEntryExtensionV1{
-													Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
-												},
-											},
-										},
+										Type:             xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &cb0,
 									},
 								},
 							},
 						},
 					},
 					{
-						// Not used for the test
+						Changes: []xdr.LedgerEntryChange{
+							{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+								Created: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type:             xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &cb1,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -2602,4 +2592,842 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 
 func TestClaimClaimableBalanceEffectsTestSuite(t *testing.T) {
 	suite.Run(t, new(ClaimClaimableBalanceEffectsTestSuite))
+}
+
+func TestTrustlineSponsorhipEffects(t *testing.T) {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	usdAsset := xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	poolIDStr := "19cc788419412926a11049b9fb1f87906b8f02bc6bf8f73d8fd347ede0b79fa5"
+	var poolID xdr.PoolId
+	poolIDBytes, err := hex.DecodeString(poolIDStr)
+	assert.NoError(t, err)
+	copy(poolID[:], poolIDBytes)
+	baseAssetTrustLineEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 20,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: source.ToAccountId(),
+				Asset:     usdAsset.ToTrustLineAsset(),
+				Balance:   100,
+				Limit:     1000,
+				Flags:     0,
+			},
+		},
+	}
+	baseLiquidityPoolTrustLineEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 20,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: source.ToAccountId(),
+				Asset: xdr.TrustLineAsset{
+					Type:            xdr.AssetTypeAssetTypePoolShare,
+					LiquidityPoolId: &poolID,
+				},
+				Balance: 100,
+				Limit:   1000,
+				Flags:   0,
+			},
+		},
+	}
+
+	sponsor1 := xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2")
+	sponsor2 := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	withSponsor := func(le *xdr.LedgerEntry, accID *xdr.AccountId) *xdr.LedgerEntry {
+		le2 := *le
+		le2.Ext = xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: accID,
+			},
+		}
+		return &le2
+	}
+
+	changes := xdr.LedgerEntryChanges{
+		// create asset sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &baseAssetTrustLineEntry,
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseAssetTrustLineEntry, &sponsor1),
+		},
+		// update asset sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseAssetTrustLineEntry, &sponsor1),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseAssetTrustLineEntry, &sponsor2),
+		},
+		// remove asset sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseAssetTrustLineEntry, &sponsor2),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &baseAssetTrustLineEntry,
+		},
+
+		// create liquidity pool sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &baseLiquidityPoolTrustLineEntry,
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor1),
+		},
+		// update liquidity pool sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor1),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor2),
+		},
+		// remove liquidity pool sponsorship
+		xdr.LedgerEntryChange{
+			Type:  xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: withSponsor(&baseLiquidityPoolTrustLineEntry, &sponsor2),
+		},
+		xdr.LedgerEntryChange{
+			Type:    xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &baseLiquidityPoolTrustLineEntry,
+		},
+	}
+	expected := []effect{
+		{
+			effectType:  history.EffectTrustlineSponsorshipCreated,
+			order:       1,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset":      "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset_type": "credit_alphanum4",
+				"sponsor":    "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipUpdated,
+			order:       2,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset_type":     "credit_alphanum4",
+				"former_sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+				"new_sponsor":    "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipRemoved,
+			order:       3,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"asset_type":     "credit_alphanum4",
+				"former_sponsor": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipCreated,
+			order:       4,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"liquidity_pool_id": poolIDStr,
+				"asset_type":        "liquidity_pool",
+				"sponsor":           "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipUpdated,
+			order:       5,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"liquidity_pool_id": poolIDStr,
+				"asset_type":        "liquidity_pool",
+				"former_sponsor":    "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+				"new_sponsor":       "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+		{
+			effectType:  history.EffectTrustlineSponsorshipRemoved,
+			order:       6,
+			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"liquidity_pool_id": poolIDStr,
+				"asset_type":        "liquidity_pool",
+				"former_sponsor":    "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			},
+		},
+	}
+
+	// pick an operation with no intrinsic effects
+	// (the sponsosrhip effects are obtained from the changes, so it doesn't matter)
+	phonyOp := xdr.Operation{
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeEndSponsoringFutureReserves,
+		},
+	}
+	tx := ingest.LedgerTransaction{
+		Index: 0,
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: source,
+					Operations:    []xdr.Operation{phonyOp},
+				},
+			},
+		},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{{Changes: changes}},
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index:          0,
+		transaction:    tx,
+		operation:      phonyOp,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, effects)
+
+}
+
+func TestLiquidityPoolEffects(t *testing.T) {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	usdAsset := xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	poolIDStr := "19cc788419412926a11049b9fb1f87906b8f02bc6bf8f73d8fd347ede0b79fa5"
+	var poolID xdr.PoolId
+	poolIDBytes, err := hex.DecodeString(poolIDStr)
+	assert.NoError(t, err)
+	copy(poolID[:], poolIDBytes)
+	baseLiquidityPoolEntry := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: poolID,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: usdAsset,
+					AssetB: xdr.MustNewNativeAsset(),
+					Fee:    20,
+				},
+				ReserveA:                 100,
+				ReserveB:                 200,
+				TotalPoolShares:          1000,
+				PoolSharesTrustLineCount: 10,
+			},
+		},
+	}
+	baseState := xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+		State: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 20,
+			Data: xdr.LedgerEntryData{
+				Type:          xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &baseLiquidityPoolEntry,
+			},
+		},
+	}
+	updateState := func(cp xdr.LiquidityPoolEntryConstantProduct) xdr.LedgerEntryChange {
+		return xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: 20,
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeLiquidityPool,
+					LiquidityPool: &xdr.LiquidityPoolEntry{
+						LiquidityPoolId: poolID,
+						Body: xdr.LiquidityPoolEntryBody{
+							Type:            xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+							ConstantProduct: &cp,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	testCases := []struct {
+		desc     string
+		op       xdr.OperationBody
+		result   xdr.OperationResult
+		changes  xdr.LedgerEntryChanges
+		expected []effect
+	}{
+		{
+			desc: "liquidity pool creation",
+			op: xdr.OperationBody{
+				Type: xdr.OperationTypeChangeTrust,
+				ChangeTrustOp: &xdr.ChangeTrustOp{
+					Line: xdr.ChangeTrustAsset{
+						Type: xdr.AssetTypeAssetTypePoolShare,
+						LiquidityPool: &xdr.LiquidityPoolParameters{
+							Type:            xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+							ConstantProduct: &baseLiquidityPoolEntry.Body.ConstantProduct.Params,
+						},
+					},
+					Limit: 1000,
+				},
+			},
+			changes: xdr.LedgerEntryChanges{
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+					Created: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 20,
+						Data: xdr.LedgerEntryData{
+							Type:          xdr.LedgerEntryTypeLiquidityPool,
+							LiquidityPool: &baseLiquidityPoolEntry,
+						},
+					},
+				},
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+					Created: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 20,
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeTrustline,
+							TrustLine: &xdr.TrustLineEntry{
+								AccountId: source.ToAccountId(),
+								Asset: xdr.TrustLineAsset{
+									Type:            xdr.AssetTypeAssetTypePoolShare,
+									LiquidityPoolId: &poolID,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []effect{
+				{
+					effectType:  history.EffectTrustlineCreated,
+					order:       1,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"asset_type":        "liquidity_pool_shares",
+						"limit":             "0.0001000",
+						"liquidity_pool_id": poolIDStr,
+					},
+				},
+				{
+					effectType:  history.EffectLiquidityPoolCreated,
+					order:       2,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"liquidity_pool_id": poolIDStr,
+					},
+				},
+			},
+		},
+		{
+			desc: "liquidity pool deposit",
+			op: xdr.OperationBody{
+				Type: xdr.OperationTypeLiquidityPoolDeposit,
+				LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
+					LiquidityPoolId: poolID,
+					MaxAmountA:      100,
+					MaxAmountB:      200,
+					MinPrice: xdr.Price{
+						N: 50,
+						D: 3,
+					},
+					MaxPrice: xdr.Price{
+						N: 100,
+						D: 2,
+					},
+				},
+			},
+			changes: xdr.LedgerEntryChanges{
+				baseState,
+				updateState(xdr.LiquidityPoolEntryConstantProduct{
+
+					Params:                   baseLiquidityPoolEntry.Body.ConstantProduct.Params,
+					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA + 60,
+					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB + 50,
+					TotalPoolShares:          baseLiquidityPoolEntry.Body.ConstantProduct.TotalPoolShares + 10,
+					PoolSharesTrustLineCount: baseLiquidityPoolEntry.Body.ConstantProduct.PoolSharesTrustLineCount,
+				}),
+			},
+			expected: []effect{
+				{
+					effectType:  history.EffectLiquidityPoolDeposited,
+					order:       1,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"liquidity_pool": map[string]interface{}{
+							"fee_bp": uint32(20),
+							"id":     poolIDStr,
+							"reserves": []map[string]string{
+								{
+									"amount": "0.0000160",
+									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								},
+								{
+									"amount": "0.0000250",
+									"asset":  "native",
+								},
+							},
+							"total_shares":     "10",
+							"total_trustlines": "10",
+							"type":             "constant_product",
+						},
+						"reserves_deposited": []map[string]string{
+							{
+								"amount": "0.0000060",
+								"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+							},
+							{
+								"amount": "0.0000050",
+								"asset":  "native",
+							},
+						},
+						"shares_received": "10",
+					},
+				},
+			},
+		},
+		{
+			desc: "liquidity pool withdrawal",
+			op: xdr.OperationBody{
+				Type: xdr.OperationTypeLiquidityPoolWithdraw,
+				LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
+					LiquidityPoolId: poolID,
+					Amount:          10,
+					MinAmountA:      5,
+					MinAmountB:      10,
+				},
+			},
+			changes: xdr.LedgerEntryChanges{
+				baseState,
+				updateState(xdr.LiquidityPoolEntryConstantProduct{
+
+					Params:                   baseLiquidityPoolEntry.Body.ConstantProduct.Params,
+					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA - 6,
+					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB - 11,
+					TotalPoolShares:          baseLiquidityPoolEntry.Body.ConstantProduct.TotalPoolShares - 10,
+					PoolSharesTrustLineCount: baseLiquidityPoolEntry.Body.ConstantProduct.PoolSharesTrustLineCount,
+				}),
+			},
+			expected: []effect{
+				{
+					effectType:  history.EffectLiquidityPoolWithdrew,
+					order:       1,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"liquidity_pool": map[string]interface{}{
+							"fee_bp": uint32(20),
+							"id":     poolIDStr,
+							"reserves": []map[string]string{
+								{
+									"amount": "0.0000094",
+									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								},
+								{
+									"amount": "0.0000189",
+									"asset":  "native",
+								},
+							},
+							"total_shares":     "10",
+							"total_trustlines": "10",
+							"type":             "constant_product",
+						},
+						"reserves_received": []map[string]string{
+							{
+								"amount": "0.0000006",
+								"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+							},
+							{
+								"amount": "0.0000011",
+								"asset":  "native",
+							},
+						},
+						"shares_redeemed": "10",
+					},
+				},
+			},
+		},
+		{
+			desc: "liquidity pool trade",
+			op: xdr.OperationBody{
+				Type: xdr.OperationTypePathPaymentStrictSend,
+				PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{
+					SendAsset:   xdr.MustNewNativeAsset(),
+					SendAmount:  10,
+					Destination: xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+					DestAsset:   usdAsset,
+					DestMin:     5,
+					Path:        nil,
+				},
+			},
+			changes: xdr.LedgerEntryChanges{
+				baseState,
+				updateState(xdr.LiquidityPoolEntryConstantProduct{
+
+					Params:                   baseLiquidityPoolEntry.Body.ConstantProduct.Params,
+					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA - 6,
+					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB - 11,
+					TotalPoolShares:          baseLiquidityPoolEntry.Body.ConstantProduct.TotalPoolShares - 10,
+					PoolSharesTrustLineCount: baseLiquidityPoolEntry.Body.ConstantProduct.PoolSharesTrustLineCount,
+				}),
+			},
+			result: xdr.OperationResult{
+				Code: xdr.OperationResultCodeOpInner,
+				Tr: &xdr.OperationResultTr{
+					Type: xdr.OperationTypePathPaymentStrictSend,
+					PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
+						Code: xdr.PathPaymentStrictSendResultCodePathPaymentStrictSendSuccess,
+						Success: &xdr.PathPaymentStrictSendResultSuccess{
+							Last: xdr.SimplePaymentResult{
+								Destination: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+								Asset:       xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+								Amount:      5,
+							},
+							Offers: []xdr.ClaimAtom{
+								{
+									Type: xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool,
+									LiquidityPool: &xdr.ClaimLiquidityAtom{
+										LiquidityPoolId: poolID,
+										AssetSold:       xdr.MustNewNativeAsset(),
+										AmountSold:      10,
+										AssetBought:     xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+										AmountBought:    5,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []effect{
+				{
+					effectType:  history.EffectAccountCredited,
+					order:       1,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"amount":       "0.0000005",
+						"asset_code":   "USD",
+						"asset_issuer": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+						"asset_type":   "credit_alphanum4",
+					},
+				},
+				{
+					effectType:  history.EffectAccountDebited,
+					order:       2,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"amount":     "0.0000010",
+						"asset_type": "native",
+					},
+				},
+				{
+					effectType:  history.EffectLiquidityPoolTrade,
+					order:       3,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"bought": map[string]string{
+							"amount": "0.0000005",
+							"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+						},
+						"liquidity_pool": map[string]interface{}{
+							"fee_bp": uint32(20),
+							"id":     poolIDStr,
+							"reserves": []map[string]string{
+								{
+									"amount": "0.0000094",
+									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								},
+								{
+									"amount": "0.0000189",
+									"asset":  "native",
+								},
+							},
+							"total_shares":     "10",
+							"total_trustlines": "10",
+							"type":             "constant_product",
+						},
+						"sold": map[string]string{
+							"amount": "0.0000010",
+							"asset":  "native",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "liquidity pool revocation",
+			// Deauthorize an asset
+			//
+			// This scenario assumes that the asset being deauthorized is also part of a liquidity pool trustline
+			// from the same account. This results in a revocation (with a claimable balance being created).
+			//
+			// This scenario also assumes that the liquidity pool trustline was the last one, cause a liquidity pool removal.
+			op: xdr.OperationBody{
+				Type: xdr.OperationTypeSetTrustLineFlags,
+				SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
+					Trustor:    xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+					Asset:      usdAsset,
+					ClearFlags: xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+				},
+			},
+			changes: xdr.LedgerEntryChanges{
+				// Asset trustline update
+				{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+					State: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 20,
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeTrustline,
+							TrustLine: &xdr.TrustLineEntry{
+								AccountId: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+								Asset:     usdAsset.ToTrustLineAsset(),
+								Balance:   5,
+								Limit:     100,
+								Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+							},
+						},
+					},
+				},
+				{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+					Updated: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 20,
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeTrustline,
+							TrustLine: &xdr.TrustLineEntry{
+								AccountId: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+								Asset:     usdAsset.ToTrustLineAsset(),
+								Balance:   5,
+								Limit:     100,
+								Flags:     0,
+							},
+						},
+					},
+				},
+				// Liquidity pool trustline removal
+				{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+					State: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 20,
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeTrustline,
+							TrustLine: &xdr.TrustLineEntry{
+								AccountId: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+								Asset: xdr.TrustLineAsset{
+									Type:            xdr.AssetTypeAssetTypePoolShare,
+									LiquidityPoolId: &poolID,
+								},
+								Balance: 1000,
+								Limit:   2000,
+								Flags:   xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+							},
+						},
+					},
+				},
+				{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+					Removed: &xdr.LedgerKey{
+						Type: xdr.LedgerEntryTypeTrustline,
+						TrustLine: &xdr.LedgerKeyTrustLine{
+							AccountId: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+							Asset: xdr.TrustLineAsset{
+								Type:            xdr.AssetTypeAssetTypePoolShare,
+								LiquidityPoolId: &poolID,
+							},
+						},
+					},
+				},
+				// create claimable balance for USD asset as part of the revocation (in reality there would probably be another claimable
+				// balance crested for the native asset, but let's keep this simple)
+				{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+					Created: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 20,
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeClaimableBalance,
+							ClaimableBalance: &xdr.ClaimableBalanceEntry{
+								BalanceId: xdr.ClaimableBalanceId{
+									Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+									V0:   &xdr.Hash{0xa, 0xb},
+								},
+								Claimants: []xdr.Claimant{
+									{
+										Type: xdr.ClaimantTypeClaimantTypeV0,
+										V0: &xdr.ClaimantV0{
+											Destination: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+											Predicate: xdr.ClaimPredicate{
+												Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+											},
+										},
+									},
+								},
+								Asset:  usdAsset,
+								Amount: 100,
+							},
+						},
+					},
+				},
+				// Liquidity pool removal
+				baseState,
+				{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+					Removed: &xdr.LedgerKey{
+						Type: xdr.LedgerEntryTypeLiquidityPool,
+						LiquidityPool: &xdr.LedgerKeyLiquidityPool{
+							LiquidityPoolId: poolID,
+						},
+					},
+				},
+			},
+			expected: []effect{
+				{
+					effectType:  history.EffectTrustlineFlagsUpdated,
+					order:       1,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"asset_code":      "USD",
+						"asset_issuer":    "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+						"asset_type":      "credit_alphanum4",
+						"authorized_flag": false,
+						"trustor":         "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					},
+				},
+				{
+					effectType:  history.EffectClaimableBalanceCreated,
+					order:       2,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"amount":     "0.0000100",
+						"asset":      "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+						"balance_id": "000000000a0b000000000000000000000000000000000000000000000000000000000000",
+					},
+				},
+				{
+					effectType:  history.EffectClaimableBalanceClaimantCreated,
+					order:       3,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"amount":     "0.0000100",
+						"asset":      "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+						"balance_id": "000000000a0b000000000000000000000000000000000000000000000000000000000000",
+						"predicate":  xdr.ClaimPredicate{},
+					},
+				},
+				{
+					effectType:  history.EffectLiquidityPoolRevoked,
+					order:       4,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"liquidity_pool": map[string]interface{}{
+							"fee_bp": uint32(20),
+							"id":     poolIDStr,
+							"reserves": []map[string]string{
+								{
+									"amount": "0.0000100",
+									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								},
+								{
+									"amount": "0.0000200",
+									"asset":  "native",
+								},
+							},
+							"total_shares":     "10",
+							"total_trustlines": "10",
+							"type":             "constant_product",
+						},
+						"reserves_revoked": []map[string]string{
+							{
+								"amount":               "0.0000100",
+								"asset":                "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"claimable_balance_id": "000000000a0b000000000000000000000000000000000000000000000000000000000000",
+							},
+						},
+						"shares_revoked": "1000",
+					},
+				},
+				{
+					effectType:  history.EffectLiquidityPoolRemoved,
+					order:       5,
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					operationID: 4294967297,
+					details: map[string]interface{}{
+						"liquidity_pool_id": poolIDStr,
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+
+		op := xdr.Operation{Body: tc.op}
+		tx := ingest.LedgerTransaction{
+			Index: 0,
+			Envelope: xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						SourceAccount: source,
+						Operations:    []xdr.Operation{op},
+					},
+				},
+			},
+			Result: xdr.TransactionResultPair{
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Results: &[]xdr.OperationResult{
+							tc.result,
+						},
+					},
+				},
+			},
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{Changes: tc.changes}},
+				},
+			},
+		}
+
+		t.Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index:          0,
+				transaction:    tx,
+				operation:      op,
+				ledgerSequence: 1,
+			}
+
+			effects, err := operation.effects()
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, effects)
+		})
+	}
+
 }

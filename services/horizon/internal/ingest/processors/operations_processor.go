@@ -184,38 +184,61 @@ func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, erro
 	return nil, nil
 }
 
-type liquidityPoolConstantProducParametersDelta xdr.LiquidityPoolEntryConstantProduct
+type liquidityPoolDelta struct {
+	ReserveA        xdr.Int64
+	ReserveB        xdr.Int64
+	TotalPoolShares xdr.Int64
+}
 
-func (operation *transactionOperationWrapper) getLiquidityPoolProductDelta(lpID xdr.PoolId) (*liquidityPoolConstantProducParametersDelta, error) {
+var errLiquidtyPoolChangeNotFound = errors.New("liquidity pool change not found")
+
+func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lpID *xdr.PoolId) (*xdr.LiquidityPoolEntry, *liquidityPoolDelta, error) {
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, c := range changes {
-		if c.Type != xdr.LedgerEntryTypeLiquidityPool || c.Pre == nil || c.Post == nil ||
-			c.Post.Data.LiquidityPool.LiquidityPoolId != lpID {
+		if c.Type != xdr.LedgerEntryTypeLiquidityPool {
 			continue
 		}
-		if c.Pre.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-			return nil, fmt.Errorf("unexpected liquity pool body type %d", c.Pre.Data.LiquidityPool.Body.Type)
+		// The delta can be caused by a full removal or full creation of the liquidity pool
+		var lp *xdr.LiquidityPoolEntry
+		var preA, preB, preShares xdr.Int64
+		if c.Pre != nil {
+			if lpID != nil && c.Pre.Data.LiquidityPool.LiquidityPoolId != *lpID {
+				// if we were looking for specific pool id, then check on it
+				continue
+			}
+			lp = c.Pre.Data.LiquidityPool
+			if c.Pre.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Pre.Data.LiquidityPool.Body.Type)
+			}
+			cpPre := c.Pre.Data.LiquidityPool.Body.ConstantProduct
+			preA, preB, preShares = cpPre.ReserveA, cpPre.ReserveB, cpPre.TotalPoolShares
 		}
-		if c.Post.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-			return nil, fmt.Errorf("unexpected liquity pool body type %d", c.Post.Data.LiquidityPool.Body.Type)
+		var postA, postB, postShares xdr.Int64
+		if c.Post != nil {
+			if lpID != nil && c.Post.Data.LiquidityPool.LiquidityPoolId != *lpID {
+				// if we were looking for specific pool id, then check on it
+				continue
+			}
+			lp = c.Post.Data.LiquidityPool
+			if c.Post.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Post.Data.LiquidityPool.Body.Type)
+			}
+			cpPost := c.Post.Data.LiquidityPool.Body.ConstantProduct
+			postA, postB, postShares = cpPost.ReserveA, cpPost.ReserveB, cpPost.TotalPoolShares
 		}
-		cpPre := c.Pre.Data.LiquidityPool.Body.ConstantProduct
-		cpPost := c.Post.Data.LiquidityPool.Body.ConstantProduct
-		delta := &liquidityPoolConstantProducParametersDelta{
-			Params:                   cpPost.Params,
-			ReserveA:                 cpPost.ReserveA - cpPre.ReserveA,
-			ReserveB:                 cpPost.ReserveB - cpPre.ReserveB,
-			TotalPoolShares:          cpPost.TotalPoolShares - cpPre.TotalPoolShares,
-			PoolSharesTrustLineCount: cpPost.PoolSharesTrustLineCount - cpPre.PoolSharesTrustLineCount,
+		delta := &liquidityPoolDelta{
+			ReserveA:        postA - preA,
+			ReserveB:        postB - preB,
+			TotalPoolShares: postShares - preShares,
 		}
-		return delta, nil
+		return lp, delta, nil
 	}
 
-	return nil, errors.New("liquidity pool change not found")
+	return nil, nil, errLiquidtyPoolChangeNotFound
 }
 
 // OperationResult returns the operation's result record
@@ -394,12 +417,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
 		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
-			details["asset_type"] = "liquidity_pool_shares"
-			if op.Line.LiquidityPool.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-				return nil, fmt.Errorf("unkown liquidity pool type %d", op.Line.LiquidityPool.Type)
+			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool); err != nil {
+				return nil, err
 			}
-			// TODO: we need the hashing function in order to obtain the id (it's not provided directly)
-			// details["liquidity_pool_id"] = op.Line.LiquidityPool.ConstantProduct.
 		} else {
 			addAssetDetails(details, op.Line.ToAsset(), "")
 			details["trustee"] = details["asset_issuer"]
@@ -503,13 +523,15 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		op := operation.operation.Body.MustLiquidityPoolDepositOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
-		delta, err := operation.getLiquidityPoolProductDelta(op.LiquidityPoolId)
+		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
 			return nil, err
 		}
+		assetA := lp.Body.ConstantProduct.Params.AssetA
+		assetB := lp.Body.ConstantProduct.Params.AssetB
 		details["reserves_max"] = []map[string]string{
-			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(op.MaxAmountA)},
-			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(op.MaxAmountB)},
+			{"asset": assetA.StringCanonical(), "amount": amount.String(op.MaxAmountA)},
+			{"asset": assetB.StringCanonical(), "amount": amount.String(op.MaxAmountB)},
 		}
 		details["min_price"] = op.MinPrice.String()
 		details["min_price_r"] = map[string]interface{}{
@@ -525,8 +547,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			return nil, err
 		}
 		details["reserves_deposited"] = []map[string]string{
-			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
-			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
+			{"asset": assetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
+			{"asset": assetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
 		}
 		if err != nil {
 			return nil, err
@@ -535,21 +557,23 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
-		delta, err := operation.getLiquidityPoolProductDelta(op.LiquidityPoolId)
+		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
 			return nil, err
 		}
+		assetA := lp.Body.ConstantProduct.Params.AssetA
+		assetB := lp.Body.ConstantProduct.Params.AssetB
 		details["reserves_min"] = []map[string]string{
-			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(op.MinAmountA)},
-			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(op.MinAmountB)},
+			{"asset": assetA.StringCanonical(), "amount": amount.String(op.MinAmountA)},
+			{"asset": assetB.StringCanonical(), "amount": amount.String(op.MinAmountB)},
 		}
 		details["shares"] = strconv.FormatInt(int64(op.Amount), 10)
 		if err != nil {
 			return nil, err
 		}
 		details["reserves_received"] = []map[string]string{
-			{"asset": delta.Params.AssetA.StringCanonical(), "amount": amount.String(-delta.ReserveA)},
-			{"asset": delta.Params.AssetB.StringCanonical(), "amount": amount.String(-delta.ReserveB)},
+			{"asset": assetA.StringCanonical(), "amount": amount.String(-delta.ReserveA)},
+			{"asset": assetB.StringCanonical(), "amount": amount.String(-delta.ReserveB)},
 		}
 
 	default:
@@ -565,6 +589,20 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	}
 
 	return details, nil
+}
+
+func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters) error {
+	result["asset_type"] = "liquidity_pool_shares"
+	if lpp.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+		return fmt.Errorf("unkown liquidity pool type %d", lpp.Type)
+	}
+	cp := lpp.ConstantProduct
+	poolID, err := xdr.NewPoolId(cp.AssetA, cp.AssetB, cp.Fee)
+	if err != nil {
+		return err
+	}
+	result["liquidity_pool_id"] = PoolIDToString(poolID)
+	return nil
 }
 
 // addAssetDetails sets the details for `a` on `result` using keys with `prefix`
@@ -664,8 +702,13 @@ func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey)
 		result["offer_id"] = fmt.Sprintf("%d", ledgerKey.Offer.OfferId)
 	case xdr.LedgerEntryTypeTrustline:
 		result["trustline_account_id"] = ledgerKey.TrustLine.AccountId.Address()
-		// TODO fix before Protocol 18
-		result["trustline_asset"] = ledgerKey.TrustLine.Asset.ToAsset().StringCanonical()
+		if ledgerKey.TrustLine.Asset.Type == xdr.AssetTypeAssetTypePoolShare {
+			result["trustline_liquidity_pool_id"] = PoolIDToString(*ledgerKey.TrustLine.Asset.LiquidityPoolId)
+		} else {
+			result["trustline_asset"] = ledgerKey.TrustLine.Asset.ToAsset().StringCanonical()
+		}
+	case xdr.LedgerEntryTypeLiquidityPool:
+		result["liquidity_pool_id"] = PoolIDToString(ledgerKey.LiquidityPool.LiquidityPoolId)
 	}
 	return nil
 }

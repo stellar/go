@@ -11,6 +11,16 @@ type Asset struct {
 	Issuer string `json:"asset_issuer,omitempty"`
 }
 
+type AssetAmount struct {
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
+}
+
+type LiquidityPoolOrAsset struct {
+	Asset
+	LiquidityPoolID string `json:"liquidity_pool_id,omitempty"`
+}
+
 // Rehydratable values can be expanded in place by calling their Rehydrate
 // method.  This mechanism is intended to be used for populating resource
 // structs from database structs when custom logic is needed, for example if a
