@@ -733,13 +733,21 @@ type Claimant struct {
 
 // LiquidityPool represents a liquidity pool
 type LiquidityPool struct {
-	ID              string                 `json:"id"`
-	PT              string                 `json:"paging_token"`
-	FeeBP           uint64                 `json:"fee_bp"`
-	Type            string                 `json:"type"`
-	TotalTrustlines string                 `json:"total_trustlines"`
-	TotalShares     string                 `json:"total_shares"`
-	Reserves        []LiquidityPoolReserve `json:"reserves"`
+	Links struct {
+		Self         hal.Link `json:"self"`
+		Transactions hal.Link `json:"transactions"`
+		Operations   hal.Link `json:"operations"`
+	} `json:"_links"`
+
+	ID                 string                 `json:"id"`
+	PT                 string                 `json:"paging_token"`
+	FeeBP              uint32                 `json:"fee_bp"`
+	Type               string                 `json:"type"`
+	TotalTrustlines    uint64                 `json:"total_trustlines,string"`
+	TotalShares        uint64                 `json:"total_shares,string"`
+	Reserves           []LiquidityPoolReserve `json:"reserves"`
+	LastModifiedLedger uint32                 `json:"last_modified_ledger"`
+	LastModifiedTime   *time.Time             `json:"last_modified_time"`
 }
 
 // PagingToken implementation for hal.Pageable
@@ -757,6 +765,6 @@ type LiquidityPoolsPage struct {
 
 // LiquidityPoolReserve represents a liquidity pool asset reserve
 type LiquidityPoolReserve struct {
-	Asset   string `json:"asset"`
-	Balance string `json:"balance"`
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
 }

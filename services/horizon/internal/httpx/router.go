@@ -164,6 +164,10 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetClaimableBalanceByIDHandler{}})
 		})
 
+		r.Route("/liquidity_pools", func(r chi.Router) {
+			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetLiquidityPoolByIDHandler{}})
+		})
+
 		r.Route("/offers", func(r chi.Router) {
 			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/", restPageHandler(ledgerState, actions.GetOffersHandler{LedgerState: ledgerState}))
 			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/{offer_id}", ObjectActionHandler{actions.GetOfferByID{}})
@@ -232,6 +236,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			})
 		})
 	})
+
 	// claimable balance actions
 	r.Group(func(r chi.Router) {
 		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
