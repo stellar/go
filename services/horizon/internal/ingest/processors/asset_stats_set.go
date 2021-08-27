@@ -106,12 +106,12 @@ type delta struct {
 }
 
 func (d *delta) addByFlags(flags xdr.Uint32, amount int64) {
-	switch xdr.TrustLineFlags(flags) {
-	case xdr.TrustLineFlagsAuthorizedFlag:
+	f := xdr.TrustLineFlags(flags)
+	if f.IsAuthorized() {
 		d.Authorized += amount
-	case xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag:
+	} else if f.IsAuthorizedToMaintainLiabilitiesFlag() {
 		d.AuthorizedToMaintainLiabilities += amount
-	default:
+	} else {
 		d.Unauthorized += amount
 	}
 }
