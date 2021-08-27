@@ -15,6 +15,7 @@ import (
 
 func TestTransactionQueries(t *testing.T) {
 	tt := test.Start(t)
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
@@ -36,6 +37,7 @@ func TestTransactionQueries(t *testing.T) {
 // with `ForAccount` or `ForLedger` filters.
 func TestTransactionSuccessfulOnly(t *testing.T) {
 	tt := test.Start(t)
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	tt.Scenario("failed_transactions")
 	defer tt.Finish()
 

@@ -350,7 +350,6 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		},
 	}
 
-	//         		1: []history.InsertTrade{history.InsertTrade{HistoryOperationID:429496733705, Order:0, LedgerCloseTime:time.Time{wall:0x0, ext:62135596800, loc:(*time.Location)(nil)}, CounterAssetID:10007, CounterAmount:98, CounterAccountID:null.Int{NullInt64:sql.NullInt64{Int64:1001, Valid:true}}, CounterOfferID:null.Int{NullInt64:sql.NullInt64{Int64:0, Valid:false}}, CounterLiquidityPoolID:null.Int{NullInt64:sql.NullInt64{Int64:0, Valid:false}}, BaseAssetID:107, BaseAmount:67, BaseAccountID:null.Int{NullInt64:sql.NullInt64{Int64:0, Valid:false}}, BaseOfferID:null.Int{NullInt64:sql.NullInt64{Int64:0, Valid:false}}, BaseLiquidityPoolID:null.Int{NullInt64:sql.NullInt64{Int64:3007, Valid:true}}, BaseIsSeller:true, PriceN:98, PriceD:67}}
 	emptyTrade := xdr.ClaimAtom{
 		Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
 		OrderBook: &xdr.ClaimOfferAtom{
