@@ -34,6 +34,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustTrustLine()
 		r := other.MustTrustLine()
 		return l.AccountId.Equals(r.AccountId) && l.Asset.Equals(r.Asset)
+	case LedgerEntryTypeLiquidityPool:
+		l := key.MustLiquidityPool()
+		r := other.MustLiquidityPool()
+		return l.LiquidityPoolId == r.LiquidityPoolId
 	default:
 		panic(fmt.Errorf("Unknown ledger key type: %v", key.Type))
 	}

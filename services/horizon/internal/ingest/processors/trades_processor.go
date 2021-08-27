@@ -126,28 +126,51 @@ func (p *TradeProcessor) findTradeSellPrice(
 	}
 
 	key := xdr.LedgerKey{}
-	key.SetOffer(trade.SellerId(), uint64(trade.OfferId()))
+	if err := key.SetOffer(trade.SellerId(), uint64(trade.OfferId())); err != nil {
+		return 0, 0, errors.Wrap(err, "Could not create offer ledger key")
+	}
 
-	changes, err := transaction.GetOperationChanges(uint32(opidx))
+	change, err := p.findOperationChange(transaction, opidx, key)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "could not determine changes for operation")
-	}
-
-	found := false
-	var change ingest.Change
-	for i := len(changes) - 1; i >= 0; i-- {
-		change = changes[i]
-		if change.Pre != nil && key.Equals(change.Pre.LedgerKey()) {
-			found = true
-			break
-		}
-	}
-
-	if !found {
 		return 0, 0, errors.Wrap(err, "could not find change for trade offer")
 	}
 
 	return int64(change.Pre.Data.Offer.Price.N), int64(change.Pre.Data.Offer.Price.D), nil
+}
+
+func (p *TradeProcessor) findOperationChange(tx ingest.LedgerTransaction, opidx int, key xdr.LedgerKey) (ingest.Change, error) {
+	changes, err := tx.GetOperationChanges(uint32(opidx))
+	if err != nil {
+		return ingest.Change{}, errors.Wrap(err, "could not determine changes for operation")
+	}
+
+	var change ingest.Change
+	for i := len(changes) - 1; i >= 0; i-- {
+		change = changes[i]
+		if change.Pre != nil && key.Equals(change.Pre.LedgerKey()) {
+			return change, nil
+		}
+	}
+	return ingest.Change{}, errors.Errorf("could not find operation for key %v", key)
+}
+
+func (p *TradeProcessor) findPoolFee(
+	transaction ingest.LedgerTransaction,
+	opidx int,
+	poolID xdr.PoolId,
+) (uint32, error) {
+	key := xdr.LedgerKey{}
+	if err := key.SetLiquidityPool(poolID); err != nil {
+		return 0, errors.Wrap(err, "Could not create liquidity pool ledger key")
+
+	}
+
+	change, err := p.findOperationChange(transaction, opidx, key)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not find change for trade offer")
+	}
+
+	return uint32(change.Pre.Data.MustLiquidityPool().Body.MustConstantProduct().Params.Fee), nil
 }
 
 type ingestTrade struct {
@@ -248,7 +271,13 @@ func (p *TradeProcessor) extractTrades(
 
 			var sellerAccount, liquidityPoolID string
 			if trade.Type == xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
-				liquidityPoolID = PoolIDToString(trade.MustLiquidityPool().LiquidityPoolId)
+				id := trade.MustLiquidityPool().LiquidityPoolId
+				liquidityPoolID = PoolIDToString(id)
+				var fee uint32
+				if fee, err = p.findPoolFee(transaction, opidx, id); err != nil {
+					return nil, err
+				}
+				row.LiquidityPoolFee = null.IntFrom(int64(fee))
 			} else {
 				row.BaseOfferID = null.IntFrom(int64(trade.OfferId()))
 				sellerAccount = trade.SellerId().Address()

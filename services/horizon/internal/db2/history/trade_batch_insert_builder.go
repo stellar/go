@@ -23,6 +23,8 @@ type InsertTrade struct {
 	CounterOfferID         null.Int `db:"counter_offer_id"`
 	CounterLiquidityPoolID null.Int `db:"counter_liquidity_pool_id"`
 
+	LiquidityPoolFee null.Int `db:"liquidity_pool_fee"`
+
 	BaseAssetID         int64    `db:"base_asset_id"`
 	BaseAmount          int64    `db:"base_amount"`
 	BaseAccountID       null.Int `db:"base_account_id"`

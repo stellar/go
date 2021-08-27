@@ -329,6 +329,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterLiquidityPoolID: null.IntFrom(s.lpToID[s.strictReceiveTradeLP.MustLiquidityPool().LiquidityPoolId]),
 			CounterAssetID:         s.assetToID[s.strictReceiveTradeLP.AssetSold().String()].ID,
 			BaseIsSeller:           false,
+			LiquidityPoolFee:       null.IntFrom(int64(xdr.LiquidityPoolFeeV18)),
 			PriceN:                 int64(s.sellPrices[6].D),
 			PriceD:                 int64(s.sellPrices[6].N),
 		},
@@ -343,6 +344,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseLiquidityPoolID: null.IntFrom(s.lpToID[s.strictSendTradeLP.MustLiquidityPool().LiquidityPoolId]),
 			BaseAssetID:         s.assetToID[s.strictSendTradeLP.AssetSold().String()].ID,
 			BaseIsSeller:        true,
+			LiquidityPoolFee:    null.IntFrom(int64(xdr.LiquidityPoolFeeV18)),
 			PriceN:              int64(s.sellPrices[7].N),
 			PriceD:              int64(s.sellPrices[7].D),
 		},
@@ -619,6 +621,59 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 						Offer: &xdr.LedgerKeyOffer{
 							SellerId: trade.SellerId(),
 							OfferId:  trade.OfferId(),
+						},
+					},
+				},
+			}
+		} else {
+			changes = xdr.LedgerEntryChanges{
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+					State: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeLiquidityPool,
+							LiquidityPool: &xdr.LiquidityPoolEntry{
+								LiquidityPoolId: trade.MustLiquidityPool().LiquidityPoolId,
+								Body: xdr.LiquidityPoolEntryBody{
+									Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+									ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+										Params: xdr.LiquidityPoolConstantProductParameters{
+											AssetA: trade.AssetSold(),
+											AssetB: trade.AssetSold(),
+											Fee:    xdr.LiquidityPoolFeeV18,
+										},
+										ReserveA:                 100,
+										ReserveB:                 200,
+										TotalPoolShares:          40,
+										PoolSharesTrustLineCount: 50,
+									},
+								},
+							},
+						},
+					},
+				},
+				xdr.LedgerEntryChange{
+					Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+					Updated: &xdr.LedgerEntry{
+						Data: xdr.LedgerEntryData{
+							Type: xdr.LedgerEntryTypeLiquidityPool,
+							LiquidityPool: &xdr.LiquidityPoolEntry{
+								LiquidityPoolId: trade.MustLiquidityPool().LiquidityPoolId,
+								Body: xdr.LiquidityPoolEntryBody{
+									Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+									ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+										Params: xdr.LiquidityPoolConstantProductParameters{
+											AssetA: trade.AssetSold(),
+											AssetB: trade.AssetSold(),
+											Fee:    xdr.LiquidityPoolFeeV18,
+										},
+										ReserveA:                 100,
+										ReserveB:                 200,
+										TotalPoolShares:          40,
+										PoolSharesTrustLineCount: 50,
+									},
+								},
+							},
 						},
 					},
 				},
