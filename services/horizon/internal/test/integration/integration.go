@@ -32,7 +32,6 @@ import (
 
 const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
-	LatestProtocolVersion       = int32(18)
 	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
 	stellarCorePort             = 11626
