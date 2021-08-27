@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -48,7 +48,7 @@ func TestCreateLiquidityPool(t *testing.T) {
 	keys, accounts := itest.CreateAccounts(1, "1000")
 	shareKeys, shareAccount := keys[0], accounts[0]
 
-	resp := itest.MustSubmitOperations(shareAccount, shareKeys,
+	itest.MustSubmitOperations(shareAccount, shareKeys,
 		&txnbuild.ChangeTrust{
 			Line: txnbuild.ChangeTrustAssetWrapper{
 				Asset: txnbuild.CreditAsset{
@@ -73,7 +73,10 @@ func TestCreateLiquidityPool(t *testing.T) {
 		},
 	)
 
-	// TODO rewrite it to use /liquidity_pools when ready
+	pools, err := itest.Client().LiquidityPools(horizonclient.LiquidityPoolsRequest{})
+	tt.NoError(err)
+	tt.Len(pools.Embedded.Records, 1)
+
 	expectedID, err := xdr.NewPoolId(
 		xdr.MustNewNativeAsset(),
 		xdr.MustNewCreditAsset("USD", master.Address()),
@@ -81,20 +84,5 @@ func TestCreateLiquidityPool(t *testing.T) {
 	)
 	tt.NoError(err)
 
-	var transactionMeta xdr.TransactionMeta
-	err = xdr.SafeUnmarshalBase64(resp.ResultMetaXdr, &transactionMeta)
-	tt.NoError(err)
-	changes := ingest.GetChangesFromLedgerEntryChanges(transactionMeta.OperationsMeta()[1].Changes)
-	found := false
-	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeLiquidityPool {
-			continue
-		}
-
-		tt.Nil(change.Pre)
-		tt.NotNil(change.Post)
-		tt.Equal(expectedID, change.Post.Data.MustLiquidityPool().LiquidityPoolId)
-		found = true
-	}
-	tt.True(found, "liquidity pool not found in meta")
+	tt.Equal(xdr.Hash(expectedID).HexString(), pools.Embedded.Records[0].ID)
 }

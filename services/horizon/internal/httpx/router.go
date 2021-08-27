@@ -165,6 +165,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		})
 
 		r.Route("/liquidity_pools", func(r chi.Router) {
+			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/", restPageHandler(ledgerState, actions.GetLiquidityPoolsHandler{LedgerState: ledgerState}))
 			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetLiquidityPoolByIDHandler{}})
 		})
 
