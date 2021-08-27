@@ -248,7 +248,7 @@ func (p *TradeProcessor) extractTrades(
 
 			var sellerAccount, liquidityPoolID string
 			if trade.Type == xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
-				liquidityPoolID = PoolIDToString(trade.LiquidityPool.LiquidityPoolId)
+				liquidityPoolID = PoolIDToString(trade.MustLiquidityPool().LiquidityPoolId)
 			} else {
 				row.BaseOfferID = null.IntFrom(int64(trade.OfferId()))
 				sellerAccount = trade.SellerId().Address()
