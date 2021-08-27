@@ -190,4 +190,6 @@ func TestGetLiquidityPools(t *testing.T) {
 	))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
+	resource = response[0].(protocol.LiquidityPool)
+	tt.Assert.Equal("d827bf10a721d217de3cd9ab3f10198a54de558c093a511ec426028618df2633", resource.ID)
 }
