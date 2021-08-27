@@ -32,6 +32,7 @@ import (
 
 const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
+	LatestProtocolVersion       = int32(18)
 	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
 	stellarCorePort             = 11626
@@ -45,7 +46,7 @@ var (
 
 type Config struct {
 	PostgresURL           string
-	ProtocolVersion       int32
+	ProtocolVersion       uint32
 	SkipContainerCreation bool
 	CoreDockerImage       string
 
@@ -421,7 +422,7 @@ func (i *Test) WaitForHorizon() {
 			continue
 		}
 
-		if root.CurrentProtocolVersion == i.config.ProtocolVersion {
+		if uint32(root.CurrentProtocolVersion) == i.config.ProtocolVersion {
 			i.t.Logf("Horizon protocol version matches... %v", root)
 			return
 		}

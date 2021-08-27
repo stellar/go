@@ -14,8 +14,6 @@ import (
 )
 
 func TestNewOperationAllTypesCovered(t *testing.T) {
-	// TODO remove skip after amm ingestion is complete
-	t.Skip()
 	for typ, s := range xdr.OperationTypeToStringMap {
 		row := history.Operation{
 			Type: xdr.OperationType(typ),
