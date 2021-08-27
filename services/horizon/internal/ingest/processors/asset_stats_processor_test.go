@@ -77,7 +77,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineWithClawback() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsTrustlineClawbackEnabledFlag),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
