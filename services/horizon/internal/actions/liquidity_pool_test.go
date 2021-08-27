@@ -180,6 +180,14 @@ func TestGetLiquidityPools(t *testing.T) {
 		q,
 	))
 	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 1)
 
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{"cursor": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+		map[string]string{},
+		q,
+	))
+	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 }
