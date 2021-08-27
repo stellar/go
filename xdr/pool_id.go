@@ -8,6 +8,10 @@ import (
 )
 
 func NewPoolId(a, b Asset, fee Int32) (PoolId, error) {
+	if b.LessThan(a) {
+		return PoolId{}, errors.New("asset A must be < asset B")
+	}
+
 	// Assume the assets are already sorted.
 	params := LiquidityPoolParameters{
 		Type: LiquidityPoolTypeLiquidityPoolConstantProduct,
