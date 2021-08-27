@@ -38,10 +38,10 @@ func TestLiquidityPoolDetailRequest(t *testing.T) {
 	response, err := client.LiquidityPoolDetail(request)
 	if assert.NoError(t, err) {
 		assert.IsType(t, response, hProtocol.LiquidityPool{})
-		assert.Equal(t, response.ID, "abcdef")
-		assert.Equal(t, response.FeeBP, uint64(30))
-		assert.Equal(t, response.TotalTrustlines, "300")
-		assert.Equal(t, response.TotalShares, "5000")
+		assert.Equal(t, "abcdef", response.ID)
+		assert.Equal(t, uint32(30), response.FeeBP)
+		assert.Equal(t, uint64(300), response.TotalTrustlines)
+		assert.Equal(t, uint64(5000), response.TotalShares)
 	}
 
 	// failure response
