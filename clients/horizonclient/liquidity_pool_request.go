@@ -18,9 +18,6 @@ type LiquidityPoolRequest struct {
 func (r LiquidityPoolRequest) BuildURL() (endpoint string, err error) {
 
 	nParams := countParams(r.LiquidityPoolID)
-	if nParams >= 1 && r.LiquidityPoolID == "" {
-		err = errors.New("invalid request: too few parameters")
-	}
 	if nParams <= 0 {
 		err = errors.New("invalid request: no parameters")
 	}
