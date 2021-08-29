@@ -43,6 +43,12 @@ func TestStatsChangeProcessor(t *testing.T) {
 		Post: &xdr.LedgerEntry{},
 	}))
 
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{},
+	}))
+
 	// Updated
 	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -70,6 +76,12 @@ func TestStatsChangeProcessor(t *testing.T) {
 
 	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeTrustline,
+		Pre:  &xdr.LedgerEntry{},
+		Post: &xdr.LedgerEntry{},
+	}))
+
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
 		Pre:  &xdr.LedgerEntry{},
 		Post: &xdr.LedgerEntry{},
 	}))
@@ -105,6 +117,12 @@ func TestStatsChangeProcessor(t *testing.T) {
 		Post: nil,
 	}))
 
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		Pre:  &xdr.LedgerEntry{},
+		Post: nil,
+	}))
+
 	results := processor.GetResults()
 
 	assert.Equal(t, int64(1), results.AccountsCreated)
@@ -112,16 +130,19 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.DataCreated)
 	assert.Equal(t, int64(1), results.OffersCreated)
 	assert.Equal(t, int64(1), results.TrustLinesCreated)
+	assert.Equal(t, int64(1), results.LiquidityPoolsCreated)
 
 	assert.Equal(t, int64(1), results.AccountsUpdated)
 	assert.Equal(t, int64(1), results.ClaimableBalancesUpdated)
 	assert.Equal(t, int64(1), results.DataUpdated)
 	assert.Equal(t, int64(1), results.OffersUpdated)
 	assert.Equal(t, int64(1), results.TrustLinesUpdated)
+	assert.Equal(t, int64(1), results.LiquidityPoolsUpdated)
 
 	assert.Equal(t, int64(1), results.AccountsRemoved)
 	assert.Equal(t, int64(1), results.ClaimableBalancesRemoved)
 	assert.Equal(t, int64(1), results.DataRemoved)
 	assert.Equal(t, int64(1), results.OffersRemoved)
 	assert.Equal(t, int64(1), results.TrustLinesRemoved)
+	assert.Equal(t, int64(1), results.LiquidityPoolsRemoved)
 }

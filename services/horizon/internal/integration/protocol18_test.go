@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -40,7 +41,7 @@ func TestProtocol18Basics(t *testing.T) {
 	})
 }
 
-func TestCreateLiquidityPool(t *testing.T) {
+func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt := assert.New(t)
 	itest := NewProtocol18Test(t)
 	master := itest.Master()
@@ -48,7 +49,7 @@ func TestCreateLiquidityPool(t *testing.T) {
 	keys, accounts := itest.CreateAccounts(1, "1000")
 	shareKeys, shareAccount := keys[0], accounts[0]
 
-	itest.MustSubmitOperations(shareAccount, shareKeys,
+	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
 		&txnbuild.ChangeTrust{
 			Line: txnbuild.ChangeTrustAssetWrapper{
 				Asset: txnbuild.CreditAsset{
@@ -71,18 +72,52 @@ func TestCreateLiquidityPool(t *testing.T) {
 			},
 			Limit: txnbuild.MaxTrustlineLimit,
 		},
+		&txnbuild.Payment{
+			SourceAccount: master.Address(),
+			Destination:   shareAccount.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Amount: "1000",
+		},
 	)
 
 	pools, err := itest.Client().LiquidityPools(horizonclient.LiquidityPoolsRequest{})
 	tt.NoError(err)
 	tt.Len(pools.Embedded.Records, 1)
 
-	expectedID, err := xdr.NewPoolId(
+	poolID, err := xdr.NewPoolId(
 		xdr.MustNewNativeAsset(),
 		xdr.MustNewCreditAsset("USD", master.Address()),
 		30,
 	)
 	tt.NoError(err)
+	poolIDHexString := xdr.Hash(poolID).HexString()
+	tt.Equal(poolIDHexString, pools.Embedded.Records[0].ID)
 
-	tt.Equal(xdr.Hash(expectedID).HexString(), pools.Embedded.Records[0].ID)
+	itest.MustSubmitOperations(shareAccount, shareKeys,
+		&txnbuild.LiquidityPoolDeposit{
+			LiquidityPoolID: [32]byte(poolID),
+			MaxAmountA:      "400",
+			MaxAmountB:      "777",
+			MinPrice:        "0.5",
+			MaxPrice:        "2",
+		},
+	)
+
+	itest.MustSubmitOperations(shareAccount, shareKeys,
+		&txnbuild.LiquidityPoolWithdraw{
+			LiquidityPoolID: [32]byte(poolID),
+			Amount:          "200",
+			MinAmountA:      "10",
+			MinAmountB:      "20",
+		},
+	)
+
+	// TODO check ops & effects
+	// ops, err := itest.Client().Operations(horizonclient.OperationRequest{
+	// 	ForLiquidityPool: poolIDHexString,
+	// })
+	// tt.NoError(err)
 }

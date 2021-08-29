@@ -108,9 +108,9 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 //
 // WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
-	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
-	}
+	// if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
+	// 	t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
+	// }
 
 	composePath := findDockerComposePath()
 	i := &Test{
@@ -642,6 +642,14 @@ func (i *Test) SubmitMultiSigOperations(
 		return proto.Transaction{}, err
 	}
 	return i.Client().SubmitTransaction(tx)
+}
+
+func (i *Test) MustSubmitMultiSigOperations(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitMultiSigOperations(source, signers, ops...)
+	panicIf(err)
+	return tx
 }
 
 func (i *Test) CreateSignedTransaction(

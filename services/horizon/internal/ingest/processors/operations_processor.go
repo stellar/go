@@ -525,6 +525,10 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
 		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
+			// TODO - discuss
+			if err == errLiquidtyPoolChangeNotFound {
+				return nil, nil
+			}
 			return nil, err
 		}
 		assetA := lp.Body.ConstantProduct.Params.AssetA
@@ -550,15 +554,16 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{"asset": assetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
 			{"asset": assetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
 		}
-		if err != nil {
-			return nil, err
-		}
-		details["shares_recieved"] = strconv.FormatInt(int64(delta.TotalPoolShares), 10)
+		details["shares_received"] = strconv.FormatInt(int64(delta.TotalPoolShares), 10)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
 		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
+			// TODO - discuss
+			if err == errLiquidtyPoolChangeNotFound {
+				return nil, nil
+			}
 			return nil, err
 		}
 		assetA := lp.Body.ConstantProduct.Params.AssetA

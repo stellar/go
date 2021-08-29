@@ -323,7 +323,7 @@ type SetTrustLineFlags struct {
 // LiquidityPoolDeposit.
 type LiquidityPoolDeposit struct {
 	Base
-	LiquidityPoolID   string             `json:"liquidty_pool_id"`
+	LiquidityPoolID   string             `json:"liquidity_pool_id"`
 	ReservesMax       []base.AssetAmount `json:"reserves_max"`
 	MinPrice          string             `json:"min_price"`
 	MinPriceR         base.Price         `json:"min_price_r"`
@@ -337,7 +337,7 @@ type LiquidityPoolDeposit struct {
 // LiquidityPoolWithdraw.
 type LiquidityPoolWithdraw struct {
 	Base
-	LiquidityPoolID  string             `json:"liquidty_pool_id"`
+	LiquidityPoolID  string             `json:"liquidity_pool_id"`
 	ReservesMin      []base.AssetAmount `json:"reserves_min"`
 	Shares           uint64             `json:"shares,string"`
 	ReservesReceived []base.AssetAmount `json:"reserves_received"`
