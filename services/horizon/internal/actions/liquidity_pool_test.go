@@ -47,7 +47,7 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	response, err := handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"id": lp.PoolID},
+		map[string]string{"liquidity_pool_id": lp.PoolID},
 		q,
 	))
 	tt.Assert.NoError(err)
@@ -69,7 +69,7 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	_, err = handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"id": "123816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+		map[string]string{"liquidity_pool_id": "123816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
 		q,
 	))
 	tt.Assert.Error(err)
@@ -79,13 +79,13 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	_, err = handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"id": "0000001112122"},
+		map[string]string{"liquidity_pool_id": "0000001112122"},
 		q,
 	))
 	tt.Assert.Error(err)
 	p := err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
-	tt.Assert.Equal("id", p.Extras["invalid_field"])
+	tt.Assert.Equal("liquidity_pool_id", p.Extras["invalid_field"])
 	tt.Assert.Equal("0000001112122 does not validate as sha256", p.Extras["reason"])
 }
 
