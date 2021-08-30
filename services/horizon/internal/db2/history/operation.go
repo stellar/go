@@ -167,8 +167,8 @@ func (q *OperationsQ) ForClaimableBalance(ctx context.Context, cbID xdr.Claimabl
 			"hocb.history_operation_id = hop.id",
 	).Where("hocb.history_claimable_balance_id = ?", hCB.InternalID)
 
-	// in order to use hocb.history_claimable_balance_id index
-	q.opIdCol = "hocb.history_claimable_balance_id"
+	// in order to use hocb.history_operation_id index
+	q.opIdCol = "hocb.history_operation_id"
 
 	return q
 }
@@ -187,8 +187,8 @@ func (q *OperationsQ) ForLiquidityPool(ctx context.Context, lpID string) *Operat
 			"holp.history_operation_id = hop.id",
 	).Where("holp.history_liquidity_pool_id = ?", hLP.InternalID)
 
-	// in order to use holp.history_liquidity_pool_id index
-	q.opIdCol = "holp.history_liquidity_pool_id"
+	// in order to use holp.history_operation_id index
+	q.opIdCol = "holp.history_operation_id"
 
 	return q
 }
