@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	strtime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestTradeAggregations(t *testing.T) {
-	itest := integration.NewTest(t, protocol15Config)
+	itest := integration.NewTest(t, integration.Config{ProtocolVersion: ingest.MaxSupportedProtocolVersion})
 	ctx := context.Background()
 	historyQ := itest.Horizon().HistoryQ()
 

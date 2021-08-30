@@ -173,6 +173,12 @@ func (key LedgerKey) MarshalBinaryCompress() ([]byte, error) {
 			return nil, err
 		}
 		m = append(m, cBalance...)
+	case LedgerEntryTypeLiquidityPool:
+		cBalance, err := key.LiquidityPool.LiquidityPoolId.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		m = append(m, cBalance...)
 	default:
 		panic("Unknown type")
 	}
