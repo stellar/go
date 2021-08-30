@@ -1074,7 +1074,7 @@ func ExampleLiquidityPoolWithdraw() {
 		&LiquidityPoolWithdraw{
 			SourceAccount:   test.A.Address(),
 			LiquidityPoolID: poolId,
-			Amount:          "0.1000000",
+			Amount:          1000000,
 			MinAmountA:      "0.1000000",
 			MinAmountB:      "0.1000000",
 		},

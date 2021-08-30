@@ -18,7 +18,7 @@ func TestLiquidityPoolWithdrawRoundTrip(t *testing.T) {
 	lpd := &LiquidityPoolWithdraw{
 		SourceAccount:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 		LiquidityPoolID: poolId,
-		Amount:          "0.1000000",
+		Amount:          1000000,
 		MinAmountA:      "0.1000000",
 		MinAmountB:      "0.2000000",
 	}
@@ -29,7 +29,7 @@ func TestLiquidityPoolWithdrawRoundTrip(t *testing.T) {
 	lpd = &LiquidityPoolWithdraw{
 		SourceAccount:   "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
 		LiquidityPoolID: poolId,
-		Amount:          "0.1000000",
+		Amount:          1000000,
 		MinAmountA:      "0.1000000",
 		MinAmountB:      "0.2000000",
 	}

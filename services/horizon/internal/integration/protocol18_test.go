@@ -2,6 +2,7 @@ package integration
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -106,18 +107,45 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 		},
 	)
 
+	pool, err := itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
+		LiquidityPoolID: poolIDHexString,
+	})
+	tt.NoError(err)
+
 	itest.MustSubmitOperations(shareAccount, shareKeys,
 		&txnbuild.LiquidityPoolWithdraw{
 			LiquidityPoolID: [32]byte(poolID),
-			Amount:          "200",
+			Amount:          int64(pool.TotalShares),
 			MinAmountA:      "10",
 			MinAmountB:      "20",
 		},
 	)
 
-	// TODO check ops & effects
-	// ops, err := itest.Client().Operations(horizonclient.OperationRequest{
-	// 	ForLiquidityPool: poolIDHexString,
-	// })
-	// tt.NoError(err)
+	itest.MustSubmitOperations(shareAccount, shareKeys,
+		// Clear trustline...
+		&txnbuild.Payment{
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Amount:      "1000",
+			Destination: master.Address(),
+		},
+		// ...and remove it. It should also remove LP.
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
+					AssetA: txnbuild.NativeAsset{},
+					AssetB: txnbuild.CreditAsset{
+						Code:   "USD",
+						Issuer: master.Address(),
+					},
+					Fee: 30,
+				},
+			},
+			Limit: "0",
+		},
+	)
+
+	time.Sleep(time.Minute)
 }
