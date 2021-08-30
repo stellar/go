@@ -20,7 +20,7 @@ Packages available as:
 
 2. Install digitalbits-frontier package:
 
-        sudo apt-get install digitalbits-frontier=1.0.64
+        sudo apt-get install digitalbits-frontier
 
 
 ## RPM-based
@@ -30,37 +30,37 @@ Packages available as:
 
 2. Install digitalbits-frontier package:
 
-        sudo yum install digitalbits-frontier-1.0.64-1.x86_64
+        sudo yum install digitalbits-frontier
 
 
 ## Raw binaries
 
 - MacOS
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_1.0.64_darwin-amd64.tar.gz'
+        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_darwin-amd64.tar.gz'
 
 - Linux
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_1.0.64_linux-amd64.tar.gz'
+        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-amd64.tar.gz'
 
 - Windows
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_1.0.64_windows-amd64.tar.gz'
+        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-amd64.tar.gz'
 
 - Linux (32-bit)
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_1.0.64_linux-386.tar.gz'
+        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-386.tar.gz'
         
 
 - Windows (32-bit)
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_1.0.64_windows-386.tar.gz'
+        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-386.tar.gz'
 
         
 
 ## Docker image
 
-    docker pull docker.cloudsmith.io/xdb-foundation/digitalbits-frontier/digitalbits-frontier:1.0.64
+    docker pull docker.cloudsmith.io/xdb-foundation/digitalbits-frontier/digitalbits-frontier:latest
 
 
 ## Run a production server
