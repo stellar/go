@@ -167,7 +167,7 @@ func (p *TradeProcessor) findPoolFee(
 
 	change, err := p.findOperationChange(transaction, opidx, key)
 	if err != nil {
-		return 0, errors.Wrap(err, "could not find change for trade offer")
+		return 0, errors.Wrap(err, "could not find change for liquidity pool")
 	}
 
 	return uint32(change.Pre.Data.MustLiquidityPool().Body.MustConstantProduct().Params.Fee), nil
