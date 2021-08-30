@@ -49,8 +49,9 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	itest := NewProtocol18Test(t)
 	master := itest.Master()
 
-	keys, accounts := itest.CreateAccounts(1, "1000")
+	keys, accounts := itest.CreateAccounts(2, "1000")
 	shareKeys, shareAccount := keys[0], accounts[0]
+	tradeKeys, tradeAccount := keys[0], accounts[0]
 
 	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
 		&txnbuild.ChangeTrust{
@@ -133,6 +134,28 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("777.0000000", pool.Reserves[1].Amount)
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), pool.Reserves[1].Asset)
 
+	itest.MustSubmitOperations(tradeAccount, tradeKeys,
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: txnbuild.CreditAsset{
+					Code:   "USD",
+					Issuer: master.Address(),
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.PathPaymentStrictReceive{
+			SendAsset: txnbuild.NativeAsset{},
+			DestAsset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			SendMax:     "1000",
+			DestAmount:  "2",
+			Destination: tradeKeys.Address(),
+		},
+	)
+
 	itest.MustSubmitOperations(shareAccount, shareKeys,
 		&txnbuild.LiquidityPoolWithdraw{
 			LiquidityPoolID: [32]byte(poolID),
@@ -176,9 +199,10 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	// We expect 4 ops for this liquidity pool:
 	// 1. change_trust creating a trust to LP.
 	// 2. liquidity_pool_deposit.
-	// 3. liquidity_pool_withdraw.
-	// 4. change_trust removing a trust to LP.
-	tt.Len(ops.Embedded.Records, 4)
+	// 3. path_payment
+	// 4. liquidity_pool_withdraw.
+	// 5. change_trust removing a trust to LP.
+	tt.Len(ops.Embedded.Records, 5)
 
 	op1 := (ops.Embedded.Records[0]).(operations.ChangeTrust)
 	tt.Equal("change_trust", op1.Type)
@@ -197,25 +221,67 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("777.0000000", op2.ReservesDeposited[1].Amount)
 	tt.Equal(uint64(5574943946), op2.SharesReceived)
 
-	op3 := (ops.Embedded.Records[2]).(operations.LiquidityPoolWithdraw)
-	tt.Equal("liquidity_pool_withdraw", op3.Type)
-	tt.Equal(poolIDHexString, op3.LiquidityPoolID)
+	op3 := (ops.Embedded.Records[2]).(operations.PathPayment)
+	tt.Equal("path_payment_strict_receive", op3.Payment.Base.Type)
+	tt.Equal("2.0000000", op3.Amount)
+	tt.Equal("1.0353642", op3.SourceAmount)
+	tt.Equal("1000.0000000", op3.SourceMax)
+	tt.Equal("native", op3.SourceAssetType)
+	tt.Equal("credit_alphanum4", op3.Payment.Asset.Type)
+	tt.Equal("USD", op3.Payment.Asset.Code)
+	tt.Equal(master.Address(), op3.Payment.Asset.Issuer)
 
-	tt.Equal("native", op3.ReservesMin[0].Asset)
-	tt.Equal("10.0000000", op3.ReservesMin[0].Amount)
-	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op3.ReservesMin[1].Asset)
-	tt.Equal("20.0000000", op3.ReservesMin[1].Amount)
-
-	tt.Equal("native", op3.ReservesReceived[0].Asset)
-	tt.Equal("400.0000000", op3.ReservesReceived[0].Amount)
-	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op3.ReservesReceived[1].Asset)
-	tt.Equal("777.0000000", op3.ReservesReceived[1].Amount)
-
-	tt.Equal(uint64(5574943946), op3.Shares)
-
-	op4 := (ops.Embedded.Records[3]).(operations.ChangeTrust)
-	tt.Equal("change_trust", op4.Type)
-	tt.Equal("liquidity_pool_shares", op4.Asset.Type)
+	op4 := (ops.Embedded.Records[3]).(operations.LiquidityPoolWithdraw)
+	tt.Equal("liquidity_pool_withdraw", op4.Type)
 	tt.Equal(poolIDHexString, op4.LiquidityPoolID)
-	tt.Equal("0.0000000", op4.Limit)
+
+	tt.Equal("native", op4.ReservesMin[0].Asset)
+	tt.Equal("10.0000000", op4.ReservesMin[0].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op4.ReservesMin[1].Asset)
+	tt.Equal("20.0000000", op4.ReservesMin[1].Amount)
+
+	tt.Equal("native", op4.ReservesReceived[0].Asset)
+	tt.Equal("401.0353642", op4.ReservesReceived[0].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op4.ReservesReceived[1].Asset)
+	tt.Equal("775.0000000", op4.ReservesReceived[1].Amount)
+
+	tt.Equal(uint64(5574943946), op4.Shares)
+
+	op5 := (ops.Embedded.Records[4]).(operations.ChangeTrust)
+	tt.Equal("change_trust", op5.Type)
+	tt.Equal("liquidity_pool_shares", op5.Asset.Type)
+	tt.Equal(poolIDHexString, op5.LiquidityPoolID)
+	tt.Equal("0.0000000", op5.Limit)
+
+	trades, err := itest.Client().Trades(horizonclient.TradeRequest{
+		// Uncomment when other PRs merged
+		// ForLiquidityPool: poolIDHexString,
+	})
+	tt.NoError(err)
+
+	tt.Len(trades.Embedded.Records, 1)
+
+	trade1 := trades.Embedded.Records[0]
+	tt.Equal("liquidity_pool", trade1.TradeType)
+
+	tt.Equal(poolIDHexString, trade1.BaseLiquidityPoolID)
+	tt.Equal("2.0000000", trade1.BaseAmount)
+	tt.Equal("credit_alphanum4", trade1.BaseAssetType)
+	tt.Equal("USD", trade1.BaseAssetCode)
+	tt.Equal(master.Address(), trade1.BaseAssetIssuer)
+
+	tt.Equal(tradeKeys.Address(), trade1.CounterAccount)
+	tt.Equal("1.0353642", trade1.CounterAmount)
+	tt.Equal("native", trade1.CounterAssetType)
+
+	tt.Equal(int32(10353642), trade1.Price.N)
+	tt.Equal(int32(20000000), trade1.Price.D)
+
+	// time.Sleep(time.Minute)
+
+	// TODO test revoke
+
+	// TODO check /effects
+
+	// TODO check LP depositor /accounts/{id}
 }
