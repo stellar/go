@@ -116,16 +116,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	var cbID *xdr.ClaimableBalanceId
-	if qp.ClaimableBalanceID != "" {
-		var cb xdr.ClaimableBalanceId
-		cb, err = balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
-		if err != nil {
-			return nil, err
-		}
-		cbID = &cb
-	}
-	records, err := loadTransactionRecords(ctx, historyQ, qp.AccountID, cbID, qp.LiquidityPoolID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
+	records, err := loadTransactionRecords(ctx, historyQ, qp, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -147,16 +138,18 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // loadTransactionRecords returns a slice of transaction records of an
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
-func loadTransactionRecords(
-	ctx context.Context,
-	hq *history.Q,
-	accountID string,
-	cbID *xdr.ClaimableBalanceId,
-	liquidityPoolID string,
-	ledgerID int32,
-	includeFailedTx bool,
-	pq db2.PageQuery) ([]history.Transaction, error) {
-	if accountID != "" && ledgerID != 0 {
+func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQuery, pq db2.PageQuery) ([]history.Transaction, error) {
+
+	var cbID *xdr.ClaimableBalanceId
+	if qp.ClaimableBalanceID != "" {
+		var cb xdr.ClaimableBalanceId
+		cb, err := balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
+		if err != nil {
+			return nil, err
+		}
+		cbID = &cb
+	}
+	if qp.AccountID != "" && qp.LedgerID != 0 {
 		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
 	}
 
@@ -164,17 +157,17 @@ func loadTransactionRecords(
 
 	txs := hq.Transactions()
 	switch {
-	case accountID != "":
-		txs.ForAccount(ctx, accountID)
+	case qp.AccountID != "":
+		txs.ForAccount(ctx, qp.AccountID)
 	case cbID != nil:
 		txs.ForClaimableBalance(ctx, *cbID)
-	case liquidityPoolID != "":
-		txs.ForLiquidityPool(ctx, liquidityPoolID)
-	case ledgerID > 0:
-		txs.ForLedger(ctx, ledgerID)
+	case qp.LiquidityPoolID != "":
+		txs.ForLiquidityPool(ctx, qp.LiquidityPoolID)
+	case qp.LedgerID > 0:
+		txs.ForLedger(ctx, int32(qp.LedgerID))
 	}
 
-	if includeFailedTx {
+	if qp.IncludeFailedTransactions {
 		txs.IncludeFailed()
 	}
 
@@ -184,7 +177,7 @@ func loadTransactionRecords(
 	}
 
 	for _, t := range records {
-		if !includeFailedTx {
+		if !qp.IncludeFailedTransactions {
 			if !t.Successful {
 				return nil, errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s", t.TransactionHash)
 			}
