@@ -19,6 +19,10 @@ type QHistoryLiquidityPools interface {
 // CreateHistoryLiquidityPools creates rows in the history_liquidity_pools table for a given list of ids.
 // CreateHistoryLiquidityPools returns a mapping of id to its corresponding internal id in the history_liquidity_pools table
 func (q *Q) CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, batchSize int) (map[string]int64, error) {
+	if len(poolIDs) == 0 {
+		return nil, nil
+	}
+
 	builder := &db.BatchInsertBuilder{
 		Table:        q.GetTable("history_liquidity_pools"),
 		MaxBatchSize: batchSize,
@@ -28,7 +32,13 @@ func (q *Q) CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, b
 	// sort before inserting to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(poolIDs)
-	for _, id := range poolIDs {
+	var deduped []string
+	for i, id := range poolIDs {
+		if i > 0 && id == poolIDs[i-1] {
+			// skip duplicates
+			continue
+		}
+		deduped = append(deduped, id)
 		err := builder.Row(ctx, map[string]interface{}{
 			"liquidity_pool_id": id,
 		})
@@ -46,12 +56,12 @@ func (q *Q) CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, b
 	toInternalID := map[string]int64{}
 	const selectBatchSize = 10000
 
-	for i := 0; i < len(poolIDs); i += selectBatchSize {
+	for i := 0; i < len(deduped); i += selectBatchSize {
 		end := i + selectBatchSize
-		if end > len(poolIDs) {
-			end = len(poolIDs)
+		if end > len(deduped) {
+			end = len(deduped)
 		}
-		subset := poolIDs[i:end]
+		subset := deduped[i:end]
 
 		lps, err = q.LiquidityPoolsByIDs(ctx, subset)
 		if err != nil {
