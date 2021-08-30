@@ -24,6 +24,7 @@ func init() {
 	govalidator.TagMap["assetType"] = isAssetType
 	govalidator.TagMap["asset"] = isAsset
 	govalidator.TagMap["claimableBalanceID"] = isClaimableBalanceID
+	govalidator.TagMap["liquidityPoolID"] = isLiquidityPoolID
 	govalidator.TagMap["transactionHash"] = isTransactionHash
 	govalidator.TagMap["sha256"] = govalidator.IsSHA256
 }
@@ -155,4 +156,12 @@ func isClaimableBalanceID(str string) bool {
 	var cbID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(str, &cbID)
 	return err == nil
+}
+
+func isLiquidityPoolID(str string) bool {
+	bytes, err := hex.DecodeString(str)
+	if err != nil {
+		return false
+	}
+	return len(bytes) == len(xdr.PoolId{})
 }

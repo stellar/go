@@ -5,7 +5,6 @@ import (
 	"sort"
 
 	sq "github.com/Masterminds/squirrel"
-
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
@@ -81,6 +80,13 @@ func (q *Q) LiquidityPoolsByIDs(ctx context.Context, poolIDs []string) (dest []H
 		"hlp.liquidity_pool_id": poolIDs, // hlp.liquidity_pool_id IN (...)
 	})
 	err = q.Select(ctx, &dest, sql)
+	return dest, err
+}
+
+// LiquidityPoolByID loads a row from `history_liquidity_pools`, by liquidity_pool_id
+func (q *Q) LiquidityPoolByID(ctx context.Context, poolID string) (dest HistoryLiquidityPool, err error) {
+	sql := selectHistoryLiquidityPool.Limit(1).Where("hlp.liquidity_pool_id = ?", poolID)
+	err = q.Get(ctx, &dest, sql)
 	return dest, err
 }
 
