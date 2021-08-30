@@ -12,7 +12,7 @@ import (
 type LiquidityPoolWithdraw struct {
 	SourceAccount   string
 	LiquidityPoolID LiquidityPoolId
-	Amount          int64
+	Amount          string
 	MinAmountA      string
 	MinAmountB      string
 }
@@ -22,6 +22,11 @@ func (lpd *LiquidityPoolWithdraw) BuildXDR(withMuxedAccounts bool) (xdr.Operatio
 	xdrLiquidityPoolId, err := lpd.LiquidityPoolID.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "couldn't build liquidity pool ID XDR")
+	}
+
+	xdrAmount, err := amount.Parse(lpd.Amount)
+	if err != nil {
+		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Amount'")
 	}
 
 	xdrMinAmountA, err := amount.Parse(lpd.MinAmountA)
@@ -36,7 +41,7 @@ func (lpd *LiquidityPoolWithdraw) BuildXDR(withMuxedAccounts bool) (xdr.Operatio
 
 	xdrOp := xdr.LiquidityPoolWithdrawOp{
 		LiquidityPoolId: xdrLiquidityPoolId,
-		Amount:          xdr.Int64(lpd.Amount),
+		Amount:          xdrAmount,
 		MinAmountA:      xdrMinAmountA,
 		MinAmountB:      xdrMinAmountB,
 	}
@@ -69,7 +74,7 @@ func (lpd *LiquidityPoolWithdraw) FromXDR(xdrOp xdr.Operation, withMuxedAccounts
 	lpd.LiquidityPoolID = liquidityPoolID
 
 	lpd.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
-	lpd.Amount = int64(result.Amount)
+	lpd.Amount = amount.String(result.Amount)
 	lpd.MinAmountA = amount.String(result.MinAmountA)
 	lpd.MinAmountB = amount.String(result.MinAmountB)
 

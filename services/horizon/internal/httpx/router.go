@@ -249,11 +249,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 	// liquidity pool actions
 	r.Group(func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/liquidity_pool/{liquidity_pool_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/liquidity_pools/{liquidity_pool_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/liquidity_pool/{liquidity_pool_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/liquidity_pools/{liquidity_pool_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 	})
 
 	// transaction history actions
