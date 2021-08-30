@@ -45,7 +45,7 @@ var (
 
 type Config struct {
 	PostgresURL           string
-	ProtocolVersion       int32
+	ProtocolVersion       uint32
 	SkipContainerCreation bool
 	CoreDockerImage       string
 
@@ -421,7 +421,7 @@ func (i *Test) WaitForHorizon() {
 			continue
 		}
 
-		if root.CurrentProtocolVersion == i.config.ProtocolVersion {
+		if uint32(root.CurrentProtocolVersion) == i.config.ProtocolVersion {
 			i.t.Logf("Horizon protocol version matches... %v", root)
 			return
 		}
