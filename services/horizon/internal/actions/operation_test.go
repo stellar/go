@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http/httptest"
-
 	"testing"
 	"time"
 
@@ -86,6 +85,10 @@ func TestGetOperationsExclusiveFilters(t *testing.T) {
 			)
 		})
 	}
+
+}
+
+func TestGetOperationsByLiquidityPool(t *testing.T) {
 
 }
 
