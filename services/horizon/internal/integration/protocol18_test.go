@@ -265,6 +265,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("liquidity_pool", trade1.TradeType)
 
 	tt.Equal(poolIDHexString, trade1.BaseLiquidityPoolID)
+	tt.Equal(int32(30), trade1.LiquidityPoolFeeBP)
 	tt.Equal("2.0000000", trade1.BaseAmount)
 	tt.Equal("credit_alphanum4", trade1.BaseAssetType)
 	tt.Equal("USD", trade1.BaseAssetCode)
