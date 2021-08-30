@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, thinks the code is unused because of the test skips
 package test
 
 import (

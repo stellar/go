@@ -165,7 +165,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	var records []history.Trade
-	if err = trades.Page(ctx, pq).Select(ctx, &records); err != nil {
+	if records, err = trades.Page(ctx, pq).Select(ctx); err != nil {
 		return nil, err
 	}
 	var response []hal.Pageable

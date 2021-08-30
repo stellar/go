@@ -4,25 +4,37 @@ import (
 	"context"
 	"time"
 
+	"github.com/guregu/null"
+
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // InsertTrade represents the arguments to TradeBatchInsertBuilder.Add() which is used to insert
 // rows into the history_trades table
 type InsertTrade struct {
-	HistoryOperationID int64
-	Order              int32
-	LedgerCloseTime    time.Time
-	BuyOfferExists     bool
-	BuyOfferID         int64
-	SellerAccountID    int64
-	BuyerAccountID     int64
-	SoldAssetID        int64
-	BoughtAssetID      int64
-	Trade              xdr.ClaimAtom
-	SellPrice          xdr.Price
+	HistoryOperationID int64     `db:"history_operation_id"`
+	Order              int32     `db:"\"order\""`
+	LedgerCloseTime    time.Time `db:"ledger_closed_at"`
+
+	CounterAssetID         int64    `db:"counter_asset_id"`
+	CounterAmount          int64    `db:"counter_amount"`
+	CounterAccountID       null.Int `db:"counter_account_id"`
+	CounterOfferID         null.Int `db:"counter_offer_id"`
+	CounterLiquidityPoolID null.Int `db:"counter_liquidity_pool_id"`
+
+	LiquidityPoolFee null.Int `db:"liquidity_pool_fee"`
+
+	BaseAssetID         int64    `db:"base_asset_id"`
+	BaseAmount          int64    `db:"base_amount"`
+	BaseAccountID       null.Int `db:"base_account_id"`
+	BaseOfferID         null.Int `db:"base_offer_id"`
+	BaseLiquidityPoolID null.Int `db:"base_liquidity_pool_id"`
+
+	BaseIsSeller bool `db:"base_is_seller"`
+
+	PriceN int64 `db:"price_n"`
+	PriceD int64 `db:"price_d"`
 }
 
 // TradeBatchInsertBuilder is used to insert trades into the
@@ -57,59 +69,7 @@ func (i *tradeBatchInsertBuilder) Exec(ctx context.Context) error {
 // Add adds a new trade to the batch
 func (i *tradeBatchInsertBuilder) Add(ctx context.Context, entries ...InsertTrade) error {
 	for _, entry := range entries {
-		sellOfferID := EncodeOfferId(uint64(entry.Trade.OfferId()), CoreOfferIDType)
-
-		// if the buy offer exists, encode the stellar core generated id as the offer id
-		// if not, encode the toid as the offer id
-		var buyOfferID int64
-		if entry.BuyOfferExists {
-			buyOfferID = EncodeOfferId(uint64(entry.BuyOfferID), CoreOfferIDType)
-		} else {
-			buyOfferID = EncodeOfferId(uint64(entry.HistoryOperationID), TOIDType)
-		}
-
-		orderPreserved, baseAssetID, counterAssetID := getCanonicalAssetOrder(
-			entry.SoldAssetID, entry.BoughtAssetID,
-		)
-
-		var baseAccountID, counterAccountID int64
-		var baseAmount, counterAmount xdr.Int64
-		var baseOfferID, counterOfferID int64
-
-		if orderPreserved {
-			baseAccountID = entry.SellerAccountID
-			baseAmount = entry.Trade.AmountSold()
-			counterAccountID = entry.BuyerAccountID
-			counterAmount = entry.Trade.AmountBought()
-			baseOfferID = sellOfferID
-			counterOfferID = buyOfferID
-		} else {
-			baseAccountID = entry.BuyerAccountID
-			baseAmount = entry.Trade.AmountBought()
-			counterAccountID = entry.SellerAccountID
-			counterAmount = entry.Trade.AmountSold()
-			baseOfferID = buyOfferID
-			counterOfferID = sellOfferID
-			entry.SellPrice.Invert()
-		}
-
-		err := i.builder.Row(ctx, map[string]interface{}{
-			"history_operation_id": entry.HistoryOperationID,
-			"\"order\"":            entry.Order,
-			"ledger_closed_at":     entry.LedgerCloseTime,
-			"offer_id":             entry.Trade.OfferId(),
-			"base_offer_id":        baseOfferID,
-			"base_account_id":      baseAccountID,
-			"base_asset_id":        baseAssetID,
-			"base_amount":          baseAmount,
-			"counter_offer_id":     counterOfferID,
-			"counter_account_id":   counterAccountID,
-			"counter_asset_id":     counterAssetID,
-			"counter_amount":       counterAmount,
-			"base_is_seller":       orderPreserved,
-			"price_n":              entry.SellPrice.N,
-			"price_d":              entry.SellPrice.D,
-		})
+		err := i.builder.RowStruct(ctx, entry)
 		if err != nil {
 			return errors.Wrap(err, "failed to add trade")
 		}

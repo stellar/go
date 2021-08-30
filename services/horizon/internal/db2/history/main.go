@@ -669,25 +669,27 @@ type TotalOrderID struct {
 // Trade represents a trade from the trades table, joined with asset information from the assets table and account
 // addresses from the accounts table
 type Trade struct {
-	HistoryOperationID int64     `db:"history_operation_id"`
-	Order              int32     `db:"order"`
-	LedgerCloseTime    time.Time `db:"ledger_closed_at"`
-	OfferID            int64     `db:"offer_id"`
-	BaseOfferID        *int64    `db:"base_offer_id"`
-	BaseAccount        string    `db:"base_account"`
-	BaseAssetType      string    `db:"base_asset_type"`
-	BaseAssetCode      string    `db:"base_asset_code"`
-	BaseAssetIssuer    string    `db:"base_asset_issuer"`
-	BaseAmount         xdr.Int64 `db:"base_amount"`
-	CounterOfferID     *int64    `db:"counter_offer_id"`
-	CounterAccount     string    `db:"counter_account"`
-	CounterAssetType   string    `db:"counter_asset_type"`
-	CounterAssetCode   string    `db:"counter_asset_code"`
-	CounterAssetIssuer string    `db:"counter_asset_issuer"`
-	CounterAmount      xdr.Int64 `db:"counter_amount"`
-	BaseIsSeller       bool      `db:"base_is_seller"`
-	PriceN             null.Int  `db:"price_n"`
-	PriceD             null.Int  `db:"price_d"`
+	HistoryOperationID     int64       `db:"history_operation_id"`
+	Order                  int32       `db:"order"`
+	LedgerCloseTime        time.Time   `db:"ledger_closed_at"`
+	BaseOfferID            null.Int    `db:"base_offer_id"`
+	BaseAccount            null.String `db:"base_account"`
+	BaseAssetType          string      `db:"base_asset_type"`
+	BaseAssetCode          string      `db:"base_asset_code"`
+	BaseAssetIssuer        string      `db:"base_asset_issuer"`
+	BaseAmount             int64       `db:"base_amount"`
+	BaseLiquidityPoolID    null.String `db:"base_liquidity_pool_id"`
+	CounterOfferID         null.Int    `db:"counter_offer_id"`
+	CounterAccount         null.String `db:"counter_account"`
+	CounterAssetType       string      `db:"counter_asset_type"`
+	CounterAssetCode       string      `db:"counter_asset_code"`
+	CounterAssetIssuer     string      `db:"counter_asset_issuer"`
+	CounterAmount          int64       `db:"counter_amount"`
+	CounterLiquidityPoolID null.String `db:"counter_liquidity_pool_id"`
+	LiquidityPoolFee       null.Int    `db:"liquidity_pool_fee"`
+	BaseIsSeller           bool        `db:"base_is_seller"`
+	PriceN                 null.Int    `db:"price_n"`
+	PriceD                 null.Int    `db:"price_d"`
 }
 
 // TradesQ is a helper struct to aid in configuring queries that loads
