@@ -29,9 +29,12 @@ func (q *Q) Trades() *TradesQ {
 	return &TradesQ{
 		parent: q,
 		sql: joinTradeAssets(
-			joinTradeAccounts(
-				selectTradeFields.From("history_trades htrd"),
-				"history_accounts",
+			joinTradeLiquidityPools(
+				joinTradeAccounts(
+					selectTradeFields.From("history_trades htrd"),
+					"history_accounts",
+				),
+				"history_liquidity_pools",
 			),
 			"history_assets",
 		),
@@ -44,9 +47,12 @@ func (q *Q) ReverseTrades() *TradesQ {
 	return &TradesQ{
 		parent: q,
 		sql: joinTradeAssets(
-			joinTradeAccounts(
-				selectReverseTradeFields.From("history_trades htrd"),
-				"history_accounts",
+			joinTradeLiquidityPools(
+				joinTradeAccounts(
+					selectReverseTradeFields.From("history_trades htrd"),
+					"history_accounts",
+				),
+				"history_liquidity_pools",
 			),
 			"history_assets",
 		),
@@ -187,29 +193,30 @@ func (q *TradesQ) appendOrdering(ctx context.Context, sel sq.SelectBuilder, op, 
 }
 
 // Select loads the results of the query specified by `q` into `dest`.
-func (q *TradesQ) Select(ctx context.Context, dest interface{}) error {
+func (q *TradesQ) Select(ctx context.Context) ([]Trade, error) {
 	if q.Err != nil {
-		return q.Err
+		return nil, q.Err
 	}
 
 	if !q.pageCalled {
-		return errors.New("TradesQ.Page call is required before calling Select")
+		return nil, errors.New("TradesQ.Page call is required before calling Select")
 	}
 
 	// Add explicit query type for prometheus metrics, since we use raw sql.
 	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
+	var dest []Trade
 	if q.rawSQL != "" {
-		q.Err = q.parent.SelectRaw(ctx, dest, q.rawSQL, q.rawArgs...)
+		q.Err = q.parent.SelectRaw(ctx, &dest, q.rawSQL, q.rawArgs...)
 	} else {
-		q.Err = q.parent.Select(ctx, dest, q.sql)
+		q.Err = q.parent.Select(ctx, &dest, q.sql)
 	}
-	return q.Err
+	return dest, q.Err
 }
 
 func joinTradeAccounts(selectBuilder sq.SelectBuilder, historyAccountsTable string) sq.SelectBuilder {
 	return selectBuilder.
-		Join(historyAccountsTable + " base_accounts ON base_account_id = base_accounts.id").
-		Join(historyAccountsTable + " counter_accounts ON counter_account_id = counter_accounts.id")
+		LeftJoin(historyAccountsTable + " base_accounts ON base_account_id = base_accounts.id").
+		LeftJoin(historyAccountsTable + " counter_accounts ON counter_account_id = counter_accounts.id")
 }
 
 func joinTradeAssets(selectBuilder sq.SelectBuilder, historyAssetsTable string) sq.SelectBuilder {
@@ -218,23 +225,31 @@ func joinTradeAssets(selectBuilder sq.SelectBuilder, historyAssetsTable string) 
 		Join(historyAssetsTable + " counter_assets ON counter_asset_id = counter_assets.id")
 }
 
+func joinTradeLiquidityPools(selectBuilder sq.SelectBuilder, historyLiquidityPoolsTable string) sq.SelectBuilder {
+	return selectBuilder.
+		LeftJoin(historyLiquidityPoolsTable + " blp ON base_liquidity_pool_id = blp.id").
+		LeftJoin(historyLiquidityPoolsTable + " clp ON counter_liquidity_pool_id = clp.id")
+}
+
 var selectTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
-	"htrd.offer_id",
 	"htrd.base_offer_id",
 	"base_accounts.address as base_account",
 	"base_assets.asset_type as base_asset_type",
 	"base_assets.asset_code as base_asset_code",
 	"base_assets.asset_issuer as base_asset_issuer",
+	"blp.liquidity_pool_id as base_liquidity_pool_id",
 	"htrd.base_amount",
 	"htrd.counter_offer_id",
 	"counter_accounts.address as counter_account",
 	"counter_assets.asset_type as counter_asset_type",
 	"counter_assets.asset_code as counter_asset_code",
 	"counter_assets.asset_issuer as counter_asset_issuer",
+	"clp.liquidity_pool_id as counter_liquidity_pool_id",
 	"htrd.counter_amount",
+	"liquidity_pool_fee",
 	"htrd.base_is_seller",
 	"htrd.price_n",
 	"htrd.price_d",
@@ -244,19 +259,21 @@ var selectReverseTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
-	"htrd.offer_id",
 	"htrd.counter_offer_id as base_offer_id",
 	"counter_accounts.address as base_account",
 	"counter_assets.asset_type as base_asset_type",
 	"counter_assets.asset_code as base_asset_code",
 	"counter_assets.asset_issuer as base_asset_issuer",
+	"counter_liquidity_pool_id.liquidity_pool_id as base_liquidity_pool_id",
 	"htrd.counter_amount as base_amount",
 	"htrd.base_offer_id as counter_offer_id",
 	"base_accounts.address as counter_account",
 	"base_assets.asset_type as counter_asset_type",
 	"base_assets.asset_code as counter_asset_code",
 	"base_assets.asset_issuer as counter_asset_issuer",
+	"base_liquidity_pool_id.liquidity_pool_id as counter_liquidity_pool_id",
 	"htrd.base_amount as counter_amount",
+	"liquidity_pool_fee",
 	"NOT(htrd.base_is_seller) as base_is_seller",
 	"htrd.price_d as price_n",
 	"htrd.price_n as price_d",
@@ -275,4 +292,5 @@ type QTrades interface {
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	RebuildTradeAggregationBuckets(ctx context.Context, fromledger, toLedger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
+	CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, batchSize int) (map[string]int64, error)
 }

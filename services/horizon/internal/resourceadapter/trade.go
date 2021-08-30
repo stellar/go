@@ -3,6 +3,7 @@ package resourceadapter
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/amount"
 	protocol "github.com/stellar/go/protocols/horizon"
@@ -20,25 +21,28 @@ func PopulateTrade(
 ) {
 	dest.ID = row.PagingToken()
 	dest.PT = row.PagingToken()
-	dest.OfferID = fmt.Sprintf("%d", row.OfferID)
 	dest.BaseOfferID = ""
-	if row.BaseOfferID != nil {
-		dest.BaseOfferID = fmt.Sprintf("%d", *row.BaseOfferID)
+	if row.BaseOfferID.Valid {
+		dest.BaseOfferID = fmt.Sprintf("%d", row.BaseOfferID.Int64)
 	}
-	dest.BaseAccount = row.BaseAccount
+	if row.BaseAccount.Valid {
+		dest.BaseAccount = row.BaseAccount.String
+	}
 	dest.BaseAssetType = row.BaseAssetType
 	dest.BaseAssetCode = row.BaseAssetCode
 	dest.BaseAssetIssuer = row.BaseAssetIssuer
-	dest.BaseAmount = amount.String(row.BaseAmount)
+	dest.BaseAmount = amount.String(xdr.Int64(row.BaseAmount))
 	dest.CounterOfferID = ""
-	if row.CounterOfferID != nil {
-		dest.CounterOfferID = fmt.Sprintf("%d", *row.CounterOfferID)
+	if row.CounterOfferID.Valid {
+		dest.CounterOfferID = fmt.Sprintf("%d", row.CounterOfferID.Int64)
 	}
-	dest.CounterAccount = row.CounterAccount
+	if row.CounterAccount.Valid {
+		dest.CounterAccount = row.CounterAccount.String
+	}
 	dest.CounterAssetType = row.CounterAssetType
 	dest.CounterAssetCode = row.CounterAssetCode
 	dest.CounterAssetIssuer = row.CounterAssetIssuer
-	dest.CounterAmount = amount.String(row.CounterAmount)
+	dest.CounterAmount = amount.String(xdr.Int64(row.CounterAmount))
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.BaseIsSeller = row.BaseIsSeller
 

@@ -36,7 +36,13 @@ func (q *Q) CreateAccounts(ctx context.Context, addresses []string, batchSize in
 	// sort assets before inserting rows into history_assets to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(addresses)
-	for _, address := range addresses {
+	var deduped []string
+	for i, address := range addresses {
+		if i > 0 && address == addresses[i-1] {
+			// skip duplicates
+			continue
+		}
+		deduped = append(deduped, address)
 		err := builder.Row(ctx, map[string]interface{}{
 			"address": address,
 		})
@@ -50,17 +56,17 @@ func (q *Q) CreateAccounts(ctx context.Context, addresses []string, batchSize in
 		return nil, errors.Wrap(err, "could not exec asset insert builder")
 	}
 
-	var accounts []Account
 	addressToID := map[string]int64{}
 	const selectBatchSize = 10000
 
-	for i := 0; i < len(addresses); i += selectBatchSize {
+	for i := 0; i < len(deduped); i += selectBatchSize {
 		end := i + selectBatchSize
-		if end > len(addresses) {
-			end = len(addresses)
+		if end > len(deduped) {
+			end = len(deduped)
 		}
-		subset := addresses[i:end]
+		subset := deduped[i:end]
 
+		var accounts []Account
 		if err := q.AccountsByAddresses(ctx, &accounts, subset); err != nil {
 			return nil, errors.Wrap(err, "could not select accounts")
 		}
