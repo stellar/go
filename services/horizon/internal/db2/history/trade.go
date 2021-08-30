@@ -3,8 +3,9 @@ package history
 import (
 	"context"
 	"fmt"
-	sq "github.com/Masterminds/squirrel"
 	"math"
+
+	sq "github.com/Masterminds/squirrel"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"

@@ -85,12 +85,18 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 		row := trade.row
 		if id, ok := accountSet[trade.sellerAccount]; ok {
 			row.BaseAccountID = null.IntFrom(id)
+		} else if len(trade.sellerAccount) > 0 {
+			return errors.Errorf("Could not find history account id for %s", trade.sellerAccount)
 		}
 		if id, ok := accountSet[trade.buyerAccount]; ok {
 			row.CounterAccountID = null.IntFrom(id)
+		} else if len(trade.buyerAccount) > 0 {
+			return errors.Errorf("Could not find history account id for %s", trade.buyerAccount)
 		}
 		if id, ok := poolMap[trade.liquidityPoolID]; ok {
 			row.BaseLiquidityPoolID = null.IntFrom(id)
+		} else if len(trade.liquidityPoolID) > 0 {
+			return errors.Errorf("Could not find history liquidity pool id for %s", trade.liquidityPoolID)
 		}
 		row.BaseAssetID = assetMap[trade.soldAsset.String()].ID
 		row.CounterAssetID = assetMap[trade.boughtAsset.String()].ID
