@@ -21,7 +21,7 @@ type GetLiquidityPoolByIDHandler struct{}
 
 // LiquidityPoolQuery query struct for liquidity_pools/id endpoint
 type LiquidityPoolQuery struct {
-	ID string `schema:"id" valid:"sha256"`
+	ID string `schema:"liquidity_pool_id" valid:"sha256"`
 }
 
 // GetResource returns an claimable balance page.
