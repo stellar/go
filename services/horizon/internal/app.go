@@ -33,6 +33,7 @@ import (
 // App represents the root of the state of a horizon instance.
 type App struct {
 	done            chan struct{}
+	doneOnce        sync.Once
 	config          Config
 	webServer       *httpx.Server
 	historyQ        *history.Q
@@ -166,7 +167,9 @@ func (a *App) Serve() error {
 
 // Close cancels the app. It does not close DB connections - use App.CloseDB().
 func (a *App) Close() {
-	close(a.done)
+	a.doneOnce.Do(func() {
+		close(a.done)
+	})
 }
 
 func (a *App) waitForDone() {

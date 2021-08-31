@@ -365,12 +365,12 @@ type Trade struct {
 	ID                     string    `json:"id"`
 	PT                     string    `json:"paging_token"`
 	LedgerCloseTime        time.Time `json:"ledger_close_time"`
-	OfferID                string    `json:"offer_id"`
+	OfferID                string    `json:"offer_id,omitempty"`
 	TradeType              string    `json:"trade_type"`
-	LiquidityPoolFeeBP     int32     `json:"liquidity_pool_fee_bp,omitempty"`
+	LiquidityPoolFeeBP     uint32    `json:"liquidity_pool_fee_bp,omitempty"`
 	BaseLiquidityPoolID    string    `json:"base_liquidity_pool_id,omitempty"`
 	BaseOfferID            string    `json:"base_offer_id,omitempty"`
-	BaseAccount            string    `json:"base_account"`
+	BaseAccount            string    `json:"base_account,omitempty"`
 	BaseAmount             string    `json:"base_amount"`
 	BaseAssetType          string    `json:"base_asset_type"`
 	BaseAssetCode          string    `json:"base_asset_code,omitempty"`

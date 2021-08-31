@@ -644,6 +644,14 @@ func (i *Test) SubmitMultiSigOperations(
 	return i.Client().SubmitTransaction(tx)
 }
 
+func (i *Test) MustSubmitMultiSigOperations(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitMultiSigOperations(source, signers, ops...)
+	panicIf(err)
+	return tx
+}
+
 func (i *Test) CreateSignedTransaction(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {

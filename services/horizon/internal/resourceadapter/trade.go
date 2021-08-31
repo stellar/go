@@ -3,6 +3,7 @@ package resourceadapter
 import (
 	"context"
 	"fmt"
+
 	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/amount"
@@ -28,6 +29,11 @@ func PopulateTrade(
 	if row.BaseAccount.Valid {
 		dest.BaseAccount = row.BaseAccount.String
 	}
+	var isLiquidityPoolTrade bool
+	if row.BaseLiquidityPoolID.Valid {
+		dest.BaseLiquidityPoolID = row.BaseLiquidityPoolID.String
+		isLiquidityPoolTrade = true
+	}
 	dest.BaseAssetType = row.BaseAssetType
 	dest.BaseAssetCode = row.BaseAssetCode
 	dest.BaseAssetIssuer = row.BaseAssetIssuer
@@ -39,12 +45,26 @@ func PopulateTrade(
 	if row.CounterAccount.Valid {
 		dest.CounterAccount = row.CounterAccount.String
 	}
+	if row.CounterLiquidityPoolID.Valid {
+		dest.CounterLiquidityPoolID = row.CounterLiquidityPoolID.String
+		isLiquidityPoolTrade = true
+	}
 	dest.CounterAssetType = row.CounterAssetType
 	dest.CounterAssetCode = row.CounterAssetCode
 	dest.CounterAssetIssuer = row.CounterAssetIssuer
 	dest.CounterAmount = amount.String(xdr.Int64(row.CounterAmount))
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.BaseIsSeller = row.BaseIsSeller
+
+	if row.LiquidityPoolFee.Valid {
+		dest.LiquidityPoolFeeBP = uint32(row.LiquidityPoolFee.Int64)
+	}
+
+	if isLiquidityPoolTrade {
+		dest.TradeType = "liquidity_pool"
+	} else {
+		dest.TradeType = "orderbook"
+	}
 
 	if row.HasPrice() {
 		dest.Price = &protocol.Price{
@@ -62,8 +82,18 @@ func populateTradeLinks(
 	opid int64,
 ) {
 	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
-	dest.Links.Base = lb.Link("/accounts", dest.BaseAccount)
-	dest.Links.Counter = lb.Link("/accounts", dest.CounterAccount)
+	switch {
+	case dest.BaseOfferID != "":
+		dest.Links.Base = lb.Link("/accounts", dest.BaseAccount)
+	case dest.BaseLiquidityPoolID != "":
+		dest.Links.Base = lb.Link("/liquidity_pools", dest.BaseLiquidityPoolID)
+	}
+	switch {
+	case dest.CounterOfferID != "":
+		dest.Links.Counter = lb.Link("/accounts", dest.CounterAccount)
+	case dest.CounterLiquidityPoolID != "":
+		dest.Links.Counter = lb.Link("/liquidity_pools", dest.CounterLiquidityPoolID)
+	}
 	dest.Links.Operation = lb.Link(
 		"/operations",
 		fmt.Sprintf("%d", opid),

@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
@@ -525,6 +524,10 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
 		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
+			// TODO - discuss
+			if err == errLiquidtyPoolChangeNotFound {
+				return nil, nil
+			}
 			return nil, err
 		}
 		assetA := lp.Body.ConstantProduct.Params.AssetA
@@ -550,15 +553,16 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{"asset": assetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
 			{"asset": assetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
 		}
-		if err != nil {
-			return nil, err
-		}
-		details["shares_recieved"] = strconv.FormatInt(int64(delta.TotalPoolShares), 10)
+		details["shares_received"] = amount.String(delta.TotalPoolShares)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
 		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
 		if err != nil {
+			// TODO - discuss
+			if err == errLiquidtyPoolChangeNotFound {
+				return nil, nil
+			}
 			return nil, err
 		}
 		assetA := lp.Body.ConstantProduct.Params.AssetA
@@ -567,7 +571,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{"asset": assetA.StringCanonical(), "amount": amount.String(op.MinAmountA)},
 			{"asset": assetB.StringCanonical(), "amount": amount.String(op.MinAmountB)},
 		}
-		details["shares"] = strconv.FormatInt(int64(op.Amount), 10)
+		details["shares"] = amount.String(op.Amount)
 		if err != nil {
 			return nil, err
 		}

@@ -1891,7 +1891,7 @@ func TestLiquidityPoolDepositDetails(t *testing.T) {
 				"amount": "0.0000200",
 			},
 		},
-		"shares_recieved": "10",
+		"shares_received": "0.0000010",
 	}
 
 	details, err := operation.Details()
@@ -2003,7 +2003,7 @@ func TestLiquidityPoolWithdrawDetails(t *testing.T) {
 				"amount": "0.0000010",
 			},
 		},
-		"shares": "10",
+		"shares": "0.0000010",
 	}
 
 	details, err := operation.Details()

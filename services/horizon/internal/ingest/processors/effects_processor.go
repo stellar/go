@@ -449,32 +449,35 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 	return nil
 }
 
-func (e *effectsWrapper) addLedgerEntryLiquidityPoolEffects(change ingest.Change) {
+func (e *effectsWrapper) addLedgerEntryLiquidityPoolEffects(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeLiquidityPool {
-		return
+		return nil
 	}
-	var (
-		effectType history.EffectType
-		poolID     xdr.PoolId
-	)
+	var effectType history.EffectType
 
+	var details map[string]interface{}
 	switch {
 	case change.Pre == nil && change.Post != nil:
 		effectType = history.EffectLiquidityPoolCreated
-		poolID = change.Post.Data.LiquidityPool.LiquidityPoolId
+		details = map[string]interface{}{
+			"liquidity_pool": liquidityPoolDetails(change.Post.Data.LiquidityPool),
+		}
 	case change.Pre != nil && change.Post == nil:
 		effectType = history.EffectLiquidityPoolRemoved
-		poolID = change.Pre.Data.LiquidityPool.LiquidityPoolId
+		poolID := change.Pre.Data.LiquidityPool.LiquidityPoolId
+		details = map[string]interface{}{
+			"liquidity_pool_id": PoolIDToString(poolID),
+		}
 	default:
-		return
+		return nil
 	}
 	e.addMuxed(
 		e.operation.SourceAccount(),
 		effectType,
-		map[string]interface{}{
-			"liquidity_pool_id": PoolIDToString(poolID),
-		},
+		details,
 	)
+
+	return nil
 }
 
 func (e *effectsWrapper) addAccountCreatedEffects() {
@@ -724,10 +727,41 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 
 	// NOTE:  when an account trusts itself, the transaction is successful but
 	// no ledger entries are actually modified.
-	if len(changes) > 0 {
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeTrustline {
+			continue
+		}
+
+		var (
+			effect    history.EffectType
+			trustLine xdr.TrustLineEntry
+		)
+
+		switch {
+		case change.Pre == nil && change.Post != nil:
+			effect = history.EffectTrustlineCreated
+			trustLine = *change.Post.Data.TrustLine
+		case change.Pre != nil && change.Post == nil:
+			effect = history.EffectTrustlineRemoved
+			trustLine = *change.Pre.Data.TrustLine
+		case change.Pre != nil && change.Post != nil:
+			effect = history.EffectTrustlineUpdated
+			trustLine = *change.Post.Data.TrustLine
+		default:
+			panic("Invalid change")
+		}
+
+		// We want to add a single effect for change_trust op. If it's modifying
+		// credit_asset search for credit_asset trustline, otherwise search for
+		// liquidity_pool.
+		if op.Line.Type != trustLine.Asset.Type {
+			continue
+		}
+
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
-		effect := history.EffectType(0)
-		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
+		if trustLine.Asset.Type == xdr.AssetTypeAssetTypePoolShare {
+			// The only change_trust ops that can modify LP are those with
+			// asset=liquidity_pool so *op.Line.LiquidityPool below is available.
 			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool); err != nil {
 				return err
 			}
@@ -735,31 +769,10 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 			addAssetDetails(details, op.Line.ToAsset(), "")
 		}
 
-		for _, change := range changes {
-			if change.Type != xdr.LedgerEntryTypeTrustline {
-				continue
-			}
-
-			switch {
-			case change.Pre == nil && change.Post != nil:
-				effect = history.EffectTrustlineCreated
-			case change.Pre != nil && change.Post == nil:
-				effect = history.EffectTrustlineRemoved
-			case change.Pre != nil && change.Post != nil:
-				effect = history.EffectTrustlineUpdated
-			default:
-				panic("Invalid change")
-			}
-
-			break
-		}
-
-		if effect == history.EffectType(0) {
-			return errors.New("trustline entry not found")
-		}
-
 		e.addMuxed(source, effect, details)
+		break
 	}
+
 	return nil
 }
 
@@ -1232,7 +1245,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	details := map[string]interface{}{
 		"liquidity_pool":   liquidityPoolDetails(lp),
 		"reserves_revoked": reservesRevoked,
-		"shares_revoked":   strconv.FormatInt(int64(-delta.TotalPoolShares), 10),
+		"shares_revoked":   amount.String(-delta.TotalPoolShares),
 	}
 	e.addMuxed(source, history.EffectLiquidityPoolRevoked, details)
 	return nil
@@ -1281,7 +1294,7 @@ func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
 		"fee_bp":           uint32(lp.Body.ConstantProduct.Params.Fee),
 		"type":             "constant_product",
 		"total_trustlines": strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
-		"total_shares":     strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
+		"total_shares":     amount.String(lp.Body.ConstantProduct.TotalPoolShares),
 		"reserves": []map[string]string{
 			{
 				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
@@ -1313,7 +1326,7 @@ func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
 				"amount": amount.String(delta.ReserveB),
 			},
 		},
-		"shares_received": strconv.FormatInt(int64(delta.TotalPoolShares), 10),
+		"shares_received": amount.String(delta.TotalPoolShares),
 	}
 	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolDeposited, details)
 	return nil
@@ -1337,7 +1350,7 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 				"amount": amount.String(-delta.ReserveB),
 			},
 		},
-		"shares_redeemed": strconv.FormatInt(int64(-delta.TotalPoolShares), 10),
+		"shares_redeemed": amount.String(-delta.TotalPoolShares),
 	}
 	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolWithdrew, details)
 	return nil
