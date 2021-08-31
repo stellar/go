@@ -3,10 +3,11 @@ package resourceadapter
 import (
 	"encoding/base64"
 	"encoding/json"
-	"github.com/guregu/null"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/guregu/null"
 
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
@@ -75,7 +76,7 @@ var (
 			AccountID:          accountID.Address(),
 			AssetCode:          "EUR",
 			AssetIssuer:        trustLineIssuer.Address(),
-			AssetType:          1,
+			AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
 			Balance:            20000,
 			Limit:              223456789,
 			Flags:              1,
@@ -85,14 +86,22 @@ var (
 		},
 		{
 			AccountID:          accountID.Address(),
-			AssetCode:          "USD",
+			AssetCode:          "USDDDDDDDDDD",
 			AssetIssuer:        trustLineIssuer.Address(),
-			AssetType:          1,
+			AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum12,
 			Balance:            10000,
 			Limit:              123456789,
 			Flags:              0,
 			SellingLiabilities: 2,
 			BuyingLiabilities:  1,
+			LastModifiedLedger: 900,
+		},
+		{
+			AccountID:          accountID.Address(),
+			AssetType:          xdr.AssetTypeAssetTypePoolShare,
+			Balance:            10000,
+			Limit:              123456789,
+			Flags:              0,
 			LastModifiedLedger: 900,
 		},
 	}
@@ -166,19 +175,35 @@ func TestPopulateAccountEntry(t *testing.T) {
 		tt.Equal(d.Value, history.AccountDataValue(want))
 	}
 
-	tt.Len(hAccount.Balances, 3)
+	tt.Len(hAccount.Balances, 4)
 
 	for i, t := range trustLines {
 		ht := hAccount.Balances[i]
 		tt.Equal(t.AssetIssuer, ht.Issuer)
 		tt.Equal(t.AssetCode, ht.Code)
-		wantType, e := assets.String(t.AssetType)
-		tt.NoError(e)
+		var wantType string
+		if t.AssetType == xdr.AssetTypeAssetTypePoolShare {
+			wantType = "liquidity_pool_shares"
+		} else {
+			wantType, err = assets.String(t.AssetType)
+			tt.NoError(err)
+		}
 		tt.Equal(wantType, ht.Type)
 
 		tt.Equal(amount.StringFromInt64(t.Balance), ht.Balance)
-		tt.Equal(amount.StringFromInt64(t.BuyingLiabilities), ht.BuyingLiabilities)
-		tt.Equal(amount.StringFromInt64(t.SellingLiabilities), ht.SellingLiabilities)
+
+		wantBuy := ""
+		if t.BuyingLiabilities != 0 {
+			wantBuy = amount.StringFromInt64(t.BuyingLiabilities)
+		}
+		tt.Equal(wantBuy, ht.BuyingLiabilities)
+
+		wantSell := ""
+		if t.SellingLiabilities != 0 {
+			wantSell = amount.StringFromInt64(t.SellingLiabilities)
+		}
+		tt.Equal(wantSell, ht.SellingLiabilities)
+
 		tt.Equal(amount.StringFromInt64(t.Limit), ht.Limit)
 		tt.Equal(t.LastModifiedLedger, ht.LastModifiedLedger)
 		tt.Equal(t.IsAuthorized(), *ht.IsAuthorized)

@@ -47,7 +47,15 @@ func PopulateAccountEntry(
 	// populate balances
 	dest.Balances = make([]protocol.Balance, len(trustLines)+1)
 	for i, tl := range trustLines {
-		err := PopulateBalance(&dest.Balances[i], tl)
+		var err error
+
+		switch tl.AssetType {
+		case xdr.AssetTypeAssetTypePoolShare:
+			err = PopulatePoolShareBalance(&dest.Balances[i], tl)
+		default:
+			err = PopulateAssetBalance(&dest.Balances[i], tl)
+		}
+
 		if err != nil {
 			return errors.Wrap(err, "populating balance")
 		}
