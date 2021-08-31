@@ -59,7 +59,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 type TransactionsQuery struct {
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
 	ClaimableBalanceID        string `schema:"claimable_balance_id" valid:"claimableBalanceID,optional"`
-	LiquidityPoolID           string `schema:"liquidity_pool_id" valid:"liquidityPoolID,optional"`
+	LiquidityPoolID           string `schema:"liquidity_pool_id" valid:"sha256,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
 }
@@ -69,6 +69,7 @@ func (qp TransactionsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
 		qp.ClaimableBalanceID,
+		qp.LiquidityPoolID,
 		qp.LedgerID,
 	)
 

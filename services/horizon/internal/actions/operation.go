@@ -31,7 +31,7 @@ type OperationsQuery struct {
 	Joinable                  `valid:"optional"`
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
 	ClaimableBalanceID        string `schema:"claimable_balance_id" valid:"claimableBalanceID,optional"`
-	LiquidityPoolID           string `schema:"liquidity_pool_id" valid:"liquidityPoolID,optional"`
+	LiquidityPoolID           string `schema:"liquidity_pool_id" valid:"sha256,optional"`
 	TransactionHash           string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
@@ -42,6 +42,7 @@ func (qp OperationsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
 		qp.ClaimableBalanceID,
+		qp.LiquidityPoolID,
 		qp.LedgerID,
 		qp.TransactionHash,
 	)
