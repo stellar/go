@@ -278,15 +278,16 @@ type EndSponsoringFutureReserves struct {
 // RevokeSponsorship.
 type RevokeSponsorship struct {
 	Base
-	AccountID          *string `json:"account_id,omitempty"`
-	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
-	DataAccountID      *string `json:"data_account_id,omitempty"`
-	DataName           *string `json:"data_name,omitempty"`
-	OfferID            *int64  `json:"offer_id,omitempty,string"`
-	TrustlineAccountID *string `json:"trustline_account_id,omitempty"`
-	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
-	SignerAccountID    *string `json:"signer_account_id,omitempty"`
-	SignerKey          *string `json:"signer_key,omitempty"`
+	AccountID                *string `json:"account_id,omitempty"`
+	ClaimableBalanceID       *string `json:"claimable_balance_id,omitempty"`
+	DataAccountID            *string `json:"data_account_id,omitempty"`
+	DataName                 *string `json:"data_name,omitempty"`
+	OfferID                  *int64  `json:"offer_id,omitempty,string"`
+	TrustlineAccountID       *string `json:"trustline_account_id,omitempty"`
+	TrustlineLiquidityPoolID *string `json:"trustline_liquidity_pool_id,omitempty"`
+	TrustlineAsset           *string `json:"trustline_asset,omitempty"`
+	SignerAccountID          *string `json:"signer_account_id,omitempty"`
+	SignerKey                *string `json:"signer_key,omitempty"`
 }
 
 // Clawback is the json resource representing a single operation whose type is
