@@ -727,13 +727,10 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 
 	// NOTE:  when an account trusts itself, the transaction is successful but
 	// no ledger entries are actually modified.
-	found := false
-
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeTrustline {
 			continue
 		}
-		found = true
 
 		var (
 			effect    history.EffectType
@@ -761,7 +758,7 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 			continue
 		}
 
-		details := map[string]interface{}{"limit": amount.String(trustLine.Limit)}
+		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		if trustLine.Asset.Type == xdr.AssetTypeAssetTypePoolShare {
 			// The only change_trust ops that can modify LP are those with
 			// asset=liquidity_pool so *op.Line.LiquidityPool below is available.
@@ -776,9 +773,6 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 		break
 	}
 
-	if !found {
-		return errors.New("trustline entry not found")
-	}
 	return nil
 }
 

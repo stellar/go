@@ -399,7 +399,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal(shareKeys.Address(), ef8.Account)
 	tt.Equal("liquidity_pool_shares", ef8.Asset.Type)
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef8.LiquidityPoolID)
-	tt.Equal("922337203685.4775807", ef8.Limit)
+	tt.Equal("0.0000000", ef8.Limit)
 
 	ef9 := (effs.Embedded.Records[8]).(effects.LiquidityPoolRemoved)
 	tt.Equal("liquidity_pool_removed", ef9.Type)
