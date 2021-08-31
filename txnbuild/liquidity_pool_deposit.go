@@ -2,6 +2,8 @@
 package txnbuild
 
 import (
+	"math/big"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -16,6 +18,51 @@ type LiquidityPoolDeposit struct {
 	MaxAmountB      string
 	MinPrice        string
 	MaxPrice        string
+}
+
+// NewLiquidityPoolDeposit creates a new LiquidityPoolDeposit operation,
+// implicitly ordering assets to generate the correct pool id.
+func NewLiquidityPoolDeposit(
+	sourceAccount string,
+	assetA Asset,
+	maxAmountA string,
+	assetB Asset,
+	maxAmountB string,
+	minPrice,
+	maxPrice string,
+) (LiquidityPoolDeposit, error) {
+	if assetB.LessThan(assetA) {
+		assetA, assetB = assetB, assetA
+		maxAmountA, maxAmountB = maxAmountB, maxAmountA
+
+		// Invert the minPrice. amountA/amountB -> amountB/amountA
+		min := &big.Rat{}
+		if _, ok := min.SetString(minPrice); !ok {
+			return LiquidityPoolDeposit{}, errors.Errorf("cannot parse minPrice: %v", minPrice)
+		}
+		minPrice = min.Inv(min).FloatString(7)
+
+		// Invert the maxPrice. amountA/amountB -> amountB/amountA
+		max := &big.Rat{}
+		if _, ok := max.SetString(maxPrice); !ok {
+			return LiquidityPoolDeposit{}, errors.Errorf("cannot parse maxPrice: %v", minPrice)
+		}
+		maxPrice = max.Inv(max).FloatString(7)
+	}
+
+	poolId, err := NewLiquidityPoolId(assetA, assetB)
+	if err != nil {
+		return LiquidityPoolDeposit{}, err
+	}
+
+	return LiquidityPoolDeposit{
+		SourceAccount:   sourceAccount,
+		LiquidityPoolID: poolId,
+		MaxAmountA:      maxAmountA,
+		MaxAmountB:      maxAmountB,
+		MinPrice:        minPrice,
+		MaxPrice:        maxPrice,
+	}, nil
 }
 
 // BuildXDR for LiquidityPoolDeposit returns a fully configured XDR Operation.

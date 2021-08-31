@@ -25,13 +25,16 @@ func TestAssetsSorting(t *testing.T) {
 
 	expected := Assets([]Asset{a, b, c, d, e})
 
-	// Sanity check it doesn't just panic or mess stuff up
-	assets := Assets([]Asset{a, b, c, d, e})
-	sort.Sort(assets)
-	assert.Equal(t, expected, assets)
+	t.Run("basic check it doesn't change stuff", func(t *testing.T) {
+		assets := Assets([]Asset{a, b, c, d, e})
+		sort.Sort(assets)
+		assert.Equal(t, expected, assets)
+	})
 
 	// Reverse it and check it still sorts to the same
-	assets = Assets([]Asset{e, d, c, b, a})
-	sort.Sort(assets)
-	assert.Equal(t, expected, assets)
+	t.Run("reverse it and check it sorts the same", func(t *testing.T) {
+		assets := Assets([]Asset{e, d, c, b, a})
+		sort.Sort(assets)
+		assert.Equal(t, expected, assets)
+	})
 }

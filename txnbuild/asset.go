@@ -40,6 +40,7 @@ type BasicAsset interface {
 // Asset represents a Stellar asset.
 type Asset interface {
 	BasicAsset
+	LessThan(other Asset) bool
 	ToXDR() (xdr.Asset, error)
 }
 
@@ -59,6 +60,9 @@ func (na NativeAsset) GetCode() string { return "" }
 
 // GetIssuer for NativeAsset returns an empty string (XLM doesn't have an issuer).
 func (na NativeAsset) GetIssuer() string { return "" }
+
+// LessThan returns true if this asset sorts before some other asset.
+func (na NativeAsset) LessThan(other Asset) bool { return true }
 
 // ToXDR for NativeAsset produces a corresponding XDR asset.
 func (na NativeAsset) ToXDR() (xdr.Asset, error) {
@@ -126,6 +130,33 @@ func (ca CreditAsset) GetCode() string { return ca.Code }
 
 // GetIssuer for CreditAsset returns the address of the issuing account.
 func (ca CreditAsset) GetIssuer() string { return ca.Issuer }
+
+// LessThan returns true if this asset sorts before some other asset.
+func (ca CreditAsset) LessThan(other Asset) bool {
+	caType, err := ca.GetType()
+	if err != nil {
+		// TODO: Figure out what to do here... :/ for now, just sort these first?
+		return true
+	}
+	otherType, err := other.GetType()
+	if err != nil {
+		// TODO: Figure out what to do here... :/ for now, just sort these first?
+		return false
+	}
+	if caType < otherType {
+		return true
+	} else if otherType < caType {
+		return false
+	}
+
+	if ca.GetCode() < other.GetCode() {
+		return true
+	} else if other.GetCode() < ca.GetCode() {
+		return false
+	}
+
+	return ca.GetIssuer() < other.GetIssuer()
+}
 
 // ToXDR for CreditAsset produces a corresponding XDR asset.
 func (ca CreditAsset) ToXDR() (xdr.Asset, error) {
