@@ -406,10 +406,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal(shareKeys.Address(), ef9.Account)
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef9.LiquidityPoolID)
 
-	trades, err := itest.Client().Trades(horizonclient.TradeRequest{
-		// Uncomment when other PRs merged
-		// ForLiquidityPool: poolIDHexString,
-	})
+	trades, err := itest.Client().Trades(horizonclient.TradeRequest{})
 	tt.NoError(err)
 
 	tt.Len(trades.Embedded.Records, 1)
