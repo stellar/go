@@ -115,8 +115,8 @@ commands:
           name: Download and install golang
           command: |
             sudo rm -rf /usr/local/go
-            wget https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go1.17.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.17.linux-amd64.tar.gz
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
@@ -223,11 +223,11 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_16 performs code checks using Go 1.16.
-  check_code_1_16:
+  # check_code_1_17 performs code checks using Go 1.17.
+  check_code_1_17:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16
+      - image: golang:1.17
     steps:
       - install_go_deps
       - check_go_deps
@@ -236,47 +236,6 @@ jobs:
       - govet
       - staticcheck
       - build_packages
-
-  # test_code_1_15 performs all package tests using Go 1.15.
-  test_code_1_15:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: golang:1.15
-        environment:
-          GO111MODULE: "on"
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          PGDATABASE: circle_test
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-    steps:
-      - install_go_deps
-      - test_packages
-
-  # test_code_1_15 performs all package tests using Go 1.15 and Postgres 10.
-  test_code_1_15_postgres10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: golang:1.15
-        environment:
-          GO111MODULE: "on"
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          PGDATABASE: circle_test
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:10-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-      - image: circleci/redis:5.0-alpine
-    steps:
-      - install_go_deps
-      - test_packages
 
   # test_code_1_16 performs all package tests using Go 1.16.
   test_code_1_16:
@@ -318,6 +277,47 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
+
+  # test_code_1_17 performs all package tests using Go 1.17.
+  test_code_1_17:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: golang:1.17
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          PGDATABASE: circle_test
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+    steps:
+      - install_go_deps
+      - test_packages
+
+  # test_code_1_17 performs all package tests using Go 1.17 and Postgres 10.
+  test_code_1_17_postgres10:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: golang:1.17
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          PGDATABASE: circle_test
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:10-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+      - image: circleci/redis:5.0-alpine
+    steps:
+      - install_go_deps
+      - test_packages
   # publish_artifacts builds and uploads artifacts to any tagged commit.
   #
   # NOTE: this commands relies on an env var called GITHUB_TOKEN which is a
@@ -325,7 +325,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16
+      - image: golang:1.17
     steps:
       - check_deprecations
       - install_go_deps
@@ -468,11 +468,11 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_16
-      - test_code_1_15
-      - test_code_1_15_postgres10
+      - check_code_1_17
       - test_code_1_16
       - test_code_1_16_postgres10
+      - test_code_1_17
+      - test_code_1_17_postgres10
       # run the integration tests ...
       #   ... without captive core
       - test_horizon_integration
