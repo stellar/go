@@ -455,7 +455,7 @@ func (e *effectsWrapper) addLedgerEntryLiquidityPoolEffects(change ingest.Change
 	}
 	var effectType history.EffectType
 
-	details := make(map[string]interface{})
+	var details map[string]interface{}
 	switch {
 	case change.Pre == nil && change.Post != nil:
 		effectType = history.EffectLiquidityPoolCreated
