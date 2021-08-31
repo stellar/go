@@ -129,8 +129,11 @@ func TestNewPoolId(t *testing.T) {
 	})
 }
 
-func TestNewPoolIdWrongOrderFails(t *testing.T) {
-	acc2 := makeAccount(t, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
-	_, err := NewPoolId(MustNewCreditAsset("aBcD", acc2), MustNewNativeAsset(), LiquidityPoolFeeV18)
-	assert.EqualError(t, err, "asset A must be < asset B")
+func TestNewPoolIdOrdersImplicitly(t *testing.T) {
+	acc1 := makeAccount(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ordered, err := NewPoolId(MustNewNativeAsset(), MustNewCreditAsset("AbC", acc1), LiquidityPoolFeeV18)
+	require.NoError(t, err)
+	unordered, err := NewPoolId(MustNewCreditAsset("AbC", acc1), MustNewNativeAsset(), LiquidityPoolFeeV18)
+	require.NoError(t, err)
+	assert.Equal(t, ordered, unordered)
 }

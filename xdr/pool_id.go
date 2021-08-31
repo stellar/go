@@ -9,7 +9,7 @@ import (
 
 func NewPoolId(a, b Asset, fee Int32) (PoolId, error) {
 	if b.LessThan(a) {
-		return PoolId{}, errors.New("asset A must be < asset B")
+		a, b = b, a
 	}
 
 	// Assume the assets are already sorted.
