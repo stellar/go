@@ -166,7 +166,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 		r.Route("/liquidity_pools", func(r chi.Router) {
 			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/", restPageHandler(ledgerState, actions.GetLiquidityPoolsHandler{LedgerState: ledgerState}))
-			r.Route("/{liquidity_pool_id}", func(r chi.Router) {
+			r.Route("/{liquidity_pool_id:\\w+}", func(r chi.Router) {
 				r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetLiquidityPoolByIDHandler{}})
 				r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
 					LedgerState:  ledgerState,
