@@ -52,7 +52,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 
 	keys, accounts := itest.CreateAccounts(2, "1000")
 	shareKeys, shareAccount := keys[0], accounts[0]
-	tradeKeys, tradeAccount := keys[0], accounts[0]
+	tradeKeys, tradeAccount := keys[1], accounts[1]
 
 	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
 		&txnbuild.ChangeTrust{
@@ -172,7 +172,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("credit_alphanum4", usdBalance.Asset.Type)
 	tt.Equal("USD", usdBalance.Asset.Code)
 	tt.Equal(master.Address(), usdBalance.Asset.Issuer)
-	tt.Equal("225.0000000", usdBalance.Balance)
+	tt.Equal("223.0000000", usdBalance.Balance)
 
 	nativeBalance := account.Balances[2]
 	tt.Equal("native", nativeBalance.Asset.Type)
@@ -193,7 +193,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 				Code:   "USD",
 				Issuer: master.Address(),
 			},
-			Amount:      "1000",
+			Amount:      "998",
 			Destination: master.Address(),
 		},
 		// ...and remove it. It should also remove LP.
@@ -358,7 +358,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 
 	ef6 := (effs.Embedded.Records[5]).(effects.LiquidityPoolTrade)
 	tt.Equal("liquidity_pool_trade", ef6.Type)
-	tt.Equal(shareKeys.Address(), ef6.Account)
+	tt.Equal(tradeKeys.Address(), ef6.Account)
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef6.LiquidityPool.ID)
 	tt.Equal("constant_product", ef6.LiquidityPool.Type)
 	tt.Equal(uint32(30), ef6.LiquidityPool.FeeBP)
