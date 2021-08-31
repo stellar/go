@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
@@ -554,7 +553,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{"asset": assetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
 			{"asset": assetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
 		}
-		details["shares_received"] = strconv.FormatInt(int64(delta.TotalPoolShares), 10)
+		details["shares_received"] = amount.String(delta.TotalPoolShares)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
@@ -572,7 +571,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{"asset": assetA.StringCanonical(), "amount": amount.String(op.MinAmountA)},
 			{"asset": assetB.StringCanonical(), "amount": amount.String(op.MinAmountB)},
 		}
-		details["shares"] = strconv.FormatInt(int64(op.Amount), 10)
+		details["shares"] = amount.String(op.Amount)
 		if err != nil {
 			return nil, err
 		}

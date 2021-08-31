@@ -330,7 +330,7 @@ type LiquidityPoolDeposit struct {
 	MaxPrice          string             `json:"max_price"`
 	MaxPriceR         base.Price         `json:"max_price_r"`
 	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
-	SharesReceived    uint64             `json:"shares_received,string"`
+	SharesReceived    string             `json:"shares_received"`
 }
 
 // LiquidityPoolWithdraw is the json resource representing a single operation whose type is
@@ -339,7 +339,7 @@ type LiquidityPoolWithdraw struct {
 	Base
 	LiquidityPoolID  string             `json:"liquidity_pool_id"`
 	ReservesMin      []base.AssetAmount `json:"reserves_min"`
-	Shares           uint64             `json:"shares,string"`
+	Shares           string             `json:"shares"`
 	ReservesReceived []base.AssetAmount `json:"reserves_received"`
 }
 

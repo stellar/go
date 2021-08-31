@@ -23,6 +23,7 @@ func PopulatePoolShareBalance(dest *protocol.Balance, row history.TrustLine) (er
 		}
 	}
 
+	dest.LiquidityPoolId = row.LiquidityPoolID
 	dest.Balance = amount.StringFromInt64(row.Balance)
 	dest.Limit = amount.StringFromInt64(row.Limit)
 	dest.LastModifiedLedger = row.LastModifiedLedger

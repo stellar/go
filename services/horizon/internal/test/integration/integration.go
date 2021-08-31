@@ -108,9 +108,9 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 //
 // WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
-	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
-	}
+	// if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
+	// 	t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
+	// }
 
 	composePath := findDockerComposePath()
 	i := &Test{

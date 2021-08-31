@@ -559,7 +559,7 @@ type LiquidityPool struct {
 	FeeBP           uint32             `json:"fee_bp"`
 	Type            string             `json:"type"`
 	TotalTrustlines uint64             `json:"total_trustlines,string"`
-	TotalShares     uint64             `json:"total_shares,string"`
+	TotalShares     string             `json:"total_shares"`
 	Reserves        []base.AssetAmount `json:"reserves"`
 }
 
@@ -567,14 +567,14 @@ type LiquidityPoolDeposited struct {
 	Base
 	LiquidityPool     LiquidityPool      `json:"liquidity_pool"`
 	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
-	SharesReceived    uint64             `json:"shares_received,string"`
+	SharesReceived    string             `json:"shares_received"`
 }
 
 type LiquidityPoolWithdrew struct {
 	Base
 	LiquidityPool    LiquidityPool      `json:"liquidity_pool"`
 	ReservesReceived []base.AssetAmount `json:"reserves_received"`
-	SharesRedeemed   uint64             `json:"shares_redeemed,string"`
+	SharesRedeemed   string             `json:"shares_redeemed"`
 }
 
 type LiquidityPoolTrade struct {
@@ -604,7 +604,7 @@ type LiquidityPoolRevoked struct {
 	Base
 	LiquidityPool   LiquidityPool                       `json:"liquidity_pool"`
 	ReservesRevoked []LiquidityPoolClaimableAssetAmount `json:"reserves_revoked"`
-	SharesRevoked   uint64                              `json:"shares_revoked,string"`
+	SharesRevoked   string                              `json:"shares_revoked"`
 }
 
 // Effect contains methods that are implemented by all effect types.
@@ -912,6 +912,42 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectClaimableBalanceClawedBack]:
 		var effect ClaimableBalanceClawedBack
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectLiquidityPoolDeposited]:
+		var effect LiquidityPoolDeposited
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectLiquidityPoolWithdrew]:
+		var effect LiquidityPoolWithdrew
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectLiquidityPoolTrade]:
+		var effect LiquidityPoolTrade
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectLiquidityPoolCreated]:
+		var effect LiquidityPoolCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectLiquidityPoolRemoved]:
+		var effect LiquidityPoolRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectLiquidityPoolRevoked]:
+		var effect LiquidityPoolRevoked
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

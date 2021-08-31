@@ -57,7 +57,7 @@ func PopulateTrade(
 	dest.BaseIsSeller = row.BaseIsSeller
 
 	if row.LiquidityPoolFee.Valid {
-		dest.LiquidityPoolFeeBP = int32(row.LiquidityPoolFee.Int64)
+		dest.LiquidityPoolFeeBP = uint32(row.LiquidityPoolFee.Int64)
 	}
 
 	if isLiquidityPoolTrade {
