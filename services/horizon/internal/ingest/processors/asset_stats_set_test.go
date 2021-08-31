@@ -148,7 +148,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset(eur, trustLineIssuer.Address()).ToTrustLineAsset(),
 			Balance:   24,
-			Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+			Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsTrustlineClawbackEnabledFlag),
 		})),
 	)
 

@@ -8,8 +8,30 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking
 * The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
 
-### Add
-* Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance ([3750](https://github.com/stellar/go/pull/3750)).
+## v2.8.1
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* Fix bug in asset balance classification where clawback is enabled. ([3847](https://github.com/stellar/go/pull/3847))
+
+## v2.8.0
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* Limit reap to 100k ledgers/second, to prevent excess CPU usage ([3823](https://github.com/stellar/go/pull/3823)).
+* Improve performance of path finding endpoints ([3818](https://github.com/stellar/go/pull/3818)).
+
+## v2.7.0
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* If `--captive-core-config-path` is not set, the config file is generated based on network passhprase. ([3783](https://github.com/stellar/go/pull/3783))
+* Fix bug in horizon reap system (used by `horizon db reap` command and when horizon is configured with `--history-retention-count`) which could lead to partial deletions. ([3754](https://github.com/stellar/go/pull/3754))
+* Log debug messages from captive core at the appropriate log level. ([3746](https://github.com/stellar/go/pull/3746))
+* Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance. ([3750](https://github.com/stellar/go/pull/3750))
 
 * Add the ability to filter accounts by their participation in a particular liquidity pool ([3873](https://github.com/stellar/go/pull/3873)).
 

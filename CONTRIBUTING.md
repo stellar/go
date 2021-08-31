@@ -2,7 +2,7 @@
 
 👍🎉 First off, thanks for taking the time to contribute! 🎉👍
 
-Check out the [Stellar Contribution Guide](https://github.com/stellar/docs/blob/master/CONTRIBUTING.md) for details.
+Check out the [Stellar Contribution Guide](https://github.com/stellar/.github/blob/master/CONTRIBUTING.md) that apply to all Stellar projects.
 
 ## Style guides
 
