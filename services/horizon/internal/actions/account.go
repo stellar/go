@@ -69,9 +69,10 @@ func AccountInfo(ctx context.Context, hq *history.Q, addr string) (*protocol.Acc
 
 // AccountsQuery query struct for accounts end-point
 type AccountsQuery struct {
-	Signer      string `schema:"signer" valid:"accountID,optional"`
-	Sponsor     string `schema:"sponsor" valid:"accountID,optional"`
-	AssetFilter string `schema:"asset" valid:"asset,optional"`
+	Signer        string `schema:"signer" valid:"accountID,optional"`
+	Sponsor       string `schema:"sponsor" valid:"accountID,optional"`
+	AssetFilter   string `schema:"asset" valid:"asset,optional"`
+	LiquidityPool string `schema:"liquidity_pool" valid:"sha256,optional"`
 }
 
 // URITemplate returns a rfc6570 URI template the query struct
@@ -83,7 +84,7 @@ var invalidAccountsParams = problem.P{
 	Type:   "invalid_accounts_params",
 	Title:  "Invalid Accounts Parameters",
 	Status: http.StatusBadRequest,
-	Detail: "Exactly one filter is required. Please ensure that you are including a signer, an asset, or a sponsor filter.",
+	Detail: "Exactly one filter is required. Please ensure that you are including a signer, sponsor, asset, or liquidity pool filter.",
 }
 
 // Validate runs custom validations.
@@ -124,7 +125,8 @@ type GetAccountsHandler struct {
 }
 
 // GetResourcePage returns a page containing the account records that have
-// `signer` as a signer or have a trustline to the given asset.
+// `signer` as a signer, `sponsor` as a sponsor, a trustline to the given
+// `asset`, or participate in a particular `liquidity_pool`.
 func (handler GetAccountsHandler) GetResourcePage(
 	w HeaderWriter,
 	r *http.Request,
@@ -155,6 +157,11 @@ func (handler GetAccountsHandler) GetResourcePage(
 		}
 	} else if len(qp.Signer) > 0 {
 		records, err = historyQ.AccountEntriesForSigner(ctx, qp.Signer, pq)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading account records")
+		}
+	} else if len(qp.LiquidityPool) > 0 {
+		records, err = historyQ.AccountsForLiquidityPool(ctx, qp.LiquidityPool, pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")
 		}

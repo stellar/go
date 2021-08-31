@@ -1,10 +1,11 @@
 package actions
 
 import (
-	"github.com/guregu/null"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/guregu/null"
 
 	"github.com/stretchr/testify/assert"
 
@@ -622,7 +623,7 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 
 func TestAccountQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/accounts{?signer,sponsor,asset,cursor,limit,order}"
+	expected := "/accounts{?signer,sponsor,asset,liquidity_pool,cursor,limit,order}"
 	accountsQuery := AccountsQuery{}
 	tt.Equal(expected, accountsQuery.URITemplate())
 }
