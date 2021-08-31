@@ -197,9 +197,11 @@ type AssetStatAccounts struct {
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
-// Balance represents an account's holdings for a single currency type
+// Balance represents an account's holdings for either a single currency type or
+// shares in a liquidity pool.
 type Balance struct {
 	Balance                           string `json:"balance"`
+	LiquidityPoolId                   string `json:"liquidity_pool_id,omitempty"`
 	Limit                             string `json:"limit,omitempty"`
 	BuyingLiabilities                 string `json:"buying_liabilities,omitempty"`
 	SellingLiabilities                string `json:"selling_liabilities,omitempty"`
