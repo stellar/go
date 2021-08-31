@@ -22,6 +22,7 @@ type LiquidityPoolDeposit struct {
 
 // NewLiquidityPoolDeposit creates a new LiquidityPoolDeposit operation,
 // implicitly ordering assets to generate the correct pool id.
+// minPrice, and maxPrice are in terms of a/b.
 func NewLiquidityPoolDeposit(
 	sourceAccount string,
 	assetA Asset,
