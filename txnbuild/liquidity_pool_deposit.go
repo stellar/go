@@ -2,8 +2,6 @@
 package txnbuild
 
 import (
-	"math/big"
-
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -21,9 +19,9 @@ type LiquidityPoolDeposit struct {
 }
 
 // NewLiquidityPoolDeposit creates a new LiquidityPoolDeposit operation,
-// implicitly ordering assets to generate the correct pool id. minPrice, and
-// maxPrice are in terms of a/b. Each AssetAmount is a pair of the asset with
-// the maximum amount of that asset to deposit.
+// checking the ordering assets so we generate the correct pool id. minPrice,
+// and maxPrice are in terms of a/b. Each AssetAmount is a pair of the asset
+// with the maximum amount of that asset to deposit.
 func NewLiquidityPoolDeposit(
 	sourceAccount string,
 	a, b AssetAmount,
@@ -31,21 +29,7 @@ func NewLiquidityPoolDeposit(
 	maxPrice string,
 ) (LiquidityPoolDeposit, error) {
 	if b.Asset.LessThan(a.Asset) {
-		a, b = b, a
-
-		// Invert the minPrice. amountA/amountB -> amountB/amountA
-		min := &big.Rat{}
-		if _, ok := min.SetString(minPrice); !ok {
-			return LiquidityPoolDeposit{}, errors.Errorf("cannot parse minPrice: %v", minPrice)
-		}
-		minPrice = min.Inv(min).FloatString(7)
-
-		// Invert the maxPrice. amountA/amountB -> amountB/amountA
-		max := &big.Rat{}
-		if _, ok := max.SetString(maxPrice); !ok {
-			return LiquidityPoolDeposit{}, errors.Errorf("cannot parse maxPrice: %v", minPrice)
-		}
-		maxPrice = max.Inv(max).FloatString(7)
+		return LiquidityPoolDeposit{}, errors.New("AssetA must be <= AssetB")
 	}
 
 	poolId, err := NewLiquidityPoolId(a.Asset, b.Asset)

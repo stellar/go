@@ -37,22 +37,14 @@ func TestNewLiquidityPoolDeposit(t *testing.T) {
 	})
 
 	t.Run("reversed assets", func(t *testing.T) {
-		lpd, err := NewLiquidityPoolDeposit(
+		_, err := NewLiquidityPoolDeposit(
 			"GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 			AssetAmount{assetB, "0.1000000"},
 			AssetAmount{assetA, "0.2000000"},
 			"0.3",
 			"0.4",
 		)
-		require.NoError(t, err)
-		assert.Equal(t, LiquidityPoolDeposit{
-			SourceAccount:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-			LiquidityPoolID: poolId,
-			MaxAmountA:      "0.2000000",
-			MaxAmountB:      "0.1000000",
-			MinPrice:        "3.3333333", // 1/0.3
-			MaxPrice:        "2.5000000", // 1/0.4
-		}, lpd)
+		require.EqualError(t, err, "AssetA must be <= AssetB")
 	})
 }
 
