@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -2937,14 +2938,14 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						"liquidity_pool": map[string]interface{}{
 							"fee_bp": uint32(20),
 							"id":     poolIDStr,
-							"reserves": []map[string]string{
+							"reserves": []base.AssetAmount{
 								{
-									"amount": "0.0000100",
-									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000100",
 								},
 								{
-									"amount": "0.0000200",
-									"asset":  "native",
+									"native",
+									"0.0000200",
 								},
 							},
 							"total_shares":     "0.0001000",
@@ -2994,28 +2995,28 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						"liquidity_pool": map[string]interface{}{
 							"fee_bp": uint32(20),
 							"id":     poolIDStr,
-							"reserves": []map[string]string{
+							"reserves": []base.AssetAmount{
 								{
-									"amount": "0.0000160",
-									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000160",
 								},
 								{
-									"amount": "0.0000250",
-									"asset":  "native",
+									"native",
+									"0.0000250",
 								},
 							},
 							"total_shares":     "0.0001010",
 							"total_trustlines": "10",
 							"type":             "constant_product",
 						},
-						"reserves_deposited": []map[string]string{
+						"reserves_deposited": []base.AssetAmount{
 							{
-								"amount": "0.0000060",
-								"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"0.0000060",
 							},
 							{
-								"amount": "0.0000050",
-								"asset":  "native",
+								"native",
+								"0.0000050",
 							},
 						},
 						"shares_received": "0.0000010",
@@ -3055,28 +3056,28 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						"liquidity_pool": map[string]interface{}{
 							"fee_bp": uint32(20),
 							"id":     poolIDStr,
-							"reserves": []map[string]string{
+							"reserves": []base.AssetAmount{
 								{
-									"amount": "0.0000094",
-									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000094",
 								},
 								{
-									"amount": "0.0000189",
-									"asset":  "native",
+									"native",
+									"0.0000189",
 								},
 							},
 							"total_shares":     "0.0000990",
 							"total_trustlines": "10",
 							"type":             "constant_product",
 						},
-						"reserves_received": []map[string]string{
+						"reserves_received": []base.AssetAmount{
 							{
-								"amount": "0.0000006",
-								"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"0.0000006",
 							},
 							{
-								"amount": "0.0000011",
-								"asset":  "native",
+								"native",
+								"0.0000011",
 							},
 						},
 						"shares_redeemed": "0.0000010",
@@ -3172,14 +3173,14 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						"liquidity_pool": map[string]interface{}{
 							"fee_bp": uint32(20),
 							"id":     poolIDStr,
-							"reserves": []map[string]string{
+							"reserves": []base.AssetAmount{
 								{
-									"amount": "0.0000094",
-									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000094",
 								},
 								{
-									"amount": "0.0000189",
-									"asset":  "native",
+									"native",
+									"0.0000189",
 								},
 							},
 							"total_shares":     "0.0000990",
@@ -3365,14 +3366,14 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						"liquidity_pool": map[string]interface{}{
 							"fee_bp": uint32(20),
 							"id":     poolIDStr,
-							"reserves": []map[string]string{
+							"reserves": []base.AssetAmount{
 								{
-									"amount": "0.0000100",
-									"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000100",
 								},
 								{
-									"amount": "0.0000200",
-									"asset":  "native",
+									"native",
+									"0.0000200",
 								},
 							},
 							"total_shares":     "0.0001000",

@@ -5,6 +5,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
@@ -1871,27 +1872,110 @@ func TestLiquidityPoolDepositDetails(t *testing.T) {
 			"d": xdr.Int32(2),
 			"n": xdr.Int32(100),
 		},
-		"reserves_deposited": []map[string]string{
+		"reserves_deposited": []base.AssetAmount{
 			{
-				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"amount": "0.0000060",
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000060",
 			},
 			{
-				"asset":  "native",
-				"amount": "0.0000050",
+				"native",
+				"0.0000050",
 			},
 		},
-		"reserves_max": []map[string]string{
+		"reserves_max": []base.AssetAmount{
 			{
-				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"amount": "0.0000100",
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000100",
 			},
 			{
-				"asset":  "native",
-				"amount": "0.0000200",
+				"native",
+				"0.0000200",
 			},
 		},
 		"shares_received": "0.0000010",
+	}
+
+	details, err := operation.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, details)
+}
+
+func TestFailedLiquidityPoolDepositDetails(t *testing.T) {
+	poolID := xdr.PoolId{0xca, 0xfe, 0xba, 0xbe}
+	opBody := xdr.OperationBody{
+		Type: xdr.OperationTypeLiquidityPoolDeposit,
+		LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
+			LiquidityPoolId: poolID,
+			MaxAmountA:      100,
+			MaxAmountB:      200,
+			MinPrice: xdr.Price{
+				N: 50,
+				D: 3,
+			},
+			MaxPrice: xdr.Price{
+				N: 100,
+				D: 2,
+			},
+		},
+	}
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{}},
+				},
+			},
+			Result: xdr.TransactionResultPair{
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code: xdr.TransactionResultCodeTxFailed,
+					},
+				},
+			},
+		},
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body:          opBody,
+		},
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
+		"min_price":         "16.6666667",
+		"min_price_r": map[string]interface{}{
+			"d": xdr.Int32(3),
+			"n": xdr.Int32(50),
+		},
+		"max_price": "50.0000000",
+		"max_price_r": map[string]interface{}{
+			"d": xdr.Int32(2),
+			"n": xdr.Int32(100),
+		},
+		"reserves_deposited": []base.AssetAmount{
+			{
+				"",
+				"0.0000000",
+			},
+			{
+				"",
+				"0.0000000",
+			},
+		},
+		"reserves_max": []base.AssetAmount{
+			{
+				"",
+				"0.0000100",
+			},
+			{
+				"",
+				"0.0000200",
+			},
+		},
+		"shares_received": "0.0000000",
 	}
 
 	details, err := operation.Details()
@@ -1983,24 +2067,90 @@ func TestLiquidityPoolWithdrawDetails(t *testing.T) {
 
 	expected := map[string]interface{}{
 		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
-		"reserves_received": []map[string]string{
+		"reserves_received": []base.AssetAmount{
 			{
-				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"amount": "0.0000060",
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000060",
 			},
 			{
-				"asset":  "native",
-				"amount": "0.0000050",
+				"native",
+				"0.0000050",
 			},
 		},
-		"reserves_min": []map[string]string{
+		"reserves_min": []base.AssetAmount{
 			{
-				"asset":  "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"amount": "0.0000005",
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000005",
 			},
 			{
-				"asset":  "native",
-				"amount": "0.0000010",
+				"native",
+				"0.0000010",
+			},
+		},
+		"shares": "0.0000010",
+	}
+
+	details, err := operation.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, details)
+}
+
+func TestFailedLiquidityPoolWithdrawDetails(t *testing.T) {
+	poolID := xdr.PoolId{0xca, 0xfe, 0xba, 0xbe}
+	opBody := xdr.OperationBody{
+		Type: xdr.OperationTypeLiquidityPoolWithdraw,
+		LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
+			LiquidityPoolId: poolID,
+			Amount:          10,
+			MinAmountA:      5,
+			MinAmountB:      10,
+		},
+	}
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{}},
+				},
+			},
+			Result: xdr.TransactionResultPair{
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code: xdr.TransactionResultCodeTxFailed,
+					},
+				},
+			},
+		},
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body:          opBody,
+		},
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
+		"reserves_received": []base.AssetAmount{
+			{
+				"",
+				"0.0000000",
+			},
+			{
+				"",
+				"0.0000000",
+			},
+		},
+		"reserves_min": []base.AssetAmount{
+			{
+				"",
+				"0.0000005",
+			},
+			{
+				"",
+				"0.0000010",
 			},
 		},
 		"shares": "0.0000010",
