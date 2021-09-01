@@ -461,16 +461,12 @@ func (a *Asset) GetIssuer() string {
 }
 
 func (a *Asset) LessThan(b Asset) bool {
-	if int32(a.Type) < int32(b.Type) {
-		return true
-	} else if int32(b.Type) < int32(a.Type) {
-		return false
+	if a.Type != b.Type {
+		return int32(a.Type) < int32(b.Type)
 	}
 
-	if a.GetCode() < b.GetCode() {
-		return true
-	} else if b.GetCode() < a.GetCode() {
-		return false
+	if a.GetCode() != b.GetCode() {
+		return a.GetCode() < b.GetCode()
 	}
 
 	return a.GetIssuer() < b.GetIssuer()

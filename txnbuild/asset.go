@@ -133,29 +133,15 @@ func (ca CreditAsset) GetIssuer() string { return ca.Issuer }
 
 // LessThan returns true if this asset sorts before some other asset.
 func (ca CreditAsset) LessThan(other Asset) bool {
-	caType, err := ca.GetType()
+	caXDR, err := ca.ToXDR()
 	if err != nil {
-		// TODO: Figure out what to do here... :/ for now, just sort these first?
-		return true
+		return false
 	}
-	otherType, err := other.GetType()
+	otherXDR, err := other.ToXDR()
 	if err != nil {
-		// TODO: Figure out what to do here... :/ for now, just sort these first?
 		return false
 	}
-	if caType < otherType {
-		return true
-	} else if otherType < caType {
-		return false
-	}
-
-	if ca.GetCode() < other.GetCode() {
-		return true
-	} else if other.GetCode() < ca.GetCode() {
-		return false
-	}
-
-	return ca.GetIssuer() < other.GetIssuer()
+	return caXDR.LessThan(otherXDR)
 }
 
 // ToXDR for CreditAsset produces a corresponding XDR asset.
