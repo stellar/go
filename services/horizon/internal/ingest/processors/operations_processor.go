@@ -9,6 +9,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -189,7 +190,7 @@ type liquidityPoolDelta struct {
 	TotalPoolShares xdr.Int64
 }
 
-var errLiquidtyPoolChangeNotFound = errors.New("liquidity pool change not found")
+var errLiquidityPoolChangeNotFound = errors.New("liquidity pool change not found")
 
 func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lpID *xdr.PoolId) (*xdr.LiquidityPoolEntry, *liquidityPoolDelta, error) {
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
@@ -237,7 +238,7 @@ func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lp
 		return lp, delta, nil
 	}
 
-	return nil, nil, errLiquidtyPoolChangeNotFound
+	return nil, nil, errLiquidityPoolChangeNotFound
 }
 
 // OperationResult returns the operation's result record
@@ -522,19 +523,25 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		op := operation.operation.Body.MustLiquidityPoolDepositOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
-		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
-		if err != nil {
-			// TODO - discuss
-			if err == errLiquidtyPoolChangeNotFound {
-				return nil, nil
+		var (
+			assetA, assetB         string
+			depositedA, depositedB xdr.Int64
+			sharesReceived         xdr.Int64
+		)
+		if operation.transaction.Result.Successful() {
+			// we will use the defaults (omitted asset and 0 amounts) if the transaction failed
+			lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+			if err != nil {
+				return nil, err
 			}
-			return nil, err
+			params := lp.Body.ConstantProduct.Params
+			assetA, assetB = params.AssetA.StringCanonical(), params.AssetB.StringCanonical()
+			depositedA, depositedB = delta.ReserveA, delta.ReserveB
+			sharesReceived = delta.TotalPoolShares
 		}
-		assetA := lp.Body.ConstantProduct.Params.AssetA
-		assetB := lp.Body.ConstantProduct.Params.AssetB
-		details["reserves_max"] = []map[string]string{
-			{"asset": assetA.StringCanonical(), "amount": amount.String(op.MaxAmountA)},
-			{"asset": assetB.StringCanonical(), "amount": amount.String(op.MaxAmountB)},
+		details["reserves_max"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(op.MaxAmountA)},
+			{Asset: assetB, Amount: amount.String(op.MaxAmountB)},
 		}
 		details["min_price"] = op.MinPrice.String()
 		details["min_price_r"] = map[string]interface{}{
@@ -546,38 +553,36 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.MaxPrice.N,
 			"d": op.MaxPrice.D,
 		}
-		if err != nil {
-			return nil, err
+		details["reserves_deposited"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(depositedA)},
+			{Asset: assetB, Amount: amount.String(depositedB)},
 		}
-		details["reserves_deposited"] = []map[string]string{
-			{"asset": assetA.StringCanonical(), "amount": amount.String(delta.ReserveA)},
-			{"asset": assetB.StringCanonical(), "amount": amount.String(delta.ReserveB)},
-		}
-		details["shares_received"] = amount.String(delta.TotalPoolShares)
+		details["shares_received"] = amount.String(sharesReceived)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
 		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
-		lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
-		if err != nil {
-			// TODO - discuss
-			if err == errLiquidtyPoolChangeNotFound {
-				return nil, nil
+		var (
+			assetA, assetB       string
+			receivedA, receivedB xdr.Int64
+		)
+		if operation.transaction.Result.Successful() {
+			// we will use the defaults (omitted asset and 0 amounts) if the transaction failed
+			lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+			if err != nil {
+				return nil, err
 			}
-			return nil, err
+			params := lp.Body.ConstantProduct.Params
+			assetA, assetB = params.AssetA.StringCanonical(), params.AssetB.StringCanonical()
+			receivedA, receivedB = -delta.ReserveA, -delta.ReserveB
 		}
-		assetA := lp.Body.ConstantProduct.Params.AssetA
-		assetB := lp.Body.ConstantProduct.Params.AssetB
-		details["reserves_min"] = []map[string]string{
-			{"asset": assetA.StringCanonical(), "amount": amount.String(op.MinAmountA)},
-			{"asset": assetB.StringCanonical(), "amount": amount.String(op.MinAmountB)},
+		details["reserves_min"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(op.MinAmountA)},
+			{Asset: assetB, Amount: amount.String(op.MinAmountB)},
 		}
 		details["shares"] = amount.String(op.Amount)
-		if err != nil {
-			return nil, err
-		}
-		details["reserves_received"] = []map[string]string{
-			{"asset": assetA.StringCanonical(), "amount": amount.String(-delta.ReserveA)},
-			{"asset": assetB.StringCanonical(), "amount": amount.String(-delta.ReserveB)},
+		details["reserves_received"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(receivedA)},
+			{Asset: assetB, Amount: amount.String(receivedB)},
 		}
 
 	default:

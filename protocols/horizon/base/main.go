@@ -12,7 +12,8 @@ type Asset struct {
 }
 
 type AssetAmount struct {
-	Asset  string `json:"asset"`
+	// Asset may be empty when unknown (e.g. when used in the representation of operations whose transaction failed)
+	Asset  string `json:"asset,omitempty"`
 	Amount string `json:"amount"`
 }
 

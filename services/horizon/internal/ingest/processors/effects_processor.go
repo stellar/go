@@ -1192,7 +1192,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	source := e.operation.SourceAccount()
 	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(nil)
 	if err != nil {
-		if err == errLiquidtyPoolChangeNotFound {
+		if err == errLiquidityPoolChangeNotFound {
 			// no revocation happened
 			return nil
 		}
@@ -1295,14 +1295,14 @@ func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
 		"type":             "constant_product",
 		"total_trustlines": strconv.FormatInt(int64(lp.Body.ConstantProduct.PoolSharesTrustLineCount), 10),
 		"total_shares":     amount.String(lp.Body.ConstantProduct.TotalPoolShares),
-		"reserves": []map[string]string{
+		"reserves": []base.AssetAmount{
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
-				"amount": amount.String(lp.Body.ConstantProduct.ReserveA),
+				Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				Amount: amount.String(lp.Body.ConstantProduct.ReserveA),
 			},
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
-				"amount": amount.String(lp.Body.ConstantProduct.ReserveB),
+				Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				Amount: amount.String(lp.Body.ConstantProduct.ReserveB),
 			},
 		},
 	}
@@ -1316,14 +1316,14 @@ func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
 	}
 	details := map[string]interface{}{
 		"liquidity_pool": liquidityPoolDetails(lp),
-		"reserves_deposited": []map[string]string{
+		"reserves_deposited": []base.AssetAmount{
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
-				"amount": amount.String(delta.ReserveA),
+				Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				Amount: amount.String(delta.ReserveA),
 			},
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
-				"amount": amount.String(delta.ReserveB),
+				Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				Amount: amount.String(delta.ReserveB),
 			},
 		},
 		"shares_received": amount.String(delta.TotalPoolShares),
@@ -1340,14 +1340,14 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 	}
 	details := map[string]interface{}{
 		"liquidity_pool": liquidityPoolDetails(lp),
-		"reserves_received": []map[string]string{
+		"reserves_received": []base.AssetAmount{
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
-				"amount": amount.String(-delta.ReserveA),
+				Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				Amount: amount.String(-delta.ReserveA),
 			},
 			{
-				"asset":  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
-				"amount": amount.String(-delta.ReserveB),
+				Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				Amount: amount.String(-delta.ReserveB),
 			},
 		},
 		"shares_redeemed": amount.String(-delta.TotalPoolShares),
