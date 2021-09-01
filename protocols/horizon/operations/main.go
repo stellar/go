@@ -331,7 +331,7 @@ type LiquidityPoolDeposit struct {
 	MaxPrice          string             `json:"max_price"`
 	MaxPriceR         base.Price         `json:"max_price_r"`
 	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
-	SharesReceived    string             `json:"shares_received,omitempty"`
+	SharesReceived    string             `json:"shares_received"`
 }
 
 // LiquidityPoolWithdraw is the json resource representing a single operation whose type is
