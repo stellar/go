@@ -18,21 +18,18 @@ type LiquidityPoolWithdraw struct {
 }
 
 // NewLiquidityPoolWithdraw creates a new LiquidityPoolWithdraw operation,
-// implicitly ordering assets to generate the correct pool id.
+// implicitly ordering assets to generate the correct pool id. Each AssetAmount
+// is a pair of the asset with the minimum amount of that asset to withdraw.
 func NewLiquidityPoolWithdraw(
 	sourceAccount string,
-	assetA Asset,
-	minAmountA string,
-	assetB Asset,
-	minAmountB string,
+	a, b AssetAmount,
 	amount string,
 ) (LiquidityPoolWithdraw, error) {
-	if assetB.LessThan(assetA) {
-		assetA, assetB = assetB, assetA
-		minAmountA, minAmountB = minAmountB, minAmountA
+	if b.Asset.LessThan(a.Asset) {
+		a, b = b, a
 	}
 
-	poolId, err := NewLiquidityPoolId(assetA, assetB)
+	poolId, err := NewLiquidityPoolId(a.Asset, b.Asset)
 	if err != nil {
 		return LiquidityPoolWithdraw{}, err
 	}
@@ -41,8 +38,8 @@ func NewLiquidityPoolWithdraw(
 		SourceAccount:   sourceAccount,
 		LiquidityPoolID: poolId,
 		Amount:          amount,
-		MinAmountA:      minAmountA,
-		MinAmountB:      minAmountB,
+		MinAmountA:      a.Amount,
+		MinAmountB:      b.Amount,
 	}, nil
 }
 

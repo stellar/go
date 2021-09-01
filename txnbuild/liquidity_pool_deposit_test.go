@@ -20,10 +20,8 @@ func TestNewLiquidityPoolDeposit(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		lpd, err := NewLiquidityPoolDeposit(
 			"GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-			assetA,
-			"0.1000000",
-			assetB,
-			"0.2000000",
+			AssetAmount{assetA, "0.1000000"},
+			AssetAmount{assetB, "0.2000000"},
 			"0.3",
 			"0.4",
 		)
@@ -41,10 +39,8 @@ func TestNewLiquidityPoolDeposit(t *testing.T) {
 	t.Run("reversed assets", func(t *testing.T) {
 		lpd, err := NewLiquidityPoolDeposit(
 			"GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-			assetB,
-			"0.1000000",
-			assetA,
-			"0.2000000",
+			AssetAmount{assetB, "0.1000000"},
+			AssetAmount{assetA, "0.2000000"},
 			"0.3",
 			"0.4",
 		)

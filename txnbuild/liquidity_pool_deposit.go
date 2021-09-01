@@ -21,20 +21,17 @@ type LiquidityPoolDeposit struct {
 }
 
 // NewLiquidityPoolDeposit creates a new LiquidityPoolDeposit operation,
-// implicitly ordering assets to generate the correct pool id.
-// minPrice, and maxPrice are in terms of a/b.
+// implicitly ordering assets to generate the correct pool id. minPrice, and
+// maxPrice are in terms of a/b. Each AssetAmount is a pair of the asset with
+// the maximum amount of that asset to deposit.
 func NewLiquidityPoolDeposit(
 	sourceAccount string,
-	assetA Asset,
-	maxAmountA string,
-	assetB Asset,
-	maxAmountB string,
+	a, b AssetAmount,
 	minPrice,
 	maxPrice string,
 ) (LiquidityPoolDeposit, error) {
-	if assetB.LessThan(assetA) {
-		assetA, assetB = assetB, assetA
-		maxAmountA, maxAmountB = maxAmountB, maxAmountA
+	if b.Asset.LessThan(a.Asset) {
+		a, b = b, a
 
 		// Invert the minPrice. amountA/amountB -> amountB/amountA
 		min := &big.Rat{}
@@ -51,7 +48,7 @@ func NewLiquidityPoolDeposit(
 		maxPrice = max.Inv(max).FloatString(7)
 	}
 
-	poolId, err := NewLiquidityPoolId(assetA, assetB)
+	poolId, err := NewLiquidityPoolId(a.Asset, b.Asset)
 	if err != nil {
 		return LiquidityPoolDeposit{}, err
 	}
@@ -59,8 +56,8 @@ func NewLiquidityPoolDeposit(
 	return LiquidityPoolDeposit{
 		SourceAccount:   sourceAccount,
 		LiquidityPoolID: poolId,
-		MaxAmountA:      maxAmountA,
-		MaxAmountB:      maxAmountB,
+		MaxAmountA:      a.Amount,
+		MaxAmountB:      b.Amount,
 		MinPrice:        minPrice,
 		MaxPrice:        maxPrice,
 	}, nil
