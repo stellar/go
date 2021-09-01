@@ -540,8 +540,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			sharesReceived = delta.TotalPoolShares
 		}
 		details["reserves_max"] = []base.AssetAmount{
-			{assetA, amount.String(op.MaxAmountA)},
-			{assetB, amount.String(op.MaxAmountB)},
+			{Asset: assetA, Amount: amount.String(op.MaxAmountA)},
+			{Asset: assetB, Amount: amount.String(op.MaxAmountB)},
 		}
 		details["min_price"] = op.MinPrice.String()
 		details["min_price_r"] = map[string]interface{}{
@@ -554,8 +554,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"d": op.MaxPrice.D,
 		}
 		details["reserves_deposited"] = []base.AssetAmount{
-			{assetA, amount.String(depositedA)},
-			{assetB, amount.String(depositedB)},
+			{Asset: assetA, Amount: amount.String(depositedA)},
+			{Asset: assetB, Amount: amount.String(depositedB)},
 		}
 		details["shares_received"] = amount.String(sharesReceived)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
@@ -576,13 +576,13 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			receivedA, receivedB = -delta.ReserveA, -delta.ReserveB
 		}
 		details["reserves_min"] = []base.AssetAmount{
-			{assetA, amount.String(op.MinAmountA)},
-			{assetB, amount.String(op.MinAmountB)},
+			{Asset: assetA, Amount: amount.String(op.MinAmountA)},
+			{Asset: assetB, Amount: amount.String(op.MinAmountB)},
 		}
 		details["shares"] = amount.String(op.Amount)
 		details["reserves_received"] = []base.AssetAmount{
-			{assetA, amount.String(receivedA)},
-			{assetB, amount.String(receivedB)},
+			{Asset: assetA, Amount: amount.String(receivedA)},
+			{Asset: assetB, Amount: amount.String(receivedB)},
 		}
 
 	default:

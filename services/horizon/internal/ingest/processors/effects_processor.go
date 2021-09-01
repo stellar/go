@@ -1297,12 +1297,12 @@ func liquidityPoolDetails(lp *xdr.LiquidityPoolEntry) map[string]interface{} {
 		"total_shares":     amount.String(lp.Body.ConstantProduct.TotalPoolShares),
 		"reserves": []base.AssetAmount{
 			{
-				lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
-				amount.String(lp.Body.ConstantProduct.ReserveA),
+				Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				Amount: amount.String(lp.Body.ConstantProduct.ReserveA),
 			},
 			{
-				lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
-				amount.String(lp.Body.ConstantProduct.ReserveB),
+				Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				Amount: amount.String(lp.Body.ConstantProduct.ReserveB),
 			},
 		},
 	}
@@ -1318,12 +1318,12 @@ func (e *effectsWrapper) addLiquidityPoolDepositEffect() error {
 		"liquidity_pool": liquidityPoolDetails(lp),
 		"reserves_deposited": []base.AssetAmount{
 			{
-				lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
-				amount.String(delta.ReserveA),
+				Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				Amount: amount.String(delta.ReserveA),
 			},
 			{
-				lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
-				amount.String(delta.ReserveB),
+				Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				Amount: amount.String(delta.ReserveB),
 			},
 		},
 		"shares_received": amount.String(delta.TotalPoolShares),
@@ -1342,12 +1342,12 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 		"liquidity_pool": liquidityPoolDetails(lp),
 		"reserves_received": []base.AssetAmount{
 			{
-				lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
-				amount.String(-delta.ReserveA),
+				Asset:  lp.Body.ConstantProduct.Params.AssetA.StringCanonical(),
+				Amount: amount.String(-delta.ReserveA),
 			},
 			{
-				lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
-				amount.String(-delta.ReserveB),
+				Asset:  lp.Body.ConstantProduct.Params.AssetB.StringCanonical(),
+				Amount: amount.String(-delta.ReserveB),
 			},
 		},
 		"shares_redeemed": amount.String(-delta.TotalPoolShares),
