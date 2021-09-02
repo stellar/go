@@ -501,7 +501,24 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
-func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustline() {
+func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustlineAndLiquidityPool() {
+	liquidityPool := xdr.LiquidityPoolEntry{
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+					AssetB: xdr.MustNewNativeAsset(),
+					Fee:    20,
+				},
+				ReserveA:                 100,
+				ReserveB:                 200,
+				TotalPoolShares:          1000,
+				PoolSharesTrustLineCount: 10,
+			},
+		},
+	}
+
 	claimableBalance := xdr.ClaimableBalanceEntry{
 		Asset:  xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		Amount: 12,
@@ -520,6 +537,19 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:          xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &liquidityPool,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -557,13 +587,14 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 		Accounts: history.ExpAssetStatAccounts{
 			ClaimableBalances: 1,
 			Authorized:        1,
+			LiquidityPools:    1,
 		},
 		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "9",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
 			ClaimableBalances:               "12",
-			LiquidityPools:                  "0",
+			LiquidityPools:                  "100",
 		},
 		Amount:      "9",
 		NumAccounts: 1,

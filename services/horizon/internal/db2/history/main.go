@@ -393,6 +393,7 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		Authorized:                      a.Authorized + b.Authorized,
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
+		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
 	}
 }
