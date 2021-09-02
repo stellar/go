@@ -41,7 +41,9 @@ func (p *AssetStatsProcessor) reset() {
 }
 
 func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
-	if change.Type != xdr.LedgerEntryTypeClaimableBalance && change.Type != xdr.LedgerEntryTypeTrustline {
+	if change.Type != xdr.LedgerEntryTypeLiquidityPool &&
+		change.Type != xdr.LedgerEntryTypeClaimableBalance &&
+		change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
 	if p.useLedgerEntryCache {
@@ -52,6 +54,8 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 	}
 
 	switch change.Type {
+	case xdr.LedgerEntryTypeLiquidityPool:
+		return p.assetStatSet.AddLiquidityPool(change)
 	case xdr.LedgerEntryTypeClaimableBalance:
 		return p.assetStatSet.AddClaimableBalance(change)
 	case xdr.LedgerEntryTypeTrustline:
@@ -90,6 +94,8 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 	for _, change := range changes {
 		var err error
 		switch change.Type {
+		case xdr.LedgerEntryTypeLiquidityPool:
+			err = p.assetStatSet.AddLiquidityPool(change)
 		case xdr.LedgerEntryTypeClaimableBalance:
 			err = p.assetStatSet.AddClaimableBalance(change)
 		case xdr.LedgerEntryTypeTrustline:
@@ -144,7 +150,14 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 				))
 			} else if delta.Accounts.ClaimableBalances < 0 {
 				return ingest.NewStateError(errors.Errorf(
-					"Claimable balance accounts negative but DB entry does not exist for asset: %s %s %s",
+					"Claimable balance negative but DB entry does not exist for asset: %s %s %s",
+					delta.AssetType,
+					delta.AssetCode,
+					delta.AssetIssuer,
+				))
+			} else if delta.Accounts.LiquidityPools < 0 {
+				return ingest.NewStateError(errors.Errorf(
+					"Liquidity pools negative but DB entry does not exist for asset: %s %s %s",
 					delta.AssetType,
 					delta.AssetCode,
 					delta.AssetIssuer,

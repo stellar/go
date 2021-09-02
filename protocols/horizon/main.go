@@ -166,16 +166,18 @@ type AssetStat struct {
 	} `json:"_links"`
 
 	base.Asset
-	PT                   string            `json:"paging_token"`
-	Accounts             AssetStatAccounts `json:"accounts"`
-	NumClaimableBalances int32             `json:"num_claimable_balances"`
+	PT string `json:"paging_token"`
+	// Action needed in release: horizon-v3.0.0: deprecated field
+	NumAccounts          int32 `json:"num_accounts"`
+	NumClaimableBalances int32 `json:"num_claimable_balances"`
+	NumLiquidityPools    int32 `json:"num_liquidity_pools"`
 	// Action needed in release: horizon-v3.0.0: deprecated field
 	Amount                  string            `json:"amount"`
-	Balances                AssetStatBalances `json:"balances"`
+	Accounts                AssetStatAccounts `json:"accounts"`
 	ClaimableBalancesAmount string            `json:"claimable_balances_amount"`
-	// Action needed in release: horizon-v3.0.0: deprecated field
-	NumAccounts int32        `json:"num_accounts"`
-	Flags       AccountFlags `json:"flags"`
+	LiquidityPoolsAmount    string            `json:"liquidity_pools_amount"`
+	Balances                AssetStatBalances `json:"balances"`
+	Flags                   AccountFlags      `json:"flags"`
 }
 
 // PagingToken implementation for hal.Pageable
