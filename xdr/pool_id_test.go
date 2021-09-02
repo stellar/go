@@ -8,6 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func makeAccount(t *testing.T, hexKey string) string {
+	b, err := hex.DecodeString(hexKey)
+	require.NoError(t, err)
+	var key Uint256
+	copy(key[:], b)
+	a, err := NewAccountId(PublicKeyTypePublicKeyTypeEd25519, key)
+	require.NoError(t, err)
+	addr, err := a.GetAddress()
+	require.NoError(t, err)
+	return addr
+}
+
 func TestNewPoolId(t *testing.T) {
 	testGetPoolID := func(x, y Asset, expectedHex string) {
 		// TODO: Require x y to be sorted.
@@ -20,20 +32,8 @@ func TestNewPoolId(t *testing.T) {
 		}
 	}
 
-	makeAccount := func(hexKey string) string {
-		b, err := hex.DecodeString(hexKey)
-		require.NoError(t, err)
-		var key Uint256
-		copy(key[:], b)
-		a, err := NewAccountId(PublicKeyTypePublicKeyTypeEd25519, key)
-		require.NoError(t, err)
-		addr, err := a.GetAddress()
-		require.NoError(t, err)
-		return addr
-	}
-
-	acc1 := makeAccount("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-	acc2 := makeAccount("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
+	acc1 := makeAccount(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	acc2 := makeAccount(t, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
 
 	t.Run("NATIVE and ALPHANUM4 (short and full length)", func(t *testing.T) {
 		testGetPoolID(
@@ -127,4 +127,10 @@ func TestNewPoolId(t *testing.T) {
 			MustNewCreditAsset("aBcD", acc2), MustNewCreditAsset("aBcDeFgHiJkL", acc1),
 			"c1c7a4b9db6e3754cae3017f72b6b7c93198f593182c541bcab3795c6413a677")
 	})
+}
+
+func TestNewPoolIdRejectsIncorrectOrder(t *testing.T) {
+	acc1 := makeAccount(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	_, err := NewPoolId(MustNewCreditAsset("AbC", acc1), MustNewNativeAsset(), LiquidityPoolFeeV18)
+	assert.EqualError(t, err, "AssetA must be < AssetB")
 }

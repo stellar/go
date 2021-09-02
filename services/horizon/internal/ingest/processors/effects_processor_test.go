@@ -2816,7 +2816,7 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 func TestLiquidityPoolEffects(t *testing.T) {
 	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
 	usdAsset := xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
-	poolIDStr := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
+	poolIDStr := "ea4e3e63a95fd840c1394f195722ffdcb2d0d4f0a26589c6ab557d81e6b0bf9d"
 	var poolID xdr.PoolId
 	poolIDBytes, err := hex.DecodeString(poolIDStr)
 	assert.NoError(t, err)
@@ -2827,12 +2827,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
 				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: usdAsset,
-					AssetB: xdr.MustNewNativeAsset(),
+					AssetA: xdr.MustNewNativeAsset(),
+					AssetB: usdAsset,
 					Fee:    20,
 				},
-				ReserveA:                 100,
-				ReserveB:                 200,
+				ReserveA:                 200,
+				ReserveB:                 100,
 				TotalPoolShares:          1000,
 				PoolSharesTrustLineCount: 10,
 			},
@@ -2940,12 +2940,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 							"id":     poolIDStr,
 							"reserves": []base.AssetAmount{
 								{
-									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-									"0.0000100",
-								},
-								{
 									"native",
 									"0.0000200",
+								},
+								{
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000100",
 								},
 							},
 							"total_shares":     "0.0001000",
@@ -2979,8 +2979,8 @@ func TestLiquidityPoolEffects(t *testing.T) {
 				updateState(xdr.LiquidityPoolEntryConstantProduct{
 
 					Params:                   baseLiquidityPoolEntry.Body.ConstantProduct.Params,
-					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA + 60,
-					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB + 50,
+					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA + 50,
+					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB + 60,
 					TotalPoolShares:          baseLiquidityPoolEntry.Body.ConstantProduct.TotalPoolShares + 10,
 					PoolSharesTrustLineCount: baseLiquidityPoolEntry.Body.ConstantProduct.PoolSharesTrustLineCount,
 				}),
@@ -2997,12 +2997,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 							"id":     poolIDStr,
 							"reserves": []base.AssetAmount{
 								{
-									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-									"0.0000160",
-								},
-								{
 									"native",
 									"0.0000250",
+								},
+								{
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000160",
 								},
 							},
 							"total_shares":     "0.0001010",
@@ -3011,12 +3011,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						},
 						"reserves_deposited": []base.AssetAmount{
 							{
-								"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-								"0.0000060",
-							},
-							{
 								"native",
 								"0.0000050",
+							},
+							{
+								"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"0.0000060",
 							},
 						},
 						"shares_received": "0.0000010",
@@ -3031,8 +3031,8 @@ func TestLiquidityPoolEffects(t *testing.T) {
 				LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
 					LiquidityPoolId: poolID,
 					Amount:          10,
-					MinAmountA:      5,
-					MinAmountB:      10,
+					MinAmountA:      10,
+					MinAmountB:      5,
 				},
 			},
 			changes: xdr.LedgerEntryChanges{
@@ -3040,8 +3040,8 @@ func TestLiquidityPoolEffects(t *testing.T) {
 				updateState(xdr.LiquidityPoolEntryConstantProduct{
 
 					Params:                   baseLiquidityPoolEntry.Body.ConstantProduct.Params,
-					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA - 6,
-					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB - 11,
+					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA - 11,
+					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB - 6,
 					TotalPoolShares:          baseLiquidityPoolEntry.Body.ConstantProduct.TotalPoolShares - 10,
 					PoolSharesTrustLineCount: baseLiquidityPoolEntry.Body.ConstantProduct.PoolSharesTrustLineCount,
 				}),
@@ -3058,12 +3058,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 							"id":     poolIDStr,
 							"reserves": []base.AssetAmount{
 								{
-									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-									"0.0000094",
-								},
-								{
 									"native",
 									"0.0000189",
+								},
+								{
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000094",
 								},
 							},
 							"total_shares":     "0.0000990",
@@ -3072,12 +3072,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 						},
 						"reserves_received": []base.AssetAmount{
 							{
-								"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-								"0.0000006",
-							},
-							{
 								"native",
 								"0.0000011",
+							},
+							{
+								"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+								"0.0000006",
 							},
 						},
 						"shares_redeemed": "0.0000010",
@@ -3103,8 +3103,8 @@ func TestLiquidityPoolEffects(t *testing.T) {
 				updateState(xdr.LiquidityPoolEntryConstantProduct{
 
 					Params:                   baseLiquidityPoolEntry.Body.ConstantProduct.Params,
-					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA - 6,
-					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB - 11,
+					ReserveA:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveA - 11,
+					ReserveB:                 baseLiquidityPoolEntry.Body.ConstantProduct.ReserveB - 6,
 					TotalPoolShares:          baseLiquidityPoolEntry.Body.ConstantProduct.TotalPoolShares - 10,
 					PoolSharesTrustLineCount: baseLiquidityPoolEntry.Body.ConstantProduct.PoolSharesTrustLineCount,
 				}),
@@ -3175,12 +3175,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 							"id":     poolIDStr,
 							"reserves": []base.AssetAmount{
 								{
-									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-									"0.0000094",
-								},
-								{
 									"native",
 									"0.0000189",
+								},
+								{
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000094",
 								},
 							},
 							"total_shares":     "0.0000990",
@@ -3368,12 +3368,12 @@ func TestLiquidityPoolEffects(t *testing.T) {
 							"id":     poolIDStr,
 							"reserves": []base.AssetAmount{
 								{
-									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-									"0.0000100",
-								},
-								{
 									"native",
 									"0.0000200",
+								},
+								{
+									"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+									"0.0000100",
 								},
 							},
 							"total_shares":     "0.0001000",

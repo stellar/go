@@ -17,6 +17,33 @@ type LiquidityPoolWithdraw struct {
 	MinAmountB      string
 }
 
+// NewLiquidityPoolWithdraw creates a new LiquidityPoolWithdraw operation,
+// checking the ordering assets so we generate the correct pool id. Each
+// AssetAmount is a pair of the asset with the minimum amount of that asset to
+// withdraw.
+func NewLiquidityPoolWithdraw(
+	sourceAccount string,
+	a, b AssetAmount,
+	amount string,
+) (LiquidityPoolWithdraw, error) {
+	if b.Asset.LessThan(a.Asset) {
+		return LiquidityPoolWithdraw{}, errors.New("AssetA must be <= AssetB")
+	}
+
+	poolId, err := NewLiquidityPoolId(a.Asset, b.Asset)
+	if err != nil {
+		return LiquidityPoolWithdraw{}, err
+	}
+
+	return LiquidityPoolWithdraw{
+		SourceAccount:   sourceAccount,
+		LiquidityPoolID: poolId,
+		Amount:          amount,
+		MinAmountA:      a.Amount,
+		MinAmountB:      b.Amount,
+	}, nil
+}
+
 // BuildXDR for LiquidityPoolWithdraw returns a fully configured XDR Operation.
 func (lpd *LiquidityPoolWithdraw) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrLiquidityPoolId, err := lpd.LiquidityPoolID.ToXDR()

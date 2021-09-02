@@ -3,7 +3,6 @@ package txnbuild
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -13,18 +12,16 @@ import (
 type LiquidityPoolId [32]byte
 
 func NewLiquidityPoolId(a, b Asset) (LiquidityPoolId, error) {
-	assets := Assets([]Asset{a, b})
-	sort.Sort(assets)
-	if assets[0] != a {
+	if b.LessThan(a) {
 		return LiquidityPoolId{}, fmt.Errorf("AssetA must be <= AssetB")
 	}
 
-	xdrAssetA, err := assets[0].ToXDR()
+	xdrAssetA, err := a.ToXDR()
 	if err != nil {
 		return LiquidityPoolId{}, errors.Wrap(err, "failed to build XDR AssetA ID")
 	}
 
-	xdrAssetB, err := assets[1].ToXDR()
+	xdrAssetB, err := b.ToXDR()
 	if err != nil {
 		return LiquidityPoolId{}, errors.Wrap(err, "failed to build XDR AssetB ID")
 	}

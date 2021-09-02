@@ -18,6 +18,35 @@ type LiquidityPoolDeposit struct {
 	MaxPrice        string
 }
 
+// NewLiquidityPoolDeposit creates a new LiquidityPoolDeposit operation,
+// checking the ordering assets so we generate the correct pool id. minPrice,
+// and maxPrice are in terms of a/b. Each AssetAmount is a pair of the asset
+// with the maximum amount of that asset to deposit.
+func NewLiquidityPoolDeposit(
+	sourceAccount string,
+	a, b AssetAmount,
+	minPrice,
+	maxPrice string,
+) (LiquidityPoolDeposit, error) {
+	if b.Asset.LessThan(a.Asset) {
+		return LiquidityPoolDeposit{}, errors.New("AssetA must be <= AssetB")
+	}
+
+	poolId, err := NewLiquidityPoolId(a.Asset, b.Asset)
+	if err != nil {
+		return LiquidityPoolDeposit{}, err
+	}
+
+	return LiquidityPoolDeposit{
+		SourceAccount:   sourceAccount,
+		LiquidityPoolID: poolId,
+		MaxAmountA:      a.Amount,
+		MaxAmountB:      b.Amount,
+		MinPrice:        minPrice,
+		MaxPrice:        maxPrice,
+	}, nil
+}
+
 // BuildXDR for LiquidityPoolDeposit returns a fully configured XDR Operation.
 func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrLiquidityPoolId, err := lpd.LiquidityPoolID.ToXDR()
