@@ -45,6 +45,10 @@ func genLiquidityPool(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
 			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.LIQUIDITY_POOL.GetU32())},
 			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.fee"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.assetA.alphaNum4.assetCode"), randxdr.SetAssetCode},
+			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.assetA.alphaNum12.assetCode"), randxdr.SetAssetCode},
+			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.assetB.alphaNum4.assetCode"), randxdr.SetAssetCode},
+			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.params.assetB.alphaNum12.assetCode"), randxdr.SetAssetCode},
 			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.reserveA"), randxdr.SetPositiveNum64},
 			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.reserveB"), randxdr.SetPositiveNum64},
 			{randxdr.FieldEquals("created.data.liquidityPool.body.constantProduct.totalPoolShares"), randxdr.SetPositiveNum64},
@@ -131,8 +135,7 @@ func TestStateVerifier(t *testing.T) {
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 
-	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
-	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Twice()
 	mockChangeReader.On("Close").Return(nil).Once()
 
 	mockHistoryAdapter := &mockHistoryArchiveAdapter{}

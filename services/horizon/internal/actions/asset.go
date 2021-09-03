@@ -155,12 +155,15 @@ func (handler AssetStatsHandler) GetResourcePage(
 	for _, record := range assetStats {
 		var assetStatResponse horizon.AssetStat
 
-		resourceadapter.PopulateAssetStat(
+		err := resourceadapter.PopulateAssetStat(
 			ctx,
 			&assetStatResponse,
 			record,
 			issuerAccounts[record.AssetIssuer],
 		)
+		if err != nil {
+			return nil, err
+		}
 		response = append(response, assetStatResponse)
 	}
 

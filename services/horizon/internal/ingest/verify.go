@@ -212,7 +212,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
 		}
 
-		err = addLiquidityPoolsToStateVerifier(s.ctx, verifier, historyQ, lPools)
+		err = addLiquidityPoolsToStateVerifier(s.ctx, verifier, assetStats, historyQ, lPools)
 		if err != nil {
 			return errors.Wrap(err, "addLiquidityPoolsToStateVerifier failed")
 		}
@@ -297,8 +297,8 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 			if fromSet != assetStat {
 				return ingest.NewStateError(
 					fmt.Errorf(
-						"db asset stat with code %s issuer %s does not match asset stat from HAS",
-						assetStat.AssetCode, assetStat.AssetIssuer,
+						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
+						assetStat.AssetCode, assetStat.AssetIssuer, fromSet, assetStat,
 					),
 				)
 			}
@@ -551,11 +551,7 @@ func addTrustLinesToStateVerifier(
 		}
 		if err = assetStats.AddTrustline(
 			ingest.Change{
-				Post: &xdr.LedgerEntry{
-					Data: xdr.LedgerEntryData{
-						TrustLine: entry.Data.TrustLine,
-					},
-				},
+				Post: &entry,
 			},
 		); err != nil {
 			return ingest.NewStateError(
@@ -672,11 +668,7 @@ func addClaimableBalanceToStateVerifier(
 
 		if err := assetStats.AddClaimableBalance(
 			ingest.Change{
-				Post: &xdr.LedgerEntry{
-					Data: xdr.LedgerEntryData{
-						ClaimableBalance: &cBalance,
-					},
-				},
+				Post: &entry,
 			},
 		); err != nil {
 			return ingest.NewStateError(
@@ -691,6 +683,7 @@ func addClaimableBalanceToStateVerifier(
 func addLiquidityPoolsToStateVerifier(
 	ctx context.Context,
 	verifier *verify.StateVerifier,
+	assetStats processors.AssetStatSet,
 	q history.IngestionQ,
 	ids []xdr.PoolId,
 ) error {
@@ -750,6 +743,15 @@ func addLiquidityPoolsToStateVerifier(
 			return err
 		}
 
+		if err := assetStats.AddLiquidityPool(
+			ingest.Change{
+				Post: &entry,
+			},
+		); err != nil {
+			return ingest.NewStateError(
+				errors.Wrap(err, "could not add claimable balance to asset stats"),
+			)
+		}
 	}
 
 	return nil

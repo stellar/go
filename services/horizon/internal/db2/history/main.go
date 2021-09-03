@@ -371,6 +371,7 @@ type ExpAssetStatAccounts struct {
 	Authorized                      int32 `json:"authorized"`
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               int32 `json:"claimable_balances"`
+	LiquidityPools                  int32 `json:"liquidity_pools"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -392,6 +393,7 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		Authorized:                      a.Authorized + b.Authorized,
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
+		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
 	}
 }
@@ -401,10 +403,12 @@ func (a ExpAssetStatAccounts) IsZero() bool {
 }
 
 // ExpAssetStatBalances represents the summarized balances for a single Asset
+// Note: the string representation is in stroops!
 type ExpAssetStatBalances struct {
 	Authorized                      string `json:"authorized"`
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               string `json:"claimable_balances"`
+	LiquidityPools                  string `json:"liquidity_pools"`
 	Unauthorized                    string `json:"unauthorized"`
 }
 
@@ -418,7 +422,29 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 		return errors.New("Type assertion .([]byte) failed.")
 	}
 
-	return json.Unmarshal(source, &e)
+	err := json.Unmarshal(source, &e)
+	if err != nil {
+		return err
+	}
+
+	// Sets zero values for empty balances
+	if e.Authorized == "" {
+		e.Authorized = "0"
+	}
+	if e.AuthorizedToMaintainLiabilities == "" {
+		e.AuthorizedToMaintainLiabilities = "0"
+	}
+	if e.ClaimableBalances == "" {
+		e.ClaimableBalances = "0"
+	}
+	if e.LiquidityPools == "" {
+		e.LiquidityPools = "0"
+	}
+	if e.Unauthorized == "" {
+		e.Unauthorized = "0"
+	}
+
+	return nil
 }
 
 // QAssetStats defines exp_asset_stats related queries.
