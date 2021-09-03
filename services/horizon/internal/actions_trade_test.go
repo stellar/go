@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/guregu/null"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"net/url"
 	"strconv"
@@ -15,128 +16,139 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	. "github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/render/hal"
 	stellarTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
 func TestTradeActions_Index(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-	ht := StartHTTPTest(t, "trades")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
-	var records []horizon.Trade
-	var firstTrade horizon.Trade
+	dbQ := &history.Q{ht.HorizonSession()}
+	fixtures := history.TradeScenario(ht.T, dbQ)
 
+	var records []horizon.Trade
 	// All trades
 	w := ht.Get("/trades")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
-
-		// 	ensure created_at is populated correctly
+		ht.Assert.PageOf(len(fixtures.Trades), w.Body)
 		ht.UnmarshalPage(w.Body, &records)
-		firstTrade = records[0]
-
-		// 	ensure created_at is populated correctly
-		l := history.Ledger{}
-		hq := history.Q{SessionInterface: ht.HorizonSession()}
-		ht.Require.NoError(hq.LedgerBySequence(ht.Ctx, &l, 9))
-
-		ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
+		for i, row := range fixtures.Trades {
+			record := records[i]
+			assertResponseTradeEqualsDBTrade(ht, row, record)
+		}
 	}
 
-	// reverse order
+	// reverseTrade order
 	w = ht.Get("/trades?order=desc")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
-		ht.UnmarshalPage(w.Body, &records)
+		ht.Assert.PageOf(len(records), w.Body)
+		var reverseRecords []horizon.Trade
+		ht.UnmarshalPage(w.Body, &reverseRecords)
+		ht.Assert.Len(reverseRecords, len(records))
 
 		// ensure that ordering is indeed reversed
-		ht.Assert.Equal(firstTrade, records[len(records)-1])
+		for i := 0; i < len(records); i++ {
+			ht.Assert.Equal(records[i], reverseRecords[len(reverseRecords)-1-i])
+		}
 	}
 
 	var q = make(url.Values)
-	q.Add("base_asset_type", "credit_alphanum4")
-	q.Add("base_asset_code", "USD")
-	q.Add("base_asset_issuer", "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
-	q.Add("counter_asset_type", "credit_alphanum4")
-	q.Add("counter_asset_code", "EUR")
-	q.Add("counter_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
+	q.Add("base_asset_type", records[0].BaseAssetType)
+	q.Add("base_asset_code", records[0].BaseAssetCode)
+	q.Add("base_asset_issuer", records[0].BaseAssetIssuer)
+	q.Add("counter_asset_type", records[0].CounterAssetType)
+	q.Add("counter_asset_code", records[0].CounterAssetCode)
+	q.Add("counter_asset_issuer", records[0].CounterAssetIssuer)
 
 	w = ht.GetWithParams("/trades", q)
+	var tradesForPair []horizon.Trade
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
+		ht.UnmarshalPage(w.Body, &tradesForPair)
 
-		records := []map[string]interface{}{}
-		ht.UnmarshalPage(w.Body, &records)
+		baseAsset, err := xdr.BuildAsset(records[0].BaseAssetType, records[0].BaseAssetIssuer, records[0].BaseAssetCode)
+		ht.Assert.NoError(err)
+		counterAsset, err := xdr.BuildAsset(records[0].CounterAssetType, records[0].CounterAssetIssuer, records[0].CounterAssetCode)
+		ht.Assert.NoError(err)
 
-		ht.Assert.Contains(records[0], "base_amount")
-		ht.Assert.Contains(records[0], "counter_amount")
+		rows := fixtures.TradesByAssetPair(baseAsset, counterAsset)
+		ht.Assert.Equal(len(rows), len(tradesForPair))
+		for i, row := range rows {
+			assertResponseTradeEqualsDBTrade(ht, row, tradesForPair[i])
+		}
 	}
 
 	q = make(url.Values)
-	q.Add("base_asset_type", "credit_alphanum4")
-	q.Add("base_asset_code", "EUR")
-	q.Add("base_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
-	q.Add("counter_asset_type", "credit_alphanum4")
-	q.Add("counter_asset_code", "USD")
-	q.Add("counter_asset_issuer", "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4")
-
+	q.Add("counter_asset_type", records[0].BaseAssetType)
+	q.Add("counter_asset_code", records[0].BaseAssetCode)
+	q.Add("counter_asset_issuer", records[0].BaseAssetIssuer)
+	q.Add("base_asset_type", records[0].CounterAssetType)
+	q.Add("base_asset_code", records[0].CounterAssetCode)
+	q.Add("base_asset_issuer", records[0].CounterAssetIssuer)
 	w = ht.GetWithParams("/trades", q)
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
+		var trades []horizon.Trade
+		ht.UnmarshalPage(w.Body, &trades)
+		ht.Assert.Equal(len(tradesForPair), len(trades))
 
-		records := []map[string]interface{}{}
-		ht.UnmarshalPage(w.Body, &records)
-
-		ht.Assert.Contains(records[0], "base_amount")
-		ht.Assert.Contains(records[0], "counter_amount")
-	}
-
-	// empty response when assets exist but there are no trades
-	q = make(url.Values)
-	q.Add("base_asset_type", "credit_alphanum4")
-	q.Add("base_asset_code", "EUR")
-	q.Add("base_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
-	q.Add("counter_asset_type", "credit_alphanum4")
-	q.Add("counter_asset_code", "SEK")
-	q.Add("counter_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
-
-	w = ht.GetWithParams("/trades", q)
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(0, w.Body)
+		for i, expected := range tradesForPair {
+			ht.Assert.Equal(reverseTrade(expected), trades[i])
+		}
 	}
 
 	// For offer
 	w = ht.Get("/offers/1/trades")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
+		ht.Assert.Empty(fixtures.TradesByOffer[1])
+		ht.Assert.PageOf(0, w.Body)
 	}
 
 	w = ht.Get("/offers/2/trades")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(0, w.Body)
+		var trades []horizon.Trade
+		ht.UnmarshalPage(w.Body, &trades)
+		expected := fixtures.TradesByOffer[2]
+		ht.Assert.NotEmpty(expected)
+		ht.Assert.Len(trades, len(expected))
+
+		// ensure that ordering is indeed reversed
+		for i, trade := range trades {
+			assertResponseTradeEqualsDBTrade(ht, expected[i], trade)
+		}
 	}
 
 	// for an account
-	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/trades")
+	w = ht.Get("/accounts/GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU/trades")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
+		var trades []horizon.Trade
+		ht.UnmarshalPage(w.Body, &trades)
+		expected := fixtures.TradesByAccount["GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"]
+		ht.Assert.NotEmpty(expected)
+		ht.Assert.Len(trades, len(expected))
+
+		// ensure that ordering is indeed reversed
+		for i, trade := range trades {
+			assertResponseTradeEqualsDBTrade(ht, expected[i], trade)
+		}
 	}
 
 	// for other account
-	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/trades")
+	w = ht.Get("/accounts/GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD/trades")
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(2, w.Body)
-		records := []map[string]interface{}{}
-		ht.UnmarshalPage(w.Body, &records)
-		ht.Assert.Contains(records[0], "base_amount")
-		ht.Assert.Contains(records[0], "counter_amount")
+		var trades []horizon.Trade
+		ht.UnmarshalPage(w.Body, &trades)
+		expected := fixtures.TradesByAccount["GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"]
+		ht.Assert.NotEmpty(expected)
+		ht.Assert.Len(trades, len(expected))
+
+		// ensure that ordering is indeed reversed
+		for i, trade := range trades {
+			assertResponseTradeEqualsDBTrade(ht, expected[i], trade)
+		}
 	}
 
 	//test paging from account 1
-	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/trades?order=desc&limit=1")
+	w = ht.Get("/accounts/GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU/trades?order=desc&limit=1")
 	var links hal.Links
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
@@ -152,7 +164,7 @@ func TestTradeActions_Index(t *testing.T) {
 	}
 
 	//test paging from account 2
-	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/trades?order=desc&limit=1")
+	w = ht.Get("/accounts/GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD/trades?order=desc&limit=1")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 		links = ht.UnmarshalPage(w.Body, &records)
@@ -165,6 +177,55 @@ func TestTradeActions_Index(t *testing.T) {
 		links = ht.UnmarshalPage(w.Body, &records)
 		ht.Assert.NotEqual(prevRecord, records[0])
 	}
+}
+
+func reverseTrade(expected horizon.Trade) horizon.Trade {
+	expected.Links.Base, expected.Links.Counter = expected.Links.Counter, expected.Links.Base
+	expected.BaseIsSeller = !expected.BaseIsSeller
+	expected.BaseAssetCode, expected.CounterAssetCode = expected.CounterAssetCode, expected.BaseAssetCode
+	expected.BaseAssetIssuer, expected.CounterAssetIssuer = expected.CounterAssetIssuer, expected.BaseAssetIssuer
+	expected.BaseOfferID, expected.CounterOfferID = expected.CounterOfferID, expected.BaseOfferID
+	expected.BaseLiquidityPoolID, expected.CounterLiquidityPoolID = expected.CounterLiquidityPoolID, expected.BaseLiquidityPoolID
+	expected.BaseAssetType, expected.CounterAssetType = expected.CounterAssetType, expected.BaseAssetType
+	expected.BaseAccount, expected.CounterAccount = expected.CounterAccount, expected.BaseAccount
+	expected.BaseAmount, expected.CounterAmount = expected.CounterAmount, expected.BaseAmount
+	expected.Price.N, expected.Price.D = expected.Price.D, expected.Price.N
+	return expected
+}
+
+func assertResponseTradeEqualsDBTrade(ht *HTTPT, row history.Trade, record horizon.Trade) {
+	ht.Assert.Equal(row.BaseAssetCode, record.BaseAssetCode)
+	ht.Assert.Equal(row.BaseAssetType, record.BaseAssetType)
+	ht.Assert.Equal(row.BaseAssetIssuer, record.BaseAssetIssuer)
+	if row.BaseOfferID.Valid {
+		ht.Assert.Equal(strconv.FormatInt(row.BaseOfferID.Int64, 10), record.BaseOfferID)
+	} else {
+		ht.Assert.Equal("", record.BaseOfferID)
+	}
+	ht.Assert.Equal(row.BaseAmount, int64(amount.MustParse(record.BaseAmount)))
+	ht.Assert.Equal(row.BaseLiquidityPoolID.String, record.BaseLiquidityPoolID)
+	ht.Assert.Equal(row.BaseAccount.String, record.BaseAccount)
+	ht.Assert.Equal(row.BaseLiquidityPoolID.String, record.BaseLiquidityPoolID)
+	ht.Assert.Equal(row.BaseIsSeller, record.BaseIsSeller)
+
+	ht.Assert.Equal(row.CounterAssetCode, record.CounterAssetCode)
+	ht.Assert.Equal(row.CounterAssetType, record.CounterAssetType)
+	ht.Assert.Equal(row.CounterAssetIssuer, record.CounterAssetIssuer)
+	if row.CounterOfferID.Valid {
+		ht.Assert.Equal(strconv.FormatInt(row.CounterOfferID.Int64, 10), record.CounterOfferID)
+	} else {
+		ht.Assert.Equal("", record.CounterOfferID)
+	}
+	ht.Assert.Equal(row.CounterAmount, int64(amount.MustParse(record.CounterAmount)))
+	ht.Assert.Equal(row.CounterLiquidityPoolID.String, record.CounterLiquidityPoolID)
+	ht.Assert.Equal(row.CounterAccount.String, record.CounterAccount)
+	ht.Assert.Equal(row.CounterLiquidityPoolID.String, record.CounterLiquidityPoolID)
+
+	ht.Assert.Equal(uint32(row.LiquidityPoolFee.Int64), record.LiquidityPoolFeeBP)
+	ht.Assert.Equal(row.PagingToken(), record.PagingToken())
+	ht.Assert.Equal(row.LedgerCloseTime.Unix(), record.LedgerCloseTime.Unix())
+	ht.Assert.Equal(int32(row.PriceN.Int64), record.Price.N)
+	ht.Assert.Equal(int32(row.PriceD.Int64), record.Price.D)
 }
 
 // setAssetQuery adds an asset filter with a given prefix to a query
@@ -205,10 +266,7 @@ const week = int64(7 * 24 * time.Hour / time.Millisecond)
 const aggregationPath = "/trade_aggregations"
 
 func TestTradeActions_Aggregation(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-
-	ht := StartHTTPTest(t, "base")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
 
 	const numOfTrades = 10
@@ -217,7 +275,7 @@ func TestTradeActions_Aggregation(t *testing.T) {
 	//it represents a round hour and is bigger than a max int32
 	const start = int64(1510693200000)
 
-	dbQ := &Q{ht.HorizonSession()}
+	dbQ := &history.Q{ht.HorizonSession()}
 	ass1, ass2, err := PopulateTestTrades(dbQ, start, numOfTrades, minute, 0)
 	ht.Require.NoError(err)
 
@@ -259,7 +317,7 @@ func TestTradeActions_Aggregation(t *testing.T) {
 		ht.Assert.Equal("0.0005500", records[0].BaseVolume)
 	}
 
-	//test reverse one bucket - make sure values don't change
+	//test reverseTrade one bucket - make sure values don't change
 	q.Set("order", "desc")
 	w = ht.GetWithParams(aggregationPath, q)
 	if ht.Assert.Equal(200, w.Code) {
@@ -384,19 +442,16 @@ func TestTradeActions_Aggregation(t *testing.T) {
 }
 
 func TestTradeActions_AmountsExceedInt64(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-
-	ht := StartHTTPTest(t, "base")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
-	dbQ := &Q{ht.HorizonSession()}
+	dbQ := &history.Q{ht.HorizonSession()}
 
 	const start = int64(1510693200000)
 
 	acc1 := GetTestAccount()
 	acc2 := GetTestAccount()
-	ass1 := GetTestAsset("usd")
-	ass2 := GetTestAsset("euro")
+	ass1 := GetTestAsset("euro")
+	ass2 := GetTestAsset("usd")
 	for i := 1; i <= 3; i++ {
 		timestamp := stellarTime.MillisFromInt64(start + (minute * int64(i-1)))
 		err := IngestTestTrade(
@@ -425,11 +480,8 @@ func TestTradeActions_AmountsExceedInt64(t *testing.T) {
 }
 
 func TestTradeActions_IndexRegressions(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-
-	t.Run("Regression:  https://github.com/stellar/go/services/horizon/internal/issues/318", func(t *testing.T) {
-		ht := StartHTTPTest(t, "trades")
+	t.Run("Assets Dont Exist trades - 404", func(t *testing.T) {
+		ht := StartHTTPTestWithoutScenario(t)
 		defer ht.Finish()
 
 		var q = make(url.Values)
@@ -444,7 +496,9 @@ func TestTradeActions_IndexRegressions(t *testing.T) {
 	})
 
 	t.Run("Regression for nil prices: https://github.com/stellar/go/issues/357", func(t *testing.T) {
-		ht := StartHTTPTest(t, "trades")
+		ht := StartHTTPTestWithoutScenario(t)
+		dbQ := &history.Q{ht.HorizonSession()}
+		history.TradeScenario(ht.T, dbQ)
 		defer ht.Finish()
 
 		w := ht.Get("/trades")
@@ -460,18 +514,15 @@ func TestTradeActions_IndexRegressions(t *testing.T) {
 // fields are correct for multiple trades that occur in the same ledger
 // https://github.com/stellar/go/issues/215
 func TestTradeActions_AggregationOrdering(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-
-	ht := StartHTTPTest(t, "base")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
 
 	seller := GetTestAccount()
 	buyer := GetTestAccount()
-	ass1 := GetTestAsset("usd")
-	ass2 := GetTestAsset("euro")
+	ass1 := GetTestAsset("euro")
+	ass2 := GetTestAsset("usd")
 
-	dbQ := &Q{ht.HorizonSession()}
+	dbQ := &history.Q{ht.HorizonSession()}
 	IngestTestTrade(dbQ, ass1, ass2, seller, buyer, 1, 3, 0, 3)
 	IngestTestTrade(dbQ, ass1, ass2, seller, buyer, 1, 1, 0, 1)
 	IngestTestTrade(dbQ, ass1, ass2, seller, buyer, 1, 2, 0, 2)
@@ -496,7 +547,7 @@ func TestTradeActions_AggregationOrdering(t *testing.T) {
 }
 
 func TestTradeActions_AssetValidation(t *testing.T) {
-	ht := StartHTTPTest(t, "trades")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
 
 	var q = make(url.Values)
@@ -511,12 +562,10 @@ func TestTradeActions_AssetValidation(t *testing.T) {
 }
 
 func TestTradeActions_AggregationInvalidOffset(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-
-	ht := StartHTTPTest(t, "base")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
-	dbQ := &Q{ht.HorizonSession()}
+
+	dbQ := &history.Q{ht.HorizonSession()}
 	ass1, ass2, err := PopulateTestTrades(dbQ, 0, 100, hour, 1)
 	ht.Require.NoError(err)
 
@@ -556,12 +605,10 @@ func TestTradeActions_AggregationInvalidOffset(t *testing.T) {
 }
 
 func TestTradeActions_AggregationOffset(t *testing.T) {
-	// TODO fix in https://github.com/stellar/go/issues/3835
-	t.Skip()
-
-	ht := StartHTTPTest(t, "base")
+	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
-	dbQ := &Q{ht.HorizonSession()}
+
+	dbQ := &history.Q{ht.HorizonSession()}
 	// One trade every hour
 	ass1, ass2, err := PopulateTestTrades(dbQ, 0, 100, hour, 1)
 	ht.Require.NoError(err)
@@ -630,9 +677,16 @@ func GetTestAccount() xdr.AccountId {
 	return acc
 }
 
+func abs(a xdr.Int32) xdr.Int32 {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
 //IngestTestTrade mock ingests a trade
 func IngestTestTrade(
-	q *Q,
+	q *history.Q,
 	assetSold xdr.Asset,
 	assetBought xdr.Asset,
 	seller xdr.AccountId,
@@ -655,8 +709,8 @@ func IngestTestTrade(
 	}
 
 	price := xdr.Price{
-		N: xdr.Int32(amountBought),
-		D: xdr.Int32(amountSold),
+		N: abs(xdr.Int32(amountBought)),
+		D: abs(xdr.Int32(amountSold)),
 	}
 
 	ctx := context.Background()
@@ -670,7 +724,7 @@ func IngestTestTrade(
 	}
 
 	batch := q.NewTradeBatchInsertBuilder(0)
-	batch.Add(ctx, InsertTrade{
+	batch.Add(ctx, history.InsertTrade{
 		HistoryOperationID: opCounter,
 		Order:              0,
 		CounterAssetID:     assets[assetBought.String()].ID,
@@ -701,7 +755,7 @@ func IngestTestTrade(
 
 //PopulateTestTrades generates and ingests trades between two assets according to given parameters
 func PopulateTestTrades(
-	q *Q,
+	q *history.Q,
 	startTs int64,
 	numOfTrades int,
 	delta int64,
@@ -709,8 +763,8 @@ func PopulateTestTrades(
 
 	acc1 := GetTestAccount()
 	acc2 := GetTestAccount()
-	ass1 = GetTestAsset("usd")
-	ass2 = GetTestAsset("euro")
+	ass1 = GetTestAsset("euro")
+	ass2 = GetTestAsset("usd")
 	for i := 1; i <= numOfTrades; i++ {
 		timestamp := stellarTime.MillisFromInt64(startTs + (delta * int64(i-1)))
 		err = IngestTestTrade(
