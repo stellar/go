@@ -155,6 +155,7 @@ type TradeFixtures struct {
 	TradesByOffer   map[int64][]Trade
 }
 
+// TradesByAssetPair returns the trades which match a given trading pair
 func (f TradeFixtures) TradesByAssetPair(a, b xdr.Asset) []Trade {
 	set := map[string]bool{}
 	var intersection []Trade
@@ -168,6 +169,26 @@ func (f TradeFixtures) TradesByAssetPair(a, b xdr.Asset) []Trade {
 		}
 	}
 	return intersection
+}
+
+// FilterTradesByType filters the given trades by type
+func FilterTradesByType(trades []Trade, tradeType string) []Trade {
+	var result []Trade
+	for _, trade := range trades {
+		switch tradeType {
+		case AllTrades:
+			result = append(result, trade)
+		case OrderbookTrades:
+			if trade.BaseOfferID.Valid || trade.CounterOfferID.Valid {
+				result = append(result, trade)
+			}
+		case LiquidityPoolTrades:
+			if trade.BaseLiquidityPoolID.Valid || trade.CounterLiquidityPoolID.Valid {
+				result = append(result, trade)
+			}
+		}
+	}
+	return result
 }
 
 // TradeScenario inserts trade rows into the Horizon DB

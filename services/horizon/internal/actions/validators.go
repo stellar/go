@@ -41,6 +41,7 @@ var customTagsErrorMessages = map[string]string{
 	"offer_id":             "Offer ID must be an integer higher than 0",
 	"op_id":                "Operation ID must be an integer higher than 0",
 	"transactionHash":      "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
+	"tradeType":            "Trade type must be all, orderbook, or liquidity_pool",
 }
 
 func isTradeType(tradeType string) bool {

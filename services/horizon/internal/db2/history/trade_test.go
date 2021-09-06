@@ -25,25 +25,6 @@ func assertTradesAreEqual(tt *test.T, expected, rows []Trade) {
 	}
 }
 
-func filterByType(trades []Trade, tradeType string) []Trade {
-	var result []Trade
-	for _, trade := range trades {
-		switch tradeType {
-		case AllTrades:
-			result = append(result, trade)
-		case OrderbookTrades:
-			if trade.BaseOfferID.Valid || trade.CounterOfferID.Valid {
-				result = append(result, trade)
-			}
-		case LiquidityPoolTrades:
-			if trade.BaseLiquidityPoolID.Valid || trade.CounterLiquidityPoolID.Valid {
-				result = append(result, trade)
-			}
-		}
-	}
-	return result
-}
-
 const allAccounts = ""
 
 func filterByAccount(trades []Trade, account string) []Trade {
@@ -67,7 +48,7 @@ func TestSelectTrades(t *testing.T) {
 
 	for _, account := range append([]string{allAccounts}, fixtures.Addresses...) {
 		for _, tradeType := range []string{AllTrades, OrderbookTrades, LiquidityPoolTrades} {
-			expected := filterByAccount(filterByType(fixtures.Trades, tradeType), account)
+			expected := filterByAccount(FilterTradesByType(fixtures.Trades, tradeType), account)
 			rows, err := q.GetTrades(tt.Ctx, ascPQ, account, tradeType)
 			tt.Assert.NoError(err)
 
@@ -96,7 +77,7 @@ func TestSelectTradesCursor(t *testing.T) {
 
 	for _, account := range append([]string{allAccounts}, fixtures.Addresses...) {
 		for _, tradeType := range []string{AllTrades, OrderbookTrades, LiquidityPoolTrades} {
-			expected := filterByAccount(filterByType(fixtures.Trades, tradeType), account)
+			expected := filterByAccount(FilterTradesByType(fixtures.Trades, tradeType), account)
 			if len(expected) == 0 {
 				continue
 			}
@@ -184,7 +165,7 @@ func TestTradesForAssetPair(t *testing.T) {
 
 	for _, account := range append([]string{allAccounts}, fixtures.Addresses...) {
 		for _, tradeType := range []string{AllTrades, OrderbookTrades, LiquidityPoolTrades} {
-			expected := filterByAccount(filterByType(allTrades, tradeType), account)
+			expected := filterByAccount(FilterTradesByType(allTrades, tradeType), account)
 
 			trades, err := q.GetTradesForAssets(tt.Ctx, ascPQ, account, tradeType, chfAsset, eurAsset)
 			tt.Assert.NoError(err)
@@ -233,7 +214,7 @@ func TestTradesForReverseAssetPair(t *testing.T) {
 
 	for _, account := range append([]string{allAccounts}, fixtures.Addresses...) {
 		for _, tradeType := range []string{AllTrades, OrderbookTrades, LiquidityPoolTrades} {
-			expected := filterByAccount(filterByType(allTrades, tradeType), account)
+			expected := filterByAccount(FilterTradesByType(allTrades, tradeType), account)
 			for i := range expected {
 				expected[i] = reverseTrade(expected[i])
 			}

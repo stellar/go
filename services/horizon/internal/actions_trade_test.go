@@ -16,7 +16,6 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/render/hal"
 	stellarTime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
@@ -112,16 +111,23 @@ func TestAccountTrades(t *testing.T) {
 	dbQ := &history.Q{ht.HorizonSession()}
 	fixtures := history.TradeScenario(ht.T, dbQ)
 
-	for accountAddress, expected := range fixtures.TradesByAccount {
-		var records []horizon.Trade
-		// All trades
-		w := ht.Get("/accounts/" + accountAddress + "/trades")
-		if ht.Assert.Equal(200, w.Code) {
-			ht.Assert.PageOf(len(expected), w.Body)
-			ht.UnmarshalPage(w.Body, &records)
-			for i, row := range expected {
-				record := records[i]
-				assertResponseTradeEqualsDBTrade(ht, row, record)
+	for _, tradeType := range []string{"", history.AllTrades, history.OrderbookTrades, history.LiquidityPoolTrades} {
+		for accountAddress, expected := range fixtures.TradesByAccount {
+			var query string
+			if tradeType != "" {
+				expected = history.FilterTradesByType(expected, tradeType)
+				query = "?trade_type=" + tradeType
+			}
+			var records []horizon.Trade
+			// All trades
+			w := ht.Get("/accounts/" + accountAddress + "/trades" + query)
+			if ht.Assert.Equal(200, w.Code) {
+				ht.Assert.PageOf(len(expected), w.Body)
+				ht.UnmarshalPage(w.Body, &records)
+				for i, row := range expected {
+					record := records[i]
+					assertResponseTradeEqualsDBTrade(ht, row, record)
+				}
 			}
 		}
 	}
@@ -139,163 +145,124 @@ func TestAccountTrades(t *testing.T) {
 		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
 		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
 	}
+
+	w = ht.Get("/accounts/" + fixtures.Addresses[0] + "/trades?trade_type=invalid")
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("trade_type", extras["invalid_field"])
+		ht.Assert.Equal("Trade type must be all, orderbook, or liquidity_pool", extras["reason"])
+	}
 }
 
-func TestTradeActions_Index(t *testing.T) {
+func TestTrades(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
 	dbQ := &history.Q{ht.HorizonSession()}
 	fixtures := history.TradeScenario(ht.T, dbQ)
 
-	var records []horizon.Trade
-	// All trades
-	w := ht.Get("/trades")
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(len(fixtures.Trades), w.Body)
-		ht.UnmarshalPage(w.Body, &records)
-		for i, row := range fixtures.Trades {
-			record := records[i]
-			assertResponseTradeEqualsDBTrade(ht, row, record)
+	for _, tradeType := range []string{"", history.AllTrades, history.OrderbookTrades, history.LiquidityPoolTrades} {
+		var query string
+		expected := fixtures.Trades
+		if tradeType != "" {
+			expected = history.FilterTradesByType(expected, tradeType)
+			query = "trade_type=" + tradeType
+		}
+		w := ht.Get("/trades?" + query)
+		var records []horizon.Trade
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(len(expected), w.Body)
+			ht.UnmarshalPage(w.Body, &records)
+			for i, row := range expected {
+				record := records[i]
+				assertResponseTradeEqualsDBTrade(ht, row, record)
+			}
+		}
+
+		// reverseTrade order
+		w = ht.Get("/trades?order=desc&" + query)
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(len(records), w.Body)
+			var reverseRecords []horizon.Trade
+			ht.UnmarshalPage(w.Body, &reverseRecords)
+			ht.Assert.Len(reverseRecords, len(records))
+
+			// ensure that ordering is indeed reversed
+			for i := 0; i < len(records); i++ {
+				ht.Assert.Equal(records[i], reverseRecords[len(reverseRecords)-1-i])
+			}
 		}
 	}
 
-	// reverseTrade order
-	w = ht.Get("/trades?order=desc")
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(len(records), w.Body)
-		var reverseRecords []horizon.Trade
-		ht.UnmarshalPage(w.Body, &reverseRecords)
-		ht.Assert.Len(reverseRecords, len(records))
+	w := ht.Get("/trades?trade_type=invalid")
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("trade_type", extras["invalid_field"])
+		ht.Assert.Equal("Trade type must be all, orderbook, or liquidity_pool", extras["reason"])
+	}
+}
 
-		// ensure that ordering is indeed reversed
-		for i := 0; i < len(records); i++ {
-			ht.Assert.Equal(records[i], reverseRecords[len(reverseRecords)-1-i])
+func TestTradesForAssetPair(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	dbQ := &history.Q{ht.HorizonSession()}
+	fixtures := history.TradeScenario(ht.T, dbQ)
+
+	q := make(url.Values)
+	q.Add("base_asset_type", fixtures.Trades[0].BaseAssetType)
+	q.Add("base_asset_code", fixtures.Trades[0].BaseAssetCode)
+	q.Add("base_asset_issuer", fixtures.Trades[0].BaseAssetIssuer)
+	q.Add("counter_asset_type", fixtures.Trades[0].CounterAssetType)
+	q.Add("counter_asset_code", fixtures.Trades[0].CounterAssetCode)
+	q.Add("counter_asset_issuer", fixtures.Trades[0].CounterAssetIssuer)
+
+	reverseQ := make(url.Values)
+	reverseQ.Add("counter_asset_type", fixtures.Trades[0].BaseAssetType)
+	reverseQ.Add("counter_asset_code", fixtures.Trades[0].BaseAssetCode)
+	reverseQ.Add("counter_asset_issuer", fixtures.Trades[0].BaseAssetIssuer)
+	reverseQ.Add("base_asset_type", fixtures.Trades[0].CounterAssetType)
+	reverseQ.Add("base_asset_code", fixtures.Trades[0].CounterAssetCode)
+	reverseQ.Add("base_asset_issuer", fixtures.Trades[0].CounterAssetIssuer)
+
+	baseAsset, err := xdr.BuildAsset(
+		fixtures.Trades[0].BaseAssetType, fixtures.Trades[0].BaseAssetIssuer, fixtures.Trades[0].BaseAssetCode,
+	)
+	ht.Assert.NoError(err)
+	counterAsset, err := xdr.BuildAsset(
+		fixtures.Trades[0].CounterAssetType, fixtures.Trades[0].CounterAssetIssuer, fixtures.Trades[0].CounterAssetCode,
+	)
+	ht.Assert.NoError(err)
+
+	rows := fixtures.TradesByAssetPair(baseAsset, counterAsset)
+
+	for _, tradeType := range []string{"", history.AllTrades, history.OrderbookTrades, history.LiquidityPoolTrades} {
+		expected := rows
+		if tradeType != "" {
+			expected = history.FilterTradesByType(expected, tradeType)
+			q.Set("trade_type", tradeType)
+			reverseQ.Set("trade_type", tradeType)
 		}
-	}
 
-	var q = make(url.Values)
-	q.Add("base_asset_type", records[0].BaseAssetType)
-	q.Add("base_asset_code", records[0].BaseAssetCode)
-	q.Add("base_asset_issuer", records[0].BaseAssetIssuer)
-	q.Add("counter_asset_type", records[0].CounterAssetType)
-	q.Add("counter_asset_code", records[0].CounterAssetCode)
-	q.Add("counter_asset_issuer", records[0].CounterAssetIssuer)
+		w := ht.GetWithParams("/trades", q)
+		var tradesForPair []horizon.Trade
+		if ht.Assert.Equal(200, w.Code) {
+			ht.UnmarshalPage(w.Body, &tradesForPair)
 
-	w = ht.GetWithParams("/trades", q)
-	var tradesForPair []horizon.Trade
-	if ht.Assert.Equal(200, w.Code) {
-		ht.UnmarshalPage(w.Body, &tradesForPair)
-
-		baseAsset, err := xdr.BuildAsset(records[0].BaseAssetType, records[0].BaseAssetIssuer, records[0].BaseAssetCode)
-		ht.Assert.NoError(err)
-		counterAsset, err := xdr.BuildAsset(records[0].CounterAssetType, records[0].CounterAssetIssuer, records[0].CounterAssetCode)
-		ht.Assert.NoError(err)
-
-		rows := fixtures.TradesByAssetPair(baseAsset, counterAsset)
-		ht.Assert.Equal(len(rows), len(tradesForPair))
-		for i, row := range rows {
-			assertResponseTradeEqualsDBTrade(ht, row, tradesForPair[i])
+			ht.Assert.Equal(len(expected), len(tradesForPair))
+			for i, row := range expected {
+				assertResponseTradeEqualsDBTrade(ht, row, tradesForPair[i])
+			}
 		}
-	}
 
-	q = make(url.Values)
-	q.Add("counter_asset_type", records[0].BaseAssetType)
-	q.Add("counter_asset_code", records[0].BaseAssetCode)
-	q.Add("counter_asset_issuer", records[0].BaseAssetIssuer)
-	q.Add("base_asset_type", records[0].CounterAssetType)
-	q.Add("base_asset_code", records[0].CounterAssetCode)
-	q.Add("base_asset_issuer", records[0].CounterAssetIssuer)
-	w = ht.GetWithParams("/trades", q)
-	if ht.Assert.Equal(200, w.Code) {
-		var trades []horizon.Trade
-		ht.UnmarshalPage(w.Body, &trades)
-		ht.Assert.Equal(len(tradesForPair), len(trades))
+		w = ht.GetWithParams("/trades", reverseQ)
+		if ht.Assert.Equal(200, w.Code) {
+			var trades []horizon.Trade
+			ht.UnmarshalPage(w.Body, &trades)
+			ht.Assert.Equal(len(tradesForPair), len(trades))
 
-		for i, expected := range tradesForPair {
-			ht.Assert.Equal(reverseTrade(expected), trades[i])
+			for i, expected := range tradesForPair {
+				ht.Assert.Equal(reverseTrade(expected), trades[i])
+			}
 		}
-	}
-
-	// For offer
-	w = ht.Get("/offers/1/trades")
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.Empty(fixtures.TradesByOffer[1])
-		ht.Assert.PageOf(0, w.Body)
-	}
-
-	w = ht.Get("/offers/2/trades")
-	if ht.Assert.Equal(200, w.Code) {
-		var trades []horizon.Trade
-		ht.UnmarshalPage(w.Body, &trades)
-		expected := fixtures.TradesByOffer[2]
-		ht.Assert.NotEmpty(expected)
-		ht.Assert.Len(trades, len(expected))
-
-		// ensure that ordering is indeed reversed
-		for i, trade := range trades {
-			assertResponseTradeEqualsDBTrade(ht, expected[i], trade)
-		}
-	}
-
-	// for an account
-	w = ht.Get("/accounts/GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU/trades")
-	if ht.Assert.Equal(200, w.Code) {
-		var trades []horizon.Trade
-		ht.UnmarshalPage(w.Body, &trades)
-		expected := fixtures.TradesByAccount["GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"]
-		ht.Assert.NotEmpty(expected)
-		ht.Assert.Len(trades, len(expected))
-
-		// ensure that ordering is indeed reversed
-		for i, trade := range trades {
-			assertResponseTradeEqualsDBTrade(ht, expected[i], trade)
-		}
-	}
-
-	// for other account
-	w = ht.Get("/accounts/GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD/trades")
-	if ht.Assert.Equal(200, w.Code) {
-		var trades []horizon.Trade
-		ht.UnmarshalPage(w.Body, &trades)
-		expected := fixtures.TradesByAccount["GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"]
-		ht.Assert.NotEmpty(expected)
-		ht.Assert.Len(trades, len(expected))
-
-		// ensure that ordering is indeed reversed
-		for i, trade := range trades {
-			assertResponseTradeEqualsDBTrade(ht, expected[i], trade)
-		}
-	}
-
-	//test paging from account 1
-	w = ht.Get("/accounts/GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU/trades?order=desc&limit=1")
-	var links hal.Links
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(1, w.Body)
-		links = ht.UnmarshalPage(w.Body, &records)
-	}
-
-	w = ht.Get(links.Next.Href)
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(1, w.Body)
-		prevRecord := records[0]
-		links = ht.UnmarshalPage(w.Body, &records)
-		ht.Assert.NotEqual(prevRecord, records[0])
-	}
-
-	//test paging from account 2
-	w = ht.Get("/accounts/GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD/trades?order=desc&limit=1")
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(1, w.Body)
-		links = ht.UnmarshalPage(w.Body, &records)
-	}
-
-	w = ht.Get(links.Next.Href)
-	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.PageOf(1, w.Body)
-		prevRecord := records[0]
-		links = ht.UnmarshalPage(w.Body, &records)
-		ht.Assert.NotEqual(prevRecord, records[0])
 	}
 }
 
