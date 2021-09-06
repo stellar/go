@@ -440,6 +440,239 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 
 	tt.Equal(int32(10353642), trade1.Price.N)
 	tt.Equal(int32(20000000), trade1.Price.D)
+}
 
-	// TODO test revoke
+func TestLiquidityPoolRevoke(t *testing.T) {
+	tt := assert.New(t)
+	itest := NewProtocol18Test(t)
+	master := itest.Master()
+
+	keys, accounts := itest.CreateAccounts(2, "1000")
+	shareKeys, shareAccount := keys[0], accounts[0]
+
+	poolID, err := xdr.NewPoolId(
+		xdr.MustNewNativeAsset(),
+		xdr.MustNewCreditAsset("USD", master.Address()),
+		30,
+	)
+	tt.NoError(err)
+	poolIDHexString := xdr.Hash(poolID).HexString()
+
+	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
+		&txnbuild.SetOptions{
+			SourceAccount: master.Address(),
+			SetFlags: []txnbuild.AccountFlag{
+				txnbuild.AuthRevocable,
+			},
+		},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: txnbuild.CreditAsset{
+					Code:   "USD",
+					Issuer: master.Address(),
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
+					AssetA: txnbuild.NativeAsset{},
+					AssetB: txnbuild.CreditAsset{
+						Code:   "USD",
+						Issuer: master.Address(),
+					},
+					Fee: 30,
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.Payment{
+			SourceAccount: master.Address(),
+			Destination:   shareAccount.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Amount: "1000",
+		},
+		&txnbuild.LiquidityPoolDeposit{
+			LiquidityPoolID: [32]byte(poolID),
+			MaxAmountA:      "400",
+			MaxAmountB:      "777",
+			MinPrice:        "0.5",
+			MaxPrice:        "2",
+		},
+		&txnbuild.SetTrustLineFlags{
+			SourceAccount: master.Address(),
+			Trustor:       shareKeys.Address(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			ClearFlags: []txnbuild.TrustLineFlag{
+				txnbuild.TrustLineAuthorized,
+			},
+		},
+	)
+
+	// Check if claimable balances have been created
+	claimableBalances, err := itest.Client().ClaimableBalances(horizonclient.ClaimableBalanceRequest{})
+	tt.NoError(err)
+	tt.Len(claimableBalances.Embedded.Records, 2)
+
+	// The list is sorted by ID and preimage consists of Account ID which can
+	// differ between test runs. Flip the order if the first one is no native.
+	if claimableBalances.Embedded.Records[0].Asset != "native" {
+		claimableBalances.Embedded.Records[0], claimableBalances.Embedded.Records[1] =
+			claimableBalances.Embedded.Records[1], claimableBalances.Embedded.Records[0]
+	}
+
+	cb1 := claimableBalances.Embedded.Records[0]
+	tt.Equal("native", cb1.Asset)
+	tt.Equal("400.0000000", cb1.Amount)
+	tt.Equal(shareAccount.GetAccountID(), cb1.Claimants[0].Destination)
+	tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, cb1.Claimants[0].Predicate.Type)
+
+	cb2 := claimableBalances.Embedded.Records[1]
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), cb2.Asset)
+	tt.Equal("777.0000000", cb2.Amount)
+	tt.Equal(shareAccount.GetAccountID(), cb2.Claimants[0].Destination)
+	tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, cb2.Claimants[0].Predicate.Type)
+
+	ops, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForLiquidityPool: poolIDHexString,
+	})
+	tt.NoError(err)
+
+	// We expect the following ops for this liquidity pool:
+	// 1. change_trust creating a trust to LP.
+	// 2. liquidity_pool_deposit.
+	// 3. set_trust_line_flags revoking assets from LP.
+	tt.Len(ops.Embedded.Records, 3)
+
+	op1 := (ops.Embedded.Records[0]).(operations.ChangeTrust)
+	tt.Equal("change_trust", op1.Type)
+	tt.Equal("liquidity_pool_shares", op1.Asset.Type)
+	tt.Equal(poolIDHexString, op1.LiquidityPoolID)
+	tt.Equal("922337203685.4775807", op1.Limit)
+
+	op2 := (ops.Embedded.Records[1]).(operations.LiquidityPoolDeposit)
+	tt.Equal("liquidity_pool_deposit", op2.Type)
+	tt.Equal(poolIDHexString, op2.LiquidityPoolID)
+	tt.Equal("0.5000000", op2.MinPrice)
+	tt.Equal("2.0000000", op2.MaxPrice)
+	tt.Equal("native", op2.ReservesDeposited[0].Asset)
+	tt.Equal("400.0000000", op2.ReservesDeposited[0].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op2.ReservesDeposited[1].Asset)
+	tt.Equal("777.0000000", op2.ReservesDeposited[1].Amount)
+	tt.Equal("557.4943946", op2.SharesReceived)
+
+	op3 := (ops.Embedded.Records[2]).(operations.SetTrustLineFlags)
+	tt.Equal("set_trust_line_flags", op3.Base.Type)
+	tt.Equal("credit_alphanum4", op3.Asset.Type)
+	tt.Equal("USD", op3.Asset.Code)
+	tt.Equal(master.Address(), op3.Asset.Issuer)
+	tt.Equal("authorized", op3.ClearFlagsS[0])
+
+	effs, err := itest.Client().Effects(horizonclient.EffectRequest{
+		ForLiquidityPool: poolIDHexString,
+		Limit:            20,
+	})
+	tt.NoError(err)
+	// We expect the following effects for this liquidity pool:
+	// 1. trustline_created creating liquidity_pool_shares trust_line
+	// 2. liquidity_pool_created
+	// 3. liquidity_pool_deposited
+	// 4. trustline_flags_updated - revoking LP assets
+	// 5. claimable_balance_created - creating CB for asset A
+	// 6. claimable_balance_claimant_created - claimant for CB above
+	// 7. claimable_balance_created - creating CB for asset B
+	// 8. claimable_balance_claimant_created - claimant for CB above
+	// 9. liquidity_pool_revoked
+	// 10. claimable_balance_sponsorship_created
+	// 11. claimable_balance_sponsorship_created
+	// 12. liquidity_pool_removed - because no more assets inside
+	tt.Len(effs.Embedded.Records, 12)
+
+	ef1 := (effs.Embedded.Records[0]).(effects.TrustlineCreated)
+	tt.Equal(shareKeys.Address(), ef1.Account)
+	tt.Equal("trustline_created", ef1.Type)
+	tt.Equal("liquidity_pool_shares", ef1.Asset.Type)
+	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef1.LiquidityPoolID)
+	tt.Equal("922337203685.4775807", ef1.Limit)
+
+	ef2 := (effs.Embedded.Records[1]).(effects.LiquidityPoolCreated)
+	tt.Equal(shareKeys.Address(), ef2.Account)
+	tt.Equal("liquidity_pool_created", ef2.Type)
+	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef2.LiquidityPool.ID)
+	tt.Equal("constant_product", ef2.LiquidityPool.Type)
+	tt.Equal(uint32(30), ef2.LiquidityPool.FeeBP)
+	tt.Equal("0.0000000", ef2.LiquidityPool.TotalShares)
+	tt.Equal(uint64(1), ef2.LiquidityPool.TotalTrustlines)
+	tt.Equal("native", ef2.LiquidityPool.Reserves[0].Asset)
+	tt.Equal("0.0000000", ef2.LiquidityPool.Reserves[0].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef2.LiquidityPool.Reserves[1].Asset)
+	tt.Equal("0.0000000", ef2.LiquidityPool.Reserves[1].Amount)
+
+	ef3 := (effs.Embedded.Records[2]).(effects.LiquidityPoolDeposited)
+	tt.Equal("liquidity_pool_deposited", ef3.Type)
+	tt.Equal(shareKeys.Address(), ef3.Account)
+	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef3.LiquidityPool.ID)
+	tt.Equal("constant_product", ef3.LiquidityPool.Type)
+	tt.Equal(uint32(30), ef3.LiquidityPool.FeeBP)
+	tt.Equal("557.4943946", ef3.LiquidityPool.TotalShares)
+	tt.Equal(uint64(1), ef3.LiquidityPool.TotalTrustlines)
+
+	ef4 := (effs.Embedded.Records[3]).(effects.TrustlineFlagsUpdated)
+	tt.Equal("trustline_flags_updated", ef4.Base.Type)
+	tt.Equal(master.Address(), ef4.Account)
+	tt.Equal("USD", ef4.Asset.Code)
+	tt.Equal(master.Address(), ef4.Asset.Issuer)
+	tt.Equal(shareAccount.GetAccountID(), ef4.Trustor)
+
+	ef5 := (effs.Embedded.Records[4]).(effects.ClaimableBalanceCreated)
+	tt.Equal("claimable_balance_created", ef5.Type)
+	tt.Equal("native", ef5.Asset)
+	tt.Equal("400.0000000", ef5.Amount)
+
+	ef6 := (effs.Embedded.Records[5]).(effects.ClaimableBalanceClaimantCreated)
+	tt.Equal("claimable_balance_claimant_created", ef6.Type)
+	tt.Equal("native", ef6.Asset)
+	tt.Equal("400.0000000", ef6.Amount)
+	tt.Equal(shareKeys.Address(), ef6.Account)
+	tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, ef6.Predicate.Type)
+
+	ef7 := (effs.Embedded.Records[6]).(effects.ClaimableBalanceCreated)
+	tt.Equal("claimable_balance_created", ef7.Type)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef7.Asset)
+	tt.Equal("777.0000000", ef7.Amount)
+
+	ef8 := (effs.Embedded.Records[7]).(effects.ClaimableBalanceClaimantCreated)
+	tt.Equal("claimable_balance_claimant_created", ef8.Type)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef8.Asset)
+	tt.Equal("777.0000000", ef8.Amount)
+	tt.Equal(shareKeys.Address(), ef8.Account)
+	tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, ef8.Predicate.Type)
+
+	ef9 := (effs.Embedded.Records[8]).(effects.LiquidityPoolRevoked)
+	tt.Equal("liquidity_pool_revoked", ef9.Type)
+	tt.Equal(master.Address(), ef9.Account)
+	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef9.LiquidityPool.ID)
+	tt.Equal("constant_product", ef9.LiquidityPool.Type)
+	tt.Equal(uint32(30), ef9.LiquidityPool.FeeBP)
+	tt.Equal("557.4943946", ef9.LiquidityPool.TotalShares)
+	tt.Equal(uint64(1), ef9.LiquidityPool.TotalTrustlines)
+	tt.Equal("native", ef9.LiquidityPool.Reserves[0].Asset)
+	tt.Equal("400.0000000", ef9.LiquidityPool.Reserves[0].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef9.LiquidityPool.Reserves[1].Asset)
+	tt.Equal("777.0000000", ef9.LiquidityPool.Reserves[1].Amount)
+
+	// ef10 and ef11 are `claimable_balance_sponsorship_created` effects not
+	// relevant here.
+
+	ef12 := (effs.Embedded.Records[11]).(effects.LiquidityPoolRemoved)
+	tt.Equal("liquidity_pool_removed", ef12.Type)
+	tt.Equal(master.Address(), ef12.Account)
+	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef12.LiquidityPoolID)
 }
