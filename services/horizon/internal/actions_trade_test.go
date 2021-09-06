@@ -21,6 +21,126 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func TestLiquidityPoolTrades(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	dbQ := &history.Q{ht.HorizonSession()}
+	fixtures := history.TradeScenario(ht.T, dbQ)
+
+	for _, liquidityPoolID := range fixtures.LiquidityPools {
+		expected := fixtures.TradesByPool[liquidityPoolID]
+		var records []horizon.Trade
+		// All trades
+		w := ht.Get("/liquidity_pools/" + liquidityPoolID + "/trades")
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(len(expected), w.Body)
+			ht.UnmarshalPage(w.Body, &records)
+			for i, row := range expected {
+				record := records[i]
+				assertResponseTradeEqualsDBTrade(ht, row, record)
+			}
+		}
+	}
+
+	w := ht.Get("/liquidity_pools/" + fixtures.LiquidityPools[0] + "/trades?account_id=" + fixtures.Addresses[0])
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
+		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
+	}
+
+	w = ht.Get("/liquidity_pools/" + fixtures.LiquidityPools[0] + "/trades?offer_id=1")
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
+		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
+	}
+
+	w = ht.Get("/liquidity_pools/" + fixtures.LiquidityPools[0] + "/trades?trade_type=orderbook")
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("trade_type", extras["invalid_field"])
+		ht.Assert.Equal("trade_type orderbook cannot be used with the liquidity_pool_id filter", extras["reason"])
+	}
+}
+
+func TestOrderbookTrades(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	dbQ := &history.Q{ht.HorizonSession()}
+	fixtures := history.TradeScenario(ht.T, dbQ)
+
+	for offerID, expected := range fixtures.TradesByOffer {
+		var records []horizon.Trade
+		// All trades
+		w := ht.Get("/offers/" + strconv.FormatInt(offerID, 10) + "/trades")
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(len(expected), w.Body)
+			ht.UnmarshalPage(w.Body, &records)
+			for i, row := range expected {
+				record := records[i]
+				assertResponseTradeEqualsDBTrade(ht, row, record)
+			}
+		}
+	}
+
+	w := ht.Get("/offers/1/trades?account_id=" + fixtures.Addresses[0])
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
+		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
+	}
+
+	w = ht.Get("/offers/1/trades?liquidity_pool_id=" + fixtures.LiquidityPools[0])
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
+		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
+	}
+
+	w = ht.Get("/offers/1/trades?trade_type=liquidity_pool")
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("trade_type", extras["invalid_field"])
+		ht.Assert.Equal("trade_type liquidity_pool cannot be used with the offer_id filter", extras["reason"])
+	}
+}
+
+func TestAccountTrades(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	dbQ := &history.Q{ht.HorizonSession()}
+	fixtures := history.TradeScenario(ht.T, dbQ)
+
+	for accountAddress, expected := range fixtures.TradesByAccount {
+		var records []horizon.Trade
+		// All trades
+		w := ht.Get("/accounts/" + accountAddress + "/trades")
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(len(expected), w.Body)
+			ht.UnmarshalPage(w.Body, &records)
+			for i, row := range expected {
+				record := records[i]
+				assertResponseTradeEqualsDBTrade(ht, row, record)
+			}
+		}
+	}
+
+	w := ht.Get("/accounts/" + fixtures.Addresses[0] + "/trades?offer_id=1")
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
+		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
+	}
+
+	w = ht.Get("/accounts/" + fixtures.Addresses[0] + "/trades?liquidity_pool_id=" + fixtures.LiquidityPools[0])
+	if ht.Assert.Equal(400, w.Code) {
+		extras := ht.UnmarshalExtras(w.Body)
+		ht.Assert.Equal("account_id,liquidity_pool_id,offer_id", extras["invalid_field"])
+		ht.Assert.Equal("Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id", extras["reason"])
+	}
+}
+
 func TestTradeActions_Index(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
@@ -226,6 +346,12 @@ func assertResponseTradeEqualsDBTrade(ht *HTTPT, row history.Trade, record horiz
 	ht.Assert.Equal(row.LedgerCloseTime.Unix(), record.LedgerCloseTime.Unix())
 	ht.Assert.Equal(int32(row.PriceN.Int64), record.Price.N)
 	ht.Assert.Equal(int32(row.PriceD.Int64), record.Price.D)
+
+	if row.BaseLiquidityPoolID.Valid || row.CounterLiquidityPoolID.Valid {
+		ht.Assert.Equal(history.LiquidityPoolTrades, record.TradeType)
+	} else {
+		ht.Assert.Equal(history.OrderbookTrades, record.TradeType)
+	}
 }
 
 // setAssetQuery adds an asset filter with a given prefix to a query

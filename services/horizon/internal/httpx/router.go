@@ -174,6 +174,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 				}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
+				r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
 			})
 		})
 
