@@ -577,6 +577,7 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 
 	effs, err := itest.Client().Effects(horizonclient.EffectRequest{
 		ForLiquidityPool: poolIDHexString,
+		Limit:            20,
 	})
 	tt.NoError(err)
 	// We expect the following effects for this liquidity pool:
@@ -589,8 +590,10 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	// 7. claimable_balance_created - creating CB for asset B
 	// 8. claimable_balance_claimant_created - claimant for CB above
 	// 9. liquidity_pool_revoked
-	// 10. liquidity_pool_removed - because no more assets inside
-	tt.Len(effs.Embedded.Records, 10)
+	// 10. claimable_balance_sponsorship_created
+	// 11. claimable_balance_sponsorship_created
+	// 12. liquidity_pool_removed - because no more assets inside
+	tt.Len(effs.Embedded.Records, 12)
 
 	ef1 := (effs.Embedded.Records[0]).(effects.TrustlineCreated)
 	tt.Equal(shareKeys.Address(), ef1.Account)
@@ -621,6 +624,37 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	tt.Equal("557.4943946", ef3.LiquidityPool.TotalShares)
 	tt.Equal(uint64(1), ef3.LiquidityPool.TotalTrustlines)
 
+	ef4 := (effs.Embedded.Records[3]).(effects.TrustlineFlagsUpdated)
+	tt.Equal("trustline_flags_updated", ef4.Base.Type)
+	tt.Equal(master.Address(), ef4.Account)
+	tt.Equal("USD", ef4.Asset.Code)
+	tt.Equal(master.Address(), ef4.Asset.Issuer)
+	tt.Equal(shareAccount.GetAccountID(), ef4.Trustor)
+
+	ef5 := (effs.Embedded.Records[4]).(effects.ClaimableBalanceCreated)
+	tt.Equal("claimable_balance_created", ef5.Type)
+	tt.Equal("native", ef5.Asset)
+	tt.Equal("400.0000000", ef5.Amount)
+
+	ef6 := (effs.Embedded.Records[5]).(effects.ClaimableBalanceClaimantCreated)
+	tt.Equal("claimable_balance_claimant_created", ef6.Type)
+	tt.Equal("native", ef6.Asset)
+	tt.Equal("400.0000000", ef6.Amount)
+	tt.Equal(shareKeys.Address(), ef6.Account)
+	tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, ef6.Predicate.Type)
+
+	ef7 := (effs.Embedded.Records[6]).(effects.ClaimableBalanceCreated)
+	tt.Equal("claimable_balance_created", ef7.Type)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef7.Asset)
+	tt.Equal("777.0000000", ef7.Amount)
+
+	ef8 := (effs.Embedded.Records[7]).(effects.ClaimableBalanceClaimantCreated)
+	tt.Equal("claimable_balance_claimant_created", ef8.Type)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef8.Asset)
+	tt.Equal("777.0000000", ef8.Amount)
+	tt.Equal(shareKeys.Address(), ef8.Account)
+	tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, ef8.Predicate.Type)
+
 	ef9 := (effs.Embedded.Records[8]).(effects.LiquidityPoolRevoked)
 	tt.Equal("liquidity_pool_revoked", ef9.Type)
 	tt.Equal(master.Address(), ef9.Account)
@@ -634,8 +668,11 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef9.LiquidityPool.Reserves[1].Asset)
 	tt.Equal("777.0000000", ef9.LiquidityPool.Reserves[1].Amount)
 
-	// ef10 := (effs.Embedded.Records[9]).(effects.LiquidityPoolRemoved)
-	// tt.Equal("liquidity_pool_removed", ef10.Type)
-	// tt.Equal(master.Address(), ef10.Account)
-	// tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef10.LiquidityPoolID)
+	// ef10 and ef11 are `claimable_balance_sponsorship_created` effects not
+	// relevant here.
+
+	ef12 := (effs.Embedded.Records[11]).(effects.LiquidityPoolRemoved)
+	tt.Equal("liquidity_pool_removed", ef12.Type)
+	tt.Equal(master.Address(), ef12.Account)
+	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef12.LiquidityPoolID)
 }

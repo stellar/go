@@ -228,12 +228,21 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Effects generated for multiple operations
+
+	// Effects generated for multiple operations. Keep the effect categories
+	// separated so they are "together" in case of different order or meta
+	// changes generate by core (unordered_map).
+
+	// Sponsorships
 	for _, change := range changes {
 		if err = wrapper.addLedgerEntrySponsorshipEffects(change); err != nil {
 			return nil, err
 		}
 		wrapper.addSignerSponsorshipEffects(change)
+	}
+
+	// Liquidity pools
+	for _, change := range changes {
 		// Effects caused by ChangeTrust (creation), AllowTrust and SetTrustlineFlags (removal through revocation)
 		wrapper.addLedgerEntryLiquidityPoolEffects(change)
 	}
