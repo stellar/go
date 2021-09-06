@@ -78,6 +78,8 @@ func (q TradeAssetsQueryParams) Counter() (*xdr.Asset, error) {
 type TradesQuery struct {
 	AccountID              string `schema:"account_id" valid:"accountID,optional"`
 	OfferID                uint64 `schema:"offer_id" valid:"-"`
+	PoolID                 string `schema:"liquidity_pool_id" valid:"sha256,optional"`
+	TradeType              string `schema:"trade_type" valid:"tradeType,optional"`
 	TradeAssetsQueryParams `valid:"optional"`
 }
 
@@ -99,6 +101,51 @@ func (q TradesQuery) Validate() error {
 		)
 	}
 
+	if base != nil && q.OfferID != 0 {
+		return problem.MakeInvalidFieldProblem(
+			"base_asset_type,counter_asset_type,offer_id",
+			errors.New("this endpoint does not support filtering by both asset pair and offer id "),
+		)
+	}
+
+	if base != nil && q.PoolID != "" {
+		return problem.MakeInvalidFieldProblem(
+			"base_asset_type,counter_asset_type,liquidity_pool_id",
+			errors.New("this endpoint does not support filtering by both asset pair and liquidity pool id "),
+		)
+	}
+
+	count, err := countNonEmpty(
+		q.AccountID,
+		q.OfferID,
+		q.PoolID,
+	)
+	if err != nil {
+		return problem.BadRequest
+	}
+
+	if count > 1 {
+		return problem.MakeInvalidFieldProblem(
+			"account_id,liquidity_pool_id,offer_id",
+			errors.New(
+				"Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id",
+			),
+		)
+	}
+
+	if q.OfferID != 0 && q.TradeType == history.LiquidityPoolTrades {
+		return problem.MakeInvalidFieldProblem(
+			"trade_type",
+			errors.Errorf("trade_type %s cannot be used with the offer_id filter", q.TradeType),
+		)
+	}
+
+	if q.PoolID != "" && q.TradeType == history.OrderbookTrades {
+		return problem.MakeInvalidFieldProblem(
+			"trade_type",
+			errors.Errorf("trade_type %s cannot be used with the liquidity_pool_id filter", q.TradeType),
+		)
+	}
 	return nil
 }
 
@@ -125,51 +172,41 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	if err = getParams(&qp, r); err != nil {
 		return nil, err
 	}
+	if qp.TradeType == "" {
+		qp.TradeType = history.AllTrades
+	}
 
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
 
-	trades := historyQ.Trades()
-
-	if qp.AccountID != "" {
-		trades.ForAccount(ctx, qp.AccountID)
-	}
-
-	baseAsset, err := qp.Base()
+	var records []history.Trade
+	var baseAsset, counterAsset *xdr.Asset
+	baseAsset, err = qp.Base()
 	if err != nil {
 		return nil, err
 	}
 
 	if baseAsset != nil {
-		baseAssetID, err2 := historyQ.GetAssetID(ctx, *baseAsset)
-		if err2 != nil {
-			return nil, err2
+		counterAsset, err = qp.Counter()
+		if err != nil {
+			return nil, err
 		}
 
-		counterAsset, err2 := qp.Counter()
-		if err2 != nil {
-			return nil, err2
-		}
-
-		counterAssetID, err2 := historyQ.GetAssetID(ctx, *counterAsset)
-		if err2 != nil {
-			return nil, err2
-		}
-		trades = historyQ.TradesForAssetPair(baseAssetID, counterAssetID)
+		records, err = historyQ.GetTradesForAssets(ctx, pq, qp.AccountID, qp.TradeType, *baseAsset, *counterAsset)
+	} else if qp.OfferID != 0 {
+		records, err = historyQ.GetTradesForOffer(ctx, pq, int64(qp.OfferID))
+	} else if qp.PoolID != "" {
+		records, err = historyQ.GetTradesForLiquidityPool(ctx, pq, qp.PoolID)
+	} else {
+		records, err = historyQ.GetTrades(ctx, pq, qp.AccountID, qp.TradeType)
 	}
-
-	if qp.OfferID != 0 {
-		trades = trades.ForOffer(int64(qp.OfferID))
-	}
-
-	var records []history.Trade
-	if records, err = trades.Page(ctx, pq).Select(ctx); err != nil {
+	if err != nil {
 		return nil, err
 	}
-	var response []hal.Pageable
 
+	var response []hal.Pageable
 	for _, record := range records {
 		var res horizon.Trade
 		resourceadapter.PopulateTrade(ctx, &res, record)

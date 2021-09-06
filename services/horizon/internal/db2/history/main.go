@@ -718,24 +718,6 @@ type Trade struct {
 	PriceD                 null.Int    `db:"price_d"`
 }
 
-// TradesQ is a helper struct to aid in configuring queries that loads
-// slices of trade structs.
-type TradesQ struct {
-	Err        error
-	parent     *Q
-	sql        sq.SelectBuilder
-	pageCalled bool
-
-	// For queries for account and offer we construct UNION query. The alternative
-	// is to use (base = X OR counter = X) query but it's costly.
-	forAccountID int64
-	forOfferID   int64
-
-	// rawSQL will be executed if present (instead of sql - sq.SelectBuilder).
-	rawSQL  string
-	rawArgs []interface{}
-}
-
 // Transaction is a row of data from the `history_transactions` table
 type Transaction struct {
 	LedgerCloseTime time.Time `db:"ledger_close_time"`

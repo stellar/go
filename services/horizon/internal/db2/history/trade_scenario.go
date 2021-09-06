@@ -18,7 +18,7 @@ func createInsertTrades(
 	first := InsertTrade{
 		HistoryOperationID: toid.New(ledger, 1, 1).ToInt64(),
 		Order:              1,
-		LedgerCloseTime:    time.Unix(10000000, 0),
+		LedgerCloseTime:    time.Unix(10000000, 0).UTC(),
 		CounterOfferID:     null.IntFrom(32145),
 		BaseAccountID:      null.IntFrom(accountIDs[0]),
 		CounterAccountID:   null.IntFrom(accountIDs[1]),
@@ -39,7 +39,7 @@ func createInsertTrades(
 	third := InsertTrade{
 		HistoryOperationID: toid.New(ledger, 2, 1).ToInt64(),
 		Order:              1,
-		LedgerCloseTime:    time.Unix(10000001, 0),
+		LedgerCloseTime:    time.Unix(10000001, 0).UTC(),
 		CounterOfferID:     null.IntFrom(2),
 		BaseAccountID:      null.IntFrom(accountIDs[0]),
 		CounterAccountID:   null.IntFrom(accountIDs[1]),
@@ -56,7 +56,7 @@ func createInsertTrades(
 	fourth := InsertTrade{
 		HistoryOperationID:  toid.New(ledger, 2, 2).ToInt64(),
 		Order:               3,
-		LedgerCloseTime:     time.Unix(10000001, 0),
+		LedgerCloseTime:     time.Unix(10000001, 0).UTC(),
 		CounterAssetID:      assetIDs[4],
 		CounterAmount:       675,
 		CounterAccountID:    null.IntFrom(accountIDs[0]),
@@ -69,11 +69,28 @@ func createInsertTrades(
 		PriceD:              981,
 	}
 
+	fifth := InsertTrade{
+		HistoryOperationID:  toid.New(ledger, 3, 1).ToInt64(),
+		Order:               1,
+		LedgerCloseTime:     time.Unix(10002000, 0).UTC(),
+		CounterAssetID:      assetIDs[1],
+		CounterAmount:       300,
+		CounterAccountID:    null.IntFrom(accountIDs[1]),
+		LiquidityPoolFee:    null.IntFrom(xdr.LiquidityPoolFeeV18),
+		BaseAssetID:         assetIDs[0],
+		BaseAmount:          200,
+		BaseLiquidityPoolID: null.IntFrom(poolIDs[1]),
+		BaseIsSeller:        true,
+		PriceN:              43,
+		PriceD:              56,
+	}
+
 	return []InsertTrade{
 		first,
 		second,
 		third,
 		fourth,
+		fifth,
 	}
 }
 
@@ -138,6 +155,7 @@ type TradeFixtures struct {
 	TradesByOffer   map[int64][]Trade
 }
 
+// TradesByAssetPair returns the trades which match a given trading pair
 func (f TradeFixtures) TradesByAssetPair(a, b xdr.Asset) []Trade {
 	set := map[string]bool{}
 	var intersection []Trade
@@ -151,6 +169,26 @@ func (f TradeFixtures) TradesByAssetPair(a, b xdr.Asset) []Trade {
 		}
 	}
 	return intersection
+}
+
+// FilterTradesByType filters the given trades by type
+func FilterTradesByType(trades []Trade, tradeType string) []Trade {
+	var result []Trade
+	for _, trade := range trades {
+		switch tradeType {
+		case AllTrades:
+			result = append(result, trade)
+		case OrderbookTrades:
+			if trade.BaseOfferID.Valid || trade.CounterOfferID.Valid {
+				result = append(result, trade)
+			}
+		case LiquidityPoolTrades:
+			if trade.BaseLiquidityPoolID.Valid || trade.CounterLiquidityPoolID.Valid {
+				result = append(result, trade)
+			}
+		}
+	}
+	return result
 }
 
 // TradeScenario inserts trade rows into the Horizon DB
@@ -174,7 +212,8 @@ func TradeScenario(tt *test.T, q *Q) TradeFixtures {
 		xdr.MustNewCreditAsset("CHF", addresses[1]),
 	}
 	hash := [32]byte{1, 2, 3, 4, 5}
-	pools := []string{hex.EncodeToString(hash[:])}
+	otherHash := [32]byte{6, 7, 8, 9, 10}
+	pools := []string{hex.EncodeToString(hash[:]), hex.EncodeToString(otherHash[:])}
 	accountIDs, assetIDs, poolIDs := createHistoryIDs(
 		tt, q,
 		addresses,
@@ -315,6 +354,27 @@ func TradeScenario(tt *test.T, q *Q) TradeFixtures {
 			LiquidityPoolFee:    inserts[3].LiquidityPoolFee,
 			PriceN:              null.IntFrom(inserts[3].PriceN),
 			PriceD:              null.IntFrom(inserts[3].PriceD),
+		},
+		{
+			HistoryOperationID:  inserts[4].HistoryOperationID,
+			Order:               inserts[4].Order,
+			LedgerCloseTime:     inserts[4].LedgerCloseTime,
+			BaseOfferID:         inserts[4].BaseOfferID,
+			BaseAssetType:       firstSoldAssetType,
+			BaseAssetIssuer:     firstSoldAssetIssuer,
+			BaseAssetCode:       firstSoldAssetCode,
+			BaseLiquidityPoolID: null.StringFrom(pools[1]),
+			BaseAmount:          inserts[4].BaseAmount,
+			CounterOfferID:      null.Int{},
+			CounterAccount:      null.StringFrom(thirdBuyerAccount.Address()),
+			CounterAssetType:    firstBoughtAssetType,
+			CounterAssetIssuer:  firstBoughtAssetIssuer,
+			CounterAssetCode:    firstBoughtAssetCode,
+			CounterAmount:       inserts[4].CounterAmount,
+			BaseIsSeller:        inserts[4].BaseIsSeller,
+			LiquidityPoolFee:    inserts[4].LiquidityPoolFee,
+			PriceN:              null.IntFrom(inserts[4].PriceN),
+			PriceD:              null.IntFrom(inserts[4].PriceD),
 		},
 	}
 
