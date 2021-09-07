@@ -568,8 +568,8 @@ func (t *FeeBumpTransaction) Base64() (string, error) {
 	return marshallBase64(t.envelope, t.Signatures())
 }
 
-// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
-// containing the FeeBumpTransaction.
+// ToGenericTransaction creates a GenericTransaction containing the
+// FeeBumpTransaction.
 func (t *FeeBumpTransaction) ToGenericTransaction() *GenericTransaction {
 	return &GenericTransaction{feeBump: t}
 }
