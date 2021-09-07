@@ -4518,7 +4518,7 @@ func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("tx base64:", txb64)
 
-	gtx = NewGenericTransactionWithTransaction(tx)
+	gtx = tx.ToGenericTransaction()
 	marshaled, err := gtx.MarshalText()
 	require.NoError(t, err)
 	t.Log("tx marshaled text:", string(marshaled))
@@ -4539,11 +4539,11 @@ func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("fbtx base64:", fbtxb64)
 
-	fbgtx := NewGenericTransactionWithTransaction(tx)
+	fbgtx := fbtx.ToGenericTransaction()
 	marshaled, err = fbgtx.MarshalText()
 	require.NoError(t, err)
 	t.Log("fbtx marshaled text:", string(marshaled))
-	assert.Equal(t, txb64, string(marshaled))
+	assert.Equal(t, fbtxb64, string(marshaled))
 	fbgtx2 := &GenericTransaction{}
 	err = fbgtx2.UnmarshalText(marshaled)
 	require.NoError(t, err)

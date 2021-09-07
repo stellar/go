@@ -382,6 +382,11 @@ func (t *Transaction) Base64() (string, error) {
 	return marshallBase64(t.envelope, t.Signatures())
 }
 
+// ToGenericTransaction creates a GenericTransaction containing the Transaction.
+func (t *Transaction) ToGenericTransaction() *GenericTransaction {
+	return &GenericTransaction{simple: t}
+}
+
 // ClaimableBalanceID returns the claimable balance ID for the operation at the given index within the transaction.
 // given index (which should be a `CreateClaimableBalance` operation).
 func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
@@ -563,6 +568,12 @@ func (t *FeeBumpTransaction) Base64() (string, error) {
 	return marshallBase64(t.envelope, t.Signatures())
 }
 
+// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
+// containing the FeeBumpTransaction.
+func (t *FeeBumpTransaction) ToGenericTransaction() *GenericTransaction {
+	return &GenericTransaction{feeBump: t}
+}
+
 // InnerTransaction returns the Transaction which is wrapped by
 // this FeeBumpTransaction instance.
 func (t *FeeBumpTransaction) InnerTransaction() *Transaction {
@@ -576,18 +587,6 @@ func (t *FeeBumpTransaction) InnerTransaction() *Transaction {
 type GenericTransaction struct {
 	simple  *Transaction
 	feeBump *FeeBumpTransaction
-}
-
-// NewGenericTransactionWithTransaction creates a GenericTransaction containing
-// the given Transaction.
-func NewGenericTransactionWithTransaction(tx *Transaction) *GenericTransaction {
-	return &GenericTransaction{simple: tx}
-}
-
-// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
-// containing the given FeeBumpTransaction.
-func NewGenericTransactionWithFeeBumpTransaction(fbtx *FeeBumpTransaction) *GenericTransaction {
-	return &GenericTransaction{feeBump: fbtx}
 }
 
 // Transaction unpacks the GenericTransaction instance into a Transaction.
