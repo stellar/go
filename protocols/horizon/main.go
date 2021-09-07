@@ -320,6 +320,7 @@ type Root struct {
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
 		Ledger              hal.Link  `json:"ledger"`
 		Ledgers             hal.Link  `json:"ledgers"`
+		LiquidityPools      *hal.Link `json:"liquidity_pools"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
 		Operation           hal.Link  `json:"operation"`
