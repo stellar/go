@@ -578,7 +578,7 @@ func (c *Client) Fund(addr string) (tx hProtocol.Transaction, err error) {
 	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
 	err = c.sendGetRequest(friendbotURL, &tx)
 	if IsNotFoundError(err) {
-		return tx, errors.Wrap(err, "funding is only available on test networks and may not supported by "+c.fixHorizonURL())
+		return tx, errors.Wrap(err, "funding is only available on test networks and may not be supported by "+c.fixHorizonURL())
 	}
 	return
 }
