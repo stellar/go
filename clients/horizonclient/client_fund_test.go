@@ -57,5 +57,5 @@ func TestFund_notSupported(t *testing.T) {
 	).ReturnString(404, friendbotFundResponse)
 
 	_, err := client.Fund("GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V")
-	assert.EqualError(t, err, "funding is only available on test networks and may not supported by https://localhost/: horizon error: \"Resource Missing\" - check horizon.Error.Problem for more information")
+	assert.EqualError(t, err, "funding is only available on test networks and may not be supported by https://localhost/: horizon error: \"Resource Missing\" - check horizon.Error.Problem for more information")
 }
