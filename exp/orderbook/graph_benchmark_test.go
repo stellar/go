@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -162,5 +164,22 @@ func BenchmarkTestData(b *testing.B) {
 				b.Fatal("could not find path")
 			}
 		}
+	}
+}
+
+func BenchmarkSingleLiquidityPoolExchanges(b *testing.B) {
+	makeTrade(usdAsset, math.MaxInt64/2, eurUsdLiquidityPool)
+}
+
+func BenchmarkLiquidityPoolExchanges(b *testing.B) {
+	// Generate a pool of randomness *first*, which should be make it easier to
+	// isolate the performance of the trades themselves.
+	depositAmounts := make([]xdr.Int64, b.N)
+	for i, _ := range depositAmounts {
+		depositAmounts[i] = xdr.Int64(1 + rand.Int63n(math.MaxInt64-100))
+	}
+
+	for _, amount := range depositAmounts {
+		makeTrade(usdAsset, amount, eurUsdLiquidityPool)
 	}
 }

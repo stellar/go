@@ -527,7 +527,7 @@ func sortAndFilterPaths(
 //
 // Refer to https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#pathpaymentstrictsendop-and-pathpaymentstrictreceiveop
 // and `calculatePoolPayout` (below) for details on the exchange algorithm.
-func makeTrade(asset xdr.Asset, deposit int64, pool xdr.LiquidityPoolEntry) (uint64, error) {
+func makeTrade(asset xdr.Asset, deposit xdr.Int64, pool xdr.LiquidityPoolEntry) (uint64, error) {
 	details, ok := pool.Body.GetConstantProduct()
 	if !ok {
 		return 0, errors.New("Unsupported liquidity pool: must be ConstantProduct")
@@ -537,23 +537,22 @@ func makeTrade(asset xdr.Asset, deposit int64, pool xdr.LiquidityPoolEntry) (uin
 		return 0, errors.New("Exchange amount must be positive")
 	}
 
-	depositXdr := xdr.Int64(deposit)
 	X, Y := details.ReserveA, details.ReserveB
 
 	// if necessary, swap the assets
 	poolAssetA, poolAssetB := details.Params.AssetA, details.Params.AssetB
 	if !poolAssetA.Equals(asset) {
 		X, Y = details.ReserveB, details.ReserveA
+
+		// sanity check: the asset should be one of the LP assets
+		if !poolAssetB.Equals(asset) {
+			return 0, fmt.Errorf("%s incompatible with liquidity pool (%s <-> %s)",
+				asset.String(), poolAssetA.String(),
+				poolAssetB.String())
+		}
 	}
 
-	// sanity check: the asset should be one of the LP assets
-	if !poolAssetB.Equals(asset) {
-		return 0, fmt.Errorf("%s incompatible with liquidity pool (%s <-> %s)",
-			asset.String(), poolAssetA.String(),
-			poolAssetB.String())
-	}
-
-	payoutXdr, ok := calculatePoolPayout(X, Y, depositXdr, details.Params.Fee)
+	payoutXdr, ok := calculatePoolPayout(X, Y, deposit, details.Params.Fee)
 	if !ok {
 		return 0, errors.New("Liquidity pool overflows from this exchange")
 	}
@@ -567,37 +566,30 @@ func makeTrade(asset xdr.Asset, deposit int64, pool xdr.LiquidityPoolEntry) (uin
 //      y = floor[(1 - F) Yx / (X + x - Fx)]
 //
 // It returns false if the calculation overflows.
-func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, fee xdr.Int32) (xdr.Int64, bool) {
-	X, Y := big.NewFloat(float64(reserveA)), big.NewFloat(float64(reserveB))
-	F, x := big.NewFloat(float64(fee)), big.NewFloat(float64(received))
+func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, bool) {
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, x := big.NewInt(int64(feeBips)), big.NewInt(int64(received))
 
 	// would this deposit overflow the reserve?
 	if math.MaxInt64-received < reserveA {
 		return 0, false
 	}
 
-	// The fee is expressed in bips
-	F = F.Quo(F, big.NewFloat(10000))
+	// We do all of the math in bips, so it's all upscaled by this value.
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
 
-	// right half: X+x-Fx
-	tempB := new(big.Float).Set(x)
-	tempB.Mul(tempB, F)
-	tempB = X.Add(X, x).Sub(X, tempB)
+	// right half: X + (1 - F)x
+	denom := X.Mul(X, maxBips).Add(X, new(big.Int).Mul(x, f))
 
-	// left half: (1-F)Yx
-	tempA := big.NewFloat(1)
-	tempA = tempA.Sub(tempA, F).Mul(tempA, Y).Mul(tempA, x)
-
-	// avoid div-by-zero panic
-	if X.Cmp(big.NewFloat(0)) == 0 {
+	// left half, a: (1 - F) Yx
+	numer := Y.Mul(Y, x).Mul(Y, f)
+	if numer.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
 		return 0, false
 	}
 
-	// take quotient of halves and check if it's outside of int64 range
-	quotient := tempA.Quo(tempA, tempB)
-	payout, accuracy := quotient.Int64() // floors
-	isOutOfRange := ((payout == math.MinInt64 && accuracy == big.Above) ||
-		(payout == math.MaxInt64 && accuracy == big.Below))
+	// divide & check overflow
+	result := numer.Div(numer, denom)
 
-	return xdr.Int64(payout), !isOutOfRange && payout >= 0
+	return xdr.Int64(result.Int64()), result.IsInt64()
 }
