@@ -55,12 +55,14 @@ func PopulateRoot(
 
 	accountsLink := lb.Link(templates["accounts"])
 	claimableBalancesLink := lb.Link(templates["claimableBalances"])
+	liquidityPoolsLink := lb.Link(templates["liquidityPools"])
 	offerLink := lb.Link("/offers/{offer_id}")
 	offersLink := lb.Link(templates["offers"])
 	strictReceivePaths := lb.Link(templates["strictReceivePaths"])
 	strictSendPaths := lb.Link(templates["strictSendPaths"])
 	dest.Links.Accounts = &accountsLink
 	dest.Links.ClaimableBalances = &claimableBalancesLink
+	dest.Links.LiquidityPools = &liquidityPoolsLink
 	dest.Links.Offer = &offerLink
 	dest.Links.Offers = &offersLink
 	dest.Links.StrictReceivePaths = &strictReceivePaths

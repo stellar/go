@@ -65,6 +65,11 @@ type LiquidityPoolsQuery struct {
 	reserves []xdr.Asset
 }
 
+// URITemplate returns a rfc6570 URI template the query struct
+func (q LiquidityPoolsQuery) URITemplate() string {
+	return "/liquidity_pools?{?reserves}"
+}
+
 // Validate validates and parses the query
 func (q *LiquidityPoolsQuery) Validate() error {
 	assets := []xdr.Asset{}
