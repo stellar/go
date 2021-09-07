@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* The restriction that `Fund` can only be called on the DefaultTestNetClient has
+been removed. Any horizonclient.Client may now call Fund. Horizon instances not
+supporting Fund will error with a resource not found error.
+
 ## [v7.1.1](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.1) - 2021-06-25
 
 * Added transaction and operation result codes to the horizonclient.Error string for easy glancing at string only errors for underlying cause.
