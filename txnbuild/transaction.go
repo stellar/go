@@ -189,6 +189,17 @@ func marshallBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignatu
 	return base64.StdEncoding.EncodeToString(binary), nil
 }
 
+func marshallBase64Bytes(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature) ([]byte, error) {
+	binary, err := marshallBinary(e, signatures)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get XDR bytestring")
+	}
+
+	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(binary)))
+	base64.StdEncoding.Encode(encoded, binary)
+	return encoded, nil
+}
+
 // Transaction represents a Stellar transaction. See
 // https://www.stellar.org/developers/guides/concepts/transactions.html
 // A Transaction may be wrapped by a FeeBumpTransaction in which case
@@ -344,6 +355,26 @@ func (t *Transaction) ToXDR() xdr.TransactionEnvelope {
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *Transaction) MarshalBinary() ([]byte, error) {
 	return marshallBinary(t.envelope, t.Signatures())
+}
+
+// MarshalText returns the base64 XDR representation of the transaction envelope.
+func (t *Transaction) MarshalText() ([]byte, error) {
+	return marshallBase64Bytes(t.envelope, t.Signatures())
+}
+
+// UnmarshalText consumes into the value the base64 XDR representation of the
+// transaction envelope.
+func (t *Transaction) UnmarshalText(b []byte) error {
+	gtx, err := TransactionFromXDR(string(b))
+	if err != nil {
+		return err
+	}
+	tx, ok := gtx.Transaction()
+	if !ok {
+		return errors.New("transaction envelope unmarshaled into FeeBumpTransaction is not a fee bump transaction")
+	}
+	*t = *tx
+	return nil
 }
 
 // Base64 returns the base 64 XDR representation of the transaction envelope.
@@ -506,6 +537,27 @@ func (t *FeeBumpTransaction) MarshalBinary() ([]byte, error) {
 	return marshallBinary(t.envelope, t.Signatures())
 }
 
+// MarshalText returns the base64 XDR representation of the transaction
+// envelope.
+func (t *FeeBumpTransaction) MarshalText() ([]byte, error) {
+	return marshallBase64Bytes(t.envelope, t.Signatures())
+}
+
+// UnmarshalText consumes into the value the base64 XDR representation of the
+// transaction envelope.
+func (t *FeeBumpTransaction) UnmarshalText(b []byte) error {
+	gtx, err := TransactionFromXDR(string(b))
+	if err != nil {
+		return err
+	}
+	fbtx, ok := gtx.FeeBump()
+	if !ok {
+		return errors.New("transaction envelope unmarshaled into Transaction is not a transaction")
+	}
+	*t = *fbtx
+	return nil
+}
+
 // Base64 returns the base 64 XDR representation of the transaction envelope.
 func (t *FeeBumpTransaction) Base64() (string, error) {
 	return marshallBase64(t.envelope, t.Signatures())
@@ -526,6 +578,18 @@ type GenericTransaction struct {
 	feeBump *FeeBumpTransaction
 }
 
+// NewGenericTransactionWithTransaction creates a GenericTransaction containing
+// the given Transaction.
+func NewGenericTransactionWithTransaction(tx *Transaction) *GenericTransaction {
+	return &GenericTransaction{simple: tx}
+}
+
+// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
+// containing the given FeeBumpTransaction.
+func NewGenericTransactionWithFeeBumpTransaction(fbtx *FeeBumpTransaction) *GenericTransaction {
+	return &GenericTransaction{feeBump: fbtx}
+}
+
 // Transaction unpacks the GenericTransaction instance into a Transaction.
 // The function also returns a boolean which is true if the GenericTransaction can be
 // unpacked into a Transaction.
@@ -538,6 +602,29 @@ func (t GenericTransaction) Transaction() (*Transaction, bool) {
 // can be unpacked into a FeeBumpTransaction.
 func (t GenericTransaction) FeeBump() (*FeeBumpTransaction, bool) {
 	return t.feeBump, t.feeBump != nil
+}
+
+// MarshalText returns the base64 XDR representation of the transaction
+// envelope.
+func (t *GenericTransaction) MarshalText() ([]byte, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.MarshalText()
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.MarshalText()
+	}
+	return nil, errors.New("unable to marshal empty GenericTransaction")
+}
+
+// UnmarshalText consumes into the value the base64 XDR representation of the
+// transaction envelope.
+func (t *GenericTransaction) UnmarshalText(b []byte) error {
+	gtx, err := TransactionFromXDR(string(b))
+	if err != nil {
+		return err
+	}
+	*t = *gtx
+	return nil
 }
 
 type TransactionFromXDROption int
