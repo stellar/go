@@ -37,6 +37,6 @@ On a modern laptop this test setup takes about 15 minutes to synchronise with th
 
 See the [Quickstart Docker Image](https://github.com/digitalbits/docker-digitalbits-core-frontier) documentation for more details, and alternative ways to run the container. 
 
-You can test your Frontier instance with a query like: http://localhost:8000/transactions?cursor=&limit=10&order=asc. Use the [DigitalBits Laboratory](https://www.digitalbits.org/laboratory/) to craft other queries to try out,
+You can test your Frontier instance with a query like: http://localhost:8000/transactions?cursor=&limit=10&order=asc. Use the [DigitalBits Laboratory](https://laboratory.livenet.digitalbits.io) to craft other queries to try out,
 and read about the available endpoints and see examples in the [Frontier API reference](https://github.com/xdbfoundation/go/blob/master/services/frontier/internal/docs/readme.md).
 
