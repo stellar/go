@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -97,10 +99,21 @@ type QLiquidityPools interface {
 
 // NewLiquidityPoolsBatchInsertBuilder constructs a new LiquidityPoolsBatchInsertBuilder instance
 func (q *Q) NewLiquidityPoolsBatchInsertBuilder(maxBatchSize int) LiquidityPoolsBatchInsertBuilder {
+	cols := db.ColumnsForStruct(LiquidityPool{})
+	excludedCols := make([]string, len(cols))
+	for i, col := range cols {
+		excludedCols[i] = "EXCLUDED." + col
+	}
+	suffix := fmt.Sprintf(
+		"ON CONFLICT (id) DO UPDATE SET (%s) = (%s)",
+		strings.Join(cols, ", "),
+		strings.Join(excludedCols, ", "),
+	)
 	return &liquidityPoolsBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("liquidity_pools"),
 			MaxBatchSize: maxBatchSize,
+			Suffix:       suffix,
 		},
 	}
 }

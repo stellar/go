@@ -106,6 +106,21 @@ func TestRemoveLiquidityPool(t *testing.T) {
 	expected.Deleted = true
 	expected.LastModifiedLedger = 200
 	tt.Assert.Equal(expected, lps[0])
+
+	lp.LastModifiedLedger = 250
+	lp.Deleted = false
+	lp.ShareCount = 1
+	lp.TrustlineCount = 2
+	err = builder.Add(tt.Ctx, lp)
+	tt.Assert.NoError(err)
+	err = builder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	lpObtained, err = q.FindLiquidityPoolByID(tt.Ctx, lp.PoolID)
+	tt.Assert.NoError(err)
+	tt.Assert.NotNil(lpObtained)
+
+	tt.Assert.Equal(lp, lpObtained)
 }
 
 func TestFindLiquidityPoolsByAssets(t *testing.T) {
