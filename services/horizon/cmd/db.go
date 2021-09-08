@@ -206,7 +206,7 @@ var dbReapCmd = &cobra.Command{
 			return err
 		}
 		ctx := context.Background()
-		app.UpdateLedgerState(ctx)
+		app.UpdateHorizonLedgerState(ctx)
 		return app.DeleteUnretainedHistory(ctx)
 	},
 }

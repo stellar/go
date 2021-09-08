@@ -22,7 +22,14 @@ func TestPopulateRoot(t *testing.T) {
 
 	PopulateRoot(context.Background(),
 		res,
-		ledger.Status{CoreLatest: 1, HistoryLatest: 3, HistoryElder: 2},
+		ledger.Status{
+			CoreStatus: ledger.CoreStatus{
+				CoreLatest: 1,
+			},
+			HorizonStatus: ledger.HorizonStatus{
+				HistoryLatest: 3, HistoryElder: 2,
+			},
+		},
 		"hVersion",
 		"cVersion",
 		"passphrase",
@@ -44,7 +51,14 @@ func TestPopulateRoot(t *testing.T) {
 	res = &horizon.Root{}
 	PopulateRoot(context.Background(),
 		res,
-		ledger.Status{CoreLatest: 1, HistoryLatest: 3, HistoryElder: 2},
+		ledger.Status{
+			CoreStatus: ledger.CoreStatus{
+				CoreLatest: 1,
+			},
+			HorizonStatus: ledger.HorizonStatus{
+				HistoryLatest: 3, HistoryElder: 2,
+			},
+		},
 		"hVersion",
 		"cVersion",
 		"passphrase",
@@ -65,7 +79,14 @@ func TestPopulateRoot(t *testing.T) {
 	res = &horizon.Root{}
 	PopulateRoot(context.Background(),
 		res,
-		ledger.Status{CoreLatest: 1, HistoryLatest: 3, HistoryElder: 2},
+		ledger.Status{
+			CoreStatus: ledger.CoreStatus{
+				CoreLatest: 1,
+			},
+			HorizonStatus: ledger.HorizonStatus{
+				HistoryLatest: 3, HistoryElder: 2,
+			},
+		},
 		"hVersion",
 		"cVersion",
 		"passphrase",

@@ -8,7 +8,11 @@ import (
 func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
 	state := &State{
 		RWMutex: sync.RWMutex{},
-		current: Status{ExpHistoryLatest: 3},
+		current: Status{
+			HorizonStatus: HorizonStatus{
+				ExpHistoryLatest: 3,
+			},
+		},
 	}
 
 	ledgerSource := HistoryDBSource{
@@ -25,7 +29,11 @@ func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
 func Test_HistoryDBLedgerSourceNextLedger(t *testing.T) {
 	state := &State{
 		RWMutex: sync.RWMutex{},
-		current: Status{ExpHistoryLatest: 3},
+		current: Status{
+			HorizonStatus: HorizonStatus{
+				ExpHistoryLatest: 3,
+			},
+		},
 	}
 
 	ledgerSource := HistoryDBSource{
