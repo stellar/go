@@ -74,7 +74,7 @@ func (ub *UpdateBuilder) SetStruct(s interface{}, ignored []string) *UpdateBuild
 		ignoredMap[ig] = true
 	}
 
-	cols := columnsForStruct(s)
+	cols := ColumnsForStruct(s)
 	row := reflect.ValueOf(s)
 	rvals := mapper.FieldsByName(row, cols)
 

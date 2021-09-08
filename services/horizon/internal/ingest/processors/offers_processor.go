@@ -11,7 +11,7 @@ import (
 
 // The offers processor can be configured to trim the offers table
 // by removing all offer rows which were marked for deletion at least 100 ledgers ago
-const offerCompactionWindow = uint32(100)
+const compactionWindow = uint32(100)
 
 type OffersProcessor struct {
 	offersQ  history.QOffers
@@ -134,9 +134,9 @@ func (p *OffersProcessor) Commit(ctx context.Context) error {
 		return errors.Wrap(err, "error flushing cache")
 	}
 
-	if p.sequence > offerCompactionWindow {
+	if p.sequence > compactionWindow {
 		// trim offers table by removing offers which were deleted before the cutoff ledger
-		if offerRowsRemoved, err := p.offersQ.CompactOffers(ctx, p.sequence-offerCompactionWindow); err != nil {
+		if offerRowsRemoved, err := p.offersQ.CompactOffers(ctx, p.sequence-compactionWindow); err != nil {
 			return errors.Wrap(err, "could not compact offers")
 		} else {
 			log.WithField("offer_rows_removed", offerRowsRemoved).Info("Trimmed offers table")

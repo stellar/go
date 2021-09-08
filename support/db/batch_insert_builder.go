@@ -70,7 +70,7 @@ func (b *BatchInsertBuilder) Row(ctx context.Context, row map[string]interface{}
 
 func (b *BatchInsertBuilder) RowStruct(ctx context.Context, row interface{}) error {
 	if b.columns == nil {
-		b.columns = columnsForStruct(row)
+		b.columns = ColumnsForStruct(row)
 		b.rows = make([][]interface{}, 0)
 	}
 

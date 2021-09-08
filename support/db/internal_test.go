@@ -78,7 +78,7 @@ func TestColumnsForStruct(t *testing.T) {
 	}
 
 	for _, kase := range cases {
-		actual := columnsForStruct(kase.Struct)
+		actual := ColumnsForStruct(kase.Struct)
 
 		assert.Equal(t, kase.Expected, actual, "case '%s' failed", kase.Name)
 	}
