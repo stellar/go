@@ -12,11 +12,13 @@ import (
 type LiquidityPoolsChangeProcessor struct {
 	qLiquidityPools history.QLiquidityPools
 	cache           *ingest.ChangeCompactor
+	sequence        uint32
 }
 
-func NewLiquidityPoolsChangeProcessor(Q history.QLiquidityPools) *LiquidityPoolsChangeProcessor {
+func NewLiquidityPoolsChangeProcessor(Q history.QLiquidityPools, sequence uint32) *LiquidityPoolsChangeProcessor {
 	p := &LiquidityPoolsChangeProcessor{
 		qLiquidityPools: Q,
+		sequence:        sequence,
 	}
 	p.reset()
 	return p
@@ -71,7 +73,9 @@ func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(ctx, PoolIDToString(lPool.LiquidityPoolId))
+			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(
+				ctx, PoolIDToString(lPool.LiquidityPoolId), p.sequence,
+			)
 		default:
 			// Updated
 			action = "updating"
@@ -104,6 +108,15 @@ func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
 	err := batch.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing batch")
+	}
+
+	if p.sequence > compactionWindow {
+		// trim liquidity pools table by removing liquidity pools which were deleted before the cutoff ledger
+		if removed, err := p.qLiquidityPools.CompactLiquidityPools(ctx, p.sequence-compactionWindow); err != nil {
+			return errors.Wrap(err, "could not compact liquidity pools")
+		} else {
+			log.WithField("liquidity_pool_rows_removed", removed).Info("Trimmed liquidity pools table")
+		}
 	}
 
 	return nil

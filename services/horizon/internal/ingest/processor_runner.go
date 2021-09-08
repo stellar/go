@@ -114,7 +114,7 @@ func buildChangeProcessor(
 		processors.NewSignersProcessor(historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(historyQ),
 		processors.NewClaimableBalancesChangeProcessor(historyQ),
-		processors.NewLiquidityPoolsChangeProcessor(historyQ),
+		processors.NewLiquidityPoolsChangeProcessor(historyQ, ledgerSequence),
 	})
 }
 

@@ -23,6 +23,7 @@ type LiquidityPoolsChangeProcessorTestSuiteState struct {
 	processor              *LiquidityPoolsChangeProcessor
 	mockQ                  *history.MockQLiquidityPools
 	mockBatchInsertBuilder *history.MockLiquidityPoolsBatchInsertBuilder
+	sequence               uint32
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) SetupTest() {
@@ -34,7 +35,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) SetupTest() {
 		On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder)
 
-	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ)
+	s.sequence = 456
+	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ, s.sequence)
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) TearDownTest() {
@@ -45,6 +47,12 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TearDownTest() {
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestNoEntries() {
+	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
+}
+
+func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestNoEntriesWithSequenceLessThanWindow() {
+	s.sequence = 50
+	s.processor.sequence = s.sequence
 	// Nothing processed, assertions in TearDownTest.
 }
 
@@ -87,6 +95,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestCreatesLiquidityPools(
 	}
 
 	s.mockBatchInsertBuilder.On("Add", s.ctx, lp).Return(nil).Once()
+	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeLiquidityPool,
@@ -112,6 +121,7 @@ type LiquidityPoolsChangeProcessorTestSuiteLedger struct {
 	processor              *LiquidityPoolsChangeProcessor
 	mockQ                  *history.MockQLiquidityPools
 	mockBatchInsertBuilder *history.MockLiquidityPoolsBatchInsertBuilder
+	sequence               uint32
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) SetupTest() {
@@ -123,7 +133,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) SetupTest() {
 		On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder)
 
-	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ)
+	s.sequence = 456
+	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ, s.sequence)
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TearDownTest() {
@@ -133,6 +144,12 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNoTransactions() {
+	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
+}
+
+func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNoEntriesWithSequenceLessThanWindow() {
+	s.sequence = 50
+	s.processor.sequence = s.sequence
 	// Nothing processed, assertions in TearDownTest.
 }
 
@@ -222,6 +239,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 		s.ctx,
 		postLP,
 	).Return(nil).Once()
+
+	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool() {
@@ -304,6 +323,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 		s.ctx,
 		postLP,
 	).Return(int64(1), nil).Once()
+
+	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestRemoveLiquidityPool() {
@@ -349,5 +370,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestRemoveLiquidityPool()
 		"RemoveLiquidityPool",
 		s.ctx,
 		"cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		s.sequence,
 	).Return(int64(1), nil).Once()
+
+	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }

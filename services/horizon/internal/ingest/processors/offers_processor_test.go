@@ -198,13 +198,13 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestSkipCompactionIfSequenceEqualsWindow() {
-	s.processor.sequence = offerCompactionWindow
+	s.processor.sequence = compactionWindow
 	s.setupInsertOffer()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestSkipCompactionIfSequenceLessThanWindow() {
-	s.processor.sequence = offerCompactionWindow - 1
+	s.processor.sequence = compactionWindow - 1
 	s.setupInsertOffer()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }

@@ -8,10 +8,12 @@ CREATE TABLE liquidity_pools (
     share_count bigint NOT NULL DEFAULT 0 CHECK(share_count >= 0),
     asset_reserves jsonb NOT NULL,
     last_modified_ledger integer NOT NULL,
+    deleted boolean NOT NULL DEFAULT false,
     PRIMARY KEY (id)
 );
 
 CREATE INDEX liquidity_pools_by_asset_reserves ON liquidity_pools USING gin(asset_reserves jsonb_path_ops);
+CREATE INDEX live_liquidity_pools ON liquidity_pools USING BTREE (deleted, last_modified_ledger);
 
 CREATE SEQUENCE history_liquidity_pools_id_seq
     START WITH 1

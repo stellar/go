@@ -31,14 +31,24 @@ func (m *MockQLiquidityPools) UpdateLiquidityPool(ctx context.Context, lp Liquid
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQLiquidityPools) RemoveLiquidityPool(ctx context.Context, liquidityPoolID string) (int64, error) {
-	a := m.Called(ctx, liquidityPoolID)
+func (m *MockQLiquidityPools) RemoveLiquidityPool(ctx context.Context, liquidityPoolID string, sequence uint32) (int64, error) {
+	a := m.Called(ctx, liquidityPoolID, sequence)
 	return a.Get(0).(int64), a.Error(1)
 }
 
 func (m *MockQLiquidityPools) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error) {
 	a := m.Called(ctx, liquidityPoolID)
 	return a.Get(0).(LiquidityPool), a.Error(1)
+}
+
+func (m *MockQLiquidityPools) GetUpdatedLiquidityPools(ctx context.Context, sequence uint32) ([]LiquidityPool, error) {
+	a := m.Called(ctx, sequence)
+	return a.Get(0).([]LiquidityPool), a.Error(1)
+}
+
+func (m *MockQLiquidityPools) CompactLiquidityPools(ctx context.Context, cutOffSequence uint32) (int64, error) {
+	a := m.Called(ctx, cutOffSequence)
+	return a.Get(0).(int64), a.Error(1)
 }
 
 type MockLiquidityPoolsBatchInsertBuilder struct {
