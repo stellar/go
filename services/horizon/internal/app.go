@@ -67,7 +67,7 @@ func (a *App) GetCoreState() corestate.State {
 }
 
 const tickerMaxFrequency = 1 * time.Second
-const tickerMaxDuration = 10 * time.Second
+const tickerMaxDuration = 5 * time.Second
 
 // NewApp constructs an new App instance from the provided config.
 func NewApp(config Config) (*App, error) {
@@ -211,10 +211,11 @@ func (a *App) HorizonSession() db.SessionInterface {
 	return a.historyQ.SessionInterface.Clone()
 }
 
-// UpdateLedgerState triggers a refresh of several metrics gauges, such as open
-// db connections and ledger state
-func (a *App) UpdateLedgerState(ctx context.Context) {
-	var next ledger.Status
+// UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
+// This is done separately from Horizon ledger state update to prevent issues
+// in case Stellar-Core query timeout.
+func (a *App) UpdateCoreLedgerState(ctx context.Context) {
+	var next ledger.CoreStatus
 
 	logErr := func(err error, msg string) {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
@@ -231,7 +232,20 @@ func (a *App) UpdateLedgerState(ctx context.Context) {
 		return
 	}
 	next.CoreLatest = int32(coreInfo.Info.Ledger.Num)
+	a.ledgerState.SetCoreStatus(next)
+}
 
+// UpdateHorizonLedgerState triggers a refresh of Horizon ledger state.
+// This is done separately from Core ledger state update to prevent issues
+// in case Stellar-Core query timeout.
+func (a *App) UpdateHorizonLedgerState(ctx context.Context) {
+	var next ledger.HorizonStatus
+
+	logErr := func(err error, msg string) {
+		log.WithStack(err).WithField("err", err.Error()).Error(msg)
+	}
+
+	var err error
 	next.HistoryLatest, next.HistoryLatestClosedAt, err =
 		a.HistoryQ().LatestLedgerSequenceClosedAt(ctx)
 	if err != nil {
@@ -251,7 +265,7 @@ func (a *App) UpdateLedgerState(ctx context.Context) {
 		return
 	}
 
-	a.ledgerState.SetStatus(next)
+	a.ledgerState.SetHorizonStatus(next)
 }
 
 // UpdateFeeStatsState triggers a refresh of several operation fee metrics.
@@ -422,9 +436,10 @@ func (a *App) Tick(ctx context.Context) error {
 	log.Debug("ticking app")
 
 	// update ledger state, operation fee state, and stellar-core info in parallel
-	wg.Add(3)
+	wg.Add(4)
 	var err error
-	go func() { a.UpdateLedgerState(ctx); wg.Done() }()
+	go func() { a.UpdateCoreLedgerState(ctx); wg.Done() }()
+	go func() { a.UpdateHorizonLedgerState(ctx); wg.Done() }()
 	go func() { a.UpdateFeeStatsState(ctx); wg.Done() }()
 	go func() { err = a.UpdateStellarCoreInfo(ctx); wg.Done() }()
 	wg.Wait()
