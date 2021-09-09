@@ -67,7 +67,7 @@ git pull origin
 if [ ! -z "$BRANCH" ]; then
 	git checkout $BRANCH
 fi
-git log -1
+git log -1 --pretty=oneline
 
 function alter_tables_unlogged() {
 	# UNLOGGED for performance reasons (order is important because some tables reference others)
