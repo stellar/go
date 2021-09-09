@@ -13,7 +13,15 @@ import (
 // Status represents a snapshot of both horizon's and stellar-core's view of the
 // ledger.
 type Status struct {
-	CoreLatest            int32     `db:"core_latest"`
+	CoreStatus
+	HorizonStatus
+}
+
+type CoreStatus struct {
+	CoreLatest int32 `db:"core_latest"`
+}
+
+type HorizonStatus struct {
 	HistoryLatest         int32     `db:"history_latest"`
 	HistoryLatestClosedAt time.Time `db:"history_latest_closed_at"`
 	HistoryElder          int32     `db:"history_elder"`
@@ -40,4 +48,18 @@ func (c *State) SetStatus(next Status) {
 	c.Lock()
 	defer c.Unlock()
 	c.current = next
+}
+
+// SetCoreStatus updates the cached snapshot of the ledger state of Stellar-Core
+func (c *State) SetCoreStatus(next CoreStatus) {
+	c.Lock()
+	defer c.Unlock()
+	c.current.CoreStatus = next
+}
+
+// SetHorizonStatus updates the cached snapshot of the ledger state of Horizon
+func (c *State) SetHorizonStatus(next HorizonStatus) {
+	c.Lock()
+	defer c.Unlock()
+	c.current.HorizonStatus = next
 }
