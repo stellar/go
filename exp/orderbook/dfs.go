@@ -101,7 +101,10 @@ func dfs(
 			continue
 		}
 
-		nextAsset, nextAssetAmount, err := state.consumeOffers(currentAssetAmount, offers)
+		nextAsset, nextAssetAmount, err := state.consumeOffers(
+			currentAssetAmount,
+			TradeOpportunitiesToOfferEntries(offers),
+		)
 		if err != nil {
 			return err
 		}
