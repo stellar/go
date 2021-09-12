@@ -91,6 +91,7 @@ type QLiquidityPools interface {
 	UpdateLiquidityPool(ctx context.Context, lp LiquidityPool) (int64, error)
 	RemoveLiquidityPool(ctx context.Context, liquidityPoolID string, lastModifiedLedger uint32) (int64, error)
 	GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error)
+	GetAllLiquidityPools(ctx context.Context) ([]LiquidityPool, error)
 	CountLiquidityPools(ctx context.Context) (int, error)
 	FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error)
 	GetUpdatedLiquidityPools(ctx context.Context, newerThanSequence uint32) ([]LiquidityPool, error)
@@ -193,6 +194,15 @@ func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([
 
 	var results []LiquidityPool
 	if err := q.Select(ctx, &results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
+func (q *Q) GetAllLiquidityPools(ctx context.Context) ([]LiquidityPool, error) {
+	var results []LiquidityPool
+	if err := q.Select(ctx, &results, selectLiquidityPools.Where("deleted = ?", false)); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
 	}
 

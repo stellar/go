@@ -482,22 +482,12 @@ func addOffersToStateVerifier(
 	}
 
 	for _, row := range offers {
+		offerXDR := offerToXDR(row)
 		entry := xdr.LedgerEntry{
 			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
 			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeOffer,
-				Offer: &xdr.OfferEntry{
-					SellerId: xdr.MustAddress(row.SellerID),
-					OfferId:  xdr.Int64(row.OfferID),
-					Selling:  row.SellingAsset,
-					Buying:   row.BuyingAsset,
-					Amount:   xdr.Int64(row.Amount),
-					Price: xdr.Price{
-						N: xdr.Int32(row.Pricen),
-						D: xdr.Int32(row.Priced),
-					},
-					Flags: xdr.Uint32(row.Flags),
-				},
+				Type:  xdr.LedgerEntryTypeOffer,
+				Offer: &offerXDR,
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
@@ -508,6 +498,21 @@ func addOffersToStateVerifier(
 	}
 
 	return nil
+}
+
+func offerToXDR(row history.Offer) xdr.OfferEntry {
+	return xdr.OfferEntry{
+		SellerId: xdr.MustAddress(row.SellerID),
+		OfferId:  xdr.Int64(row.OfferID),
+		Selling:  row.SellingAsset,
+		Buying:   row.BuyingAsset,
+		Amount:   xdr.Int64(row.Amount),
+		Price: xdr.Price{
+			N: xdr.Int32(row.Pricen),
+			D: xdr.Int32(row.Priced),
+		},
+		Flags: xdr.Uint32(row.Flags),
+	}
 }
 
 func addTrustLinesToStateVerifier(
@@ -701,35 +706,9 @@ func addLiquidityPoolsToStateVerifier(
 	}
 
 	for _, row := range lPools {
-		if len(row.AssetReserves) != 2 {
-			return fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
-		}
-		id, err := hex.DecodeString(row.PoolID)
+		lPoolEntry, err := liquidityPoolToXDR(row)
 		if err != nil {
-			return errors.Wrap(err, "Error decoding pool ID")
-		}
-		var poolID xdr.PoolId
-		if len(id) != len(poolID) {
-			return fmt.Errorf("Error decoding pool ID, incorrect length (%d)", len(id))
-		}
-		copy(poolID[:], id)
-
-		var lPoolEntry = xdr.LiquidityPoolEntry{
-			LiquidityPoolId: poolID,
-			Body: xdr.LiquidityPoolEntryBody{
-				Type: row.Type,
-				ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-					Params: xdr.LiquidityPoolConstantProductParameters{
-						AssetA: row.AssetReserves[0].Asset,
-						AssetB: row.AssetReserves[1].Asset,
-						Fee:    xdr.Int32(row.Fee),
-					},
-					ReserveA:                 xdr.Int64(row.AssetReserves[0].Reserve),
-					ReserveB:                 xdr.Int64(row.AssetReserves[1].Reserve),
-					TotalPoolShares:          xdr.Int64(row.ShareCount),
-					PoolSharesTrustLineCount: xdr.Int64(row.TrustlineCount),
-				},
-			},
+			return errors.Wrap(err, "Invalid liquidity pool row")
 		}
 
 		entry := xdr.LedgerEntry{
@@ -755,6 +734,40 @@ func addLiquidityPoolsToStateVerifier(
 	}
 
 	return nil
+}
+
+func liquidityPoolToXDR(row history.LiquidityPool) (xdr.LiquidityPoolEntry, error) {
+	if len(row.AssetReserves) != 2 {
+		return xdr.LiquidityPoolEntry{}, fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
+	}
+	id, err := hex.DecodeString(row.PoolID)
+	if err != nil {
+		return xdr.LiquidityPoolEntry{}, errors.Wrap(err, "Error decoding pool ID")
+	}
+	var poolID xdr.PoolId
+	if len(id) != len(poolID) {
+		return xdr.LiquidityPoolEntry{}, fmt.Errorf("Error decoding pool ID, incorrect length (%d)", len(id))
+	}
+	copy(poolID[:], id)
+
+	var lPoolEntry = xdr.LiquidityPoolEntry{
+		LiquidityPoolId: poolID,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: row.Type,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: row.AssetReserves[0].Asset,
+					AssetB: row.AssetReserves[1].Asset,
+					Fee:    xdr.Int32(row.Fee),
+				},
+				ReserveA:                 xdr.Int64(row.AssetReserves[0].Reserve),
+				ReserveB:                 xdr.Int64(row.AssetReserves[1].Reserve),
+				TotalPoolShares:          xdr.Int64(row.ShareCount),
+				PoolSharesTrustLineCount: xdr.Int64(row.TrustlineCount),
+			},
+		},
+	}
+	return lPoolEntry, nil
 }
 
 func addLedgerEntrySponsor(entry *xdr.LedgerEntry, sponsor null.String) {

@@ -9,17 +9,21 @@ const (
 	_ = iota
 	// the operationType enum values start at 1 because when constructing a
 	// orderBookOperation struct, the operationType field should always be specified
-	// explicity. if the operationType enum values started at 0 then it would be
+	// explicitly. if the operationType enum values started at 0 then it would be
 	// possible to create a valid orderBookOperation struct without specifying
 	// the operationType field
-	addOfferOperationType    = iota
-	removeOfferOperationType = iota
+	addOfferOperationType            = iota
+	removeOfferOperationType         = iota
+	addLiquidityPoolOperationType    = iota
+	removeLiquidityPoolOperationType = iota
 )
 
 type orderBookOperation struct {
-	operationType int
-	offerID       xdr.Int64
-	offer         *xdr.OfferEntry
+	operationType       int
+	offerID             xdr.Int64
+	offer               *xdr.OfferEntry
+	liquidityPoolAssets tradingPair
+	liquidityPool       *xdr.LiquidityPoolEntry
 }
 
 type orderBookBatchedUpdates struct {
@@ -39,11 +43,36 @@ func (tx *orderBookBatchedUpdates) addOffer(offer xdr.OfferEntry) *orderBookBatc
 	return tx
 }
 
+// addLiquidityPool will queue an operation to add the given liquidity pool to the order book graph
+func (tx *orderBookBatchedUpdates) addLiquidityPool(liquidityPool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
+	params := liquidityPool.Body.MustConstantProduct().Params
+	tx.operations = append(tx.operations, orderBookOperation{
+		operationType: addLiquidityPoolOperationType,
+		liquidityPool: &liquidityPool,
+		liquidityPoolAssets: tradingPair{
+			buyingAsset:  params.AssetA.String(),
+			sellingAsset: params.AssetB.String(),
+		},
+	})
+
+	return tx
+}
+
 // removeOffer will queue an operation to remove the given offer from the order book
 func (tx *orderBookBatchedUpdates) removeOffer(offerID xdr.Int64) *orderBookBatchedUpdates {
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: removeOfferOperationType,
 		offerID:       offerID,
+	})
+
+	return tx
+}
+
+// removeLiquidityPool will queue an operation to remove the given liquidity pool from the order book
+func (tx *orderBookBatchedUpdates) removeLiquidityPool(liquidityPoolAssets tradingPair) *orderBookBatchedUpdates {
+	tx.operations = append(tx.operations, orderBookOperation{
+		operationType:       removeLiquidityPoolOperationType,
+		liquidityPoolAssets: liquidityPoolAssets,
 	})
 
 	return tx
@@ -77,6 +106,13 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 			if err := tx.orderbook.remove(operation.offerID); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
+		case addLiquidityPoolOperationType:
+			tx.orderbook.liquidityPools[operation.liquidityPoolAssets] = *operation.liquidityPool
+		case removeLiquidityPoolOperationType:
+			if _, ok := tx.orderbook.liquidityPools[operation.liquidityPoolAssets]; !ok {
+				panic(errors.New("liquidity pool not present in orderbook graph"))
+			}
+			delete(tx.orderbook.liquidityPools, operation.liquidityPoolAssets)
 		default:
 			panic(errors.New("invalid operation type"))
 		}

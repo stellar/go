@@ -276,6 +276,7 @@ type IngestionQ interface {
 	GetExpStateInvalid(context.Context) (bool, error)
 	GetLatestHistoryLedger(context.Context) (uint32, error)
 	GetOfferCompactionSequence(context.Context) (uint32, error)
+	GetLiquidityPoolCompactionSequence(context.Context) (uint32, error)
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
 }

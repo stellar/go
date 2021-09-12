@@ -287,6 +287,11 @@ func (m *mockDBQ) GetOfferCompactionSequence(ctx context.Context) (uint32, error
 	return args.Get(0).(uint32), args.Error(1)
 }
 
+func (m *mockDBQ) GetLiquidityPoolCompactionSequence(ctx context.Context) (uint32, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(uint32), args.Error(1)
+}
+
 func (m *mockDBQ) GetLastLedgerIngestNonBlocking(ctx context.Context) (uint32, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)

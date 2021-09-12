@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding"
 	"math"
+	"sort"
 	"testing"
 
 	"github.com/stellar/go/keypair"
@@ -491,6 +492,107 @@ func TestAddOfferOrderBook(t *testing.T) {
 	}
 
 	assertGraphEquals(t, graph, expectedGraph)
+}
+
+func setupGraphWithLiquidityPools(t *testing.T) (*OrderBookGraph, []xdr.LiquidityPoolEntry) {
+	graph := NewOrderBookGraph()
+	nativeEURPool := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: xdr.PoolId{1, 2, 3},
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: xdr.MustNewNativeAsset(),
+					AssetB: eurAsset,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 23,
+				ReserveB:                 15,
+				TotalPoolShares:          123,
+				PoolSharesTrustLineCount: 22,
+			},
+		},
+	}
+	nativeUSDPool := xdr.LiquidityPoolEntry{
+		LiquidityPoolId: xdr.PoolId{9, 23, 5},
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: xdr.MustNewNativeAsset(),
+					AssetB: usdAsset,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 3,
+				ReserveB:                 8,
+				TotalPoolShares:          12,
+				PoolSharesTrustLineCount: 100,
+			},
+		},
+	}
+	graph.AddLiquidityPool(nativeEURPool)
+	graph.AddLiquidityPool(nativeUSDPool)
+	if err := graph.Apply(1); err != nil {
+		t.Fatalf("unexpected apply error %v", err)
+	}
+
+	expectedLiquidityPools := []xdr.LiquidityPoolEntry{nativeEURPool, nativeUSDPool}
+	return graph, expectedLiquidityPools
+}
+
+func assertLiquidityPoolsEqual(t *testing.T, expectedLiquidityPools, liquidityPools []xdr.LiquidityPoolEntry) {
+	sort.Slice(liquidityPools, func(i, j int) bool {
+		return liquidityPools[i].Body.MustConstantProduct().Params.AssetB.String() <
+			liquidityPools[j].Body.MustConstantProduct().Params.AssetB.String()
+	})
+
+	for i, expected := range expectedLiquidityPools {
+		liquidityPool := liquidityPools[i]
+		liquidityPoolBase64, err := xdr.MarshalBase64(liquidityPool)
+		if err != nil {
+			t.Fatalf("unexpected marshall error %v", err)
+		}
+		expectedBase64, err := xdr.MarshalBase64(expected)
+		if err != nil {
+			t.Fatalf("unexpected marshall error %v", err)
+		}
+		if expectedBase64 != liquidityPoolBase64 {
+			t.Fatalf("pool mismatch: %v != %v", expected, liquidityPoolBase64)
+		}
+	}
+}
+
+func TestAddLiquidityPool(t *testing.T) {
+	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
+	assertLiquidityPoolsEqual(t, expectedLiquidityPools, graph.LiquidityPools())
+}
+
+func TestUpdateLiquidityPools(t *testing.T) {
+	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
+	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
+	expectedLiquidityPools[1].Body.ConstantProduct.ReserveB -= 2
+
+	graph.AddLiquidityPool(expectedLiquidityPools[0])
+	graph.AddLiquidityPool(expectedLiquidityPools[1])
+	if err := graph.Apply(2); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	assertLiquidityPoolsEqual(t, expectedLiquidityPools, graph.LiquidityPools())
+}
+
+func TestRemoveLiquidityPools(t *testing.T) {
+	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
+	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
+
+	graph.AddLiquidityPool(expectedLiquidityPools[0])
+	graph.RemoveLiquidityPool(expectedLiquidityPools[1].Body.MustConstantProduct().Params)
+
+	if err := graph.Apply(2); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	assertLiquidityPoolsEqual(t, expectedLiquidityPools[:1], graph.LiquidityPools())
 }
 
 func TestUpdateOfferOrderBook(t *testing.T) {
