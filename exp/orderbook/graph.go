@@ -36,11 +36,14 @@ type tradingPair struct {
 // OBGraph is an interface for orderbook graphs
 type OBGraph interface {
 	AddOffer(offer xdr.OfferEntry)
+	AddLiquidityPool(liquidityPool xdr.LiquidityPoolEntry)
 	Apply(ledger uint32) error
 	Discard()
 	Offers() []xdr.OfferEntry
+	LiquidityPools() []xdr.LiquidityPoolEntry
 	OffersMap() map[xdr.Int64]xdr.OfferEntry
 	RemoveOffer(xdr.Int64) OBGraph
+	RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph
 	Pending() ([]xdr.OfferEntry, []xdr.Int64)
 	Clear()
 }
@@ -58,6 +61,9 @@ type OrderBookGraph struct {
 	// tradingPairForOffer maps an offer id to the assets which are being exchanged
 	// in the given offer
 	tradingPairForOffer map[xdr.Int64]tradingPair
+	// liquidityPools maps a trading pair to the liquidity pool which contains those
+	// assets in its reserves
+	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
 	// batch is enough.
@@ -75,6 +81,7 @@ func NewOrderBookGraph() *OrderBookGraph {
 		edgesForSellingAsset: map[string]edgeSet{},
 		edgesForBuyingAsset:  map[string]edgeSet{},
 		tradingPairForOffer:  map[xdr.Int64]tradingPair{},
+		liquidityPools:       map[tradingPair]xdr.LiquidityPoolEntry{},
 	}
 
 	graph.batchedUpdates = graph.batch()
@@ -88,11 +95,26 @@ func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
 	graph.batchedUpdates.addOffer(offer)
 }
 
+// AddLiquidityPool will queue an operation to add the given liquidity pool to
+// the order book graph in the internal batch.
+// You need to run Apply() to apply all enqueued operations.
+func (graph *OrderBookGraph) AddLiquidityPool(liquidityPool xdr.LiquidityPoolEntry) {
+	graph.batchedUpdates.addLiquidityPool(liquidityPool)
+}
+
 // RemoveOffer will queue an operation to remove the given offer from the order book in
 // the internal batch.
 // You need to run Apply() to apply all enqueued operations.
 func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	graph.batchedUpdates.removeOffer(offerID)
+	return graph
+}
+
+func (graph *OrderBookGraph) RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph {
+	graph.batchedUpdates.removeLiquidityPool(tradingPair{
+		buyingAsset:  params.AssetA.String(),
+		sellingAsset: params.AssetB.String(),
+	})
 	return graph
 }
 
@@ -132,7 +154,7 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	offers := []xdr.OfferEntry{}
+	var offers []xdr.OfferEntry
 	for _, edges := range graph.edgesForSellingAsset {
 		for _, offersForEdge := range edges {
 			offers = append(offers, offersForEdge...)
@@ -140,6 +162,19 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	}
 
 	return offers
+}
+
+// LiquidityPools returns a list of liquidity pools contained in the order book graph
+func (graph *OrderBookGraph) LiquidityPools() []xdr.LiquidityPoolEntry {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	var liquidityPools []xdr.LiquidityPoolEntry
+	for _, liquidityPool := range graph.liquidityPools {
+		liquidityPools = append(liquidityPools, liquidityPool)
+	}
+
+	return liquidityPools
 }
 
 // Clear removes all offers from the graph.
@@ -150,6 +185,7 @@ func (graph *OrderBookGraph) Clear() {
 	graph.edgesForSellingAsset = map[string]edgeSet{}
 	graph.edgesForBuyingAsset = map[string]edgeSet{}
 	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
+	graph.liquidityPools = map[tradingPair]xdr.LiquidityPoolEntry{}
 	graph.batchedUpdates = graph.batch()
 	graph.lastLedger = 0
 }

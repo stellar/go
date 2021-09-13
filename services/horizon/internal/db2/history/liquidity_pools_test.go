@@ -164,6 +164,12 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 1)
 
+	pool := lps[0]
+	lps, err = q.GetAllLiquidityPools(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(lps, 1)
+	tt.Assert.Equal(pool, lps[0])
+
 	// query by one asset
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
@@ -276,6 +282,10 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	q.RemoveLiquidityPool(tt.Ctx, lp.PoolID, 200)
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(lps, 0)
+
+	lps, err = q.GetAllLiquidityPools(tt.Ctx)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 0)
 
