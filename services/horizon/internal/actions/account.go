@@ -96,7 +96,7 @@ func (q AccountsQuery) Validate() error {
 		)
 	}
 
-	numParams, err := countNonEmpty(q.Sponsor, q.Signer, q.Asset())
+	numParams, err := countNonEmpty(q.Sponsor, q.Signer, q.Asset(), q.LiquidityPool)
 	if err != nil {
 		return errors.Wrap(err, "Could not count request params")
 	}
