@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/errors"
@@ -533,6 +534,135 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.True(ok)
 }
 
+func createLP(tt *test.T, q *history.Q) history.LiquidityPool {
+	lp := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
+			},
+		},
+		LastModifiedLedger: 123,
+	}
+
+	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
+
+	err := builder.Add(tt.Ctx, lp)
+	tt.Assert.NoError(err)
+
+	err = builder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+	return lp
+}
+
+func TestGetAccountsHandlerPageResultsByLiquidityPool(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{}
+
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(tt.Ctx, account1)
+	assert.NoError(t, err)
+	err = batch.Add(tt.Ctx, account2)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec(tt.Ctx))
+	ledgerCloseTime := time.Now().Unix()
+	_, err = q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 1234,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0, 0)
+	assert.NoError(t, err)
+	var assetType, code, issuer string
+	usd.MustExtract(&assetType, &code, &issuer)
+	params := map[string]string{
+		"liquidity_pool": "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+	}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			params,
+			map[string]string{},
+			q,
+		),
+	)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(0, len(records))
+
+	lp := createLP(tt, q)
+	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		{
+			AccountID:          account1.Data.MustAccount().AccountId.Address(),
+			AssetType:          xdr.AssetTypeAssetTypePoolShare,
+			Balance:            10,
+			LedgerKey:          "pool-share-1",
+			Limit:              100,
+			LiquidityPoolID:    lp.PoolID,
+			Flags:              uint32(xdr.TrustLineFlagsAuthorizedFlag),
+			LastModifiedLedger: lp.LastModifiedLedger,
+		},
+	})
+	assert.NoError(t, err)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			params,
+			map[string]string{},
+			q,
+		),
+	)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(1, len(records))
+	result := records[0].(protocol.Account)
+	tt.Assert.Equal(accountOne, result.AccountID)
+	tt.Assert.NotNil(result.LastModifiedTime)
+	tt.Assert.Equal(ledgerCloseTime, result.LastModifiedTime.Unix())
+	tt.Assert.Len(result.Balances, 2)
+	tt.Assert.True(*result.Balances[0].IsAuthorized)
+	tt.Assert.True(*result.Balances[0].IsAuthorizedToMaintainLiabilities)
+	result.Balances[0].IsAuthorized = nil
+	result.Balances[0].IsAuthorizedToMaintainLiabilities = nil
+	tt.Assert.Equal(
+		protocol.Balance{
+			Balance:                           "0.0000010",
+			LiquidityPoolId:                   "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+			Limit:                             "0.0000100",
+			BuyingLiabilities:                 "",
+			SellingLiabilities:                "",
+			Sponsor:                           "",
+			LastModifiedLedger:                123,
+			IsAuthorized:                      nil,
+			IsAuthorizedToMaintainLiabilities: nil,
+			IsClawbackEnabled:                 nil,
+			Asset: base.Asset{
+				Type: "liquidity_pool_shares",
+			},
+		},
+		result.Balances[0],
+	)
+}
+
 func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 	testCases := []struct {
 		desc                    string
@@ -546,10 +676,18 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 			isInvalidAccountsParams: true,
 		},
 		{
-			desc: "signer and seller",
+			desc: "signer and asset",
 			params: map[string]string{
 				"signer": accountOne,
 				"asset":  "USD" + ":" + accountOne,
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
+			desc: "signer and liquidity pool",
+			params: map[string]string{
+				"signer":         accountOne,
+				"liquidity_pool": "48672641c88264272787837f5c306f5ce93be3c2c7df68a092fbea55f5f4aa1d",
 			},
 			isInvalidAccountsParams: true,
 		},
@@ -570,6 +708,22 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 			isInvalidAccountsParams: true,
 		},
 		{
+			desc: "asset and liquidity pool",
+			params: map[string]string{
+				"asset":          "USD" + ":" + accountOne,
+				"liquidity_pool": "48672641c88264272787837f5c306f5ce93be3c2c7df68a092fbea55f5f4aa1d",
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
+			desc: "sponsor and liquidity pool",
+			params: map[string]string{
+				"sponsor":        accountTwo,
+				"liquidity_pool": "48672641c88264272787837f5c306f5ce93be3c2c7df68a092fbea55f5f4aa1d",
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
 			desc: "filtering by native asset",
 			params: map[string]string{
 				"asset": "native",
@@ -585,6 +739,22 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 			},
 			expectedInvalidField: "asset",
 			expectedErr:          customTagsErrorMessages["asset"],
+		},
+		{
+			desc: "invalid liquidity pool",
+			params: map[string]string{
+				"liquidity_pool": "USDCOP:someissuer",
+			},
+			expectedInvalidField: "liquidity_pool",
+			expectedErr:          "USDCOP:someissuer does not validate as sha256",
+		},
+		{
+			desc: "liquidity pool too short",
+			params: map[string]string{
+				"liquidity_pool": "48672641c882642727",
+			},
+			expectedInvalidField: "liquidity_pool",
+			expectedErr:          "48672641c882642727 does not validate as sha256",
 		},
 	}
 	for _, tc := range testCases {
