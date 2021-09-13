@@ -575,11 +575,11 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 // Fund creates a new account funded from friendbot. It only works on test networks. See
 // https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
 func (c *Client) Fund(addr string) (tx hProtocol.Transaction, err error) {
-	if !c.isTestNet {
-		return tx, errors.New("can't fund account from friendbot on production network")
-	}
 	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
 	err = c.sendGetRequest(friendbotURL, &tx)
+	if IsNotFoundError(err) {
+		return tx, errors.Wrap(err, "funding is only available on test networks and may not be supported by "+c.fixHorizonURL())
+	}
 	return
 }
 

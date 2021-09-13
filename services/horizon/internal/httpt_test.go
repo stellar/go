@@ -42,7 +42,8 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 	}`)
 
 	ret.App.config.StellarCoreURL = ret.coreServer.URL
-	ret.App.UpdateLedgerState(context.Background())
+	ret.App.UpdateCoreLedgerState(context.Background())
+	ret.App.UpdateHorizonLedgerState(context.Background())
 
 	return ret
 }
@@ -101,5 +102,6 @@ func (ht *HTTPT) ReapHistory(retention uint) {
 	ht.App.reaper.RetentionCount = retention
 	err := ht.App.DeleteUnretainedHistory(context.Background())
 	ht.Require.NoError(err)
-	ht.App.UpdateLedgerState(context.Background())
+	ht.App.UpdateCoreLedgerState(context.Background())
+	ht.App.UpdateHorizonLedgerState(context.Background())
 }
