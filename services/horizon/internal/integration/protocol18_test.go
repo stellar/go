@@ -269,6 +269,10 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("400.0000000", op2.ReservesDeposited[0].Amount)
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op2.ReservesDeposited[1].Asset)
 	tt.Equal("777.0000000", op2.ReservesDeposited[1].Amount)
+	tt.Equal("native", op2.ReservesMax[0].Asset)
+	tt.Equal("400.0000000", op2.ReservesMax[0].Amount)
+	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op2.ReservesMax[1].Asset)
+	tt.Equal("777.0000000", op2.ReservesMax[1].Amount)
 	tt.Equal("557.4943946", op2.SharesReceived)
 
 	op3 := (ops.Embedded.Records[2]).(operations.PathPayment)
@@ -675,4 +679,83 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	tt.Equal("liquidity_pool_removed", ef12.Type)
 	tt.Equal(master.Address(), ef12.Account)
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef12.LiquidityPoolID)
+}
+
+func TestLiquidityPoolFailedDepositAndWithdraw(t *testing.T) {
+	tt := assert.New(t)
+	itest := NewProtocol18Test(t)
+
+	keys, accounts := itest.CreateAccounts(2, "1000")
+	shareKeys, shareAccount := keys[0], accounts[0]
+
+	nonExistentPoolID := [32]byte{0xca, 0xfe}
+
+	// Failing deposit
+	tx, err := itest.CreateSignedTransaction(shareAccount, []*keypair.Full{shareKeys},
+		&txnbuild.LiquidityPoolDeposit{
+			LiquidityPoolID: nonExistentPoolID,
+			MaxAmountA:      "400",
+			MaxAmountB:      "777",
+			MinPrice:        "0.5",
+			MaxPrice:        "2",
+		},
+	)
+	_, err = itest.Client().SubmitTransaction(tx)
+	tt.Error(err)
+	hash, err := tx.HashHex(integration.StandaloneNetworkPassphrase)
+	tt.NoError(err)
+	opsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: hash,
+	})
+	tt.NoError(err)
+	tt.Len(opsResponse.Embedded.Records, 1)
+	deposit := (opsResponse.Embedded.Records[0]).(operations.LiquidityPoolDeposit)
+	tt.Equal("liquidity_pool_deposit", deposit.Type)
+	tt.Equal("cafe000000000000000000000000000000000000000000000000000000000000", deposit.LiquidityPoolID)
+	tt.Equal("0.5000000", deposit.MinPrice)
+	tt.Equal("2.0000000", deposit.MaxPrice)
+	tt.Equal("", deposit.ReservesDeposited[0].Asset)
+	tt.Equal("0.0000000", deposit.ReservesDeposited[0].Amount)
+	tt.Equal("", deposit.ReservesDeposited[1].Asset)
+	tt.Equal("0.0000000", deposit.ReservesDeposited[1].Amount)
+	tt.Equal("", deposit.ReservesMax[0].Asset)
+	tt.Equal("400.0000000", deposit.ReservesMax[0].Amount)
+	tt.Equal("", deposit.ReservesMax[1].Asset)
+	tt.Equal("777.0000000", deposit.ReservesMax[1].Amount)
+	tt.Equal("0.0000000", deposit.SharesReceived)
+
+	// Failing withdrawal
+	tx, err = itest.CreateSignedTransaction(shareAccount, []*keypair.Full{shareKeys},
+		&txnbuild.LiquidityPoolWithdraw{
+			LiquidityPoolID: nonExistentPoolID,
+			Amount:          amount.StringFromInt64(int64(10)),
+			MinAmountA:      "10",
+			MinAmountB:      "20",
+		},
+	)
+	_, err = itest.Client().SubmitTransaction(tx)
+	tt.Error(err)
+
+	hash, err = tx.HashHex(integration.StandaloneNetworkPassphrase)
+	tt.NoError(err)
+	opsResponse, err = itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: hash,
+	})
+	tt.NoError(err)
+	tt.Len(opsResponse.Embedded.Records, 1)
+	withdrawal := (opsResponse.Embedded.Records[0]).(operations.LiquidityPoolWithdraw)
+	tt.Equal("liquidity_pool_withdraw", withdrawal.Type)
+	tt.Equal("cafe000000000000000000000000000000000000000000000000000000000000", withdrawal.LiquidityPoolID)
+
+	tt.Equal("", withdrawal.ReservesMin[0].Asset)
+	tt.Equal("10.0000000", withdrawal.ReservesMin[0].Amount)
+	tt.Equal("", withdrawal.ReservesMin[1].Asset)
+	tt.Equal("20.0000000", withdrawal.ReservesMin[1].Amount)
+
+	tt.Equal("", withdrawal.ReservesReceived[0].Asset)
+	tt.Equal("0.0000000", withdrawal.ReservesReceived[0].Amount)
+	tt.Equal("", withdrawal.ReservesReceived[1].Asset)
+	tt.Equal("0.0000000", withdrawal.ReservesReceived[1].Amount)
+
+	tt.Equal("0.0000010", withdrawal.Shares)
 }
