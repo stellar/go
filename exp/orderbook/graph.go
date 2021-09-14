@@ -62,8 +62,10 @@ type OrderBookGraph struct {
 	// tradingPairForOffer maps an offer id to the assets which are being exchanged
 	// in the given offer
 	tradingPairForOffer map[xdr.Int64]tradingPair
-	// liquidityPools maps a trading pair to the liquidity pool which contains those
-	// assets in its reserves
+	// liquidityPools maps a trading pair to the liquidity pool which contains
+	// those assets in its reserves. Note that you can make trades for either
+	// asset in the pair, but the map key will always be in "asset order" (see
+	// `xdr.Asset.LessThan`).
 	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
@@ -113,8 +115,8 @@ func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 
 func (graph *OrderBookGraph) RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph {
 	graph.batchedUpdates.removeLiquidityPool(tradingPair{
-		buyingAsset:  params.AssetA.String(),
-		sellingAsset: params.AssetB.String(),
+		params.AssetA.String(),
+		params.AssetB.String(),
 	})
 	return graph
 }

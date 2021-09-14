@@ -50,8 +50,8 @@ func (tx *orderBookBatchedUpdates) addLiquidityPool(liquidityPool xdr.LiquidityP
 		operationType: addLiquidityPoolOperationType,
 		liquidityPool: &liquidityPool,
 		liquidityPoolAssets: tradingPair{
-			buyingAsset:  params.AssetA.String(),
-			sellingAsset: params.AssetB.String(),
+			params.AssetA.String(),
+			params.AssetB.String(),
 		},
 	})
 
@@ -106,13 +106,12 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 			if err := tx.orderbook.remove(operation.offerID); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
+
 		case addLiquidityPoolOperationType:
 			tx.orderbook.liquidityPools[operation.liquidityPoolAssets] = *operation.liquidityPool
 		case removeLiquidityPoolOperationType:
-			if _, ok := tx.orderbook.liquidityPools[operation.liquidityPoolAssets]; !ok {
-				panic(errors.New("liquidity pool not present in orderbook graph"))
-			}
 			delete(tx.orderbook.liquidityPools, operation.liquidityPoolAssets)
+
 		default:
 			panic(errors.New("invalid operation type"))
 		}
