@@ -133,8 +133,27 @@ var (
 					AssetB: usdAsset,
 					Fee:    xdr.LiquidityPoolFeeV18,
 				},
-				ReserveA:                 xdr.Int64(100),
-				ReserveB:                 xdr.Int64(100),
+				ReserveA:                 xdr.Int64(1000),
+				ReserveB:                 xdr.Int64(1000),
+				TotalPoolShares:          xdr.Int64(2),
+				PoolSharesTrustLineCount: xdr.Int64(2),
+			},
+		},
+	}
+
+	eurYenLiquidityPoolId, _ = xdr.NewPoolId(eurAsset, yenAsset, xdr.LiquidityPoolFeeV18)
+	eurYenLiquidityPool      = xdr.LiquidityPoolEntry{
+		LiquidityPoolId: eurUsdLiquidityPoolId,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: eurAsset,
+					AssetB: yenAsset,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 xdr.Int64(1000),
+				ReserveB:                 xdr.Int64(1000),
 				TotalPoolShares:          xdr.Int64(2),
 				PoolSharesTrustLineCount: xdr.Int64(2),
 			},
@@ -232,32 +251,31 @@ func assertGraphEquals(t *testing.T, a, b *OrderBookGraph) {
 }
 
 func assertPathEquals(t *testing.T, a, b []Path) {
-	if len(a) != len(b) {
-		t.Fatalf("expected paths to have same length but got %v %v", a, b)
+	if !assert.Equalf(t, len(a), len(b),
+		"expected paths to have same length but got %v %v", a, b) {
+		t.FailNow()
 	}
 
 	for i := 0; i < len(a); i++ {
-		if a[i].SourceAmount != b[i].SourceAmount {
-			t.Fatalf("expected paths to be same got %v %v", a, b)
-		}
-		if a[i].DestinationAmount != b[i].DestinationAmount {
-			t.Fatalf("expected paths to be same got %v %v", a, b)
-		}
-		if !a[i].DestinationAsset.Equals(b[i].DestinationAsset) {
-			t.Fatalf("expected paths to be same got %v %v", a, b)
-		}
-		if !a[i].SourceAsset.Equals(b[i].SourceAsset) {
-			t.Fatalf("expected paths to be same got %v %v", a, b)
-		}
+		assert.Equalf(t, a[i].SourceAmount, b[i].SourceAmount,
+			"expected src amounts to be same got %v %v", a, b)
 
-		if len(a[i].InteriorNodes) != len(b[i].InteriorNodes) {
-			t.Fatalf("expected paths to be same got %v %v", a, b)
-		}
+		assert.Equalf(t, a[i].DestinationAmount, b[i].DestinationAmount,
+			"expected dest amounts to be same got %v %v", a, b)
+
+		assert.Truef(t, a[i].DestinationAsset.Equals(b[i].DestinationAsset),
+			"expected dest assets to be same got %v %v", a, b)
+
+		assert.Truef(t, a[i].SourceAsset.Equals(b[i].SourceAsset),
+			"expected source assets to be same got %v %v", a, b)
+
+		assert.Equalf(t, len(a[i].InteriorNodes), len(b[i].InteriorNodes),
+			"expected interior nodes have same length got %v %v", a, b)
 
 		for j := 0; j > len(a[i].InteriorNodes); j++ {
-			if !a[i].InteriorNodes[j].Equals(b[i].InteriorNodes[j]) {
-				t.Fatalf("expected paths to be same got %v %v", a, b)
-			}
+			assert.Truef(t,
+				a[i].InteriorNodes[j].Equals(b[i].InteriorNodes[j]),
+				"expected interior nodes to be same got %v %v", a, b)
 		}
 	}
 }

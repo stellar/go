@@ -9,13 +9,14 @@ import (
 
 // Path represents a payment path from a source asset to some destination asset
 type Path struct {
-	SourceAmount      xdr.Int64
-	SourceAsset       xdr.Asset
+	SourceAsset  xdr.Asset
+	SourceAmount xdr.Int64
+
 	DestinationAsset  xdr.Asset
 	DestinationAmount xdr.Int64
 
-	// sourceAssetString and destinationAssetString are included as an optimization
-	// to improve the performance of sorting paths by avoiding
+	// sourceAssetString and destinationAssetString are included as an
+	// optimization to improve the performance of sorting paths by avoiding
 	// serializing assets to strings repeatedly
 	sourceAssetString      string
 	destinationAssetString string
@@ -51,7 +52,8 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 	)
 
-	edges(currentAssetString string) edgeSet
+	edges(currentAsset string) edgeSet
+	// pools(currentAsset string) map[string][]xdr.LiquidityPoolEntry
 
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
@@ -130,13 +132,15 @@ func dfs(
 	return nil
 }
 
-// sellingGraphSearchState configures a DFS on the orderbook graph
-// where only edges in `graph.edgesForSellingAsset` are traversed.
+// sellingGraphSearchState configures a DFS on the orderbook graph where only
+// edges in `graph.edgesForSellingAsset` are traversed.
+//
 // The DFS maintains the following invariants:
-// no node is repeated
-// no offers are consumed from the `ignoreOffersFrom` account
-// each payment path must begin with an asset in `targetAssets`
-// also, the required source asset amount cannot exceed the balance in `targetAssets`
+//  - no node is repeated
+//  - no offers are consumed from the `ignoreOffersFrom` account
+//  - each payment path must begin with an asset in `targetAssets`
+//  - also, the required source asset amount cannot exceed the balance in
+//    `targetAssets`
 type sellingGraphSearchState struct {
 	graph                  *OrderBookGraph
 	destinationAsset       xdr.Asset
@@ -200,13 +204,14 @@ func (state *sellingGraphSearchState) consumeOffers(
 	return nextAsset, nextAmount, err
 }
 
-// buyingGraphSearchState configures a DFS on the orderbook graph
-// where only edges in `graph.edgesForBuyingAsset` are traversed.
+// buyingGraphSearchState configures a DFS on the orderbook graph where only
+// edges in `graph.edgesForBuyingAsset` are traversed.
+//
 // The DFS maintains the following invariants:
-// no node is repeated
-// no offers are consumed from the `ignoreOffersFrom` account
-// each payment path must terminate with an asset in `targetAssets`
-// each payment path must begin with `sourceAsset`
+//  - no node is repeated
+//  - no offers are consumed from the `ignoreOffersFrom` account
+//  - each payment path must terminate with an asset in `targetAssets`
+//  - each payment path must begin with `sourceAsset`
 type buyingGraphSearchState struct {
 	graph             *OrderBookGraph
 	sourceAsset       xdr.Asset

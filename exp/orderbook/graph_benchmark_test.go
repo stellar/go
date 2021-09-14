@@ -172,13 +172,13 @@ func BenchmarkSingleLiquidityPoolExchanges(b *testing.B) {
 }
 
 func BenchmarkLiquidityPoolExchanges(b *testing.B) {
-	// Generate a pool of randomness *first*, which should be make it easier to
-	// isolate the performance of the trades themselves.
+	// First, generate a pool of randomness.
 	amounts := make([]xdr.Int64, b.N)
 	for i, _ := range amounts {
 		amounts[i] = xdr.Int64(1 + rand.Int63n(math.MaxInt64-100))
 	}
 
+	b.ResetTimer()
 	b.Run("deposits", func(b *testing.B) {
 		for _, amount := range amounts {
 			makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, amount)

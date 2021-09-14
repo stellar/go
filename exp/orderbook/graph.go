@@ -68,10 +68,10 @@ type OrderBookGraph struct {
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
 	// batch is enough.
-	// the orderbook graph is accurate up to lastLedger
-	lastLedger     uint32
 	batchedUpdates *orderBookBatchedUpdates
 	lock           sync.RWMutex
+	// the orderbook graph is accurate up to lastLedger
+	lastLedger uint32
 }
 
 var _ OBGraph = (*OrderBookGraph)(nil)
