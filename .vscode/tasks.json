@@ -9,9 +9,15 @@
     "options": {
         "cwd": "${workspaceRoot}"
     },
-    "tasks": [{
-        "taskName": "test all",
-        "isWatching": false,
-        "args": ["test", "./..."]
-    }]
+    "tasks": [
+        {
+            "label": "test all",
+            "type": "shell",
+            "args": [
+                "test",
+                "./..."
+            ],
+            "problemMatcher": []
+        }
+    ]
 }
