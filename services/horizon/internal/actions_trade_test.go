@@ -179,7 +179,7 @@ func unsetAssetQuery(q *url.Values, prefix string) {
 }
 
 //testPrice ensures that the price float string is equal to the rational price
-func testPrice(t *HTTPT, priceStr string, priceR xdr.Price) {
+func testPrice(t *HTTPT, priceStr string, priceR horizon.TradePrice) {
 	price, err := strconv.ParseFloat(priceStr, 64)
 	if t.Assert.NoError(err) {
 		t.Assert.Equal(price, float64(priceR.N)/float64(priceR.D))

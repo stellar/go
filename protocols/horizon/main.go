@@ -5,6 +5,7 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/xdr"
 )
 
 // KeyTypeNames maps from strkey version bytes into json string values to use in
@@ -90,7 +90,6 @@ func (a Account) GetCreditBalance(code string, issuer string) string {
 // and returns it as a 64-bit integer.
 func (a Account) GetSequenceNumber() (int64, error) {
 	seqNum, err := strconv.ParseInt(a.Sequence, 10, 64)
-
 	if err != nil {
 		return 0, errors.Wrap(err, "Failed to parse account sequence number")
 	}
@@ -283,7 +282,7 @@ func (p Path) PagingToken() string {
 	return ""
 }
 
-// Price represents a price
+// Price represents a price for an offer
 type Price base.Price
 
 // PriceLevel represents an aggregation of offers that share a given price
@@ -338,6 +337,44 @@ type Signer struct {
 	Type   string `json:"type"`
 }
 
+// TradePrice represents a price for a trade
+type TradePrice struct {
+	N int64 `json:"n,string"`
+	D int64 `json:"d,string"`
+}
+
+// String returns a string representation of the trade price
+func (p TradePrice) String() string {
+	return big.NewRat(p.N, p.D).FloatString(7)
+}
+
+// UnmarshalJSON implements a custom unmarshaler for TradePrice
+// which can handle a numerator and denominator fields which can be a string or int
+func (p *TradePrice) UnmarshalJSON(data []byte) error {
+	v := struct {
+		N json.Number `json:"n"`
+		D json.Number `json:"d"`
+	}{}
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+
+	if v.N != "" {
+		p.N, err = v.N.Int64()
+		if err != nil {
+			return err
+		}
+	}
+	if v.D != "" {
+		p.D, err = v.D.Int64()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Trade represents a horizon digested trade
 type Trade struct {
 	Links struct {
@@ -347,24 +384,28 @@ type Trade struct {
 		Operation hal.Link `json:"operation"`
 	} `json:"_links"`
 
-	ID                 string    `json:"id"`
-	PT                 string    `json:"paging_token"`
-	LedgerCloseTime    time.Time `json:"ledger_close_time"`
-	OfferID            string    `json:"offer_id"`
-	BaseOfferID        string    `json:"base_offer_id"`
-	BaseAccount        string    `json:"base_account"`
-	BaseAmount         string    `json:"base_amount"`
-	BaseAssetType      string    `json:"base_asset_type"`
-	BaseAssetCode      string    `json:"base_asset_code,omitempty"`
-	BaseAssetIssuer    string    `json:"base_asset_issuer,omitempty"`
-	CounterOfferID     string    `json:"counter_offer_id"`
-	CounterAccount     string    `json:"counter_account"`
-	CounterAmount      string    `json:"counter_amount"`
-	CounterAssetType   string    `json:"counter_asset_type"`
-	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
-	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
-	BaseIsSeller       bool      `json:"base_is_seller"`
-	Price              *Price    `json:"price"`
+	ID                     string     `json:"id"`
+	PT                     string     `json:"paging_token"`
+	LedgerCloseTime        time.Time  `json:"ledger_close_time"`
+	OfferID                string     `json:"offer_id,omitempty"`
+	TradeType              string     `json:"trade_type"`
+	LiquidityPoolFeeBP     uint32     `json:"liquidity_pool_fee_bp,omitempty"`
+	BaseLiquidityPoolID    string     `json:"base_liquidity_pool_id,omitempty"`
+	BaseOfferID            string     `json:"base_offer_id,omitempty"`
+	BaseAccount            string     `json:"base_account,omitempty"`
+	BaseAmount             string     `json:"base_amount"`
+	BaseAssetType          string     `json:"base_asset_type"`
+	BaseAssetCode          string     `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer        string     `json:"base_asset_issuer,omitempty"`
+	CounterLiquidityPoolID string     `json:"counter_liquidity_pool_id,omitempty"`
+	CounterOfferID         string     `json:"counter_offer_id,omitempty"`
+	CounterAccount         string     `json:"counter_account"`
+	CounterAmount          string     `json:"counter_amount"`
+	CounterAssetType       string     `json:"counter_asset_type"`
+	CounterAssetCode       string     `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer     string     `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller           bool       `json:"base_is_seller"`
+	Price                  TradePrice `json:"price,omitempty"`
 }
 
 // PagingToken implementation for hal.Pageable
@@ -399,19 +440,19 @@ type TradeEffect struct {
 
 // TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	Timestamp     int64     `json:"timestamp,string"`
-	TradeCount    int64     `json:"trade_count,string"`
-	BaseVolume    string    `json:"base_volume"`
-	CounterVolume string    `json:"counter_volume"`
-	Average       string    `json:"avg"`
-	High          string    `json:"high"`
-	HighR         xdr.Price `json:"high_r"`
-	Low           string    `json:"low"`
-	LowR          xdr.Price `json:"low_r"`
-	Open          string    `json:"open"`
-	OpenR         xdr.Price `json:"open_r"`
-	Close         string    `json:"close"`
-	CloseR        xdr.Price `json:"close_r"`
+	Timestamp     int64      `json:"timestamp,string"`
+	TradeCount    int64      `json:"trade_count,string"`
+	BaseVolume    string     `json:"base_volume"`
+	CounterVolume string     `json:"counter_volume"`
+	Average       string     `json:"avg"`
+	High          string     `json:"high"`
+	HighR         TradePrice `json:"high_r"`
+	Low           string     `json:"low"`
+	LowR          TradePrice `json:"low_r"`
+	Open          string     `json:"open"`
+	OpenR         TradePrice `json:"open_r"`
+	Close         string     `json:"close"`
+	CloseR        TradePrice `json:"close_r"`
 }
 
 // PagingToken implementation for hal.Pageable. Not actually used
@@ -498,7 +539,7 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements a custom unmarshaler for Transaction
-// which can handle a max_fee field which can be a string of int
+// which can handle a max_fee field which can be a string or int
 func (t *Transaction) UnmarshalJSON(data []byte) error {
 	type Alias Transaction // we define Alias to avoid infinite recursion when calling UnmarshalJSON()
 	v := &struct {

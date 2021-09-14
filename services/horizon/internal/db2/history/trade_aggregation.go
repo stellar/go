@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
-	"github.com/stellar/go/xdr"
 )
 
 // AllowedResolutions is the set of trade aggregation time windows allowed to be used as the
@@ -28,15 +27,19 @@ var StrictResolutionFiltering = true
 
 // TradeAggregation represents an aggregation of trades from the trades table
 type TradeAggregation struct {
-	Timestamp     int64     `db:"timestamp"`
-	TradeCount    int64     `db:"count"`
-	BaseVolume    string    `db:"base_volume"`
-	CounterVolume string    `db:"counter_volume"`
-	Average       float64   `db:"avg"`
-	High          xdr.Price `db:"high"`
-	Low           xdr.Price `db:"low"`
-	Open          xdr.Price `db:"open"`
-	Close         xdr.Price `db:"close"`
+	Timestamp     int64   `db:"timestamp"`
+	TradeCount    int64   `db:"count"`
+	BaseVolume    string  `db:"base_volume"`
+	CounterVolume string  `db:"counter_volume"`
+	Average       float64 `db:"avg"`
+	HighN         int64   `db:"high_n"`
+	HighD         int64   `db:"high_d"`
+	LowN          int64   `db:"low_n"`
+	LowD          int64   `db:"low_d"`
+	OpenN         int64   `db:"open_n"`
+	OpenD         int64   `db:"open_d"`
+	CloseN        int64   `db:"close_n"`
+	CloseD        int64   `db:"close_d"`
 }
 
 // TradeAggregationsQ is a helper struct to aid in configuring queries to

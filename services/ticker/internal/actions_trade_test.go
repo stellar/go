@@ -11,8 +11,8 @@ import (
 
 func TestProtocolTradeToDBTrade_priceMapping(t *testing.T) {
 	testCases := []struct {
-		N         int32
-		D         int32
+		N         int64
+		D         int64
 		WantPrice float64
 	}{
 		{100, 200, 2},
@@ -25,7 +25,7 @@ func TestProtocolTradeToDBTrade_priceMapping(t *testing.T) {
 			hpt := hProtocol.Trade{
 				BaseAmount:    "0",
 				CounterAmount: "0",
-				Price: &hProtocol.Price{
+				Price: hProtocol.TradePrice{
 					N: tc.N,
 					D: tc.D,
 				},
