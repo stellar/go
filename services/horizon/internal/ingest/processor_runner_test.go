@@ -24,12 +24,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q := &mockDBQ{}
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
@@ -113,12 +107,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		).Once()
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
@@ -330,12 +318,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	}
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()

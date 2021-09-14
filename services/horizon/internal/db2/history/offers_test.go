@@ -194,9 +194,8 @@ func TestUpdateOffer(t *testing.T) {
 	modifiedEurOffer := eurOffer
 	modifiedEurOffer.Amount -= 10
 
-	rowsAffected, err := q.UpdateOffer(tt.Ctx, modifiedEurOffer)
+	err = q.UpsertOffers(tt.Ctx, []Offer{modifiedEurOffer})
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), rowsAffected)
 
 	offers, err = q.GetAllOffers(tt.Ctx)
 	tt.Assert.NoError(err)
