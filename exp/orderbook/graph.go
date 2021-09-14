@@ -44,10 +44,8 @@ type OBGraph interface {
 	Discard()
 	Offers() []xdr.OfferEntry
 	LiquidityPools() []xdr.LiquidityPoolEntry
-	OffersMap() map[xdr.Int64]xdr.OfferEntry
 	RemoveOffer(xdr.Int64) OBGraph
 	RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph
-	Pending() ([]xdr.OfferEntry, []xdr.Int64)
 	Clear()
 }
 
@@ -121,21 +119,6 @@ func (graph *OrderBookGraph) RemoveLiquidityPool(params xdr.LiquidityPoolConstan
 	return graph
 }
 
-// Pending returns a list of queued offers which will be added to the order book and
-// a list of queued offers which will be removed from the order book.
-func (graph *OrderBookGraph) Pending() ([]xdr.OfferEntry, []xdr.Int64) {
-	var toUpdate []xdr.OfferEntry
-	var toRemove []xdr.Int64
-	for _, update := range graph.batchedUpdates.operations {
-		if update.operationType == addOfferOperationType {
-			toUpdate = append(toUpdate, *update.offer)
-		} else if update.operationType == removeOfferOperationType {
-			toRemove = append(toRemove, update.offerID)
-		}
-	}
-	return toUpdate, toRemove
-}
-
 // Discard removes all operations which have been queued but not yet applied to the OrderBookGraph
 func (graph *OrderBookGraph) Discard() {
 	graph.batchedUpdates = graph.batch()
@@ -191,19 +174,6 @@ func (graph *OrderBookGraph) Clear() {
 	graph.liquidityPools = map[tradingPair]xdr.LiquidityPoolEntry{}
 	graph.batchedUpdates = graph.batch()
 	graph.lastLedger = 0
-}
-
-// OffersMap returns a ID => OfferEntry map of offers contained in the order
-// book.
-func (graph *OrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
-	offers := graph.Offers()
-	m := make(map[xdr.Int64]xdr.OfferEntry, len(offers))
-
-	for _, entry := range offers {
-		m[entry.OfferId] = entry
-	}
-
-	return m
 }
 
 // Batch creates a new batch of order book updates which can be applied

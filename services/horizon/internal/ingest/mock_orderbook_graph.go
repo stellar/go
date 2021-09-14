@@ -26,11 +26,6 @@ func (m *mockOrderBookGraph) Apply(ledger uint32) error {
 
 }
 
-func (m *mockOrderBookGraph) Pending() ([]xdr.OfferEntry, []xdr.Int64) {
-	args := m.Called()
-	return args.Get(0).([]xdr.OfferEntry), args.Get(1).([]xdr.Int64)
-}
-
 func (m *mockOrderBookGraph) Discard() {
 	m.Called()
 }
@@ -43,11 +38,6 @@ func (m *mockOrderBookGraph) Offers() []xdr.OfferEntry {
 func (m *mockOrderBookGraph) LiquidityPools() []xdr.LiquidityPoolEntry {
 	args := m.Called()
 	return args.Get(0).([]xdr.LiquidityPoolEntry)
-}
-
-func (m *mockOrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
-	args := m.Called()
-	return args.Get(0).(map[xdr.Int64]xdr.OfferEntry)
 }
 
 func (m *mockOrderBookGraph) RemoveOffer(id xdr.Int64) orderbook.OBGraph {
