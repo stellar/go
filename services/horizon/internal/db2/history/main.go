@@ -601,16 +601,6 @@ type Offer struct {
 	Sponsor            null.String `db:"sponsor"`
 }
 
-type OffersBatchInsertBuilder interface {
-	Add(ctx context.Context, offer Offer) error
-	Exec(ctx context.Context) error
-}
-
-// offersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type offersBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
-}
-
 // OperationsQ is a helper struct to aid in configuring queries that loads
 // slices of Operation structs.
 type OperationsQ struct {
@@ -770,15 +760,6 @@ func (q *Q) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchI
 	return &accountDataBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("accounts_data"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
-func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
-	return &offersBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("offers"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

@@ -64,12 +64,7 @@ var (
 )
 
 func insertOffer(tt *test.T, q *Q, offer Offer) error {
-	batch := q.NewOffersBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, offer)
-	if err != nil {
-		return err
-	}
-	return batch.Exec(tt.Ctx)
+	return q.UpsertOffers(tt.Ctx, []Offer{offer})
 }
 
 func TestGetOfferByID(t *testing.T) {

@@ -14,7 +14,6 @@ type QOffers interface {
 	GetOffersByIDs(ctx context.Context, ids []int64) ([]Offer, error)
 	CountOffers(ctx context.Context) (int, error)
 	GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]Offer, error)
-	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	UpsertOffers(ctx context.Context, offers []Offer) error
 	RemoveOffers(ctx context.Context, offerIDs []int64, lastModifiedLedger uint32) (int64, error)
 	CompactOffers(ctx context.Context, cutOffSequence uint32) (int64, error)

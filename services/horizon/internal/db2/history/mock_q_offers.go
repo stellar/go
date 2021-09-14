@@ -31,11 +31,6 @@ func (m *MockQOffers) CountOffers(ctx context.Context) (int, error) {
 	return a.Get(0).(int), a.Error(1)
 }
 
-func (m *MockQOffers) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
-	a := m.Called(maxBatchSize)
-	return a.Get(0).(OffersBatchInsertBuilder)
-}
-
 func (m *MockQOffers) UpsertOffers(ctx context.Context, rows []Offer) error {
 	a := m.Called(ctx, rows)
 	return a.Error(0)
