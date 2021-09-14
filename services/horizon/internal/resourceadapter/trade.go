@@ -67,9 +67,9 @@ func PopulateTrade(
 	}
 
 	if row.HasPrice() {
-		dest.Price = &protocol.Price{
-			N: int32(row.PriceN.Int64),
-			D: int32(row.PriceD.Int64),
+		dest.Price = protocol.TradePrice{
+			N: row.PriceN.Int64,
+			D: row.PriceD.Int64,
 		}
 	}
 
