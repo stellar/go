@@ -442,8 +442,8 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("1.0353642", trade1.CounterAmount)
 	tt.Equal("native", trade1.CounterAssetType)
 
-	tt.Equal(int32(10353642), trade1.Price.N)
-	tt.Equal(int32(20000000), trade1.Price.D)
+	tt.Equal(int64(10353642), trade1.Price.N)
+	tt.Equal(int64(20000000), trade1.Price.D)
 }
 
 func TestLiquidityPoolRevoke(t *testing.T) {

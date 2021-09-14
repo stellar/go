@@ -311,8 +311,8 @@ func assertResponseTradeEqualsDBTrade(ht *HTTPT, row history.Trade, record horiz
 	ht.Assert.Equal(uint32(row.LiquidityPoolFee.Int64), record.LiquidityPoolFeeBP)
 	ht.Assert.Equal(row.PagingToken(), record.PagingToken())
 	ht.Assert.Equal(row.LedgerCloseTime.Unix(), record.LedgerCloseTime.Unix())
-	ht.Assert.Equal(int32(row.PriceN.Int64), record.Price.N)
-	ht.Assert.Equal(int32(row.PriceD.Int64), record.Price.D)
+	ht.Assert.Equal(row.PriceN.Int64, record.Price.N)
+	ht.Assert.Equal(row.PriceD.Int64, record.Price.D)
 
 	if row.BaseLiquidityPoolID.Valid || row.CounterLiquidityPoolID.Valid {
 		ht.Assert.Equal(history.LiquidityPoolTrades, record.TradeType)
@@ -338,7 +338,7 @@ func unsetAssetQuery(q *url.Values, prefix string) {
 }
 
 //testPrice ensures that the price float string is equal to the rational price
-func testPrice(t *HTTPT, priceStr string, priceR xdr.Price) {
+func testPrice(t *HTTPT, priceStr string, priceR horizon.TradePrice) {
 	price, err := strconv.ParseFloat(priceStr, 64)
 	if t.Assert.NoError(err) {
 		t.Assert.Equal(price, float64(priceR.N)/float64(priceR.D))
