@@ -241,7 +241,7 @@ func (s *OffersProcessorTestSuiteLedger) TestCompactionError() {
 	s.Assert().EqualError(s.processor.Commit(s.ctx), "could not compact offers: compaction error")
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestUpsertManyOffer() {
+func (s *OffersProcessorTestSuiteLedger) TestUpsertManyOffers() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
 	offer := xdr.OfferEntry{
@@ -295,23 +295,30 @@ func (s *OffersProcessorTestSuiteLedger) TestUpsertManyOffer() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("UpsertOffers", s.ctx, []history.Offer{
-		{
-			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			OfferID:            2,
-			Pricen:             int32(1),
-			Priced:             int32(6),
-			Price:              float64(1) / float64(6),
-			LastModifiedLedger: uint32(lastModifiedLedgerSeq),
-		},
-		{
-			SellerID:           "GDMUVYVYPYZYBDXNJWKFT3X2GCZCICTL3GSVP6AWBGB4ZZG7ZRDA746P",
-			OfferID:            3,
-			Pricen:             int32(2),
-			Priced:             int32(3),
-			Price:              float64(2) / float64(3),
-			LastModifiedLedger: uint32(lastModifiedLedgerSeq),
-		},
+	s.mockQ.On("UpsertOffers", s.ctx, mock.Anything).Run(func(args mock.Arguments) {
+		// To fix order issue due to using ChangeCompactor
+		offers := args.Get(1).([]history.Offer)
+		s.Assert().ElementsMatch(
+			offers,
+			[]history.Offer{
+				{
+					SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+					OfferID:            2,
+					Pricen:             int32(1),
+					Priced:             int32(6),
+					Price:              float64(1) / float64(6),
+					LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				},
+				{
+					SellerID:           "GDMUVYVYPYZYBDXNJWKFT3X2GCZCICTL3GSVP6AWBGB4ZZG7ZRDA746P",
+					OfferID:            3,
+					Pricen:             int32(2),
+					Priced:             int32(3),
+					Price:              float64(2) / float64(3),
+					LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				},
+			},
+		)
 	}).Return(nil).Once()
 	s.mockQ.On("CompactOffers", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
