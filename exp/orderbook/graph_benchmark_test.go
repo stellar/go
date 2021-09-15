@@ -167,8 +167,13 @@ func BenchmarkTestData(b *testing.B) {
 	}
 }
 
-func BenchmarkSingleLiquidityPoolExchanges(b *testing.B) {
-	makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, math.MaxInt64/2)
+func BenchmarkSingleLiquidityPoolExchange(b *testing.B) {
+	b.Run("deposit", func(b *testing.B) {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, math.MaxInt64/2)
+	})
+	b.Run("exchange", func(b *testing.B) {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, math.MaxInt64/2)
+	})
 }
 
 func BenchmarkLiquidityPoolExchanges(b *testing.B) {

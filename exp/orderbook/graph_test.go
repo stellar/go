@@ -6,7 +6,6 @@ import (
 	"encoding"
 	"fmt"
 	"math"
-	"math/rand"
 	"sort"
 	"testing"
 
@@ -144,7 +143,7 @@ var (
 
 	eurYenLiquidityPoolId, _ = xdr.NewPoolId(eurAsset, yenAsset, xdr.LiquidityPoolFeeV18)
 	eurYenLiquidityPool      = xdr.LiquidityPoolEntry{
-		LiquidityPoolId: eurUsdLiquidityPoolId,
+		LiquidityPoolId: eurYenLiquidityPoolId,
 		Body: xdr.LiquidityPoolEntryBody{
 			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
@@ -2191,23 +2190,6 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 	})
 }
 
-func BenchmarkSingleLiquidityPoolExchanges(b *testing.B) {
-	makeTrade(usdAsset, math.MaxInt64/2, eurUsdLiquidityPool)
-}
-
-func BenchmarkLiquidityPoolExchanges(b *testing.B) {
-	// Generate a pool of randomness *first*, which should be make it easier to
-	// isolate the performance of the trades themselves.
-	depositAmounts := make([]int64, b.N)
-	for i, _ := range depositAmounts {
-		depositAmounts[i] = int64(1 + rand.Int63n(math.MaxInt64-100))
-	}
-
-	for _, amount := range depositAmounts {
-		makeTrade(usdAsset, amount, eurUsdLiquidityPool)
-	}
-}
-
 func TestPathThroughLiquidityPools(t *testing.T) {
 	graph := NewOrderBookGraph()
 	graph.AddLiquidityPool(eurUsdLiquidityPool)
@@ -2232,6 +2214,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		5, // irrelevant
 	)
 
+	// for debugging:
 	fmt.Printf("%d paths found:\n", len(paths))
 	for i, path := range paths {
 		fmt.Printf(" - Path %d: %d %s -> ", i,

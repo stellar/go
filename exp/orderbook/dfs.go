@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -42,7 +41,7 @@ func (p *Path) DestinationAssetString() string {
 
 type TradeOpportunities struct {
 	offers []xdr.OfferEntry
-	pool   *xdr.LiquidityPoolEntry
+	pool   xdr.LiquidityPoolEntry
 }
 
 type searchState interface {
@@ -79,6 +78,7 @@ func dfs(
 	state searchState,
 	maxPathLength int,
 	visited []xdr.Asset,
+	visitedPools []xdr.PoolId,
 	remainingTerminalNodes int,
 	currentAssetString string,
 	currentAsset xdr.Asset,
@@ -97,14 +97,8 @@ func dfs(
 		}
 	}
 
-	fmt.Printf("Visiting %s\n", currentAsset.GetCode())
-
 	updatedVisitedList := append(visited, currentAsset)
 	if state.isTerminalNode(currentAssetString, currentAssetAmount) {
-		fmt.Printf("Terminal node: %s (%d)\n",
-			currentAsset.GetCode(),
-			currentAssetAmount)
-
 		state.appendToPaths(
 			updatedVisitedList,
 			currentAssetString,
@@ -116,9 +110,11 @@ func dfs(
 	// abort search if we've visited all destination nodes or if we've exceeded
 	// maxPathLength
 	if remainingTerminalNodes == 0 || len(updatedVisitedList) > maxPathLength {
-		fmt.Println("Done!")
 		return nil
 	}
+
+	updatedVisitedPools := make([]xdr.PoolId, len(visitedPools))
+	copy(updatedVisitedPools, visitedPools)
 
 	for nextAssetString, opps := range state.tradeOpportunities(currentAssetString) {
 		bestExchangeRate := xdr.Int64(0)
@@ -126,19 +122,27 @@ func dfs(
 
 		// For each asset, we first evaluate the pool (if any), then offers,
 		// because pool exchange rates can only be evaluated with an amount.
-		if pool := opps.pool; pool != nil {
-			amount, err := makeTrade(*pool, currentAsset,
-				tradeTypeExpectation, currentAssetAmount)
-
-			if err == nil { // TODO: Should we differentiate errors?
-				bestExchangeRate = amount
-				bestAsset = getOtherAsset(currentAsset, *pool)
+		if pool := opps.pool; pool.Body.ConstantProduct != nil {
+			found := false
+			for _, seenPool := range updatedVisitedPools {
+				if seenPool == pool.LiquidityPoolId {
+					found = true
+				}
 			}
-		}
 
-		if bestExchangeRate > 0 {
-			fmt.Printf("Best amount for %s: %d\n",
-				bestAsset.GetCode(), bestExchangeRate)
+			if !found {
+				updatedVisitedPools = append(updatedVisitedPools,
+					pool.LiquidityPoolId)
+
+				amount, err := makeTrade(pool, currentAsset,
+					tradeTypeExpectation, currentAssetAmount)
+				otherAsset := getOtherAsset(currentAsset, pool)
+
+				if err == nil { // TODO: Should we differentiate errors?
+					bestExchangeRate = amount
+					bestAsset = otherAsset
+				}
+			}
 		}
 
 		if offers := opps.offers; len(offers) > 0 {
@@ -157,14 +161,14 @@ func dfs(
 			}
 
 			// TODO: Move this check into consumeOffers to optimize it.
-			if nextAssetAmount < bestExchangeRate || bestExchangeRate == 0 {
+			//
+			// TODO: Should we prefer offers or LPs if the exchange is
+			//       equivalent? My gut says offers, because (a) there's no fee
+			//       and (b) we reduce the orderbook size.
+			if nextAssetAmount <= bestExchangeRate || bestExchangeRate == 0 {
 				bestExchangeRate = nextAssetAmount
 				bestAsset = nextAsset
 			}
-		}
-
-		if bestExchangeRate <= 0 {
-			continue
 		}
 
 		if err := dfs(
@@ -172,6 +176,7 @@ func dfs(
 			state,
 			maxPathLength,
 			updatedVisitedList,
+			updatedVisitedPools,
 			remainingTerminalNodes,
 			nextAssetString,
 			bestAsset,
@@ -273,9 +278,9 @@ func (state *sellingGraphSearchState) tradeOpportunities(
 
 	for nextAsset, pool := range state.pools(currentAsset) {
 		if opp, ok := result[nextAsset]; ok {
-			opp.pool = &pool
+			opp.pool = pool
 		} else {
-			result[nextAsset] = TradeOpportunities{pool: &pool}
+			result[nextAsset] = TradeOpportunities{pool: pool}
 		}
 	}
 
