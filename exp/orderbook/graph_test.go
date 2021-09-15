@@ -178,24 +178,12 @@ func assertBinaryMarshalerEquals(t *testing.T, a, b encoding.BinaryMarshaler) {
 }
 
 func assertOfferListEquals(t *testing.T, a, b []xdr.OfferEntry) {
-	if len(a) != len(b) {
-		t.Fatalf("expected lists to have same length but got %v %v", a, b)
-	}
+	assert.Equalf(t, len(a), len(b),
+		"expected lists to have same length but got %v %v", a, b)
 
 	for i := 0; i < len(a); i++ {
 		assertBinaryMarshalerEquals(t, a[i], b[i])
 	}
-}
-
-func assertTradeOpportunityListEquals(t *testing.T, a, b []TradeOpportunity) {
-	assertOfferListEquals(t,
-		TradeOpportunitiesToOfferEntries(a),
-		TradeOpportunitiesToOfferEntries(b),
-	)
-}
-
-func assertTradeOpportunityListEqualsOfferList(t *testing.T, a []TradeOpportunity, b []xdr.OfferEntry) {
-	assertOfferListEquals(t, TradeOpportunitiesToOfferEntries(a), b)
 }
 
 func assertGraphEquals(t *testing.T, a, b *OrderBookGraph) {
@@ -228,7 +216,7 @@ func assertGraphEquals(t *testing.T, a, b *OrderBookGraph) {
 				)
 			}
 
-			assertTradeOpportunityListEquals(t, offers, otherOffers)
+			assertOfferListEquals(t, offers, otherOffers)
 		}
 	}
 
@@ -295,13 +283,13 @@ func TestAddEdgeSet(t *testing.T) {
 		t.Fatalf("expected set to have 2 entries but got %v", set)
 	}
 
-	assertTradeOpportunityListEqualsOfferList(t, set[usdAsset.String()], []xdr.OfferEntry{
+	assertOfferListEquals(t, set[usdAsset.String()], []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 		dollarOffer,
 	})
 
-	assertTradeOpportunityListEqualsOfferList(t, set[eurAsset.String()], []xdr.OfferEntry{
+	assertOfferListEquals(t, set[eurAsset.String()], []xdr.OfferEntry{
 		eurOffer,
 		twoEurOffer,
 		threeEurOffer,
@@ -348,7 +336,7 @@ func TestRemoveEdgeSet(t *testing.T) {
 		t.Fatalf("expected set to have 1 entry but got %v", set)
 	}
 
-	assertTradeOpportunityListEqualsOfferList(t, set[usdAsset.String()], []xdr.OfferEntry{
+	assertOfferListEquals(t, set[usdAsset.String()], []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 	})
@@ -466,27 +454,27 @@ func TestAddOfferOrderBook(t *testing.T) {
 	expectedGraph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				usdAsset.String(): []xdr.OfferEntry{
 					quarterOffer,
 					fiftyCentsOffer,
 					dollarOffer,
-				}),
-				eurAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				},
+				eurAsset.String(): []xdr.OfferEntry{
 					eurOffer,
 					twoEurOffer,
 					threeEurOffer,
-				}),
+				},
 			},
 			usdAsset.String(): {
-				eurAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				eurAsset.String(): []xdr.OfferEntry{
 					eurUsdOffer,
 					otherEurUsdOffer,
-				}),
+				},
 			},
 			eurAsset.String(): {
-				usdAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				usdAsset.String(): []xdr.OfferEntry{
 					usdEurOffer,
-				}),
+				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
@@ -739,27 +727,27 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 	expectedGraph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				usdAsset.String(): []xdr.OfferEntry{
 					quarterOffer,
 					fiftyCentsOffer,
 					dollarOffer,
-				}),
-				eurAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				},
+				eurAsset.String(): []xdr.OfferEntry{
 					eurOffer,
 					twoEurOffer,
 					threeEurOffer,
-				}),
+				},
 			},
 			usdAsset.String(): {
-				eurAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				eurAsset.String(): []xdr.OfferEntry{
 					otherEurUsdOffer,
 					eurUsdOffer,
-				}),
+				},
 			},
 			eurAsset.String(): {
-				usdAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				usdAsset.String(): []xdr.OfferEntry{
 					usdEurOffer,
-				}),
+				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
@@ -918,20 +906,20 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 	expectedGraph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				usdAsset.String(): []xdr.OfferEntry{
 					quarterOffer,
 					fiftyCentsOffer,
-				}),
-				eurAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				},
+				eurAsset.String(): []xdr.OfferEntry{
 					eurOffer,
 					twoEurOffer,
 					threeEurOffer,
-				}),
+				},
 			},
 			usdAsset.String(): {
-				eurAsset.String(): OfferEntriesToTradeOpportunities([]xdr.OfferEntry{
+				eurAsset.String(): []xdr.OfferEntry{
 					eurUsdOffer,
-				}),
+				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
@@ -1002,13 +990,13 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 func TestFindOffers(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	assertTradeOpportunityListEqualsOfferList(
+	assertOfferListEquals(
 		t,
 		graph.findOffers(nativeAsset.String(), eurAsset.String(), 0),
 		[]xdr.OfferEntry{},
 	)
 
-	assertTradeOpportunityListEqualsOfferList(
+	assertOfferListEquals(
 		t,
 		graph.findOffers(nativeAsset.String(), eurAsset.String(), 5),
 		[]xdr.OfferEntry{},
@@ -1022,12 +1010,12 @@ func TestFindOffers(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	assertTradeOpportunityListEqualsOfferList(
+	assertOfferListEquals(
 		t,
 		graph.findOffers(nativeAsset.String(), eurAsset.String(), 0),
 		[]xdr.OfferEntry{},
 	)
-	assertTradeOpportunityListEqualsOfferList(
+	assertOfferListEquals(
 		t,
 		graph.findOffers(nativeAsset.String(), eurAsset.String(), 2),
 		[]xdr.OfferEntry{eurOffer, twoEurOffer},
@@ -1044,12 +1032,12 @@ func TestFindOffers(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	assertTradeOpportunityListEqualsOfferList(
+	assertOfferListEquals(
 		t,
 		graph.findOffers(nativeAsset.String(), eurAsset.String(), 2),
 		append([]xdr.OfferEntry{eurOffer, twoEurOffer}, extraTwoEurOffers...),
 	)
-	assertTradeOpportunityListEqualsOfferList(
+	assertOfferListEquals(
 		t,
 		graph.findOffers(nativeAsset.String(), eurAsset.String(), 3),
 		append(append([]xdr.OfferEntry{eurOffer, twoEurOffer}, extraTwoEurOffers...), threeEurOffer),

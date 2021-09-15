@@ -10,9 +10,8 @@ import (
 
 // Path represents a payment path from a source asset to some destination asset
 type Path struct {
-	SourceAsset  xdr.Asset
-	SourceAmount xdr.Int64
-
+	SourceAsset       xdr.Asset
+	SourceAmount      xdr.Int64
 	DestinationAsset  xdr.Asset
 	DestinationAmount xdr.Int64
 
@@ -63,19 +62,6 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 		offers []xdr.OfferEntry,
 	) (xdr.Asset, xdr.Int64, error)
-}
-
-func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
-	if cp, ok := pool.Body.GetConstantProduct(); !ok {
-		panic("invalid pool")
-	} else {
-		if cp.Params.AssetA.Equals(asset) {
-			return cp.Params.AssetB
-		} else if cp.Params.AssetB.Equals(asset) {
-			return cp.Params.AssetA
-		}
-		panic("asset not part of pool")
-	}
 }
 
 func dfs(
@@ -176,7 +162,7 @@ func dfs(
 
 		nextAsset, nextAssetAmount, err := state.consumeOffers(
 			currentAssetAmount,
-			TradeOpportunitiesToOfferEntries(offers),
+			offers,
 		)
 		if err != nil {
 			return err

@@ -144,7 +144,7 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	var offers []xdr.OfferEntry
 	for _, edges := range graph.edgesForSellingAsset {
 		for _, offersForEdge := range edges {
-			offers = append(offers, TradeOpportunitiesToOfferEntries(offersForEdge)...)
+			offers = append(offers, offersForEdge...)
 		}
 	}
 
@@ -192,8 +192,8 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 // The returned offers will span at most `maxPriceLevels` price levels
 func (graph *OrderBookGraph) findOffers(
 	selling, buying string, maxPriceLevels int,
-) []TradeOpportunity {
-	results := []TradeOpportunity{}
+) []xdr.OfferEntry {
+	results := []xdr.OfferEntry{}
 	edges, ok := graph.edgesForSellingAsset[selling]
 	if !ok {
 		return results
@@ -206,7 +206,7 @@ func (graph *OrderBookGraph) findOffers(
 	for _, offer := range offers {
 		// Offers are sorted by price, so, equal prices will always be contiguous.
 		if len(results) == 0 ||
-			!results[len(results)-1].GetPrice().Equal(offer.GetPrice()) {
+			!results[len(results)-1].Price.Equal(offer.Price) {
 			maxPriceLevels--
 		}
 		if maxPriceLevels < 0 {
@@ -235,10 +235,7 @@ func (graph *OrderBookGraph) FindAsksAndBids(
 	asks := graph.findOffers(sellingString, buyingString, maxPriceLevels)
 	bids := graph.findOffers(buyingString, sellingString, maxPriceLevels)
 
-	askOffers := TradeOpportunitiesToOfferEntries(asks)
-	bidOffers := TradeOpportunitiesToOfferEntries(bids)
-
-	return askOffers, bidOffers, graph.lastLedger
+	return asks, bids, graph.lastLedger
 }
 
 // add inserts a given offer into the order book graph
@@ -636,4 +633,12 @@ func calculatePoolExpectation(
 	}
 
 	return xdr.Int64(result.Int64()), result.IsInt64()
+}
+
+func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
+	cp := pool.Body.MustConstantProduct()
+	if cp.Params.AssetA.Equals(asset) {
+		return cp.Params.AssetB
+	}
+	return cp.Params.AssetA
 }
