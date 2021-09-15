@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -52,13 +53,29 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 	)
 
+	// returns all offers for this asset, grouped by the other asset
 	edges(currentAsset string) edgeSet
-	// pools(currentAsset string) map[string][]xdr.LiquidityPoolEntry
+
+	// returns all pools that contain this asset; the other asset is the key
+	pools(currentAsset string) map[string]xdr.LiquidityPoolEntry
 
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
 		offers []xdr.OfferEntry,
 	) (xdr.Asset, xdr.Int64, error)
+}
+
+func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
+	if cp, ok := pool.Body.GetConstantProduct(); !ok {
+		panic("invalid pool")
+	} else {
+		if cp.Params.AssetA.Equals(asset) {
+			return cp.Params.AssetB
+		} else if cp.Params.AssetB.Equals(asset) {
+			return cp.Params.AssetA
+		}
+		panic("asset not part of pool")
+	}
 }
 
 func dfs(
@@ -84,8 +101,14 @@ func dfs(
 		}
 	}
 
+	fmt.Printf("Visiting %s\n", currentAsset.GetCode())
+
 	updatedVisitedList := append(visited, currentAsset)
 	if state.isTerminalNode(currentAssetString, currentAssetAmount) {
+		fmt.Printf("Terminal node: %s (%d)\n",
+			currentAsset.GetCode(),
+			currentAssetAmount)
+
 		state.appendToPaths(
 			updatedVisitedList,
 			currentAssetString,
@@ -93,8 +116,54 @@ func dfs(
 		)
 		remainingTerminalNodes--
 	}
-	// abort search if we've visited all destination nodes or if we've exceeded maxPathLength
+
+	// abort search if we've visited all destination nodes or if we've exceeded
+	// maxPathLength
 	if remainingTerminalNodes == 0 || len(updatedVisitedList) > maxPathLength {
+		fmt.Println("Done!")
+		return nil
+	}
+
+	var bestAsset xdr.Asset
+	minToExchange := xdr.Int64(0)
+
+	for _, pool := range state.pools(currentAssetString) {
+		other := getOtherAsset(currentAsset, pool)
+
+		fmt.Printf("evaluating pool: %s <--> %s\n",
+			currentAsset.GetCode(), other.GetCode())
+
+		fmt.Printf("  we want %d %s, and need to provide ",
+			currentAssetAmount, currentAsset.GetCode())
+
+		nextAssetAmount, err := makeTrade(pool, currentAsset,
+			tradeTypeExpectation, currentAssetAmount)
+		if err != nil {
+			continue // this pool isn't viable for whatever reason
+		}
+
+		fmt.Printf("%d %s\n", nextAssetAmount, other.GetCode())
+
+		if minToExchange == 0 || nextAssetAmount < minToExchange {
+			minToExchange = nextAssetAmount
+			bestAsset = other
+		}
+	}
+
+	fmt.Println("best next hop is", bestAsset.GetCode(), "for", minToExchange)
+
+	err := dfs(
+		ctx,
+		state,
+		maxPathLength,
+		updatedVisitedList,
+		remainingTerminalNodes,
+		bestAsset.String(),
+		bestAsset,
+		minToExchange,
+	)
+
+	if err == nil {
 		return nil
 	}
 
@@ -191,6 +260,21 @@ func (state *sellingGraphSearchState) edges(currentAssetString string) edgeSet {
 	return state.graph.edgesForSellingAsset[currentAssetString]
 }
 
+// TODO: Make this a simple lookup.
+func (state *sellingGraphSearchState) pools(currentAsset string) map[string]xdr.LiquidityPoolEntry {
+	viablePools := make(map[string]xdr.LiquidityPoolEntry)
+
+	for pair, pool := range state.graph.liquidityPools {
+		if pair.buyingAsset == currentAsset {
+			viablePools[pair.sellingAsset] = pool
+		} else if pair.sellingAsset == currentAsset {
+			viablePools[pair.buyingAsset] = pool
+		}
+	}
+
+	return viablePools
+}
+
 func (state *sellingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
 	offers []xdr.OfferEntry,
@@ -253,6 +337,10 @@ func (state *buyingGraphSearchState) appendToPaths(
 
 func (state *buyingGraphSearchState) edges(currentAsset string) edgeSet {
 	return state.graph.edgesForBuyingAsset[currentAsset]
+}
+
+func (state *buyingGraphSearchState) pools(currentAsset string) map[string]xdr.LiquidityPoolEntry {
+	return map[string]xdr.LiquidityPoolEntry{}
 }
 
 func (state *buyingGraphSearchState) consumeOffers(

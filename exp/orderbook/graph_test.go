@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding"
+	"fmt"
 	"math"
 	"math/rand"
 	"sort"
@@ -2237,27 +2238,33 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		yenAsset,    // path should go USD -> EUR -> Yen
 		100,         // less than LP reserves for either pool
 		&fakeSource, // fake source account to ignore pools from
-		[]xdr.Asset{usdAsset, eurAsset, yenAsset},
-		[]xdr.Int64{127, 0, 0}, // we only exactly the right amount of $ to trade
-		false,                  // don't care about validation
-		5,                      // also irrelevant
+		[]xdr.Asset{usdAsset},
+		[]xdr.Int64{127}, // we only exactly the right amount of $ to trade
+		true,
+		5, // irrelevant
 	)
+
+	fmt.Printf("%d hops:\n", len(path))
+	for i, node := range path {
+		fmt.Printf(" - hop %d: %d %s -> %d %s\n", i+1,
+			node.SourceAmount, node.SourceAsset.GetCode(),
+			node.DestinationAmount, node.DestinationAsset.GetCode())
+	}
 
 	// Again, the path should go USD -> EUR -> Yen, jumping through both
 	// liquidity pools.
 	//
 	// For a payout of 100 Yen from the EUR/Yen pool, we need to exchange 112
-	// Euros (this is the sanity check below). Then, for a payout of 112 EUR, we
-	// need to exchange 127 USD.
+	// Euros (this is the sanity check below). To get 112 EUR, we need to
+	// exchange 127 USD.
 	expectedPath := []Path{
-		Path{
+		{
 			SourceAsset:       usdAsset,
 			SourceAmount:      127,
 			DestinationAsset:  eurAsset,
 			DestinationAmount: 112,
-			InteriorNodes:     []xdr.Asset{},
-		},
-		Path{
+			InteriorNodes:     []xdr.Asset{}, // ???
+		}, {
 			SourceAsset:       eurAsset,
 			SourceAmount:      112,
 			DestinationAsset:  yenAsset,

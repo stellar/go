@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -323,7 +322,7 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 ) ([]Path, uint32, error) {
 	destinationAssetString := destinationAsset.String()
-	sourceAssetsMap := map[string]xdr.Int64{}
+	sourceAssetsMap := make(map[string]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
 		sourceAssetString := sourceAsset.String()
 		sourceAssetsMap[sourceAssetString] = sourceAssetBalances[i]
@@ -363,11 +362,14 @@ func (graph *OrderBookGraph) FindPaths(
 	return paths, lastLedger, err
 }
 
-// FindFixedPaths returns a list of payment paths where the source and destination
-// assets are fixed. All returned payment paths will start by spending `amountToSpend`
-// of `sourceAsset` and will end with some positive balance of `destinationAsset`.
-// `sourceAccountID` is optional. if `sourceAccountID` is provided then no offers
-// created by `sourceAccountID` will be considered when evaluating payment paths
+// FindFixedPaths returns a list of payment paths where the source and
+// destination assets are fixed.
+//
+// All returned payment paths will start by spending `amountToSpend` of
+// `sourceAsset` and will end with some positive balance of `destinationAsset`.
+//
+// `sourceAccountID` is optional, but if it's provided, then no offers created
+// by `sourceAccountID` will be considered when evaluating payment paths.
 func (graph *OrderBookGraph) FindFixedPaths(
 	ctx context.Context,
 	maxPathLength int,
