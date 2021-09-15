@@ -150,21 +150,23 @@ func dfs(
 		}
 	}
 
-	fmt.Println("best next hop is", bestAsset.GetCode(), "for", minToExchange)
+	if minToExchange > 0 {
+		fmt.Println("best next hop is", bestAsset.GetCode(), "for", minToExchange)
 
-	err := dfs(
-		ctx,
-		state,
-		maxPathLength,
-		updatedVisitedList,
-		remainingTerminalNodes,
-		bestAsset.String(),
-		bestAsset,
-		minToExchange,
-	)
+		err := dfs(
+			ctx,
+			state,
+			maxPathLength,
+			updatedVisitedList,
+			remainingTerminalNodes,
+			bestAsset.String(),
+			bestAsset,
+			minToExchange,
+		)
 
-	if err == nil {
-		return nil
+		if err != nil {
+			return err
+		}
 	}
 
 	for nextAssetString, offers := range state.edges(currentAssetString) {
