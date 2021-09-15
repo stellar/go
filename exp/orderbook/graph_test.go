@@ -2148,23 +2148,29 @@ func TestFindPathsStartingAt(t *testing.T) {
 }
 
 func TestLiquidityPoolExchanges(t *testing.T) {
-	for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-		payout, err := makeTrade(asset, 50, eurUsdLiquidityPool)
-		assert.NoError(t, err)
-		assert.EqualValues(t, 33, payout)
-		// reserves would now be: 67 of A, 150 of B
-	}
+	t.Run("happy path", func(t *testing.T) {
+		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
+			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeDeposit, 500)
+			assert.NoError(t, err)
+			assert.EqualValues(t, 332, int64(payout))
+			// reserves would now be: 668 of A, 1500 of B
+			// note pool object is unchanged so looping is safe
+		}
 
-	// should error on too big or small of a deposit
-	badValues := []xdr.Int64{math.MaxInt64, math.MaxInt64 - 99, 0, -100}
-	for _, badValue := range badValues {
-		_, err := makeTrade(usdAsset, badValue, eurUsdLiquidityPool)
-		assert.Error(t, err)
-	}
+		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
+			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeExpectation, 332)
+			assert.NoError(t, err)
+			assert.EqualValues(t, 499, int64(payout))
+		}
+	})
 
-	// should error on bad asset
-	_, err := makeTrade(yenAsset, 100, eurUsdLiquidityPool)
-	assert.Error(t, err)
+	t.Run("fail on bad exchange amounts", func(t *testing.T) {
+		badValues := []xdr.Int64{math.MaxInt64, math.MaxInt64 - 99, 0, -100}
+		for _, badValue := range badValues {
+			_, err := makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, badValue)
+			assert.Error(t, err)
+		}
+	})
 }
 
 func BenchmarkSingleLiquidityPoolExchanges(b *testing.B) {
@@ -2182,4 +2188,71 @@ func BenchmarkLiquidityPoolExchanges(b *testing.B) {
 	for _, amount := range depositAmounts {
 		makeTrade(usdAsset, amount, eurUsdLiquidityPool)
 	}
+}
+
+func TestPathThroughLiquidityPools(t *testing.T) {
+	graph := NewOrderBookGraph()
+	graph.AddLiquidityPool(eurUsdLiquidityPool)
+	graph.AddLiquidityPool(eurYenLiquidityPool)
+	if !assert.NoErrorf(t, graph.Apply(1), "applying LPs to graph failed") {
+		t.FailNow()
+	}
+
+	kp, err := keypair.Random()
+	assert.NoError(t, err)
+	fakeSource := xdr.MustAddress(kp.Address())
+
+	path, _, err := graph.FindPaths(
+		context.TODO(),
+		5,           // more than enough hops
+		yenAsset,    // path should go USD -> EUR -> Yen
+		100,         // less than LP reserves for either pool
+		&fakeSource, // fake source account to ignore pools from
+		[]xdr.Asset{usdAsset, eurAsset, yenAsset},
+		[]xdr.Int64{127, 0, 0}, // we only exactly the right amount of $ to trade
+		false,                  // don't care about validation
+		5,                      // also irrelevant
+	)
+
+	// Again, the path should go USD -> EUR -> Yen, jumping through both
+	// liquidity pools.
+	//
+	// For a payout of 100 Yen from the EUR/Yen pool, we need to exchange 112
+	// Euros (this is the sanity check below). Then, for a payout of 112 EUR, we
+	// need to exchange 127 USD.
+	expectedPath := []Path{
+		Path{
+			SourceAsset:       usdAsset,
+			SourceAmount:      127,
+			DestinationAsset:  eurAsset,
+			DestinationAmount: 112,
+			InteriorNodes:     []xdr.Asset{},
+		},
+		Path{
+			SourceAsset:       eurAsset,
+			SourceAmount:      112,
+			DestinationAsset:  yenAsset,
+			DestinationAmount: 100,
+			InteriorNodes:     []xdr.Asset{},
+		},
+	}
+
+	// These are sanity checks that shouldn't ever fail; if they do, something
+	// was changed about how constant product liquidity pools work.
+	eurNeeded, err := makeTrade(eurYenLiquidityPool,
+		yenAsset, tradeTypeExpectation, 100)
+	assert.NoError(t, err)
+	assert.EqualValuesf(t, eurNeeded, 112,
+		"expected exchange of 112 EUR -> 100 Yen, got %d", eurNeeded)
+
+	usdNeeded, err := makeTrade(eurUsdLiquidityPool,
+		eurAsset, tradeTypeExpectation, 112)
+	assert.EqualValuesf(t, usdNeeded, 127,
+		"expected exchange of 127 USD -> 112 EUR, got %d", usdNeeded)
+
+	assertPathEquals(t, expectedPath, path)
+}
+
+func TestPathThroughOffersAndLiquidityPools(t *testing.T) {
+	t.Skip()
 }
