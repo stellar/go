@@ -40,6 +40,11 @@ func (p *Path) DestinationAssetString() string {
 	return p.destinationAssetString
 }
 
+type TradeOpportunities struct {
+	offers []xdr.OfferEntry
+	pool   *xdr.LiquidityPoolEntry
+}
+
 type searchState interface {
 	isTerminalNode(
 		currentAsset string,
@@ -52,7 +57,12 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 	)
 
-	// returns all offers for this asset, grouped by the other asset
+	// Returns all trading opportunities for a particular asset.
+	//
+	// The result is grouped by asset, mapping to a list of offers and
+	// optionally a liquidity pool, if one exists for that trading pair.
+	tradeOpportunities(currentAsset string) map[string]TradeOpportunities
+
 	edges(currentAsset string) edgeSet
 
 	// returns all pools that contain this asset; the other asset is the key
@@ -110,78 +120,63 @@ func dfs(
 		return nil
 	}
 
-	var bestAsset xdr.Asset
-	minToExchange := xdr.Int64(0)
+	for nextAssetString, opps := range state.tradeOpportunities(currentAssetString) {
+		bestExchangeRate := xdr.Int64(0)
+		var bestAsset xdr.Asset
 
-	for _, pool := range state.pools(currentAssetString) {
-		other := getOtherAsset(currentAsset, pool)
+		// For each asset, we first evaluate the pool (if any), then offers,
+		// because pool exchange rates can only be evaluated with an amount.
+		if pool := opps.pool; pool != nil {
+			amount, err := makeTrade(*pool, currentAsset,
+				tradeTypeExpectation, currentAssetAmount)
 
-		fmt.Printf("evaluating pool: %s <--> %s\n",
-			currentAsset.GetCode(), other.GetCode())
-
-		fmt.Printf("  we want %d %s, and need to provide ",
-			currentAssetAmount, currentAsset.GetCode())
-
-		nextAssetAmount, err := makeTrade(pool, currentAsset,
-			tradeTypeExpectation, currentAssetAmount)
-		if err != nil {
-			continue // this pool isn't viable for whatever reason
+			if err == nil { // TODO: Should we differentiate errors?
+				bestExchangeRate = amount
+				bestAsset = getOtherAsset(currentAsset, *pool)
+			}
 		}
 
-		fmt.Printf("%d %s\n", nextAssetAmount, other.GetCode())
-
-		if minToExchange == 0 || nextAssetAmount < minToExchange {
-			minToExchange = nextAssetAmount
-			bestAsset = other
+		if bestExchangeRate > 0 {
+			fmt.Printf("Best amount for %s: %d\n",
+				bestAsset.GetCode(), bestExchangeRate)
 		}
-	}
 
-	if minToExchange > 0 {
-		fmt.Println("best next hop is", bestAsset.GetCode(), "for", minToExchange)
+		if offers := opps.offers; len(offers) > 0 {
+			nextAsset, nextAssetAmount, err := state.consumeOffers(
+				currentAssetAmount,
+				offers,
+			)
 
-		err := dfs(
-			ctx,
-			state,
-			maxPathLength,
-			updatedVisitedList,
-			remainingTerminalNodes,
-			bestAsset.String(),
-			bestAsset,
-			minToExchange,
-		)
+			// We should only error out if the LP trade didn't happen.
+			if err != nil {
+				if bestExchangeRate == 0 {
+					return err
+				}
 
-		if err != nil {
-			return err
+				continue
+			}
+
+			// TODO: Move this check into consumeOffers to optimize it.
+			if nextAssetAmount < bestExchangeRate || bestExchangeRate == 0 {
+				bestExchangeRate = nextAssetAmount
+				bestAsset = nextAsset
+			}
 		}
-	}
 
-	for nextAssetString, offers := range state.edges(currentAssetString) {
-		if len(offers) == 0 {
+		if bestExchangeRate <= 0 {
 			continue
 		}
 
-		nextAsset, nextAssetAmount, err := state.consumeOffers(
-			currentAssetAmount,
-			offers,
-		)
-		if err != nil {
-			return err
-		}
-		if nextAssetAmount <= 0 {
-			continue
-		}
-
-		err = dfs(
+		if err := dfs(
 			ctx,
 			state,
 			maxPathLength,
 			updatedVisitedList,
 			remainingTerminalNodes,
 			nextAssetString,
-			nextAsset,
-			nextAssetAmount,
-		)
-		if err != nil {
+			bestAsset,
+			bestExchangeRate,
+		); err != nil {
 			return err
 		}
 	}
@@ -263,6 +258,30 @@ func (state *sellingGraphSearchState) pools(currentAsset string) map[string]xdr.
 	return viablePools
 }
 
+func (state *sellingGraphSearchState) tradeOpportunities(
+	currentAsset string,
+) map[string]TradeOpportunities {
+	result := map[string]TradeOpportunities{}
+
+	for nextAsset, offers := range state.edges(currentAsset) {
+		if opp, ok := result[nextAsset]; ok {
+			opp.offers = offers
+		} else {
+			result[nextAsset] = TradeOpportunities{offers: offers}
+		}
+	}
+
+	for nextAsset, pool := range state.pools(currentAsset) {
+		if opp, ok := result[nextAsset]; ok {
+			opp.pool = &pool
+		} else {
+			result[nextAsset] = TradeOpportunities{pool: &pool}
+		}
+	}
+
+	return result
+}
+
 func (state *sellingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
 	offers []xdr.OfferEntry,
@@ -329,6 +348,16 @@ func (state *buyingGraphSearchState) edges(currentAsset string) edgeSet {
 
 func (state *buyingGraphSearchState) pools(currentAsset string) map[string]xdr.LiquidityPoolEntry {
 	return map[string]xdr.LiquidityPoolEntry{}
+}
+
+func (state *buyingGraphSearchState) tradeOpportunities(
+	currentAsset string,
+) map[string]TradeOpportunities {
+	result := map[string]TradeOpportunities{}
+	for nextAsset, offers := range state.edges(currentAsset) {
+		result[nextAsset] = TradeOpportunities{offers: offers}
+	}
+	return result
 }
 
 func (state *buyingGraphSearchState) consumeOffers(
