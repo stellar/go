@@ -2232,7 +2232,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 	assert.NoError(t, err)
 	fakeSource := xdr.MustAddress(kp.Address())
 
-	path, _, err := graph.FindPaths(
+	paths, _, err := graph.FindPaths(
 		context.TODO(),
 		5,           // more than enough hops
 		yenAsset,    // path should go USD -> EUR -> Yen
@@ -2244,11 +2244,17 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		5, // irrelevant
 	)
 
-	fmt.Printf("%d hops:\n", len(path))
-	for i, node := range path {
-		fmt.Printf(" - hop %d: %d %s -> %d %s\n", i+1,
-			node.SourceAmount, node.SourceAsset.GetCode(),
-			node.DestinationAmount, node.DestinationAsset.GetCode())
+	fmt.Printf("%d paths found:\n", len(paths))
+	for i, path := range paths {
+		fmt.Printf(" - Path %d: %d %s -> ", i,
+			path.SourceAmount, path.SourceAsset.GetCode())
+
+		for _, hop := range path.InteriorNodes {
+			fmt.Printf("%s -> ", hop.GetCode())
+		}
+
+		fmt.Printf("%d %s\n",
+			path.DestinationAmount, path.DestinationAsset.GetCode())
 	}
 
 	// Again, the path should go USD -> EUR -> Yen, jumping through both
@@ -2257,19 +2263,13 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 	// For a payout of 100 Yen from the EUR/Yen pool, we need to exchange 112
 	// Euros (this is the sanity check below). To get 112 EUR, we need to
 	// exchange 127 USD.
-	expectedPath := []Path{
+	expectedPaths := []Path{
 		{
 			SourceAsset:       usdAsset,
 			SourceAmount:      127,
-			DestinationAsset:  eurAsset,
-			DestinationAmount: 112,
-			InteriorNodes:     []xdr.Asset{}, // ???
-		}, {
-			SourceAsset:       eurAsset,
-			SourceAmount:      112,
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 100,
-			InteriorNodes:     []xdr.Asset{},
+			InteriorNodes:     []xdr.Asset{eurAsset},
 		},
 	}
 
@@ -2286,7 +2286,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 	assert.EqualValuesf(t, usdNeeded, 127,
 		"expected exchange of 127 USD -> 112 EUR, got %d", usdNeeded)
 
-	assertPathEquals(t, expectedPath, path)
+	assertPathEquals(t, expectedPaths, paths)
 }
 
 func TestPathThroughOffersAndLiquidityPools(t *testing.T) {
