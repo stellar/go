@@ -19,6 +19,19 @@ func BenchmarkFromAddress_ParseAddress(b *testing.B) {
 	}
 }
 
+func BenchmarkFromAddress_FromAddress(b *testing.B) {
+	// Secret key for setting up the components.
+	sk := keypair.MustRandom()
+
+	// Public key that'll be used during the benchmark.
+	pk := sk.FromAddress()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = pk.FromAddress()
+	}
+}
+
 func BenchmarkFromAddress_Hint(b *testing.B) {
 	// Secret key for setting up the components.
 	sk := keypair.MustRandom()
@@ -78,6 +91,16 @@ func BenchmarkFull_FromRawSeed(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = keypair.FromRawSeed(rawSeed)
+	}
+}
+
+func BenchmarkFull_FromAddress(b *testing.B) {
+	// Secret key for setting up the components.
+	sk := keypair.MustRandom()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = sk.FromAddress()
 	}
 }
 
