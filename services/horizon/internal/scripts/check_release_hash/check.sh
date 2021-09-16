@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-apt-get clean && apt-get update && apt-get install -y stellar-horizon=$PACKAGE_VERSION
+apt-get clean
+apt-get update
+apt-get install -y stellar-horizon=$PACKAGE_VERSION
 
 mkdir released
 cd released
@@ -23,30 +25,57 @@ git checkout $TAG
 # -keep: artifact directories are not removed after packaging
 CIRCLE_TAG=$TAG go run -v ./support/scripts/build_release_artifacts -keep
 
-suffixes=(darwin-amd64 linux-amd64 linux-arm windows-amd64)
+echo "RESULTS"
+echo "======="
+echo ""
+echo "compiled version"
+./dist/$TAG-linux-amd64/horizon version
 
+echo "github releases version"
+./released/$TAG-linux-amd64/horizon version
+
+echo "debian package version"
+stellar-horizon version
+
+echo ""
+
+suffixes=(darwin-amd64 linux-amd64 linux-arm windows-amd64)
 for S in "${suffixes[@]}"
 do
-	echo $TAG-$S
+    released=""
+    dist=""
+    msg=""
     
     if [ -f "./released/$TAG-$S.tar.gz" ]; then
-        shasum -a 256 ./released/$TAG-$S.tar.gz
-        shasum -a 256 ./released/$TAG-$S/horizon
+        released=($(shasum -a 256 ./released/$TAG-$S/horizon))
     else
         # windows
-        shasum -a 256 ./released/$TAG-$S.zip
-        shasum -a 256 ./released/$TAG-$S/horizon.exe
+        released=($(shasum -a 256 ./released/$TAG-$S/horizon.exe))
     fi
 
     if [ -f "./dist/$TAG-$S.tar.gz" ]; then
-        shasum -a 256 ./dist/$TAG-$S.tar.gz
-        shasum -a 256 ./dist/$TAG-$S/horizon
+        dist=($(shasum -a 256 ./dist/$TAG-$S/horizon))
     else
         # windows
-        shasum -a 256 ./dist/$TAG-$S.zip
-        shasum -a 256 ./dist/$TAG-$S/horizon.exe
+        dist=($(shasum -a 256 ./dist/$TAG-$S/horizon.exe))
     fi
-done
 
-echo "debian package"
-shasum -a 256 $(which stellar-horizon)
+    if [ $S == "linux-amd64" ]; then
+        path=$(which stellar-horizon)
+        debian=($(shasum -a 256 $path))
+
+        if [[ "$released" == "$dist" && "$dist" == "$debian" ]]; then
+            msg="$TAG-$S ok"
+        else
+            msg="$TAG-$S NO MATCH! github=$released compile=$dist debian=$debian"
+        fi
+    else
+        if [ "$released" == "$dist" ]; then
+            msg="$TAG-$S ok"
+        else
+            msg="$TAG-$S NO MATCH! github=$released compile=$dist"
+        fi
+    fi
+
+    echo $msg
+done
