@@ -2188,16 +2188,8 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 
 	// for debugging:
 	fmt.Printf("%d paths found:\n", len(paths))
-	for i, path := range paths {
-		fmt.Printf(" - Path %d: %d %s -> ", i,
-			path.SourceAmount, path.SourceAsset.GetCode())
-
-		for _, hop := range path.InteriorNodes {
-			fmt.Printf("%s -> ", hop.GetCode())
-		}
-
-		fmt.Printf("%d %s\n",
-			path.DestinationAmount, path.DestinationAsset.GetCode())
+	for _, path := range paths {
+		printPath(path)
 	}
 
 	// Again, the path should go USD -> EUR -> Yen, jumping through both
@@ -2252,13 +2244,13 @@ func TestPathThroughOffersAndLiquidityPools(t *testing.T) {
 		t.FailNow()
 	}
 
-	graph.AddOffers(dollarOffer)
+	graph.AddOffers(eurOffer)
 
 	kp, err := keypair.Random()
 	assert.NoError(t, err)
 	fakeSource := xdr.MustAddress(kp.Address())
 
-	_, _, err = graph.FindPaths(
+	paths, _, err := graph.FindPaths(
 		context.TODO(),
 		5,           // more than enough hops
 		yenAsset,    // path should go USD -> EUR -> Yen
@@ -2270,4 +2262,24 @@ func TestPathThroughOffersAndLiquidityPools(t *testing.T) {
 		5, // irrelevant
 	)
 	assert.NoError(t, err)
+	assertPathEquals(t, paths, []Path{
+		{
+			SourceAsset:       usdAsset,
+			SourceAmount:      127,
+			DestinationAsset:  yenAsset,
+			DestinationAmount: 100,
+			InteriorNodes:     []xdr.Asset{eurAsset},
+		},
+	})
+}
+
+func printPath(path Path) {
+	fmt.Printf(" - %d %s -> ", path.SourceAmount, path.SourceAsset.GetCode())
+
+	for _, hop := range path.InteriorNodes {
+		fmt.Printf("%s -> ", hop.GetCode())
+	}
+
+	fmt.Printf("%d %s\n",
+		path.DestinationAmount, path.DestinationAsset.GetCode())
 }

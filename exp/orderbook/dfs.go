@@ -39,7 +39,7 @@ func (p *Path) DestinationAssetString() string {
 	return p.destinationAssetString
 }
 
-type TradeOpportunities struct {
+type Venues struct {
 	offers []xdr.OfferEntry
 	pool   xdr.LiquidityPoolEntry
 }
@@ -60,12 +60,9 @@ type searchState interface {
 	//
 	// The result is grouped by asset, mapping to a list of offers and
 	// optionally a liquidity pool, if one exists for that trading pair.
-	tradeOpportunities(currentAsset string) map[string]TradeOpportunities
+	venues(currentAsset string) map[string]Venues
 
 	edges(currentAsset string) edgeSet
-
-	// returns all pools that contain this asset; the other asset is the key
-	pools(currentAsset string) map[string]xdr.LiquidityPoolEntry
 
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
@@ -116,13 +113,13 @@ func dfs(
 	updatedVisitedPools := make([]xdr.PoolId, len(visitedPools))
 	copy(updatedVisitedPools, visitedPools)
 
-	for nextAssetString, opps := range state.tradeOpportunities(currentAssetString) {
+	for nextAssetString, venues := range state.venues(currentAssetString) {
 		bestExchangeRate := xdr.Int64(0)
 		var bestAsset xdr.Asset
 
 		// For each asset, we first evaluate the pool (if any), then offers,
 		// because pool exchange rates can only be evaluated with an amount.
-		if pool := opps.pool; pool.Body.ConstantProduct != nil {
+		if pool := venues.pool; pool.Body.ConstantProduct != nil {
 			found := false
 			for _, seenPool := range updatedVisitedPools {
 				if seenPool == pool.LiquidityPoolId {
@@ -145,7 +142,7 @@ func dfs(
 			}
 		}
 
-		if offers := opps.offers; len(offers) > 0 {
+		if offers := venues.offers; len(offers) > 0 {
 			nextAsset, nextAssetAmount, err := state.consumeOffers(
 				currentAssetAmount,
 				offers,
@@ -248,39 +245,33 @@ func (state *sellingGraphSearchState) edges(currentAssetString string) edgeSet {
 	return state.graph.edgesForSellingAsset[currentAssetString]
 }
 
-// TODO: Make this a simple lookup.
-func (state *sellingGraphSearchState) pools(currentAsset string) map[string]xdr.LiquidityPoolEntry {
-	viablePools := make(map[string]xdr.LiquidityPoolEntry)
-
-	for pair, pool := range state.graph.liquidityPools {
-		if pair.buyingAsset == currentAsset {
-			viablePools[pair.sellingAsset] = pool
-		} else if pair.sellingAsset == currentAsset {
-			viablePools[pair.buyingAsset] = pool
-		}
-	}
-
-	return viablePools
-}
-
-func (state *sellingGraphSearchState) tradeOpportunities(
+func (state *sellingGraphSearchState) venues(
 	currentAsset string,
-) map[string]TradeOpportunities {
-	result := map[string]TradeOpportunities{}
+) map[string]Venues {
+	result := map[string]Venues{}
 
 	for nextAsset, offers := range state.edges(currentAsset) {
 		if opp, ok := result[nextAsset]; ok {
 			opp.offers = offers
 		} else {
-			result[nextAsset] = TradeOpportunities{offers: offers}
+			result[nextAsset] = Venues{offers: offers}
 		}
 	}
 
-	for nextAsset, pool := range state.pools(currentAsset) {
-		if opp, ok := result[nextAsset]; ok {
-			opp.pool = pool
-		} else {
-			result[nextAsset] = TradeOpportunities{pool: pool}
+	for pair, pool := range state.graph.liquidityPools {
+		var nextAsset string
+		if pair.buyingAsset == currentAsset {
+			nextAsset = pair.sellingAsset
+		} else if pair.sellingAsset == currentAsset {
+			nextAsset = pair.buyingAsset
+		}
+
+		if nextAsset != "" {
+			if opp, ok := result[nextAsset]; ok {
+				opp.pool = pool
+			} else {
+				result[nextAsset] = Venues{pool: pool}
+			}
 		}
 	}
 
@@ -351,16 +342,12 @@ func (state *buyingGraphSearchState) edges(currentAsset string) edgeSet {
 	return state.graph.edgesForBuyingAsset[currentAsset]
 }
 
-func (state *buyingGraphSearchState) pools(currentAsset string) map[string]xdr.LiquidityPoolEntry {
-	return map[string]xdr.LiquidityPoolEntry{}
-}
-
-func (state *buyingGraphSearchState) tradeOpportunities(
+func (state *buyingGraphSearchState) venues(
 	currentAsset string,
-) map[string]TradeOpportunities {
-	result := map[string]TradeOpportunities{}
+) map[string]Venues {
+	result := map[string]Venues{}
 	for nextAsset, offers := range state.edges(currentAsset) {
-		result[nextAsset] = TradeOpportunities{offers: offers}
+		result[nextAsset] = Venues{offers: offers}
 	}
 	return result
 }
