@@ -171,15 +171,17 @@ func (graph *OrderBookGraph) LiquidityPools() []xdr.LiquidityPoolEntry {
 
 	// Since we double-store each pool for each of the two assets, we'll need to
 	// put some extra effort in to only return one of them here.
-	entries := make(map[xdr.PoolId]struct{}, len(graph.liquidityPoolsForAsset)) // a set
+	entries := NewIdSet(len(graph.liquidityPoolsForAsset))
 	allPools := make([]xdr.LiquidityPoolEntry, 0, len(graph.liquidityPoolsForAsset))
 
 	for _, pools := range graph.liquidityPoolsForAsset {
 		for _, pool := range pools {
-			if _, exists := entries[pool.LiquidityPoolId]; !exists {
-				entries[pool.LiquidityPoolId] = struct{}{}
-				allPools = append(allPools, pool)
+			if entries.Contains(pool.LiquidityPoolId) {
+				continue
 			}
+
+			entries.Add(pool.LiquidityPoolId)
+			allPools = append(allPools, pool)
 		}
 	}
 
@@ -366,7 +368,7 @@ func (graph *OrderBookGraph) FindPaths(
 		searchState,
 		maxPathLength,
 		[]xdr.Asset{},
-		[]xdr.PoolId{},
+		NewIdSet(0),
 		len(sourceAssets),
 		destinationAssetString,
 		destinationAsset,
@@ -421,7 +423,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		searchState,
 		maxPathLength,
 		[]xdr.Asset{},
-		[]xdr.PoolId{},
+		NewIdSet(0),
 		len(destinationAssets),
 		sourceAsset.String(),
 		sourceAsset,

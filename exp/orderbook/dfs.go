@@ -73,7 +73,7 @@ func dfs(
 	state searchState,
 	maxPathLength int,
 	visited []xdr.Asset,
-	visitedPools []xdr.PoolId,
+	visitedPools *IdSet,
 	remainingTerminalNodes int,
 	currentAssetString string,
 	currentAsset xdr.Asset,
@@ -108,9 +108,7 @@ func dfs(
 		return nil
 	}
 
-	updatedVisitedPools := make([]xdr.PoolId, len(visitedPools))
-	copy(updatedVisitedPools, visitedPools)
-
+	updatedVisitedPools := visitedPools.Clone()
 	for nextAssetString, venues := range state.venues(currentAssetString) {
 		bestExchangeRate := xdr.Int64(0)
 		var bestAsset xdr.Asset
@@ -118,25 +116,18 @@ func dfs(
 		// For each asset, we first evaluate the pool (if any), then offers,
 		// because pool exchange rates can only be evaluated with an amount.
 		if pool := venues.pool; pool.Body.ConstantProduct != nil {
-			found := false
-			for _, seenPool := range updatedVisitedPools {
-				if seenPool == pool.LiquidityPoolId {
-					found = true
-				}
+			if updatedVisitedPools.Contains(pool.LiquidityPoolId) {
+				continue
 			}
 
-			if !found {
-				updatedVisitedPools = append(updatedVisitedPools,
-					pool.LiquidityPoolId)
+			updatedVisitedPools.Add(pool.LiquidityPoolId)
+			amount, err := makeTrade(pool, currentAsset,
+				tradeTypeExpectation, currentAssetAmount)
+			otherAsset := getOtherAsset(currentAsset, pool)
 
-				amount, err := makeTrade(pool, currentAsset,
-					tradeTypeExpectation, currentAssetAmount)
-				otherAsset := getOtherAsset(currentAsset, pool)
-
-				if err == nil { // TODO: Should we differentiate errors?
-					bestExchangeRate = amount
-					bestAsset = otherAsset
-				}
+			if err == nil { // TODO: Should we differentiate errors?
+				bestExchangeRate = amount
+				bestAsset = otherAsset
 			}
 		}
 
@@ -240,7 +231,13 @@ func (state *sellingGraphSearchState) appendToPaths(
 }
 
 func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Venues {
-	result := map[string]Venues{}
+	result := make(map[string]Venues,
+		// we're overshooting by up to 2x, but it's a reasonable size hint
+		len(state.graph.edgesForSellingAsset)+
+			len(state.graph.liquidityPoolsForAsset))
+
+	// FIXME: I really don't like this whole "check or set" approach; lookups
+	//        are suboptimal and the code itself isn't clean.
 
 	for nextAsset, offers := range state.graph.edgesForSellingAsset[currentAsset] {
 		if opp, ok := result[nextAsset]; ok {
