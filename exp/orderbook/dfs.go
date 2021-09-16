@@ -62,8 +62,6 @@ type searchState interface {
 	// optionally a liquidity pool, if one exists for that trading pair.
 	venues(currentAsset string) map[string]Venues
 
-	edges(currentAsset string) edgeSet
-
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
 		offers []xdr.OfferEntry,
@@ -241,16 +239,10 @@ func (state *sellingGraphSearchState) appendToPaths(
 	})
 }
 
-func (state *sellingGraphSearchState) edges(currentAssetString string) edgeSet {
-	return state.graph.edgesForSellingAsset[currentAssetString]
-}
-
-func (state *sellingGraphSearchState) venues(
-	currentAsset string,
-) map[string]Venues {
+func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Venues {
 	result := map[string]Venues{}
 
-	for nextAsset, offers := range state.edges(currentAsset) {
+	for nextAsset, offers := range state.graph.edgesForSellingAsset[currentAsset] {
 		if opp, ok := result[nextAsset]; ok {
 			opp.offers = offers
 		} else {
@@ -338,15 +330,10 @@ func (state *buyingGraphSearchState) appendToPaths(
 	})
 }
 
-func (state *buyingGraphSearchState) edges(currentAsset string) edgeSet {
-	return state.graph.edgesForBuyingAsset[currentAsset]
-}
-
-func (state *buyingGraphSearchState) venues(
-	currentAsset string,
-) map[string]Venues {
+// TODO
+func (state *buyingGraphSearchState) venues(currentAsset string) map[string]Venues {
 	result := map[string]Venues{}
-	for nextAsset, offers := range state.edges(currentAsset) {
+	for nextAsset, offers := range state.graph.edgesForBuyingAsset[currentAsset] {
 		result[nextAsset] = Venues{offers: offers}
 	}
 	return result
