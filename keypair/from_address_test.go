@@ -10,6 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestFromAddress_Hint(t *testing.T) {
+	kp := MustParseAddress("GAYUB4KATGTUZEGUMJEOZDPPWM4MQLHCIKC4T55YSXHN234WI6BJMIY2")
+	assert.Equal(t, [4]byte{0x96, 0x47, 0x82, 0x96}, kp.Hint())
+}
+
 func TestFromAddress_Equal(t *testing.T) {
 	// A nil FromAddress.
 	var kp0 *FromAddress
