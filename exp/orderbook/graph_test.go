@@ -2187,18 +2187,9 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	// for debugging:
-	fmt.Printf("%d paths found:\n", len(paths))
-	for _, path := range paths {
-		printPath(path)
-	}
-
-	// Again, the path should go USD -> EUR -> Yen, jumping through both
-	// liquidity pools.
-	//
-	// For a payout of 100 Yen from the EUR/Yen pool, we need to exchange 112
-	// Euros (this is the sanity check below). To get 112 EUR, we need to
-	// exchange 127 USD.
+	// The path should go USD -> EUR -> Yen, jumping through both liquidity
+	// pools. For a payout of 100 Yen from the EUR/Yen pool, we need to exchange
+	// 112 Euros. To get 112 EUR, we need to exchange 127 USD.
 	expectedPaths := []Path{
 		{
 			SourceAsset:       usdAsset,
@@ -2211,14 +2202,12 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 
 	// These are sanity checks that shouldn't ever fail; if they do, something
 	// was changed about how constant product liquidity pools work.
-	eurNeeded, err := makeTrade(eurYenLiquidityPool,
-		yenAsset, tradeTypeExpectation, 100)
+	eurNeeded, err := makeTrade(eurYenLiquidityPool, yenAsset, tradeTypeExpectation, 100)
 	assert.NoError(t, err)
 	assert.EqualValuesf(t, eurNeeded, 112,
 		"expected exchange of 112 EUR -> 100 Yen, got %d", eurNeeded)
 
-	usdNeeded, err := makeTrade(eurUsdLiquidityPool,
-		eurAsset, tradeTypeExpectation, 112)
+	usdNeeded, err := makeTrade(eurUsdLiquidityPool, eurAsset, tradeTypeExpectation, 112)
 	assert.EqualValuesf(t, usdNeeded, 127,
 		"expected exchange of 127 USD -> 112 EUR, got %d", usdNeeded)
 
@@ -2234,44 +2223,52 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 
 	assert.NoError(t, err)
 	assertPathEquals(t, []Path{}, paths)
+
+	////////////////////////////////////////////////////////////////////////////
+
+	paths, _, err = graph.FindPaths(context.TODO(),
+		5,
+		yenAsset, // different path: CHF -> USD -> EUR -> Yen
+		100,
+		&fakeSource,
+		[]xdr.Asset{chfAsset},
+		[]xdr.Int64{342},
+		true,
+		5,
+	)
+
+	// The conversion rate is different this time: one more more hop means one
+	// more exchange rate to deal with. As before, we sanity check here (just
+	// the last step, though) both to check that the calculators work and to
+	// check the path itself.
+	chfNeeded, err := makeTrade(usdChfLiquidityPool, usdAsset, tradeTypeExpectation, 127)
+	assert.EqualValuesf(t, chfNeeded, 342, // not linear because not 1:1
+		"expected exchange of 342 CHF -> 127 USD, got %d", chfNeeded)
+
+	expectedPaths = []Path{
+		{
+			SourceAsset:       chfAsset,
+			SourceAmount:      342,
+			DestinationAsset:  yenAsset,
+			DestinationAmount: 100,
+			InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
+		},
+	}
+
+	assert.NoError(t, err)
+	assertPathEquals(t, expectedPaths, paths)
 }
 
-func TestPathThroughOffersAndLiquidityPools(t *testing.T) {
-	t.Skip()
-
+func TestInterleavedPaths(t *testing.T) {
 	graph := NewOrderBookGraph()
 	graph.AddLiquidityPools(eurUsdLiquidityPool, eurYenLiquidityPool, usdChfLiquidityPool)
 	if !assert.NoErrorf(t, graph.Apply(1), "applying LPs to graph failed") {
 		t.FailNow()
 	}
 
-	graph.AddOffers(eurOffer)
+	graph.AddOffers(eurOffer, twoEurOffer, threeEurOffer)
 
-	kp, err := keypair.Random()
-	assert.NoError(t, err)
-	fakeSource := xdr.MustAddress(kp.Address())
-
-	paths, _, err := graph.FindPaths(
-		context.TODO(),
-		5,           // more than enough hops
-		yenAsset,    // path should go USD -> EUR -> Yen
-		100,         // less than LP reserves for either pool
-		&fakeSource, // fake source account to ignore pools from
-		[]xdr.Asset{usdAsset},
-		[]xdr.Int64{127}, // we only exactly the right amount of $ to trade
-		true,
-		5, // irrelevant
-	)
-	assert.NoError(t, err)
-	assertPathEquals(t, paths, []Path{
-		{
-			SourceAsset:       usdAsset,
-			SourceAmount:      127,
-			DestinationAsset:  yenAsset,
-			DestinationAmount: 100,
-			InteriorNodes:     []xdr.Asset{eurAsset},
-		},
-	})
+	t.Skip()
 }
 
 func printPath(path Path) {
