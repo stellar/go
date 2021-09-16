@@ -28,7 +28,7 @@ func BenchmarkFromAddress_FromAddress(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = pk.FromAddress()
+		_ = pk.FromAddress()
 	}
 }
 
@@ -100,7 +100,7 @@ func BenchmarkFull_FromAddress(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = sk.FromAddress()
+		_ = sk.FromAddress()
 	}
 }
 
