@@ -593,19 +593,20 @@ func assertLiquidityPoolsEqual(t *testing.T, expectedLiquidityPools, liquidityPo
 			liquidityPools[j].Body.MustConstantProduct().Params.AssetB.String()
 	})
 
+	if !assert.Equal(t, len(expectedLiquidityPools), len(liquidityPools)) {
+		t.FailNow()
+	}
+
 	for i, expected := range expectedLiquidityPools {
 		liquidityPool := liquidityPools[i]
 		liquidityPoolBase64, err := xdr.MarshalBase64(liquidityPool)
-		if err != nil {
-			t.Fatalf("unexpected marshall error %v", err)
-		}
+		assert.NoError(t, err)
+
 		expectedBase64, err := xdr.MarshalBase64(expected)
-		if err != nil {
-			t.Fatalf("unexpected marshall error %v", err)
-		}
-		if expectedBase64 != liquidityPoolBase64 {
-			t.Fatalf("pool mismatch: %v != %v", expected, liquidityPoolBase64)
-		}
+		assert.NoError(t, err)
+
+		assert.Equalf(t, expectedBase64, liquidityPoolBase64,
+			"pool mismatch: %v != %v", expected, liquidityPool)
 	}
 }
 

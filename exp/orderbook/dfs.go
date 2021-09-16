@@ -56,10 +56,10 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 	)
 
-	// Returns all trading opportunities for a particular asset.
+	// Returns all "venues" (trading opportunities) for a particular asset.
 	//
-	// The result is grouped by asset, mapping to a list of offers and
-	// optionally a liquidity pool, if one exists for that trading pair.
+	// The result is grouped by the next asset hop, mapping to a list of offers
+	// and a liquidity pool, if one exists for that trading pair.
 	venues(currentAsset string) map[string]Venues
 
 	consumeOffers(
@@ -250,20 +250,17 @@ func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Ven
 		}
 	}
 
-	for pair, pool := range state.graph.liquidityPools {
-		var nextAsset string
-		if pair.buyingAsset == currentAsset {
-			nextAsset = pair.sellingAsset
-		} else if pair.sellingAsset == currentAsset {
-			nextAsset = pair.buyingAsset
+	for _, pool := range state.graph.liquidityPoolsForAsset[currentAsset] {
+		params := pool.Body.MustConstantProduct().Params
+		otherAsset := params.AssetA.String()
+		if otherAsset == currentAsset {
+			otherAsset = params.AssetB.String()
 		}
 
-		if nextAsset != "" {
-			if opp, ok := result[nextAsset]; ok {
-				opp.pool = pool
-			} else {
-				result[nextAsset] = Venues{pool: pool}
-			}
+		if opp, ok := result[otherAsset]; ok {
+			opp.pool = pool
+		} else {
+			result[otherAsset] = Venues{pool: pool}
 		}
 	}
 

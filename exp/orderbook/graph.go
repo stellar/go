@@ -48,24 +48,25 @@ type OBGraph interface {
 	Clear()
 }
 
-// OrderBookGraph is an in memory graph representation of all the offers in the stellar ledger
+// OrderBookGraph is an in-memory graph representation of all the offers in the
+// Stellar ledger.
 type OrderBookGraph struct {
 	// edgesForSellingAsset maps an asset to all offers which sell that asset
-	// note that each key in the map is obtained by calling offer.Selling.String()
-	// where offer is an xdr.OfferEntry
+	// note that each key in the map is obtained by calling
+	// offer.Selling.String() where offer is an xdr.OfferEntry
 	edgesForSellingAsset map[string]edgeSet
-	// edgesForBuyingAsset maps an asset to all offers which buy that asset
-	// note that each key in the map is obtained by calling offer.Buying.String()
+	// edgesForBuyingAsset maps an asset to all offers which buy that asset note
+	// that each key in the map is obtained by calling offer.Buying.String()
 	// where offer is an xdr.OfferEntry
 	edgesForBuyingAsset map[string]edgeSet
-	// tradingPairForOffer maps an offer id to the assets which are being exchanged
-	// in the given offer
+	// tradingPairForOffer maps an offer id to the assets which are being
+	// exchanged in the given offer
 	tradingPairForOffer map[xdr.Int64]tradingPair
-	// liquidityPools maps a trading pair to the liquidity pool which contains
-	// those assets in its reserves. Note that you can make trades for either
-	// asset in the pair, but the map key will always be in "asset order" (see
-	// `xdr.Asset.LessThan`).
-	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
+	// liquidityPools maps an asset string to any liquidity pools which contain
+	// that asset in their reserves. Note that you can make trades for either
+	// asset in a pool, and this will have duplicate pool entries for each of
+	// the two assets (for efficient lookups).
+	liquidityPoolsForAsset map[string][]xdr.LiquidityPoolEntry
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
 	// batch is enough.
@@ -80,10 +81,10 @@ var _ OBGraph = (*OrderBookGraph)(nil)
 // NewOrderBookGraph constructs a new OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
 	graph := &OrderBookGraph{
-		edgesForSellingAsset: map[string]edgeSet{},
-		edgesForBuyingAsset:  map[string]edgeSet{},
-		tradingPairForOffer:  map[xdr.Int64]tradingPair{},
-		liquidityPools:       map[tradingPair]xdr.LiquidityPoolEntry{},
+		edgesForSellingAsset:   map[string]edgeSet{},
+		edgesForBuyingAsset:    map[string]edgeSet{},
+		tradingPairForOffer:    map[xdr.Int64]tradingPair{},
+		liquidityPoolsForAsset: map[string][]xdr.LiquidityPoolEntry{},
 	}
 
 	graph.batchedUpdates = graph.batch()
@@ -119,6 +120,10 @@ func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	return graph
 }
 
+// RemoveLiquidityPool will queue an operation to remove any liquidity pool that
+// has both of the given assets in the internal batch.
+//
+// You need to run Apply() to apply all enqueued operations.
 func (graph *OrderBookGraph) RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph {
 	graph.batchedUpdates.removeLiquidityPool(tradingPair{
 		params.AssetA.String(),
@@ -158,17 +163,27 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	return offers
 }
 
-// LiquidityPools returns a list of liquidity pools contained in the order book graph
+// LiquidityPools returns a list of unique liquidity pools contained in the
+// order book graph
 func (graph *OrderBookGraph) LiquidityPools() []xdr.LiquidityPoolEntry {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	var liquidityPools []xdr.LiquidityPoolEntry
-	for _, liquidityPool := range graph.liquidityPools {
-		liquidityPools = append(liquidityPools, liquidityPool)
+	// Since we double-store each pool for each of the two assets, we'll need to
+	// put some extra effort in to only return one of them here.
+	entries := make(map[xdr.PoolId]struct{}, len(graph.liquidityPoolsForAsset)) // a set
+	allPools := make([]xdr.LiquidityPoolEntry, 0, len(graph.liquidityPoolsForAsset))
+
+	for _, pools := range graph.liquidityPoolsForAsset {
+		for _, pool := range pools {
+			if _, exists := entries[pool.LiquidityPoolId]; !exists {
+				entries[pool.LiquidityPoolId] = struct{}{}
+				allPools = append(allPools, pool)
+			}
+		}
 	}
 
-	return liquidityPools
+	return allPools
 }
 
 // Clear removes all offers from the graph.
@@ -179,7 +194,7 @@ func (graph *OrderBookGraph) Clear() {
 	graph.edgesForSellingAsset = map[string]edgeSet{}
 	graph.edgesForBuyingAsset = map[string]edgeSet{}
 	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
-	graph.liquidityPools = map[tradingPair]xdr.LiquidityPoolEntry{}
+	graph.liquidityPoolsForAsset = map[string][]xdr.LiquidityPoolEntry{}
 	graph.batchedUpdates = graph.batch()
 	graph.lastLedger = 0
 }

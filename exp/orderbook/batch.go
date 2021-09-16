@@ -108,9 +108,18 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 			}
 
 		case addLiquidityPoolOperationType:
-			tx.orderbook.liquidityPools[operation.liquidityPoolAssets] = *operation.liquidityPool
+			entry := operation.liquidityPool
+			a := operation.liquidityPoolAssets.buyingAsset
+			b := operation.liquidityPoolAssets.sellingAsset
+
+			tx.orderbook.liquidityPoolsForAsset[a] = append(
+				tx.orderbook.liquidityPoolsForAsset[a], *entry)
+			tx.orderbook.liquidityPoolsForAsset[b] = append(
+				tx.orderbook.liquidityPoolsForAsset[b], *entry)
+
 		case removeLiquidityPoolOperationType:
-			delete(tx.orderbook.liquidityPools, operation.liquidityPoolAssets)
+			delete(tx.orderbook.liquidityPoolsForAsset, operation.liquidityPoolAssets.buyingAsset)
+			delete(tx.orderbook.liquidityPoolsForAsset, operation.liquidityPoolAssets.sellingAsset)
 
 		default:
 			panic(errors.New("invalid operation type"))
