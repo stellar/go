@@ -469,8 +469,8 @@ func sortAndFilterPaths(
 }
 
 const (
-	tradeTypeDeposit     = iota
-	tradeTypeExpectation = iota
+	tradeTypeDeposit     = iota // deposit into pool, what's the payout?
+	tradeTypeExpectation = iota // expect payout, what to deposit?
 )
 
 // makeTrade simulates execution of an exchange with a liquidity pool.
@@ -610,6 +610,9 @@ func calculatePoolExpectation(
 	return xdr.Int64(result.Int64()), result.IsInt64()
 }
 
+// getOtherAsset returns the other asset in the liquidity pool. Note that
+// doesn't check to make sure the passed in `asset` is actually part of the
+// pool; behavior in that case is undefined.
 func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
 	cp := pool.Body.MustConstantProduct()
 	if cp.Params.AssetA.Equals(asset) {

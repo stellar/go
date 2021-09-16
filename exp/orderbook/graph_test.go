@@ -983,10 +983,7 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 }
 
 func TestConsumeOffersForSellingAsset(t *testing.T) {
-	kp, err := keypair.Random()
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	kp := keypair.MustRandom()
 	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 	otherSellerTwoEurOffer := twoEurOffer
 	otherSellerTwoEurOffer.SellerId = ignoreOffersFrom
@@ -1108,10 +1105,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 }
 
 func TestConsumeOffersForBuyingAsset(t *testing.T) {
-	kp, err := keypair.Random()
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	kp := keypair.MustRandom()
 	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 	otherSellerTwoEurOffer := twoEurOffer
 	otherSellerTwoEurOffer.SellerId = ignoreOffersFrom
@@ -1494,10 +1488,7 @@ func TestFindPaths(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	kp, err := keypair.Random()
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	kp := keypair.MustRandom()
 	ignoreOffersFrom := xdr.MustAddress(kp.Address())
 
 	paths, lastLedger, err := graph.FindPaths(
@@ -2028,8 +2019,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		t.FailNow()
 	}
 
-	kp, err := keypair.Random()
-	assert.NoError(t, err)
+	kp := keypair.MustRandom()
 	fakeSource := xdr.MustAddress(kp.Address())
 
 	t.Run("happy path", func(t *testing.T) {
@@ -2139,13 +2129,17 @@ func TestInterleavedPaths(t *testing.T) {
 		Price:    xdr.Price{1, 1},
 	})
 
+	kp := keypair.MustRandom()
+	fakeSource := xdr.MustAddress(kp.Address())
+
 	// The final graph looks like the following:
 	//
-	//  - EUR: Offer 1 for 500 XLM
-	//         Offer 2 for 500 XLM
-	//         Offer 3 for 500 XLM
-	//         LP      for USD, 1:1
-	//         LP      for XLM, 1:50
+	//  - XLM: Offer 500 for 1 EUR
+	//         Offer 500 for 2 EUR
+	//         Offer 500 for 3 EUR
+	//         LP        for USD, 50:1
+	//
+	//  - EUR: LP for USD, 1:1
 	//
 	//  - USD: LP for EUR, 1:1
 	//         LP for XLM, 1:40
@@ -2156,22 +2150,30 @@ func TestInterleavedPaths(t *testing.T) {
 
 	// To force interleaved paths, we'll do a couple of different things:
 	//
-	//  1. CHF -> USD pool -> EUR offers -> XLM
-	//  1. CHF -> USD offer -> EUR offer -> XLM
-	//  2. CHF -> USD pool -> EUR pool -> XLM
+	//  1. Fulfill the XLM -> EUR orders by having them beat the LP.
+	//  2. Ensure the LP is used if the orders *can't* fulfill it.
+	//
+	// This should guarantee a reasonable degree of robustness.
 
-	// t.Run("")
+	// The exchange amount will be low, so we consume the EUR/XLM offers.
+	t.Run("enough offers for hop", func(t *testing.T) {
 
-	// paths, _, err := graph.FindPaths(context.TODO(),
-	// 	5,
-	// 	yenAsset, // different path: CHF -> USD -> EUR -> Yen
-	// 	100,
-	// 	&fakeSource,
-	// 	[]xdr.Asset{chfAsset},
-	// 	[]xdr.Int64{342},
-	// 	true,
-	// 	5,
-	// )
+		paths, _, err := graph.FindPaths(context.TODO(),
+			5,
+			nativeAsset,
+			1000,
+			&fakeSource,
+			[]xdr.Asset{chfAsset},
+			[]xdr.Int64{342},
+			true,
+			5,
+		)
+
+		expectedPaths := []Path{}
+
+		assert.NoError(t, err)
+		assertPathEquals(t, expectedPaths, paths)
+	})
 
 	// expectedPaths := []Path{
 	// 	{

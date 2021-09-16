@@ -176,23 +176,31 @@ func BenchmarkSingleLiquidityPoolExchange(b *testing.B) {
 	})
 }
 
-func BenchmarkLiquidityPoolExchanges(b *testing.B) {
-	// First, generate a pool of randomness.
-	amounts := make([]xdr.Int64, b.N)
+// Note: making these subtests with one randomness pool doesn't work, because
+// the benchmark doesn't do enough runs on the parent test...
+
+func BenchmarkLiquidityPoolDeposits(b *testing.B) {
+	amounts := createRandomAmounts(b.N)
+
+	b.ResetTimer()
+	for _, amount := range amounts {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, amount)
+	}
+}
+
+func BenchmarkLiquidityPoolExpectations(b *testing.B) {
+	amounts := createRandomAmounts(b.N)
+
+	b.ResetTimer()
+	for _, amount := range amounts {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, amount)
+	}
+}
+
+func createRandomAmounts(quantity int) []xdr.Int64 {
+	amounts := make([]xdr.Int64, quantity)
 	for i, _ := range amounts {
 		amounts[i] = xdr.Int64(1 + rand.Int63n(math.MaxInt64-100))
 	}
-
-	b.ResetTimer()
-	b.Run("deposits", func(b *testing.B) {
-		for _, amount := range amounts {
-			makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, amount)
-		}
-	})
-
-	b.Run("expectations", func(b *testing.B) {
-		for _, amount := range amounts {
-			makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, amount)
-		}
-	})
+	return amounts
 }
