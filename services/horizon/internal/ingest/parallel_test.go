@@ -20,6 +20,7 @@ func TestCalculateParallelLedgerBatchSize(t *testing.T) {
 	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(64, 256, 4))
 	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(64, 32, 4))
 	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(2, 256, 4))
+	assert.Equal(t, uint32(64), calculateParallelLedgerBatchSize(20096, 64, 1))
 }
 
 type sorteableRanges []ledgerRange
@@ -62,6 +63,18 @@ func TestParallelReingestRange(t *testing.T) {
 	}
 	assert.Equal(t, expected, rangesCalled)
 
+	rangesCalled = nil
+	system, err = newParallelSystems(config, 1, factory)
+	assert.NoError(t, err)
+	err = system.ReingestRange(0, 1024, 64)
+	expected = sorteableRanges{
+		{from: 0, to: 63}, {from: 64, to: 127}, {from: 128, to: 191}, {from: 192, to: 255}, {from: 256, to: 319},
+		{from: 320, to: 383}, {from: 384, to: 447}, {from: 448, to: 511}, {from: 512, to: 575}, {from: 576, to: 639},
+		{from: 640, to: 703}, {from: 704, to: 767}, {from: 768, to: 831}, {from: 832, to: 895}, {from: 896, to: 959},
+		{from: 960, to: 1023},
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, expected, rangesCalled)
 }
 
 func TestParallelReingestRangeError(t *testing.T) {
