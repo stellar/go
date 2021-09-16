@@ -159,6 +159,25 @@ var (
 			},
 		},
 	}
+
+	usdChfLiquidityPoolId, _ = xdr.NewPoolId(chfAsset, usdAsset, xdr.LiquidityPoolFeeV18)
+	usdChfLiquidityPool      = xdr.LiquidityPoolEntry{
+		LiquidityPoolId: usdChfLiquidityPoolId,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: chfAsset,
+					AssetB: usdAsset,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 xdr.Int64(500),
+				ReserveB:                 xdr.Int64(1000),
+				TotalPoolShares:          xdr.Int64(2),
+				PoolSharesTrustLineCount: xdr.Int64(2),
+			},
+		},
+	}
 )
 
 func assertBinaryMarshalerEquals(t *testing.T, a, b encoding.BinaryMarshaler) {
@@ -347,7 +366,7 @@ func TestApplyOutdatedLedger(t *testing.T) {
 		t.Fatalf("expected last ledger to be %v but got %v", 0, graph.lastLedger)
 	}
 
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(fiftyCentsOffer)
 	err := graph.Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -356,7 +375,7 @@ func TestApplyOutdatedLedger(t *testing.T) {
 		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
 	}
 
-	graph.AddOffer(eurOffer)
+	graph.AddOffers(eurOffer)
 	err = graph.Apply(1)
 	if err != errUnexpectedLedger {
 		t.Fatalf("expected error %v but got %v", errUnexpectedLedger, err)
@@ -367,7 +386,7 @@ func TestApplyOutdatedLedger(t *testing.T) {
 
 	graph.Discard()
 
-	graph.AddOffer(eurOffer)
+	graph.AddOffers(eurOffer)
 	err = graph.Apply(2)
 	if err != errUnexpectedLedger {
 		t.Fatalf("expected error %v but got %v", errUnexpectedLedger, err)
@@ -387,15 +406,11 @@ func TestApplyOutdatedLedger(t *testing.T) {
 	}
 }
 
-func TestAddOfferOrderBook(t *testing.T) {
+func TestAddOffersOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
-	graph.AddOffer(quarterOffer)
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
+		quarterOffer, fiftyCentsOffer)
 	err := graph.Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -439,9 +454,7 @@ func TestAddOfferOrderBook(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	graph.AddOffer(eurUsdOffer)
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(usdEurOffer)
+	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer)
 	err = graph.Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -517,10 +530,7 @@ func TestAddOfferOrderBook(t *testing.T) {
 	}
 
 	// adding the same orders multiple times should have no effect
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(usdEurOffer)
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
+	graph.AddOffers(otherEurUsdOffer, usdEurOffer, dollarOffer, threeEurOffer)
 	err = graph.Apply(3)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -568,8 +578,7 @@ func setupGraphWithLiquidityPools(t *testing.T) (*OrderBookGraph, []xdr.Liquidit
 			},
 		},
 	}
-	graph.AddLiquidityPool(nativeEURPool)
-	graph.AddLiquidityPool(nativeUSDPool)
+	graph.AddLiquidityPools(nativeEURPool, nativeUSDPool)
 	if err := graph.Apply(1); err != nil {
 		t.Fatalf("unexpected apply error %v", err)
 	}
@@ -600,7 +609,7 @@ func assertLiquidityPoolsEqual(t *testing.T, expectedLiquidityPools, liquidityPo
 	}
 }
 
-func TestAddLiquidityPool(t *testing.T) {
+func TestAddLiquidityPools(t *testing.T) {
 	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
 	assertLiquidityPoolsEqual(t, expectedLiquidityPools, graph.LiquidityPools())
 }
@@ -610,8 +619,7 @@ func TestUpdateLiquidityPools(t *testing.T) {
 	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
 	expectedLiquidityPools[1].Body.ConstantProduct.ReserveB -= 2
 
-	graph.AddLiquidityPool(expectedLiquidityPools[0])
-	graph.AddLiquidityPool(expectedLiquidityPools[1])
+	graph.AddLiquidityPools(expectedLiquidityPools[:2]...)
 	if err := graph.Apply(2); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -623,7 +631,7 @@ func TestRemoveLiquidityPools(t *testing.T) {
 	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
 	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
 
-	graph.AddLiquidityPool(expectedLiquidityPools[0])
+	graph.AddLiquidityPools(expectedLiquidityPools[0])
 	graph.RemoveLiquidityPool(expectedLiquidityPools[1].Body.MustConstantProduct().Params)
 
 	if err := graph.Apply(2); err != nil {
@@ -640,12 +648,8 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		t.Fatal("expected graph to be empty")
 	}
 
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
-	graph.AddOffer(quarterOffer)
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
+		quarterOffer, fiftyCentsOffer)
 	err := graph.Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -693,9 +697,7 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	graph.AddOffer(eurUsdOffer)
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(usdEurOffer)
+	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer)
 	err = graph.Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -712,9 +714,7 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 
 	dollarOffer.Amount = 12
 
-	graph.AddOffer(usdEurOffer)
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(dollarOffer)
+	graph.AddOffers(usdEurOffer, otherEurUsdOffer, dollarOffer)
 	err = graph.Apply(3)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -795,12 +795,8 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 func TestDiscard(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
-	graph.AddOffer(quarterOffer)
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
+		quarterOffer, fiftyCentsOffer)
 	graph.Discard()
 	if graph.lastLedger != 0 {
 		t.Fatalf("expected last ledger to be %v but got %v", 0, graph.lastLedger)
@@ -816,7 +812,7 @@ func TestDiscard(t *testing.T) {
 		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
 	}
 
-	graph.AddOffer(dollarOffer)
+	graph.AddOffers(dollarOffer)
 	err := graph.Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -831,7 +827,7 @@ func TestDiscard(t *testing.T) {
 	expectedOffers := []xdr.OfferEntry{dollarOffer}
 	assertOfferListEquals(t, graph.Offers(), expectedOffers)
 
-	graph.AddOffer(threeEurOffer)
+	graph.AddOffers(threeEurOffer)
 	graph.Discard()
 	assertOfferListEquals(t, graph.Offers(), expectedOffers)
 }
@@ -839,12 +835,8 @@ func TestDiscard(t *testing.T) {
 func TestRemoveOfferOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
-	graph.AddOffer(quarterOffer)
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
+		quarterOffer, fiftyCentsOffer)
 	err := graph.Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -888,9 +880,7 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	graph.AddOffer(eurUsdOffer)
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(usdEurOffer)
+	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer)
 	graph.RemoveOffer(usdEurOffer.OfferId)
 	graph.RemoveOffer(otherEurUsdOffer.OfferId)
 	graph.RemoveOffer(dollarOffer.OfferId)
@@ -1001,9 +991,7 @@ func TestFindOffers(t *testing.T) {
 		[]xdr.OfferEntry{},
 	)
 
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
+	graph.AddOffers(threeEurOffer, eurOffer, twoEurOffer)
 	err := graph.Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1024,7 +1012,7 @@ func TestFindOffers(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		otherTwoEurOffer := twoEurOffer
 		otherTwoEurOffer.OfferId += xdr.Int64(i + 17)
-		graph.AddOffer(otherTwoEurOffer)
+		graph.AddOffers(otherTwoEurOffer)
 		extraTwoEurOffers = append(extraTwoEurOffers, otherTwoEurOffer)
 	}
 	if err := graph.Apply(2); err != nil {
@@ -1043,10 +1031,10 @@ func TestFindOffers(t *testing.T) {
 	)
 }
 
-func TestFindAsksAndBids(t *testing.T) {
+func TestFindingAsksAndBids(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	asks, bids, lastLedger := graph.FindAsksAndBids(nativeAsset, eurAsset, 0)
+	asks, bids, lastLedger := graph.findAsksAndBids(nativeAsset, eurAsset, 0)
 	assertOfferListEquals(
 		t,
 		[]xdr.OfferEntry{},
@@ -1061,7 +1049,7 @@ func TestFindAsksAndBids(t *testing.T) {
 		t.Fatalf("expected last ledger to be %v but got %v", 0, lastLedger)
 	}
 
-	asks, bids, lastLedger = graph.FindAsksAndBids(nativeAsset, eurAsset, 5)
+	asks, bids, lastLedger = graph.findAsksAndBids(nativeAsset, eurAsset, 5)
 	assertOfferListEquals(
 		t,
 		[]xdr.OfferEntry{},
@@ -1076,15 +1064,13 @@ func TestFindAsksAndBids(t *testing.T) {
 		t.Fatalf("expected last ledger to be %v but got %v", 0, lastLedger)
 	}
 
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
+	graph.AddOffers(threeEurOffer, eurOffer, twoEurOffer)
 	err := graph.Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	asks, bids, lastLedger = graph.FindAsksAndBids(nativeAsset, eurAsset, 0)
+	asks, bids, lastLedger = graph.findAsksAndBids(nativeAsset, eurAsset, 0)
 	assertOfferListEquals(
 		t,
 		[]xdr.OfferEntry{},
@@ -1106,7 +1092,7 @@ func TestFindAsksAndBids(t *testing.T) {
 		otherTwoEurOffer.Price.N *= xdr.Int32(i + 1)
 		otherTwoEurOffer.Price.D *= xdr.Int32(i + 1)
 		otherTwoEurOffer.OfferId += xdr.Int64(i + 17)
-		graph.AddOffer(otherTwoEurOffer)
+		graph.AddOffers(otherTwoEurOffer)
 		extraTwoEurOffers = append(extraTwoEurOffers, otherTwoEurOffer)
 	}
 	if err := graph.Apply(2); err != nil {
@@ -1116,12 +1102,12 @@ func TestFindAsksAndBids(t *testing.T) {
 	sellEurOffer := twoEurOffer
 	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
 	sellEurOffer.OfferId = 35
-	graph.AddOffer(sellEurOffer)
+	graph.AddOffers(sellEurOffer)
 	if err := graph.Apply(3); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	asks, bids, lastLedger = graph.FindAsksAndBids(nativeAsset, eurAsset, 3)
+	asks, bids, lastLedger = graph.findAsksAndBids(nativeAsset, eurAsset, 3)
 	assertOfferListEquals(
 		t,
 		append(append([]xdr.OfferEntry{eurOffer, twoEurOffer}, extraTwoEurOffers...), threeEurOffer),
@@ -1577,12 +1563,8 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 func TestFindPaths(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
-	graph.AddOffer(quarterOffer)
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
+		quarterOffer, fiftyCentsOffer)
 	err := graph.Apply(1)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1647,11 +1629,7 @@ func TestFindPaths(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	graph.AddOffer(eurUsdOffer)
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(usdEurOffer)
-	graph.AddOffer(chfEurOffer)
-	graph.AddOffer(yenChfOffer)
+	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer, chfEurOffer, yenChfOffer)
 	err = graph.Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1906,12 +1884,8 @@ func TestFindPaths(t *testing.T) {
 func TestFindPathsStartingAt(t *testing.T) {
 	graph := NewOrderBookGraph()
 
-	graph.AddOffer(dollarOffer)
-	graph.AddOffer(threeEurOffer)
-	graph.AddOffer(eurOffer)
-	graph.AddOffer(twoEurOffer)
-	graph.AddOffer(quarterOffer)
-	graph.AddOffer(fiftyCentsOffer)
+	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
+		quarterOffer, fiftyCentsOffer)
 
 	err := graph.Apply(1)
 	if err != nil {
@@ -1977,11 +1951,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		Amount: xdr.Int64(500),
 	}
 
-	graph.AddOffer(eurUsdOffer)
-	graph.AddOffer(otherEurUsdOffer)
-	graph.AddOffer(usdEurOffer)
-	graph.AddOffer(chfEurOffer)
-	graph.AddOffer(yenChfOffer)
+	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer, chfEurOffer, yenChfOffer)
 	err = graph.Apply(2)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -2192,8 +2162,9 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 
 func TestPathThroughLiquidityPools(t *testing.T) {
 	graph := NewOrderBookGraph()
-	graph.AddLiquidityPool(eurUsdLiquidityPool)
-	graph.AddLiquidityPool(eurYenLiquidityPool)
+	graph.AddLiquidityPools(eurUsdLiquidityPool)
+	graph.AddLiquidityPools(eurYenLiquidityPool)
+	graph.AddLiquidityPools(usdChfLiquidityPool)
 	if !assert.NoErrorf(t, graph.Apply(1), "applying LPs to graph failed") {
 		t.FailNow()
 	}
@@ -2213,6 +2184,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		true,
 		5, // irrelevant
 	)
+	assert.NoError(t, err)
 
 	// for debugging:
 	fmt.Printf("%d paths found:\n", len(paths))
@@ -2258,8 +2230,44 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		"expected exchange of 127 USD -> 112 EUR, got %d", usdNeeded)
 
 	assertPathEquals(t, expectedPaths, paths)
+
+	////////////////////////////////////////////////////////////////////////////
+
+	paths, _, err = graph.FindPaths(context.TODO(),
+		5, yenAsset, 100, &fakeSource, []xdr.Asset{usdAsset},
+		[]xdr.Int64{126}, // the only change: we're short on balance now
+		true, 5,
+	)
+
+	assert.NoError(t, err)
+	assertPathEquals(t, []Path{}, paths)
 }
 
 func TestPathThroughOffersAndLiquidityPools(t *testing.T) {
 	t.Skip()
+
+	graph := NewOrderBookGraph()
+	graph.AddLiquidityPools(eurUsdLiquidityPool, eurYenLiquidityPool, usdChfLiquidityPool)
+	if !assert.NoErrorf(t, graph.Apply(1), "applying LPs to graph failed") {
+		t.FailNow()
+	}
+
+	graph.AddOffers(dollarOffer)
+
+	kp, err := keypair.Random()
+	assert.NoError(t, err)
+	fakeSource := xdr.MustAddress(kp.Address())
+
+	_, _, err = graph.FindPaths(
+		context.TODO(),
+		5,           // more than enough hops
+		yenAsset,    // path should go USD -> EUR -> Yen
+		100,         // less than LP reserves for either pool
+		&fakeSource, // fake source account to ignore pools from
+		[]xdr.Asset{usdAsset},
+		[]xdr.Int64{127}, // we only exactly the right amount of $ to trade
+		true,
+		5, // irrelevant
+	)
+	assert.NoError(t, err)
 }

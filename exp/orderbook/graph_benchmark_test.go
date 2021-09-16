@@ -37,7 +37,7 @@ func loadGraphFromFile(filePath string) (*OrderBookGraph, error) {
 			return nil, errors.Wrap(err, "could not base64 decode entry")
 		}
 
-		graph.AddOffer(offer)
+		graph.AddOffers(offer)
 	}
 	if err := graph.Apply(1); err != nil {
 		return nil, err

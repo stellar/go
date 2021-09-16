@@ -37,8 +37,8 @@ type tradingPair struct {
 
 // OBGraph is an interface for orderbook graphs
 type OBGraph interface {
-	AddOffer(offer xdr.OfferEntry)
-	AddLiquidityPool(liquidityPool xdr.LiquidityPoolEntry)
+	AddOffers(offer ...xdr.OfferEntry)
+	AddLiquidityPools(liquidityPool ...xdr.LiquidityPoolEntry)
 	Apply(ledger uint32) error
 	Discard()
 	Offers() []xdr.OfferEntry
@@ -90,22 +90,29 @@ func NewOrderBookGraph() *OrderBookGraph {
 	return graph
 }
 
-// AddOffer will queue an operation to add the given offer to the order book in
-// the internal batch.
+// AddOffers will queue an operation to add the given offer(s) to the order book
+// in the internal batch.
+//
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
-	graph.batchedUpdates.addOffer(offer)
+func (graph *OrderBookGraph) AddOffers(offers ...xdr.OfferEntry) {
+	for _, offer := range offers {
+		graph.batchedUpdates.addOffer(offer)
+	}
 }
 
-// AddLiquidityPool will queue an operation to add the given liquidity pool to
-// the order book graph in the internal batch.
+// AddLiquidityPools will queue an operation to add the given liquidity pool(s)
+// to the order book graph in the internal batch.
+//
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) AddLiquidityPool(liquidityPool xdr.LiquidityPoolEntry) {
-	graph.batchedUpdates.addLiquidityPool(liquidityPool)
+func (graph *OrderBookGraph) AddLiquidityPools(pools ...xdr.LiquidityPoolEntry) {
+	for _, lp := range pools {
+		graph.batchedUpdates.addLiquidityPool(lp)
+	}
 }
 
-// RemoveOffer will queue an operation to remove the given offer from the order book in
-// the internal batch.
+// RemoveOffer will queue an operation to remove the given offer from the order
+// book in the internal batch.
+//
 // You need to run Apply() to apply all enqueued operations.
 func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	graph.batchedUpdates.removeOffer(offerID)
@@ -218,13 +225,17 @@ func (graph *OrderBookGraph) findOffers(
 	return results
 }
 
-// FindAsksAndBids returns all asks and bids for a given trading pair
+// findAsksAndBids returns all asks and bids for a given trading pair
+//
 // Asks consists of all offers which sell `selling` in exchange for `buying` sorted by
 // price (in terms of `buying`) from cheapest to most expensive
+//
 // Bids consists of all offers which sell `buying` in exchange for `selling` sorted by
 // price (in terms of `selling`) from cheapest to most expensive
 // Both Asks and Bids will span at most `maxPriceLevels` price levels
-func (graph *OrderBookGraph) FindAsksAndBids(
+//
+// FIXME: This is only used in unit tests; can we get rid of it?
+func (graph *OrderBookGraph) findAsksAndBids(
 	selling, buying xdr.Asset, maxPriceLevels int,
 ) ([]xdr.OfferEntry, []xdr.OfferEntry, uint32) {
 	buyingString := buying.String()

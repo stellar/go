@@ -12,11 +12,11 @@ type mockOrderBookGraph struct {
 	mock.Mock
 }
 
-func (m *mockOrderBookGraph) AddOffer(offer xdr.OfferEntry) {
+func (m *mockOrderBookGraph) AddOffers(offer ...xdr.OfferEntry) {
 	m.Called(offer)
 }
 
-func (m *mockOrderBookGraph) AddLiquidityPool(liquidityPool xdr.LiquidityPoolEntry) {
+func (m *mockOrderBookGraph) AddLiquidityPools(liquidityPool ...xdr.LiquidityPoolEntry) {
 	m.Called(liquidityPool)
 }
 
