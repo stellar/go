@@ -21,7 +21,7 @@ type InsertTrade struct {
 	BuyerAccountID     int64
 	SoldAssetID        int64
 	BoughtAssetID      int64
-	Trade              xdr.ClaimOfferAtom
+	Trade              xdr.ClaimAtom
 	SellPrice          xdr.Price
 }
 
@@ -57,7 +57,7 @@ func (i *tradeBatchInsertBuilder) Exec(ctx context.Context) error {
 // Add adds a new trade to the batch
 func (i *tradeBatchInsertBuilder) Add(ctx context.Context, entries ...InsertTrade) error {
 	for _, entry := range entries {
-		sellOfferID := EncodeOfferId(uint64(entry.Trade.OfferId), CoreOfferIDType)
+		sellOfferID := EncodeOfferId(uint64(entry.Trade.OfferId()), CoreOfferIDType)
 
 		// if the buy offer exists, encode the stellar core generated id as the offer id
 		// if not, encode the toid as the offer id
@@ -78,16 +78,16 @@ func (i *tradeBatchInsertBuilder) Add(ctx context.Context, entries ...InsertTrad
 
 		if orderPreserved {
 			baseAccountID = entry.SellerAccountID
-			baseAmount = entry.Trade.AmountSold
+			baseAmount = entry.Trade.AmountSold()
 			counterAccountID = entry.BuyerAccountID
-			counterAmount = entry.Trade.AmountBought
+			counterAmount = entry.Trade.AmountBought()
 			baseOfferID = sellOfferID
 			counterOfferID = buyOfferID
 		} else {
 			baseAccountID = entry.BuyerAccountID
-			baseAmount = entry.Trade.AmountBought
+			baseAmount = entry.Trade.AmountBought()
 			counterAccountID = entry.SellerAccountID
-			counterAmount = entry.Trade.AmountSold
+			counterAmount = entry.Trade.AmountSold()
 			baseOfferID = buyOfferID
 			counterOfferID = sellOfferID
 			entry.SellPrice.Invert()
@@ -97,7 +97,7 @@ func (i *tradeBatchInsertBuilder) Add(ctx context.Context, entries ...InsertTrad
 			"history_operation_id": entry.HistoryOperationID,
 			"\"order\"":            entry.Order,
 			"ledger_closed_at":     entry.LedgerCloseTime,
-			"offer_id":             entry.Trade.OfferId,
+			"offer_id":             entry.Trade.OfferId(),
 			"base_offer_id":        baseOfferID,
 			"base_account_id":      baseAccountID,
 			"base_asset_id":        baseAssetID,

@@ -521,7 +521,7 @@ func TestOperationEffects(t *testing.T) {
 							PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{
 								SendAsset: xdr.Asset{
 									Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-									AlphaNum4: &xdr.AssetAlphaNum4{
+									AlphaNum4: &xdr.AlphaNum4{
 										AssetCode: xdr.AssetCode4{66, 82, 76, 0},
 										Issuer:    xdr.MustAddress("GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF"),
 									},
@@ -530,7 +530,7 @@ func TestOperationEffects(t *testing.T) {
 								Destination: dest,
 								DestAsset: xdr.Asset{
 									Type: 1,
-									AlphaNum4: &xdr.AssetAlphaNum4{
+									AlphaNum4: &xdr.AlphaNum4{
 										AssetCode: xdr.AssetCode4{65, 82, 83, 0},
 										Issuer:    xdr.MustAddress("GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF"),
 									},
@@ -539,7 +539,7 @@ func TestOperationEffects(t *testing.T) {
 								Path: []xdr.Asset{
 									{
 										Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-										AlphaNum4: &xdr.AssetAlphaNum4{
+										AlphaNum4: &xdr.AlphaNum4{
 											AssetCode: xdr.AssetCode4{65, 82, 83, 0},
 											Issuer:    xdr.MustAddress("GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF"),
 										},
@@ -1846,7 +1846,7 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeChangeTrust,
 				ChangeTrustOp: &xdr.ChangeTrustOp{
-					Line:  xdr.MustNewCreditAsset("COP", "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+					Line:  xdr.MustNewCreditAsset("COP", "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV").ToChangeTrustAsset(),
 					Limit: xdr.Int64(1000),
 				},
 			},

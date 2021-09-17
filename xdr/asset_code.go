@@ -10,12 +10,12 @@ func (a AssetCode) ToAsset(issuer AccountId) (asset Asset) {
 
 	switch a.Type {
 	case AssetTypeAssetTypeCreditAlphanum4:
-		asset, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AssetAlphaNum4{
+		asset, err = NewAsset(AssetTypeAssetTypeCreditAlphanum4, AlphaNum4{
 			AssetCode: a.MustAssetCode4(),
 			Issuer:    issuer,
 		})
 	case AssetTypeAssetTypeCreditAlphanum12:
-		asset, err = NewAsset(AssetTypeAssetTypeCreditAlphanum12, AssetAlphaNum12{
+		asset, err = NewAsset(AssetTypeAssetTypeCreditAlphanum12, AlphaNum12{
 			AssetCode: a.MustAssetCode12(),
 			Issuer:    issuer,
 		})

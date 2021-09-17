@@ -12,14 +12,14 @@ func (pr *PathPaymentStrictReceiveResult) SendAmount() Int64 {
 		return s.Last.Amount
 	}
 
-	sa := s.Offers[0].AssetBought
+	sa := s.Offers[0].AssetBought()
 	var ret Int64
 
 	for _, o := range s.Offers {
-		if o.AssetBought.String() != sa.String() {
+		if o.AssetBought().String() != sa.String() {
 			break
 		}
-		ret += o.AmountBought
+		ret += o.AmountBought()
 	}
 
 	return ret

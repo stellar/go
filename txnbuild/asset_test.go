@@ -33,7 +33,7 @@ func TestAlphaNum4AssetToXDR(t *testing.T) {
 	assert.Nil(t, err)
 
 	expected := xdr.Asset{Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: xdrAssetCode,
 			Issuer:    xdrIssuer,
 		}}
@@ -54,7 +54,7 @@ func TestAlphaNum12AssetToXDR(t *testing.T) {
 	assert.Nil(t, err)
 
 	expected := xdr.Asset{Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
-		AlphaNum12: &xdr.AssetAlphaNum12{
+		AlphaNum12: &xdr.AlphaNum12{
 			AssetCode: xdrAssetCode,
 			Issuer:    xdrIssuer,
 		}}

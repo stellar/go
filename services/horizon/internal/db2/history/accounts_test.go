@@ -329,18 +329,18 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err := q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
 	pq.Cursor = account2.Data.Account.AccountId.Address()
-	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
 
@@ -350,7 +350,7 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err = q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset.ToAsset(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 }

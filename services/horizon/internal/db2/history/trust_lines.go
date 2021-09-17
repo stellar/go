@@ -295,6 +295,7 @@ func trustLineToMap(entry xdr.LedgerEntry) map[string]interface{} {
 
 	var assetType xdr.AssetType
 	var assetCode, assetIssuer string
+	// TODO fix before Protocol 18
 	trustLine.Asset.MustExtract(&assetType, &assetCode, &assetIssuer)
 
 	liabilities := trustLine.Liabilities()

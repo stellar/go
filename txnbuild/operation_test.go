@@ -279,7 +279,7 @@ func TestChangeTrustFromXDR(t *testing.T) {
 	xdrLimit, err := amount.Parse("5000")
 	assert.NoError(t, err)
 	changeTrustOp := xdr.ChangeTrustOp{
-		Line:  xdrAsset,
+		Line:  xdrAsset.ToChangeTrustAsset(),
 		Limit: xdrLimit,
 	}
 

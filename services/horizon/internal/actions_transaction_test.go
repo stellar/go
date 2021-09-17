@@ -312,7 +312,7 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 								Destination: destAID.ToMuxedAccount(),
 								Asset: xdr.Asset{
 									Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-									AlphaNum4: &xdr.AssetAlphaNum4{
+									AlphaNum4: &xdr.AlphaNum4{
 										AssetCode: xdr.AssetCode4{85, 83, 68, 0},
 										Issuer:    xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
 									},

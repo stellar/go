@@ -21,7 +21,7 @@ var (
 
 	usdAsset = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: [4]byte{'u', 's', 'd', 0},
 			Issuer:    issuer,
 		},
@@ -29,7 +29,7 @@ var (
 
 	eurAsset = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: [4]byte{'e', 'u', 'r', 0},
 			Issuer:    issuer,
 		},
@@ -37,7 +37,7 @@ var (
 
 	chfAsset = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: [4]byte{'c', 'h', 'f', 0},
 			Issuer:    issuer,
 		},
@@ -45,7 +45,7 @@ var (
 
 	yenAsset = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: [4]byte{'y', 'e', 'n', 0},
 			Issuer:    issuer,
 		},

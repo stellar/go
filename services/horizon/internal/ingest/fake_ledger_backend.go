@@ -72,7 +72,7 @@ func fakeTrustline() xdr.LedgerEntryChange {
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(account),
 					Balance:   123,
-					Asset:     xdr.MustNewCreditAsset("usd", account),
+					Asset:     xdr.MustNewCreditAsset("usd", account).ToTrustLineAsset(),
 				},
 			},
 		},

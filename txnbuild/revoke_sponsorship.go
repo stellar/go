@@ -83,7 +83,7 @@ func (r *RevokeSponsorship) BuildXDR(withMuxedAccounts bool) (xdr.Operation, err
 		if err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect TrustLine asset")
 		}
-		key.Asset = asset
+		key.Asset = asset.ToTrustLineAsset()
 		xdrOp.Type = xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry
 		xdrOp.LedgerKey = &xdr.LedgerKey{
 			Type:      xdr.LedgerEntryTypeTrustline,
@@ -179,7 +179,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool)
 		case xdr.LedgerEntryTypeTrustline:
 			var sponsorshipId TrustLineID
 			sponsorshipId.Account = lkey.TrustLine.AccountId.Address()
-			asset, err := assetFromXDR(lkey.TrustLine.Asset)
+			asset, err := assetFromTrustLineAssetXDR(lkey.TrustLine.Asset)
 			if err != nil {
 				return errors.Wrap(err, "error parsing Trustline Asset")
 			}

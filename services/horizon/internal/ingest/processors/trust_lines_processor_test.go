@@ -42,7 +42,7 @@ func (s *TrustLinesProcessorTestSuiteState) TearDownTest() {
 func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
@@ -78,7 +78,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -155,13 +155,13 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	// add trust line
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   0,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	unauthorizedTrustline := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   0,
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
@@ -194,13 +194,13 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   10,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	updatedUnauthorizedTrustline := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   10,
 	}
 
@@ -276,13 +276,13 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   0,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   10,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
@@ -327,25 +327,25 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   100,
 	}
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   10,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
 	otherTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   100,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 	otherUpdatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   10,
 	}
 
@@ -419,7 +419,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	unauthorizedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   0,
 	}
 
@@ -430,7 +430,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-					Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+					Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 					Balance:   0,
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 				},
@@ -456,14 +456,14 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		"RemoveTrustLine", s.ctx,
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
 	).Return(int64(1), nil).Once()
 	s.mockQ.On(
 		"RemoveTrustLine", s.ctx,
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-			Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
+			Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
 	).Return(int64(1), nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -474,7 +474,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 	trustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   0,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
@@ -493,7 +493,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 
 	updatedTrustLine := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		Balance:   10,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
@@ -540,7 +540,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-					Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+					Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 					Balance:   0,
 					Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 				},
@@ -554,7 +554,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 		"RemoveTrustLine", s.ctx,
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
 	).Return(int64(0), nil).Once()
 

@@ -50,7 +50,7 @@ func (ct *ChangeTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeChangeTrust
 	xdrOp := xdr.ChangeTrustOp{
-		Line:  xdrLine,
+		Line:  xdrLine.ToChangeTrustAsset(),
 		Limit: xdrLimit,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -75,7 +75,7 @@ func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) erro
 
 	ct.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	ct.Limit = amount.String(result.Limit)
-	asset, err := assetFromXDR(result.Line)
+	asset, err := assetFromChangeTrustAssetXDR(result.Line)
 	if err != nil {
 		return errors.Wrap(err, "error parsing asset in change_trust operation")
 	}

@@ -2023,6 +2023,79 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 	assert.Regexp(t, "transaction is not within range of the specified timebounds", err.Error())
 }
 
+func TestReadChallengeTx_validTimeboundsWithGracePeriod(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: serverKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	unixNow := time.Now().UTC().Unix()
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimebounds(unixNow+5*59, unixNow+60*60),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.NoError(t, err)
+}
+
+func TestReadChallengeTx_invalidTimeboundsWithGracePeriod(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: serverKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	unixNow := time.Now().UTC().Unix()
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimebounds(unixNow+5*61, unixNow+60*60),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.Error(t, err)
+	assert.Regexp(t, "transaction is not within range of the specified timebounds", err.Error())
+}
+
 func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -4416,4 +4489,136 @@ func TestClaimableBalanceIds(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, actualBalanceId, calculatedBalanceId)
+}
+
+func TestTransaction_marshalUnmarshalText(t *testing.T) {
+	k := keypair.MustRandom()
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
+			IncrementSequenceNum: false,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, k)
+	assert.NoError(t, err)
+
+	b64, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("tx base64:", b64)
+
+	marshaled, err := tx.MarshalText()
+	require.NoError(t, err)
+	t.Log("tx marshaled text:", string(marshaled))
+	assert.Equal(t, b64, string(marshaled))
+
+	tx2 := &Transaction{}
+	err = tx2.UnmarshalText(marshaled)
+	require.NoError(t, err)
+	assert.Equal(t, tx, tx2)
+
+	err = (&FeeBumpTransaction{}).UnmarshalText(marshaled)
+	assert.EqualError(t, err, "transaction envelope unmarshaled into Transaction is not a transaction")
+}
+
+func TestFeeBumpTransaction_marshalUnmarshalText(t *testing.T) {
+	k := keypair.MustRandom()
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
+			IncrementSequenceNum: false,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
+		},
+	)
+	require.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, k)
+	require.NoError(t, err)
+
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: k.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+
+	b64, err := fbtx.Base64()
+	require.NoError(t, err)
+	t.Log("tx base64:", b64)
+
+	marshaled, err := fbtx.MarshalText()
+	require.NoError(t, err)
+	t.Log("tx marshaled text:", string(marshaled))
+	assert.Equal(t, b64, string(marshaled))
+
+	fbtx2 := &FeeBumpTransaction{}
+	err = fbtx2.UnmarshalText(marshaled)
+	require.NoError(t, err)
+	assert.Equal(t, fbtx, fbtx2)
+
+	err = (&Transaction{}).UnmarshalText(marshaled)
+	assert.EqualError(t, err, "transaction envelope unmarshaled into FeeBumpTransaction is not a fee bump transaction")
+}
+
+func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
+	k := keypair.MustRandom()
+
+	// GenericTransaction containing nothing.
+	gtx := &GenericTransaction{}
+	_, err := gtx.MarshalText()
+	assert.EqualError(t, err, "unable to marshal empty GenericTransaction")
+
+	// GenericTransaction containing a Transaction.
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
+			IncrementSequenceNum: false,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
+		},
+	)
+	require.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, k)
+	require.NoError(t, err)
+	txb64, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("tx base64:", txb64)
+
+	gtx = tx.ToGenericTransaction()
+	marshaled, err := gtx.MarshalText()
+	require.NoError(t, err)
+	t.Log("tx marshaled text:", string(marshaled))
+	assert.Equal(t, txb64, string(marshaled))
+	gtx2 := &GenericTransaction{}
+	err = gtx2.UnmarshalText(marshaled)
+	require.NoError(t, err)
+	assert.Equal(t, gtx, gtx2)
+
+	// GenericTransaction containing a FeeBumpTransaction.
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: k.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtxb64, err := fbtx.Base64()
+	require.NoError(t, err)
+	t.Log("fbtx base64:", fbtxb64)
+
+	fbgtx := fbtx.ToGenericTransaction()
+	marshaled, err = fbgtx.MarshalText()
+	require.NoError(t, err)
+	t.Log("fbtx marshaled text:", string(marshaled))
+	assert.Equal(t, fbtxb64, string(marshaled))
+	fbgtx2 := &GenericTransaction{}
+	err = fbgtx2.UnmarshalText(marshaled)
+	require.NoError(t, err)
+	assert.Equal(t, fbgtx, fbgtx2)
 }

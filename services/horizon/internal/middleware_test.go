@@ -347,8 +347,12 @@ func TestCheckHistoryStaleMiddleware(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			state := ledger.Status{
-				CoreLatest:    testCase.coreLatest,
-				HistoryLatest: testCase.historyLatest,
+				CoreStatus: ledger.CoreStatus{
+					CoreLatest: testCase.coreLatest,
+				},
+				HorizonStatus: ledger.HorizonStatus{
+					HistoryLatest: testCase.historyLatest,
+				},
 			}
 			ledgerState := &ledger.State{}
 			ledgerState.SetStatus(state)
