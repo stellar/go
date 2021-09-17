@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -113,23 +114,46 @@ func dfs(
 		bestExchangeRate := xdr.Int64(0)
 		var bestAsset xdr.Asset
 
+		usedPool, beatPool := false, false
+
 		// For each asset, we first evaluate the pool (if any), then offers,
 		// because pool exchange rates can only be evaluated with an amount.
 		if pool := venues.pool; pool.Body.ConstantProduct != nil {
 			if updatedVisitedPools.Contains(pool.LiquidityPoolId) {
 				continue
 			}
-
 			updatedVisitedPools.Add(pool.LiquidityPoolId)
+
+			// Notice that we do evaluate LPs for assets we may have already
+			// visited, because the amounts change depending on what we're
+			// offering to the LP, and asking for X of asset Y is not the same
+			// asking for X of asset Z in a Y<-->Z pool.
+			//
+			// TODO: Add test case that demonstrates this.
+
+			otherAsset := getOtherAsset(currentAsset, pool)
+
+			// There's no reason to consider LPs
+			// skip := false
+			// for _, asset := range updatedVisitedList {
+			// 	if otherAsset.Equals(asset) {
+			// 		skip = true
+			// 	}
+			// }
+			// if !skip {
 			amount, err := makeTrade(pool, currentAsset,
 				tradeTypeExpectation, currentAssetAmount)
-			otherAsset := getOtherAsset(currentAsset, pool)
 
 			if err == nil { // TODO: Should we differentiate errors?
 				bestExchangeRate = amount
 				bestAsset = otherAsset
+				usedPool = true
 			}
+			// }
 		}
+
+		// fmt.Printf("venues for %s -> %s: %+v\n",
+		// 	getCode(currentAsset), nextAssetString, venues)
 
 		if offers := venues.offers; len(offers) > 0 {
 			nextAsset, nextAssetAmount, err := state.consumeOffers(
@@ -154,8 +178,17 @@ func dfs(
 			if nextAssetAmount <= bestExchangeRate || bestExchangeRate == 0 {
 				bestExchangeRate = nextAssetAmount
 				bestAsset = nextAsset
+				beatPool = true
 			}
 		}
+
+		if bestExchangeRate == 0 { // avoid unnecessary extra recursion
+			continue
+		}
+
+		fmt.Printf("To get %s for %d %s -> %d (pool=%t, offer=%t)\n",
+			getCode(bestAsset), currentAssetAmount, getCode(currentAsset),
+			bestExchangeRate, usedPool, beatPool)
 
 		if err := dfs(
 			ctx,
