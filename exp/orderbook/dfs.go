@@ -68,12 +68,21 @@ type searchState interface {
 	) (xdr.Asset, xdr.Int64, error)
 }
 
+func contains(list []string, want string) bool {
+	for i := 0; i < len(list); i++ {
+		if list[i] == want {
+			return true
+		}
+	}
+	return false
+}
+
 func dfs(
 	ctx context.Context,
 	state searchState,
 	maxPathLength int,
-	visited []xdr.Asset,
-	visitedPools *IdSet,
+	visitedAssets []xdr.Asset,
+	visitedAssetStrings []string,
 	remainingTerminalNodes int,
 	currentAssetString string,
 	currentAsset xdr.Asset,
@@ -83,19 +92,13 @@ func dfs(
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if currentAssetAmount <= 0 {
-		return nil
-	}
-	for _, asset := range visited {
-		if asset.Equals(currentAsset) {
-			return nil
-		}
-	}
 
-	updatedVisitedList := append(visited, currentAsset)
+	updatedVisitedAssets := append(visitedAssets, currentAsset)
+	updatedVisitedStrings := append(visitedAssetStrings, currentAssetString)
+
 	if state.isTerminalNode(currentAssetString, currentAssetAmount) {
 		state.appendToPaths(
-			updatedVisitedList,
+			updatedVisitedAssets,
 			currentAssetString,
 			currentAssetAmount,
 		)
@@ -104,23 +107,21 @@ func dfs(
 
 	// abort search if we've visited all destination nodes or if we've exceeded
 	// maxPathLength
-	if remainingTerminalNodes == 0 || len(updatedVisitedList) > maxPathLength {
+	if remainingTerminalNodes == 0 || len(updatedVisitedStrings) > maxPathLength {
 		return nil
 	}
 
-	updatedVisitedPools := visitedPools.Clone()
 	for nextAssetString, venues := range state.venues(currentAssetString) {
+		if contains(visitedAssetStrings, nextAssetString) {
+			continue
+		}
+
 		bestExchangeRate := xdr.Int64(0)
 		var bestAsset xdr.Asset
 
 		// For each asset, we first evaluate the pool (if any), then offers,
 		// because pool exchange rates can only be evaluated with an amount.
 		if pool := venues.pool; pool.Body.ConstantProduct != nil {
-			if updatedVisitedPools.Contains(pool.LiquidityPoolId) {
-				continue
-			}
-			updatedVisitedPools.Add(pool.LiquidityPoolId)
-
 			// Notice that we do evaluate LPs for assets we may have already
 			// visited, because the amounts change depending on what we're
 			// offering to the LP, and asking for X of asset Y is not the same
@@ -174,8 +175,8 @@ func dfs(
 			ctx,
 			state,
 			maxPathLength,
-			updatedVisitedList,
-			updatedVisitedPools,
+			updatedVisitedAssets,
+			updatedVisitedStrings,
 			remainingTerminalNodes,
 			nextAssetString,
 			bestAsset,
