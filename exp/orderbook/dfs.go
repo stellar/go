@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -152,9 +151,6 @@ func dfs(
 			// }
 		}
 
-		// fmt.Printf("venues for %s -> %s: %+v\n",
-		// 	getCode(currentAsset), nextAssetString, venues)
-
 		if offers := venues.offers; len(offers) > 0 {
 			nextAsset, nextAssetAmount, err := state.consumeOffers(
 				currentAssetAmount,
@@ -185,10 +181,6 @@ func dfs(
 		if bestExchangeRate == 0 { // avoid unnecessary extra recursion
 			continue
 		}
-
-		fmt.Printf("To get %s for %d %s -> %d (pool=%t, offer=%t)\n",
-			getCode(bestAsset), currentAssetAmount, getCode(currentAsset),
-			bestExchangeRate, usedPool, beatPool)
 
 		if err := dfs(
 			ctx,

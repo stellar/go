@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding"
-	"fmt"
 	"math"
 	"sort"
 	"testing"
@@ -2095,15 +2094,13 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			5,
 		)
 
-		expectedPaths := []Path{
-			{
-				SourceAsset:       chfAsset,
-				SourceAmount:      chfNeeded,
-				DestinationAsset:  yenAsset,
-				DestinationAmount: 100,
-				InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
-			},
-		}
+		expectedPaths := []Path{{
+			SourceAsset:       chfAsset,
+			SourceAmount:      chfNeeded,
+			DestinationAsset:  yenAsset,
+			DestinationAmount: 100,
+			InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
+		}}
 
 		assert.NoError(t, err)
 		assertPathEquals(t, expectedPaths, paths)
@@ -2168,10 +2165,6 @@ func TestInterleavedPaths(t *testing.T) {
 		5,
 	)
 
-	for _, path := range paths {
-		printPath(path)
-	}
-
 	// There should be two paths: one that consumes the EUR/XLM offers and one
 	// that goes through the USD/XLM liquidity pool.
 	//
@@ -2216,23 +2209,4 @@ func TestInterleavedPaths(t *testing.T) {
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
-}
-
-func printPath(path Path) {
-	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
-
-	for _, hop := range path.InteriorNodes {
-		fmt.Printf("%s -> ", getCode(hop))
-	}
-
-	fmt.Printf("%d %s\n",
-		path.DestinationAmount, getCode(path.DestinationAsset))
-}
-
-func getCode(asset xdr.Asset) string {
-	code := asset.GetCode()
-	if code == "" {
-		return "XLM"
-	}
-	return code
 }
