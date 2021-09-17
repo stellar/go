@@ -113,8 +113,6 @@ func dfs(
 		bestExchangeRate := xdr.Int64(0)
 		var bestAsset xdr.Asset
 
-		usedPool, beatPool := false, false
-
 		// For each asset, we first evaluate the pool (if any), then offers,
 		// because pool exchange rates can only be evaluated with an amount.
 		if pool := venues.pool; pool.Body.ConstantProduct != nil {
@@ -146,7 +144,6 @@ func dfs(
 			if err == nil { // TODO: Should we differentiate errors?
 				bestExchangeRate = amount
 				bestAsset = otherAsset
-				usedPool = true
 			}
 			// }
 		}
@@ -174,7 +171,6 @@ func dfs(
 			if nextAssetAmount <= bestExchangeRate || bestExchangeRate == 0 {
 				bestExchangeRate = nextAssetAmount
 				bestAsset = nextAsset
-				beatPool = true
 			}
 		}
 
