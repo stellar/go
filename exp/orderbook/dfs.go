@@ -126,18 +126,11 @@ func dfs(
 			// offering to the LP, and asking for X of asset Y is not the same
 			// asking for X of asset Z in a Y<-->Z pool.
 			//
-			// TODO: Add test case that demonstrates this.
+			// TODO: I only *think* this is true, and should add a test case
+			//       that demonstrates this.
 
 			otherAsset := getOtherAsset(currentAsset, pool)
 
-			// There's no reason to consider LPs
-			// skip := false
-			// for _, asset := range updatedVisitedList {
-			// 	if otherAsset.Equals(asset) {
-			// 		skip = true
-			// 	}
-			// }
-			// if !skip {
 			amount, err := makeTrade(pool, currentAsset,
 				tradeTypeExpectation, currentAssetAmount)
 
@@ -145,7 +138,6 @@ func dfs(
 				bestExchangeRate = amount
 				bestAsset = otherAsset
 			}
-			// }
 		}
 
 		if offers := venues.offers; len(offers) > 0 {
@@ -253,12 +245,13 @@ func (state *sellingGraphSearchState) appendToPaths(
 
 func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Venues {
 	result := make(map[string]Venues,
-		// we're overshooting by up to 2x, but it's a reasonable size hint
-		len(state.graph.edgesForSellingAsset)+
-			len(state.graph.liquidityPoolsForAsset))
+		// we're overshooting by up to 2x, but it's still a reasonable size hint
+		len(state.graph.edgesForSellingAsset)+len(state.graph.liquidityPoolsForAsset))
 
 	// FIXME: I really don't like this whole "check or set" approach; lookups
-	//        are suboptimal and the code itself isn't clean.
+	//        are suboptimal and the code itself isn't clean. This needs a
+	//        refactor either way (deeper integration into the graph, I think),
+	//        so it'll get resolved eventually.
 
 	for nextAsset, offers := range state.graph.edgesForSellingAsset[currentAsset] {
 		if opp, ok := result[nextAsset]; ok {
@@ -345,10 +338,11 @@ func (state *buyingGraphSearchState) appendToPaths(
 	})
 }
 
-// TODO
+// TODO: Behaves like the former `edges()` for now.
 func (state *buyingGraphSearchState) venues(currentAsset string) map[string]Venues {
-	result := map[string]Venues{}
-	for nextAsset, offers := range state.graph.edgesForBuyingAsset[currentAsset] {
+	edges := state.graph.edgesForBuyingAsset[currentAsset]
+	result := make(map[string]Venues, len(edges))
+	for nextAsset, offers := range edges {
 		result[nextAsset] = Venues{offers: offers}
 	}
 	return result
