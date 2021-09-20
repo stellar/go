@@ -59,11 +59,21 @@ type searchState interface {
 	) (xdr.Asset, xdr.Int64, error)
 }
 
+func contains(list []string, want string) bool {
+	for i := 0; i < len(list); i++ {
+		if list[i] == want {
+			return true
+		}
+	}
+	return false
+}
+
 func dfs(
 	ctx context.Context,
 	state searchState,
 	maxPathLength int,
-	visited []xdr.Asset,
+	visitedAssets []xdr.Asset,
+	visitedAssetStrings []string,
 	remainingTerminalNodes int,
 	currentAssetString string,
 	currentAsset xdr.Asset,
@@ -73,31 +83,25 @@ func dfs(
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if currentAssetAmount <= 0 {
-		return nil
-	}
-	for _, asset := range visited {
-		if asset.Equals(currentAsset) {
-			return nil
-		}
-	}
 
-	updatedVisitedList := append(visited, currentAsset)
+	updatedVisitedAssets := append(visitedAssets, currentAsset)
+	updatedVisitedStrings := append(visitedAssetStrings, currentAssetString)
+
 	if state.isTerminalNode(currentAssetString, currentAssetAmount) {
 		state.appendToPaths(
-			updatedVisitedList,
+			updatedVisitedAssets,
 			currentAssetString,
 			currentAssetAmount,
 		)
 		remainingTerminalNodes--
 	}
 	// abort search if we've visited all destination nodes or if we've exceeded maxPathLength
-	if remainingTerminalNodes == 0 || len(updatedVisitedList) > maxPathLength {
+	if remainingTerminalNodes == 0 || len(updatedVisitedStrings) > maxPathLength {
 		return nil
 	}
 
 	for nextAssetString, offers := range state.edges(currentAssetString) {
-		if len(offers) == 0 {
+		if len(offers) == 0 || contains(visitedAssetStrings, nextAssetString) {
 			continue
 		}
 
@@ -113,7 +117,8 @@ func dfs(
 			ctx,
 			state,
 			maxPathLength,
-			updatedVisitedList,
+			updatedVisitedAssets,
+			updatedVisitedStrings,
 			remainingTerminalNodes,
 			nextAssetString,
 			nextAsset,

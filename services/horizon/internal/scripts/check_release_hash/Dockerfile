@@ -9,6 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils git zip unzip apt-transport-https ca-certificates
 RUN wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true apt-key add -
 RUN echo "deb https://apt.stellar.org xenial stable" >/etc/apt/sources.list.d/SDF.list
+RUN echo "deb https://apt.stellar.org xenial testing" >/etc/apt/sources.list.d/SDF-testing.list
 
 RUN git clone https://github.com/stellar/go.git /go/src/github.com/stellar/go
 # Fetch dependencies and prebuild binaries. Not necessary but will make check faster.
