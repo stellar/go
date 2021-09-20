@@ -129,7 +129,11 @@ type Metrics struct {
 	LedgerStatsCounter *prometheus.CounterVec
 
 	// ProcessorsRunDuration exposes processors run durations.
+	// Deprecated in favour of: ProcessorsRunDurationSummary.
 	ProcessorsRunDuration *prometheus.CounterVec
+
+	// ProcessorsRunDurationSummary exposes processors run durations.
+	ProcessorsRunDurationSummary *prometheus.SummaryVec
 
 	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
 	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
@@ -323,6 +327,14 @@ func (s *system) initMetrics() {
 		prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "ingest", Name: "processor_run_duration_seconds_total",
 			Help: "run durations of ingestion processors",
+		},
+		[]string{"name"},
+	)
+
+	s.metrics.ProcessorsRunDurationSummary = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "processor_run_duration_seconds",
+			Help: "run durations of ingestion processors, sliding window = 10m",
 		},
 		[]string{"name"},
 	)
