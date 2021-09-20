@@ -1197,6 +1197,12 @@ func setTrustLineFlagDetails(flagDetails map[string]interface{}, flags xdr.Trust
 	}
 }
 
+type sortableClaimableBalanceEntries []*xdr.ClaimableBalanceEntry
+
+func (s sortableClaimableBalanceEntries) Len() int           { return len(s) }
+func (s sortableClaimableBalanceEntries) Less(i, j int) bool { return s[i].Asset.LessThan(s[j].Asset) }
+func (s sortableClaimableBalanceEntries) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 	source := e.operation.SourceAccount()
 	lp, delta, err := e.operation.getLiquidityPoolAndProductDelta(nil)
@@ -1212,6 +1218,7 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 		return err
 	}
 	assetToCBID := map[string]string{}
+	var cbs sortableClaimableBalanceEntries
 	for _, change := range changes {
 		if change.Type == xdr.LedgerEntryTypeClaimableBalance && change.Pre == nil && change.Post != nil {
 			cb := change.Post.Data.ClaimableBalance
@@ -1220,15 +1227,20 @@ func (e *effectsWrapper) addLiquidityPoolRevokedEffect() error {
 				return err
 			}
 			assetToCBID[cb.Asset.StringCanonical()] = id
-			if err := e.addClaimableBalanceEntryCreatedEffects(source, cb); err != nil {
-				return err
-			}
-
+			cbs = append(cbs, cb)
 		}
 	}
 	if len(assetToCBID) == 0 {
 		// no claimable balances were created, and thus, no revocation happened
 		return nil
+	}
+	// Core's claimable balance metadata isn't ordered, so we order it ourselves
+	// so that effects are ordered consistently
+	sort.Sort(cbs)
+	for _, cb := range cbs {
+		if err := e.addClaimableBalanceEntryCreatedEffects(source, cb); err != nil {
+			return err
+		}
 	}
 
 	reservesRevoked := make([]map[string]string, 0, 2)
