@@ -2024,6 +2024,79 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 	assert.Regexp(t, "transaction is not within range of the specified timebounds", err.Error())
 }
 
+func TestReadChallengeTx_validTimeboundsWithGracePeriod(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: serverKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	unixNow := time.Now().UTC().Unix()
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimebounds(unixNow+5*59, unixNow+60*60),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.NoError(t, err)
+}
+
+func TestReadChallengeTx_invalidTimeboundsWithGracePeriod(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: serverKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	unixNow := time.Now().UTC().Unix()
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimebounds(unixNow+5*61, unixNow+60*60),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
+	assert.Error(t, err)
+	assert.Regexp(t, "transaction is not within range of the specified timebounds", err.Error())
+}
+
 func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()

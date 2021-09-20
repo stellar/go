@@ -24,12 +24,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q := &mockDBQ{}
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
@@ -119,12 +113,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		).Once()
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
@@ -197,11 +185,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
@@ -239,8 +222,6 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	defer mock.AssertExpectationsForObjects(t, q)
 
 	// Twice = checking ledgerSource and historyArchiveSource
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(&history.MockOffersBatchInsertBuilder{}).Twice()
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockAccountDataBatchInsertBuilder{}).Twice()
 	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
@@ -342,12 +323,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	}
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
@@ -418,11 +393,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	}
 
 	// Batches
-	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
-		Return(mockOffersBatchInsertBuilder).Once()
-
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
