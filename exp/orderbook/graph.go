@@ -14,6 +14,7 @@ import (
 var (
 	errOfferNotPresent     = errors.New("offer is not present in the order book graph")
 	errEmptyOffers         = errors.New("offers is empty")
+	errNoVenues            = errors.New("no liquidity pool or offers")
 	errAssetAmountIsZero   = errors.New("current asset amount is 0")
 	errSoldTooMuch         = errors.New("sold more than current balance")
 	errBatchAlreadyApplied = errors.New("cannot apply batched updates more than once")
@@ -238,6 +239,22 @@ func (graph *OrderBookGraph) add(offer xdr.OfferEntry) error {
 	} else {
 		set.add(sellingAsset, offer)
 	}
+
+	// if venues, ok := graph.venuesForSellingAsset[sellingAsset]; ok {
+	// 	venues.offers = append(venues.offers, offer)
+	// } else {
+	// 	graph.venuesForBuyingAsset[sellingAsset] = Venues{
+	// 		offers: []xdr.OfferEntry{offer},
+	// 	}
+	// }
+
+	// if venues, ok := graph.venuesForBuyingAsset[buyingAsset]; ok {
+	// 	venues.offers = append(venues.offers, offer)
+	// } else {
+	// 	graph.venuesForBuyingAsset[buyingAsset] = Venues{
+	// 		offers: []xdr.OfferEntry{offer},
+	// 	}
+	// }
 
 	return nil
 }
@@ -619,4 +636,12 @@ func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
 		return cp.Params.AssetB
 	}
 	return cp.Params.AssetA
+}
+
+func getCode(asset xdr.Asset) string {
+	code := asset.GetCode()
+	if code == "" {
+		return "XLM"
+	}
+	return code
 }

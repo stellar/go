@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -41,7 +42,7 @@ func (p *Path) DestinationAssetString() string {
 
 type Venues struct {
 	offers []xdr.OfferEntry
-	pool   xdr.LiquidityPoolEntry
+	pool   xdr.LiquidityPoolEntry // can be empty, check body pointer
 }
 
 type searchState interface {
@@ -61,6 +62,12 @@ type searchState interface {
 	// The result is grouped by the next asset hop, mapping to a list of offers
 	// and a liquidity pool, if one exists for that trading pair.
 	venues(currentAsset string) map[string]Venues
+
+	processVenues(
+		asset xdr.Asset,
+		assetAmount xdr.Int64,
+		venues Venues,
+	) (xdr.Asset, xdr.Int64, error)
 
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
@@ -111,65 +118,35 @@ func dfs(
 		return nil
 	}
 
+	fmt.Println("Evaluating neighbors of", getCode(currentAsset))
 	for nextAssetString, venues := range state.venues(currentAssetString) {
+		fmt.Println("  evaluating", nextAssetString)
 		if contains(visitedAssetStrings, nextAssetString) {
+			fmt.Println("    skipping")
 			continue
 		}
 
-		bestExchangeRate := xdr.Int64(0)
-		var bestAsset xdr.Asset
-
-		// For each asset, we first evaluate the pool (if any), then offers,
-		// because pool exchange rates can only be evaluated with an amount.
-		if pool := venues.pool; pool.Body.ConstantProduct != nil {
-			// Notice that we do evaluate LPs for assets we may have already
-			// visited, because the amounts change depending on what we're
-			// offering to the LP, and asking for X of asset Y is not the same
-			// asking for X of asset Z in a Y<-->Z pool.
-			//
-			// TODO: I only *think* this is true, and should add a test case
-			//       that demonstrates this.
-
-			otherAsset := getOtherAsset(currentAsset, pool)
-
-			amount, err := makeTrade(pool, currentAsset,
-				tradeTypeExpectation, currentAssetAmount)
-
-			if err == nil { // TODO: Should we differentiate errors?
-				bestExchangeRate = amount
-				bestAsset = otherAsset
-			}
+		// Notice that we do evaluate LPs for assets we may have already
+		// visited, because the amounts change depending on what we're
+		// offering to the LP, and asking for X of asset Y is not the same
+		// asking for X of asset Z in a Y<-->Z pool.
+		//
+		// TODO: I only *think* this is true, and should add a test case
+		//       that demonstrates this.
+		nextAsset, nextAssetAmount, err := state.processVenues(
+			currentAsset, currentAssetAmount, venues)
+		if err != nil {
+			return err
 		}
 
-		if offers := venues.offers; len(offers) > 0 {
-			nextAsset, nextAssetAmount, err := state.consumeOffers(
-				currentAssetAmount,
-				offers,
-			)
-
-			// We should only error out if the LP trade didn't happen.
-			if err != nil {
-				if bestExchangeRate == 0 {
-					return err
-				}
-
-				continue
-			}
-
-			// TODO: Move this check into consumeOffers to optimize it.
-			//
-			// TODO: Should we prefer offers or LPs if the exchange is
-			//       equivalent? My gut says offers, because (a) there's no fee
-			//       and (b) we reduce the orderbook size.
-			if nextAssetAmount <= bestExchangeRate || bestExchangeRate == 0 {
-				bestExchangeRate = nextAssetAmount
-				bestAsset = nextAsset
-			}
-		}
-
-		if bestExchangeRate == 0 { // avoid unnecessary extra recursion
+		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
 			continue
 		}
+
+		fmt.Printf("To get %s for %d %s -> %d\n",
+			getCode(nextAsset),
+			currentAssetAmount, getCode(currentAsset),
+			nextAssetAmount)
 
 		if err := dfs(
 			ctx,
@@ -179,8 +156,8 @@ func dfs(
 			updatedVisitedStrings,
 			remainingTerminalNodes,
 			nextAssetString,
-			bestAsset,
-			bestExchangeRate,
+			nextAsset,
+			nextAssetAmount,
 		); err != nil {
 			return err
 		}
@@ -249,19 +226,14 @@ func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Ven
 		// we're overshooting by up to 2x, but it's still a reasonable size hint
 		len(state.graph.edgesForSellingAsset)+len(state.graph.liquidityPoolsForAsset))
 
+	for nextAsset, offers := range state.graph.edgesForSellingAsset[currentAsset] {
+		result[nextAsset] = Venues{offers: offers}
+	}
+
 	// FIXME: I really don't like this whole "check or set" approach; lookups
 	//        are suboptimal and the code itself isn't clean. This needs a
 	//        refactor either way (deeper integration into the graph, I think),
 	//        so it'll get resolved eventually.
-
-	for nextAsset, offers := range state.graph.edgesForSellingAsset[currentAsset] {
-		if opp, ok := result[nextAsset]; ok {
-			opp.offers = offers
-		} else {
-			result[nextAsset] = Venues{offers: offers}
-		}
-	}
-
 	for _, pool := range state.graph.liquidityPoolsForAsset[currentAsset] {
 		params := pool.Body.MustConstantProduct().Params
 		otherAsset := params.AssetA.String()
@@ -277,6 +249,70 @@ func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Ven
 	}
 
 	return result
+}
+
+func (state *sellingGraphSearchState) shouldIgnoreOffer(offer xdr.OfferEntry) bool {
+	return state.ignoreOffersFrom != nil &&
+		state.ignoreOffersFrom.Equals(offer.SellerId)
+}
+
+func (state *sellingGraphSearchState) processVenues(
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+	venues Venues,
+) (xdr.Asset, xdr.Int64, error) {
+	var nextAsset xdr.Asset
+
+	if currentAssetAmount == 0 {
+		return nextAsset, 0, errAssetAmountIsZero
+	}
+
+	// We evaluate the pool venue (if any) before offers, because pool exchange
+	// rates can only be evaluated with an amount.
+	expectedPoolInput := xdr.Int64(0)
+	if pool := venues.pool; pool.Body.ConstantProduct != nil {
+		otherAsset := getOtherAsset(currentAsset, pool)
+
+		amount, err := makeTrade(pool, currentAsset,
+			tradeTypeExpectation, currentAssetAmount)
+
+		if err == nil { // TODO: Should we differentiate errors?
+			expectedPoolInput = amount
+			nextAsset = otherAsset
+		}
+		fmt.Println("Evaluating pool", err)
+	}
+
+	fmt.Println("Pool needs", expectedPoolInput)
+
+	offers := venues.offers
+	if expectedPoolInput == 0 && len(offers) == 0 {
+		return nextAsset, 0, errNoVenues
+	}
+
+	fmt.Println(offers)
+
+	nextAssetAmount := expectedPoolInput
+	offerAsset, offerAmount, err := state.consumeOffers(
+		currentAssetAmount,
+		offers,
+	)
+
+	if offerAmount <= 0 || err != nil {
+		// We should only error out the offers if the LP trade didn't happen.
+		if expectedPoolInput == 0 {
+			return nextAsset, 0, err
+		}
+		// Otherwise, evaluate the offers against the pool trade.
+		// TODO: Move this into consumeOffers.
+	} else {
+		if offerAmount < expectedPoolInput || expectedPoolInput == 0 { // offers outperform pool!
+			nextAsset = offerAsset
+			nextAssetAmount = offerAmount
+		}
+	}
+
+	return nextAsset, nextAssetAmount, nil
 }
 
 func (state *sellingGraphSearchState) consumeOffers(
@@ -349,6 +385,14 @@ func (state *buyingGraphSearchState) venues(currentAsset string) map[string]Venu
 	return result
 }
 
+func (state *buyingGraphSearchState) processVenues(
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+	venues Venues,
+) (xdr.Asset, xdr.Int64, error) {
+	return state.consumeOffers(currentAssetAmount, venues.offers)
+}
+
 func (state *buyingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
 	offers []xdr.OfferEntry,
@@ -367,16 +411,15 @@ func consumeOffersForSellingAsset(
 	ignoreOffersFrom *xdr.AccountId,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
 	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
+		return 0, errEmptyOffers
 	}
 
 	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
+		return 0, errAssetAmountIsZero
 	}
 
+	totalConsumed := xdr.Int64(0)
 	for i := 0; i < len(offers); i++ {
 		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offers[i].SellerId) {
 			continue

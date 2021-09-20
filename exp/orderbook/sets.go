@@ -2,6 +2,7 @@ package orderbook
 
 import "github.com/stellar/go/xdr"
 
+// IdSet provides a set-like container of liquidity pool IDs.
 type IdSet struct {
 	m map[xdr.PoolId]struct{}
 }
@@ -25,22 +26,4 @@ func (s *IdSet) Clone() *IdSet {
 		newSet.m[key] = value
 	}
 	return newSet
-}
-
-type AssetSet struct {
-	m map[string]struct{}
-}
-
-func (s *AssetSet) Contains(elem xdr.Asset) bool {
-	_, ok := s.m[elem.String()]
-	return ok
-}
-
-func (s *AssetSet) ContainsStr(elem string) bool {
-	_, ok := s.m[elem]
-	return ok
-}
-
-func (s *AssetSet) Add(elem xdr.Asset) {
-	s.m[elem.String()] = struct{}{}
 }
