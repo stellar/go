@@ -83,5 +83,4 @@ require (
 	gopkg.in/gorp.v1 v1.7.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.4.1
 	gopkg.in/tylerb/graceful.v1 v1.2.13
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
