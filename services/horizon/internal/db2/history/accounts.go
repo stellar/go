@@ -112,18 +112,6 @@ func (q *Q) UpsertAccounts(ctx context.Context, accounts []AccountEntry) error {
 	return q.upsertRows(ctx, "accounts", "account_id", upsertFields)
 }
 
-// RemoveAccount deletes a row in the accounts table.
-// Returns number of rows affected and error.
-func (q *Q) RemoveAccount(ctx context.Context, accountID string) (int64, error) {
-	sql := sq.Delete("accounts").Where(sq.Eq{"account_id": accountID})
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
-}
-
 // RemoveAccounts deletes a row in the accounts table.
 // Returns number of rows affected and error.
 func (q *Q) RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error) {
