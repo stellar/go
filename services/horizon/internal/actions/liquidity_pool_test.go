@@ -37,10 +37,7 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 		LastModifiedLedger: 100,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-	err := builder.Add(tt.Ctx, lp)
-	tt.Assert.NoError(err)
-	err = builder.Exec(tt.Ctx)
+	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp})
 	tt.Assert.NoError(err)
 
 	handler := GetLiquidityPoolByIDHandler{}
@@ -95,8 +92,7 @@ func TestGetLiquidityPools(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-	err := builder.Add(tt.Ctx, history.LiquidityPool{
+	lp1 := history.LiquidityPool{
 		PoolID:         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
 		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 		Fee:            30,
@@ -113,9 +109,8 @@ func TestGetLiquidityPools(t *testing.T) {
 			},
 		},
 		LastModifiedLedger: 100,
-	})
-	tt.Assert.NoError(err)
-	err = builder.Add(tt.Ctx, history.LiquidityPool{
+	}
+	lp2 := history.LiquidityPool{
 		PoolID:         "d827bf10a721d217de3cd9ab3f10198a54de558c093a511ec426028618df2633",
 		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 		Fee:            30,
@@ -132,9 +127,8 @@ func TestGetLiquidityPools(t *testing.T) {
 			},
 		},
 		LastModifiedLedger: 100,
-	})
-	tt.Assert.NoError(err)
-	err = builder.Exec(tt.Ctx)
+	}
+	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp1, lp2})
 	tt.Assert.NoError(err)
 
 	handler := GetLiquidityPoolsHandler{}

@@ -33,17 +33,21 @@ func TestFindLiquidityPool(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, lp)
+	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
 
 	lpObtained, err := q.FindLiquidityPoolByID(tt.Ctx, lp.PoolID)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal(lp, lpObtained)
+}
+
+func removeLiquidityPool(t *test.T, q *Q, lp LiquidityPool, sequence uint32) {
+	removed := lp
+	removed.Deleted = true
+	removed.LastModifiedLedger = sequence
+	err := q.UpsertLiquidityPools(t.Ctx, []LiquidityPool{removed})
+	t.Assert.NoError(err)
 }
 
 func TestRemoveLiquidityPool(t *testing.T) {
@@ -71,12 +75,8 @@ func TestRemoveLiquidityPool(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, lp)
+	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
 
 	count, err := q.CountLiquidityPools(tt.Ctx)
 	tt.Assert.NoError(err)
@@ -86,9 +86,7 @@ func TestRemoveLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(lpObtained)
 
-	removed, err := q.RemoveLiquidityPool(tt.Ctx, lp.PoolID, 200)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), removed)
+	removeLiquidityPool(tt, q, lp, 200)
 
 	_, err = q.FindLiquidityPoolByID(tt.Ctx, lp.PoolID)
 	tt.Assert.EqualError(err, "sql: no rows in result set")
@@ -111,9 +109,8 @@ func TestRemoveLiquidityPool(t *testing.T) {
 	lp.Deleted = false
 	lp.ShareCount = 1
 	lp.TrustlineCount = 2
-	err = builder.Add(tt.Ctx, lp)
+	err = q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
-	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	lpObtained, err = q.FindLiquidityPoolByID(tt.Ctx, lp.PoolID)
@@ -148,12 +145,8 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, lp)
+	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
 
 	// query by no asset
 	query := LiquidityPoolsQuery{
@@ -203,9 +196,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 0)
 
-	removed, err := q.RemoveLiquidityPool(tt.Ctx, lp.PoolID, 200)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), removed)
+	removeLiquidityPool(tt, q, lp, 200)
 
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
@@ -251,12 +242,8 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, lp)
+	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
 
 	compationSequence, err := q.GetLiquidityPoolCompactionSequence(tt.Ctx)
 	tt.Assert.NoError(err)
@@ -279,7 +266,7 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 1)
 
-	q.RemoveLiquidityPool(tt.Ctx, lp.PoolID, 200)
+	removeLiquidityPool(tt, q, lp, 200)
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
 	tt.Assert.NoError(err)
@@ -333,12 +320,8 @@ func TestUpdateLiquidityPool(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, initialLP)
+	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{initialLP})
 	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
 
 	updatedLP := LiquidityPool{
 		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
@@ -359,9 +342,8 @@ func TestUpdateLiquidityPool(t *testing.T) {
 		LastModifiedLedger: 124,
 	}
 
-	updated, err := q.UpdateLiquidityPool(tt.Ctx, updatedLP)
+	err = q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{updatedLP})
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), updated)
 
 	lps := []LiquidityPool{}
 	err = q.Select(tt.Ctx, &lps, selectLiquidityPools)
@@ -396,20 +378,14 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, lp)
+	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
 
 	r, err := q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 1)
 
-	removed, err := q.RemoveLiquidityPool(tt.Ctx, lp.PoolID, 200)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), removed)
+	removeLiquidityPool(tt, q, lp, 200)
 
 	r, err = q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)

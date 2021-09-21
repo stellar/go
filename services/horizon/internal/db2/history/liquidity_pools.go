@@ -4,12 +4,9 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
-	"fmt"
-	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -80,16 +77,9 @@ func (lpar *LiquidityPoolAssetReserve) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type LiquidityPoolsBatchInsertBuilder interface {
-	Add(ctx context.Context, lp LiquidityPool) error
-	Exec(ctx context.Context) error
-}
-
 // QLiquidityPools defines liquidity-pool-related queries.
 type QLiquidityPools interface {
-	NewLiquidityPoolsBatchInsertBuilder(maxBatchSize int) LiquidityPoolsBatchInsertBuilder
-	UpdateLiquidityPool(ctx context.Context, lp LiquidityPool) (int64, error)
-	RemoveLiquidityPool(ctx context.Context, liquidityPoolID string, lastModifiedLedger uint32) (int64, error)
+	UpsertLiquidityPools(ctx context.Context, lps []LiquidityPool) error
 	GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error)
 	GetAllLiquidityPools(ctx context.Context) ([]LiquidityPool, error)
 	CountLiquidityPools(ctx context.Context) (int, error)
@@ -98,25 +88,37 @@ type QLiquidityPools interface {
 	CompactLiquidityPools(ctx context.Context, cutOffSequence uint32) (int64, error)
 }
 
-// NewLiquidityPoolsBatchInsertBuilder constructs a new LiquidityPoolsBatchInsertBuilder instance
-func (q *Q) NewLiquidityPoolsBatchInsertBuilder(maxBatchSize int) LiquidityPoolsBatchInsertBuilder {
-	cols := db.ColumnsForStruct(LiquidityPool{})
-	excludedCols := make([]string, len(cols))
-	for i, col := range cols {
-		excludedCols[i] = "EXCLUDED." + col
+// UpsertLiquidityPools upserts a batch of liquidity pools  in the liquidity_pools table.
+// There's currently no limit of the number of liquidity pools this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
+func (q *Q) UpsertLiquidityPools(ctx context.Context, lps []LiquidityPool) error {
+	var poolID, typ, fee, shareCount, trustlineCount,
+		assetReserves, lastModifiedLedger, deleted []interface{}
+
+	for _, lp := range lps {
+		poolID = append(poolID, lp.PoolID)
+		typ = append(typ, lp.Type)
+		fee = append(fee, lp.Fee)
+		trustlineCount = append(trustlineCount, lp.TrustlineCount)
+		shareCount = append(shareCount, lp.ShareCount)
+		assetReserves = append(assetReserves, lp.AssetReserves)
+		lastModifiedLedger = append(lastModifiedLedger, lp.LastModifiedLedger)
+		deleted = append(deleted, lp.Deleted)
 	}
-	suffix := fmt.Sprintf(
-		"ON CONFLICT (id) DO UPDATE SET (%s) = (%s)",
-		strings.Join(cols, ", "),
-		strings.Join(excludedCols, ", "),
-	)
-	return &liquidityPoolsBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("liquidity_pools"),
-			MaxBatchSize: maxBatchSize,
-			Suffix:       suffix,
-		},
+
+	upsertFields := []upsertField{
+		{"id", "text", poolID},
+		{"type", "smallint", typ},
+		{"fee", "integer", fee},
+		{"trustline_count", "bigint", trustlineCount},
+		{"share_count", "bigint", shareCount},
+		{"asset_reserves", "jsonb", assetReserves},
+		{"last_modified_ledger", "integer", lastModifiedLedger},
+		{"deleted", "boolean", deleted},
 	}
+
+	return q.upsertRows(ctx, "liquidity_pools", "id", upsertFields)
 }
 
 // CountLiquidityPools returns the total number of liquidity pools  in the DB
@@ -138,33 +140,6 @@ func (q *Q) GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]Liqu
 		Where(map[string]interface{}{"lp.id": poolIDs})
 	err := q.Select(ctx, &liquidityPools, sql)
 	return liquidityPools, err
-}
-
-// UpdateLiquidityPool updates a row in the liquidity_pools table.
-// Returns number of rows affected and error.
-func (q *Q) UpdateLiquidityPool(ctx context.Context, lp LiquidityPool) (int64, error) {
-	updateBuilder := q.GetTable("liquidity_pools").Update()
-	result, err := updateBuilder.SetStruct(lp, []string{}).Where("id = ?", lp.PoolID).Exec(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
-}
-
-// RemoveLiquidityPool marks the given liquidity pool as deleted.
-// Returns number of rows affected and error.
-func (q *Q) RemoveLiquidityPool(ctx context.Context, liquidityPoolID string, lastModifiedLedger uint32) (int64, error) {
-	sql := sq.Update("liquidity_pools").
-		Set("deleted", true).
-		Set("last_modified_ledger", lastModifiedLedger).
-		Where(sq.Eq{"id": liquidityPoolID})
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
 }
 
 // FindLiquidityPoolByID returns a liquidity pool.
@@ -232,18 +207,6 @@ func (q *Q) CompactLiquidityPools(ctx context.Context, cutOffSequence uint32) (i
 	}
 
 	return result.RowsAffected()
-}
-
-type liquidityPoolsBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
-}
-
-func (i *liquidityPoolsBatchInsertBuilder) Add(ctx context.Context, lp LiquidityPool) error {
-	return i.builder.RowStruct(ctx, lp)
-}
-
-func (i *liquidityPoolsBatchInsertBuilder) Exec(ctx context.Context) error {
-	return i.builder.Exec(ctx)
 }
 
 var liquidityPoolsSelectStatement = "lp.id, " +

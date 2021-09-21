@@ -19,31 +19,23 @@ func TestLiquidityPoolsChangeProcessorTestSuiteState(t *testing.T) {
 
 type LiquidityPoolsChangeProcessorTestSuiteState struct {
 	suite.Suite
-	ctx                    context.Context
-	processor              *LiquidityPoolsChangeProcessor
-	mockQ                  *history.MockQLiquidityPools
-	mockBatchInsertBuilder *history.MockLiquidityPoolsBatchInsertBuilder
-	sequence               uint32
+	ctx       context.Context
+	processor *LiquidityPoolsChangeProcessor
+	mockQ     *history.MockQLiquidityPools
+	sequence  uint32
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQLiquidityPools{}
-	s.mockBatchInsertBuilder = &history.MockLiquidityPoolsBatchInsertBuilder{}
-
-	s.mockQ.
-		On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder)
 
 	s.sequence = 456
 	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ, s.sequence)
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
-	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestNoEntries() {
@@ -93,8 +85,8 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteState) TestCreatesLiquidityPools(
 		},
 		LastModifiedLedger: 123,
 	}
+	s.mockQ.On("UpsertLiquidityPools", s.ctx, []history.LiquidityPool{lp}).Return(nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", s.ctx, lp).Return(nil).Once()
 	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -117,28 +109,21 @@ func TestLiquidityPoolsChangeProcessorTestSuiteLedger(t *testing.T) {
 
 type LiquidityPoolsChangeProcessorTestSuiteLedger struct {
 	suite.Suite
-	ctx                    context.Context
-	processor              *LiquidityPoolsChangeProcessor
-	mockQ                  *history.MockQLiquidityPools
-	mockBatchInsertBuilder *history.MockLiquidityPoolsBatchInsertBuilder
-	sequence               uint32
+	ctx       context.Context
+	processor *LiquidityPoolsChangeProcessor
+	mockQ     *history.MockQLiquidityPools
+	sequence  uint32
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQLiquidityPools{}
-	s.mockBatchInsertBuilder = &history.MockLiquidityPoolsBatchInsertBuilder{}
-
-	s.mockQ.
-		On("NewLiquidityPoolsBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder)
 
 	s.sequence = 456
 	s.processor = NewLiquidityPoolsChangeProcessor(s.mockQ, s.sequence)
 }
 
 func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
@@ -233,13 +218,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestNewLiquidityPool() {
 		},
 		LastModifiedLedger: 123,
 	}
-	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockBatchInsertBuilder.On(
-		"Add",
-		s.ctx,
-		postLP,
-	).Return(nil).Once()
-
+	s.mockQ.On("UpsertLiquidityPools", s.ctx, []history.LiquidityPool{postLP}).Return(nil).Once()
 	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }
 
@@ -318,12 +297,7 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestUpdateLiquidityPool()
 		LastModifiedLedger: 123,
 	}
 
-	s.mockQ.On(
-		"UpdateLiquidityPool",
-		s.ctx,
-		postLP,
-	).Return(int64(1), nil).Once()
-
+	s.mockQ.On("UpsertLiquidityPools", s.ctx, []history.LiquidityPool{postLP}).Return(nil).Once()
 	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }
 
@@ -366,12 +340,9 @@ func (s *LiquidityPoolsChangeProcessorTestSuiteLedger) TestRemoveLiquidityPool()
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On(
-		"RemoveLiquidityPool",
-		s.ctx,
-		"cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		s.sequence,
-	).Return(int64(1), nil).Once()
-
+	deleted := s.processor.ledgerEntryToRow(&pre)
+	deleted.Deleted = true
+	deleted.LastModifiedLedger = s.processor.sequence
+	s.mockQ.On("UpsertLiquidityPools", s.ctx, []history.LiquidityPool{deleted}).Return(nil).Once()
 	s.mockQ.On("CompactLiquidityPools", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 }
