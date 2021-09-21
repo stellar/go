@@ -36,18 +36,13 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
-	q.MockQAccounts.On("UpsertAccounts", ctx, []xdr.LedgerEntry{
+	q.MockQAccounts.On("UpsertAccounts", ctx, []history.AccountEntry{
 		{
-			LastModifiedLedgerSeq: 1,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId:  xdr.MustAddress("GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"),
-					Balance:    xdr.Int64(1000000000000000000),
-					SeqNum:     xdr.SequenceNumber(0),
-					Thresholds: [4]byte{1, 0, 0, 0},
-				},
-			},
+			LastModifiedLedger: 1,
+			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+			Balance:            int64(1000000000000000000),
+			SequenceNumber:     0,
+			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
 
@@ -119,18 +114,13 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
-	q.MockQAccounts.On("UpsertAccounts", ctx, []xdr.LedgerEntry{
+	q.MockQAccounts.On("UpsertAccounts", ctx, []history.AccountEntry{
 		{
-			LastModifiedLedgerSeq: 1,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					AccountId:  xdr.MustAddress("GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"),
-					Balance:    xdr.Int64(1000000000000000000),
-					SeqNum:     xdr.SequenceNumber(0),
-					Thresholds: [4]byte{1, 0, 0, 0},
-				},
-			},
+			LastModifiedLedger: 1,
+			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+			Balance:            int64(1000000000000000000),
+			SequenceNumber:     0,
+			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
 
