@@ -77,11 +77,6 @@ func (lpar *LiquidityPoolAssetReserve) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type LiquidityPoolsBatchInsertBuilder interface {
-	Add(ctx context.Context, lp LiquidityPool) error
-	Exec(ctx context.Context) error
-}
-
 // QLiquidityPools defines liquidity-pool-related queries.
 type QLiquidityPools interface {
 	UpsertLiquidityPools(ctx context.Context, lps []LiquidityPool) error
