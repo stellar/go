@@ -523,6 +523,8 @@ func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]
 		processorName = strings.Replace(processorName, "*", "", -1)
 		s.Metrics().ProcessorsRunDuration.
 			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
+		s.Metrics().ProcessorsRunDurationSummary.
+			With(prometheus.Labels{"name": processorName}).Observe(value.Seconds())
 	}
 }
 

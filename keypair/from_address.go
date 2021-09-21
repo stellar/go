@@ -15,7 +15,27 @@ import (
 // Some operations will panic otherwise. It's recommended that you create these
 // structs through the Parse() method.
 type FromAddress struct {
-	address string
+	address   string
+	publicKey ed25519.PublicKey
+}
+
+func newFromAddress(address string) (*FromAddress, error) {
+	payload, err := strkey.Decode(strkey.VersionByteAccountID, address)
+	if err != nil {
+		return nil, err
+	}
+	pub := ed25519.PublicKey(payload)
+	return &FromAddress{
+		address:   address,
+		publicKey: pub,
+	}, nil
+}
+
+func newFromAddressWithPublicKey(address string, publicKey ed25519.PublicKey) *FromAddress {
+	return &FromAddress{
+		address:   address,
+		publicKey: publicKey,
+	}
 }
 
 func (kp *FromAddress) Address() string {
@@ -29,7 +49,7 @@ func (kp *FromAddress) FromAddress() *FromAddress {
 }
 
 func (kp *FromAddress) Hint() (r [4]byte) {
-	copy(r[:], kp.publicKey()[28:])
+	copy(r[:], kp.publicKey[28:])
 	return
 }
 
@@ -37,7 +57,7 @@ func (kp *FromAddress) Verify(input []byte, sig []byte) error {
 	if len(sig) != 64 {
 		return ErrInvalidSignature
 	}
-	if !ed25519.Verify(kp.publicKey(), input, sig) {
+	if !ed25519.Verify(kp.publicKey, input, sig) {
 		return ErrInvalidSignature
 	}
 	return nil
@@ -63,10 +83,6 @@ func (kp *FromAddress) Equal(a *FromAddress) bool {
 		return false
 	}
 	return kp.address == a.address
-}
-
-func (kp *FromAddress) publicKey() ed25519.PublicKey {
-	return ed25519.PublicKey(strkey.MustDecode(strkey.VersionByteAccountID, kp.address))
 }
 
 var (
