@@ -502,9 +502,8 @@ const (
 // how much to deposit to achieve this. We call this an "expectation", and you
 // should pass tradeTypeExpectation.
 //
-// In (1), this returns the amount that would be paid out by the pool for
-// depositing `amount` of `asset` alongside the new state of the liquidity pool
-// after this exchange.
+// In (1), this returns the amount that would be paid out by the pool (in terms
+// of the *other* asset) for depositing `amount` of `asset`.
 //
 // In (2), this returns the amount of `asset` necessary to give to the pool in
 // order to get `amount` of the other asset in return.
@@ -638,6 +637,7 @@ func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
 	return cp.Params.AssetA
 }
 
+// getCode is a helper to return a string code for an asset (for debugging).
 func getCode(asset xdr.Asset) string {
 	code := asset.GetCode()
 	if code == "" {

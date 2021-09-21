@@ -116,7 +116,6 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 				tx.orderbook.liquidityPoolsForAsset[a], *entry)
 			tx.orderbook.liquidityPoolsForAsset[b] = append(
 				tx.orderbook.liquidityPoolsForAsset[b], *entry)
-
 		case removeLiquidityPoolOperationType:
 			delete(tx.orderbook.liquidityPoolsForAsset, operation.liquidityPoolAssets.buyingAsset)
 			delete(tx.orderbook.liquidityPoolsForAsset, operation.liquidityPoolAssets.sellingAsset)

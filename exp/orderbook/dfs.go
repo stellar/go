@@ -63,16 +63,18 @@ type searchState interface {
 	// and a liquidity pool, if one exists for that trading pair.
 	venues(currentAsset string) map[string]Venues
 
-	processVenues(
-		asset xdr.Asset,
-		assetAmount xdr.Int64,
-		venues Venues,
-	) (xdr.Asset, xdr.Int64, error)
+	chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool)
 
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
 		offers []xdr.OfferEntry,
 	) (xdr.Asset, xdr.Int64, error)
+
+	consumePool(
+		pool xdr.LiquidityPoolEntry,
+		currentAsset xdr.Asset,
+		currentAssetAmount xdr.Int64,
+	) (xdr.Int64, error)
 }
 
 func contains(list []string, want string) bool {
@@ -133,13 +135,15 @@ func dfs(
 		//
 		// TODO: I only *think* this is true, and should add a test case
 		//       that demonstrates this.
-		nextAsset, nextAssetAmount, err := state.processVenues(
+		nextAsset, nextAssetAmount, err := processVenues(state,
 			currentAsset, currentAssetAmount, venues)
 		if err != nil {
+			fmt.Println("    process error:", err)
 			return err
 		}
 
 		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
+			fmt.Println("    bad amount:", nextAssetAmount)
 			continue
 		}
 
@@ -256,63 +260,13 @@ func (state *sellingGraphSearchState) shouldIgnoreOffer(offer xdr.OfferEntry) bo
 		state.ignoreOffersFrom.Equals(offer.SellerId)
 }
 
-func (state *sellingGraphSearchState) processVenues(
-	currentAsset xdr.Asset,
-	currentAssetAmount xdr.Int64,
-	venues Venues,
-) (xdr.Asset, xdr.Int64, error) {
-	var nextAsset xdr.Asset
-
-	if currentAssetAmount == 0 {
-		return nextAsset, 0, errAssetAmountIsZero
+func (state *sellingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
+	// For sell-state, we are aiming to minimize the amount of the source assets
+	// we need to get to the destination, hence the < here.
+	if offerAmount < poolAmount || poolAmount == 0 {
+		return offerAmount, true
 	}
-
-	// We evaluate the pool venue (if any) before offers, because pool exchange
-	// rates can only be evaluated with an amount.
-	expectedPoolInput := xdr.Int64(0)
-	if pool := venues.pool; pool.Body.ConstantProduct != nil {
-		otherAsset := getOtherAsset(currentAsset, pool)
-
-		amount, err := makeTrade(pool, currentAsset,
-			tradeTypeExpectation, currentAssetAmount)
-
-		if err == nil { // TODO: Should we differentiate errors?
-			expectedPoolInput = amount
-			nextAsset = otherAsset
-		}
-		fmt.Println("Evaluating pool", err)
-	}
-
-	fmt.Println("Pool needs", expectedPoolInput)
-
-	offers := venues.offers
-	if expectedPoolInput == 0 && len(offers) == 0 {
-		return nextAsset, 0, errNoVenues
-	}
-
-	fmt.Println(offers)
-
-	nextAssetAmount := expectedPoolInput
-	offerAsset, offerAmount, err := state.consumeOffers(
-		currentAssetAmount,
-		offers,
-	)
-
-	if offerAmount <= 0 || err != nil {
-		// We should only error out the offers if the LP trade didn't happen.
-		if expectedPoolInput == 0 {
-			return nextAsset, 0, err
-		}
-		// Otherwise, evaluate the offers against the pool trade.
-		// TODO: Move this into consumeOffers.
-	} else {
-		if offerAmount < expectedPoolInput || expectedPoolInput == 0 { // offers outperform pool!
-			nextAsset = offerAsset
-			nextAssetAmount = offerAmount
-		}
-	}
-
-	return nextAsset, nextAssetAmount, nil
+	return poolAmount, false
 }
 
 func (state *sellingGraphSearchState) consumeOffers(
@@ -320,12 +274,21 @@ func (state *sellingGraphSearchState) consumeOffers(
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
 	var nextAsset xdr.Asset
-	nextAmount, err := consumeOffersForSellingAsset(offers, state.ignoreOffersFrom, currentAssetAmount)
+	nextAmount, err := consumeOffersForSellingAsset(
+		offers, state.ignoreOffersFrom, currentAssetAmount)
 	if err == nil {
 		nextAsset = offers[0].Buying
 	}
 
 	return nextAsset, nextAmount, err
+}
+
+func (state *sellingGraphSearchState) consumePool(
+	pool xdr.LiquidityPoolEntry,
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+) (xdr.Int64, error) {
+	return makeTrade(pool, currentAsset, tradeTypeExpectation, currentAssetAmount)
 }
 
 // buyingGraphSearchState configures a DFS on the orderbook graph where only
@@ -375,22 +338,36 @@ func (state *buyingGraphSearchState) appendToPaths(
 	})
 }
 
-// TODO: Behaves like the former `edges()` for now.
 func (state *buyingGraphSearchState) venues(currentAsset string) map[string]Venues {
-	edges := state.graph.edgesForBuyingAsset[currentAsset]
-	result := make(map[string]Venues, len(edges))
-	for nextAsset, offers := range edges {
+	result := make(map[string]Venues)
+
+	for nextAsset, offers := range state.graph.edgesForBuyingAsset[currentAsset] {
 		result[nextAsset] = Venues{offers: offers}
 	}
+
+	for _, pool := range state.graph.liquidityPoolsForAsset[currentAsset] {
+		params := pool.Body.MustConstantProduct().Params
+		otherAsset := params.AssetA.String()
+		if otherAsset == currentAsset {
+			otherAsset = params.AssetB.String()
+		}
+
+		venue := Venues{pool: pool}
+		if existingVenues, ok := result[otherAsset]; ok {
+			venue.offers = existingVenues.offers
+		}
+		result[otherAsset] = venue
+	}
+
 	return result
 }
 
-func (state *buyingGraphSearchState) processVenues(
-	currentAsset xdr.Asset,
-	currentAssetAmount xdr.Int64,
-	venues Venues,
-) (xdr.Asset, xdr.Int64, error) {
-	return state.consumeOffers(currentAssetAmount, venues.offers)
+func (state *buyingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
+	// For buy-state, we maximize the amount instead.
+	if offerAmount > poolAmount || poolAmount == 0 {
+		return offerAmount, true
+	}
+	return poolAmount, false
 }
 
 func (state *buyingGraphSearchState) consumeOffers(
@@ -404,6 +381,14 @@ func (state *buyingGraphSearchState) consumeOffers(
 	}
 
 	return nextAsset, nextAmount, err
+}
+
+func (state *buyingGraphSearchState) consumePool(
+	pool xdr.LiquidityPoolEntry,
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+) (xdr.Int64, error) {
+	return makeTrade(pool, currentAsset, tradeTypeDeposit, currentAssetAmount)
 }
 
 func consumeOffersForSellingAsset(
@@ -517,4 +502,61 @@ func consumeOffersForBuyingAsset(
 	}
 
 	return -1, nil
+}
+
+func processVenues(
+	state searchState,
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+	venues Venues,
+) (xdr.Asset, xdr.Int64, error) {
+	var nextAsset xdr.Asset
+
+	if currentAssetAmount == 0 {
+		return nextAsset, 0, errAssetAmountIsZero
+	}
+
+	// We evaluate the pool venue (if any) before offers, because pool exchange
+	// rates can only be evaluated with an amount.
+	poolAmount := xdr.Int64(0)
+	if pool := venues.pool; pool.Body.ConstantProduct != nil {
+		amount, err := state.consumePool(pool, currentAsset, currentAssetAmount)
+		if err == nil { // TODO: Should we differentiate errors?
+			nextAsset = getOtherAsset(currentAsset, pool)
+			poolAmount = amount
+		}
+
+		fmt.Println("Evaluating pool, err =", err)
+		fmt.Println("Pool offers", poolAmount, "of", getCode(nextAsset),
+			"for", currentAssetAmount, "of", getCode(currentAsset))
+	} else {
+		fmt.Println("skipped pool:", venues.pool)
+	}
+
+	offers := venues.offers
+	if poolAmount == 0 && len(offers) == 0 {
+		return nextAsset, 0, errNoVenues
+	}
+
+	fmt.Println("Offer list:", offers)
+
+	nextAssetAmount := poolAmount
+	offerAsset, offerAmount, err := state.consumeOffers(currentAssetAmount, offers)
+
+	if offerAmount <= 0 || err != nil {
+		// We should only error out the offers if the LP trade didn't happen.
+		if poolAmount == 0 {
+			return nextAsset, 0, err
+		}
+	} else {
+		// Otherwise, evaluate the offers relative to the pool trade.
+		if bestAmount, choseOffer := state.chooseVenue(
+			offerAmount, poolAmount,
+		); choseOffer {
+			nextAssetAmount = bestAmount
+			nextAsset = offerAsset
+		}
+	}
+
+	return nextAsset, nextAssetAmount, nil
 }
