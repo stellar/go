@@ -76,6 +76,10 @@ func (pa ArchivePool) BucketExists(bucket Hash) (bool, error) {
 	return pa.GetAnyArchive().BucketExists(bucket)
 }
 
+func (pa ArchivePool) BucketSize(bucket Hash) (int64, error) {
+	return pa.GetAnyArchive().BucketSize(bucket)
+}
+
 func (pa ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	return pa.GetAnyArchive().CategoryCheckpointExists(cat, chk)
 }
