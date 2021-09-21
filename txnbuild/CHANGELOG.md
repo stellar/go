@@ -8,6 +8,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 * GenericTransaction, Transaction, and FeeBumpTransaction now implement
 encoding.TextMarshaler and encoding.TextUnmarshaler.
+* Adds 5-minute grace period to `transaction.ReadChallengeTx`'s minimum time bound constraint. ([#3824](https://github.com/stellar/go/pull/3824))
 
 ## [v7.1.1](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.1) - 2021-06-25
 

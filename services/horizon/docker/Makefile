@@ -1,7 +1,7 @@
 SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
 
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
-BUILD_DATE := $(shell date --utc --rfc-3339=seconds)
+BUILD_DATE := $(shell date -u +%FT%TZ)
 
 TAG ?= stellar/stellar-horizon:$(VERSION)
 

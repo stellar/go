@@ -204,7 +204,8 @@ func (i *Test) prepareShutdownHandlers() {
 			if i.app != nil {
 				i.app.Close()
 			}
-			i.runComposeCommand("down", "-v", "--remove-orphans")
+			i.runComposeCommand("rm", "-fvs", "core")
+			i.runComposeCommand("rm", "-fvs", "core-postgres")
 		},
 		i.environment.Restore,
 	)

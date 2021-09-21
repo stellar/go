@@ -86,6 +86,15 @@ func contains(list []string, want string) bool {
 	return false
 }
 
+func contains(list []string, want string) bool {
+	for i := 0; i < len(list); i++ {
+		if list[i] == want {
+			return true
+		}
+	}
+	return false
+}
+
 func dfs(
 	ctx context.Context,
 	state searchState,
