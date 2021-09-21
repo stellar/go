@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding"
+	"fmt"
 	"math"
 	"sort"
 	"testing"
@@ -1998,6 +1999,36 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, 499, int64(payout))
 		}
+
+		// More sanity checks; if they fail, something was changed about how
+		// constant product liquidity pools work.
+		//
+		// We use these oddly-specific values because we rely on them again to
+		// validate paths in later tests.
+		testTable := []struct {
+			dstAsset       xdr.Asset
+			pool           xdr.LiquidityPoolEntry
+			expectedPayout xdr.Int64
+			expectedInput  xdr.Int64
+		}{
+			{yenAsset, eurYenLiquidityPool, 100, 112},
+			{eurAsset, eurUsdLiquidityPool, 112, 127},
+			{nativeAsset, nativeUsdPool, 5, 27},
+			{usdAsset, usdChfLiquidityPool, 127, 342},
+			{usdAsset, usdChfLiquidityPool, 27, 58},
+		}
+
+		for _, test := range testTable {
+			needed, err := makeTrade(test.pool, test.dstAsset,
+				tradeTypeExpectation, test.expectedPayout)
+
+			assert.NoError(t, err)
+			assert.EqualValuesf(t, test.expectedInput, needed,
+				"expected exchange of %d %s -> %d %s, got %d",
+				test.expectedInput, getCode(getOtherAsset(test.dstAsset, test.pool)),
+				test.expectedPayout, getCode(test.dstAsset),
+				needed)
+		}
 	})
 
 	t.Run("fail on bad exchange amounts", func(t *testing.T) {
@@ -2022,18 +2053,6 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 	fakeSource := xdr.MustAddress(kp.Address())
 
 	t.Run("happy path", func(t *testing.T) {
-		// These are sanity checks that shouldn't ever fail; if they do,
-		// something was changed about how constant product liquidity pools
-		// work.
-		eurNeeded, err := makeTrade(eurYenLiquidityPool, yenAsset, tradeTypeExpectation, 100)
-		assert.NoError(t, err)
-		assert.EqualValuesf(t, eurNeeded, 112,
-			"expected exchange of 112 EUR -> 100 Yen, got %d", eurNeeded)
-
-		usdNeeded, err := makeTrade(eurUsdLiquidityPool, eurAsset, tradeTypeExpectation, 112)
-		assert.EqualValuesf(t, usdNeeded, 127,
-			"expected exchange of 127 USD -> 112 EUR, got %d", usdNeeded)
-
 		paths, _, err := graph.FindPaths(
 			context.TODO(),
 			5,           // more than enough hops
@@ -2041,7 +2060,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			100,         // less than LP reserves for either pool
 			&fakeSource, // fake source account to ignore pools from
 			[]xdr.Asset{usdAsset},
-			[]xdr.Int64{usdNeeded}, // we only exactly the right amount of $ to trade
+			[]xdr.Int64{127}, // we only exactly the right amount of $ to trade
 			true,
 			5, // irrelevant
 		)
@@ -2053,7 +2072,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		expectedPaths := []Path{
 			{
 				SourceAsset:       usdAsset,
-				SourceAmount:      usdNeeded,
+				SourceAmount:      127,
 				DestinationAsset:  yenAsset,
 				DestinationAmount: 100,
 				InteriorNodes:     []xdr.Asset{eurAsset},
@@ -2076,27 +2095,21 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 
 	t.Run("more hops", func(t *testing.T) {
 		// The conversion rate is different this time: one more more hop means
-		// one more exchange rate to deal with. As before, we sanity check here
-		// (just the last step, though) both to check that the calculators work
-		// and to check the path itself.
-		chfNeeded, err := makeTrade(usdChfLiquidityPool, usdAsset, tradeTypeExpectation, 127)
-		assert.EqualValuesf(t, chfNeeded, 342, // not linear because not 1:1
-			"expected exchange of 342 CHF -> 127 USD, got %d", chfNeeded)
-
+		// one more exchange rate to deal with.
 		paths, _, err := graph.FindPaths(context.TODO(),
 			5,
 			yenAsset, // different path: CHF -> USD -> EUR -> Yen
 			100,
 			&fakeSource,
 			[]xdr.Asset{chfAsset},
-			[]xdr.Int64{chfNeeded},
+			[]xdr.Int64{342},
 			true,
 			5,
 		)
 
 		expectedPaths := []Path{{
 			SourceAsset:       chfAsset,
-			SourceAmount:      chfNeeded,
+			SourceAmount:      342,
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 100,
 			InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
@@ -2122,8 +2135,7 @@ func TestInterleavedPaths(t *testing.T) {
 		Buying:   eurAsset,
 		Amount:   10,
 		Price:    xdr.Price{1, 1},
-	})
-	graph.AddOffers(xdr.OfferEntry{
+	}, xdr.OfferEntry{
 		SellerId: issuer,
 		OfferId:  xdr.Int64(43),
 		Selling:  chfAsset,
@@ -2165,6 +2177,11 @@ func TestInterleavedPaths(t *testing.T) {
 		5,
 	)
 
+	fmt.Println("Got paths:")
+	for _, path := range paths {
+		printPath(path)
+	}
+
 	// There should be two paths: one that consumes the EUR/XLM offers and one
 	// that goes through the USD/XLM liquidity pool.
 	//
@@ -2172,7 +2189,7 @@ func TestInterleavedPaths(t *testing.T) {
 	//   13 CHF for 6 USD for 5 EUR for 5 XLM
 	//
 	// If we only go through pools, it's less-so:
-	//   53 CHF for 25 USD for 5 XLM
+	//   58 CHF for 27 USD for 5 XLM
 	expectedPaths := []Path{{
 		SourceAsset:       chfAsset,
 		SourceAmount:      13,
@@ -2181,11 +2198,16 @@ func TestInterleavedPaths(t *testing.T) {
 		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
 	}, {
 		SourceAsset:       chfAsset,
-		SourceAmount:      53,
+		SourceAmount:      58,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 5,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
+
+	fmt.Println("Expected paths:")
+	for _, path := range expectedPaths {
+		printPath(path)
+	}
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
@@ -2201,7 +2223,7 @@ func TestInterleavedPaths(t *testing.T) {
 
 	expectedPaths = []Path{{
 		SourceAsset:       chfAsset,
-		SourceAmount:      164,
+		SourceAmount:      186,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 11,
 		InteriorNodes:     []xdr.Asset{usdAsset},
@@ -2209,4 +2231,57 @@ func TestInterleavedPaths(t *testing.T) {
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
+}
+
+func TestInterleavedFixedPaths(t *testing.T) {
+	graph := NewOrderBookGraph()
+	graph.AddLiquidityPools(nativeUsdPool, nativeEurPool,
+		eurUsdLiquidityPool, usdChfLiquidityPool)
+	if !assert.NoErrorf(t, graph.Apply(1), "applying LPs to graph failed") {
+		t.FailNow()
+	}
+	graph.AddOffers(xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(42),
+		Selling:  eurAsset,
+		Buying:   nativeAsset,
+		Amount:   10,
+		Price:    xdr.Price{1, 1},
+	}, xdr.OfferEntry{
+		SellerId: issuer,
+		OfferId:  xdr.Int64(43),
+		Selling:  chfAsset,
+		Buying:   usdAsset,
+		Amount:   1,
+		Price:    xdr.Price{1, 1},
+	})
+	if !assert.NoErrorf(t, graph.Apply(2), "applying offers to graph failed") {
+		t.FailNow()
+	}
+
+	paths, _, err := graph.FindFixedPaths(context.TODO(),
+		5,
+		nativeAsset,
+		1000,
+		[]xdr.Asset{chfAsset},
+		5,
+	)
+
+	fmt.Println("Got paths:")
+	for _, path := range paths {
+		printPath(path)
+	}
+
+	assert.NoError(t, err)
+}
+
+func printPath(path Path) {
+	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
+
+	for _, hop := range path.InteriorNodes {
+		fmt.Printf("%s -> ", getCode(hop))
+	}
+
+	fmt.Printf("%d %s\n",
+		path.DestinationAmount, getCode(path.DestinationAsset))
 }
