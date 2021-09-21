@@ -28,12 +28,8 @@ func TestSequenceProviderGet(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, account1)
+	err := q.UpsertAccounts(tt.Ctx, []AccountEntry{account1, account2})
 	assert.NoError(t, err)
-	err = batch.Add(tt.Ctx, account2)
-	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	results, err := q.GetSequenceNumbers(tt.Ctx, []string{
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
@@ -42,6 +38,6 @@ func TestSequenceProviderGet(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, results, 2)
-	assert.Equal(t, uint64(account1.Data.Account.SeqNum), results["GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"])
-	assert.Equal(t, uint64(account2.Data.Account.SeqNum), results["GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7"])
+	assert.Equal(t, uint64(account1.SequenceNumber), results["GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"])
+	assert.Equal(t, uint64(account2.SequenceNumber), results["GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7"])
 }

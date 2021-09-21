@@ -13,13 +13,14 @@ import (
 
 var (
 	trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	sponsorXDR      = xdr.MustAddress(sponsor)
 
 	eurTrustLine = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
-				AccountId: account1.Data.Account.AccountId,
+				AccountId: xdr.MustAddress(account1.AccountID),
 				Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   30000,
 				Limit:     223456789,
@@ -38,7 +39,7 @@ var (
 		Ext: xdr.LedgerEntryExt{
 			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: &sponsor,
+				SponsoringId: &sponsorXDR,
 			},
 		},
 	}
@@ -125,7 +126,7 @@ func TestInsertTrustLine(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, lines, 2)
 
-	assert.Equal(t, null.StringFrom(sponsor.Address()), lines[0].Sponsor)
+	assert.Equal(t, null.StringFrom(sponsor), lines[0].Sponsor)
 }
 
 func TestUpdateTrustLine(t *testing.T) {
@@ -253,7 +254,7 @@ func TestUpsertTrustLines(t *testing.T) {
 		Ext: xdr.LedgerEntryExt{
 			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: &sponsor,
+				SponsoringId: &sponsorXDR,
 			},
 		},
 	}
@@ -417,7 +418,7 @@ func TestAssetsForAddress(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	ledgerEntries := []xdr.LedgerEntry{account1}
+	ledgerEntries := []AccountEntry{account1}
 
 	err := q.UpsertAccounts(tt.Ctx, ledgerEntries)
 	assert.NoError(t, err)
@@ -430,7 +431,7 @@ func TestAssetsForAddress(t *testing.T) {
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
-				AccountId: account1.Data.Account.AccountId,
+				AccountId: xdr.MustAddress(account1.AccountID),
 				Asset:     xdr.MustNewCreditAsset("BRL", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   1000,
 				Limit:     20000,
@@ -463,7 +464,7 @@ func TestAssetsForAddress(t *testing.T) {
 	tt.Assert.Empty(assets)
 	tt.Assert.Empty(balances)
 
-	assets, balances, err = q.AssetsForAddress(tt.Ctx, account1.Data.Account.AccountId.Address())
+	assets, balances, err = q.AssetsForAddress(tt.Ctx, account1.AccountID)
 	tt.Assert.NoError(err)
 
 	assetsToBalance := map[string]xdr.Int64{}
