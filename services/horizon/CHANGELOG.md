@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.8.2
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* Improve performance of `OffersProcessor`. This should speed up ingestion of latest Stellar Public Network activity by up to 30%. Please note that this change does not improve reingestion speed because ledger entries are not processed during reingestion. ([3917](https://github.com/stellar/go/pull/3917))
+
 ## v2.8.1
 **Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
