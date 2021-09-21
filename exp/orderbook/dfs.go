@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -86,15 +85,6 @@ func contains(list []string, want string) bool {
 	return false
 }
 
-func contains(list []string, want string) bool {
-	for i := 0; i < len(list); i++ {
-		if list[i] == want {
-			return true
-		}
-	}
-	return false
-}
-
 func dfs(
 	ctx context.Context,
 	state searchState,
@@ -129,11 +119,8 @@ func dfs(
 		return nil
 	}
 
-	fmt.Println("Evaluating neighbors of", getCode(currentAsset))
 	for nextAssetString, venues := range state.venues(currentAssetString) {
-		fmt.Println("  evaluating", nextAssetString)
 		if contains(visitedAssetStrings, nextAssetString) {
-			fmt.Println("    skipping")
 			continue
 		}
 
@@ -147,19 +134,12 @@ func dfs(
 		nextAsset, nextAssetAmount, err := processVenues(state,
 			currentAsset, currentAssetAmount, venues)
 		if err != nil {
-			fmt.Println("    process error:", err)
 			return err
 		}
 
 		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
-			fmt.Println("    bad amount:", nextAssetAmount)
 			continue
 		}
-
-		fmt.Printf("To get %s for %d %s -> %d\n",
-			getCode(nextAsset),
-			currentAssetAmount, getCode(currentAsset),
-			nextAssetAmount)
 
 		if err := dfs(
 			ctx,
@@ -262,11 +242,6 @@ func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Ven
 	}
 
 	return result
-}
-
-func (state *sellingGraphSearchState) shouldIgnoreOffer(offer xdr.OfferEntry) bool {
-	return state.ignoreOffersFrom != nil &&
-		state.ignoreOffersFrom.Equals(offer.SellerId)
 }
 
 func (state *sellingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
@@ -534,20 +509,12 @@ func processVenues(
 			nextAsset = getOtherAsset(currentAsset, pool)
 			poolAmount = amount
 		}
-
-		fmt.Println("Evaluating pool, err =", err)
-		fmt.Println("Pool offers", poolAmount, "of", getCode(nextAsset),
-			"for", currentAssetAmount, "of", getCode(currentAsset))
-	} else {
-		fmt.Println("skipped pool:", venues.pool)
 	}
 
 	offers := venues.offers
 	if poolAmount == 0 && len(offers) == 0 {
 		return nextAsset, 0, errNoVenues
 	}
-
-	fmt.Println("Offer list:", offers)
 
 	nextAssetAmount := poolAmount
 	offerAsset, offerAmount, err := state.consumeOffers(currentAssetAmount, offers)

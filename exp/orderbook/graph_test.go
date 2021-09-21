@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding"
-	"fmt"
 	"math"
 	"sort"
 	"testing"
@@ -2177,11 +2176,6 @@ func TestInterleavedPaths(t *testing.T) {
 		5,
 	)
 
-	fmt.Println("Got paths:")
-	for _, path := range paths {
-		printPath(path)
-	}
-
 	// There should be two paths: one that consumes the EUR/XLM offers and one
 	// that goes through the USD/XLM liquidity pool.
 	//
@@ -2203,11 +2197,6 @@ func TestInterleavedPaths(t *testing.T) {
 		DestinationAmount: 5,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
-
-	fmt.Println("Expected paths:")
-	for _, path := range expectedPaths {
-		printPath(path)
-	}
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
@@ -2267,21 +2256,6 @@ func TestInterleavedFixedPaths(t *testing.T) {
 		5,
 	)
 
-	fmt.Println("Got paths:")
-	for _, path := range paths {
-		printPath(path)
-	}
-
 	assert.NoError(t, err)
-}
-
-func printPath(path Path) {
-	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
-
-	for _, hop := range path.InteriorNodes {
-		fmt.Printf("%s -> ", getCode(hop))
-	}
-
-	fmt.Printf("%d %s\n",
-		path.DestinationAmount, getCode(path.DestinationAsset))
+	assertPathEquals(t, []Path{}, paths)
 }
