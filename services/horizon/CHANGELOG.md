@@ -5,6 +5,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Fix ingestion of fee bump transactions which have muxed source accounts ([3948](https://github.com/stellar/go/pull/3948)).
 * Add an index on trade aggregations, to improve ingestion performance ([3947](https://github.com/stellar/go/pull/3947)).
 
 ## v2.8.2
