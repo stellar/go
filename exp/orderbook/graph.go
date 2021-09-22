@@ -50,17 +50,18 @@ type OBGraph interface {
 // OrderBookGraph is an in-memory graph representation of all the offers in the
 // Stellar ledger.
 type OrderBookGraph struct {
-	//
+	// venuesForBuyingAsset maps an asset to all of its buying opportunities,
+	// which may be offers (sorted by price) or a liquidity pools.
 	venuesForBuyingAsset map[string]edgeSet
-	//
+	// venuesForBuyingAsset maps an asset to all of its *selling* opportunities,
+	// which may be offers (sorted by price) or a liquidity pools.
 	venuesForSellingAsset map[string]edgeSet
-
+	// liquidityPools associates a particular asset pair (in "asset order", see
+	// xdr.Asset.LessThan) with a liquidity pool.
 	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
-
-	// tradingPairForOffer maps an offer id to the assets which are being
-	// exchanged in the given offer. It's mostly used internally to this object
-	// in order to associate specific offers with their respective edges in the
-	// graph.
+	// tradingPairForOffer maps an offer ID to the assets which are being
+	// exchanged in the given offer. It's mostly used privately in order to
+	// associate specific offers with their respective edges in the graph.
 	tradingPairForOffer map[xdr.Int64]tradingPair
 
 	// batchedUpdates is internal batch of updates to this graph. Users can

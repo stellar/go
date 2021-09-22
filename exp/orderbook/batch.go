@@ -22,8 +22,8 @@ type orderBookOperation struct {
 	operationType       int
 	offerID             xdr.Int64
 	offer               *xdr.OfferEntry
-	liquidityPool       *xdr.LiquidityPoolEntry
 	liquidityPoolAssets tradingPair
+	liquidityPool       *xdr.LiquidityPoolEntry
 }
 
 type orderBookBatchedUpdates struct {
@@ -152,7 +152,7 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 						if venues.isEmpty(otherAsset) {
 							delete(venues, otherAsset)
 						}
-					}
+					} // should we panic on !ok?
 				}
 			}
 
@@ -166,22 +166,4 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 	tx.orderbook.lastLedger = ledger
 
 	return nil
-}
-
-func removeLiquidityPool(
-	haystack []xdr.LiquidityPoolEntry,
-	needle xdr.LiquidityPoolEntry,
-) []xdr.LiquidityPoolEntry {
-	for i, pool := range haystack {
-		if needle.LiquidityPoolId != pool.LiquidityPoolId {
-			continue
-		}
-
-		// Taken from https://stackoverflow.com/a/37335777
-		L := len(haystack) - 1
-		haystack[i] = haystack[L] // swap with last
-		return haystack[:L]       // trim last
-	}
-
-	return haystack
 }

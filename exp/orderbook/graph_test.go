@@ -2154,3 +2154,26 @@ func TestInterleavedFixedPaths(t *testing.T) {
 
 	assert.NoError(t, err)
 }
+
+func printPath(path Path) {
+	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
+
+	for _, hop := range path.InteriorNodes {
+		fmt.Printf("%s -> ", getCode(hop))
+	}
+
+	fmt.Printf("%d %s\n",
+		path.DestinationAmount, getCode(path.DestinationAsset))
+}
+
+func makeVenues(offers ...xdr.OfferEntry) Venues {
+	return Venues{offers: offers}
+}
+
+func getCode(asset xdr.Asset) string {
+	code := asset.GetCode()
+	if code == "" {
+		return "xlm"
+	}
+	return code
+}

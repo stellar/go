@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -128,11 +127,6 @@ func dfs(
 		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
 			continue
 		}
-
-		fmt.Printf("To get %s for %d %s -> %d\n",
-			getCode(nextAsset),
-			currentAssetAmount, getCode(currentAsset),
-			nextAssetAmount)
 
 		if err := dfs(
 			ctx,
