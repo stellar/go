@@ -788,7 +788,7 @@ type LiquidityPool struct {
 	FeeBP              uint32                 `json:"fee_bp"`
 	Type               string                 `json:"type"`
 	TotalTrustlines    uint64                 `json:"total_trustlines,string"`
-	TotalShares        uint64                 `json:"total_shares,string"`
+	TotalShares        string                 `json:"total_shares"`
 	Reserves           []LiquidityPoolReserve `json:"reserves"`
 	LastModifiedLedger uint32                 `json:"last_modified_ledger"`
 	LastModifiedTime   *time.Time             `json:"last_modified_time"`

@@ -28,7 +28,7 @@ func PopulateLiquidityPool(
 	}
 	dest.Type = typ
 	dest.TotalTrustlines = liquidityPool.TrustlineCount
-	dest.TotalShares = liquidityPool.ShareCount
+	dest.TotalShares = amount.String(xdr.Int64(liquidityPool.ShareCount))
 	for _, reserve := range liquidityPool.AssetReserves {
 		dest.Reserves = append(dest.Reserves, protocol.LiquidityPoolReserve{
 			Asset:  reserve.Asset.StringCanonical(),
