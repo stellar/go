@@ -191,7 +191,7 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 			return false, errors.Wrap(err, "Error converting liquidity pool row to xdr")
 		}
 		if liquidityPool.Deleted {
-			o.graph.RemoveLiquidityPool(poolXDR.Body.MustConstantProduct().Params)
+			o.graph.RemoveLiquidityPool(poolXDR)
 		} else {
 			o.graph.AddLiquidityPools(poolXDR)
 		}

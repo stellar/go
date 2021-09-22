@@ -45,8 +45,8 @@ func (m *mockOrderBookGraph) RemoveOffer(id xdr.Int64) orderbook.OBGraph {
 	return args.Get(0).(orderbook.OBGraph)
 }
 
-func (m *mockOrderBookGraph) RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) orderbook.OBGraph {
-	args := m.Called(params)
+func (m *mockOrderBookGraph) RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) orderbook.OBGraph {
+	args := m.Called(pool)
 	return args.Get(0).(orderbook.OBGraph)
 }
 
