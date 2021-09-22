@@ -217,11 +217,6 @@ type AccountEntry struct {
 	NumSponsoring        uint32      `db:"num_sponsoring"`
 }
 
-type AccountsBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
 type IngestionQ interface {
 	QAccounts
 	QAssetStats
@@ -264,10 +259,9 @@ type IngestionQ interface {
 
 // QAccounts defines account related queries.
 type QAccounts interface {
-	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
 	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
-	UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error
-	RemoveAccount(ctx context.Context, accountID string) (int64, error)
+	UpsertAccounts(ctx context.Context, accounts []AccountEntry) error
+	RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error)
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
@@ -736,15 +730,6 @@ type TrustLinesBatchInsertBuilder interface {
 // trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type trustLinesBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
-}
-
-func (q *Q) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
-	return &accountsBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
 }
 
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {

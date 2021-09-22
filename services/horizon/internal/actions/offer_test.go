@@ -52,7 +52,7 @@ var (
 		Price:              float64(2),
 		Flags:              2,
 		LastModifiedLedger: uint32(4),
-		Sponsor:            null.StringFrom(sponsor.Address()),
+		Sponsor:            null.StringFrom(sponsor),
 	}
 	usdOffer = history.Offer{
 		SellerID: issuer.Address(),
@@ -268,7 +268,7 @@ func TestGetOffersHandler(t *testing.T) {
 			makeRequest(
 				t,
 				map[string]string{
-					"sponsor": sponsor.Address(),
+					"sponsor": sponsor,
 				},
 				map[string]string{},
 				q,

@@ -31,7 +31,7 @@ var (
 		Price:              float64(1),
 		Flags:              1,
 		LastModifiedLedger: uint32(1234),
-		Sponsor:            null.StringFrom(sponsor.Address()),
+		Sponsor:            null.StringFrom(sponsor),
 	}
 	twoEurOffer = Offer{
 		SellerID: twoEurOfferSeller.Address(),
@@ -359,7 +359,7 @@ func TestGetOffers(t *testing.T) {
 	t.Run("Filter by sponsor", func(t *testing.T) {
 		query := OffersQuery{
 			PageQuery: pageQuery,
-			Sponsor:   sponsor.Address(),
+			Sponsor:   sponsor,
 		}
 
 		offers, err := q.GetOffers(tt.Ctx, query)

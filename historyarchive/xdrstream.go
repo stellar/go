@@ -21,6 +21,7 @@ import (
 
 type XdrStream struct {
 	buf        bytes.Buffer
+	gzipReader *countReader
 	rdr        *countReader
 	rdr2       io.ReadCloser
 	sha256Hash hash.Hash
@@ -64,7 +65,8 @@ func NewXdrStream(in io.ReadCloser) *XdrStream {
 }
 
 func NewXdrGzStream(in io.ReadCloser) (*XdrStream, error) {
-	rdr, err := gzip.NewReader(bufReadCloser(in))
+	gzipCountReader := newCountReader(in)
+	rdr, err := gzip.NewReader(bufReadCloser(gzipCountReader))
 	if err != nil {
 		in.Close()
 		return nil, err
@@ -72,6 +74,7 @@ func NewXdrGzStream(in io.ReadCloser) (*XdrStream, error) {
 
 	stream := NewXdrStream(rdr)
 	stream.rdr2 = in
+	stream.gzipReader = gzipCountReader
 	return stream, nil
 }
 
@@ -123,21 +126,25 @@ func (x *XdrStream) Close() error {
 }
 
 func (x *XdrStream) closeReaders() error {
+	var err error
+
 	if x.rdr != nil {
-		if err := x.rdr.Close(); err != nil {
-			if x.rdr2 != nil {
-				x.rdr2.Close()
-			}
-			return err
+		if err2 := x.rdr.Close(); err2 != nil {
+			err = err2
 		}
 	}
 	if x.rdr2 != nil {
-		if err := x.rdr2.Close(); err != nil {
-			return err
+		if err2 := x.rdr2.Close(); err2 != nil {
+			err = err2
+		}
+	}
+	if x.gzipReader != nil {
+		if err2 := x.gzipReader.Close(); err2 != nil {
+			err = err2
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (x *XdrStream) ReadOne(in interface{}) error {
@@ -183,6 +190,15 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 // BytesRead returns the number of bytes read in the stream
 func (x *XdrStream) BytesRead() int64 {
 	return x.rdr.bytesRead
+}
+
+// GzipBytesRead returns the number of gzip bytes read in the stream.
+// Returns -1 if underlying reader is not gzipped.
+func (x *XdrStream) GzipBytesRead() int64 {
+	if x.gzipReader == nil {
+		return -1
+	}
+	return x.gzipReader.bytesRead
 }
 
 // Discard removes n bytes from the stream

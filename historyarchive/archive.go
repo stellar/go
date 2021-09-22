@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -68,6 +69,7 @@ type ArchiveInterface interface {
 	GetPathHAS(path string) (HistoryArchiveState, error)
 	PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error
 	BucketExists(bucket Hash) (bool, error)
+	BucketSize(bucket Hash) (int64, error)
 	CategoryCheckpointExists(cat string, chk uint32) (bool, error)
 	GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error)
 	GetRootHAS() (HistoryArchiveState, error)
@@ -162,6 +164,10 @@ func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *Command
 
 func (a *Archive) BucketExists(bucket Hash) (bool, error) {
 	return a.backend.Exists(BucketPath(bucket))
+}
+
+func (a *Archive) BucketSize(bucket Hash) (int64, error) {
+	return a.backend.Size(BucketPath(bucket))
 }
 
 func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {

@@ -47,7 +47,8 @@ func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Cha
 }
 
 func (p *AccountsProcessor) Commit(ctx context.Context) error {
-	batchUpsertAccounts := []xdr.LedgerEntry{}
+	batchUpsertAccounts := []history.AccountEntry{}
+	removeBatch := []string{}
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -63,24 +64,13 @@ func (p *AccountsProcessor) Commit(ctx context.Context) error {
 		switch {
 		case change.Post != nil:
 			// Created and updated
-			batchUpsertAccounts = append(batchUpsertAccounts, *change.Post)
+			row := p.ledgerEntryToRow(*change.Post)
+			batchUpsertAccounts = append(batchUpsertAccounts, row)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			account := change.Pre.Data.MustAccount()
 			accountID := account.AccountId.Address()
-			rowsAffected, err := p.accountsQ.RemoveAccount(ctx, accountID)
-
-			if err != nil {
-				return err
-			}
-
-			if rowsAffected != 1 {
-				return ingest.NewStateError(errors.Errorf(
-					"%d No rows affected when removing account %s",
-					rowsAffected,
-					accountID,
-				))
-			}
+			removeBatch = append(removeBatch, accountID)
 		default:
 			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
@@ -94,5 +84,50 @@ func (p *AccountsProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
+	if len(removeBatch) > 0 {
+		rowsAffected, err := p.accountsQ.RemoveAccounts(ctx, removeBatch)
+		if err != nil {
+			return errors.Wrap(err, "error in RemoveAccounts")
+		}
+
+		if rowsAffected != int64(len(removeBatch)) {
+			return ingest.NewStateError(errors.Errorf(
+				"%d rows affected when removing %d accounts",
+				rowsAffected,
+				len(removeBatch),
+			))
+		}
+	}
+
 	return nil
+}
+
+func (p *AccountsProcessor) ledgerEntryToRow(entry xdr.LedgerEntry) history.AccountEntry {
+	account := entry.Data.MustAccount()
+	liabilities := account.Liabilities()
+
+	var inflationDestination = ""
+	if account.InflationDest != nil {
+		inflationDestination = account.InflationDest.Address()
+	}
+
+	return history.AccountEntry{
+		AccountID:            account.AccountId.Address(),
+		Balance:              int64(account.Balance),
+		BuyingLiabilities:    int64(liabilities.Buying),
+		SellingLiabilities:   int64(liabilities.Selling),
+		SequenceNumber:       int64(account.SeqNum),
+		NumSubEntries:        uint32(account.NumSubEntries),
+		InflationDestination: inflationDestination,
+		Flags:                uint32(account.Flags),
+		HomeDomain:           string(account.HomeDomain),
+		MasterWeight:         account.MasterKeyWeight(),
+		ThresholdLow:         account.ThresholdLow(),
+		ThresholdMedium:      account.ThresholdMedium(),
+		ThresholdHigh:        account.ThresholdHigh(),
+		LastModifiedLedger:   uint32(entry.LastModifiedLedgerSeq),
+		Sponsor:              ledgerEntrySponsorToNullString(entry),
+		NumSponsored:         uint32(account.NumSponsored()),
+		NumSponsoring:        uint32(account.NumSponsoring()),
+	}
 }
