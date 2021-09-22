@@ -48,63 +48,71 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, ch
 }
 
 func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
-	batch := p.qClaimableBalances.NewClaimableBalancesBatchInsertBuilder(maxBatchSize)
-
+	var (
+		cbsToUpsert   []history.ClaimableBalance
+		cbIDsToDelete []xdr.ClaimableBalanceId
+	)
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
-		var err error
-		var rowsAffected int64
-		var action string
-		var ledgerKey xdr.LedgerKey
-
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
-			action = "inserting"
-			err = batch.Add(ctx, change.Post)
-			rowsAffected = 1
+			cbsToUpsert = append(cbsToUpsert, p.ledgerEntryToRow(change.Post))
 		case change.Pre != nil && change.Post == nil:
 			// Removed
-			action = "removing"
 			cBalance := change.Pre.Data.MustClaimableBalance()
-			err = ledgerKey.SetClaimableBalance(cBalance.BalanceId)
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.qClaimableBalances.RemoveClaimableBalance(ctx, cBalance)
+			cbIDsToDelete = append(cbIDsToDelete, cBalance.BalanceId)
 		default:
 			// Updated
-			action = "updating"
-			cBalance := change.Post.Data.MustClaimableBalance()
-			err = ledgerKey.SetClaimableBalance(cBalance.BalanceId)
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.qClaimableBalances.UpdateClaimableBalance(ctx, *change.Post)
+			cbsToUpsert = append(cbsToUpsert, p.ledgerEntryToRow(change.Post))
 		}
+	}
 
+	if len(cbsToUpsert) > 0 {
+		if err := p.qClaimableBalances.UpsertClaimableBalances(ctx, cbsToUpsert); err != nil {
+			return errors.Wrap(err, "error executing upsert")
+		}
+	}
+
+	if len(cbIDsToDelete) > 0 {
+		count, err := p.qClaimableBalances.RemoveClaimableBalances(ctx, cbIDsToDelete)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error executing removal")
 		}
-
-		if rowsAffected != 1 {
-			ledgerKeyString, err := ledgerKey.MarshalBinaryBase64()
-			if err != nil {
-				return errors.Wrap(err, "Error marshalling ledger key")
-			}
+		if count != int64(len(cbIDsToDelete)) {
 			return ingest.NewStateError(errors.Errorf(
-				"%d rows affected when %s claimable balance: %s",
-				rowsAffected,
-				action,
-				ledgerKeyString,
+				"%d rows affected when deleting %d claimable balances",
+				count,
+				len(cbIDsToDelete),
 			))
 		}
 	}
 
-	err := batch.Exec(ctx)
-	if err != nil {
-		return errors.Wrap(err, "error executing batch")
+	return nil
+}
+
+func buildClaimants(claimants []xdr.Claimant) history.Claimants {
+	hClaimants := history.Claimants{}
+	for _, c := range claimants {
+		xc := c.MustV0()
+		hClaimants = append(hClaimants, history.Claimant{
+			Destination: xc.Destination.Address(),
+			Predicate:   xc.Predicate,
+		})
+	}
+	return hClaimants
+}
+
+func (p *ClaimableBalancesChangeProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.ClaimableBalance {
+	cBalance := entry.Data.MustClaimableBalance()
+	return history.ClaimableBalance{
+		BalanceID:          cBalance.BalanceId,
+		Claimants:          buildClaimants(cBalance.Claimants),
+		Asset:              cBalance.Asset,
+		Amount:             cBalance.Amount,
+		Sponsor:            ledgerEntrySponsorToNullString(*entry),
+		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
+		Flags:              uint32(cBalance.Flags()),
 	}
 
-	return nil
 }

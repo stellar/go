@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest"
@@ -19,29 +20,21 @@ func TestClaimableBalancesChangeProcessorTestSuiteState(t *testing.T) {
 
 type ClaimableBalancesChangeProcessorTestSuiteState struct {
 	suite.Suite
-	ctx                    context.Context
-	processor              *ClaimableBalancesChangeProcessor
-	mockQ                  *history.MockQClaimableBalances
-	mockBatchInsertBuilder *history.MockClaimableBalancesBatchInsertBuilder
+	ctx       context.Context
+	processor *ClaimableBalancesChangeProcessor
+	mockQ     *history.MockQClaimableBalances
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQClaimableBalances{}
-	s.mockBatchInsertBuilder = &history.MockClaimableBalancesBatchInsertBuilder{}
-
-	s.mockQ.
-		On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder)
 
 	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ)
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
-	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestNoEntries() {
@@ -60,11 +53,13 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestCreatesClaimableBal
 		Amount:    10,
 	}
 
-	s.mockBatchInsertBuilder.On("Add", s.ctx, &xdr.LedgerEntry{
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		Data: xdr.LedgerEntryData{
-			Type:             xdr.LedgerEntryTypeClaimableBalance,
-			ClaimableBalance: &cBalance,
+	s.mockQ.On("UpsertClaimableBalances", s.ctx, []history.ClaimableBalance{
+		{
+			BalanceID:          cBalance.BalanceId,
+			Claimants:          []history.Claimant{},
+			Asset:              cBalance.Asset,
+			Amount:             cBalance.Amount,
+			LastModifiedLedger: uint32(lastModifiedLedgerSeq),
 		},
 	}).Return(nil).Once()
 
@@ -88,26 +83,19 @@ func TestClaimableBalancesChangeProcessorTestSuiteLedger(t *testing.T) {
 
 type ClaimableBalancesChangeProcessorTestSuiteLedger struct {
 	suite.Suite
-	ctx                    context.Context
-	processor              *ClaimableBalancesChangeProcessor
-	mockQ                  *history.MockQClaimableBalances
-	mockBatchInsertBuilder *history.MockClaimableBalancesBatchInsertBuilder
+	ctx       context.Context
+	processor *ClaimableBalancesChangeProcessor
+	mockQ     *history.MockQClaimableBalances
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQClaimableBalances{}
-	s.mockBatchInsertBuilder = &history.MockClaimableBalancesBatchInsertBuilder{}
-
-	s.mockQ.
-		On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(s.mockBatchInsertBuilder)
 
 	s.processor = NewClaimableBalancesChangeProcessor(s.mockQ)
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
@@ -171,10 +159,19 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockBatchInsertBuilder.On(
-		"Add",
+	s.mockQ.On(
+		"UpsertClaimableBalances",
 		s.ctx,
-		&updated,
+		[]history.ClaimableBalance{
+			{
+				BalanceID:          cBalance.BalanceId,
+				Claimants:          []history.Claimant{},
+				Asset:              cBalance.Asset,
+				Amount:             cBalance.Amount,
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			},
+		},
 	).Return(nil).Once()
 }
 
@@ -227,10 +224,19 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 	s.Assert().NoError(err)
 
 	s.mockQ.On(
-		"UpdateClaimableBalance",
+		"UpsertClaimableBalances",
 		s.ctx,
-		updated,
-	).Return(int64(1), nil).Once()
+		[]history.ClaimableBalance{
+			{
+				BalanceID:          cBalance.BalanceId,
+				Claimants:          []history.Claimant{},
+				Asset:              cBalance.Asset,
+				Amount:             cBalance.Amount,
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+				Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			},
+		},
+	).Return(nil).Once()
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
@@ -265,8 +271,8 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBal
 	s.Assert().NoError(err)
 
 	s.mockQ.On(
-		"RemoveClaimableBalance",
+		"RemoveClaimableBalances",
 		s.ctx,
-		cBalance,
+		[]xdr.ClaimableBalanceId{cBalance.BalanceId},
 	).Return(int64(1), nil).Once()
 }
