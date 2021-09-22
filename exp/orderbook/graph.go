@@ -2,8 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"math"
-	"math/big"
 	"sort"
 	"sync"
 
@@ -30,9 +28,9 @@ const (
 
 // trading pair represents two assets that can be exchanged if an order is fulfilled
 type tradingPair struct {
-	// buyingAsset is obtained by calling offer.Buying.String() where offer is an xdr.OfferEntry
+	// buyingAsset corresponds to offer.Buying.String() from an xdr.OfferEntry
 	buyingAsset string
-	// sellingAsset is obtained by calling offer.Selling.String() where offer is an xdr.OfferEntry
+	// sellingAsset corresponds to offer.Selling.String() from an xdr.OfferEntry
 	sellingAsset string
 }
 
@@ -45,29 +43,26 @@ type OBGraph interface {
 	Offers() []xdr.OfferEntry
 	LiquidityPools() []xdr.LiquidityPoolEntry
 	RemoveOffer(xdr.Int64) OBGraph
-	RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph
+	RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) OBGraph
 	Clear()
 }
 
 // OrderBookGraph is an in-memory graph representation of all the offers in the
 // Stellar ledger.
 type OrderBookGraph struct {
-	// edgesForSellingAsset maps an asset to all offers which sell that asset
-	// note that each key in the map is obtained by calling
-	// offer.Selling.String() where offer is an xdr.OfferEntry
-	edgesForSellingAsset map[string]edgeSet
-	// edgesForBuyingAsset maps an asset to all offers which buy that asset note
-	// that each key in the map is obtained by calling offer.Buying.String()
-	// where offer is an xdr.OfferEntry
-	edgesForBuyingAsset map[string]edgeSet
+	//
+	venuesForBuyingAsset map[string]edgeSet
+	//
+	venuesForSellingAsset map[string]edgeSet
+
+	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
+
 	// tradingPairForOffer maps an offer id to the assets which are being
-	// exchanged in the given offer
+	// exchanged in the given offer. It's mostly used internally to this object
+	// in order to associate specific offers with their respective edges in the
+	// graph.
 	tradingPairForOffer map[xdr.Int64]tradingPair
-	// liquidityPools maps an asset string to any liquidity pools which contain
-	// that asset in their reserves. Note that you can make trades for either
-	// asset in a pool, and this will have duplicate pool entries for each of
-	// the two assets (for efficient lookups).
-	liquidityPoolsForAsset map[string][]xdr.LiquidityPoolEntry
+
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
 	// batch is enough.
@@ -79,16 +74,10 @@ type OrderBookGraph struct {
 
 var _ OBGraph = (*OrderBookGraph)(nil)
 
-// NewOrderBookGraph constructs a new OrderBookGraph
+// NewOrderBookGraph constructs an empty OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
-	graph := &OrderBookGraph{
-		edgesForSellingAsset:   map[string]edgeSet{},
-		edgesForBuyingAsset:    map[string]edgeSet{},
-		tradingPairForOffer:    map[xdr.Int64]tradingPair{},
-		liquidityPoolsForAsset: map[string][]xdr.LiquidityPoolEntry{},
-	}
-
-	graph.batchedUpdates = graph.batch()
+	graph := &OrderBookGraph{}
+	graph.Clear()
 	return graph
 }
 
@@ -121,15 +110,12 @@ func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	return graph
 }
 
-// RemoveLiquidityPool will queue an operation to remove any liquidity pool that
-// has both of the given assets in the internal batch.
+// RemoveLiquidityPool will queue an operation to remove any liquidity pool (if
+// any) that matches the given pool, based exclusively on the pool ID.
 //
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) RemoveLiquidityPool(params xdr.LiquidityPoolConstantProductParameters) OBGraph {
-	graph.batchedUpdates.removeLiquidityPool(tradingPair{
-		params.AssetA.String(),
-		params.AssetB.String(),
-	})
+func (graph *OrderBookGraph) RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) OBGraph {
+	graph.batchedUpdates.removeLiquidityPool(pool)
 	return graph
 }
 
@@ -155,9 +141,9 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	defer graph.lock.RUnlock()
 
 	var offers []xdr.OfferEntry
-	for _, edges := range graph.edgesForSellingAsset {
-		for _, offersForEdge := range edges {
-			offers = append(offers, offersForEdge...)
+	for _, edges := range graph.venuesForSellingAsset {
+		for _, venues := range edges {
+			offers = append(offers, venues.offers...)
 		}
 	}
 
@@ -170,23 +156,12 @@ func (graph *OrderBookGraph) LiquidityPools() []xdr.LiquidityPoolEntry {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	// Since we double-store each pool for each of the two assets, we'll need to
-	// put some extra effort in to only return one of them here.
-	entries := NewIdSet(len(graph.liquidityPoolsForAsset))
-	allPools := make([]xdr.LiquidityPoolEntry, 0, len(graph.liquidityPoolsForAsset))
-
-	for _, pools := range graph.liquidityPoolsForAsset {
-		for _, pool := range pools {
-			if entries.Contains(pool.LiquidityPoolId) {
-				continue
-			}
-
-			entries.Add(pool.LiquidityPoolId)
-			allPools = append(allPools, pool)
-		}
+	pools := make([]xdr.LiquidityPoolEntry, 0, len(graph.liquidityPools))
+	for _, pool := range graph.liquidityPools {
+		pools = append(pools, pool)
 	}
 
-	return allPools
+	return pools
 }
 
 // Clear removes all offers from the graph.
@@ -194,10 +169,10 @@ func (graph *OrderBookGraph) Clear() {
 	graph.lock.Lock()
 	defer graph.lock.Unlock()
 
-	graph.edgesForSellingAsset = map[string]edgeSet{}
-	graph.edgesForBuyingAsset = map[string]edgeSet{}
+	graph.venuesForBuyingAsset = map[string]edgeSet{}
+	graph.venuesForSellingAsset = map[string]edgeSet{}
 	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
-	graph.liquidityPoolsForAsset = map[string][]xdr.LiquidityPoolEntry{}
+	graph.liquidityPools = map[tradingPair]xdr.LiquidityPoolEntry{}
 	graph.batchedUpdates = graph.batch()
 	graph.lastLedger = 0
 }
@@ -214,47 +189,32 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 
 // add inserts a given offer into the order book graph
 func (graph *OrderBookGraph) add(offer xdr.OfferEntry) error {
+	// If necessary, replace any existing offer with a new one.
 	if _, contains := graph.tradingPairForOffer[offer.OfferId]; contains {
 		if err := graph.remove(offer.OfferId); err != nil {
 			return errors.Wrap(err, "could not update offer in order book graph")
 		}
 	}
 
-	sellingAsset := offer.Selling.String()
-	buyingAsset := offer.Buying.String()
+	buying, selling := offer.Buying.String(), offer.Selling.String()
+
 	graph.tradingPairForOffer[offer.OfferId] = tradingPair{
-		buyingAsset:  buyingAsset,
-		sellingAsset: sellingAsset,
-	}
-	if set, ok := graph.edgesForSellingAsset[sellingAsset]; !ok {
-		graph.edgesForSellingAsset[sellingAsset] = edgeSet{}
-		graph.edgesForSellingAsset[sellingAsset].add(buyingAsset, offer)
-	} else {
-		set.add(buyingAsset, offer)
+		buyingAsset: buying, sellingAsset: selling,
 	}
 
-	if set, ok := graph.edgesForBuyingAsset[buyingAsset]; !ok {
-		graph.edgesForBuyingAsset[buyingAsset] = edgeSet{}
-		graph.edgesForBuyingAsset[buyingAsset].add(sellingAsset, offer)
-	} else {
-		set.add(sellingAsset, offer)
+	// First, ensure the internal structure of the graph is sound by creating
+	// empty venues if none exist yet.
+	if _, ok := graph.venuesForSellingAsset[selling]; !ok {
+		graph.venuesForSellingAsset[selling] = edgeSet{}
 	}
 
-	// if venues, ok := graph.venuesForSellingAsset[sellingAsset]; ok {
-	// 	venues.offers = append(venues.offers, offer)
-	// } else {
-	// 	graph.venuesForBuyingAsset[sellingAsset] = Venues{
-	// 		offers: []xdr.OfferEntry{offer},
-	// 	}
-	// }
+	if _, ok := graph.venuesForBuyingAsset[buying]; !ok {
+		graph.venuesForBuyingAsset[buying] = edgeSet{}
+	}
 
-	// if venues, ok := graph.venuesForBuyingAsset[buyingAsset]; ok {
-	// 	venues.offers = append(venues.offers, offer)
-	// } else {
-	// 	graph.venuesForBuyingAsset[buyingAsset] = Venues{
-	// 		offers: []xdr.OfferEntry{offer},
-	// 	}
-	// }
+	// Now shove the new offer into them.
+	graph.venuesForSellingAsset[selling].addOffer(buying, offer)
+	graph.venuesForBuyingAsset[buying].addOffer(selling, offer)
 
 	return nil
 }
@@ -268,20 +228,20 @@ func (graph *OrderBookGraph) remove(offerID xdr.Int64) error {
 
 	delete(graph.tradingPairForOffer, offerID)
 
-	if set, ok := graph.edgesForSellingAsset[pair.sellingAsset]; !ok {
+	if set, ok := graph.venuesForSellingAsset[pair.sellingAsset]; !ok {
 		return errOfferNotPresent
-	} else if !set.remove(offerID, pair.buyingAsset) {
+	} else if !set.removeOffer(pair.buyingAsset, offerID) {
 		return errOfferNotPresent
 	} else if len(set) == 0 {
-		delete(graph.edgesForSellingAsset, pair.sellingAsset)
+		delete(graph.venuesForSellingAsset, pair.sellingAsset)
 	}
 
-	if set, ok := graph.edgesForBuyingAsset[pair.buyingAsset]; !ok {
+	if set, ok := graph.venuesForBuyingAsset[pair.buyingAsset]; !ok {
 		return errOfferNotPresent
-	} else if !set.remove(offerID, pair.sellingAsset) {
+	} else if !set.removeOffer(pair.sellingAsset, offerID) {
 		return errOfferNotPresent
 	} else if len(set) == 0 {
-		delete(graph.edgesForBuyingAsset, pair.buyingAsset)
+		delete(graph.venuesForBuyingAsset, pair.buyingAsset)
 	}
 
 	return nil
@@ -292,7 +252,7 @@ func (graph *OrderBookGraph) IsEmpty() bool {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	return len(graph.edgesForSellingAsset) == 0
+	return len(graph.venuesForSellingAsset) == 0
 }
 
 // FindPaths returns a list of payment paths originating from a source account
@@ -423,10 +383,10 @@ func compareSourceAsset(allPaths []Path, i, j int) bool {
 	return allPaths[i].SourceAssetString() < allPaths[j].SourceAssetString()
 }
 
-// compareDestinationAsset will group payment paths by `DestinationAsset`
-// paths which deliver a higher `DestinationAmount` will appear earlier in the sorting
-// if there are multiple paths which deliver the same `DestinationAmount` then shorter payment paths
-// will be prioritized
+// compareDestinationAsset will group payment paths by `DestinationAsset`. Paths
+// which deliver a higher `DestinationAmount` will appear earlier in the
+// sorting. If there are multiple paths which deliver the same
+// `DestinationAmount`, then shorter payment paths will be prioritized.
 func compareDestinationAsset(allPaths []Path, i, j int) bool {
 	if allPaths[i].DestinationAsset.Equals(allPaths[j].DestinationAsset) {
 		if allPaths[i].DestinationAmount == allPaths[j].DestinationAmount {
@@ -483,165 +443,4 @@ func sortAndFilterPaths(
 	}
 
 	return filtered, nil
-}
-
-const (
-	tradeTypeDeposit     = iota // deposit into pool, what's the payout?
-	tradeTypeExpectation = iota // expect payout, what to deposit?
-)
-
-// makeTrade simulates execution of an exchange with a liquidity pool.
-//
-// There are two different exchanges that can be simulated:
-//
-// 1. You know how much you can *give* to the pool, and are curious about the
-// resulting payout. We call this a "deposit", and you should pass
-// tradeTypeDeposit.
-//
-// 2. You know how much you'd like to *receive* from the pool, and want to know
-// how much to deposit to achieve this. We call this an "expectation", and you
-// should pass tradeTypeExpectation.
-//
-// In (1), this returns the amount that would be paid out by the pool (in terms
-// of the *other* asset) for depositing `amount` of `asset`.
-//
-// In (2), this returns the amount of `asset` necessary to give to the pool in
-// order to get `amount` of the other asset in return.
-//
-// In both cases, an error can be returned. They occur because of invalid
-// assets, pool overflows, etc.
-//
-// Warning: If you pass an asset that is NOT one of the pool reserves, the
-// behavior of this function is undefined (for performance).
-//
-// Refer to https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#pathpaymentstrictsendop-and-pathpaymentstrictreceiveop
-// and the calculation functions (below) for details on the exchange algorithm.
-func makeTrade(
-	pool xdr.LiquidityPoolEntry,
-	asset xdr.Asset,
-	tradeType int,
-	amount xdr.Int64,
-) (xdr.Int64, error) {
-	details, ok := pool.Body.GetConstantProduct()
-	if !ok {
-		return 0, errors.New("Unsupported liquidity pool: must be ConstantProduct")
-	}
-
-	if amount <= 0 {
-		return 0, errors.New("Exchange amount must be positive")
-	}
-
-	// determine which asset `amount` corresponds to
-	X, Y := details.ReserveA, details.ReserveB
-	if !details.Params.AssetA.Equals(asset) {
-		X, Y = details.ReserveB, details.ReserveA
-	}
-
-	ok = false
-	var result xdr.Int64
-	switch tradeType {
-	case tradeTypeDeposit:
-		result, ok = calculatePoolPayout(X, Y, amount, details.Params.Fee)
-
-	case tradeTypeExpectation:
-		result, ok = calculatePoolExpectation(X, Y, amount, details.Params.Fee)
-	}
-
-	if !ok {
-		return 0, errors.New("Liquidity pool overflows from this exchange")
-	}
-	return result, nil
-}
-
-// calculatePoolPayout calculates the amount disbursed from the pool for an
-// amount received. From CAP-38:
-//
-//      y = floor[(1 - F) Yx / (X + x - Fx)]
-//
-// It returns false if the calculation overflows.
-func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, bool) {
-	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
-	F, x := big.NewInt(int64(feeBips)), big.NewInt(int64(received))
-
-	// would this deposit overflow the reserve?
-	if math.MaxInt64-received < reserveA {
-		return 0, false
-	}
-
-	// We do all of the math in bips, so it's all upscaled by this value.
-	maxBips := big.NewInt(10000)
-	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
-
-	// right half: X + (1 - F)x
-	denom := X.Mul(X, maxBips).Add(X, new(big.Int).Mul(x, f))
-	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
-		return 0, false
-	}
-
-	// left half, a: (1 - F) Yx
-	numer := Y.Mul(Y, x).Mul(Y, f)
-
-	// divide & check overflow
-	result := numer.Div(numer, denom)
-
-	return xdr.Int64(result.Int64()), result.IsInt64()
-}
-
-// calculatePoolExpectation determines how much you would need to put into a
-// pool to get a certain amount disbursed.
-//
-//      x = ceil[Xy / (Y - y) / (1 - F)]
-//
-// It returns false if the calculation overflows.
-func calculatePoolExpectation(
-	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32,
-) (xdr.Int64, bool) {
-	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
-	F, y := big.NewInt(int64(feeBips)), big.NewInt(int64(disbursed))
-
-	// sanity check: disbursing shouldn't underflow the reserve
-	if reserveA-disbursed <= 0 {
-		return 0, false
-	}
-
-	// We do all of the math in bips, so it's all upscaled by this value.
-	maxBips := big.NewInt(10000)
-	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
-
-	denom := Y.Sub(Y, y).Mul(Y, f)     // right half:
-	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
-		return 0, false
-	}
-
-	numer := X.Mul(X, y).Mul(X, maxBips)
-
-	result, rem := new(big.Int), new(big.Int)
-	result.DivMod(numer, denom, rem)
-
-	// hacky way to ceil(): if there's a remainder, add 1
-	if rem.Cmp(big.NewInt(0)) > 0 {
-		result.Add(result, big.NewInt(1))
-	}
-
-	return xdr.Int64(result.Int64()), result.IsInt64()
-}
-
-// getOtherAsset returns the other asset in the liquidity pool. Note that
-// doesn't check to make sure the passed in `asset` is actually part of the
-// pool; behavior in that case is undefined.
-func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
-	cp := pool.Body.MustConstantProduct()
-	if cp.Params.AssetA.Equals(asset) {
-		return cp.Params.AssetB
-	}
-	return cp.Params.AssetA
-}
-
-// getCode is a helper to return a string code for an asset (for debugging).
-func getCode(asset xdr.Asset) string {
-	code := asset.GetCode()
-	if code == "" {
-		return "XLM"
-	}
-	return code
 }

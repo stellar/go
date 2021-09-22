@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding"
+	"fmt"
 	"math"
 	"sort"
 	"testing"
@@ -219,16 +220,18 @@ var (
 
 func assertBinaryMarshalerEquals(t *testing.T, a, b encoding.BinaryMarshaler) {
 	serializedA, err := a.MarshalBinary()
-	if err != nil {
-		t.Fatalf("could not marshal %v", a)
-	}
-	serializedB, err := b.MarshalBinary()
-	if err != nil {
-		t.Fatalf("could not marshal %v", b)
+	if !assert.NoError(t, err) {
+		t.FailNow()
 	}
 
-	if !bytes.Equal(serializedA, serializedB) {
-		t.Fatalf("expected lists to be equal got %v %v", a, b)
+	serializedB, err := b.MarshalBinary()
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+
+	if !assert.Truef(t, bytes.Equal(serializedA, serializedB),
+		"expected lists to be equal but got %v %v", a, b) {
+		t.FailNow()
 	}
 }
 
@@ -241,56 +244,49 @@ func assertOfferListEquals(t *testing.T, a, b []xdr.OfferEntry) {
 	}
 }
 
+// assertGraphEquals ensures two graphs are identical
 func assertGraphEquals(t *testing.T, a, b *OrderBookGraph) {
-	if len(a.edgesForSellingAsset) != len(b.edgesForSellingAsset) {
-		t.Fatalf("expected edges to have same length but got %v %v", a, b)
-	}
-	if len(a.tradingPairForOffer) != len(b.tradingPairForOffer) {
-		t.Fatalf("expected trading pairs to have same length but got %v %v", a, b)
-	}
+	assert.Equalf(t, len(a.venuesForBuyingAsset), len(b.venuesForBuyingAsset),
+		"expected same # of buying venues but got %v %v",
+		a.venuesForBuyingAsset, b.venuesForBuyingAsset)
 
-	for sellingAsset, edgeSet := range a.edgesForSellingAsset {
-		otherEdgeSet := b.edgesForSellingAsset[sellingAsset]
-		if len(edgeSet) != len(otherEdgeSet) {
-			t.Fatalf(
-				"expected edge set for %v to have same length but got %v %v",
-				sellingAsset,
-				edgeSet,
-				otherEdgeSet,
+	assert.Equalf(t, len(a.venuesForSellingAsset), len(b.venuesForSellingAsset),
+		"expected same # of selling venues but got %v %v",
+		a.venuesForSellingAsset, b.venuesForSellingAsset)
+
+	assert.Equalf(t, len(a.tradingPairForOffer), len(b.tradingPairForOffer),
+		"expected same # of trading pairs but got %v %v", a, b)
+
+	for sellingAsset, edgeSet := range a.venuesForSellingAsset {
+		otherEdgeSet := b.venuesForSellingAsset[sellingAsset]
+
+		assert.Equalf(t, len(edgeSet), len(otherEdgeSet),
+			"expected edge set for %v to have same length but got %v %v",
+			sellingAsset, edgeSet, otherEdgeSet)
+
+		for buyingAsset, venues := range edgeSet {
+			otherVenues := otherEdgeSet[buyingAsset]
+
+			assert.Equalf(t, venues.pool, otherVenues.pool,
+				"expected pools for %v to be equal")
+
+			assert.Equalf(t, len(venues.offers), len(otherVenues.offers),
+				"expected offers for %v to have same length but got %v %v",
+				buyingAsset, venues.offers, otherVenues.offers,
 			)
-		}
-		for buyingAsset, offers := range edgeSet {
-			otherOffers := otherEdgeSet[buyingAsset]
 
-			if len(offers) != len(otherOffers) {
-				t.Fatalf(
-					"expected offers for %v to have same length but got %v %v",
-					buyingAsset,
-					offers,
-					otherOffers,
-				)
-			}
-
-			assertOfferListEquals(t, offers, otherOffers)
+			assertOfferListEquals(t, venues.offers, otherVenues.offers)
 		}
 	}
 
 	for offerID, pair := range a.tradingPairForOffer {
 		otherPair := b.tradingPairForOffer[offerID]
-		if pair.buyingAsset != otherPair.buyingAsset {
-			t.Fatalf(
-				"expected trading pair to match but got %v %v",
-				pair,
-				otherPair,
-			)
-		}
-		if pair.sellingAsset != otherPair.sellingAsset {
-			t.Fatalf(
-				"expected trading pair to match but got %v %v",
-				pair,
-				otherPair,
-			)
-		}
+
+		assert.Equalf(t, pair.buyingAsset, otherPair.buyingAsset,
+			"expected trading pair to match but got %v %v", pair, otherPair)
+
+		assert.Equalf(t, pair.sellingAsset, otherPair.sellingAsset,
+			"expected trading pair to match but got %v %v", pair, otherPair)
 	}
 }
 
@@ -327,24 +323,26 @@ func assertPathEquals(t *testing.T, a, b []Path) {
 func TestAddEdgeSet(t *testing.T) {
 	set := edgeSet{}
 
-	set.add(dollarOffer.Buying.String(), dollarOffer)
-	set.add(eurOffer.Buying.String(), eurOffer)
-	set.add(twoEurOffer.Buying.String(), twoEurOffer)
-	set.add(threeEurOffer.Buying.String(), threeEurOffer)
-	set.add(quarterOffer.Buying.String(), quarterOffer)
-	set.add(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
+	set.addOffer(dollarOffer.Buying.String(), dollarOffer)
+	set.addOffer(eurOffer.Buying.String(), eurOffer)
+	set.addOffer(twoEurOffer.Buying.String(), twoEurOffer)
+	set.addOffer(threeEurOffer.Buying.String(), threeEurOffer)
+	set.addOffer(quarterOffer.Buying.String(), quarterOffer)
+	set.addOffer(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
+	set.addPool(usdAsset.String(), eurUsdLiquidityPool)
+	set.addPool(eurAsset.String(), eurUsdLiquidityPool)
 
-	if len(set) != 2 {
-		t.Fatalf("expected set to have 2 entries but got %v", set)
-	}
+	assert.Lenf(t, set, 2, "expected set to have 2 entries but got %v", set)
+	assert.Equal(t, set[usdAsset.String()].pool, eurUsdLiquidityPool)
+	assert.Equal(t, set[eurAsset.String()].pool, eurUsdLiquidityPool)
 
-	assertOfferListEquals(t, set[usdAsset.String()], []xdr.OfferEntry{
+	assertOfferListEquals(t, set[usdAsset.String()].offers, []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 		dollarOffer,
 	})
 
-	assertOfferListEquals(t, set[eurAsset.String()], []xdr.OfferEntry{
+	assertOfferListEquals(t, set[eurAsset.String()].offers, []xdr.OfferEntry{
 		eurOffer,
 		twoEurOffer,
 		threeEurOffer,
@@ -354,44 +352,39 @@ func TestAddEdgeSet(t *testing.T) {
 func TestRemoveEdgeSet(t *testing.T) {
 	set := edgeSet{}
 
-	if contains := set.remove(dollarOffer.OfferId, usdAsset.String()); contains {
-		t.Fatal("expected set to not contain asset")
-	}
+	assert.Falsef(t, set.removeOffer(usdAsset.String(), dollarOffer.OfferId),
+		"expected set to not contain asset but is %v", set)
 
-	set.add(dollarOffer.Buying.String(), dollarOffer)
-	set.add(eurOffer.Buying.String(), eurOffer)
-	set.add(twoEurOffer.Buying.String(), twoEurOffer)
-	set.add(threeEurOffer.Buying.String(), threeEurOffer)
-	set.add(quarterOffer.Buying.String(), quarterOffer)
-	set.add(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
+	set.addOffer(dollarOffer.Buying.String(), dollarOffer)
+	set.addOffer(eurOffer.Buying.String(), eurOffer)
+	set.addOffer(twoEurOffer.Buying.String(), twoEurOffer)
+	set.addOffer(threeEurOffer.Buying.String(), threeEurOffer)
+	set.addOffer(quarterOffer.Buying.String(), quarterOffer)
+	set.addOffer(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
+	set.addPool(usdAsset.String(), eurUsdLiquidityPool)
 
-	if contains := set.remove(dollarOffer.OfferId, usdAsset.String()); !contains {
-		t.Fatal("expected set to contain dollar offer")
-	}
+	set.removePool(usdAsset.String())
+	assert.Nil(t, set[usdAsset.String()].pool.Body.ConstantProduct)
 
-	if contains := set.remove(dollarOffer.OfferId, usdAsset.String()); contains {
-		t.Fatal("expected set to not contain dollar offer after it has been deleted")
-	}
+	assert.Truef(t, set.removeOffer(usdAsset.String(), dollarOffer.OfferId),
+		"expected set to contain dollar offer but is %v", set)
 
-	if contains := set.remove(threeEurOffer.OfferId, eurAsset.String()); !contains {
-		t.Fatal("expected set to contain three euro offer")
-	}
-	if contains := set.remove(eurOffer.OfferId, eurAsset.String()); !contains {
-		t.Fatal("expected set to contain euro offer")
-	}
-	if contains := set.remove(twoEurOffer.OfferId, eurAsset.String()); !contains {
-		t.Fatal("expected set to contain two euro offer")
-	}
+	assert.Falsef(t, set.removeOffer(usdAsset.String(), dollarOffer.OfferId),
+		"expected set to not contain dollar offer after deletion but is %v", set)
 
-	if contains := set.remove(eurOffer.OfferId, eurAsset.String()); contains {
-		t.Fatal("expected set to not contain euro offer after it has been deleted")
-	}
+	assert.Truef(t, set.removeOffer(eurAsset.String(), threeEurOffer.OfferId),
+		"expected set to contain three euro offer but is %v", set)
+	assert.Truef(t, set.removeOffer(eurAsset.String(), eurOffer.OfferId),
+		"expected set to contain euro offer but is %v", set)
+	assert.Truef(t, set.removeOffer(eurAsset.String(), twoEurOffer.OfferId),
+		"expected set to contain two euro offer but is %v", set)
 
-	if len(set) != 1 {
-		t.Fatalf("expected set to have 1 entry but got %v", set)
-	}
+	assert.Falsef(t, set.removeOffer(eurAsset.String(), eurOffer.OfferId),
+		"expected set to not contain euro offer after deletion but is %v", set)
 
-	assertOfferListEquals(t, set[usdAsset.String()], []xdr.OfferEntry{
+	assert.Lenf(t, set, 1, "%v", set)
+
+	assertOfferListEquals(t, set[usdAsset.String()].offers, []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 	})
@@ -445,15 +438,11 @@ func TestApplyOutdatedLedger(t *testing.T) {
 
 func TestAddOffersOrderBook(t *testing.T) {
 	graph := NewOrderBookGraph()
-
 	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
 		quarterOffer, fiftyCentsOffer)
-	err := graph.Apply(1)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 1 {
-		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
+	if !assert.NoError(t, graph.Apply(1)) ||
+		!assert.EqualValues(t, 1, graph.lastLedger) {
+		t.FailNow()
 	}
 
 	eurUsdOffer := xdr.OfferEntry{
@@ -492,99 +481,60 @@ func TestAddOffersOrderBook(t *testing.T) {
 	}
 
 	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer)
-	err = graph.Apply(2)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
+	if !assert.NoError(t, graph.Apply(2)) ||
+		!assert.EqualValues(t, 2, graph.lastLedger) {
+		t.FailNow()
 	}
 
 	expectedGraph := &OrderBookGraph{
-		edgesForSellingAsset: map[string]edgeSet{
+		venuesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): []xdr.OfferEntry{
-					quarterOffer,
-					fiftyCentsOffer,
-					dollarOffer,
-				},
-				eurAsset.String(): []xdr.OfferEntry{
-					eurOffer,
-					twoEurOffer,
-					threeEurOffer,
-				},
+				usdAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+				eurAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 			},
 			usdAsset.String(): {
-				eurAsset.String(): []xdr.OfferEntry{
-					eurUsdOffer,
-					otherEurUsdOffer,
-				},
+				eurAsset.String(): makeVenues(eurUsdOffer, otherEurUsdOffer),
 			},
 			eurAsset.String(): {
-				usdAsset.String(): []xdr.OfferEntry{
-					usdEurOffer,
-				},
+				usdAsset.String(): makeVenues(usdEurOffer),
+			},
+		},
+		venuesForBuyingAsset: map[string]edgeSet{
+			usdAsset.String(): {
+				eurAsset.String():    makeVenues(usdEurOffer),
+				nativeAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+			},
+			eurAsset.String(): {
+				usdAsset.String():    makeVenues(eurUsdOffer, otherEurUsdOffer),
+				nativeAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			fiftyCentsOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			dollarOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			eurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			twoEurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			threeEurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			eurUsdOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: usdAsset.String(),
-			},
-			otherEurUsdOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: usdAsset.String(),
-			},
-			usdEurOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: eurAsset.String(),
-			},
+			quarterOffer.OfferId:     makeTradingPair(usdAsset, nativeAsset),
+			fiftyCentsOffer.OfferId:  makeTradingPair(usdAsset, nativeAsset),
+			dollarOffer.OfferId:      makeTradingPair(usdAsset, nativeAsset),
+			eurOffer.OfferId:         makeTradingPair(eurAsset, nativeAsset),
+			twoEurOffer.OfferId:      makeTradingPair(eurAsset, nativeAsset),
+			threeEurOffer.OfferId:    makeTradingPair(eurAsset, nativeAsset),
+			eurUsdOffer.OfferId:      makeTradingPair(eurAsset, usdAsset),
+			otherEurUsdOffer.OfferId: makeTradingPair(eurAsset, usdAsset),
+			usdEurOffer.OfferId:      makeTradingPair(usdAsset, eurAsset),
 		},
 	}
 
 	// adding the same orders multiple times should have no effect
 	graph.AddOffers(otherEurUsdOffer, usdEurOffer, dollarOffer, threeEurOffer)
-	err = graph.Apply(3)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 3 {
-		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
-	}
+	assert.NoError(t, graph.Apply(3))
+	assert.EqualValues(t, 3, graph.lastLedger)
 
-	assertGraphEquals(t, graph, expectedGraph)
+	assertGraphEquals(t, expectedGraph, graph)
 }
 
 func setupGraphWithLiquidityPools(t *testing.T) (*OrderBookGraph, []xdr.LiquidityPoolEntry) {
 	graph := NewOrderBookGraph()
 	graph.AddLiquidityPools(nativeEurPool, nativeUsdPool)
-
-	if err := graph.Apply(1); err != nil {
-		t.Fatalf("unexpected apply error %v", err)
+	if !assert.NoError(t, graph.Apply(1)) {
+		t.FailNow()
 	}
 
 	expectedLiquidityPools := []xdr.LiquidityPoolEntry{nativeEurPool, nativeUsdPool}
@@ -625,8 +575,8 @@ func TestUpdateLiquidityPools(t *testing.T) {
 	expectedLiquidityPools[1].Body.ConstantProduct.ReserveB -= 2
 
 	graph.AddLiquidityPools(expectedLiquidityPools[:2]...)
-	if err := graph.Apply(2); err != nil {
-		t.Fatalf("unexpected error %v", err)
+	if !assert.NoError(t, graph.Apply(2)) {
+		t.FailNow()
 	}
 
 	assertLiquidityPoolsEqual(t, expectedLiquidityPools, graph.LiquidityPools())
@@ -637,10 +587,10 @@ func TestRemoveLiquidityPools(t *testing.T) {
 	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
 
 	graph.AddLiquidityPools(expectedLiquidityPools[0])
-	graph.RemoveLiquidityPool(expectedLiquidityPools[1].Body.MustConstantProduct().Params)
+	graph.RemoveLiquidityPool(expectedLiquidityPools[1])
 
-	if err := graph.Apply(2); err != nil {
-		t.Fatalf("unexpected error %v", err)
+	if !assert.NoError(t, graph.Apply(2)) {
+		t.FailNow()
 	}
 
 	assertLiquidityPoolsEqual(t, expectedLiquidityPools[:1], graph.LiquidityPools())
@@ -729,72 +679,42 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 	}
 
 	expectedGraph := &OrderBookGraph{
-		edgesForSellingAsset: map[string]edgeSet{
+		venuesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): []xdr.OfferEntry{
-					quarterOffer,
-					fiftyCentsOffer,
-					dollarOffer,
-				},
-				eurAsset.String(): []xdr.OfferEntry{
-					eurOffer,
-					twoEurOffer,
-					threeEurOffer,
-				},
+				usdAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+				eurAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 			},
 			usdAsset.String(): {
-				eurAsset.String(): []xdr.OfferEntry{
-					otherEurUsdOffer,
-					eurUsdOffer,
-				},
+				eurAsset.String(): makeVenues(otherEurUsdOffer, eurUsdOffer),
 			},
 			eurAsset.String(): {
-				usdAsset.String(): []xdr.OfferEntry{
-					usdEurOffer,
-				},
+				usdAsset.String(): makeVenues(usdEurOffer),
+			},
+		},
+		venuesForBuyingAsset: map[string]edgeSet{
+			usdAsset.String(): {
+				nativeAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+				eurAsset.String():    makeVenues(usdEurOffer),
+			},
+			eurAsset.String(): {
+				nativeAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				usdAsset.String():    makeVenues(otherEurUsdOffer, eurUsdOffer),
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			fiftyCentsOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			dollarOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			eurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			twoEurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			threeEurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			eurUsdOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: usdAsset.String(),
-			},
-			otherEurUsdOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: usdAsset.String(),
-			},
-			usdEurOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: eurAsset.String(),
-			},
+			quarterOffer.OfferId:     makeTradingPair(usdAsset, nativeAsset),
+			fiftyCentsOffer.OfferId:  makeTradingPair(usdAsset, nativeAsset),
+			dollarOffer.OfferId:      makeTradingPair(usdAsset, nativeAsset),
+			eurOffer.OfferId:         makeTradingPair(eurAsset, nativeAsset),
+			twoEurOffer.OfferId:      makeTradingPair(eurAsset, nativeAsset),
+			threeEurOffer.OfferId:    makeTradingPair(eurAsset, nativeAsset),
+			eurUsdOffer.OfferId:      makeTradingPair(eurAsset, usdAsset),
+			otherEurUsdOffer.OfferId: makeTradingPair(eurAsset, usdAsset),
+			usdEurOffer.OfferId:      makeTradingPair(usdAsset, eurAsset),
 		},
 	}
 
-	assertGraphEquals(t, graph, expectedGraph)
+	assertGraphEquals(t, expectedGraph, graph)
 }
 
 func TestDiscard(t *testing.T) {
@@ -842,12 +762,9 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 
 	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
 		quarterOffer, fiftyCentsOffer)
-	err := graph.Apply(1)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 1 {
-		t.Fatalf("expected last ledger to be %v but got %v", 1, graph.lastLedger)
+	if !assert.NoError(t, graph.Apply(1)) ||
+		!assert.EqualValues(t, 1, graph.lastLedger) {
+		t.FailNow()
 	}
 
 	eurUsdOffer := xdr.OfferEntry{
@@ -889,96 +806,60 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 	graph.RemoveOffer(usdEurOffer.OfferId)
 	graph.RemoveOffer(otherEurUsdOffer.OfferId)
 	graph.RemoveOffer(dollarOffer.OfferId)
-	err = graph.Apply(2)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
+
+	if !assert.NoError(t, graph.Apply(2)) ||
+		!assert.EqualValues(t, 2, graph.lastLedger) {
+		t.FailNow()
 	}
 
 	expectedGraph := &OrderBookGraph{
-		edgesForSellingAsset: map[string]edgeSet{
+		venuesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): []xdr.OfferEntry{
-					quarterOffer,
-					fiftyCentsOffer,
-				},
-				eurAsset.String(): []xdr.OfferEntry{
-					eurOffer,
-					twoEurOffer,
-					threeEurOffer,
-				},
+				usdAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer),
+				eurAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 			},
 			usdAsset.String(): {
-				eurAsset.String(): []xdr.OfferEntry{
-					eurUsdOffer,
-				},
+				eurAsset.String(): makeVenues(eurUsdOffer),
+			},
+		},
+		venuesForBuyingAsset: map[string]edgeSet{
+			usdAsset.String(): {
+				nativeAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer),
+			},
+			eurAsset.String(): {
+				nativeAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				usdAsset.String():    makeVenues(eurUsdOffer),
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			fiftyCentsOffer.OfferId: {
-				buyingAsset:  usdAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			eurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			twoEurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			threeEurOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: nativeAsset.String(),
-			},
-			eurUsdOffer.OfferId: {
-				buyingAsset:  eurAsset.String(),
-				sellingAsset: usdAsset.String(),
-			},
+			quarterOffer.OfferId:    makeTradingPair(usdAsset, nativeAsset),
+			fiftyCentsOffer.OfferId: makeTradingPair(usdAsset, nativeAsset),
+			eurOffer.OfferId:        makeTradingPair(eurAsset, nativeAsset),
+			twoEurOffer.OfferId:     makeTradingPair(eurAsset, nativeAsset),
+			threeEurOffer.OfferId:   makeTradingPair(eurAsset, nativeAsset),
+			eurUsdOffer.OfferId:     makeTradingPair(eurAsset, usdAsset),
 		},
 	}
 
-	assertGraphEquals(t, graph, expectedGraph)
+	assertGraphEquals(t, expectedGraph, graph)
 
-	err = graph.
+	graph.
 		RemoveOffer(quarterOffer.OfferId).
 		RemoveOffer(fiftyCentsOffer.OfferId).
 		RemoveOffer(eurOffer.OfferId).
 		RemoveOffer(twoEurOffer.OfferId).
 		RemoveOffer(threeEurOffer.OfferId).
-		RemoveOffer(eurUsdOffer.OfferId).
-		Apply(3)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 3 {
-		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
-	}
+		RemoveOffer(eurUsdOffer.OfferId)
+
+	assert.NoError(t, graph.Apply(3))
+	assert.EqualValues(t, 3, graph.lastLedger)
 
 	// Skip over offer ids which are not present in the graph
-	err = graph.
-		RemoveOffer(988888).
-		Apply(5)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if graph.lastLedger != 5 {
-		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
-	}
+	assert.NoError(t, graph.RemoveOffer(988888).Apply(4))
 
-	expectedGraph.edgesForSellingAsset = map[string]edgeSet{}
-	expectedGraph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
-	assertGraphEquals(t, graph, expectedGraph)
-
-	if !graph.IsEmpty() {
-		t.Fatal("expected graph to be empty")
-	}
+	expectedGraph.Clear()
+	assertGraphEquals(t, expectedGraph, graph)
+	assert.True(t, graph.IsEmpty())
 }
 
 func TestConsumeOffersForSellingAsset(t *testing.T) {
@@ -2176,6 +2057,11 @@ func TestInterleavedPaths(t *testing.T) {
 		5,
 	)
 
+	fmt.Println("Got paths:")
+	for _, path := range paths {
+		printPath(path)
+	}
+
 	// There should be two paths: one that consumes the EUR/XLM offers and one
 	// that goes through the USD/XLM liquidity pool.
 	//
@@ -2183,7 +2069,7 @@ func TestInterleavedPaths(t *testing.T) {
 	//   13 CHF for 6 USD for 5 EUR for 5 XLM
 	//
 	// If we only go through pools, it's less-so:
-	//   58 CHF for 27 USD for 5 XLM
+	//   53 CHF for 25 USD for 5 XLM
 	expectedPaths := []Path{{
 		SourceAsset:       chfAsset,
 		SourceAmount:      13,
@@ -2192,11 +2078,16 @@ func TestInterleavedPaths(t *testing.T) {
 		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
 	}, {
 		SourceAsset:       chfAsset,
-		SourceAmount:      58,
+		SourceAmount:      53,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 5,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
+
+	fmt.Println("Expected paths:")
+	for _, path := range expectedPaths {
+		printPath(path)
+	}
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
@@ -2256,6 +2147,10 @@ func TestInterleavedFixedPaths(t *testing.T) {
 		5,
 	)
 
+	fmt.Println("Got paths:")
+	for _, path := range paths {
+		printPath(path)
+	}
+
 	assert.NoError(t, err)
-	assertPathEquals(t, []Path{}, paths)
 }

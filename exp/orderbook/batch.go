@@ -22,8 +22,8 @@ type orderBookOperation struct {
 	operationType       int
 	offerID             xdr.Int64
 	offer               *xdr.OfferEntry
-	liquidityPoolAssets tradingPair
 	liquidityPool       *xdr.LiquidityPoolEntry
+	liquidityPoolAssets tradingPair
 }
 
 type orderBookBatchedUpdates struct {
@@ -44,15 +44,12 @@ func (tx *orderBookBatchedUpdates) addOffer(offer xdr.OfferEntry) *orderBookBatc
 }
 
 // addLiquidityPool will queue an operation to add the given liquidity pool to the order book graph
-func (tx *orderBookBatchedUpdates) addLiquidityPool(liquidityPool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
-	params := liquidityPool.Body.MustConstantProduct().Params
+func (tx *orderBookBatchedUpdates) addLiquidityPool(pool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
+	params := pool.Body.MustConstantProduct().Params
 	tx.operations = append(tx.operations, orderBookOperation{
-		operationType: addLiquidityPoolOperationType,
-		liquidityPool: &liquidityPool,
-		liquidityPoolAssets: tradingPair{
-			params.AssetA.String(),
-			params.AssetB.String(),
-		},
+		operationType:       addLiquidityPoolOperationType,
+		liquidityPool:       &pool,
+		liquidityPoolAssets: makeTradingPair(params.AssetA, params.AssetB),
 	})
 
 	return tx
@@ -69,10 +66,12 @@ func (tx *orderBookBatchedUpdates) removeOffer(offerID xdr.Int64) *orderBookBatc
 }
 
 // removeLiquidityPool will queue an operation to remove the given liquidity pool from the order book
-func (tx *orderBookBatchedUpdates) removeLiquidityPool(liquidityPoolAssets tradingPair) *orderBookBatchedUpdates {
+func (tx *orderBookBatchedUpdates) removeLiquidityPool(pool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
+	params := pool.Body.MustConstantProduct().Params
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType:       removeLiquidityPoolOperationType,
-		liquidityPoolAssets: liquidityPoolAssets,
+		liquidityPool:       &pool,
+		liquidityPoolAssets: makeTradingPair(params.AssetA, params.AssetB),
 	})
 
 	return tx
@@ -108,17 +107,56 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 			}
 
 		case addLiquidityPoolOperationType:
-			entry := operation.liquidityPool
-			a := operation.liquidityPoolAssets.buyingAsset
-			b := operation.liquidityPoolAssets.sellingAsset
+			ob := tx.orderbook
+			entry := *operation.liquidityPool
+			ob.liquidityPools[operation.liquidityPoolAssets] = entry
 
-			tx.orderbook.liquidityPoolsForAsset[a] = append(
-				tx.orderbook.liquidityPoolsForAsset[a], *entry)
-			tx.orderbook.liquidityPoolsForAsset[b] = append(
-				tx.orderbook.liquidityPoolsForAsset[b], *entry)
+			// Liquidity pools have no concept of a "buying" or "selling" asset,
+			// so we create venues in both directions.
+			x, y := getPoolAssets(entry)
+
+			// Either there have already been offers added for the trading pair,
+			// or we need to create the internal map structure.
+			for _, asset := range []string{x, y} {
+				for _, table := range []map[string]edgeSet{
+					ob.venuesForBuyingAsset,
+					ob.venuesForSellingAsset,
+				} {
+					if _, ok := table[asset]; !ok {
+						table[asset] = edgeSet{}
+					}
+				}
+			}
+
+			ob.venuesForBuyingAsset[x].addPool(y, entry)
+			ob.venuesForBuyingAsset[y].addPool(x, entry)
+			ob.venuesForSellingAsset[x].addPool(y, entry)
+			ob.venuesForSellingAsset[y].addPool(x, entry)
+
 		case removeLiquidityPoolOperationType:
-			delete(tx.orderbook.liquidityPoolsForAsset, operation.liquidityPoolAssets.buyingAsset)
-			delete(tx.orderbook.liquidityPoolsForAsset, operation.liquidityPoolAssets.sellingAsset)
+			x, y := getPoolAssets(*operation.liquidityPool)
+			ob := tx.orderbook
+
+			for _, asset := range []string{x, y} {
+				otherAsset := x
+				if asset == x {
+					otherAsset = y
+				}
+
+				for _, table := range []map[string]edgeSet{
+					ob.venuesForBuyingAsset,
+					ob.venuesForSellingAsset,
+				} {
+					if venues, ok := table[asset]; ok {
+						venues.removePool(otherAsset)
+						if venues.isEmpty(otherAsset) {
+							delete(venues, otherAsset)
+						}
+					}
+				}
+			}
+
+			delete(ob.liquidityPools, operation.liquidityPoolAssets)
 
 		default:
 			panic(errors.New("invalid operation type"))
@@ -128,4 +166,22 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 	tx.orderbook.lastLedger = ledger
 
 	return nil
+}
+
+func removeLiquidityPool(
+	haystack []xdr.LiquidityPoolEntry,
+	needle xdr.LiquidityPoolEntry,
+) []xdr.LiquidityPoolEntry {
+	for i, pool := range haystack {
+		if needle.LiquidityPoolId != pool.LiquidityPoolId {
+			continue
+		}
+
+		// Taken from https://stackoverflow.com/a/37335777
+		L := len(haystack) - 1
+		haystack[i] = haystack[L] // swap with last
+		return haystack[:L]       // trim last
+	}
+
+	return haystack
 }

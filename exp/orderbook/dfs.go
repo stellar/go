@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
@@ -56,12 +57,15 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 	)
 
-	// Returns all "venues" (trading opportunities) for a particular asset.
+	// venues returns all possible trading opportunities for a particular asset.
 	//
-	// The result is grouped by the next asset hop, mapping to a list of offers
-	// and a liquidity pool, if one exists for that trading pair.
-	venues(currentAsset string) map[string]Venues
+	// The result is grouped by the next asset hop, mapping to a sorted list of
+	// offers (by price) and a liquidity pool (if one exists for that trading
+	// pair).
+	venues(currentAsset string) edgeSet
 
+	// chooseVenue determines whether the offer or pool amount should be chosen,
+	// returning the amount and whether or not the offer was chosen.
 	chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool)
 
 	consumeOffers(
@@ -74,15 +78,6 @@ type searchState interface {
 		currentAsset xdr.Asset,
 		currentAssetAmount xdr.Int64,
 	) (xdr.Int64, error)
-}
-
-func contains(list []string, want string) bool {
-	for i := 0; i < len(list); i++ {
-		if list[i] == want {
-			return true
-		}
-	}
-	return false
 }
 
 func dfs(
@@ -124,13 +119,6 @@ func dfs(
 			continue
 		}
 
-		// Notice that we do evaluate LPs for assets we may have already
-		// visited, because the amounts change depending on what we're
-		// offering to the LP, and asking for X of asset Y is not the same
-		// asking for X of asset Z in a Y<-->Z pool.
-		//
-		// TODO: I only *think* this is true, and should add a test case
-		//       that demonstrates this.
 		nextAsset, nextAssetAmount, err := processVenues(state,
 			currentAsset, currentAssetAmount, venues)
 		if err != nil {
@@ -140,6 +128,11 @@ func dfs(
 		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
 			continue
 		}
+
+		fmt.Printf("To get %s for %d %s -> %d\n",
+			getCode(nextAsset),
+			currentAssetAmount, getCode(currentAsset),
+			nextAssetAmount)
 
 		if err := dfs(
 			ctx,
@@ -214,34 +207,8 @@ func (state *sellingGraphSearchState) appendToPaths(
 	})
 }
 
-func (state *sellingGraphSearchState) venues(currentAsset string) map[string]Venues {
-	result := make(map[string]Venues,
-		// we're overshooting by up to 2x, but it's still a reasonable size hint
-		len(state.graph.edgesForSellingAsset)+len(state.graph.liquidityPoolsForAsset))
-
-	for nextAsset, offers := range state.graph.edgesForSellingAsset[currentAsset] {
-		result[nextAsset] = Venues{offers: offers}
-	}
-
-	// FIXME: I really don't like this whole "check or set" approach; lookups
-	//        are suboptimal and the code itself isn't clean. This needs a
-	//        refactor either way (deeper integration into the graph, I think),
-	//        so it'll get resolved eventually.
-	for _, pool := range state.graph.liquidityPoolsForAsset[currentAsset] {
-		params := pool.Body.MustConstantProduct().Params
-		otherAsset := params.AssetA.String()
-		if otherAsset == currentAsset {
-			otherAsset = params.AssetB.String()
-		}
-
-		if opp, ok := result[otherAsset]; ok {
-			opp.pool = pool
-		} else {
-			result[otherAsset] = Venues{pool: pool}
-		}
-	}
-
-	return result
+func (state *sellingGraphSearchState) venues(currentAsset string) edgeSet {
+	return state.graph.venuesForSellingAsset[currentAsset]
 }
 
 func (state *sellingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
@@ -322,28 +289,8 @@ func (state *buyingGraphSearchState) appendToPaths(
 	})
 }
 
-func (state *buyingGraphSearchState) venues(currentAsset string) map[string]Venues {
-	result := make(map[string]Venues)
-
-	for nextAsset, offers := range state.graph.edgesForBuyingAsset[currentAsset] {
-		result[nextAsset] = Venues{offers: offers}
-	}
-
-	for _, pool := range state.graph.liquidityPoolsForAsset[currentAsset] {
-		params := pool.Body.MustConstantProduct().Params
-		otherAsset := params.AssetA.String()
-		if otherAsset == currentAsset {
-			otherAsset = params.AssetB.String()
-		}
-
-		venue := Venues{pool: pool}
-		if existingVenues, ok := result[otherAsset]; ok {
-			venue.offers = existingVenues.offers
-		}
-		result[otherAsset] = venue
-	}
-
-	return result
+func (state *buyingGraphSearchState) venues(currentAsset string) edgeSet {
+	return state.graph.venuesForBuyingAsset[currentAsset]
 }
 
 func (state *buyingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
