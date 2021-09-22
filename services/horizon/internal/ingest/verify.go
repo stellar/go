@@ -516,7 +516,7 @@ func addTrustLinesToStateVerifier(
 		asset := xdr.MustNewCreditAsset(row.AssetCode, row.AssetIssuer)
 		trustline := xdr.TrustLineEntry{
 			AccountId: xdr.MustAddress(row.AccountID),
-			Asset:     asset,
+			Asset:     asset.ToTrustLineAsset(),
 			Balance:   xdr.Int64(row.Balance),
 			Limit:     xdr.Int64(row.Limit),
 			Flags:     xdr.Uint32(row.Flags),

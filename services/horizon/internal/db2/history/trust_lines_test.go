@@ -13,14 +13,15 @@ import (
 
 var (
 	trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	sponsorXDR      = xdr.MustAddress(sponsor)
 
 	eurTrustLine = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
-				AccountId: account1.Data.Account.AccountId,
-				Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+				AccountId: xdr.MustAddress(account1.AccountID),
+				Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   30000,
 				Limit:     223456789,
 				Flags:     1,
@@ -38,7 +39,7 @@ var (
 		Ext: xdr.LedgerEntryExt{
 			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: &sponsor,
+				SponsoringId: &sponsorXDR,
 			},
 		},
 	}
@@ -49,7 +50,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress("GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM"),
-				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   10000,
 				Limit:     123456789,
 				Flags:     0,
@@ -72,7 +73,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress("GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC"),
-				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   10000,
 				Limit:     123456789,
 				Flags:     0,
@@ -125,7 +126,7 @@ func TestInsertTrustLine(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, lines, 2)
 
-	assert.Equal(t, null.StringFrom(sponsor.Address()), lines[0].Sponsor)
+	assert.Equal(t, null.StringFrom(sponsor), lines[0].Sponsor)
 }
 
 func TestUpdateTrustLine(t *testing.T) {
@@ -161,7 +162,7 @@ func TestUpdateTrustLine(t *testing.T) {
 
 	dbEntry := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress(lines[0].AccountID),
-		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer).ToTrustLineAsset(),
 		Balance:   xdr.Int64(lines[0].Balance),
 		Limit:     xdr.Int64(lines[0].Limit),
 		Flags:     xdr.Uint32(lines[0].Flags),
@@ -235,7 +236,7 @@ func TestUpsertTrustLines(t *testing.T) {
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(lines[0].AccountID),
-				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer).ToTrustLineAsset(),
 				Balance:   xdr.Int64(lines[0].Balance),
 				Limit:     xdr.Int64(lines[0].Limit),
 				Flags:     xdr.Uint32(lines[0].Flags),
@@ -253,7 +254,7 @@ func TestUpsertTrustLines(t *testing.T) {
 		Ext: xdr.LedgerEntryExt{
 			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: &sponsor,
+				SponsoringId: &sponsorXDR,
 			},
 		},
 	}
@@ -280,7 +281,7 @@ func TestUpsertTrustLines(t *testing.T) {
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(lines[0].AccountID),
-				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer).ToTrustLineAsset(),
 				Balance:   xdr.Int64(lines[0].Balance),
 				Limit:     xdr.Int64(lines[0].Limit),
 				Flags:     xdr.Uint32(lines[0].Flags),
@@ -363,7 +364,7 @@ func TestGetSortedTrustLinesByAccountsID(t *testing.T) {
 		lastIssuer = record.AssetIssuer
 		xtl, ok := m[record.AccountID]
 		tt.Assert.True(ok)
-		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer)
+		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer).ToTrustLineAsset()
 		tt.Assert.Equal(xtl.Data.TrustLine.Asset, asset)
 		tt.Assert.Equal(xtl.Data.TrustLine.AccountId.Address(), record.AccountID)
 		delete(m, record.AccountID)
@@ -384,7 +385,7 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 	record, err := q.GetSortedTrustLinesByAccountID(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	tt.Assert.NoError(err)
 
-	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer)
+	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer).ToTrustLineAsset()
 	tt.Assert.Equal(eurTrustLine.Data.TrustLine.Asset, asset)
 	tt.Assert.Equal(eurTrustLine.Data.TrustLine.AccountId.Address(), record[0].AccountID)
 	tt.Assert.Equal(int64(eurTrustLine.Data.TrustLine.Balance), record[0].Balance)
@@ -417,7 +418,7 @@ func TestAssetsForAddress(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	ledgerEntries := []xdr.LedgerEntry{account1}
+	ledgerEntries := []AccountEntry{account1}
 
 	err := q.UpsertAccounts(tt.Ctx, ledgerEntries)
 	assert.NoError(t, err)
@@ -430,8 +431,8 @@ func TestAssetsForAddress(t *testing.T) {
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
-				AccountId: account1.Data.Account.AccountId,
-				Asset:     xdr.MustNewCreditAsset("BRL", trustLineIssuer.Address()),
+				AccountId: xdr.MustAddress(account1.AccountID),
+				Asset:     xdr.MustNewCreditAsset("BRL", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   1000,
 				Limit:     20000,
 				Flags:     1,
@@ -463,7 +464,7 @@ func TestAssetsForAddress(t *testing.T) {
 	tt.Assert.Empty(assets)
 	tt.Assert.Empty(balances)
 
-	assets, balances, err = q.AssetsForAddress(tt.Ctx, account1.Data.Account.AccountId.Address())
+	assets, balances, err = q.AssetsForAddress(tt.Ctx, account1.AccountID)
 	tt.Assert.NoError(err)
 
 	assetsToBalance := map[string]xdr.Int64{}

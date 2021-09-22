@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestFull_Hint(t *testing.T) {
+	kp := MustParseFull("SBFGFF27Y64ZUGFAIG5AMJGQODZZKV2YQKAVUUN4HNE24XZXD2OEUVUP")
+	assert.Equal(t, [4]byte{0x96, 0x47, 0x82, 0x96}, kp.Hint())
+	assert.Equal(t, [4]byte{0x96, 0x47, 0x82, 0x96}, kp.FromAddress().Hint())
+}
+
 func TestFull_Equal(t *testing.T) {
 	// A nil Full.
 	var kp0 *Full
@@ -44,7 +50,7 @@ var _ = Describe("keypair.Full", func() {
 	var subject KP
 
 	JustBeforeEach(func() {
-		subject = &Full{seed}
+		subject = MustParseFull(seed)
 	})
 
 	ItBehavesLikeAKP(&subject)

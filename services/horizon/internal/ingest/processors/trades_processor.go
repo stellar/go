@@ -44,9 +44,9 @@ func (p *TradeProcessor) ProcessTransaction(ctx context.Context, transaction ing
 
 	for i, insert := range txInserts {
 		buyer := txBuyers[i]
-		p.accountSet[insert.Trade.SellerId.Address()] = 0
+		p.accountSet[insert.Trade.SellerId().Address()] = 0
 		p.accountSet[buyer] = 0
-		p.assets = append(p.assets, insert.Trade.AssetSold, insert.Trade.AssetBought)
+		p.assets = append(p.assets, insert.Trade.AssetSold(), insert.Trade.AssetBought())
 
 		p.inserts = append(p.inserts, insert)
 		p.buyers = append(p.buyers, buyer)
@@ -71,9 +71,9 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 
 		for i, insert := range p.inserts {
 			insert.BuyerAccountID = accountSet[p.buyers[i]]
-			insert.SellerAccountID = accountSet[insert.Trade.SellerId.Address()]
-			insert.SoldAssetID = assetMap[insert.Trade.AssetSold.String()].ID
-			insert.BoughtAssetID = assetMap[insert.Trade.AssetBought.String()].ID
+			insert.SellerAccountID = accountSet[insert.Trade.SellerId().Address()]
+			insert.SoldAssetID = assetMap[insert.Trade.AssetSold().String()].ID
+			insert.BoughtAssetID = assetMap[insert.Trade.AssetBought().String()].ID
 			if err = batch.Add(ctx, insert); err != nil {
 				return errors.Wrap(err, "Error adding trade to batch")
 			}
@@ -90,11 +90,11 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 func (p *TradeProcessor) findTradeSellPrice(
 	transaction ingest.LedgerTransaction,
 	opidx int,
-	trade xdr.ClaimOfferAtom,
+	trade xdr.ClaimAtom,
 ) (xdr.Price, error) {
 	var price xdr.Price
 	key := xdr.LedgerKey{}
-	key.SetOffer(trade.SellerId, uint64(trade.OfferId))
+	key.SetOffer(trade.SellerId(), uint64(trade.OfferId()))
 
 	changes, err := transaction.GetOperationChanges(uint32(opidx))
 	if err != nil {
@@ -132,7 +132,7 @@ func (p *TradeProcessor) extractTrades(
 		return nil, nil, errors.New("transaction has no operation results")
 	}
 	for opidx, op := range transaction.Envelope.Operations() {
-		var trades []xdr.ClaimOfferAtom
+		var trades []xdr.ClaimAtom
 		var buyOfferExists bool
 		var buyOffer xdr.OfferEntry
 
@@ -186,7 +186,7 @@ func (p *TradeProcessor) extractTrades(
 			//
 			// These zeroed ClaimOfferAtom values do not represent trades, and so we
 			// skip them.
-			if trade.AmountBought == 0 && trade.AmountSold == 0 {
+			if trade.AmountBought() == 0 && trade.AmountSold() == 0 {
 				continue
 			}
 

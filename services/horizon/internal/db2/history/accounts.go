@@ -4,11 +4,8 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/guregu/null"
-	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -62,162 +59,63 @@ func (q *Q) GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry,
 	return accounts, err
 }
 
-func accountToMap(entry xdr.LedgerEntry) map[string]interface{} {
-	account := entry.Data.MustAccount()
-	liabilities := account.Liabilities()
-
-	var inflationDestination = ""
-	if account.InflationDest != nil {
-		inflationDestination = account.InflationDest.Address()
-	}
-
-	return map[string]interface{}{
-		"account_id":            account.AccountId.Address(),
-		"balance":               account.Balance,
-		"buying_liabilities":    liabilities.Buying,
-		"selling_liabilities":   liabilities.Selling,
-		"sequence_number":       account.SeqNum,
-		"num_subentries":        account.NumSubEntries,
-		"inflation_destination": inflationDestination,
-		"flags":                 account.Flags,
-		"home_domain":           account.HomeDomain,
-		"master_weight":         account.MasterKeyWeight(),
-		"threshold_low":         account.ThresholdLow(),
-		"threshold_medium":      account.ThresholdMedium(),
-		"threshold_high":        account.ThresholdHigh(),
-		"last_modified_ledger":  entry.LastModifiedLedgerSeq,
-		"sponsor":               ledgerEntrySponsorToNullString(entry),
-		"num_sponsored":         account.NumSponsored(),
-		"num_sponsoring":        account.NumSponsoring(),
-	}
-}
-
 // UpsertAccounts upserts a batch of accounts in the accounts table.
 // There's currently no limit of the number of accounts this method can
 // accept other than 2GB limit of the query string length what should be enough
 // for each ledger with the current limits.
-func (q *Q) UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error {
-	var accountID, inflationDestination []string
-	var homeDomain []xdr.String32
-	var balance, buyingLiabilities, sellingLiabilities []xdr.Int64
-	var sequenceNumber []xdr.SequenceNumber
-	var numSubEntries, flags, lastModifiedLedger, numSponsored, numSponsoring []xdr.Uint32
-	var masterWeight, thresholdLow, thresholdMedium, thresholdHigh []uint8
-	var sponsor []null.String
+func (q *Q) UpsertAccounts(ctx context.Context, accounts []AccountEntry) error {
+	var accountID, inflationDestination, homeDomain, balance, buyingLiabilities,
+		sellingLiabilities, sequenceNumber, numSubEntries, flags, lastModifiedLedger,
+		numSponsored, numSponsoring, masterWeight, thresholdLow, thresholdMedium,
+		thresholdHigh, sponsor []interface{}
 
-	for _, entry := range accounts {
-		if entry.Data.Type != xdr.LedgerEntryTypeAccount {
-			return errors.Errorf("Invalid entry type: %d", entry.Data.Type)
-		}
-
-		m := accountToMap(entry)
-		accountID = append(accountID, m["account_id"].(string))
-		balance = append(balance, m["balance"].(xdr.Int64))
-		buyingLiabilities = append(buyingLiabilities, m["buying_liabilities"].(xdr.Int64))
-		sellingLiabilities = append(sellingLiabilities, m["selling_liabilities"].(xdr.Int64))
-		sequenceNumber = append(sequenceNumber, m["sequence_number"].(xdr.SequenceNumber))
-		numSubEntries = append(numSubEntries, m["num_subentries"].(xdr.Uint32))
-		inflationDestination = append(inflationDestination, m["inflation_destination"].(string))
-		flags = append(flags, m["flags"].(xdr.Uint32))
-		homeDomain = append(homeDomain, m["home_domain"].(xdr.String32))
-		masterWeight = append(masterWeight, m["master_weight"].(uint8))
-		thresholdLow = append(thresholdLow, m["threshold_low"].(uint8))
-		thresholdMedium = append(thresholdMedium, m["threshold_medium"].(uint8))
-		thresholdHigh = append(thresholdHigh, m["threshold_high"].(uint8))
-		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
-		sponsor = append(sponsor, m["sponsor"].(null.String))
-		numSponsored = append(numSponsored, m["num_sponsored"].(xdr.Uint32))
-		numSponsoring = append(numSponsoring, m["num_sponsoring"].(xdr.Uint32))
+	for _, account := range accounts {
+		accountID = append(accountID, account.AccountID)
+		balance = append(balance, account.Balance)
+		buyingLiabilities = append(buyingLiabilities, account.BuyingLiabilities)
+		sellingLiabilities = append(sellingLiabilities, account.SellingLiabilities)
+		sequenceNumber = append(sequenceNumber, account.SequenceNumber)
+		numSubEntries = append(numSubEntries, account.NumSubEntries)
+		inflationDestination = append(inflationDestination, account.InflationDestination)
+		homeDomain = append(homeDomain, account.HomeDomain)
+		flags = append(flags, account.Flags)
+		masterWeight = append(masterWeight, account.MasterWeight)
+		thresholdLow = append(thresholdLow, account.ThresholdLow)
+		thresholdMedium = append(thresholdMedium, account.ThresholdMedium)
+		thresholdHigh = append(thresholdHigh, account.ThresholdHigh)
+		lastModifiedLedger = append(lastModifiedLedger, account.LastModifiedLedger)
+		sponsor = append(sponsor, account.Sponsor)
+		numSponsored = append(numSponsored, account.NumSponsored)
+		numSponsoring = append(numSponsoring, account.NumSponsoring)
 	}
 
-	sql := `
-	WITH r AS
-		(SELECT
-			unnest(?::text[]),   /* account_id */
-			unnest(?::bigint[]), /*	balance */
-			unnest(?::bigint[]), /*	buying_liabilities */
-			unnest(?::bigint[]), /*	selling_liabilities */
-			unnest(?::bigint[]), /*	sequence_number */
-			unnest(?::int[]),    /*	num_subentries */
-			unnest(?::text[]),   /*	inflation_destination */
-			unnest(?::int[]),    /*	flags */
-			unnest(?::text[]),   /*	home_domain */
-			unnest(?::int[]),    /*	master_weight */
-			unnest(?::int[]),    /*	threshold_low */
-			unnest(?::int[]),    /*	threshold_medium */
-			unnest(?::int[]),    /*	threshold_high */
-			unnest(?::int[]),    /*	last_modified_ledger */
-			unnest(?::text[]),   /*	sponsor */
-			unnest(?::int[]),    /*	num_sponsored */
-			unnest(?::int[])     /*	num_sponsoring */
-		)
-	INSERT INTO accounts ( 
-		account_id,
-		balance,
-		buying_liabilities,
-		selling_liabilities,
-		sequence_number,
-		num_subentries,
-		inflation_destination,
-		flags,
-		home_domain,
-		master_weight,
-		threshold_low,
-		threshold_medium,
-		threshold_high,
-		last_modified_ledger,
-		sponsor,
-		num_sponsored,
-		num_sponsoring
-	)
-	SELECT * from r 
-	ON CONFLICT (account_id) DO UPDATE SET 
-		account_id = excluded.account_id,
-		balance = excluded.balance,
-		buying_liabilities = excluded.buying_liabilities,
-		selling_liabilities = excluded.selling_liabilities,
-		sequence_number = excluded.sequence_number,
-		num_subentries = excluded.num_subentries,
-		inflation_destination = excluded.inflation_destination,
-		flags = excluded.flags,
-		home_domain = excluded.home_domain,
-		master_weight = excluded.master_weight,
-		threshold_low = excluded.threshold_low,
-		threshold_medium = excluded.threshold_medium,
-		threshold_high = excluded.threshold_high,
-		last_modified_ledger = excluded.last_modified_ledger,
-		sponsor = excluded.sponsor,
-		num_sponsored = excluded.num_sponsored,
-		num_sponsoring = excluded.num_sponsoring`
+	upsertFields := []upsertField{
+		{"account_id", "text", accountID},
+		{"balance", "bigint", balance},
+		{"buying_liabilities", "bigint", buyingLiabilities},
+		{"selling_liabilities", "bigint", sellingLiabilities},
+		{"sequence_number", "bigint", sequenceNumber},
+		{"num_subentries", "int", numSubEntries},
+		{"inflation_destination", "text", inflationDestination},
+		{"flags", "int", flags},
+		{"home_domain", "text", homeDomain},
+		{"master_weight", "int", masterWeight},
+		{"threshold_low", "int", thresholdLow},
+		{"threshold_medium", "int", thresholdMedium},
+		{"threshold_high", "int", thresholdHigh},
+		{"last_modified_ledger", "int", lastModifiedLedger},
+		{"sponsor", "text", sponsor},
+		{"num_sponsored", "int", numSponsored},
+		{"num_sponsoring", "int", numSponsoring},
+	}
 
-	_, err := q.ExecRaw(
-		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
-		sql,
-		pq.Array(accountID),
-		pq.Array(balance),
-		pq.Array(buyingLiabilities),
-		pq.Array(sellingLiabilities),
-		pq.Array(sequenceNumber),
-		pq.Array(numSubEntries),
-		pq.Array(inflationDestination),
-		pq.Array(flags),
-		pq.Array(homeDomain),
-		pq.Array(masterWeight),
-		pq.Array(thresholdLow),
-		pq.Array(thresholdMedium),
-		pq.Array(thresholdHigh),
-		pq.Array(lastModifiedLedger),
-		pq.Array(sponsor),
-		pq.Array(numSponsored),
-		pq.Array(numSponsoring),
-	)
-	return err
+	return q.upsertRows(ctx, "accounts", "account_id", upsertFields)
 }
 
-// RemoveAccount deletes a row in the accounts table.
+// RemoveAccounts deletes a row in the accounts table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveAccount(ctx context.Context, accountID string) (int64, error) {
-	sql := sq.Delete("accounts").Where(sq.Eq{"account_id": accountID})
+func (q *Q) RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error) {
+	sql := sq.Delete("accounts").Where(sq.Eq{"account_id": accountIDs})
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err

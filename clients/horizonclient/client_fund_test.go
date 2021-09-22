@@ -25,7 +25,6 @@ func TestFund(t *testing.T) {
 	client := &Client{
 		HorizonURL: "https://localhost/",
 		HTTP:       hmock,
-		isTestNet:  true,
 	}
 
 	hmock.On(
@@ -36,4 +35,27 @@ func TestFund(t *testing.T) {
 	tx, err := client.Fund("GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V")
 	assert.NoError(t, err)
 	assert.Equal(t, int32(8269), tx.Ledger)
+}
+
+func TestFund_notSupported(t *testing.T) {
+	friendbotFundResponse := `{
+  "type": "https://stellar.org/horizon-errors/not_found",
+  "title": "Resource Missing",
+  "status": 404,
+  "detail": "The resource at the url requested was not found.  This usually occurs for one of two reasons:  The url requested is not valid, or no data in our database could be found with the parameters provided."
+}`
+
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/friendbot?addr=GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V",
+	).ReturnString(404, friendbotFundResponse)
+
+	_, err := client.Fund("GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V")
+	assert.EqualError(t, err, "funding is only available on test networks and may not be supported by https://localhost/: horizon error: \"Resource Missing\" - check horizon.Error.Problem for more information")
 }

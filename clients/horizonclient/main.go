@@ -141,7 +141,6 @@ type Client struct {
 	// AppVersion is the version of the application using the horizonclient package
 	AppVersion     string
 	horizonTimeout time.Duration
-	isTestNet      bool
 
 	// clock is a Clock returning the current time.
 	clock *clock.Clock
@@ -215,7 +214,6 @@ var DefaultTestNetClient = &Client{
 	HorizonURL:     "https://horizon-testnet.stellar.org/",
 	HTTP:           http.DefaultClient,
 	horizonTimeout: HorizonTimeout,
-	isTestNet:      true,
 }
 
 // DefaultPublicNetClient is a default client to connect to public network.

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/assert"
 
 	protocol "github.com/stellar/go/protocols/horizon"
@@ -20,94 +21,58 @@ var (
 	accountOne      = "GABGMPEKKDWR2WFH5AJOZV5PDKLJEHGCR3Q24ALETWR5H3A7GI3YTS7V"
 	accountTwo      = "GADTXHUTHIAESMMQ2ZWSTIIGBZRLHUCBLCHPLLUEIAWDEFRDC4SYDKOZ"
 	signer          = "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"
-	sponsor         = xdr.MustAddress("GCO26ZSBD63TKYX45H2C7D2WOFWOUSG5BMTNC3BG4QMXM3PAYI6WHKVZ")
+	sponsor         = "GCO26ZSBD63TKYX45H2C7D2WOFWOUSG5BMTNC3BG4QMXM3PAYI6WHKVZ"
 	usd             = xdr.MustNewCreditAsset("USD", trustLineIssuer)
 	euro            = xdr.MustNewCreditAsset("EUR", trustLineIssuer)
 
-	account1 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.AccountEntry{
-				AccountId:     xdr.MustAddress(accountOne),
-				Balance:       20000,
-				SeqNum:        223456789,
-				NumSubEntries: 10,
-				Flags:         1,
-				HomeDomain:    "stellar.org",
-				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-				Ext: xdr.AccountEntryExt{
-					V: 1,
-					V1: &xdr.AccountEntryExtensionV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  3,
-							Selling: 4,
-						},
-					},
-				},
-			},
-		},
+	account1 = history.AccountEntry{
+		LastModifiedLedger: 1234,
+		AccountID:          accountOne,
+		Balance:            20000,
+		SequenceNumber:     223456789,
+		NumSubEntries:      10,
+		Flags:              1,
+		HomeDomain:         "stellar.org",
+		MasterWeight:       1,
+		ThresholdLow:       2,
+		ThresholdMedium:    3,
+		ThresholdHigh:      4,
+		BuyingLiabilities:  3,
+		SellingLiabilities: 3,
 	}
 
-	account2 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.AccountEntry{
-				AccountId:     xdr.MustAddress(accountTwo),
-				Balance:       50000,
-				SeqNum:        648736,
-				NumSubEntries: 10,
-				Flags:         2,
-				HomeDomain:    "meridian.stellar.org",
-				Thresholds:    xdr.Thresholds{5, 6, 7, 8},
-				Ext: xdr.AccountEntryExt{
-					V: 1,
-					V1: &xdr.AccountEntryExtensionV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  30,
-							Selling: 40,
-						},
-					},
-				},
-			},
-		},
+	account2 = history.AccountEntry{
+		LastModifiedLedger: 1234,
+		AccountID:          accountTwo,
+		Balance:            50000,
+		SequenceNumber:     648736,
+		NumSubEntries:      10,
+		Flags:              2,
+		HomeDomain:         "meridian.stellar.org",
+		MasterWeight:       5,
+		ThresholdLow:       6,
+		ThresholdMedium:    7,
+		ThresholdHigh:      8,
+		BuyingLiabilities:  30,
+		SellingLiabilities: 40,
 	}
 
-	account3 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.AccountEntry{
-				AccountId:     xdr.MustAddress(signer),
-				Balance:       50000,
-				SeqNum:        648736,
-				NumSubEntries: 10,
-				Flags:         2,
-				Thresholds:    xdr.Thresholds{5, 6, 7, 8},
-				Ext: xdr.AccountEntryExt{
-					V: 1,
-					V1: &xdr.AccountEntryExtensionV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  30,
-							Selling: 40,
-						},
-						Ext: xdr.AccountEntryExtensionV1Ext{
-							V2: &xdr.AccountEntryExtensionV2{
-								NumSponsored:  1,
-								NumSponsoring: 2,
-							},
-						},
-					},
-				},
-			},
-		},
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: &sponsor,
-			},
-		},
+	account3 = history.AccountEntry{
+		LastModifiedLedger: 1234,
+		AccountID:          signer,
+		Balance:            50000,
+		SequenceNumber:     648736,
+		NumSubEntries:      10,
+		Flags:              2,
+		MasterWeight:       5,
+		ThresholdLow:       6,
+		ThresholdMedium:    7,
+		ThresholdHigh:      8,
+		BuyingLiabilities:  30,
+		SellingLiabilities: 40,
+		NumSponsored:       1,
+		NumSponsoring:      2,
+		Sponsor:            null.StringFrom(sponsor),
 	}
 
 	eurTrustLine = xdr.LedgerEntry{
@@ -116,7 +81,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(accountOne),
-				Asset:     euro,
+				Asset:     euro.ToTrustLineAsset(),
 				Balance:   20000,
 				Limit:     223456789,
 				Flags:     1,
@@ -139,7 +104,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(accountTwo),
-				Asset:     usd,
+				Asset:     usd.ToTrustLineAsset(),
 				Balance:   10000,
 				Limit:     123456789,
 				Flags:     0,
@@ -220,29 +185,23 @@ func TestAccountInfo(t *testing.T) {
 	tt.Assert.NoError(
 		xdr.SafeUnmarshalBase64("AQAAAA==", &thresholds),
 	)
-	accountID := xdr.MustAddress(
-		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-	)
-	accountEntry := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.AccountEntry{
-				AccountId:     accountID,
-				Balance:       9999999900,
-				SeqNum:        8589934593,
-				NumSubEntries: 1,
-				InflationDest: nil,
-				HomeDomain:    "",
-				Thresholds:    thresholds,
-				Flags:         0,
-			},
-		},
+	accountID := "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"
+	accountEntry := history.AccountEntry{
+		LastModifiedLedger:   4,
+		AccountID:            accountID,
+		Balance:              9999999900,
+		SequenceNumber:       8589934593,
+		NumSubEntries:        1,
+		InflationDestination: "",
+		HomeDomain:           "",
+		MasterWeight:         thresholds[0],
+		ThresholdLow:         thresholds[1],
+		ThresholdMedium:      thresholds[2],
+		ThresholdHigh:        thresholds[3],
+		Flags:                0,
 	}
-	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, accountEntry)
+	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{accountEntry})
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	tt.Assert.NoError(err)
 
@@ -251,11 +210,11 @@ func TestAccountInfo(t *testing.T) {
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
-				AccountId: accountID,
+				AccountId: xdr.MustAddress(accountID),
 				Asset: xdr.MustNewCreditAsset(
 					"USD",
 					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				),
+				).ToTrustLineAsset(),
 				Balance: 0,
 				Limit:   9223372036854775807,
 				Flags:   1,
@@ -269,11 +228,11 @@ func TestAccountInfo(t *testing.T) {
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
-				AccountId: accountID,
+				AccountId: xdr.MustAddress(accountID),
 				Asset: xdr.MustNewCreditAsset(
 					"EUR",
 					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				),
+				).ToTrustLineAsset(),
 				Balance: 0,
 				Limit:   9223372036854775807,
 				Flags:   1,
@@ -293,7 +252,7 @@ func TestAccountInfo(t *testing.T) {
 	}, 0, 0, 0, 0, 0)
 	assert.NoError(t, err)
 
-	account, err := AccountInfo(tt.Ctx, &history.Q{tt.HorizonSession()}, accountID.Address())
+	account, err := AccountInfo(tt.Ctx, &history.Q{tt.HorizonSession()}, accountID)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal("8589934593", account.Sequence)
@@ -354,14 +313,8 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{}
 
-	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, account1)
+	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{account1, account2, account3})
 	assert.NoError(t, err)
-	err = batch.Add(tt.Ctx, account2)
-	assert.NoError(t, err)
-	err = batch.Add(tt.Ctx, account3)
-	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	for _, row := range accountSigners {
 		q.CreateAccountSigner(tt.Ctx, row.Account, row.Signer, row.Weight, nil)
@@ -434,14 +387,8 @@ func TestGetAccountsHandlerPageResultsBySponsor(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{}
 
-	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, account1)
+	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{account1, account2, account3})
 	assert.NoError(t, err)
-	err = batch.Add(tt.Ctx, account2)
-	assert.NoError(t, err)
-	err = batch.Add(tt.Ctx, account3)
-	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	for _, row := range accountSigners {
 		q.CreateAccountSigner(tt.Ctx, row.Account, row.Signer, row.Weight, nil)
@@ -452,7 +399,7 @@ func TestGetAccountsHandlerPageResultsBySponsor(t *testing.T) {
 		makeRequest(
 			t,
 			map[string]string{
-				"sponsor": sponsor.Address(),
+				"sponsor": sponsor,
 			},
 			map[string]string{},
 			q,
@@ -472,12 +419,8 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := &GetAccountsHandler{}
 
-	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, account1)
+	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{account1, account2})
 	assert.NoError(t, err)
-	err = batch.Add(tt.Ctx, account2)
-	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec(tt.Ctx))
 	ledgerCloseTime := time.Now().Unix()
 	_, err = q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{

@@ -30,6 +30,11 @@ func (m *MockArchive) BucketExists(bucket Hash) (bool, error) {
 	return a.Get(0).(bool), a.Error(1)
 }
 
+func (m *MockArchive) BucketSize(bucket Hash) (int64, error) {
+	a := m.Called(bucket)
+	return a.Get(0).(int64), a.Error(1)
+}
+
 func (m *MockArchive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	a := m.Called(cat, chk)
 	return a.Get(0).(bool), a.Error(1)

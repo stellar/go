@@ -27,6 +27,7 @@ type SingleLedgerStateReaderTestSuite struct {
 	reader               *CheckpointChangeReader
 	has                  historyarchive.HistoryArchiveState
 	mockBucketExistsCall *mock.Call
+	mockBucketSizeCall   *mock.Call
 }
 
 func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
@@ -45,6 +46,11 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 	s.mockBucketExistsCall = s.mockArchive.
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
+
+	// BucketSize should be called 21 times (11 levels, last without `snap`)
+	s.mockBucketSizeCall = s.mockArchive.
+		On("BucketSize", mock.AnythingOfType("historyarchive.Hash")).
+		Return(int64(100), nil).Times(21)
 
 	s.mockArchive.
 		On("GetCheckpointManager").
@@ -228,9 +234,6 @@ func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11Bucket() {
 		On("GetXdrStreamForHash", <-nextBucket).
 		Return(curr1, nil).Once()
 
-	// BucketExists will be called only once in this test due to an error
-	s.mockBucketExistsCall.Once()
-
 	// Account entry
 	_, err := s.reader.Read()
 	s.Require().Nil(err)
@@ -253,9 +256,6 @@ func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11BucketNoMeta()
 	s.mockArchive.
 		On("GetXdrStreamForHash", <-nextBucket).
 		Return(curr1, nil).Once()
-
-	// BucketExists will be called only once in this test due to an error
-	s.mockBucketExistsCall.Once()
 
 	// Init entry without meta
 	_, err := s.reader.Read()

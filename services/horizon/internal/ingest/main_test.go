@@ -26,7 +26,7 @@ var (
 	issuer   = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	usdAsset = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: [4]byte{'u', 's', 'd', 0},
 			Issuer:    issuer,
 		},
@@ -38,7 +38,7 @@ var (
 
 	eurAsset = xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AlphaNum4: &xdr.AssetAlphaNum4{
+		AlphaNum4: &xdr.AlphaNum4{
 			AssetCode: [4]byte{'e', 'u', 'r', 0},
 			Issuer:    issuer,
 		},

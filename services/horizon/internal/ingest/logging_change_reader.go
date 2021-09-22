@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/stellar/go/ingest"
@@ -51,9 +52,16 @@ func (lcr *loggingChangeReader) Read() (ingest.Change, error) {
 		lcr.entryCount++
 
 		if lcr.entryCount%lcr.frequency == 0 {
-			logger := log.WithField("numEntries", lcr.entryCount).
+			logger := log.WithField("processed_entries", lcr.entryCount).
 				WithField("source", lcr.source).
 				WithField("sequence", lcr.sequence)
+
+			if reader, ok := lcr.ChangeReader.(*ingest.CheckpointChangeReader); ok {
+				logger = logger.WithField(
+					"progress",
+					fmt.Sprintf("%.02f%%", reader.Progress()),
+				)
+			}
 
 			if lcr.profile {
 				curHeap, sysHeap := getMemStats()

@@ -12,7 +12,7 @@ func TestLedgerKeyTrustLineBinaryMaxLength(t *testing.T) {
 	key := &xdr.LedgerKey{}
 	err := key.SetTrustline(
 		xdr.MustAddress("GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"),
-		xdr.MustNewCreditAsset("123456789012", "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF"),
+		xdr.MustNewCreditAsset("123456789012", "GBFLTCDLOE6YQ74B66RH3S2UW5I2MKZ5VLTM75F4YMIWUIXRIFVNRNIF").ToTrustLineAsset(),
 	)
 	assert.NoError(t, err)
 

@@ -143,34 +143,22 @@ func TestPathActionsStrictReceive(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 
-	account := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.AccountEntry{
-				AccountId:     xdr.MustAddress(sourceAccount),
-				Balance:       20000,
-				SeqNum:        223456789,
-				NumSubEntries: 10,
-				Flags:         1,
-				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-				Ext: xdr.AccountEntryExt{
-					V: 1,
-					V1: &xdr.AccountEntryExtensionV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  3,
-							Selling: 4,
-						},
-					},
-				},
-			},
-		},
+	account := history.AccountEntry{
+		LastModifiedLedger: 1234,
+		AccountID:          sourceAccount,
+		Balance:            20000,
+		SequenceNumber:     223456789,
+		NumSubEntries:      10,
+		Flags:              1,
+		MasterWeight:       1,
+		ThresholdLow:       2,
+		ThresholdMedium:    3,
+		ThresholdHigh:      4,
+		BuyingLiabilities:  3,
+		SellingLiabilities: 4,
 	}
 
-	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, account)
-	assert.NoError(t, err)
-	err = batch.Exec(tt.Ctx)
+	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{account})
 	assert.NoError(t, err)
 
 	assetsByKeys := map[string]xdr.Asset{}
@@ -187,7 +175,7 @@ func TestPathActionsStrictReceive(t *testing.T) {
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(sourceAccount),
-					Asset:     asset,
+					Asset:     asset.ToTrustLineAsset(),
 					Balance:   10000,
 					Limit:     123456789,
 					Flags:     0,
@@ -501,34 +489,22 @@ func TestPathActionsStrictSend(t *testing.T) {
 		xdr.MustNewNativeAsset(),
 	}
 
-	account := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeAccount,
-			Account: &xdr.AccountEntry{
-				AccountId:     xdr.MustAddress(destinationAccount),
-				Balance:       20000,
-				SeqNum:        223456789,
-				NumSubEntries: 10,
-				Flags:         1,
-				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-				Ext: xdr.AccountEntryExt{
-					V: 1,
-					V1: &xdr.AccountEntryExtensionV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  3,
-							Selling: 4,
-						},
-					},
-				},
-			},
-		},
+	account := history.AccountEntry{
+		LastModifiedLedger: 1234,
+		AccountID:          destinationAccount,
+		Balance:            20000,
+		SequenceNumber:     223456789,
+		NumSubEntries:      10,
+		Flags:              1,
+		MasterWeight:       1,
+		ThresholdLow:       2,
+		ThresholdMedium:    3,
+		ThresholdHigh:      4,
+		BuyingLiabilities:  3,
+		SellingLiabilities: 4,
 	}
 
-	batch := historyQ.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(tt.Ctx, account)
-	assert.NoError(t, err)
-	err = batch.Exec(tt.Ctx)
+	err := historyQ.UpsertAccounts(tt.Ctx, []history.AccountEntry{account})
 	assert.NoError(t, err)
 
 	assetsByKeys := map[string]xdr.Asset{}
@@ -545,7 +521,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.TrustLineEntry{
 					AccountId: xdr.MustAddress(destinationAccount),
-					Asset:     asset,
+					Asset:     asset.ToTrustLineAsset(),
 					Balance:   10000,
 					Limit:     123456789,
 					Flags:     0,
