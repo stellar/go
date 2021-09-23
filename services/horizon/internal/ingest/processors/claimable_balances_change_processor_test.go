@@ -43,19 +43,22 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestNoEntries() {
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestCreatesClaimableBalances() {
 	lastModifiedLedgerSeq := xdr.Uint32(123)
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
+
 	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{1, 2, 3},
-		},
+		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{},
 		Asset:     xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Amount:    10,
 	}
-
+	id, err := xdr.MarshalHex(balanceID)
+	s.Assert().NoError(err)
 	s.mockQ.On("UpsertClaimableBalances", s.ctx, []history.ClaimableBalance{
 		{
-			BalanceID:          cBalance.BalanceId,
+			BalanceID:          id,
 			Claimants:          []history.Claimant{},
 			Asset:              cBalance.Asset,
 			Amount:             cBalance.Amount,
@@ -63,7 +66,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestCreatesClaimableBal
 		},
 	}).Return(nil).Once()
 
-	err := s.processor.ProcessChange(s.ctx, ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -106,11 +109,12 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNoTransactions() {
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalance() {
 	lastModifiedLedgerSeq := xdr.Uint32(123)
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
 	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{1, 2, 3},
-		},
+		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{},
 		Asset:     xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Amount:    10,
@@ -158,13 +162,15 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 	})
 	s.Assert().NoError(err)
 
+	id, err := xdr.MarshalHex(balanceID)
+	s.Assert().NoError(err)
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
 		"UpsertClaimableBalances",
 		s.ctx,
 		[]history.ClaimableBalance{
 			{
-				BalanceID:          cBalance.BalanceId,
+				BalanceID:          id,
 				Claimants:          []history.Claimant{},
 				Asset:              cBalance.Asset,
 				Amount:             cBalance.Amount,
@@ -176,11 +182,12 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBalance() {
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
 	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{1, 2, 3},
-		},
+		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{},
 		Asset:     xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Amount:    10,
@@ -223,12 +230,14 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 	})
 	s.Assert().NoError(err)
 
+	id, err := xdr.MarshalHex(balanceID)
+	s.Assert().NoError(err)
 	s.mockQ.On(
 		"UpsertClaimableBalances",
 		s.ctx,
 		[]history.ClaimableBalance{
 			{
-				BalanceID:          cBalance.BalanceId,
+				BalanceID:          id,
 				Claimants:          []history.Claimant{},
 				Asset:              cBalance.Asset,
 				Amount:             cBalance.Amount,
@@ -240,11 +249,12 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
 	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{1, 2, 3},
-		},
+		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{},
 		Asset:     xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Amount:    10,
@@ -270,9 +280,11 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBal
 	})
 	s.Assert().NoError(err)
 
+	id, err := xdr.MarshalHex(balanceID)
+	s.Assert().NoError(err)
 	s.mockQ.On(
 		"RemoveClaimableBalances",
 		s.ctx,
-		[]xdr.ClaimableBalanceId{cBalance.BalanceId},
+		[]string{id},
 	).Return(int64(1), nil).Once()
 }

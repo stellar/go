@@ -1,7 +1,6 @@
 package history
 
 import (
-	"bytes"
 	"context"
 	"sort"
 
@@ -9,19 +8,18 @@ import (
 
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // QHistoryClaimableBalances defines account related queries.
 type QHistoryClaimableBalances interface {
-	CreateHistoryClaimableBalances(ctx context.Context, ids []xdr.ClaimableBalanceId, batchSize int) (map[string]int64, error)
+	CreateHistoryClaimableBalances(ctx context.Context, ids []string, batchSize int) (map[string]int64, error)
 	NewOperationClaimableBalanceBatchInsertBuilder(maxBatchSize int) OperationClaimableBalanceBatchInsertBuilder
 	NewTransactionClaimableBalanceBatchInsertBuilder(maxBatchSize int) TransactionClaimableBalanceBatchInsertBuilder
 }
 
 // CreateHistoryClaimableBalances creates rows in the history_claimable_balances table for a given list of ids.
 // CreateHistoryClaimableBalances returns a mapping of id to its corresponding internal id in the history_claimable_balances table
-func (q *Q) CreateHistoryClaimableBalances(ctx context.Context, ids []xdr.ClaimableBalanceId, batchSize int) (map[string]int64, error) {
+func (q *Q) CreateHistoryClaimableBalances(ctx context.Context, ids []string, batchSize int) (map[string]int64, error) {
 	builder := &db.BatchInsertBuilder{
 		Table:        q.GetTable("history_claimable_balances"),
 		MaxBatchSize: batchSize,
@@ -30,9 +28,7 @@ func (q *Q) CreateHistoryClaimableBalances(ctx context.Context, ids []xdr.Claima
 
 	// sort before inserting to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
-	sort.Slice(ids, func(i, j int) bool {
-		return bytes.Compare(ids[i].V0[:], ids[j].V0[:]) < 0
-	})
+	sort.Strings(ids)
 	for _, id := range ids {
 		err := builder.Row(ctx, map[string]interface{}{
 			"claimable_balance_id": id,
@@ -64,11 +60,7 @@ func (q *Q) CreateHistoryClaimableBalances(ctx context.Context, ids []xdr.Claima
 		}
 
 		for _, cb := range cbs {
-			hexID, err := xdr.MarshalHex(cb.BalanceID)
-			if err != nil {
-				return nil, errors.Wrap(err, "error parsing BalanceID")
-			}
-			toInternalID[hexID] = cb.InternalID
+			toInternalID[cb.BalanceID] = cb.InternalID
 		}
 	}
 
@@ -77,14 +69,14 @@ func (q *Q) CreateHistoryClaimableBalances(ctx context.Context, ids []xdr.Claima
 
 // HistoryClaimableBalance is a row of data from the `history_claimable_balances` table
 type HistoryClaimableBalance struct {
-	BalanceID  xdr.ClaimableBalanceId `db:"claimable_balance_id"`
-	InternalID int64                  `db:"id"`
+	BalanceID  string `db:"claimable_balance_id"`
+	InternalID int64  `db:"id"`
 }
 
 var selectHistoryClaimableBalance = sq.Select("hcb.*").From("history_claimable_balances hcb")
 
 // ClaimableBalancesByIDs loads rows from `history_claimable_balances`, by claimable_balance_id
-func (q *Q) ClaimableBalancesByIDs(ctx context.Context, ids []xdr.ClaimableBalanceId) (dest []HistoryClaimableBalance, err error) {
+func (q *Q) ClaimableBalancesByIDs(ctx context.Context, ids []string) (dest []HistoryClaimableBalance, err error) {
 	sql := selectHistoryClaimableBalance.Where(map[string]interface{}{
 		"hcb.claimable_balance_id": ids, // hcb.claimable_balance_id IN (...)
 	})
@@ -93,7 +85,7 @@ func (q *Q) ClaimableBalancesByIDs(ctx context.Context, ids []xdr.ClaimableBalan
 }
 
 // ClaimableBalanceByID loads a row from `history_claimable_balances`, by claimable_balance_id
-func (q *Q) ClaimableBalanceByID(ctx context.Context, id xdr.ClaimableBalanceId) (dest HistoryClaimableBalance, err error) {
+func (q *Q) ClaimableBalanceByID(ctx context.Context, id string) (dest HistoryClaimableBalance, err error) {
 	sql := selectHistoryClaimableBalance.Limit(1).Where("hcb.claimable_balance_id = ?", id)
 	err = q.Get(ctx, &dest, sql)
 	return dest, err

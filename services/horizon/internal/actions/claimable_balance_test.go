@@ -26,8 +26,10 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance := history.ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []history.Claimant{
 			{
 				Destination: accountID,
@@ -41,14 +43,10 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	err := q.UpsertClaimableBalances(tt.Ctx, []history.ClaimableBalance{cBalance})
-	tt.Assert.NoError(err)
-
+	err = q.UpsertClaimableBalances(tt.Ctx, []history.ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
 	handler := GetClaimableBalanceByIDHandler{}
-	id, err := xdr.MarshalHex(cBalance.BalanceID)
-	tt.Assert.NoError(err)
 	response, err := handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
@@ -87,9 +85,9 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	p := err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("id", p.Extras["invalid_field"])
-	tt.Assert.Equal("Invalid claimable balance ID", p.Extras["reason"])
+	tt.Assert.Equal("0000001112122 does not validate as claimableBalanceID", p.Extras["reason"])
 
-	// try to fetch a random invalid hex id
+	// try to fetch an empty id
 	_, err = handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
@@ -100,22 +98,24 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	p = err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("id", p.Extras["invalid_field"])
-	tt.Assert.Equal("Invalid claimable balance ID", p.Extras["reason"])
+	tt.Assert.Equal("non zero value required", p.Extras["reason"])
 }
 
-func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int32, asset *xdr.Asset) history.ClaimableBalance {
+func buildClaimableBalance(tt *test.T, balanceIDHash xdr.Hash, accountID string, ledger int32, asset *xdr.Asset) history.ClaimableBalance {
 	balanceAsset := xdr.MustNewNativeAsset()
 	var sponsor null.String
 	if asset != nil {
 		balanceAsset = *asset
 		sponsor = null.StringFrom(accountID)
 	}
-
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &balanceIDHash,
+	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	return history.ClaimableBalance{
-		BalanceID: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &balanceIDHash,
-		},
+		BalanceID: id,
 		Claimants: []history.Claimant{
 			{
 				Destination: accountID,
@@ -172,7 +172,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	var hCBs []history.ClaimableBalance
 
 	for _, e := range entriesMeta {
-		cb := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
+		cb := buildClaimableBalance(tt, e.id, e.accountID, e.ledger, e.asset)
 		hCBs = append(hCBs, cb)
 	}
 
@@ -192,8 +192,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	// check response is sorted in ascending order
 	for entriesIndex, responseIndex := len(hCBs)-1, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
 		entry := hCBs[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.BalanceID)
-		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
+		tt.Assert.Equal(entry.BalanceID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -220,8 +219,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	// response should be the last 2 elements of entries sorted by ID
 	for entriesIndex, responseIndex := len(hCBs)-1, 0; entriesIndex >= 2; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
 		entry := hCBs[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.BalanceID)
-		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
+		tt.Assert.Equal(entry.BalanceID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -240,8 +238,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	// response should be the first 2 elements of entries sorted by ID
 	for entriesIndex, responseIndex := len(hCBs)-3, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
 		entry := hCBs[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.BalanceID)
-		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
+		tt.Assert.Equal(entry.BalanceID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	// next page should be 0, there are no new claimable balances ingested
@@ -287,7 +284,7 @@ func TestGetClaimableBalances(t *testing.T) {
 
 	hCBs = nil
 	for _, e := range entriesMeta {
-		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
+		entry := buildClaimableBalance(tt, e.id, e.accountID, e.ledger, e.asset)
 		hCBs = append(hCBs, entry)
 	}
 
@@ -319,8 +316,7 @@ func TestGetClaimableBalances(t *testing.T) {
 
 	// response should be the first 2 elements of entries
 	for i, entry := range hCBs {
-		expectedID, _ := xdr.MarshalHex(entry.BalanceID)
-		tt.Assert.Equal(expectedID, response[i].(protocol.ClaimableBalance).BalanceID)
+		tt.Assert.Equal(entry.BalanceID, response[i].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -336,9 +332,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 
-	expectedID, err := xdr.MarshalHex(cbToBeUpdated.BalanceID)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(cbToBeUpdated.BalanceID, response[0].(protocol.ClaimableBalance).BalanceID)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
@@ -367,13 +361,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 2)
 
-	expectedID, err = xdr.MarshalHex(cbToBeUpdated.BalanceID)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(cbToBeUpdated.BalanceID, response[0].(protocol.ClaimableBalance).BalanceID)
 
-	expectedID, err = xdr.MarshalHex(hCBs[1].BalanceID)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[1].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(hCBs[1].BalanceID, response[1].(protocol.ClaimableBalance).BalanceID)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
@@ -389,9 +379,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 
-	expectedID, err = xdr.MarshalHex(hCBs[0].BalanceID)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(hCBs[0].BalanceID, response[0].(protocol.ClaimableBalance).BalanceID)
 
 	// filter by asset
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(

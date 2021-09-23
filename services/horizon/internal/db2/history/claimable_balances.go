@@ -23,10 +23,10 @@ type ClaimableBalancesQuery struct {
 }
 
 // Cursor validates and returns the query page cursor
-func (cbq ClaimableBalancesQuery) Cursor() (int64, *xdr.ClaimableBalanceId, error) {
+func (cbq ClaimableBalancesQuery) Cursor() (int64, string, error) {
 	p := cbq.PageQuery
 	var l int64
-	var r *xdr.ClaimableBalanceId
+	var r string
 	var err error
 
 	if p.Cursor != "" {
@@ -44,7 +44,7 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, *xdr.ClaimableBalanceId, erro
 		if err = xdr.SafeUnmarshalHex(parts[1], &balanceID); err != nil {
 			return l, r, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
 		}
-		r = &balanceID
+		r = parts[1]
 		if l < 0 {
 			return l, r, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
 		}
@@ -65,13 +65,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 
 	switch p.Order {
 	case db2.OrderAscending:
-		if l > 0 && r != nil {
+		if l > 0 && r != "" {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", l, r))
 		}
 		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
 	case db2.OrderDescending:
-		if l > 0 && r != nil {
+		if l > 0 && r != "" {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", l, r))
 		}
@@ -86,13 +86,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
 type ClaimableBalance struct {
-	BalanceID          xdr.ClaimableBalanceId `db:"id"`
-	Claimants          Claimants              `db:"claimants"`
-	Asset              xdr.Asset              `db:"asset"`
-	Amount             xdr.Int64              `db:"amount"`
-	Sponsor            null.String            `db:"sponsor"`
-	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
-	Flags              uint32                 `db:"flags"`
+	BalanceID          string      `db:"id"`
+	Claimants          Claimants   `db:"claimants"`
+	Asset              xdr.Asset   `db:"asset"`
+	Amount             xdr.Int64   `db:"amount"`
+	Sponsor            null.String `db:"sponsor"`
+	LastModifiedLedger uint32      `db:"last_modified_ledger"`
+	Flags              uint32      `db:"flags"`
 }
 
 type Claimants []Claimant
@@ -118,8 +118,8 @@ type Claimant struct {
 // QClaimableBalances defines account related queries.
 type QClaimableBalances interface {
 	UpsertClaimableBalances(ctx context.Context, cb []ClaimableBalance) error
-	RemoveClaimableBalances(ctx context.Context, cBalanceIds []xdr.ClaimableBalanceId) (int64, error)
-	GetClaimableBalancesByID(ctx context.Context, ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error)
+	RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error)
+	GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error)
 	CountClaimableBalances(ctx context.Context) (int, error)
 }
 
@@ -136,7 +136,7 @@ func (q *Q) CountClaimableBalances(ctx context.Context) (int, error) {
 }
 
 // GetClaimableBalancesByID finds all claimable balances by ClaimableBalanceId
-func (q *Q) GetClaimableBalancesByID(ctx context.Context, ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
+func (q *Q) GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error) {
 	var cBalances []ClaimableBalance
 	sql := selectClaimableBalances.Where(map[string]interface{}{"cb.id": ids})
 	err := q.Select(ctx, &cBalances, sql)
@@ -175,9 +175,9 @@ func (q *Q) UpsertClaimableBalances(ctx context.Context, cbs []ClaimableBalance)
 
 // RemoveClaimableBalances deletes claimable balances table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveClaimableBalances(ctx context.Context, cBalanceIds []xdr.ClaimableBalanceId) (int64, error) {
+func (q *Q) RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error) {
 	sql := sq.Delete("claimable_balances").
-		Where(sq.Eq{"id": cBalanceIds})
+		Where(sq.Eq{"id": ids})
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
@@ -187,7 +187,7 @@ func (q *Q) RemoveClaimableBalances(ctx context.Context, cBalanceIds []xdr.Claim
 }
 
 // FindClaimableBalanceByID returns a claimable balance.
-func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID xdr.ClaimableBalanceId) (ClaimableBalance, error) {
+func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID string) (ClaimableBalance, error) {
 	var claimableBalance ClaimableBalance
 	sql := selectClaimableBalances.Limit(1).Where("cb.id = ?", balanceID)
 	err := q.Get(ctx, &claimableBalance, sql)

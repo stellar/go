@@ -50,21 +50,33 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, ch
 func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	var (
 		cbsToUpsert   []history.ClaimableBalance
-		cbIDsToDelete []xdr.ClaimableBalanceId
+		cbIDsToDelete []string
 	)
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
-			cbsToUpsert = append(cbsToUpsert, p.ledgerEntryToRow(change.Post))
+			row, err := p.ledgerEntryToRow(change.Post)
+			if err != nil {
+				return err
+			}
+			cbsToUpsert = append(cbsToUpsert, row)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			cBalance := change.Pre.Data.MustClaimableBalance()
-			cbIDsToDelete = append(cbIDsToDelete, cBalance.BalanceId)
+			id, err := xdr.MarshalHex(cBalance.BalanceId)
+			if err != nil {
+				return err
+			}
+			cbIDsToDelete = append(cbIDsToDelete, id)
 		default:
 			// Updated
-			cbsToUpsert = append(cbsToUpsert, p.ledgerEntryToRow(change.Post))
+			row, err := p.ledgerEntryToRow(change.Post)
+			if err != nil {
+				return err
+			}
+			cbsToUpsert = append(cbsToUpsert, row)
 		}
 	}
 
@@ -103,10 +115,14 @@ func buildClaimants(claimants []xdr.Claimant) history.Claimants {
 	return hClaimants
 }
 
-func (p *ClaimableBalancesChangeProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.ClaimableBalance {
+func (p *ClaimableBalancesChangeProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) (history.ClaimableBalance, error) {
 	cBalance := entry.Data.MustClaimableBalance()
-	return history.ClaimableBalance{
-		BalanceID:          cBalance.BalanceId,
+	id, err := xdr.MarshalHex(cBalance.BalanceId)
+	if err != nil {
+		return history.ClaimableBalance{}, err
+	}
+	row := history.ClaimableBalance{
+		BalanceID:          id,
 		Claimants:          buildClaimants(cBalance.Claimants),
 		Asset:              cBalance.Asset,
 		Amount:             cBalance.Amount,
@@ -114,5 +130,5 @@ func (p *ClaimableBalancesChangeProcessor) ledgerEntryToRow(entry *xdr.LedgerEnt
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 		Flags:              uint32(cBalance.Flags()),
 	}
-
+	return row, nil
 }

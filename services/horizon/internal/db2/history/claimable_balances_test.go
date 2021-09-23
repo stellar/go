@@ -21,8 +21,10 @@ func TestRemoveClaimableBalance(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance := ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: accountID,
@@ -36,14 +38,14 @@ func TestRemoveClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	err := q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
-	r, err := q.FindClaimableBalanceByID(tt.Ctx, cBalance.BalanceID)
+	r, err := q.FindClaimableBalanceByID(tt.Ctx, id)
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(r)
 
-	removed, err := q.RemoveClaimableBalances(tt.Ctx, []xdr.ClaimableBalanceId{cBalance.BalanceID})
+	removed, err := q.RemoveClaimableBalances(tt.Ctx, []string{id})
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), removed)
 
@@ -69,8 +71,10 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance := ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: dest1,
@@ -84,15 +88,17 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Amount:             10,
 	}
 
-	err := q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
 	balanceID = xdr.ClaimableBalanceId{
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{3, 2, 1},
 	}
+	id, err = xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance = ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: dest1,
@@ -148,8 +154,10 @@ func TestUpdateClaimableBalance(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance := ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: accountID,
@@ -163,12 +171,12 @@ func TestUpdateClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	err := q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
 	// add sponsor
 	cBalance2 := ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: accountID,
@@ -206,8 +214,10 @@ func TestFindClaimableBalance(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance := ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: accountID,
@@ -221,10 +231,10 @@ func TestFindClaimableBalance(t *testing.T) {
 		Amount:             10,
 	}
 
-	err := q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
-	cb, err := q.FindClaimableBalanceByID(tt.Ctx, cBalance.BalanceID)
+	cb, err := q.FindClaimableBalanceByID(tt.Ctx, id)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal(cBalance.BalanceID, cb.BalanceID)
@@ -248,8 +258,10 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
 	cBalance := ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Claimants: []Claimant{
 			{
 				Destination: accountID,
@@ -263,18 +275,18 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 		Amount:             10,
 	}
 
-	err := q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
+	err = q.UpsertClaimableBalances(tt.Ctx, []ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
-	r, err := q.GetClaimableBalancesByID(tt.Ctx, []xdr.ClaimableBalanceId{cBalance.BalanceID})
+	r, err := q.GetClaimableBalancesByID(tt.Ctx, []string{id})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 1)
 
-	removed, err := q.RemoveClaimableBalances(tt.Ctx, []xdr.ClaimableBalanceId{cBalance.BalanceID})
+	removed, err := q.RemoveClaimableBalances(tt.Ctx, []string{id})
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), removed)
 
-	r, err = q.GetClaimableBalancesByID(tt.Ctx, []xdr.ClaimableBalanceId{cBalance.BalanceID})
+	r, err = q.GetClaimableBalancesByID(tt.Ctx, []string{id})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 0)
 }

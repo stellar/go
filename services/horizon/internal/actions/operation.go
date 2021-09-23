@@ -96,11 +96,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	case qp.AccountID != "":
 		query.ForAccount(ctx, qp.AccountID)
 	case qp.ClaimableBalanceID != "":
-		cbID, parseErr := balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
-		if parseErr != nil {
-			return nil, parseErr
-		}
-		query.ForClaimableBalance(ctx, cbID)
+		query.ForClaimableBalance(ctx, qp.ClaimableBalanceID)
 	case qp.LedgerID > 0:
 		query.ForLedger(ctx, int32(qp.LedgerID))
 	case qp.TransactionHash != "":

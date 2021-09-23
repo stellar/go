@@ -570,7 +570,15 @@ func addClaimableBalanceToStateVerifier(
 		return nil
 	}
 
-	cBalances, err := q.GetClaimableBalancesByID(ctx, ids)
+	var idStrings []string
+	for _, id := range ids {
+		idString, err := xdr.MarshalHex(id)
+		if err != nil {
+			return err
+		}
+		idStrings = append(idStrings, idString)
+	}
+	cBalances, err := q.GetClaimableBalancesByID(ctx, idStrings)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
 	}
@@ -587,8 +595,12 @@ func addClaimableBalanceToStateVerifier(
 			})
 		}
 		claimants = xdr.SortClaimantsByDestination(claimants)
-		var cBalance = xdr.ClaimableBalanceEntry{
-			BalanceId: row.BalanceID,
+		var balanceID xdr.ClaimableBalanceId
+		if err := xdr.SafeUnmarshalHex(row.BalanceID, &balanceID); err != nil {
+			return err
+		}
+		cBalance := xdr.ClaimableBalanceEntry{
+			BalanceId: balanceID,
 			Claimants: claimants,
 			Asset:     row.Asset,
 			Amount:    row.Amount,
