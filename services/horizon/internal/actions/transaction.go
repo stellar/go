@@ -115,16 +115,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	var cbID *xdr.ClaimableBalanceId
-	if qp.ClaimableBalanceID != "" {
-		var cb xdr.ClaimableBalanceId
-		cb, err = balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
-		if err != nil {
-			return nil, err
-		}
-		cbID = &cb
-	}
-	records, err := loadTransactionRecords(ctx, historyQ, qp.AccountID, cbID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
+	records, err := loadTransactionRecords(ctx, historyQ, qp.AccountID, qp.ClaimableBalanceID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -146,7 +137,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // loadTransactionRecords returns a slice of transaction records of an
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
-func loadTransactionRecords(ctx context.Context, hq *history.Q, accountID string, cbID *xdr.ClaimableBalanceId, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
+func loadTransactionRecords(ctx context.Context, hq *history.Q, accountID string, cbID string, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
 	if accountID != "" && ledgerID != 0 {
 		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
 	}
@@ -157,8 +148,8 @@ func loadTransactionRecords(ctx context.Context, hq *history.Q, accountID string
 	switch {
 	case accountID != "":
 		txs.ForAccount(ctx, accountID)
-	case cbID != nil:
-		txs.ForClaimableBalance(ctx, *cbID)
+	case cbID != "":
+		txs.ForClaimableBalance(ctx, cbID)
 	case ledgerID > 0:
 		txs.ForLedger(ctx, ledgerID)
 	}

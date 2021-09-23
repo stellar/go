@@ -8,7 +8,6 @@ import (
 	protocol "github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
@@ -20,11 +19,7 @@ func PopulateClaimableBalance(
 	claimableBalance history.ClaimableBalance,
 	ledger *history.Ledger,
 ) error {
-	balanceID, err := xdr.MarshalHex(claimableBalance.BalanceID)
-	if err != nil {
-		return errors.Wrap(err, "marshalling BalanceID")
-	}
-	dest.BalanceID = balanceID
+	dest.BalanceID = claimableBalance.BalanceID
 	dest.Asset = claimableBalance.Asset.StringCanonical()
 	dest.Amount = amount.StringFromInt64(int64(claimableBalance.Amount))
 	if claimableBalance.Sponsor.Valid {

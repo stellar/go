@@ -4,6 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/guregu/null"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -20,49 +21,32 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 
 	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
-	lastModifiedLedgerSeq := xdr.Uint32(123)
 	asset := xdr.MustNewCreditAsset("USD", accountID)
 	balanceID := xdr.ClaimableBalanceId{
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
-	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: balanceID,
-		Claimants: []xdr.Claimant{
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
+	cBalance := history.ClaimableBalance{
+		BalanceID: id,
+		Claimants: []history.Claimant{
 			{
-				Type: xdr.ClaimantTypeClaimantTypeV0,
-				V0: &xdr.ClaimantV0{
-					Destination: xdr.MustAddress(accountID),
-					Predicate: xdr.ClaimPredicate{
-						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-					},
+				Destination: accountID,
+				Predicate: xdr.ClaimPredicate{
+					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
 				},
 			},
 		},
-		Asset:  asset,
-		Amount: 10,
-	}
-	entry := xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type:             xdr.LedgerEntryTypeClaimableBalance,
-			ClaimableBalance: &cBalance,
-		},
-		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Asset:              asset,
+		Amount:             10,
+		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, &entry)
-	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
-	tt.Assert.NoError(err)
-
+	err = q.UpsertClaimableBalances(tt.Ctx, []history.ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
 	handler := GetClaimableBalanceByIDHandler{}
-	id, err := xdr.MarshalHex(cBalance.BalanceId)
-	tt.Assert.NoError(err)
 	response, err := handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
@@ -101,9 +85,9 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	p := err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("id", p.Extras["invalid_field"])
-	tt.Assert.Equal("Invalid claimable balance ID", p.Extras["reason"])
+	tt.Assert.Equal("0000001112122 does not validate as claimableBalanceID", p.Extras["reason"])
 
-	// try to fetch a random invalid hex id
+	// try to fetch an empty id
 	_, err = handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
 		map[string]string{},
@@ -114,45 +98,36 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	p = err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("id", p.Extras["invalid_field"])
-	tt.Assert.Equal("Invalid claimable balance ID", p.Extras["reason"])
+	tt.Assert.Equal("non zero value required", p.Extras["reason"])
 }
 
-func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int32, asset *xdr.Asset) xdr.LedgerEntry {
+func buildClaimableBalance(tt *test.T, balanceIDHash xdr.Hash, accountID string, ledger int32, asset *xdr.Asset) history.ClaimableBalance {
 	balanceAsset := xdr.MustNewNativeAsset()
-	ext := xdr.LedgerEntryExt{
-		V:  1,
-		V1: &xdr.LedgerEntryExtensionV1{SponsoringId: nil},
-	}
+	var sponsor null.String
 	if asset != nil {
 		balanceAsset = *asset
-		ext.V1.SponsoringId = xdr.MustAddressPtr(accountID)
+		sponsor = null.StringFrom(accountID)
 	}
-
-	return xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeClaimableBalance,
-			ClaimableBalance: &xdr.ClaimableBalanceEntry{
-				BalanceId: xdr.ClaimableBalanceId{
-					Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-					V0:   &balanceIDHash,
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &balanceIDHash,
+	}
+	id, err := xdr.MarshalHex(balanceID)
+	tt.Assert.NoError(err)
+	return history.ClaimableBalance{
+		BalanceID: id,
+		Claimants: []history.Claimant{
+			{
+				Destination: accountID,
+				Predicate: xdr.ClaimPredicate{
+					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
 				},
-				Claimants: []xdr.Claimant{
-					{
-						Type: xdr.ClaimantTypeClaimantTypeV0,
-						V0: &xdr.ClaimantV0{
-							Destination: xdr.MustAddress(accountID),
-							Predicate: xdr.ClaimPredicate{
-								Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-							},
-						},
-					},
-				},
-				Asset:  balanceAsset,
-				Amount: 10,
 			},
 		},
-		LastModifiedLedgerSeq: xdr.Uint32(ledger),
-		Ext:                   ext,
+		Asset:              balanceAsset,
+		Amount:             10,
+		LastModifiedLedger: uint32(ledger),
+		Sponsor:            sponsor,
 	}
 }
 
@@ -162,7 +137,6 @@ func TestGetClaimableBalances(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
-	builder := q.NewClaimableBalancesBatchInsertBuilder(5)
 	entriesMeta := []struct {
 		id        xdr.Hash
 		accountID string
@@ -195,16 +169,14 @@ func TestGetClaimableBalances(t *testing.T) {
 		},
 	}
 
-	entries := []xdr.LedgerEntry{}
+	var hCBs []history.ClaimableBalance
 
 	for _, e := range entriesMeta {
-		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
-		entries = append(entries, entry)
-		err := builder.Add(tt.Ctx, &entry)
-		tt.Assert.NoError(err)
+		cb := buildClaimableBalance(tt, e.id, e.accountID, e.ledger, e.asset)
+		hCBs = append(hCBs, cb)
 	}
 
-	err := builder.Exec(tt.Ctx)
+	err := q.UpsertClaimableBalances(tt.Ctx, hCBs)
 	tt.Assert.NoError(err)
 
 	handler := GetClaimableBalancesHandler{}
@@ -218,10 +190,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 4)
 
 	// check response is sorted in ascending order
-	for entriesIndex, responseIndex := len(entries)-1, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
-		entry := entries[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
-		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
+	for entriesIndex, responseIndex := len(hCBs)-1, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
+		entry := hCBs[entriesIndex]
+		tt.Assert.Equal(entry.BalanceID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -246,10 +217,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 2)
 
 	// response should be the last 2 elements of entries sorted by ID
-	for entriesIndex, responseIndex := len(entries)-1, 0; entriesIndex >= 2; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
-		entry := entries[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
-		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
+	for entriesIndex, responseIndex := len(hCBs)-1, 0; entriesIndex >= 2; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
+		entry := hCBs[entriesIndex]
+		tt.Assert.Equal(entry.BalanceID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -266,10 +236,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 2)
 
 	// response should be the first 2 elements of entries sorted by ID
-	for entriesIndex, responseIndex := len(entries)-3, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
-		entry := entries[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
-		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
+	for entriesIndex, responseIndex := len(hCBs)-3, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
+		entry := hCBs[entriesIndex]
+		tt.Assert.Equal(entry.BalanceID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	// next page should be 0, there are no new claimable balances ingested
@@ -288,12 +257,10 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 0)
 
 	// new claimable balances are ingest and one of them updated, they should appear in the next pages
-	entryToBeUpdated := entries[3]
-	entryToBeUpdated.Ext.V1 = &xdr.LedgerEntryExtensionV1{
-		SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-	}
-	entryToBeUpdated.LastModifiedLedgerSeq = xdr.Uint32(1238)
-	q.UpdateClaimableBalance(tt.Ctx, entryToBeUpdated)
+	cbToBeUpdated := hCBs[3]
+	cbToBeUpdated.Sponsor = null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")
+	cbToBeUpdated.LastModifiedLedger = 1238
+	q.UpsertClaimableBalances(tt.Ctx, []history.ClaimableBalance{cbToBeUpdated})
 
 	entriesMeta = []struct {
 		id        xdr.Hash
@@ -315,14 +282,13 @@ func TestGetClaimableBalances(t *testing.T) {
 		},
 	}
 
-	entries = []xdr.LedgerEntry{}
+	hCBs = nil
 	for _, e := range entriesMeta {
-		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
-		entries = append(entries, entry)
-		tt.Assert.NoError(builder.Add(tt.Ctx, &entry))
+		entry := buildClaimableBalance(tt, e.id, e.accountID, e.ledger, e.asset)
+		hCBs = append(hCBs, entry)
 	}
 
-	err = builder.Exec(tt.Ctx)
+	err = q.UpsertClaimableBalances(tt.Ctx, hCBs)
 	tt.Assert.NoError(err)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -349,9 +315,8 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.Len(response, 2)
 
 	// response should be the first 2 elements of entries
-	for i, entry := range entries {
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
-		tt.Assert.Equal(expectedID, response[i].(protocol.ClaimableBalance).BalanceID)
+	for i, entry := range hCBs {
+		tt.Assert.Equal(entry.BalanceID, response[i].(protocol.ClaimableBalance).BalanceID)
 	}
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
@@ -367,9 +332,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 
-	expectedID, err := xdr.MarshalHex(entryToBeUpdated.Data.ClaimableBalance.BalanceId)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(cbToBeUpdated.BalanceID, response[0].(protocol.ClaimableBalance).BalanceID)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
@@ -398,13 +361,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 2)
 
-	expectedID, err = xdr.MarshalHex(entryToBeUpdated.Data.ClaimableBalance.BalanceId)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(cbToBeUpdated.BalanceID, response[0].(protocol.ClaimableBalance).BalanceID)
 
-	expectedID, err = xdr.MarshalHex(entries[1].Data.ClaimableBalance.BalanceId)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[1].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(hCBs[1].BalanceID, response[1].(protocol.ClaimableBalance).BalanceID)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
@@ -420,9 +379,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 
-	expectedID, err = xdr.MarshalHex(entries[0].Data.ClaimableBalance.BalanceId)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+	tt.Assert.Equal(hCBs[0].BalanceID, response[0].(protocol.ClaimableBalance).BalanceID)
 
 	// filter by asset
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(

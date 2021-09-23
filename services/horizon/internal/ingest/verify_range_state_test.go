@@ -367,11 +367,14 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			},
 		},
 	}
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
+	balanceIDStr, err := xdr.MarshalHex(balanceID)
+	s.Assert().NoError(err)
 	claimableBalance := history.ClaimableBalance{
-		BalanceID: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{1, 2, 3},
-		},
+		BalanceID:          balanceIDStr,
 		Asset:              xdr.MustNewNativeAsset(),
 		Amount:             10,
 		LastModifiedLedger: 62,
@@ -393,7 +396,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeClaimableBalance,
 				ClaimableBalance: &xdr.ClaimableBalanceEntry{
-					BalanceId: claimableBalance.BalanceID,
+					BalanceId: balanceID,
 					Claimants: []xdr.Claimant{
 						{
 							Type: xdr.ClaimantTypeClaimantTypeV0,
@@ -492,7 +495,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 
 	clonedQ.MockQClaimableBalances.On("CountClaimableBalances", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQClaimableBalances.
-		On("GetClaimableBalancesByID", s.ctx, []xdr.ClaimableBalanceId{claimableBalanceChange.Post.Data.ClaimableBalance.BalanceId}).
+		On("GetClaimableBalancesByID", s.ctx, []string{balanceIDStr}).
 		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
 
 	next, err := verifyRangeState{

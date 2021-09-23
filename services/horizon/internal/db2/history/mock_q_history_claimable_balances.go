@@ -2,7 +2,6 @@ package history
 
 import (
 	"context"
-	"github.com/stellar/go/xdr"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -12,7 +11,7 @@ type MockQHistoryClaimableBalances struct {
 	mock.Mock
 }
 
-func (m *MockQHistoryClaimableBalances) CreateHistoryClaimableBalances(ctx context.Context, ids []xdr.ClaimableBalanceId, maxBatchSize int) (map[string]int64, error) {
+func (m *MockQHistoryClaimableBalances) CreateHistoryClaimableBalances(ctx context.Context, ids []string, maxBatchSize int) (map[string]int64, error) {
 	a := m.Called(ctx, ids, maxBatchSize)
 	return a.Get(0).(map[string]int64), a.Error(1)
 }

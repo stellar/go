@@ -30,12 +30,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
-	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(mockClaimableBalancesBatchInsertBuilder).Once()
-
 	q.MockQAccounts.On("UpsertAccounts", ctx, []history.AccountEntry{
 		{
 			LastModifiedLedger: 1,
@@ -108,12 +102,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
-	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(mockClaimableBalancesBatchInsertBuilder).Once()
-
 	q.MockQAccounts.On("UpsertAccounts", ctx, []history.AccountEntry{
 		{
 			LastModifiedLedger: 1,
@@ -167,11 +155,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
-
-	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountSignersBatchInsertBuilder)
@@ -324,12 +307,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
 
-	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(mockClaimableBalancesBatchInsertBuilder).Once()
-
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
@@ -384,11 +361,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
-
-	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
-	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
-		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,

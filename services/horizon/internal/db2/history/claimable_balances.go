@@ -10,7 +10,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -24,10 +23,10 @@ type ClaimableBalancesQuery struct {
 }
 
 // Cursor validates and returns the query page cursor
-func (cbq ClaimableBalancesQuery) Cursor() (int64, *xdr.ClaimableBalanceId, error) {
+func (cbq ClaimableBalancesQuery) Cursor() (int64, string, error) {
 	p := cbq.PageQuery
 	var l int64
-	var r *xdr.ClaimableBalanceId
+	var r string
 	var err error
 
 	if p.Cursor != "" {
@@ -45,7 +44,7 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, *xdr.ClaimableBalanceId, erro
 		if err = xdr.SafeUnmarshalHex(parts[1], &balanceID); err != nil {
 			return l, r, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
 		}
-		r = &balanceID
+		r = parts[1]
 		if l < 0 {
 			return l, r, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
 		}
@@ -66,13 +65,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 
 	switch p.Order {
 	case db2.OrderAscending:
-		if l > 0 && r != nil {
+		if l > 0 && r != "" {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", l, r))
 		}
 		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
 	case db2.OrderDescending:
-		if l > 0 && r != nil {
+		if l > 0 && r != "" {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", l, r))
 		}
@@ -87,13 +86,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
 type ClaimableBalance struct {
-	BalanceID          xdr.ClaimableBalanceId `db:"id"`
-	Claimants          Claimants              `db:"claimants"`
-	Asset              xdr.Asset              `db:"asset"`
-	Amount             xdr.Int64              `db:"amount"`
-	Sponsor            null.String            `db:"sponsor"`
-	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
-	Flags              uint32                 `db:"flags"`
+	BalanceID          string      `db:"id"`
+	Claimants          Claimants   `db:"claimants"`
+	Asset              xdr.Asset   `db:"asset"`
+	Amount             xdr.Int64   `db:"amount"`
+	Sponsor            null.String `db:"sponsor"`
+	LastModifiedLedger uint32      `db:"last_modified_ledger"`
+	Flags              uint32      `db:"flags"`
 }
 
 type Claimants []Claimant
@@ -116,28 +115,12 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }
 
-type ClaimableBalancesBatchInsertBuilder interface {
-	Add(ctx context.Context, entry *xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
 // QClaimableBalances defines account related queries.
 type QClaimableBalances interface {
-	NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder
-	UpdateClaimableBalance(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	RemoveClaimableBalance(ctx context.Context, cBalance xdr.ClaimableBalanceEntry) (int64, error)
-	GetClaimableBalancesByID(ctx context.Context, ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error)
+	UpsertClaimableBalances(ctx context.Context, cb []ClaimableBalance) error
+	RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error)
+	GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error)
 	CountClaimableBalances(ctx context.Context) (int, error)
-}
-
-// NewClaimableBalancesBatchInsertBuilder constructs a new ClaimableBalancesBatchInsertBuilder instance
-func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder {
-	return &claimableBalancesBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("claimable_balances"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
 }
 
 // CountClaimableBalances returns the total number of claimable balances in the DB
@@ -153,37 +136,48 @@ func (q *Q) CountClaimableBalances(ctx context.Context) (int, error) {
 }
 
 // GetClaimableBalancesByID finds all claimable balances by ClaimableBalanceId
-func (q *Q) GetClaimableBalancesByID(ctx context.Context, ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
+func (q *Q) GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error) {
 	var cBalances []ClaimableBalance
 	sql := selectClaimableBalances.Where(map[string]interface{}{"cb.id": ids})
 	err := q.Select(ctx, &cBalances, sql)
 	return cBalances, err
 }
 
-// UpdateClaimableBalance updates a row in the claimable_balances table.
-// The only updatable value on claimable_balances is sponsor
-// Returns number of rows affected and error.
-func (q *Q) UpdateClaimableBalance(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
-	cBalance := entry.Data.MustClaimableBalance()
-	cBalanceMap := map[string]interface{}{
-		"last_modified_ledger": entry.LastModifiedLedgerSeq,
-		"sponsor":              ledgerEntrySponsorToNullString(entry),
+// UpsertClaimableBalances upserts a batch of claimable balances in the claimable_balances table.
+// There's currently no limit of the number of offers this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
+func (q *Q) UpsertClaimableBalances(ctx context.Context, cbs []ClaimableBalance) error {
+	var id, claimants, asset, amount, sponsor, lastModifiedLedger, flags []interface{}
+
+	for _, cb := range cbs {
+		id = append(id, cb.BalanceID)
+		claimants = append(claimants, cb.Claimants)
+		asset = append(asset, cb.Asset)
+		amount = append(amount, cb.Amount)
+		sponsor = append(sponsor, cb.Sponsor)
+		lastModifiedLedger = append(lastModifiedLedger, cb.LastModifiedLedger)
+		flags = append(flags, cb.Flags)
 	}
 
-	sql := sq.Update("claimable_balances").SetMap(cBalanceMap).Where("id = ?", cBalance.BalanceId)
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
+	upsertFields := []upsertField{
+		{"id", "text", id},
+		{"claimants", "jsonb", claimants},
+		{"asset", "text", asset},
+		{"amount", "bigint", amount},
+		{"sponsor", "text", sponsor},
+		{"last_modified_ledger", "integer", lastModifiedLedger},
+		{"flags", "int", flags},
 	}
 
-	return result.RowsAffected()
+	return q.upsertRows(ctx, "claimable_balances", "id", upsertFields)
 }
 
-// RemoveClaimableBalance deletes a row in the claimable_balances table.
+// RemoveClaimableBalances deletes claimable balances table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveClaimableBalance(ctx context.Context, cBalance xdr.ClaimableBalanceEntry) (int64, error) {
+func (q *Q) RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error) {
 	sql := sq.Delete("claimable_balances").
-		Where(sq.Eq{"id": cBalance.BalanceId})
+		Where(sq.Eq{"id": ids})
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
@@ -193,7 +187,7 @@ func (q *Q) RemoveClaimableBalance(ctx context.Context, cBalance xdr.ClaimableBa
 }
 
 // FindClaimableBalanceByID returns a claimable balance.
-func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID xdr.ClaimableBalanceId) (ClaimableBalance, error) {
+func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID string) (ClaimableBalance, error) {
 	var claimableBalance ClaimableBalance
 	sql := selectClaimableBalances.Limit(1).Where("cb.id = ?", balanceID)
 	err := q.Get(ctx, &claimableBalance, sql)
@@ -236,41 +230,6 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 	}
 
 	return results, nil
-}
-
-type claimableBalancesBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
-}
-
-func buildClaimants(claimants []xdr.Claimant) Claimants {
-	hClaimants := Claimants{}
-	for _, c := range claimants {
-		xc := c.MustV0()
-		hClaimants = append(hClaimants, Claimant{
-			Destination: xc.Destination.Address(),
-			Predicate:   xc.Predicate,
-		})
-	}
-
-	return hClaimants
-}
-
-func (i *claimableBalancesBatchInsertBuilder) Add(ctx context.Context, entry *xdr.LedgerEntry) error {
-	cBalance := entry.Data.MustClaimableBalance()
-	row := ClaimableBalance{
-		BalanceID:          cBalance.BalanceId,
-		Claimants:          buildClaimants(cBalance.Claimants),
-		Asset:              cBalance.Asset,
-		Amount:             cBalance.Amount,
-		Sponsor:            ledgerEntrySponsorToNullString(*entry),
-		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
-		Flags:              uint32(cBalance.Flags()),
-	}
-	return i.builder.RowStruct(ctx, row)
-}
-
-func (i *claimableBalancesBatchInsertBuilder) Exec(ctx context.Context) error {
-	return i.builder.Exec(ctx)
 }
 
 var claimableBalancesSelectStatement = "cb.id, " +
