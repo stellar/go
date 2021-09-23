@@ -419,7 +419,7 @@ type Trade struct {
 	BaseAssetIssuer        string     `json:"base_asset_issuer,omitempty"`
 	CounterLiquidityPoolID string     `json:"counter_liquidity_pool_id,omitempty"`
 	CounterOfferID         string     `json:"counter_offer_id,omitempty"`
-	CounterAccount         string     `json:"counter_account"`
+	CounterAccount         string     `json:"counter_account,omitempty"`
 	CounterAmount          string     `json:"counter_amount"`
 	CounterAssetType       string     `json:"counter_asset_type"`
 	CounterAssetCode       string     `json:"counter_asset_code,omitempty"`
