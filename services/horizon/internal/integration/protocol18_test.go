@@ -104,7 +104,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal(poolIDHexString, pool.ID)
 	tt.Equal(uint32(30), pool.FeeBP)
 	tt.Equal("constant_product", pool.Type)
-	tt.Equal(uint64(0), pool.TotalShares)
+	tt.Equal("0.0000000", pool.TotalShares)
 	tt.Equal(uint64(1), pool.TotalTrustlines)
 
 	tt.Equal("0.0000000", pool.Reserves[0].Amount)
@@ -193,7 +193,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	itest.MustSubmitOperations(shareAccount, shareKeys,
 		&txnbuild.LiquidityPoolWithdraw{
 			LiquidityPoolID: [32]byte(poolID),
-			Amount:          amount.StringFromInt64(int64(pool.TotalShares)),
+			Amount:          pool.TotalShares,
 			MinAmountA:      "10",
 			MinAmountB:      "20",
 		},

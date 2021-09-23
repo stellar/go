@@ -23,7 +23,7 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 		Fee:            30,
 		TrustlineCount: 100,
-		ShareCount:     200,
+		ShareCount:     2000000000,
 		AssetReserves: history.LiquidityPoolAssetReserves{
 			{
 				Asset:   xdr.MustNewNativeAsset(),
@@ -54,7 +54,7 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	tt.Assert.Equal("constant_product", resource.Type)
 	tt.Assert.Equal(uint32(30), resource.FeeBP)
 	tt.Assert.Equal(uint64(100), resource.TotalTrustlines)
-	tt.Assert.Equal(uint64(200), resource.TotalShares)
+	tt.Assert.Equal("200.0000000", resource.TotalShares)
 
 	tt.Assert.Equal("native", resource.Reserves[0].Asset)
 	tt.Assert.Equal("0.0000100", resource.Reserves[0].Amount)
@@ -97,7 +97,7 @@ func TestGetLiquidityPools(t *testing.T) {
 		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 		Fee:            30,
 		TrustlineCount: 100,
-		ShareCount:     200,
+		ShareCount:     2000000000,
 		AssetReserves: history.LiquidityPoolAssetReserves{
 			{
 				Asset:   xdr.MustNewNativeAsset(),
@@ -115,7 +115,7 @@ func TestGetLiquidityPools(t *testing.T) {
 		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 		Fee:            30,
 		TrustlineCount: 300,
-		ShareCount:     400,
+		ShareCount:     4000000000,
 		AssetReserves: history.LiquidityPoolAssetReserves{
 			{
 				Asset:   xdr.MustNewCreditAsset("EUR", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
@@ -146,7 +146,7 @@ func TestGetLiquidityPools(t *testing.T) {
 	tt.Assert.Equal("constant_product", resource.Type)
 	tt.Assert.Equal(uint32(30), resource.FeeBP)
 	tt.Assert.Equal(uint64(100), resource.TotalTrustlines)
-	tt.Assert.Equal(uint64(200), resource.TotalShares)
+	tt.Assert.Equal("200.0000000", resource.TotalShares)
 
 	tt.Assert.Equal("native", resource.Reserves[0].Asset)
 	tt.Assert.Equal("0.0000100", resource.Reserves[0].Amount)
@@ -159,7 +159,7 @@ func TestGetLiquidityPools(t *testing.T) {
 	tt.Assert.Equal("constant_product", resource.Type)
 	tt.Assert.Equal(uint32(30), resource.FeeBP)
 	tt.Assert.Equal(uint64(300), resource.TotalTrustlines)
-	tt.Assert.Equal(uint64(400), resource.TotalShares)
+	tt.Assert.Equal("400.0000000", resource.TotalShares)
 
 	tt.Assert.Equal("EUR:GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Reserves[0].Asset)
 	tt.Assert.Equal("0.0000300", resource.Reserves[0].Amount)
