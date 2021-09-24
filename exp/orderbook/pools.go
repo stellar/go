@@ -22,6 +22,13 @@ const (
 	tradeTypeExpectation = iota // expect payout, what to deposit?
 )
 
+var (
+	errPoolOverflows = errors.New("Liquidity pool overflows from this exchange")
+	errBadPoolType   = errors.New("Unsupported liquidity pool: must be ConstantProduct")
+	errBadTradeType  = errors.New("Unknown pool exchange type requested")
+	errBadAmount     = errors.New("Exchange amount must be positive")
+)
+
 // makeTrade simulates execution of an exchange with a liquidity pool.
 //
 // In (1), this returns the amount that would be paid out by the pool (in terms
@@ -29,9 +36,6 @@ const (
 //
 // In (2), this returns the amount of `asset` necessary to give to the pool in
 // order to get `amount` of the other asset in return.
-//
-// In both cases, an error can be returned. They occur because of invalid
-// assets, pool overflows, etc.
 //
 // Refer to https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#pathpaymentstrictsendop-and-pathpaymentstrictreceiveop
 // and the calculation functions (below) for details on the exchange algorithm.
@@ -46,11 +50,11 @@ func makeTrade(
 ) (xdr.Int64, error) {
 	details, ok := pool.Body.GetConstantProduct()
 	if !ok {
-		return 0, errors.New("Unsupported liquidity pool: must be ConstantProduct")
+		return 0, errBadPoolType
 	}
 
 	if amount <= 0 {
-		return 0, errors.New("Exchange amount must be positive")
+		return 0, errBadAmount
 	}
 
 	// determine which asset `amount` corresponds to
@@ -67,10 +71,15 @@ func makeTrade(
 
 	case tradeTypeExpectation:
 		result, ok = calculatePoolExpectation(X, Y, amount, details.Params.Fee)
+
+	default:
+		return 0, errBadTradeType
 	}
 
 	if !ok {
-		return 0, errors.New("Liquidity pool overflows from this exchange")
+		// the error isn't strictly accurate (e.g. it could be div-by-0), but
+		// from the caller's perspective it's true enough
+		return 0, errPoolOverflows
 	}
 	return result, nil
 }

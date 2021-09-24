@@ -120,10 +120,7 @@ func dfs(
 
 		nextAsset, nextAssetAmount, err := processVenues(state,
 			currentAsset, currentAssetAmount, venues)
-		if err != nil {
-			if err == errNoVenues { // just keep looking
-				continue
-			}
+		if err != nil && err != errNoVenues { // if no venues, keep looking
 			return err
 		}
 
