@@ -63,12 +63,9 @@ type searchState interface {
 	// pair).
 	venues(currentAsset string) edgeSet
 
-	// chooseVenue determines whether the offer or pool amount should be chosen,
-	// returning the amount and whether or not the offer was chosen.
-	chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool)
-
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
+		currentBestAmount xdr.Int64,
 		offers []xdr.OfferEntry,
 	) (xdr.Asset, xdr.Int64, error)
 
@@ -204,27 +201,20 @@ func (state *sellingGraphSearchState) venues(currentAsset string) edgeSet {
 	return state.graph.venuesForSellingAsset[currentAsset]
 }
 
-func (state *sellingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
-	// For sell-state, we are aiming to minimize the amount of the source assets
-	// we need to get to the destination, hence the < here.
-	if offerAmount < poolAmount || poolAmount == 0 {
-		return offerAmount, true
-	}
-	return poolAmount, false
-}
-
 func (state *sellingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
+	currentBestAmount xdr.Int64,
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
-	var nextAsset xdr.Asset
 	nextAmount, err := consumeOffersForSellingAsset(
-		offers, state.ignoreOffersFrom, currentAssetAmount)
+		offers, state.ignoreOffersFrom, currentAssetAmount, currentBestAmount)
+
+	var nextAsset xdr.Asset
 	if err == nil {
 		nextAsset = offers[0].Buying
 	}
 
-	return nextAsset, nextAmount, err
+	return nextAsset, positiveMin(currentBestAmount, nextAmount), err
 }
 
 func (state *sellingGraphSearchState) consumePool(
@@ -286,25 +276,19 @@ func (state *buyingGraphSearchState) venues(currentAsset string) edgeSet {
 	return state.graph.venuesForBuyingAsset[currentAsset]
 }
 
-func (state *buyingGraphSearchState) chooseVenue(offerAmount, poolAmount xdr.Int64) (xdr.Int64, bool) {
-	// For buy-state, we maximize the amount instead.
-	if offerAmount > poolAmount || poolAmount == 0 {
-		return offerAmount, true
-	}
-	return poolAmount, false
-}
-
 func (state *buyingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
+	currentBestAmount xdr.Int64,
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
-	var nextAsset xdr.Asset
 	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
+
+	var nextAsset xdr.Asset
 	if err == nil {
 		nextAsset = offers[0].Selling
 	}
 
-	return nextAsset, nextAmount, err
+	return nextAsset, max(nextAmount, currentBestAmount), err
 }
 
 func (state *buyingGraphSearchState) consumePool(
@@ -319,6 +303,7 @@ func consumeOffersForSellingAsset(
 	offers []xdr.OfferEntry,
 	ignoreOffersFrom *xdr.AccountId,
 	currentAssetAmount xdr.Int64,
+	currentBestAmount xdr.Int64,
 ) (xdr.Int64, error) {
 	if len(offers) == 0 {
 		return 0, errEmptyOffers
@@ -349,6 +334,16 @@ func consumeOffersForSellingAsset(
 		}
 
 		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
+
+		// For sell-state, we are aiming to *minimize* the amount of the source
+		// assets we need to get to the destination, so if we exceed the best
+		// amount, it's time to bail.
+		//
+		// FIXME: Evaluate if this can work, and if it's actually performant.
+		// if totalConsumed >= currentBestAmount && currentBestAmount > 0 {
+		// 	return currentBestAmount, nil
+		// }
+
 		currentAssetAmount -= xdr.Int64(sellingUnitsFromOffer)
 
 		if currentAssetAmount == 0 {
@@ -366,16 +361,15 @@ func consumeOffersForBuyingAsset(
 	offers []xdr.OfferEntry,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
 	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
+		return 0, errEmptyOffers
 	}
 
 	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
+		return 0, errAssetAmountIsZero
 	}
 
+	totalConsumed := xdr.Int64(0)
 	for i := 0; i < len(offers); i++ {
 		n := int64(offers[i].Price.N)
 		d := int64(offers[i].Price.D)
@@ -384,14 +378,15 @@ func consumeOffersForBuyingAsset(
 		// otherwise consume entire offer and move on to the next one
 		amountSold, err := price.MulFractionRoundDown(int64(currentAssetAmount), d, n)
 		if err == nil {
-			amountSoldXDR := xdr.Int64(amountSold)
-			if amountSoldXDR == 0 {
-				// we do not have enough of the buying asset to consume the offer
+			if amountSold == 0 {
+				// not enough of the buying asset to consume the offer
 				return -1, nil
 			}
-			if amountSoldXDR < 0 {
+			if amountSold < 0 {
 				return -1, errSoldTooMuch
 			}
+
+			amountSoldXDR := xdr.Int64(amountSold)
 			if amountSoldXDR <= offers[i].Amount {
 				totalConsumed += amountSoldXDR
 				return totalConsumed, nil
@@ -445,33 +440,26 @@ func processVenues(
 	poolAmount := xdr.Int64(0)
 	if pool := venues.pool; pool.Body.ConstantProduct != nil {
 		amount, err := state.consumePool(pool, currentAsset, currentAssetAmount)
-		if err == nil { // TODO: Should we differentiate errors?
+		if err == nil {
 			nextAsset = getOtherAsset(currentAsset, pool)
 			poolAmount = amount
 		}
+		// It's only a true error if the offers fail later, too
 	}
 
-	offers := venues.offers
-	if poolAmount == 0 && len(offers) == 0 {
+	if poolAmount == 0 && len(venues.offers) == 0 {
 		return nextAsset, 0, errNoVenues
 	}
 
-	nextAssetAmount := poolAmount
-	offerAsset, offerAmount, err := state.consumeOffers(currentAssetAmount, offers)
+	// This will return the pool amount if the LP performs better.
+	offerAsset, nextAssetAmount, err := state.consumeOffers(
+		currentAssetAmount, poolAmount, venues.offers)
 
-	if offerAmount <= 0 || err != nil {
-		// Only error out the offers if the LP trade didn't happen.
-		if poolAmount == 0 {
-			return nextAsset, 0, err
-		}
-	} else {
-		// Otherwise, evaluate the offers relative to the pool trade.
-		if bestAmount, choseOffer := state.chooseVenue(
-			offerAmount, poolAmount,
-		); choseOffer {
-			nextAssetAmount = bestAmount
-			nextAsset = offerAsset
-		}
+	// Only error out the offers if the LP trade didn't happen.
+	if err != nil && poolAmount == 0 {
+		return nextAsset, 0, err
+	} else if err == nil {
+		nextAsset = offerAsset
 	}
 
 	return nextAsset, nextAssetAmount, nil

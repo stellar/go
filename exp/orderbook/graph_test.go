@@ -970,6 +970,7 @@ func TestConsumeOffersForSellingAsset(t *testing.T) {
 				testCase.offers,
 				testCase.ignoreOffersFrom,
 				testCase.currentAssetAmount,
+				0,
 			)
 			if err != testCase.err {
 				t.Fatalf("expected error %v but got %v", testCase.err, err)
@@ -1914,7 +1915,6 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			true,
 			5, // irrelevant
 		)
-		assert.NoError(t, err)
 
 		// The path should go USD -> EUR -> Yen, jumping through both liquidity
 		// pools. For a payout of 100 Yen from the EUR/Yen pool, we need to
@@ -1929,6 +1929,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			},
 		}
 
+		assert.NoError(t, err)
 		assertPathEquals(t, expectedPaths, paths)
 	})
 
