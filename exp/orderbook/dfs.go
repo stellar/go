@@ -179,13 +179,12 @@ func (state *sellingGraphSearchState) appendToPaths(
 	currentAssetAmount xdr.Int64,
 ) {
 	var interiorNodes []xdr.Asset
-	if len(updatedVisitedList) > 2 {
-		// reverse updatedVisitedList and skip the first and last elements
-		interiorNodes = make([]xdr.Asset, len(updatedVisitedList)-2)
-		position := 0
-		for i := len(updatedVisitedList) - 2; i >= 1; i-- {
-			interiorNodes[position] = updatedVisitedList[i]
-			position++
+	length := len(updatedVisitedList)
+	if length > 2 {
+		// reverse updatedVisitedList, skipping the first and last elements
+		interiorNodes = make([]xdr.Asset, 0, length-2)
+		for i := length - 2; i >= 1; i-- {
+			interiorNodes = append(interiorNodes, updatedVisitedList[i])
 		}
 	} else {
 		interiorNodes = []xdr.Asset{}
@@ -194,7 +193,7 @@ func (state *sellingGraphSearchState) appendToPaths(
 	state.paths = append(state.paths, Path{
 		sourceAssetString: currentAsset,
 		SourceAmount:      currentAssetAmount,
-		SourceAsset:       updatedVisitedList[len(updatedVisitedList)-1],
+		SourceAsset:       updatedVisitedList[length-1],
 		InteriorNodes:     interiorNodes,
 		DestinationAsset:  state.destinationAsset,
 		DestinationAmount: state.destinationAssetAmount,
