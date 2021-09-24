@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -14,35 +15,21 @@ import (
 )
 
 var (
-	data1 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 100,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.DataEntry{
-				AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-				DataName:  "name1",
-				// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
-				DataValue: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-			},
-		},
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+	data1 = history.Data{
+		LastModifiedLedger: 100,
+		AccountID:          "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+		Name:               "name1",
+		// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
+		Value: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+
+		Sponsor: null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 
-	data2 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 100,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.DataEntry{
-				AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-				DataName:  "name ",
-				DataValue: []byte("it got spaces!"),
-			},
-		},
+	data2 = history.Data{
+		LastModifiedLedger: 100,
+		AccountID:          "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+		Name:               "name ",
+		Value:              []byte("it got spaces!"),
 	}
 )
 
@@ -64,13 +51,8 @@ func TestDataActions_Show(t *testing.T) {
 	}, 0, 0, 0, 0, 0)
 	ht.Assert.NoError(err)
 
-	rows, err := q.InsertAccountData(ht.Ctx, data1)
+	err = q.UpsertAccountData(ht.Ctx, []history.Data{data1, data2})
 	assert.NoError(t, err)
-	ht.Assert.Equal(int64(1), rows)
-
-	rows, err = q.InsertAccountData(ht.Ctx, data2)
-	assert.NoError(t, err)
-	ht.Assert.Equal(int64(1), rows)
 
 	prefix := "/accounts/GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"
 	result := map[string]string{}
@@ -82,14 +64,14 @@ func TestDataActions_Show(t *testing.T) {
 		ht.Assert.NoError(err)
 		decoded, err := base64.StdEncoding.DecodeString(result["value"])
 		ht.Assert.NoError(err)
-		ht.Assert.Equal([]byte(data1.Data.Data.DataValue), decoded)
+		ht.Assert.Equal([]byte(data1.Value), decoded)
 		ht.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", result["sponsor"])
 	}
 
 	// raw
 	w = ht.Get(prefix+"/data/name1", test.RequestHelperRaw)
 	if ht.Assert.Equal(200, w.Code) {
-		ht.Assert.Equal([]byte(data1.Data.Data.DataValue), w.Body.Bytes())
+		ht.Assert.Equal([]byte(data1.Value), w.Body.Bytes())
 	}
 
 	result = map[string]string{}
@@ -102,7 +84,7 @@ func TestDataActions_Show(t *testing.T) {
 
 		decoded, err := base64.StdEncoding.DecodeString(result["value"])
 		ht.Assert.NoError(err)
-		ht.Assert.Equal([]byte(data2.Data.Data.DataValue), decoded)
+		ht.Assert.Equal([]byte(data2.Value), decoded)
 		ht.Assert.Equal("", result["sponsor"])
 	}
 

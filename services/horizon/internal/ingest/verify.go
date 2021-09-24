@@ -420,11 +420,17 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 	return nil
 }
 
-func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, keys []xdr.LedgerKeyData) error {
-	if len(keys) == 0 {
+func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, lkeys []xdr.LedgerKeyData) error {
+	if len(lkeys) == 0 {
 		return nil
 	}
-
+	var keys []history.AccountDataKey
+	for _, k := range lkeys {
+		keys = append(keys, history.AccountDataKey{
+			AccountID: k.AccountId.Address(),
+			DataName:  string(k.DataName),
+		})
+	}
 	data, err := q.GetAccountDataByKeys(ctx, keys)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetAccountDataByKeys")
