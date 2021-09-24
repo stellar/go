@@ -19,11 +19,10 @@ const (
 )
 
 type orderBookOperation struct {
-	operationType       int
-	offerID             xdr.Int64
-	offer               *xdr.OfferEntry
-	liquidityPoolAssets tradingPair
-	liquidityPool       *xdr.LiquidityPoolEntry
+	operationType int
+	offerID       xdr.Int64
+	offer         *xdr.OfferEntry
+	liquidityPool *xdr.LiquidityPoolEntry
 }
 
 type orderBookBatchedUpdates struct {
@@ -45,11 +44,9 @@ func (tx *orderBookBatchedUpdates) addOffer(offer xdr.OfferEntry) *orderBookBatc
 
 // addLiquidityPool will queue an operation to add the given liquidity pool to the order book graph
 func (tx *orderBookBatchedUpdates) addLiquidityPool(pool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
-	params := pool.Body.MustConstantProduct().Params
 	tx.operations = append(tx.operations, orderBookOperation{
-		operationType:       addLiquidityPoolOperationType,
-		liquidityPool:       &pool,
-		liquidityPoolAssets: makeTradingPair(params.AssetA, params.AssetB),
+		operationType: addLiquidityPoolOperationType,
+		liquidityPool: &pool,
 	})
 
 	return tx
@@ -67,11 +64,9 @@ func (tx *orderBookBatchedUpdates) removeOffer(offerID xdr.Int64) *orderBookBatc
 
 // removeLiquidityPool will queue an operation to remove the given liquidity pool from the order book
 func (tx *orderBookBatchedUpdates) removeLiquidityPool(pool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
-	params := pool.Body.MustConstantProduct().Params
 	tx.operations = append(tx.operations, orderBookOperation{
-		operationType:       removeLiquidityPoolOperationType,
-		liquidityPool:       &pool,
-		liquidityPoolAssets: makeTradingPair(params.AssetA, params.AssetB),
+		operationType: removeLiquidityPoolOperationType,
+		liquidityPool: &pool,
 	})
 
 	return tx
@@ -95,68 +90,22 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 	for _, operation := range tx.operations {
 		switch operation.operationType {
 		case addOfferOperationType:
-			if err := tx.orderbook.add(*operation.offer); err != nil {
+			if err := tx.orderbook.addOffer(*operation.offer); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
 		case removeOfferOperationType:
 			if _, ok := tx.orderbook.tradingPairForOffer[operation.offerID]; !ok {
 				continue
 			}
-			if err := tx.orderbook.remove(operation.offerID); err != nil {
+			if err := tx.orderbook.removeOffer(operation.offerID); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
 
 		case addLiquidityPoolOperationType:
-			ob := tx.orderbook
-			entry := *operation.liquidityPool
-			ob.liquidityPools[operation.liquidityPoolAssets] = entry
-
-			// Liquidity pools have no concept of a "buying" or "selling" asset,
-			// so we create venues in both directions.
-			x, y := getPoolAssets(entry)
-
-			// Either there have already been offers added for the trading pair,
-			// or we need to create the internal map structure.
-			for _, asset := range []string{x, y} {
-				for _, table := range []map[string]edgeSet{
-					ob.venuesForBuyingAsset,
-					ob.venuesForSellingAsset,
-				} {
-					if _, ok := table[asset]; !ok {
-						table[asset] = edgeSet{}
-					}
-				}
-			}
-
-			ob.venuesForBuyingAsset[x].addPool(y, entry)
-			ob.venuesForBuyingAsset[y].addPool(x, entry)
-			ob.venuesForSellingAsset[x].addPool(y, entry)
-			ob.venuesForSellingAsset[y].addPool(x, entry)
+			tx.orderbook.addPool(*operation.liquidityPool)
 
 		case removeLiquidityPoolOperationType:
-			x, y := getPoolAssets(*operation.liquidityPool)
-			ob := tx.orderbook
-
-			for _, asset := range []string{x, y} {
-				otherAsset := x
-				if asset == x {
-					otherAsset = y
-				}
-
-				for _, table := range []map[string]edgeSet{
-					ob.venuesForBuyingAsset,
-					ob.venuesForSellingAsset,
-				} {
-					if venues, ok := table[asset]; ok {
-						venues.removePool(otherAsset)
-						if venues.isEmpty(otherAsset) {
-							delete(venues, otherAsset)
-						}
-					} // should we panic on !ok?
-				}
-			}
-
-			delete(ob.liquidityPools, operation.liquidityPoolAssets)
+			tx.orderbook.removePool(*operation.liquidityPool)
 
 		default:
 			panic(errors.New("invalid operation type"))

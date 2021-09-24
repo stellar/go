@@ -188,11 +188,11 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 	}
 }
 
-// add inserts a given offer into the order book graph
-func (graph *OrderBookGraph) add(offer xdr.OfferEntry) error {
+// addOffer inserts a given offer into the order book graph
+func (graph *OrderBookGraph) addOffer(offer xdr.OfferEntry) error {
 	// If necessary, replace any existing offer with a new one.
 	if _, contains := graph.tradingPairForOffer[offer.OfferId]; contains {
-		if err := graph.remove(offer.OfferId); err != nil {
+		if err := graph.removeOffer(offer.OfferId); err != nil {
 			return errors.Wrap(err, "could not update offer in order book graph")
 		}
 	}
@@ -220,8 +220,34 @@ func (graph *OrderBookGraph) add(offer xdr.OfferEntry) error {
 	return nil
 }
 
-// remove deletes a given offer from the order book graph
-func (graph *OrderBookGraph) remove(offerID xdr.Int64) error {
+// addPool sets the given pool as the venue for the given trading pair.
+func (graph *OrderBookGraph) addPool(pool xdr.LiquidityPoolEntry) {
+	// Liquidity pools have no concept of a "buying" or "selling" asset,
+	// so we create venues in both directions.
+	x, y := getPoolAssets(pool)
+	graph.liquidityPools[tradingPair{x, y}] = pool
+
+	// Either there have already been offers added for the trading pair,
+	// or we need to create the internal map structure.
+	for _, asset := range []string{x, y} {
+		for _, table := range []map[string]edgeSet{
+			graph.venuesForBuyingAsset,
+			graph.venuesForSellingAsset,
+		} {
+			if _, ok := table[asset]; !ok {
+				table[asset] = edgeSet{}
+			}
+		}
+	}
+
+	graph.venuesForBuyingAsset[x].addPool(y, pool)
+	graph.venuesForBuyingAsset[y].addPool(x, pool)
+	graph.venuesForSellingAsset[x].addPool(y, pool)
+	graph.venuesForSellingAsset[y].addPool(x, pool)
+}
+
+// removeOffer deletes a given offer from the order book graph
+func (graph *OrderBookGraph) removeOffer(offerID xdr.Int64) error {
 	pair, ok := graph.tradingPairForOffer[offerID]
 	if !ok {
 		return errOfferNotPresent
@@ -246,6 +272,32 @@ func (graph *OrderBookGraph) remove(offerID xdr.Int64) error {
 	}
 
 	return nil
+}
+
+// removePool unsets the pool matching the given asset pair, if it exists.
+func (graph *OrderBookGraph) removePool(pool xdr.LiquidityPoolEntry) {
+	x, y := getPoolAssets(pool)
+
+	for _, asset := range []string{x, y} {
+		otherAsset := x
+		if asset == x {
+			otherAsset = y
+		}
+
+		for _, table := range []map[string]edgeSet{
+			graph.venuesForBuyingAsset,
+			graph.venuesForSellingAsset,
+		} {
+			if venues, ok := table[asset]; ok {
+				venues.removePool(otherAsset)
+				if venues.isEmpty(otherAsset) {
+					delete(venues, otherAsset)
+				}
+			} // should we panic on !ok?
+		}
+	}
+
+	delete(graph.liquidityPools, tradingPair{x, y})
 }
 
 // IsEmpty returns true if the orderbook graph is not populated
