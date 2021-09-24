@@ -5,6 +5,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Update `/paths` endpoint to take liquidity pools into account when searching for possible routes between assets ([3921](https://github.com/stellar/go/pull/3921)).
+
 ### Breaking
 * The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
 
