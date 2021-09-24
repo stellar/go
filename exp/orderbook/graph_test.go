@@ -1073,13 +1073,9 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 				testCase.offers,
 				testCase.currentAssetAmount,
 			)
-			if err != testCase.err {
-				t.Fatalf("expected error %v but got %v", testCase.err, err)
-			}
+			assert.Equal(t, testCase.err, err)
 			if err == nil {
-				if result != testCase.result {
-					t.Fatalf("expected %v but got %v", testCase.result, result)
-				}
+				assert.Equal(t, testCase.result, result)
 			}
 		})
 	}
@@ -1144,9 +1140,8 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 		3,
 		sortBySourceAsset,
 	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	assert.NoError(t, err)
+
 	expectedPaths := []Path{
 		{
 			SourceAmount:      2,
@@ -1249,9 +1244,8 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 		3,
 		sortByDestinationAsset,
 	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	assert.NoError(t, err)
+
 	expectedPaths := []Path{
 		{
 			SourceAmount:      1000,
@@ -1298,9 +1292,8 @@ func TestFindPaths(t *testing.T) {
 
 	graph.AddOffers(dollarOffer, threeEurOffer, eurOffer, twoEurOffer,
 		quarterOffer, fiftyCentsOffer)
-	err := graph.Apply(1)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
+	if !assert.NoError(t, graph.Apply(1)) {
+		t.FailNow()
 	}
 
 	eurUsdOffer := xdr.OfferEntry{
@@ -1363,9 +1356,8 @@ func TestFindPaths(t *testing.T) {
 	}
 
 	graph.AddOffers(eurUsdOffer, otherEurUsdOffer, usdEurOffer, chfEurOffer, yenChfOffer)
-	err = graph.Apply(2)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
+	if !assert.NoError(t, graph.Apply(2)) {
+		t.FailNow()
 	}
 
 	kp := keypair.MustRandom()
@@ -1388,13 +1380,9 @@ func TestFindPaths(t *testing.T) {
 		true,
 		5,
 	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	assertPathEquals(t, paths, []Path{})
-	if lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
-	}
+	assert.EqualValues(t, 2, lastLedger)
 
 	paths, lastLedger, err = graph.FindPaths(
 		context.TODO(),
@@ -1413,12 +1401,6 @@ func TestFindPaths(t *testing.T) {
 		true,
 		5,
 	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
-	}
 
 	expectedPaths := []Path{
 		{
@@ -1449,6 +1431,8 @@ func TestFindPaths(t *testing.T) {
 		},
 	}
 
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, lastLedger)
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindPaths(
@@ -1468,13 +1452,9 @@ func TestFindPaths(t *testing.T) {
 		false,
 		5,
 	)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, lastLedger)
 	assertPathEquals(t, paths, expectedPaths)
-	if lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
-	}
 
 	paths, lastLedger, err = graph.FindPaths(
 		context.TODO(),
@@ -1493,9 +1473,6 @@ func TestFindPaths(t *testing.T) {
 		true,
 		5,
 	)
-	if lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
-	}
 
 	expectedPaths = []Path{
 		{
@@ -1537,10 +1514,8 @@ func TestFindPaths(t *testing.T) {
 		},
 	}
 
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, lastLedger)
 	assertPathEquals(t, paths, expectedPaths)
 
 	paths, lastLedger, err = graph.FindPaths(
@@ -1560,9 +1535,6 @@ func TestFindPaths(t *testing.T) {
 		true,
 		5,
 	)
-	if lastLedger != 2 {
-		t.Fatalf("expected last ledger to be %v but got %v", 2, lastLedger)
-	}
 
 	expectedPaths = []Path{
 		{
@@ -1604,10 +1576,8 @@ func TestFindPaths(t *testing.T) {
 		},
 	}
 
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, lastLedger)
 	assertPathEquals(t, paths, expectedPaths)
 }
 
