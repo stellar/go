@@ -121,6 +121,9 @@ func dfs(
 		nextAsset, nextAssetAmount, err := processVenues(state,
 			currentAsset, currentAssetAmount, venues)
 		if err != nil {
+			if err == errNoVenues { // just keep looking
+				continue
+			}
 			return err
 		}
 
@@ -460,7 +463,7 @@ func processVenues(
 	offerAsset, offerAmount, err := state.consumeOffers(currentAssetAmount, offers)
 
 	if offerAmount <= 0 || err != nil {
-		// We should only error out the offers if the LP trade didn't happen.
+		// Only error out the offers if the LP trade didn't happen.
 		if poolAmount == 0 {
 			return nextAsset, 0, err
 		}

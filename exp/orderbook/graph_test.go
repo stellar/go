@@ -2032,10 +2032,8 @@ func TestInterleavedPaths(t *testing.T) {
 
 	// The final graph looks like the following:
 	//
-	//  - XLM: Offer 500 for 1 EUR
-	//         Offer 500 for 2 EUR
-	//         Offer 500 for 3 EUR
-	//         LP        for USD, 50:1
+	//  - XLM: Offer 10 for 1 EUR each
+	//         LP       for USD, 50:1
 	//
 	//  - EUR: LP for USD, 1:1
 	//
@@ -2043,7 +2041,7 @@ func TestInterleavedPaths(t *testing.T) {
 	//         LP for XLM, 1:4
 	//         LP for CHF, 2:1
 	//
-	//  - CHF: Offer 1 for 4 USD
+	//  - CHF: Offer 1 for 4 USD each
 	//              LP for USD, 1:2
 
 	paths, _, err := graph.FindPaths(context.TODO(),
@@ -2057,11 +2055,6 @@ func TestInterleavedPaths(t *testing.T) {
 		5,
 	)
 
-	fmt.Println("Got paths:")
-	for _, path := range paths {
-		printPath(path)
-	}
-
 	// There should be two paths: one that consumes the EUR/XLM offers and one
 	// that goes through the USD/XLM liquidity pool.
 	//
@@ -2069,7 +2062,7 @@ func TestInterleavedPaths(t *testing.T) {
 	//   13 CHF for 6 USD for 5 EUR for 5 XLM
 	//
 	// If we only go through pools, it's less-so:
-	//   53 CHF for 25 USD for 5 XLM
+	//   58 CHF for 26 USD for 5 XLM
 	expectedPaths := []Path{{
 		SourceAsset:       chfAsset,
 		SourceAmount:      13,
@@ -2078,16 +2071,11 @@ func TestInterleavedPaths(t *testing.T) {
 		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
 	}, {
 		SourceAsset:       chfAsset,
-		SourceAmount:      53,
+		SourceAmount:      58,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 5,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
-
-	fmt.Println("Expected paths:")
-	for _, path := range expectedPaths {
-		printPath(path)
-	}
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
@@ -2142,17 +2130,29 @@ func TestInterleavedFixedPaths(t *testing.T) {
 	paths, _, err := graph.FindFixedPaths(context.TODO(),
 		5,
 		nativeAsset,
-		1000,
+		1234,
 		[]xdr.Asset{chfAsset},
 		5,
 	)
 
-	fmt.Println("Got paths:")
-	for _, path := range paths {
-		printPath(path)
+	expectedPaths := []Path{
+		{
+			SourceAsset:       nativeAsset,
+			SourceAmount:      1234,
+			DestinationAsset:  chfAsset,
+			DestinationAmount: 12,
+			InteriorNodes:     []xdr.Asset{usdAsset},
+		}, {
+			SourceAsset:       nativeAsset,
+			SourceAmount:      1234,
+			DestinationAsset:  chfAsset,
+			DestinationAmount: 5,
+			InteriorNodes:     []xdr.Asset{eurAsset, usdAsset},
+		},
 	}
 
 	assert.NoError(t, err)
+	assertPathEquals(t, expectedPaths, paths)
 }
 
 func printPath(path Path) {
@@ -2168,6 +2168,10 @@ func printPath(path Path) {
 
 func makeVenues(offers ...xdr.OfferEntry) Venues {
 	return Venues{offers: offers}
+}
+
+func makeTradingPair(buying, selling xdr.Asset) tradingPair {
+	return tradingPair{buyingAsset: buying.String(), sellingAsset: selling.String()}
 }
 
 func getCode(asset xdr.Asset) string {

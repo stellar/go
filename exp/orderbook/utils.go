@@ -19,8 +19,3 @@ func getPoolAssets(pool xdr.LiquidityPoolEntry) (string, string) {
 	params := pool.Body.MustConstantProduct().Params
 	return params.AssetA.String(), params.AssetB.String()
 }
-
-// makeTradingPair easily turns two assets into a string trading pair
-func makeTradingPair(buying, selling xdr.Asset) tradingPair {
-	return tradingPair{buyingAsset: buying.String(), sellingAsset: selling.String()}
-}
