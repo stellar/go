@@ -20,26 +20,22 @@ func getPoolAssets(pool xdr.LiquidityPoolEntry) (string, string) {
 	return params.AssetA.String(), params.AssetB.String()
 }
 
-func max(vals ...xdr.Int64) xdr.Int64 {
-	best := vals[0]
-	for _, v := range vals[1:] {
-		if v >= best {
-			best = v
-		}
+func max(a, b xdr.Int64) xdr.Int64 {
+	if a < b {
+		return b
 	}
-	return best
+	return a
 }
 
-// positiveMin returns the smallest positive value possible.
-func positiveMin(vals ...xdr.Int64) xdr.Int64 {
-	best := vals[0]
-	for _, v := range vals[1:] {
-		if v <= 0 {
-			continue
-		}
-		if v < best || best <= 0 {
-			best = v
-		}
+// positiveMin returns the smallest positive value possible
+func positiveMin(a, b xdr.Int64) xdr.Int64 {
+	if b <= 0 {
+		return a
 	}
-	return best
+
+	if b < a || a <= 0 {
+		return b
+	}
+
+	return a
 }
