@@ -117,7 +117,7 @@ func dfs(
 
 		nextAsset, nextAssetAmount, err := processVenues(state,
 			currentAsset, currentAssetAmount, venues)
-		if err != nil && err != errNoVenues { // if no venues, keep looking
+		if err != nil {
 			return err
 		}
 
@@ -210,7 +210,7 @@ func (state *sellingGraphSearchState) consumeOffers(
 		offers, state.ignoreOffersFrom, currentAssetAmount, currentBestAmount)
 
 	var nextAsset xdr.Asset
-	if err == nil {
+	if len(offers) > 0 {
 		nextAsset = offers[0].Buying
 	}
 
@@ -284,7 +284,7 @@ func (state *buyingGraphSearchState) consumeOffers(
 	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
 
 	var nextAsset xdr.Asset
-	if err == nil {
+	if len(offers) > 0 {
 		nextAsset = offers[0].Selling
 	}
 
@@ -448,7 +448,7 @@ func processVenues(
 	}
 
 	if poolAmount == 0 && len(venues.offers) == 0 {
-		return nextAsset, 0, errNoVenues
+		return nextAsset, -1, nil // not really an error
 	}
 
 	// This will return the pool amount if the LP performs better.

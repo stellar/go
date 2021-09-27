@@ -12,7 +12,6 @@ import (
 var (
 	errOfferNotPresent     = errors.New("offer is not present in the order book graph")
 	errEmptyOffers         = errors.New("offers is empty")
-	errNoVenues            = errors.New("no liquidity pool or offers")
 	errAssetAmountIsZero   = errors.New("current asset amount is 0")
 	errSoldTooMuch         = errors.New("sold more than current balance")
 	errBatchAlreadyApplied = errors.New("cannot apply batched updates more than once")
