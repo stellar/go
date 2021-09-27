@@ -554,12 +554,7 @@ func createLP(tt *test.T, q *history.Q) history.LiquidityPool {
 		LastModifiedLedger: 123,
 	}
 
-	builder := q.NewLiquidityPoolsBatchInsertBuilder(2)
-
-	err := builder.Add(tt.Ctx, lp)
-	tt.Assert.NoError(err)
-
-	err = builder.Exec(tt.Ctx)
+	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp})
 	tt.Assert.NoError(err)
 	return lp
 }

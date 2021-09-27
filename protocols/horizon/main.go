@@ -419,7 +419,7 @@ type Trade struct {
 	BaseAssetIssuer        string     `json:"base_asset_issuer,omitempty"`
 	CounterLiquidityPoolID string     `json:"counter_liquidity_pool_id,omitempty"`
 	CounterOfferID         string     `json:"counter_offer_id,omitempty"`
-	CounterAccount         string     `json:"counter_account"`
+	CounterAccount         string     `json:"counter_account,omitempty"`
 	CounterAmount          string     `json:"counter_amount"`
 	CounterAssetType       string     `json:"counter_asset_type"`
 	CounterAssetCode       string     `json:"counter_asset_code,omitempty"`
@@ -788,7 +788,7 @@ type LiquidityPool struct {
 	FeeBP              uint32                 `json:"fee_bp"`
 	Type               string                 `json:"type"`
 	TotalTrustlines    uint64                 `json:"total_trustlines,string"`
-	TotalShares        uint64                 `json:"total_shares,string"`
+	TotalShares        string                 `json:"total_shares"`
 	Reserves           []LiquidityPoolReserve `json:"reserves"`
 	LastModifiedLedger uint32                 `json:"last_modified_ledger"`
 	LastModifiedTime   *time.Time             `json:"last_modified_time"`

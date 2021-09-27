@@ -50,64 +50,30 @@ func (p *LiquidityPoolsChangeProcessor) ProcessChange(ctx context.Context, chang
 }
 
 func (p *LiquidityPoolsChangeProcessor) Commit(ctx context.Context) error {
-	batch := p.qLiquidityPools.NewLiquidityPoolsBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()
+	var lps []history.LiquidityPool
 	for _, change := range changes {
-		var err error
-		var rowsAffected int64
-		var action string
-		var ledgerKey xdr.LedgerKey
-
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
-			action = "inserting"
-			err = batch.Add(ctx, p.ledgerEntryToRow(change.Post))
-			rowsAffected = 1
+			lps = append(lps, p.ledgerEntryToRow(change.Post))
 		case change.Pre != nil && change.Post == nil:
 			// Removed
-			action = "removing"
-			lPool := change.Pre.Data.MustLiquidityPool()
-			err = ledgerKey.SetLiquidityPool(lPool.LiquidityPoolId)
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.qLiquidityPools.RemoveLiquidityPool(
-				ctx, PoolIDToString(lPool.LiquidityPoolId), p.sequence,
-			)
+			lp := p.ledgerEntryToRow(change.Pre)
+			lp.Deleted = true
+			lp.LastModifiedLedger = p.sequence
+			lps = append(lps, lp)
 		default:
 			// Updated
-			action = "updating"
-			cBalance := change.Post.Data.MustLiquidityPool()
-			err = ledgerKey.SetLiquidityPool(cBalance.LiquidityPoolId)
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.qLiquidityPools.UpdateLiquidityPool(ctx, p.ledgerEntryToRow(change.Post))
-		}
-
-		if err != nil {
-			return err
-		}
-
-		if rowsAffected != 1 {
-			ledgerKeyString, err := ledgerKey.MarshalBinaryBase64()
-			if err != nil {
-				return errors.Wrap(err, "Error marshalling ledger key")
-			}
-			return ingest.NewStateError(errors.Errorf(
-				"%d rows affected when %s liquidity pool: %s",
-				rowsAffected,
-				action,
-				ledgerKeyString,
-			))
+			lps = append(lps, p.ledgerEntryToRow(change.Post))
 		}
 	}
 
-	err := batch.Exec(ctx)
-	if err != nil {
-		return errors.Wrap(err, "error executing batch")
+	if len(lps) > 0 {
+		if err := p.qLiquidityPools.UpsertLiquidityPools(ctx, lps); err != nil {
+			return errors.Wrap(err, "error upserting liquidity pools")
+		}
 	}
 
 	if p.sequence > compactionWindow {

@@ -8,7 +8,7 @@ import (
 )
 
 // LiquidityPoolDeposit represents the Stellar liquidity pool deposit operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type LiquidityPoolDeposit struct {
 	SourceAccount   string
 	LiquidityPoolID LiquidityPoolId
