@@ -341,7 +341,17 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("RemoveOffers", s.ctx, []int64{3}, s.sequence).Return(int64(1), nil).Once()
+	s.mockQ.On("UpsertOffers", s.ctx, []history.Offer{
+		{
+			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			OfferID:            3,
+			Pricen:             3,
+			Priced:             1,
+			Price:              3,
+			Deleted:            true,
+			LastModifiedLedger: 456,
+		},
+	}).Return(nil).Once()
 	s.mockQ.On("CompactOffers", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
@@ -399,8 +409,8 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		{
 			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			OfferID:            2,
-			Pricen:             int32(1),
-			Priced:             int32(6),
+			Pricen:             1,
+			Priced:             6,
 			Price:              float64(1) / float64(6),
 			LastModifiedLedger: uint32(lastModifiedLedgerSeq),
 		},
@@ -444,56 +454,34 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffers() {
 	s.Assert().NoError(err)
 
 	s.mockQ.On("CompactOffers", s.ctx, s.sequence-100).Return(int64(0), nil).Once()
-	s.mockQ.On("RemoveOffers", s.ctx, mock.Anything, s.sequence).Run(func(args mock.Arguments) {
+	s.mockQ.On("UpsertOffers", s.ctx, mock.Anything).Run(func(args mock.Arguments) {
 		// To fix order issue due to using ChangeCompactor
-		ids := args.Get(1).([]int64)
-		s.Assert().ElementsMatch(ids, []int64{3, 4})
-	}).Return(int64(2), nil).Once()
+		offers := args.Get(1).([]history.Offer)
+		s.Assert().ElementsMatch(
+			offers,
+			[]history.Offer{
+				{
+					SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+					OfferID:            3,
+					Pricen:             3,
+					Priced:             1,
+					Price:              3,
+					LastModifiedLedger: 456,
+					Deleted:            true,
+				},
+				{
+					SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+					OfferID:            4,
+					Pricen:             3,
+					Priced:             1,
+					Price:              3,
+					LastModifiedLedger: 456,
+					Deleted:            true,
+				},
+			},
+		)
+	}).Return(nil).Once()
 
 	err = s.processor.Commit(s.ctx)
 	s.Assert().NoError(err)
-}
-
-func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffersRowsAffectedCheck() {
-	err := s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeOffer,
-		Pre: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeOffer,
-				Offer: &xdr.OfferEntry{
-					SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-					OfferId:  xdr.Int64(3),
-					Price:    xdr.Price{3, 1},
-				},
-			},
-		},
-		Post: nil,
-	})
-	s.Assert().NoError(err)
-
-	err = s.processor.ProcessChange(s.ctx, ingest.Change{
-		Type: xdr.LedgerEntryTypeOffer,
-		Pre: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeOffer,
-				Offer: &xdr.OfferEntry{
-					SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-					OfferId:  xdr.Int64(4),
-					Price:    xdr.Price{3, 1},
-				},
-			},
-		},
-		Post: nil,
-	})
-	s.Assert().NoError(err)
-
-	s.mockQ.On("RemoveOffers", s.ctx, mock.Anything, s.sequence).Run(func(args mock.Arguments) {
-		// To fix order issue due to using ChangeCompactor
-		ids := args.Get(1).([]int64)
-		s.Assert().ElementsMatch(ids, []int64{3, 4})
-	}).Return(int64(0), nil).Once()
-
-	err = s.processor.Commit(s.ctx)
-	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "error flushing cache: 0 rows affected when removing 2 offers")
 }
