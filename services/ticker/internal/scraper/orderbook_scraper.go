@@ -121,7 +121,7 @@ func createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer string)
 	// when an Asset is native. As we store "XLM" as the asset code for native,
 	// we should only add Code and Issuer info in case we're dealing with
 	// non-native assets.
-	// See: https://www.stellar.org/developers/horizon/reference/endpoints/orderbook-details.html
+	// See: https://developers.stellar.org/api/aggregations/order-books/single/
 	if bType != string(horizonclient.AssetTypeNative) {
 		r.SellingAssetCode = bCode
 		r.SellingAssetIssuer = bIssuer

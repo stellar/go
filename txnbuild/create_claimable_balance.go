@@ -9,7 +9,7 @@ import (
 )
 
 // CreateClaimableBalance represents the Stellar create claimable balance operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type CreateClaimableBalance struct {
 	Amount        string
 	Asset         Asset

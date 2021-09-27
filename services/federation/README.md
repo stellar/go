@@ -1,7 +1,7 @@
 # federation server
 
 
-Go implementation of [Federation](https://www.stellar.org/developers/learn/concepts/federation.html) protocol server. This federation server is designed to be dropped in to your existing infrastructure. It can be configured to pull the data it needs out of your existing DB.
+Go implementation of [Federation](https://developers.stellar.org/docs/glossary/federation/) protocol server. This federation server is designed to be dropped in to your existing infrastructure. It can be configured to pull the data it needs out of your existing DB.
 
 ## Downloading the server
 
@@ -17,8 +17,8 @@ By default this server uses a config file named `federation.cfg` in the current 
   * `dsn` - The DSN (data source name) used to connect to the database connection.  This value should be appropriate for the database type chosen.
     * for `postgres`: `postgres://user:password@host/dbname?sslmode=sslmode` ([more info](https://godoc.org/github.com/lib/pq#hdr-Connection_String_Parameters))
 * `queries`
-  * `federation` - Implementation dependent query to fetch federation results, should return either 1 or 3 columns. These columns should be labeled `id`,`memo`,`memo_type`. Memo and memo_type are optional - see [Federation](https://www.stellar.org/developers/learn/concepts/federation.html) docs for more detail).  When executed, this query will be provided with two input parameters, the first will be the name portion of a stellar address and the second will be the domain portion of a stellar address.  For example, a request for `scott*stellar.org` would trigger a query with two input parameters, `scott` and `stellar.org` respectively. 
-  * `reverse-federation` - A SQL query to fetch reverse federation results that should return two columns, labeled `name` and `domain`.   When executed, this query will be provided with one input parameter, a [stellar account ID](https://www.stellar.org/developers/guides/concepts/accounts.html#account-id) used to lookup the name and domain mapping.
+  * `federation` - Implementation dependent query to fetch federation results, should return either 1 or 3 columns. These columns should be labeled `id`,`memo`,`memo_type`. Memo and memo_type are optional - see [Federation](https://developers.stellar.org/docs/glossary/federation/) docs for more detail).  When executed, this query will be provided with two input parameters, the first will be the name portion of a stellar address and the second will be the domain portion of a stellar address.  For example, a request for `scott*stellar.org` would trigger a query with two input parameters, `scott` and `stellar.org` respectively. 
+  * `reverse-federation` - A SQL query to fetch reverse federation results that should return two columns, labeled `name` and `domain`.   When executed, this query will be provided with one input parameter, a [stellar account ID](https://developers.stellar.org/docs/glossary/accounts/#account-id) used to lookup the name and domain mapping.
 
     If reverse-lookup isn't supported (e.g. you have a single Stellar account for all users), leave this entry out.
 
