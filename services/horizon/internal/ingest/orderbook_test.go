@@ -271,15 +271,15 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 
 	sellerID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	offer := history.Offer{OfferID: 1, SellerID: sellerID}
-	offerEntry := xdr.OfferEntry{
+	offerEntry := []xdr.OfferEntry{{
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  1,
-	}
+	}}
 	otherOffer := history.Offer{OfferID: 20, SellerID: sellerID}
-	otherOfferEntry := xdr.OfferEntry{
+	otherOfferEntry := []xdr.OfferEntry{{
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  20,
-	}
+	}}
 	t.historyQ.On("GetAllOffers", t.ctx).
 		Return([]history.Offer{offer, otherOffer}, nil).
 		Once()
@@ -288,8 +288,8 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 		Return([]history.LiquidityPool{}, nil).
 		Once()
 
-	t.graph.On("AddOffer", offerEntry).Return().Once()
-	t.graph.On("AddOffer", otherOfferEntry).Return().Once()
+	t.graph.On("AddOffers", offerEntry).Return().Once()
+	t.graph.On("AddOffers", otherOfferEntry).Return().Once()
 
 	t.graph.On("Apply", status.LastIngestedLedger).
 		Return(fmt.Errorf("apply error")).
@@ -307,15 +307,15 @@ func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
 
 	sellerID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	offer := history.Offer{OfferID: 1, SellerID: sellerID}
-	offerEntry := xdr.OfferEntry{
+	offerEntry := []xdr.OfferEntry{{
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  1,
-	}
+	}}
 	otherOffer := history.Offer{OfferID: 20, SellerID: sellerID}
-	otherOfferEntry := xdr.OfferEntry{
+	otherOfferEntry := []xdr.OfferEntry{{
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  20,
-	}
+	}}
 	offers := []history.Offer{offer, otherOffer}
 	t.historyQ.On("GetAllOffers", t.ctx).
 		Return(offers, nil).
@@ -325,8 +325,8 @@ func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
 		Return([]history.LiquidityPool{}, nil).
 		Once()
 
-	t.graph.On("AddOffer", offerEntry).Return().Once()
-	t.graph.On("AddOffer", otherOfferEntry).Return().Once()
+	t.graph.On("AddOffers", offerEntry).Return().Once()
+	t.graph.On("AddOffers", otherOfferEntry).Return().Once()
 
 	t.graph.On("Apply", status.LastIngestedLedger).
 		Return(nil).
@@ -516,15 +516,15 @@ func (t *UpdateOrderBookStreamTestSuite) mockUpdate() {
 	t.graph.On("Discard").Return().Once()
 	sellerID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	offer := history.Offer{OfferID: 1, SellerID: sellerID, LastModifiedLedger: 101}
-	offerEntry := xdr.OfferEntry{
+	offerEntry := []xdr.OfferEntry{{
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  1,
-	}
+	}}
 	otherOffer := history.Offer{OfferID: 20, SellerID: sellerID, LastModifiedLedger: 102}
-	otherOfferEntry := xdr.OfferEntry{
+	otherOfferEntry := []xdr.OfferEntry{{
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  20,
-	}
+	}}
 	deletedOffer := history.Offer{OfferID: 30, SellerID: sellerID, LastModifiedLedger: 103, Deleted: true}
 	offers := []history.Offer{offer, otherOffer, deletedOffer}
 	t.historyQ.MockQOffers.On("GetUpdatedOffers", t.ctx, t.stream.lastLedger).
@@ -535,8 +535,8 @@ func (t *UpdateOrderBookStreamTestSuite) mockUpdate() {
 		Return([]history.LiquidityPool{}, nil).
 		Once()
 
-	t.graph.On("AddOffer", offerEntry).Return().Once()
-	t.graph.On("AddOffer", otherOfferEntry).Return().Once()
+	t.graph.On("AddOffers", offerEntry).Return().Once()
+	t.graph.On("AddOffers", otherOfferEntry).Return().Once()
 	t.graph.On("RemoveOffer", xdr.Int64(deletedOffer.OfferID)).Return(t.graph).Once()
 }
 

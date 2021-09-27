@@ -19,11 +19,10 @@ const (
 )
 
 type orderBookOperation struct {
-	operationType       int
-	offerID             xdr.Int64
-	offer               *xdr.OfferEntry
-	liquidityPoolAssets tradingPair
-	liquidityPool       *xdr.LiquidityPoolEntry
+	operationType int
+	offerID       xdr.Int64
+	offer         *xdr.OfferEntry
+	liquidityPool *xdr.LiquidityPoolEntry
 }
 
 type orderBookBatchedUpdates struct {
@@ -44,15 +43,10 @@ func (tx *orderBookBatchedUpdates) addOffer(offer xdr.OfferEntry) *orderBookBatc
 }
 
 // addLiquidityPool will queue an operation to add the given liquidity pool to the order book graph
-func (tx *orderBookBatchedUpdates) addLiquidityPool(liquidityPool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
-	params := liquidityPool.Body.MustConstantProduct().Params
+func (tx *orderBookBatchedUpdates) addLiquidityPool(pool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
 	tx.operations = append(tx.operations, orderBookOperation{
 		operationType: addLiquidityPoolOperationType,
-		liquidityPool: &liquidityPool,
-		liquidityPoolAssets: tradingPair{
-			buyingAsset:  params.AssetA.String(),
-			sellingAsset: params.AssetB.String(),
-		},
+		liquidityPool: &pool,
 	})
 
 	return tx
@@ -69,10 +63,10 @@ func (tx *orderBookBatchedUpdates) removeOffer(offerID xdr.Int64) *orderBookBatc
 }
 
 // removeLiquidityPool will queue an operation to remove the given liquidity pool from the order book
-func (tx *orderBookBatchedUpdates) removeLiquidityPool(liquidityPoolAssets tradingPair) *orderBookBatchedUpdates {
+func (tx *orderBookBatchedUpdates) removeLiquidityPool(pool xdr.LiquidityPoolEntry) *orderBookBatchedUpdates {
 	tx.operations = append(tx.operations, orderBookOperation{
-		operationType:       removeLiquidityPoolOperationType,
-		liquidityPoolAssets: liquidityPoolAssets,
+		operationType: removeLiquidityPoolOperationType,
+		liquidityPool: &pool,
 	})
 
 	return tx
@@ -96,23 +90,23 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 	for _, operation := range tx.operations {
 		switch operation.operationType {
 		case addOfferOperationType:
-			if err := tx.orderbook.add(*operation.offer); err != nil {
+			if err := tx.orderbook.addOffer(*operation.offer); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
 		case removeOfferOperationType:
 			if _, ok := tx.orderbook.tradingPairForOffer[operation.offerID]; !ok {
 				continue
 			}
-			if err := tx.orderbook.remove(operation.offerID); err != nil {
+			if err := tx.orderbook.removeOffer(operation.offerID); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
+
 		case addLiquidityPoolOperationType:
-			tx.orderbook.liquidityPools[operation.liquidityPoolAssets] = *operation.liquidityPool
+			tx.orderbook.addPool(*operation.liquidityPool)
+
 		case removeLiquidityPoolOperationType:
-			if _, ok := tx.orderbook.liquidityPools[operation.liquidityPoolAssets]; !ok {
-				panic(errors.New("liquidity pool not present in orderbook graph"))
-			}
-			delete(tx.orderbook.liquidityPools, operation.liquidityPoolAssets)
+			tx.orderbook.removePool(*operation.liquidityPool)
+
 		default:
 			panic(errors.New("invalid operation type"))
 		}

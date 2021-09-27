@@ -3,7 +3,6 @@ package ingest
 import (
 	"context"
 	"database/sql"
-	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"math/rand"
 	"sort"
 	"time"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -141,7 +141,7 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 		}
 
 		for _, offer := range offers {
-			o.graph.AddOffer(offerToXDR(offer))
+			o.graph.AddOffers(offerToXDR(offer))
 		}
 
 		for _, liquidityPool := range liquidityPools {
@@ -149,7 +149,7 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 			if err != nil {
 				return true, errors.Wrap(err, "Invalid liquidity pool row")
 			}
-			o.graph.AddLiquidityPool(liquidityPoolXDR)
+			o.graph.AddLiquidityPools(liquidityPoolXDR)
 		}
 
 		if err := o.graph.Apply(status.LastIngestedLedger); err != nil {
@@ -180,7 +180,7 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 		if offer.Deleted {
 			o.graph.RemoveOffer(xdr.Int64(offer.OfferID))
 		} else {
-			o.graph.AddOffer(offerToXDR(offer))
+			o.graph.AddOffers(offerToXDR(offer))
 		}
 	}
 
@@ -191,9 +191,9 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 			return false, errors.Wrap(err, "Error converting liquidity pool row to xdr")
 		}
 		if liquidityPool.Deleted {
-			o.graph.RemoveLiquidityPool(poolXDR.Body.MustConstantProduct().Params)
+			o.graph.RemoveLiquidityPool(poolXDR)
 		} else {
-			o.graph.AddLiquidityPool(poolXDR)
+			o.graph.AddLiquidityPools(poolXDR)
 		}
 	}
 
