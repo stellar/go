@@ -1835,62 +1835,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 	assertPathEquals(t, paths, expectedPaths)
 }
 
-func TestLiquidityPoolExchanges(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeDeposit, 500)
-			assert.NoError(t, err)
-			assert.EqualValues(t, 332, int64(payout))
-			// reserves would now be: 668 of A, 1500 of B
-			// note pool object is unchanged so looping is safe
-		}
-
-		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeExpectation, 332)
-			assert.NoError(t, err)
-			assert.EqualValues(t, 499, int64(payout))
-		}
-
-		// More sanity checks; if they fail, something was changed about how
-		// constant product liquidity pools work.
-		//
-		// We use these oddly-specific values because we rely on them again to
-		// validate paths in later tests.
-		testTable := []struct {
-			dstAsset       xdr.Asset
-			pool           xdr.LiquidityPoolEntry
-			expectedPayout xdr.Int64
-			expectedInput  xdr.Int64
-		}{
-			{yenAsset, eurYenLiquidityPool, 100, 112},
-			{eurAsset, eurUsdLiquidityPool, 112, 127},
-			{nativeAsset, nativeUsdPool, 5, 27},
-			{usdAsset, usdChfLiquidityPool, 127, 342},
-			{usdAsset, usdChfLiquidityPool, 27, 58},
-		}
-
-		for _, test := range testTable {
-			needed, err := makeTrade(test.pool, test.dstAsset,
-				tradeTypeExpectation, test.expectedPayout)
-
-			assert.NoError(t, err)
-			assert.EqualValuesf(t, test.expectedInput, needed,
-				"expected exchange of %d %s -> %d %s, got %d",
-				test.expectedInput, getCode(getOtherAsset(test.dstAsset, test.pool)),
-				test.expectedPayout, getCode(test.dstAsset),
-				needed)
-		}
-	})
-
-	t.Run("fail on bad exchange amounts", func(t *testing.T) {
-		badValues := []xdr.Int64{math.MaxInt64, math.MaxInt64 - 99, 0, -100}
-		for _, badValue := range badValues {
-			_, err := makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, badValue)
-			assert.Error(t, err)
-		}
-	})
-}
-
 func TestPathThroughLiquidityPools(t *testing.T) {
 	graph := NewOrderBookGraph()
 	graph.AddLiquidityPools(eurUsdLiquidityPool)
