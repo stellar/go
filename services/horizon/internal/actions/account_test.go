@@ -121,29 +121,20 @@ var (
 		},
 	}
 
-	data1 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 100,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.DataEntry{
-				AccountId: xdr.MustAddress(accountOne),
-				DataName:  "test data",
-				// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
-				DataValue: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-			},
-		},
+	data1 = history.Data{
+		AccountID: accountOne,
+		Name:      "test data",
+		// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
+		Value:              []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+		LastModifiedLedger: 1234,
 	}
 
-	data2 = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 100,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.DataEntry{
-				AccountId: xdr.MustAddress(accountTwo),
-				DataName:  "test data2",
-				DataValue: []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
-			},
-		},
+	data2 = history.Data{
+		AccountID:          accountTwo,
+		Name:               "test data2",
+		Value:              []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+		LastModifiedLedger: 1234,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 
 	accountSigners = []history.AccountSigner{
@@ -437,9 +428,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 		tt.Assert.NoError(err)
 	}
 
-	_, err = q.InsertAccountData(tt.Ctx, data1)
-	assert.NoError(t, err)
-	_, err = q.InsertAccountData(tt.Ctx, data2)
+	err = q.UpsertAccountData(tt.Ctx, []history.Data{data1, data2})
 	assert.NoError(t, err)
 
 	var assetType, code, issuer string
@@ -485,7 +474,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.Len(result.Balances, 2)
 	tt.Assert.Len(result.Signers, 2)
 
-	_, ok := result.Data[string(data2.Data.Data.DataName)]
+	_, ok := result.Data[data2.Name]
 	tt.Assert.True(ok)
 }
 
