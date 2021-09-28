@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+
 	"github.com/stretchr/testify/assert"
 
 	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/errors"
@@ -75,50 +77,36 @@ var (
 		Sponsor:            null.StringFrom(sponsor),
 	}
 
-	eurTrustLine = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: xdr.MustAddress(accountOne),
-				Asset:     euro.ToTrustLineAsset(),
-				Balance:   20000,
-				Limit:     223456789,
-				Flags:     1,
-				Ext: xdr.TrustLineEntryExt{
-					V: 1,
-					V1: &xdr.TrustLineEntryV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  3,
-							Selling: 4,
-						},
-					},
-				},
-			},
-		},
+	eurTrustLine = history.TrustLine{
+		AccountID:          accountOne,
+		AssetType:          euro.Type,
+		AssetIssuer:        trustLineIssuer,
+		AssetCode:          "EUR",
+		Balance:            20000,
+		LedgerKey:          "eur-trustline1",
+		Limit:              223456789,
+		LiquidityPoolID:    "",
+		BuyingLiabilities:  3,
+		SellingLiabilities: 4,
+		Flags:              1,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
 	}
 
-	usdTrustLine = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: xdr.MustAddress(accountTwo),
-				Asset:     usd.ToTrustLineAsset(),
-				Balance:   10000,
-				Limit:     123456789,
-				Flags:     0,
-				Ext: xdr.TrustLineEntryExt{
-					V: 1,
-					V1: &xdr.TrustLineEntryV1{
-						Liabilities: xdr.Liabilities{
-							Buying:  1,
-							Selling: 2,
-						},
-					},
-				},
-			},
-		},
+	usdTrustLine = history.TrustLine{
+		AccountID:          accountTwo,
+		AssetType:          usd.Type,
+		AssetIssuer:        trustLineIssuer,
+		AssetCode:          "USD",
+		Balance:            10000,
+		LedgerKey:          "usd-trustline1",
+		Limit:              123456789,
+		LiquidityPoolID:    "",
+		BuyingLiabilities:  1,
+		SellingLiabilities: 2,
+		Flags:              0,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
 	}
 
 	data1 = history.Data{
@@ -196,38 +184,36 @@ func TestAccountInfo(t *testing.T) {
 
 	tt.Assert.NoError(err)
 
-	_, err = q.InsertTrustLine(tt.Ctx, xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 6,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: xdr.MustAddress(accountID),
-				Asset: xdr.MustNewCreditAsset(
-					"USD",
-					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				).ToTrustLineAsset(),
-				Balance: 0,
-				Limit:   9223372036854775807,
-				Flags:   1,
-			},
+	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		{
+			AccountID:          accountID,
+			AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetIssuer:        "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+			AssetCode:          "USD",
+			Balance:            0,
+			LedgerKey:          "test-usd-tl-1",
+			Limit:              9223372036854775807,
+			LiquidityPoolID:    "",
+			BuyingLiabilities:  0,
+			SellingLiabilities: 0,
+			Flags:              1,
+			LastModifiedLedger: 6,
+			Sponsor:            null.String{},
 		},
-	})
-	assert.NoError(t, err)
-
-	_, err = q.InsertTrustLine(tt.Ctx, xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.TrustLineEntry{
-				AccountId: xdr.MustAddress(accountID),
-				Asset: xdr.MustNewCreditAsset(
-					"EUR",
-					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				).ToTrustLineAsset(),
-				Balance: 0,
-				Limit:   9223372036854775807,
-				Flags:   1,
-			},
+		{
+			AccountID:          accountID,
+			AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetIssuer:        "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+			AssetCode:          "EUR",
+			Balance:            0,
+			LedgerKey:          "test-eur-tl-1",
+			Limit:              9223372036854775807,
+			LiquidityPoolID:    "",
+			BuyingLiabilities:  0,
+			SellingLiabilities: 0,
+			Flags:              1,
+			LastModifiedLedger: 1234,
+			Sponsor:            null.String{},
 		},
 	})
 	assert.NoError(t, err)
@@ -450,9 +436,10 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(0, len(records))
 
-	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
-	assert.NoError(t, err)
-	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
+	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		eurTrustLine,
+		usdTrustLine,
+	})
 	assert.NoError(t, err)
 
 	records, err = handler.GetResourcePage(
@@ -478,6 +465,127 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.True(ok)
 }
 
+func createLP(tt *test.T, q *history.Q) history.LiquidityPool {
+	lp := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 450,
+			},
+		},
+		LastModifiedLedger: 123,
+	}
+
+	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp})
+	tt.Assert.NoError(err)
+	return lp
+}
+
+func TestGetAccountsHandlerPageResultsByLiquidityPool(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{}
+
+	err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{account1, account2})
+	assert.NoError(t, err)
+
+	ledgerCloseTime := time.Now().Unix()
+	_, err = q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 1234,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0, 0)
+	assert.NoError(t, err)
+	var assetType, code, issuer string
+	usd.MustExtract(&assetType, &code, &issuer)
+	params := map[string]string{
+		"liquidity_pool": "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+	}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			params,
+			map[string]string{},
+			q,
+		),
+	)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(0, len(records))
+
+	lp := createLP(tt, q)
+	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		{
+			AccountID:          account1.AccountID,
+			AssetType:          xdr.AssetTypeAssetTypePoolShare,
+			Balance:            10,
+			LedgerKey:          "pool-share-1",
+			Limit:              100,
+			LiquidityPoolID:    lp.PoolID,
+			Flags:              uint32(xdr.TrustLineFlagsAuthorizedFlag),
+			LastModifiedLedger: lp.LastModifiedLedger,
+		},
+	})
+	assert.NoError(t, err)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			params,
+			map[string]string{},
+			q,
+		),
+	)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(1, len(records))
+	result := records[0].(protocol.Account)
+	tt.Assert.Equal(accountOne, result.AccountID)
+	tt.Assert.NotNil(result.LastModifiedTime)
+	tt.Assert.Equal(ledgerCloseTime, result.LastModifiedTime.Unix())
+	tt.Assert.Len(result.Balances, 2)
+	tt.Assert.True(*result.Balances[0].IsAuthorized)
+	tt.Assert.True(*result.Balances[0].IsAuthorizedToMaintainLiabilities)
+	result.Balances[0].IsAuthorized = nil
+	result.Balances[0].IsAuthorizedToMaintainLiabilities = nil
+	tt.Assert.Equal(
+		protocol.Balance{
+			Balance:                           "0.0000010",
+			LiquidityPoolId:                   "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+			Limit:                             "0.0000100",
+			BuyingLiabilities:                 "",
+			SellingLiabilities:                "",
+			Sponsor:                           "",
+			LastModifiedLedger:                123,
+			IsAuthorized:                      nil,
+			IsAuthorizedToMaintainLiabilities: nil,
+			IsClawbackEnabled:                 nil,
+			Asset: base.Asset{
+				Type: "liquidity_pool_shares",
+			},
+		},
+		result.Balances[0],
+	)
+}
+
 func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 	testCases := []struct {
 		desc                    string
@@ -491,10 +599,18 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 			isInvalidAccountsParams: true,
 		},
 		{
-			desc: "signer and seller",
+			desc: "signer and asset",
 			params: map[string]string{
 				"signer": accountOne,
 				"asset":  "USD" + ":" + accountOne,
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
+			desc: "signer and liquidity pool",
+			params: map[string]string{
+				"signer":         accountOne,
+				"liquidity_pool": "48672641c88264272787837f5c306f5ce93be3c2c7df68a092fbea55f5f4aa1d",
 			},
 			isInvalidAccountsParams: true,
 		},
@@ -515,6 +631,22 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 			isInvalidAccountsParams: true,
 		},
 		{
+			desc: "asset and liquidity pool",
+			params: map[string]string{
+				"asset":          "USD" + ":" + accountOne,
+				"liquidity_pool": "48672641c88264272787837f5c306f5ce93be3c2c7df68a092fbea55f5f4aa1d",
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
+			desc: "sponsor and liquidity pool",
+			params: map[string]string{
+				"sponsor":        accountTwo,
+				"liquidity_pool": "48672641c88264272787837f5c306f5ce93be3c2c7df68a092fbea55f5f4aa1d",
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
 			desc: "filtering by native asset",
 			params: map[string]string{
 				"asset": "native",
@@ -530,6 +662,22 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 			},
 			expectedInvalidField: "asset",
 			expectedErr:          customTagsErrorMessages["asset"],
+		},
+		{
+			desc: "invalid liquidity pool",
+			params: map[string]string{
+				"liquidity_pool": "USDCOP:someissuer",
+			},
+			expectedInvalidField: "liquidity_pool",
+			expectedErr:          "USDCOP:someissuer does not validate as sha256",
+		},
+		{
+			desc: "liquidity pool too short",
+			params: map[string]string{
+				"liquidity_pool": "48672641c882642727",
+			},
+			expectedInvalidField: "liquidity_pool",
+			expectedErr:          "48672641c882642727 does not validate as sha256",
 		},
 	}
 	for _, tc := range testCases {
@@ -568,7 +716,7 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 
 func TestAccountQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/accounts{?signer,sponsor,asset,cursor,limit,order}"
+	expected := "/accounts{?signer,sponsor,asset,liquidity_pool,cursor,limit,order}"
 	accountsQuery := AccountsQuery{}
 	tt.Equal(expected, accountsQuery.URITemplate())
 }

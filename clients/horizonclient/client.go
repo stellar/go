@@ -821,5 +821,25 @@ func (c *Client) ClaimableBalance(id string) (cb hProtocol.ClaimableBalance, err
 	return
 }
 
+func (c *Client) LiquidityPoolDetail(request LiquidityPoolRequest) (lp hProtocol.LiquidityPool, err error) {
+	err = c.sendRequest(request, &lp)
+	return
+}
+
+func (c *Client) LiquidityPools(request LiquidityPoolsRequest) (lp hProtocol.LiquidityPoolsPage, err error) {
+	err = c.sendRequest(request, &lp)
+	return
+}
+
+func (c *Client) NextLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (lp hProtocol.LiquidityPoolsPage, err error) {
+	err = c.sendGetRequest(page.Links.Next.Href, &lp)
+	return
+}
+
+func (c *Client) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (lp hProtocol.LiquidityPoolsPage, err error) {
+	err = c.sendGetRequest(page.Links.Prev.Href, &lp)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}

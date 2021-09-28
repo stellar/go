@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Update `/paths` endpoint to take liquidity pools into account when searching for possible routes between assets ([3921](https://github.com/stellar/go/pull/3921)).
+
+### Breaking
+* The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
+
 ## v2.8.3
 **Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
@@ -50,6 +57,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix bug in horizon reap system (used by `horizon db reap` command and when horizon is configured with `--history-retention-count`) which could lead to partial deletions. ([3754](https://github.com/stellar/go/pull/3754))
 * Log debug messages from captive core at the appropriate log level. ([3746](https://github.com/stellar/go/pull/3746))
 * Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance. ([3750](https://github.com/stellar/go/pull/3750))
+
+* Add the ability to filter accounts by their participation in a particular liquidity pool ([3873](https://github.com/stellar/go/pull/3873)).
+
+### Update
+* Include pool shares in account balances ([3873](https://github.com/stellar/go/pull/3873)).
 
 ## v2.6.1
 

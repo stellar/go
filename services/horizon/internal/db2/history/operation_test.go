@@ -4,8 +4,11 @@ import (
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/xdr"
 )
 
 func TestOperationQueries(t *testing.T) {
@@ -60,6 +63,99 @@ func TestOperationQueries(t *testing.T) {
 		tt.Assert.Len(ops, 3)
 	}
 	tt.Assert.Len(transactions, 0)
+}
+
+func TestOperationByLiquidityPool(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	txIndex := int32(1)
+	sequence := int32(56)
+	txID := toid.New(sequence, txIndex, 0).ToInt64()
+	opID1 := toid.New(sequence, txIndex, 1).ToInt64()
+	opID2 := toid.New(sequence, txIndex, 2).ToInt64()
+
+	// Insert a phony transaction
+	transactionBuilder := q.NewTransactionBatchInsertBuilder(2)
+	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
+		index:         uint32(txIndex),
+		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
+		resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+		feeChangesXDR: "AAAAAA==",
+		metaXDR:       "AAAAAQAAAAAAAAAA",
+		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
+	})
+	err := transactionBuilder.Add(tt.Ctx, firstTransaction, uint32(sequence))
+	tt.Assert.NoError(err)
+	err = transactionBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	// Insert a two phony operations
+	operationBuilder := q.NewOperationBatchInsertBuilder(2)
+	err = operationBuilder.Add(
+		tt.Ctx,
+		opID1,
+		txID,
+		1,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		[]byte("{}"),
+		"GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		null.String{},
+	)
+	tt.Assert.NoError(err)
+	err = operationBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	err = operationBuilder.Add(
+		tt.Ctx,
+		opID2,
+		txID,
+		1,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		[]byte("{}"),
+		"GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		null.String{},
+	)
+	tt.Assert.NoError(err)
+	err = operationBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	// Insert Liquidity Pool history
+	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
+	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
+	tt.Assert.NoError(err)
+	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder(3)
+	tt.Assert.NoError(err)
+	internalID, ok := toInternalID[liquidityPoolID]
+	tt.Assert.True(ok)
+	err = lpOperationBuilder.Add(tt.Ctx, opID1, internalID)
+	tt.Assert.NoError(err)
+	err = lpOperationBuilder.Add(tt.Ctx, opID2, internalID)
+	tt.Assert.NoError(err)
+	err = lpOperationBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	// Check ascending order
+	pq := db2.PageQuery{
+		Cursor: "",
+		Order:  "asc",
+		Limit:  2,
+	}
+	ops, _, err := q.Operations().ForLiquidityPool(tt.Ctx, liquidityPoolID).Page(pq).Fetch(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(ops, 2)
+	tt.Assert.Equal(ops[0].ID, opID1)
+	tt.Assert.Equal(ops[1].ID, opID2)
+
+	// Check descending order
+	pq.Order = "desc"
+	ops, _, err = q.Operations().ForLiquidityPool(tt.Ctx, liquidityPoolID).Page(pq).Fetch(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(ops, 2)
+	tt.Assert.Equal(ops[0].ID, opID2)
+	tt.Assert.Equal(ops[1].ID, opID1)
 }
 
 func TestOperationQueryBuilder(t *testing.T) {

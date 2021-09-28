@@ -1,9 +1,10 @@
 package txnbuild
 
 import (
+	"testing"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
-	"testing"
 
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
@@ -103,7 +104,7 @@ func TestChangeTrustMultSigners(t *testing.T) {
 	kp1 := newKeypair1()
 
 	changeTrust := ChangeTrust{
-		Line:          CreditAsset{"ABCD", kp0.Address()},
+		Line:          CreditAsset{"ABCD", kp0.Address()}.MustToChangeTrustAsset(),
 		Limit:         "10",
 		SourceAccount: kp1.Address(),
 	}
@@ -499,7 +500,9 @@ func TestSigningImmutability(t *testing.T) {
 	verifySignatures(t, right, kp0, kp2)
 
 	rootXDRB64, err := xdr.MarshalBase64(rootXDR)
-	assert.Equal(t, expectedRootB64, rootXDRB64)
+	if assert.NoError(t, err) {
+		assert.Equal(t, expectedRootB64, rootXDRB64)
+	}
 }
 
 func TestFeeBumpSigningImmutability(t *testing.T) {

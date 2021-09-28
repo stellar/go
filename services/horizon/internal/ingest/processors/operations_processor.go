@@ -9,6 +9,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -181,6 +182,63 @@ func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, erro
 	}
 
 	return nil, nil
+}
+
+type liquidityPoolDelta struct {
+	ReserveA        xdr.Int64
+	ReserveB        xdr.Int64
+	TotalPoolShares xdr.Int64
+}
+
+var errLiquidityPoolChangeNotFound = errors.New("liquidity pool change not found")
+
+func (operation *transactionOperationWrapper) getLiquidityPoolAndProductDelta(lpID *xdr.PoolId) (*xdr.LiquidityPoolEntry, *liquidityPoolDelta, error) {
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, c := range changes {
+		if c.Type != xdr.LedgerEntryTypeLiquidityPool {
+			continue
+		}
+		// The delta can be caused by a full removal or full creation of the liquidity pool
+		var lp *xdr.LiquidityPoolEntry
+		var preA, preB, preShares xdr.Int64
+		if c.Pre != nil {
+			if lpID != nil && c.Pre.Data.LiquidityPool.LiquidityPoolId != *lpID {
+				// if we were looking for specific pool id, then check on it
+				continue
+			}
+			lp = c.Pre.Data.LiquidityPool
+			if c.Pre.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Pre.Data.LiquidityPool.Body.Type)
+			}
+			cpPre := c.Pre.Data.LiquidityPool.Body.ConstantProduct
+			preA, preB, preShares = cpPre.ReserveA, cpPre.ReserveB, cpPre.TotalPoolShares
+		}
+		var postA, postB, postShares xdr.Int64
+		if c.Post != nil {
+			if lpID != nil && c.Post.Data.LiquidityPool.LiquidityPoolId != *lpID {
+				// if we were looking for specific pool id, then check on it
+				continue
+			}
+			lp = c.Post.Data.LiquidityPool
+			if c.Post.Data.LiquidityPool.Body.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+				return nil, nil, fmt.Errorf("unexpected liquity pool body type %d", c.Post.Data.LiquidityPool.Body.Type)
+			}
+			cpPost := c.Post.Data.LiquidityPool.Body.ConstantProduct
+			postA, postB, postShares = cpPost.ReserveA, cpPost.ReserveB, cpPost.TotalPoolShares
+		}
+		delta := &liquidityPoolDelta{
+			ReserveA:        postA - preA,
+			ReserveB:        postB - preB,
+			TotalPoolShares: postShares - preShares,
+		}
+		return lp, delta, nil
+	}
+
+	return nil, nil, errLiquidityPoolChangeNotFound
 }
 
 // OperationResult returns the operation's result record
@@ -358,10 +416,15 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
-		// TODO fix before Protocol 18
-		addAssetDetails(details, op.Line.ToAsset(), "")
+		if op.Line.Type == xdr.AssetTypeAssetTypePoolShare {
+			if err := addLiquidityPoolAssetDetails(details, *op.Line.LiquidityPool); err != nil {
+				return nil, err
+			}
+		} else {
+			addAssetDetails(details, op.Line.ToAsset(), "")
+			details["trustee"] = details["asset_issuer"]
+		}
 		addAccountAndMuxedAccountDetails(details, *source, "trustor")
-		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
@@ -457,6 +520,71 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		if op.ClearFlags > 0 {
 			addTrustLineFlagDetails(details, xdr.TrustLineFlags(op.ClearFlags), "clear")
 		}
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		op := operation.operation.Body.MustLiquidityPoolDepositOp()
+		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
+		var (
+			assetA, assetB         string
+			depositedA, depositedB xdr.Int64
+			sharesReceived         xdr.Int64
+		)
+		if operation.transaction.Result.Successful() {
+			// we will use the defaults (omitted asset and 0 amounts) if the transaction failed
+			lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+			if err != nil {
+				return nil, err
+			}
+			params := lp.Body.ConstantProduct.Params
+			assetA, assetB = params.AssetA.StringCanonical(), params.AssetB.StringCanonical()
+			depositedA, depositedB = delta.ReserveA, delta.ReserveB
+			sharesReceived = delta.TotalPoolShares
+		}
+		details["reserves_max"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(op.MaxAmountA)},
+			{Asset: assetB, Amount: amount.String(op.MaxAmountB)},
+		}
+		details["min_price"] = op.MinPrice.String()
+		details["min_price_r"] = map[string]interface{}{
+			"n": op.MinPrice.N,
+			"d": op.MinPrice.D,
+		}
+		details["max_price"] = op.MaxPrice.String()
+		details["max_price_r"] = map[string]interface{}{
+			"n": op.MaxPrice.N,
+			"d": op.MaxPrice.D,
+		}
+		details["reserves_deposited"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(depositedA)},
+			{Asset: assetB, Amount: amount.String(depositedB)},
+		}
+		details["shares_received"] = amount.String(sharesReceived)
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		op := operation.operation.Body.MustLiquidityPoolWithdrawOp()
+		details["liquidity_pool_id"] = PoolIDToString(op.LiquidityPoolId)
+		var (
+			assetA, assetB       string
+			receivedA, receivedB xdr.Int64
+		)
+		if operation.transaction.Result.Successful() {
+			// we will use the defaults (omitted asset and 0 amounts) if the transaction failed
+			lp, delta, err := operation.getLiquidityPoolAndProductDelta(&op.LiquidityPoolId)
+			if err != nil {
+				return nil, err
+			}
+			params := lp.Body.ConstantProduct.Params
+			assetA, assetB = params.AssetA.StringCanonical(), params.AssetB.StringCanonical()
+			receivedA, receivedB = -delta.ReserveA, -delta.ReserveB
+		}
+		details["reserves_min"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(op.MinAmountA)},
+			{Asset: assetB, Amount: amount.String(op.MinAmountB)},
+		}
+		details["shares"] = amount.String(op.Amount)
+		details["reserves_received"] = []base.AssetAmount{
+			{Asset: assetA, Amount: amount.String(receivedA)},
+			{Asset: assetB, Amount: amount.String(receivedB)},
+		}
+
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
@@ -470,6 +598,20 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	}
 
 	return details, nil
+}
+
+func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters) error {
+	result["asset_type"] = "liquidity_pool_shares"
+	if lpp.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
+		return fmt.Errorf("unkown liquidity pool type %d", lpp.Type)
+	}
+	cp := lpp.ConstantProduct
+	poolID, err := xdr.NewPoolId(cp.AssetA, cp.AssetB, cp.Fee)
+	if err != nil {
+		return err
+	}
+	result["liquidity_pool_id"] = PoolIDToString(poolID)
+	return nil
 }
 
 // addAssetDetails sets the details for `a` on `result` using keys with `prefix`
@@ -569,8 +711,13 @@ func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey)
 		result["offer_id"] = fmt.Sprintf("%d", ledgerKey.Offer.OfferId)
 	case xdr.LedgerEntryTypeTrustline:
 		result["trustline_account_id"] = ledgerKey.TrustLine.AccountId.Address()
-		// TODO fix before Protocol 18
-		result["trustline_asset"] = ledgerKey.TrustLine.Asset.ToAsset().StringCanonical()
+		if ledgerKey.TrustLine.Asset.Type == xdr.AssetTypeAssetTypePoolShare {
+			result["trustline_liquidity_pool_id"] = PoolIDToString(*ledgerKey.TrustLine.Asset.LiquidityPoolId)
+		} else {
+			result["trustline_asset"] = ledgerKey.TrustLine.Asset.ToAsset().StringCanonical()
+		}
+	case xdr.LedgerEntryTypeLiquidityPool:
+		result["liquidity_pool_id"] = PoolIDToString(ledgerKey.LiquidityPool.LiquidityPoolId)
 	}
 	return nil
 }
@@ -654,10 +801,14 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		op := operation.operation.Body.MustClawbackOp()
 		participants = append(participants, op.From.ToAccountId())
 	case xdr.OperationTypeClawbackClaimableBalance:
-	// Nothing to do here
+		// the only direct participant is the source_account
 	case xdr.OperationTypeSetTrustLineFlags:
 		op := operation.operation.Body.MustSetTrustLineFlagsOp()
 		participants = append(participants, op.Trustor)
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

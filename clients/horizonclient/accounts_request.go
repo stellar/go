@@ -13,14 +13,14 @@ import (
 // At the moment, you can't use both filters at the same time.
 func (r AccountsRequest) BuildURL() (endpoint string, err error) {
 
-	nParams := countParams(r.Signer, r.Asset)
+	nParams := countParams(r.Signer, r.Asset, r.Sponsor, r.LiquidityPool)
 
 	if nParams <= 0 {
-		err = errors.New("invalid request: no parameters - Signer or Asset must be provided")
+		err = errors.New("invalid request: no parameters - Signer, Asset, Sponsor, or LiquidityPool must be provided")
 	}
 
-	if nParams >= 2 {
-		err = errors.New("invalid request: too many parameters - Signer and Asset provided, provide a single filter")
+	if nParams > 1 {
+		err = errors.New("invalid request: too many parameters - Multiple filters provided, provide a single filter")
 	}
 
 	if err != nil {
@@ -33,6 +33,12 @@ func (r AccountsRequest) BuildURL() (endpoint string, err error) {
 
 	case len(r.Asset) > 0:
 		query.Add("asset", r.Asset)
+
+	case len(r.Sponsor) > 0:
+		query.Add("sponsor", r.Sponsor)
+
+	case len(r.LiquidityPool) > 0:
+		query.Add("liquidity_pool", r.LiquidityPool)
 	}
 
 	endpoint = fmt.Sprintf(

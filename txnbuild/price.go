@@ -51,6 +51,12 @@ func (p *price) fromXDR(xdrPrice xdr.Price) {
 	p.s = strconv.FormatFloat(v, 'f', -1, 32)
 }
 
+func priceFromXDR(xdrPrice xdr.Price) price {
+	var p price
+	p.fromXDR(xdrPrice)
+	return p
+}
+
 func (p price) string() string {
 	return p.s
 }

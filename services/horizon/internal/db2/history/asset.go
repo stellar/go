@@ -55,15 +55,6 @@ func (q *Q) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int)
 			return nil, errors.Wrap(err, "could not extract asset details")
 		}
 
-		err = builder.Row(ctx, map[string]interface{}{
-			"asset_type":   assetType,
-			"asset_code":   assetCode,
-			"asset_issuer": assetIssuer,
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "could not insert history_assets row")
-		}
-
 		assetTuple := [3]string{
 			assetType,
 			assetCode,
@@ -72,6 +63,15 @@ func (q *Q) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int)
 		if _, contains := assetToKey[assetTuple]; !contains {
 			searchStrings = append(searchStrings, assetType+"/"+assetCode+"/"+assetIssuer)
 			assetToKey[assetTuple] = asset.String()
+
+			err = builder.Row(ctx, map[string]interface{}{
+				"asset_type":   assetType,
+				"asset_code":   assetCode,
+				"asset_issuer": assetIssuer,
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "could not insert history_assets row")
+			}
 		}
 	}
 

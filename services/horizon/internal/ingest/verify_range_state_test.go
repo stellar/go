@@ -226,6 +226,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	)
 }
 
+// Bartek: looks like this test really tests the state verifier. Instead, I think we should just ensure
+// data is passed so a single account would be enough to test if the FSM state works correctly.
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
@@ -425,10 +427,56 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			},
 		},
 	}
+	liquidityPool := history.LiquidityPool{
+		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            34,
+		TrustlineCount: 52115,
+		ShareCount:     412241,
+		AssetReserves: []history.LiquidityPoolAssetReserve{
+			{
+				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				Reserve: 450,
+			},
+			{
+				Asset:   xdr.MustNewNativeAsset(),
+				Reserve: 123,
+			},
+		},
+		LastModifiedLedger: 62,
+	}
+	liquidityPoolChange := ingest.Change{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &xdr.LiquidityPoolEntry{
+					LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+					Body: xdr.LiquidityPoolEntryBody{
+						Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+						ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+							Params: xdr.LiquidityPoolConstantProductParameters{
+								AssetA: xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+								AssetB: xdr.MustNewNativeAsset(),
+								Fee:    34,
+							},
+							ReserveA:                 450,
+							ReserveB:                 123,
+							TotalPoolShares:          412241,
+							PoolSharesTrustLineCount: 52115,
+						},
+					},
+				},
+			},
+			LastModifiedLedgerSeq: xdr.Uint32(62),
+		},
+	}
 
 	mockChangeReader.On("Read").Return(accountChange, nil).Once()
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
 	mockChangeReader.On("Read").Return(claimableBalanceChange, nil).Once()
+	mockChangeReader.On("Read").Return(liquidityPoolChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	s.historyAdapter.On("GetState", s.ctx, uint32(63)).Return(mockChangeReader, nil).Once()
@@ -491,12 +539,39 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
+	}).Return([]history.ExpAssetStat{
+		// Created by liquidity pool:
+		{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode:   "USD",
+			AssetIssuer: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			Accounts: history.ExpAssetStatAccounts{
+				LiquidityPools: 1,
+			},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "0",
+				AuthorizedToMaintainLiabilities: "0",
+				ClaimableBalances:               "0",
+				LiquidityPools:                  "450",
+				Unauthorized:                    "0",
+			},
+			Amount: "0",
+		}}, nil).Once()
+	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
+		Cursor: "USD_GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML_credit_alphanum4",
+		Order:  "asc",
+		Limit:  assetStatsBatchSize,
 	}).Return([]history.ExpAssetStat{}, nil).Once()
 
 	clonedQ.MockQClaimableBalances.On("CountClaimableBalances", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQClaimableBalances.
 		On("GetClaimableBalancesByID", s.ctx, []string{balanceIDStr}).
 		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
+
+	clonedQ.MockQLiquidityPools.On("CountLiquidityPools", s.ctx).Return(1, nil).Once()
+	clonedQ.MockQLiquidityPools.
+		On("GetLiquidityPoolsByID", s.ctx, []string{liquidityPool.PoolID}).
+		Return([]history.LiquidityPool{liquidityPool}, nil).Once()
 
 	next, err := verifyRangeState{
 		fromLedger: 100, toLedger: 110, verifyState: true,
@@ -555,7 +630,7 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 	}).Return([]history.ExpAssetStat{}, nil).Once()
 
 	err := checkAssetStats(s.ctx, set, s.historyQ)
-	s.Assert().EqualError(err, fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
+	s.Assert().Contains(err.Error(), fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock
 	s.historyQ.Rollback()

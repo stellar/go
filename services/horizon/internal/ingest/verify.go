@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -166,6 +167,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		offers := make([]int64, 0, verifyBatchSize)
 		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
 		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
+		lPools := make([]xdr.PoolId, 0, verifyBatchSize)
 		for _, key := range keys {
 			switch key.Type {
 			case xdr.LedgerEntryTypeAccount:
@@ -178,6 +180,8 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				trustLines = append(trustLines, *key.TrustLine)
 			case xdr.LedgerEntryTypeClaimableBalance:
 				cBalances = append(cBalances, key.ClaimableBalance.BalanceId)
+			case xdr.LedgerEntryTypeLiquidityPool:
+				lPools = append(lPools, key.LiquidityPool.LiquidityPoolId)
 			default:
 				return errors.New("GetLedgerKeys return unexpected type")
 			}
@@ -206,6 +210,11 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		err = addClaimableBalanceToStateVerifier(s.ctx, verifier, assetStats, historyQ, cBalances)
 		if err != nil {
 			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
+		}
+
+		err = addLiquidityPoolsToStateVerifier(s.ctx, verifier, assetStats, historyQ, lPools)
+		if err != nil {
+			return errors.Wrap(err, "addLiquidityPoolsToStateVerifier failed")
 		}
 
 		total += len(keys)
@@ -239,7 +248,12 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running historyQ.CountClaimableBalances")
 	}
 
-	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances)
+	countLiquidityPools, err := historyQ.CountLiquidityPools(s.ctx)
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountLiquidityPools")
+	}
+
+	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances + countLiquidityPools)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
@@ -283,8 +297,8 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 			if fromSet != assetStat {
 				return ingest.NewStateError(
 					fmt.Errorf(
-						"db asset stat with code %s issuer %s does not match asset stat from HAS",
-						assetStat.AssetCode, assetStat.AssetIssuer,
+						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
+						assetStat.AssetCode, assetStat.AssetIssuer, fromSet, assetStat,
 					),
 				)
 			}
@@ -474,22 +488,12 @@ func addOffersToStateVerifier(
 	}
 
 	for _, row := range offers {
+		offerXDR := offerToXDR(row)
 		entry := xdr.LedgerEntry{
 			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
 			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeOffer,
-				Offer: &xdr.OfferEntry{
-					SellerId: xdr.MustAddress(row.SellerID),
-					OfferId:  xdr.Int64(row.OfferID),
-					Selling:  row.SellingAsset,
-					Buying:   row.BuyingAsset,
-					Amount:   xdr.Int64(row.Amount),
-					Price: xdr.Price{
-						N: xdr.Int32(row.Pricen),
-						D: xdr.Int32(row.Priced),
-					},
-					Flags: xdr.Uint32(row.Flags),
-				},
+				Type:  xdr.LedgerEntryTypeOffer,
+				Offer: &offerXDR,
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
@@ -500,6 +504,21 @@ func addOffersToStateVerifier(
 	}
 
 	return nil
+}
+
+func offerToXDR(row history.Offer) xdr.OfferEntry {
+	return xdr.OfferEntry{
+		SellerId: xdr.MustAddress(row.SellerID),
+		OfferId:  xdr.Int64(row.OfferID),
+		Selling:  row.SellingAsset,
+		Buying:   row.BuyingAsset,
+		Amount:   xdr.Int64(row.Amount),
+		Price: xdr.Price{
+			N: xdr.Int32(row.Pricen),
+			D: xdr.Int32(row.Priced),
+		},
+		Flags: xdr.Uint32(row.Flags),
+	}
 }
 
 func addTrustLinesToStateVerifier(
@@ -513,47 +532,37 @@ func addTrustLinesToStateVerifier(
 		return nil
 	}
 
-	trustLines, err := q.GetTrustLinesByKeys(ctx, keys)
+	var ledgerKeyStrings []string
+	for _, key := range keys {
+		var ledgerKey xdr.LedgerKey
+		if err := ledgerKey.SetTrustline(key.AccountId, key.Asset); err != nil {
+			return errors.Wrap(err, "Error running ledgerKey.SetTrustline")
+		}
+		b64, err := ledgerKey.MarshalBinaryBase64()
+		if err != nil {
+			return errors.Wrap(err, "Error running ledgerKey.MarshalBinaryBase64")
+		}
+		ledgerKeyStrings = append(ledgerKeyStrings, b64)
+	}
+
+	trustLines, err := q.GetTrustLinesByKeys(ctx, ledgerKeyStrings)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetTrustLinesByKeys")
 	}
 
 	for _, row := range trustLines {
-		asset := xdr.MustNewCreditAsset(row.AssetCode, row.AssetIssuer)
-		trustline := xdr.TrustLineEntry{
-			AccountId: xdr.MustAddress(row.AccountID),
-			Asset:     asset.ToTrustLineAsset(),
-			Balance:   xdr.Int64(row.Balance),
-			Limit:     xdr.Int64(row.Limit),
-			Flags:     xdr.Uint32(row.Flags),
-			Ext: xdr.TrustLineEntryExt{
-				V: 1,
-				V1: &xdr.TrustLineEntryV1{
-					Liabilities: xdr.Liabilities{
-						Buying:  xdr.Int64(row.BuyingLiabilities),
-						Selling: xdr.Int64(row.SellingLiabilities),
-					},
-				},
-			},
-		}
-		entry := xdr.LedgerEntry{
-			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
-			Data: xdr.LedgerEntryData{
-				Type:      xdr.LedgerEntryTypeTrustline,
-				TrustLine: &trustline,
-			},
-		}
-		addLedgerEntrySponsor(&entry, row.Sponsor)
-		if err := verifier.Write(entry); err != nil {
+		var entry xdr.LedgerEntry
+		entry, err = trustLineToXDR(row)
+		if err != nil {
 			return err
 		}
-		if err := assetStats.AddTrustline(
+
+		if err = verifier.Write(entry); err != nil {
+			return err
+		}
+		if err = assetStats.AddTrustline(
 			ingest.Change{
-				Post: &xdr.LedgerEntry{
-					Data: xdr.LedgerEntryData{
-						TrustLine: &trustline,
-					},
-				},
+				Post: &entry,
 			},
 		); err != nil {
 			return ingest.NewStateError(
@@ -563,6 +572,55 @@ func addTrustLinesToStateVerifier(
 	}
 
 	return nil
+}
+
+func trustLineToXDR(row history.TrustLine) (xdr.LedgerEntry, error) {
+	var asset xdr.TrustLineAsset
+	switch row.AssetType {
+	case xdr.AssetTypeAssetTypePoolShare:
+		asset = xdr.TrustLineAsset{
+			Type:            xdr.AssetTypeAssetTypePoolShare,
+			LiquidityPoolId: &xdr.PoolId{},
+		}
+		_, err := hex.Decode((*asset.LiquidityPoolId)[:], []byte(row.LiquidityPoolID))
+		if err != nil {
+			return xdr.LedgerEntry{}, errors.Wrap(err, "Error decoding liquidity pool id")
+		}
+	case xdr.AssetTypeAssetTypeNative:
+		asset = xdr.MustNewNativeAsset().ToTrustLineAsset()
+	default:
+		creditAsset, err := xdr.NewCreditAsset(row.AssetCode, row.AssetIssuer)
+		if err != nil {
+			return xdr.LedgerEntry{}, errors.Wrap(err, "Error decoding credit asset")
+		}
+		asset = creditAsset.ToTrustLineAsset()
+	}
+
+	trustline := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress(row.AccountID),
+		Asset:     asset,
+		Balance:   xdr.Int64(row.Balance),
+		Limit:     xdr.Int64(row.Limit),
+		Flags:     xdr.Uint32(row.Flags),
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  xdr.Int64(row.BuyingLiabilities),
+					Selling: xdr.Int64(row.SellingLiabilities),
+				},
+			},
+		},
+	}
+	entry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+		Data: xdr.LedgerEntryData{
+			Type:      xdr.LedgerEntryTypeTrustline,
+			TrustLine: &trustline,
+		},
+	}
+	addLedgerEntrySponsor(&entry, row.Sponsor)
+	return entry, nil
 }
 
 func addClaimableBalanceToStateVerifier(
@@ -633,11 +691,7 @@ func addClaimableBalanceToStateVerifier(
 
 		if err := assetStats.AddClaimableBalance(
 			ingest.Change{
-				Post: &xdr.LedgerEntry{
-					Data: xdr.LedgerEntryData{
-						ClaimableBalance: &cBalance,
-					},
-				},
+				Post: &entry,
 			},
 		); err != nil {
 			return ingest.NewStateError(
@@ -647,6 +701,91 @@ func addClaimableBalanceToStateVerifier(
 	}
 
 	return nil
+}
+
+func addLiquidityPoolsToStateVerifier(
+	ctx context.Context,
+	verifier *verify.StateVerifier,
+	assetStats processors.AssetStatSet,
+	q history.IngestionQ,
+	ids []xdr.PoolId,
+) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	var idsHex = make([]string, len(ids))
+	for i, id := range ids {
+		idsHex[i] = processors.PoolIDToString(id)
+
+	}
+	lPools, err := q.GetLiquidityPoolsByID(ctx, idsHex)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetLiquidityPoolsByID")
+	}
+
+	for _, row := range lPools {
+		lPoolEntry, err := liquidityPoolToXDR(row)
+		if err != nil {
+			return errors.Wrap(err, "Invalid liquidity pool row")
+		}
+
+		entry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+			Data: xdr.LedgerEntryData{
+				Type:          xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &lPoolEntry,
+			},
+		}
+		if err := verifier.Write(entry); err != nil {
+			return err
+		}
+
+		if err := assetStats.AddLiquidityPool(
+			ingest.Change{
+				Post: &entry,
+			},
+		); err != nil {
+			return ingest.NewStateError(
+				errors.Wrap(err, "could not add claimable balance to asset stats"),
+			)
+		}
+	}
+
+	return nil
+}
+
+func liquidityPoolToXDR(row history.LiquidityPool) (xdr.LiquidityPoolEntry, error) {
+	if len(row.AssetReserves) != 2 {
+		return xdr.LiquidityPoolEntry{}, fmt.Errorf("unexpected number of asset reserves (%d), expected %d", len(row.AssetReserves), 2)
+	}
+	id, err := hex.DecodeString(row.PoolID)
+	if err != nil {
+		return xdr.LiquidityPoolEntry{}, errors.Wrap(err, "Error decoding pool ID")
+	}
+	var poolID xdr.PoolId
+	if len(id) != len(poolID) {
+		return xdr.LiquidityPoolEntry{}, fmt.Errorf("Error decoding pool ID, incorrect length (%d)", len(id))
+	}
+	copy(poolID[:], id)
+
+	var lPoolEntry = xdr.LiquidityPoolEntry{
+		LiquidityPoolId: poolID,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: row.Type,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: row.AssetReserves[0].Asset,
+					AssetB: row.AssetReserves[1].Asset,
+					Fee:    xdr.Int32(row.Fee),
+				},
+				ReserveA:                 xdr.Int64(row.AssetReserves[0].Reserve),
+				ReserveB:                 xdr.Int64(row.AssetReserves[1].Reserve),
+				TotalPoolShares:          xdr.Int64(row.ShareCount),
+				PoolSharesTrustLineCount: xdr.Int64(row.TrustlineCount),
+			},
+		},
+	}
+	return lPoolEntry, nil
 }
 
 func addLedgerEntrySponsor(entry *xdr.LedgerEntry, sponsor null.String) {

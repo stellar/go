@@ -50,6 +50,9 @@ type AssetType string
 // join represents `join` param in queries
 type join string
 
+// reserves represents `reserves` param in queries
+type reserves []string
+
 const (
 	// OrderAsc represents an ascending order parameter
 	OrderAsc Order = "asc"
@@ -207,6 +210,10 @@ type ClientInterface interface {
 	HomeDomainForAccount(aid string) (string, error)
 	NextTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
 	PrevTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
+	LiquidityPoolDetail(request LiquidityPoolRequest) (hProtocol.LiquidityPool, error)
+	LiquidityPools(request LiquidityPoolsRequest) (hProtocol.LiquidityPoolsPage, error)
+	NextLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
+	PrevLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
@@ -234,11 +241,13 @@ type HorizonRequest interface {
 // Either "Signer" or "Asset" fields should be set when retrieving Accounts.
 // At the moment, you can't use both filters at the same time.
 type AccountsRequest struct {
-	Signer string
-	Asset  string
-	Order  Order
-	Cursor string
-	Limit  uint
+	Signer        string
+	Asset         string
+	Sponsor       string
+	LiquidityPool string
+	Order         Order
+	Cursor        string
+	Limit         uint
 }
 
 // AccountRequest struct contains data for making requests to the show account endpoint of a horizon server.
@@ -254,13 +263,14 @@ type AccountRequest struct {
 // can be set at a time. If none are set, the default is to return all effects.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type EffectRequest struct {
-	ForAccount     string
-	ForLedger      string
-	ForOperation   string
-	ForTransaction string
-	Order          Order
-	Cursor         string
-	Limit          uint
+	ForAccount       string
+	ForLedger        string
+	ForLiquidityPool string
+	ForOperation     string
+	ForTransaction   string
+	Order            Order
+	Cursor           string
+	Limit            uint
 }
 
 // AssetRequest struct contains data for getting asset details from a horizon server.
@@ -308,6 +318,7 @@ type OperationRequest struct {
 	ForAccount          string
 	ForClaimableBalance string
 	ForLedger           uint
+	ForLiquidityPool    string
 	ForTransaction      string
 	forOperationID      string
 	Order               Order
@@ -331,6 +342,7 @@ type TransactionRequest struct {
 	ForAccount          string
 	ForClaimableBalance string
 	ForLedger           uint
+	ForLiquidityPool    string
 	forTransactionHash  string
 	Order               Order
 	Cursor              string
@@ -384,12 +396,14 @@ type StrictSendPathsRequest struct {
 type TradeRequest struct {
 	ForOfferID         string
 	ForAccount         string
+	ForLiquidityPool   string
 	BaseAssetType      AssetType
 	BaseAssetCode      string
 	BaseAssetIssuer    string
 	CounterAssetType   AssetType
 	CounterAssetCode   string
 	CounterAssetIssuer string
+	TradeType          string
 	Order              Order
 	Cursor             string
 	Limit              uint

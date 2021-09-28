@@ -2,10 +2,11 @@ package horizonclient
 
 import (
 	"fmt"
-	"github.com/jarcoal/httpmock"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/jarcoal/httpmock"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -188,7 +189,7 @@ func TestAccounts(t *testing.T) {
 	accountRequest := AccountsRequest{}
 	_, err := client.Accounts(accountRequest)
 	if tt.Error(err) {
-		tt.Contains(err.Error(), "invalid request: no parameters - Signer or Asset must be provided")
+		tt.Contains(err.Error(), "invalid request: no parameters")
 	}
 
 	accountRequest = AccountsRequest{
@@ -197,7 +198,7 @@ func TestAccounts(t *testing.T) {
 	}
 	_, err = client.Accounts(accountRequest)
 	if tt.Error(err) {
-		tt.Contains(err.Error(), "invalid request: too many parameters - Signer and Asset provided, provide a single filter")
+		tt.Contains(err.Error(), "invalid request: too many parameters")
 	}
 
 	var accounts hProtocol.AccountsPage
@@ -257,6 +258,7 @@ func TestAccounts(t *testing.T) {
 		tt.Equal(ok, false)
 	}
 }
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{

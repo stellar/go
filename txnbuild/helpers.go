@@ -37,7 +37,7 @@ func validateStellarSignerKey(signerKey string) error {
 
 // validateStellarAsset checks if the asset supplied is a valid stellar Asset. It returns an error if the asset is
 // nil, has an invalid asset code or issuer.
-func validateStellarAsset(asset Asset) error {
+func validateStellarAsset(asset BasicAsset) error {
 	if asset == nil {
 		return errors.New("asset is undefined")
 	}
@@ -87,7 +87,7 @@ func validateAmount(n interface{}) error {
 // validateAssetCode checks if the provided asset is valid as an asset code.
 // It returns an error if the asset is invalid.
 // The asset must be non native (XLM) with a valid asset code.
-func validateAssetCode(asset Asset) error {
+func validateAssetCode(asset BasicAsset) error {
 	// Note: we are not using validateStellarAsset() function for AllowTrust operations because it requires the
 	//  following :
 	// - asset is non-native
@@ -111,7 +111,7 @@ func validateAssetCode(asset Asset) error {
 // validateChangeTrustAsset checks if the provided asset is valid for use in ChangeTrust operation.
 // It returns an error if the asset is invalid.
 // The asset must be non native (XLM) with a valid asset code and issuer.
-func validateChangeTrustAsset(asset Asset) error {
+func validateChangeTrustAsset(asset ChangeTrustAsset) error {
 	// Note: we are not using validateStellarAsset() function for ChangeTrust operations because it requires the
 	//  following :
 	// - asset is non-native
@@ -120,6 +120,14 @@ func validateChangeTrustAsset(asset Asset) error {
 	err := validateAssetCode(asset)
 	if err != nil {
 		return err
+	}
+
+	assetType, err := asset.GetType()
+	if err != nil {
+		return err
+	} else if assetType == AssetTypePoolShare {
+		// No issuer for these to validate.
+		return nil
 	}
 
 	err = validateStellarPublicKey(asset.GetIssuer())

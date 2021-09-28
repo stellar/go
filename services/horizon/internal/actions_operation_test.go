@@ -254,22 +254,6 @@ func TestOperationActions_StreamRegression(t *testing.T) {
 	}
 }
 
-func TestOperationActions_ShowRegression(t *testing.T) {
-	ht := StartHTTPTest(t, "trades")
-	defer ht.Finish()
-
-	// #202 - price is not shown on manage_offer operations
-	w := ht.Get("/operations/25769807873")
-	if ht.Assert.Equal(200, w.Code) {
-		var result operations.ManageSellOffer
-		err := json.Unmarshal(w.Body.Bytes(), &result)
-		ht.Require.NoError(err, "failed to parse body")
-		ht.Assert.Equal("1.0000000", result.Price)
-		ht.Assert.Equal(int32(1), result.PriceR.N)
-		ht.Assert.Equal(int32(1), result.PriceR.D)
-	}
-}
-
 func TestOperation_CreatedAt(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()

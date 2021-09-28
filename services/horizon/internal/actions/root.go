@@ -27,6 +27,7 @@ func (handler GetRootHandler) GetResource(w HeaderWriter, r *http.Request) (inte
 	templates := map[string]string{
 		"accounts":           AccountsQuery{}.URITemplate(),
 		"claimableBalances":  ClaimableBalancesQuery{}.URITemplate(),
+		"liquidityPools":     LiquidityPoolsQuery{}.URITemplate(),
 		"offers":             OffersQuery{}.URITemplate(),
 		"strictReceivePaths": StrictReceivePathsQuery{}.URITemplate(),
 		"strictSendPaths":    FindFixedPathsQuery{}.URITemplate(),

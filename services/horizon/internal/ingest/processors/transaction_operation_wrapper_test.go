@@ -3,9 +3,9 @@
 package processors
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
@@ -552,6 +552,22 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "changeTrust with muxed accounts of liquidity pool",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAYAAAADAAAAAAAAAAAAAAABVVNEAAAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAABR//////////wAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAKAAAAAAAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAACVAvjOAAAACYAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAKAAAAAAAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAACVAvjOAAAACYAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+M4AAAAJgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+M4AAAAJgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoAAAAAQAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAFVU0QAAAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAAAAAAAB//////////wAAAAAAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAAmAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+QAAAAAJgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+OcAAAAJgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"asset_type":        "liquidity_pool_shares",
+				"limit":             "922337203685.4775807",
+				"trustor":           "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"trustor_muxed":     "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"trustor_muxed_id":  uint64(1234),
+				"liquidity_pool_id": "ea4e3e63a95fd840c1394f195722ffdcb2d0d4f0a26589c6ab557d81e6b0bf9d",
+			},
+		},
+		{
 			desc:          "allowTrust",
 			envelopeXDR:   "AAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAZAAAACYAAAACAAAAAAAAAAAAAAABAAAAAAAAAAcAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAABVVNEAAAAAAEAAAAAAAAAAUpI8/gAAABA6O2fe1gQBwoO0fMNNEUKH0QdVXVjEWbN5VL51DmRUedYMMXtbX5JKVSzla2kIGvWgls1dXuXHZY/IOlaK01rBQ==",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -754,28 +770,6 @@ func TestTransactionOperationDetails(t *testing.T) {
 		},
 	}
 
-	var tx1 xdr.TransactionEnvelope
-	err := xdr.SafeUnmarshalBase64("AAAAAI77mqNTy9VPgmgn+//uvjP8VJxJ1FHQ4jCrYS+K4+HvAAAAZAAAACsAAAABAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAYrj4e8AAABA3jJ7wBrRpsrcnqBQWjyzwvVz2v5UJ56G60IhgsaWQFSf+7om462KToc+HJ27aLVOQ83dGh1ivp+VIuREJq/SBw==", &tx1)
-	assert.NoError(t, err)
-	fmt.Printf("%#v\n", tx1)
-	destination := xdr.MustMuxedAddress("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ")
-	tx2 := xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-		V1: &xdr.TransactionV1Envelope{
-			Tx: xdr.Transaction{
-				SourceAccount: xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
-				Fee:           0,
-				SeqNum:        26,
-				TimeBounds:    nil,
-				Memo:          xdr.Memo{Type: xdr.MemoTypeMemoNone},
-				Operations:    []xdr.Operation{{Body: xdr.OperationBody{Type: xdr.OperationTypeAccountMerge, Destination: &destination}}},
-				Ext:           xdr.TransactionExt{},
-			},
-		},
-	}
-	str, err := xdr.MarshalBase64(&tx2)
-	assert.NoError(t, err)
-	fmt.Println(str)
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
@@ -1777,6 +1771,396 @@ func TestSetTrustLineFlagsTestSuite(t *testing.T) {
 	suite.Run(t, new(SetTrustLineFlagsTestSuite))
 }
 
+func TestLiquidityPoolDepositDetails(t *testing.T) {
+	poolID := xdr.PoolId{0xca, 0xfe, 0xba, 0xbe}
+	opBody := xdr.OperationBody{
+		Type: xdr.OperationTypeLiquidityPoolDeposit,
+		LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
+			LiquidityPoolId: poolID,
+			MaxAmountA:      100,
+			MaxAmountB:      200,
+			MinPrice: xdr.Price{
+				N: 50,
+				D: 3,
+			},
+			MaxPrice: xdr.Price{
+				N: 100,
+				D: 2,
+			},
+		},
+	}
+	entryChanges := xdr.LedgerEntryChanges{
+		{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: 20,
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeLiquidityPool,
+					LiquidityPool: &xdr.LiquidityPoolEntry{
+						LiquidityPoolId: poolID,
+						Body: xdr.LiquidityPoolEntryBody{
+							Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+							ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+								Params: xdr.LiquidityPoolConstantProductParameters{
+									AssetA: xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+									AssetB: xdr.MustNewNativeAsset(),
+									Fee:    20,
+								},
+								ReserveA:                 100,
+								ReserveB:                 200,
+								TotalPoolShares:          1000,
+								PoolSharesTrustLineCount: 10,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: 20,
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeLiquidityPool,
+					LiquidityPool: &xdr.LiquidityPoolEntry{
+						LiquidityPoolId: poolID,
+						Body: xdr.LiquidityPoolEntryBody{
+							Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+							ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+								Params: xdr.LiquidityPoolConstantProductParameters{
+									AssetA: xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+									AssetB: xdr.MustNewNativeAsset(),
+									Fee:    20,
+								},
+								ReserveA:                 160,
+								ReserveB:                 250,
+								TotalPoolShares:          1010,
+								PoolSharesTrustLineCount: 10,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{entryChanges}},
+				},
+			}},
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body:          opBody,
+		},
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
+		"min_price":         "16.6666667",
+		"min_price_r": map[string]interface{}{
+			"d": xdr.Int32(3),
+			"n": xdr.Int32(50),
+		},
+		"max_price": "50.0000000",
+		"max_price_r": map[string]interface{}{
+			"d": xdr.Int32(2),
+			"n": xdr.Int32(100),
+		},
+		"reserves_deposited": []base.AssetAmount{
+			{
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000060",
+			},
+			{
+				"native",
+				"0.0000050",
+			},
+		},
+		"reserves_max": []base.AssetAmount{
+			{
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000100",
+			},
+			{
+				"native",
+				"0.0000200",
+			},
+		},
+		"shares_received": "0.0000010",
+	}
+
+	details, err := operation.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, details)
+}
+
+func TestFailedLiquidityPoolDepositDetails(t *testing.T) {
+	poolID := xdr.PoolId{0xca, 0xfe, 0xba, 0xbe}
+	opBody := xdr.OperationBody{
+		Type: xdr.OperationTypeLiquidityPoolDeposit,
+		LiquidityPoolDepositOp: &xdr.LiquidityPoolDepositOp{
+			LiquidityPoolId: poolID,
+			MaxAmountA:      100,
+			MaxAmountB:      200,
+			MinPrice: xdr.Price{
+				N: 50,
+				D: 3,
+			},
+			MaxPrice: xdr.Price{
+				N: 100,
+				D: 2,
+			},
+		},
+	}
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{}},
+				},
+			},
+			Result: xdr.TransactionResultPair{
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code: xdr.TransactionResultCodeTxFailed,
+					},
+				},
+			},
+		},
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body:          opBody,
+		},
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
+		"min_price":         "16.6666667",
+		"min_price_r": map[string]interface{}{
+			"d": xdr.Int32(3),
+			"n": xdr.Int32(50),
+		},
+		"max_price": "50.0000000",
+		"max_price_r": map[string]interface{}{
+			"d": xdr.Int32(2),
+			"n": xdr.Int32(100),
+		},
+		"reserves_deposited": []base.AssetAmount{
+			{
+				"",
+				"0.0000000",
+			},
+			{
+				"",
+				"0.0000000",
+			},
+		},
+		"reserves_max": []base.AssetAmount{
+			{
+				"",
+				"0.0000100",
+			},
+			{
+				"",
+				"0.0000200",
+			},
+		},
+		"shares_received": "0.0000000",
+	}
+
+	details, err := operation.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, details)
+}
+
+func TestLiquidityPoolWithdrawDetails(t *testing.T) {
+	poolID := xdr.PoolId{0xca, 0xfe, 0xba, 0xbe}
+	opBody := xdr.OperationBody{
+		Type: xdr.OperationTypeLiquidityPoolWithdraw,
+		LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
+			LiquidityPoolId: poolID,
+			Amount:          10,
+			MinAmountA:      5,
+			MinAmountB:      10,
+		},
+	}
+	entryChanges := xdr.LedgerEntryChanges{
+		{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+			State: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: 20,
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeLiquidityPool,
+					LiquidityPool: &xdr.LiquidityPoolEntry{
+						LiquidityPoolId: poolID,
+						Body: xdr.LiquidityPoolEntryBody{
+							Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+							ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+								Params: xdr.LiquidityPoolConstantProductParameters{
+									AssetA: xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+									AssetB: xdr.MustNewNativeAsset(),
+									Fee:    20,
+								},
+								ReserveA:                 160,
+								ReserveB:                 250,
+								TotalPoolShares:          1010,
+								PoolSharesTrustLineCount: 10,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+			Updated: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: 20,
+				Data: xdr.LedgerEntryData{
+					Type: xdr.LedgerEntryTypeLiquidityPool,
+					LiquidityPool: &xdr.LiquidityPoolEntry{
+						LiquidityPoolId: poolID,
+						Body: xdr.LiquidityPoolEntryBody{
+							Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+							ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+								Params: xdr.LiquidityPoolConstantProductParameters{
+									AssetA: xdr.MustNewCreditAsset("USD", "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+									AssetB: xdr.MustNewNativeAsset(),
+									Fee:    20,
+								},
+								ReserveA:                 100,
+								ReserveB:                 200,
+								TotalPoolShares:          1000,
+								PoolSharesTrustLineCount: 10,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{entryChanges}},
+				},
+			}},
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body:          opBody,
+		},
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
+		"reserves_received": []base.AssetAmount{
+			{
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000060",
+			},
+			{
+				"native",
+				"0.0000050",
+			},
+		},
+		"reserves_min": []base.AssetAmount{
+			{
+				"USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"0.0000005",
+			},
+			{
+				"native",
+				"0.0000010",
+			},
+		},
+		"shares": "0.0000010",
+	}
+
+	details, err := operation.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, details)
+}
+
+func TestFailedLiquidityPoolWithdrawDetails(t *testing.T) {
+	poolID := xdr.PoolId{0xca, 0xfe, 0xba, 0xbe}
+	opBody := xdr.OperationBody{
+		Type: xdr.OperationTypeLiquidityPoolWithdraw,
+		LiquidityPoolWithdrawOp: &xdr.LiquidityPoolWithdrawOp{
+			LiquidityPoolId: poolID,
+			Amount:          10,
+			MinAmountA:      5,
+			MinAmountB:      10,
+		},
+	}
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: []xdr.OperationMeta{{}},
+				},
+			},
+			Result: xdr.TransactionResultPair{
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code: xdr.TransactionResultCodeTxFailed,
+					},
+				},
+			},
+		},
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body:          opBody,
+		},
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"liquidity_pool_id": "cafebabe00000000000000000000000000000000000000000000000000000000",
+		"reserves_received": []base.AssetAmount{
+			{
+				"",
+				"0.0000000",
+			},
+			{
+				"",
+				"0.0000000",
+			},
+		},
+		"reserves_min": []base.AssetAmount{
+			{
+				"",
+				"0.0000005",
+			},
+			{
+				"",
+				"0.0000010",
+			},
+		},
+		"shares": "0.0000010",
+	}
+
+	details, err := operation.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, details)
+}
+
 func TestParticipantsCoversAllOperationTypes(t *testing.T) {
 	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	for typ, s := range xdr.OperationTypeToStringMap {
@@ -1863,7 +2247,7 @@ func TestDetailsCoversAllOperationTypes(t *testing.T) {
 				err2 := recover()
 				if err2 != nil {
 					if err3, ok := err2.(error); ok {
-						assert.NotContains(t, "Unknown operation type", err3.Error())
+						assert.NotContains(t, err3.Error(), "Unknown operation type")
 					}
 				}
 				assert.True(t, err2 != nil || err == nil, s)

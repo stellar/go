@@ -9,13 +9,13 @@ import (
 
 // Path represents a payment path from a source asset to some destination asset
 type Path struct {
-	SourceAmount      xdr.Int64
 	SourceAsset       xdr.Asset
+	SourceAmount      xdr.Int64
 	DestinationAsset  xdr.Asset
 	DestinationAmount xdr.Int64
 
-	// sourceAssetString and destinationAssetString are included as an optimization
-	// to improve the performance of sorting paths by avoiding
+	// sourceAssetString and destinationAssetString are included as an
+	// optimization to improve the performance of sorting paths by avoiding
 	// serializing assets to strings repeatedly
 	sourceAssetString      string
 	destinationAssetString string
@@ -39,6 +39,11 @@ func (p *Path) DestinationAssetString() string {
 	return p.destinationAssetString
 }
 
+type Venues struct {
+	offers []xdr.OfferEntry
+	pool   xdr.LiquidityPoolEntry // can be empty, check body pointer
+}
+
 type searchState interface {
 	isTerminalNode(
 		currentAsset string,
@@ -51,21 +56,24 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 	)
 
-	edges(currentAssetString string) edgeSet
+	// venues returns all possible trading opportunities for a particular asset.
+	//
+	// The result is grouped by the next asset hop, mapping to a sorted list of
+	// offers (by price) and a liquidity pool (if one exists for that trading
+	// pair).
+	venues(currentAsset string) edgeSet
 
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
+		currentBestAmount xdr.Int64,
 		offers []xdr.OfferEntry,
 	) (xdr.Asset, xdr.Int64, error)
-}
 
-func contains(list []string, want string) bool {
-	for i := 0; i < len(list); i++ {
-		if list[i] == want {
-			return true
-		}
-	}
-	return false
+	consumePool(
+		pool xdr.LiquidityPoolEntry,
+		currentAsset xdr.Asset,
+		currentAssetAmount xdr.Int64,
+	) (xdr.Int64, error)
 }
 
 func dfs(
@@ -95,25 +103,29 @@ func dfs(
 		)
 		remainingTerminalNodes--
 	}
-	// abort search if we've visited all destination nodes or if we've exceeded maxPathLength
+
+	// abort search if we've visited all destination nodes or if we've exceeded
+	// maxPathLength
 	if remainingTerminalNodes == 0 || len(updatedVisitedStrings) > maxPathLength {
 		return nil
 	}
 
-	for nextAssetString, offers := range state.edges(currentAssetString) {
-		if len(offers) == 0 || contains(visitedAssetStrings, nextAssetString) {
+	for nextAssetString, venues := range state.venues(currentAssetString) {
+		if contains(visitedAssetStrings, nextAssetString) {
 			continue
 		}
 
-		nextAsset, nextAssetAmount, err := state.consumeOffers(currentAssetAmount, offers)
+		nextAsset, nextAssetAmount, err := processVenues(state,
+			currentAsset, currentAssetAmount, venues)
 		if err != nil {
 			return err
 		}
-		if nextAssetAmount <= 0 {
+
+		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
 			continue
 		}
 
-		err = dfs(
+		if err := dfs(
 			ctx,
 			state,
 			maxPathLength,
@@ -123,8 +135,7 @@ func dfs(
 			nextAssetString,
 			nextAsset,
 			nextAssetAmount,
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 	}
@@ -132,13 +143,15 @@ func dfs(
 	return nil
 }
 
-// sellingGraphSearchState configures a DFS on the orderbook graph
-// where only edges in `graph.edgesForSellingAsset` are traversed.
+// sellingGraphSearchState configures a DFS on the orderbook graph where only
+// edges in `graph.edgesForSellingAsset` are traversed.
+//
 // The DFS maintains the following invariants:
-// no node is repeated
-// no offers are consumed from the `ignoreOffersFrom` account
-// each payment path must begin with an asset in `targetAssets`
-// also, the required source asset amount cannot exceed the balance in `targetAssets`
+//  - no node is repeated
+//  - no offers are consumed from the `ignoreOffersFrom` account
+//  - each payment path must begin with an asset in `targetAssets`
+//  - also, the required source asset amount cannot exceed the balance in
+//    `targetAssets`
 type sellingGraphSearchState struct {
 	graph                  *OrderBookGraph
 	destinationAsset       xdr.Asset
@@ -163,13 +176,12 @@ func (state *sellingGraphSearchState) appendToPaths(
 	currentAssetAmount xdr.Int64,
 ) {
 	var interiorNodes []xdr.Asset
-	if len(updatedVisitedList) > 2 {
-		// reverse updatedVisitedList and skip the first and last elements
-		interiorNodes = make([]xdr.Asset, len(updatedVisitedList)-2)
-		position := 0
-		for i := len(updatedVisitedList) - 2; i >= 1; i-- {
-			interiorNodes[position] = updatedVisitedList[i]
-			position++
+	length := len(updatedVisitedList)
+	if length > 2 {
+		// reverse updatedVisitedList, skipping the first and last elements
+		interiorNodes = make([]xdr.Asset, 0, length-2)
+		for i := length - 2; i >= 1; i-- {
+			interiorNodes = append(interiorNodes, updatedVisitedList[i])
 		}
 	} else {
 		interiorNodes = []xdr.Asset{}
@@ -178,37 +190,49 @@ func (state *sellingGraphSearchState) appendToPaths(
 	state.paths = append(state.paths, Path{
 		sourceAssetString: currentAsset,
 		SourceAmount:      currentAssetAmount,
-		SourceAsset:       updatedVisitedList[len(updatedVisitedList)-1],
+		SourceAsset:       updatedVisitedList[length-1],
 		InteriorNodes:     interiorNodes,
 		DestinationAsset:  state.destinationAsset,
 		DestinationAmount: state.destinationAssetAmount,
 	})
 }
 
-func (state *sellingGraphSearchState) edges(currentAssetString string) edgeSet {
-	return state.graph.edgesForSellingAsset[currentAssetString]
+func (state *sellingGraphSearchState) venues(currentAsset string) edgeSet {
+	return state.graph.venuesForSellingAsset[currentAsset]
 }
 
 func (state *sellingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
+	currentBestAmount xdr.Int64,
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
+	nextAmount, err := consumeOffersForSellingAsset(
+		offers, state.ignoreOffersFrom, currentAssetAmount, currentBestAmount)
+
 	var nextAsset xdr.Asset
-	nextAmount, err := consumeOffersForSellingAsset(offers, state.ignoreOffersFrom, currentAssetAmount)
-	if err == nil {
+	if len(offers) > 0 {
 		nextAsset = offers[0].Buying
 	}
 
-	return nextAsset, nextAmount, err
+	return nextAsset, positiveMin(currentBestAmount, nextAmount), err
 }
 
-// buyingGraphSearchState configures a DFS on the orderbook graph
-// where only edges in `graph.edgesForBuyingAsset` are traversed.
+func (state *sellingGraphSearchState) consumePool(
+	pool xdr.LiquidityPoolEntry,
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+) (xdr.Int64, error) {
+	return makeTrade(pool, currentAsset, tradeTypeExpectation, currentAssetAmount)
+}
+
+// buyingGraphSearchState configures a DFS on the orderbook graph where only
+// edges in `graph.edgesForBuyingAsset` are traversed.
+//
 // The DFS maintains the following invariants:
-// no node is repeated
-// no offers are consumed from the `ignoreOffersFrom` account
-// each payment path must terminate with an asset in `targetAssets`
-// each payment path must begin with `sourceAsset`
+//  - no node is repeated
+//  - no offers are consumed from the `ignoreOffersFrom` account
+//  - each payment path must terminate with an asset in `targetAssets`
+//  - each payment path must begin with `sourceAsset`
 type buyingGraphSearchState struct {
 	graph             *OrderBookGraph
 	sourceAsset       xdr.Asset
@@ -248,38 +272,48 @@ func (state *buyingGraphSearchState) appendToPaths(
 	})
 }
 
-func (state *buyingGraphSearchState) edges(currentAsset string) edgeSet {
-	return state.graph.edgesForBuyingAsset[currentAsset]
+func (state *buyingGraphSearchState) venues(currentAsset string) edgeSet {
+	return state.graph.venuesForBuyingAsset[currentAsset]
 }
 
 func (state *buyingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
+	currentBestAmount xdr.Int64,
 	offers []xdr.OfferEntry,
 ) (xdr.Asset, xdr.Int64, error) {
-	var nextAsset xdr.Asset
 	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
-	if err == nil {
+
+	var nextAsset xdr.Asset
+	if len(offers) > 0 {
 		nextAsset = offers[0].Selling
 	}
 
-	return nextAsset, nextAmount, err
+	return nextAsset, max(nextAmount, currentBestAmount), err
+}
+
+func (state *buyingGraphSearchState) consumePool(
+	pool xdr.LiquidityPoolEntry,
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+) (xdr.Int64, error) {
+	return makeTrade(pool, currentAsset, tradeTypeDeposit, currentAssetAmount)
 }
 
 func consumeOffersForSellingAsset(
 	offers []xdr.OfferEntry,
 	ignoreOffersFrom *xdr.AccountId,
 	currentAssetAmount xdr.Int64,
+	currentBestAmount xdr.Int64,
 ) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
 	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
+		return 0, errEmptyOffers
 	}
 
 	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
+		return 0, errAssetAmountIsZero
 	}
 
+	totalConsumed := xdr.Int64(0)
 	for i := 0; i < len(offers); i++ {
 		if ignoreOffersFrom != nil && ignoreOffersFrom.Equals(offers[i].SellerId) {
 			continue
@@ -300,6 +334,16 @@ func consumeOffersForSellingAsset(
 		}
 
 		totalConsumed += xdr.Int64(buyingUnitsFromOffer)
+
+		// For sell-state, we are aiming to *minimize* the amount of the source
+		// assets we need to get to the destination, so if we exceed the best
+		// amount, it's time to bail.
+		//
+		// FIXME: Evaluate if this can work, and if it's actually performant.
+		// if totalConsumed >= currentBestAmount && currentBestAmount > 0 {
+		// 	return currentBestAmount, nil
+		// }
+
 		currentAssetAmount -= xdr.Int64(sellingUnitsFromOffer)
 
 		if currentAssetAmount == 0 {
@@ -317,16 +361,15 @@ func consumeOffersForBuyingAsset(
 	offers []xdr.OfferEntry,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
-	totalConsumed := xdr.Int64(0)
-
 	if len(offers) == 0 {
-		return totalConsumed, errEmptyOffers
+		return 0, errEmptyOffers
 	}
 
 	if currentAssetAmount == 0 {
-		return totalConsumed, errAssetAmountIsZero
+		return 0, errAssetAmountIsZero
 	}
 
+	totalConsumed := xdr.Int64(0)
 	for i := 0; i < len(offers); i++ {
 		n := int64(offers[i].Price.N)
 		d := int64(offers[i].Price.D)
@@ -335,14 +378,15 @@ func consumeOffersForBuyingAsset(
 		// otherwise consume entire offer and move on to the next one
 		amountSold, err := price.MulFractionRoundDown(int64(currentAssetAmount), d, n)
 		if err == nil {
-			amountSoldXDR := xdr.Int64(amountSold)
-			if amountSoldXDR == 0 {
-				// we do not have enough of the buying asset to consume the offer
+			if amountSold == 0 {
+				// not enough of the buying asset to consume the offer
 				return -1, nil
 			}
-			if amountSoldXDR < 0 {
+			if amountSold < 0 {
 				return -1, errSoldTooMuch
 			}
+
+			amountSoldXDR := xdr.Int64(amountSold)
 			if amountSoldXDR <= offers[i].Amount {
 				totalConsumed += amountSoldXDR
 				return totalConsumed, nil
@@ -377,4 +421,46 @@ func consumeOffersForBuyingAsset(
 	}
 
 	return -1, nil
+}
+
+func processVenues(
+	state searchState,
+	currentAsset xdr.Asset,
+	currentAssetAmount xdr.Int64,
+	venues Venues,
+) (xdr.Asset, xdr.Int64, error) {
+	var nextAsset xdr.Asset
+
+	if currentAssetAmount == 0 {
+		return nextAsset, 0, errAssetAmountIsZero
+	}
+
+	// We evaluate the pool venue (if any) before offers, because pool exchange
+	// rates can only be evaluated with an amount.
+	poolAmount := xdr.Int64(0)
+	if pool := venues.pool; pool.Body.ConstantProduct != nil {
+		amount, err := state.consumePool(pool, currentAsset, currentAssetAmount)
+		if err == nil {
+			nextAsset = getOtherAsset(currentAsset, pool)
+			poolAmount = amount
+		}
+		// It's only a true error if the offers fail later, too
+	}
+
+	if poolAmount == 0 && len(venues.offers) == 0 {
+		return nextAsset, -1, nil // not really an error
+	}
+
+	// This will return the pool amount if the LP performs better.
+	offerAsset, nextAssetAmount, err := state.consumeOffers(
+		currentAssetAmount, poolAmount, venues.offers)
+
+	// Only error out the offers if the LP trade didn't happen.
+	if err != nil && poolAmount == 0 {
+		return nextAsset, 0, err
+	} else if err == nil {
+		nextAsset = offerAsset
+	}
+
+	return nextAsset, nextAssetAmount, nil
 }

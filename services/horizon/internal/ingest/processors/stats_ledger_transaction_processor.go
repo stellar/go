@@ -46,6 +46,8 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsClawback                      int64
 	OperationsClawbackClaimableBalance      int64
 	OperationsSetTrustLineFlags             int64
+	OperationsLiquidityPoolDeposit          int64
+	OperationsLiquidityPoolWithdraw         int64
 }
 
 func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
@@ -108,6 +110,10 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context
 			p.results.OperationsClawbackClaimableBalance++
 		case xdr.OperationTypeSetTrustLineFlags:
 			p.results.OperationsSetTrustLineFlags++
+		case xdr.OperationTypeLiquidityPoolDeposit:
+			p.results.OperationsLiquidityPoolDeposit++
+		case xdr.OperationTypeLiquidityPoolWithdraw:
+			p.results.OperationsLiquidityPoolWithdraw++
 		default:
 			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
 		}
@@ -151,6 +157,8 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_revoke_sponsorship":               stats.OperationsRevokeSponsorship,
 		"stats_operations_clawback":                         stats.OperationsClawback,
 		"stats_operations_clawback_claimable_balance":       stats.OperationsClawbackClaimableBalance,
+		"stats_operations_liquidity_pool_deposit":           stats.OperationsLiquidityPoolDeposit,
+		"stats_operations_liquidity_pool_withdraw":          stats.OperationsLiquidityPoolWithdraw,
 	}
 }
 

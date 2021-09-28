@@ -154,7 +154,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 17. Please upgrade to the latest Horizon version.")
+	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 18. Please upgrade to the latest Horizon version.")
 }
 
 func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
@@ -173,7 +173,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	}
 
 	stats := &ingest.StatsChangeProcessor{}
-	processor := runner.buildChangeProcessor(stats, ledgerSource, 123)
+	processor := buildChangeProcessor(runner.historyQ, stats, ledgerSource, 123)
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -193,7 +193,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	processor = runner.buildChangeProcessor(stats, historyArchiveSource, 456)
+	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456)
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
@@ -338,5 +338,5 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	}
 
 	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 17. Please upgrade to the latest Horizon version.")
+	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 18. Please upgrade to the latest Horizon version.")
 }

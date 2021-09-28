@@ -34,6 +34,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustTrustLine()
 		r := other.MustTrustLine()
 		return l.AccountId.Equals(r.AccountId) && l.Asset.Equals(r.Asset)
+	case LedgerEntryTypeLiquidityPool:
+		l := key.MustLiquidityPool()
+		r := other.MustLiquidityPool()
+		return l.LiquidityPoolId == r.LiquidityPoolId
 	default:
 		panic(fmt.Errorf("Unknown ledger key type: %v", key.Type))
 	}
@@ -103,6 +107,19 @@ func (key *LedgerKey) SetClaimableBalance(balanceID ClaimableBalanceId) error {
 	return nil
 }
 
+// SetL LquidityPool mutates `key` such that it represents the identity of a
+// liquidity pool.
+func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
+	data := LedgerKeyLiquidityPool{poolID}
+	nkey, err := NewLedgerKey(LedgerEntryTypeLiquidityPool, data)
+	if err != nil {
+		return err
+	}
+
+	*key = nkey
+	return nil
+}
+
 // MarshalBinaryCompress marshals LedgerKey to []byte but unlike
 // MarshalBinary() it removes all unnecessary bytes, exploting the fact
 // that XDR is padding data to 4 bytes in union discriminants etc.
@@ -156,6 +173,12 @@ func (key LedgerKey) MarshalBinaryCompress() ([]byte, error) {
 		m = append(m, dataName...)
 	case LedgerEntryTypeClaimableBalance:
 		cBalance, err := key.ClaimableBalance.BalanceId.MarshalBinaryCompress()
+		if err != nil {
+			return nil, err
+		}
+		m = append(m, cBalance...)
+	case LedgerEntryTypeLiquidityPool:
+		cBalance, err := key.LiquidityPool.LiquidityPoolId.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}

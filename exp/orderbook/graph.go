@@ -27,88 +27,96 @@ const (
 
 // trading pair represents two assets that can be exchanged if an order is fulfilled
 type tradingPair struct {
-	// buyingAsset is obtained by calling offer.Buying.String() where offer is an xdr.OfferEntry
+	// buyingAsset corresponds to offer.Buying.String() from an xdr.OfferEntry
 	buyingAsset string
-	// sellingAsset is obtained by calling offer.Selling.String() where offer is an xdr.OfferEntry
+	// sellingAsset corresponds to offer.Selling.String() from an xdr.OfferEntry
 	sellingAsset string
 }
 
 // OBGraph is an interface for orderbook graphs
 type OBGraph interface {
-	AddOffer(offer xdr.OfferEntry)
+	AddOffers(offer ...xdr.OfferEntry)
+	AddLiquidityPools(liquidityPool ...xdr.LiquidityPoolEntry)
 	Apply(ledger uint32) error
 	Discard()
 	Offers() []xdr.OfferEntry
-	OffersMap() map[xdr.Int64]xdr.OfferEntry
+	LiquidityPools() []xdr.LiquidityPoolEntry
 	RemoveOffer(xdr.Int64) OBGraph
-	Pending() ([]xdr.OfferEntry, []xdr.Int64)
+	RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) OBGraph
 	Clear()
 }
 
-// OrderBookGraph is an in memory graph representation of all the offers in the stellar ledger
+// OrderBookGraph is an in-memory graph representation of all the offers in the
+// Stellar ledger.
 type OrderBookGraph struct {
-	// edgesForSellingAsset maps an asset to all offers which sell that asset
-	// note that each key in the map is obtained by calling offer.Selling.String()
-	// where offer is an xdr.OfferEntry
-	edgesForSellingAsset map[string]edgeSet
-	// edgesForBuyingAsset maps an asset to all offers which buy that asset
-	// note that each key in the map is obtained by calling offer.Buying.String()
-	// where offer is an xdr.OfferEntry
-	edgesForBuyingAsset map[string]edgeSet
-	// tradingPairForOffer maps an offer id to the assets which are being exchanged
-	// in the given offer
+	// venuesForBuyingAsset maps an asset to all of its buying opportunities,
+	// which may be offers (sorted by price) or a liquidity pools.
+	venuesForBuyingAsset map[string]edgeSet
+	// venuesForBuyingAsset maps an asset to all of its *selling* opportunities,
+	// which may be offers (sorted by price) or a liquidity pools.
+	venuesForSellingAsset map[string]edgeSet
+	// liquidityPools associates a particular asset pair (in "asset order", see
+	// xdr.Asset.LessThan) with a liquidity pool.
+	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
+	// tradingPairForOffer maps an offer ID to the assets which are being
+	// exchanged in the given offer. It's mostly used privately in order to
+	// associate specific offers with their respective edges in the graph.
 	tradingPairForOffer map[xdr.Int64]tradingPair
+
 	// batchedUpdates is internal batch of updates to this graph. Users can
 	// create multiple batches using `Batch()` method but sometimes only one
 	// batch is enough.
-	// the orderbook graph is accurate up to lastLedger
-	lastLedger     uint32
 	batchedUpdates *orderBookBatchedUpdates
 	lock           sync.RWMutex
+	// the orderbook graph is accurate up to lastLedger
+	lastLedger uint32
 }
 
 var _ OBGraph = (*OrderBookGraph)(nil)
 
-// NewOrderBookGraph constructs a new OrderBookGraph
+// NewOrderBookGraph constructs an empty OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
-	graph := &OrderBookGraph{
-		edgesForSellingAsset: map[string]edgeSet{},
-		edgesForBuyingAsset:  map[string]edgeSet{},
-		tradingPairForOffer:  map[xdr.Int64]tradingPair{},
-	}
-
-	graph.batchedUpdates = graph.batch()
+	graph := &OrderBookGraph{}
+	graph.Clear()
 	return graph
 }
 
-// AddOffer will queue an operation to add the given offer to the order book in
-// the internal batch.
+// AddOffers will queue an operation to add the given offer(s) to the order book
+// in the internal batch.
+//
 // You need to run Apply() to apply all enqueued operations.
-func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
-	graph.batchedUpdates.addOffer(offer)
+func (graph *OrderBookGraph) AddOffers(offers ...xdr.OfferEntry) {
+	for _, offer := range offers {
+		graph.batchedUpdates.addOffer(offer)
+	}
 }
 
-// RemoveOffer will queue an operation to remove the given offer from the order book in
-// the internal batch.
+// AddLiquidityPools will queue an operation to add the given liquidity pool(s)
+// to the order book graph in the internal batch.
+//
+// You need to run Apply() to apply all enqueued operations.
+func (graph *OrderBookGraph) AddLiquidityPools(pools ...xdr.LiquidityPoolEntry) {
+	for _, lp := range pools {
+		graph.batchedUpdates.addLiquidityPool(lp)
+	}
+}
+
+// RemoveOffer will queue an operation to remove the given offer from the order
+// book in the internal batch.
+//
 // You need to run Apply() to apply all enqueued operations.
 func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	graph.batchedUpdates.removeOffer(offerID)
 	return graph
 }
 
-// Pending returns a list of queued offers which will be added to the order book and
-// a list of queued offers which will be removed from the order book.
-func (graph *OrderBookGraph) Pending() ([]xdr.OfferEntry, []xdr.Int64) {
-	var toUpdate []xdr.OfferEntry
-	var toRemove []xdr.Int64
-	for _, update := range graph.batchedUpdates.operations {
-		if update.operationType == addOfferOperationType {
-			toUpdate = append(toUpdate, *update.offer)
-		} else if update.operationType == removeOfferOperationType {
-			toRemove = append(toRemove, update.offerID)
-		}
-	}
-	return toUpdate, toRemove
+// RemoveLiquidityPool will queue an operation to remove any liquidity pool (if
+// any) that matches the given pool, based exclusively on the pool ID.
+//
+// You need to run Apply() to apply all enqueued operations.
+func (graph *OrderBookGraph) RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) OBGraph {
+	graph.batchedUpdates.removeLiquidityPool(pool)
+	return graph
 }
 
 // Discard removes all operations which have been queued but not yet applied to the OrderBookGraph
@@ -132,14 +140,28 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	offers := []xdr.OfferEntry{}
-	for _, edges := range graph.edgesForSellingAsset {
-		for _, offersForEdge := range edges {
-			offers = append(offers, offersForEdge...)
+	var offers []xdr.OfferEntry
+	for _, edges := range graph.venuesForSellingAsset {
+		for _, venues := range edges {
+			offers = append(offers, venues.offers...)
 		}
 	}
 
 	return offers
+}
+
+// LiquidityPools returns a list of unique liquidity pools contained in the
+// order book graph
+func (graph *OrderBookGraph) LiquidityPools() []xdr.LiquidityPoolEntry {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	pools := make([]xdr.LiquidityPoolEntry, 0, len(graph.liquidityPools))
+	for _, pool := range graph.liquidityPools {
+		pools = append(pools, pool)
+	}
+
+	return pools
 }
 
 // Clear removes all offers from the graph.
@@ -147,24 +169,12 @@ func (graph *OrderBookGraph) Clear() {
 	graph.lock.Lock()
 	defer graph.lock.Unlock()
 
-	graph.edgesForSellingAsset = map[string]edgeSet{}
-	graph.edgesForBuyingAsset = map[string]edgeSet{}
+	graph.venuesForBuyingAsset = map[string]edgeSet{}
+	graph.venuesForSellingAsset = map[string]edgeSet{}
 	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
+	graph.liquidityPools = map[tradingPair]xdr.LiquidityPoolEntry{}
 	graph.batchedUpdates = graph.batch()
 	graph.lastLedger = 0
-}
-
-// OffersMap returns a ID => OfferEntry map of offers contained in the order
-// book.
-func (graph *OrderBookGraph) OffersMap() map[xdr.Int64]xdr.OfferEntry {
-	offers := graph.Offers()
-	m := make(map[xdr.Int64]xdr.OfferEntry, len(offers))
-
-	for _, entry := range offers {
-		m[entry.OfferId] = entry
-	}
-
-	return m
 }
 
 // Batch creates a new batch of order book updates which can be applied
@@ -177,89 +187,66 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 	}
 }
 
-// findOffers returns all offers for a given trading pair
-// The offers will be sorted by price from cheapest to most expensive
-// The returned offers will span at most `maxPriceLevels` price levels
-func (graph *OrderBookGraph) findOffers(
-	selling, buying string, maxPriceLevels int,
-) []xdr.OfferEntry {
-	results := []xdr.OfferEntry{}
-	edges, ok := graph.edgesForSellingAsset[selling]
-	if !ok {
-		return results
-	}
-	offers, ok := edges[buying]
-	if !ok {
-		return results
-	}
-
-	for _, offer := range offers {
-		// Offers are sorted by price, so, equal prices will always be contiguous.
-		if len(results) == 0 || !results[len(results)-1].Price.Equal(offer.Price) {
-			maxPriceLevels--
-		}
-		if maxPriceLevels < 0 {
-			return results
-		}
-
-		results = append(results, offer)
-	}
-	return results
-}
-
-// FindAsksAndBids returns all asks and bids for a given trading pair
-// Asks consists of all offers which sell `selling` in exchange for `buying` sorted by
-// price (in terms of `buying`) from cheapest to most expensive
-// Bids consists of all offers which sell `buying` in exchange for `selling` sorted by
-// price (in terms of `selling`) from cheapest to most expensive
-// Both Asks and Bids will span at most `maxPriceLevels` price levels
-func (graph *OrderBookGraph) FindAsksAndBids(
-	selling, buying xdr.Asset, maxPriceLevels int,
-) ([]xdr.OfferEntry, []xdr.OfferEntry, uint32) {
-	buyingString := buying.String()
-	sellingString := selling.String()
-
-	graph.lock.RLock()
-	defer graph.lock.RUnlock()
-	asks := graph.findOffers(sellingString, buyingString, maxPriceLevels)
-	bids := graph.findOffers(buyingString, sellingString, maxPriceLevels)
-
-	return asks, bids, graph.lastLedger
-}
-
-// add inserts a given offer into the order book graph
-func (graph *OrderBookGraph) add(offer xdr.OfferEntry) error {
+// addOffer inserts a given offer into the order book graph
+func (graph *OrderBookGraph) addOffer(offer xdr.OfferEntry) error {
+	// If necessary, replace any existing offer with a new one.
 	if _, contains := graph.tradingPairForOffer[offer.OfferId]; contains {
-		if err := graph.remove(offer.OfferId); err != nil {
+		if err := graph.removeOffer(offer.OfferId); err != nil {
 			return errors.Wrap(err, "could not update offer in order book graph")
 		}
 	}
 
-	sellingAsset := offer.Selling.String()
-	buyingAsset := offer.Buying.String()
+	buying, selling := offer.Buying.String(), offer.Selling.String()
+
 	graph.tradingPairForOffer[offer.OfferId] = tradingPair{
-		buyingAsset:  buyingAsset,
-		sellingAsset: sellingAsset,
-	}
-	if set, ok := graph.edgesForSellingAsset[sellingAsset]; !ok {
-		graph.edgesForSellingAsset[sellingAsset] = edgeSet{}
-		graph.edgesForSellingAsset[sellingAsset].add(buyingAsset, offer)
-	} else {
-		set.add(buyingAsset, offer)
+		buyingAsset: buying, sellingAsset: selling,
 	}
 
-	if set, ok := graph.edgesForBuyingAsset[buyingAsset]; !ok {
-		graph.edgesForBuyingAsset[buyingAsset] = edgeSet{}
-		graph.edgesForBuyingAsset[buyingAsset].add(sellingAsset, offer)
-	} else {
-		set.add(sellingAsset, offer)
+	// First, ensure the internal structure of the graph is sound by creating
+	// empty venues if none exist yet.
+	if _, ok := graph.venuesForSellingAsset[selling]; !ok {
+		graph.venuesForSellingAsset[selling] = edgeSet{}
 	}
+
+	if _, ok := graph.venuesForBuyingAsset[buying]; !ok {
+		graph.venuesForBuyingAsset[buying] = edgeSet{}
+	}
+
+	// Now shove the new offer into them.
+	graph.venuesForSellingAsset[selling].addOffer(buying, offer)
+	graph.venuesForBuyingAsset[buying].addOffer(selling, offer)
 
 	return nil
 }
 
-// remove deletes a given offer from the order book graph
-func (graph *OrderBookGraph) remove(offerID xdr.Int64) error {
+// addPool sets the given pool as the venue for the given trading pair.
+func (graph *OrderBookGraph) addPool(pool xdr.LiquidityPoolEntry) {
+	// Liquidity pools have no concept of a "buying" or "selling" asset,
+	// so we create venues in both directions.
+	x, y := getPoolAssets(pool)
+	graph.liquidityPools[tradingPair{x, y}] = pool
+
+	// Either there have already been offers added for the trading pair,
+	// or we need to create the internal map structure.
+	for _, asset := range []string{x, y} {
+		for _, table := range []map[string]edgeSet{
+			graph.venuesForBuyingAsset,
+			graph.venuesForSellingAsset,
+		} {
+			if _, ok := table[asset]; !ok {
+				table[asset] = edgeSet{}
+			}
+		}
+	}
+
+	graph.venuesForBuyingAsset[x].addPool(y, pool)
+	graph.venuesForBuyingAsset[y].addPool(x, pool)
+	graph.venuesForSellingAsset[x].addPool(y, pool)
+	graph.venuesForSellingAsset[y].addPool(x, pool)
+}
+
+// removeOffer deletes a given offer from the order book graph
+func (graph *OrderBookGraph) removeOffer(offerID xdr.Int64) error {
 	pair, ok := graph.tradingPairForOffer[offerID]
 	if !ok {
 		return errOfferNotPresent
@@ -267,23 +254,49 @@ func (graph *OrderBookGraph) remove(offerID xdr.Int64) error {
 
 	delete(graph.tradingPairForOffer, offerID)
 
-	if set, ok := graph.edgesForSellingAsset[pair.sellingAsset]; !ok {
+	if set, ok := graph.venuesForSellingAsset[pair.sellingAsset]; !ok {
 		return errOfferNotPresent
-	} else if !set.remove(offerID, pair.buyingAsset) {
+	} else if !set.removeOffer(pair.buyingAsset, offerID) {
 		return errOfferNotPresent
 	} else if len(set) == 0 {
-		delete(graph.edgesForSellingAsset, pair.sellingAsset)
+		delete(graph.venuesForSellingAsset, pair.sellingAsset)
 	}
 
-	if set, ok := graph.edgesForBuyingAsset[pair.buyingAsset]; !ok {
+	if set, ok := graph.venuesForBuyingAsset[pair.buyingAsset]; !ok {
 		return errOfferNotPresent
-	} else if !set.remove(offerID, pair.sellingAsset) {
+	} else if !set.removeOffer(pair.sellingAsset, offerID) {
 		return errOfferNotPresent
 	} else if len(set) == 0 {
-		delete(graph.edgesForBuyingAsset, pair.buyingAsset)
+		delete(graph.venuesForBuyingAsset, pair.buyingAsset)
 	}
 
 	return nil
+}
+
+// removePool unsets the pool matching the given asset pair, if it exists.
+func (graph *OrderBookGraph) removePool(pool xdr.LiquidityPoolEntry) {
+	x, y := getPoolAssets(pool)
+
+	for _, asset := range []string{x, y} {
+		otherAsset := x
+		if asset == x {
+			otherAsset = y
+		}
+
+		for _, table := range []map[string]edgeSet{
+			graph.venuesForBuyingAsset,
+			graph.venuesForSellingAsset,
+		} {
+			if venues, ok := table[asset]; ok {
+				venues.removePool(otherAsset)
+				if venues.isEmpty(otherAsset) {
+					delete(venues, otherAsset)
+				}
+			} // should we panic on !ok?
+		}
+	}
+
+	delete(graph.liquidityPools, tradingPair{x, y})
 }
 
 // IsEmpty returns true if the orderbook graph is not populated
@@ -291,7 +304,7 @@ func (graph *OrderBookGraph) IsEmpty() bool {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	return len(graph.edgesForSellingAsset) == 0
+	return len(graph.venuesForSellingAsset) == 0
 }
 
 // FindPaths returns a list of payment paths originating from a source account
@@ -308,7 +321,7 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 ) ([]Path, uint32, error) {
 	destinationAssetString := destinationAsset.String()
-	sourceAssetsMap := map[string]xdr.Int64{}
+	sourceAssetsMap := make(map[string]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
 		sourceAssetString := sourceAsset.String()
 		sourceAssetsMap[sourceAssetString] = sourceAssetBalances[i]
@@ -349,11 +362,14 @@ func (graph *OrderBookGraph) FindPaths(
 	return paths, lastLedger, err
 }
 
-// FindFixedPaths returns a list of payment paths where the source and destination
-// assets are fixed. All returned payment paths will start by spending `amountToSpend`
-// of `sourceAsset` and will end with some positive balance of `destinationAsset`.
-// `sourceAccountID` is optional. if `sourceAccountID` is provided then no offers
-// created by `sourceAccountID` will be considered when evaluating payment paths
+// FindFixedPaths returns a list of payment paths where the source and
+// destination assets are fixed.
+//
+// All returned payment paths will start by spending `amountToSpend` of
+// `sourceAsset` and will end with some positive balance of `destinationAsset`.
+//
+// `sourceAccountID` is optional, but if it's provided, then no offers created
+// by `sourceAccountID` will be considered when evaluating payment paths.
 func (graph *OrderBookGraph) FindFixedPaths(
 	ctx context.Context,
 	maxPathLength int,
@@ -419,10 +435,10 @@ func compareSourceAsset(allPaths []Path, i, j int) bool {
 	return allPaths[i].SourceAssetString() < allPaths[j].SourceAssetString()
 }
 
-// compareDestinationAsset will group payment paths by `DestinationAsset`
-// paths which deliver a higher `DestinationAmount` will appear earlier in the sorting
-// if there are multiple paths which deliver the same `DestinationAmount` then shorter payment paths
-// will be prioritized
+// compareDestinationAsset will group payment paths by `DestinationAsset`. Paths
+// which deliver a higher `DestinationAmount` will appear earlier in the
+// sorting. If there are multiple paths which deliver the same
+// `DestinationAmount`, then shorter payment paths will be prioritized.
 func compareDestinationAsset(allPaths []Path, i, j int) bool {
 	if allPaths[i].DestinationAsset.Equals(allPaths[j].DestinationAsset) {
 		if allPaths[i].DestinationAmount == allPaths[j].DestinationAmount {

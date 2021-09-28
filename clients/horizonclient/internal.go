@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/support/errors"
@@ -99,6 +100,10 @@ func addQueryParams(params ...interface{}) string {
 		case join:
 			if param != "" {
 				query.Add("join", string(param))
+			}
+		case reserves:
+			if len(param) > 0 {
+				query.Add("reserves", strings.Join(param, ","))
 			}
 		case map[string]string:
 			for key, value := range param {

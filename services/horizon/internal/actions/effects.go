@@ -16,10 +16,11 @@ import (
 
 // EffectsQuery query struct for effects end-points
 type EffectsQuery struct {
-	AccountID   string `schema:"account_id" valid:"accountID,optional"`
-	OperationID uint64 `schema:"op_id" valid:"-"`
-	TxHash      string `schema:"tx_id" valid:"transactionHash,optional"`
-	LedgerID    uint32 `schema:"ledger_id" valid:"-"`
+	AccountID       string `schema:"account_id" valid:"accountID,optional"`
+	OperationID     uint64 `schema:"op_id" valid:"-"`
+	LiquidityPoolID string `schema:"liquidity_pool_id" valid:"sha256,optional"`
+	TxHash          string `schema:"tx_id" valid:"transactionHash,optional"`
+	LedgerID        uint32 `schema:"ledger_id" valid:"-"`
 }
 
 // Validate runs extra validations on query parameters
@@ -27,6 +28,7 @@ func (qp EffectsQuery) Validate() error {
 	count, err := countNonEmpty(
 		qp.AccountID,
 		qp.OperationID,
+		qp.LiquidityPoolID,
 		qp.TxHash,
 		qp.LedgerID,
 	)
@@ -70,7 +72,7 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 		return nil, err
 	}
 
-	records, err := loadEffectRecords(r.Context(), historyQ, qp.AccountID, int64(qp.OperationID), qp.TxHash, qp.LedgerID, pq)
+	records, err := loadEffectRecords(r.Context(), historyQ, qp, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -92,19 +94,20 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 	return result, nil
 }
 
-func loadEffectRecords(ctx context.Context, hq *history.Q, accountID string, operationID int64, transactionHash string, ledgerID uint32,
-	pq db2.PageQuery) ([]history.Effect, error) {
+func loadEffectRecords(ctx context.Context, hq *history.Q, qp EffectsQuery, pq db2.PageQuery) ([]history.Effect, error) {
 	effects := hq.Effects()
 
 	switch {
-	case accountID != "":
-		effects.ForAccount(ctx, accountID)
-	case ledgerID > 0:
-		effects.ForLedger(ctx, int32(ledgerID))
-	case operationID > 0:
-		effects.ForOperation(operationID)
-	case transactionHash != "":
-		effects.ForTransaction(ctx, transactionHash)
+	case qp.AccountID != "":
+		effects.ForAccount(ctx, qp.AccountID)
+	case qp.LiquidityPoolID != "":
+		effects.ForLiquidityPool(qp.LiquidityPoolID)
+	case qp.OperationID > 0:
+		effects.ForOperation(int64(qp.OperationID))
+	case qp.LedgerID > 0:
+		effects.ForLedger(ctx, int32(qp.LedgerID))
+	case qp.TxHash != "":
+		effects.ForTransaction(ctx, qp.TxHash)
 	}
 
 	var result []history.Effect

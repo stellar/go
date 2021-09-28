@@ -167,8 +167,28 @@ func (q *OperationsQ) ForClaimableBalance(ctx context.Context, cbID string) *Ope
 			"hocb.history_operation_id = hop.id",
 	).Where("hocb.history_claimable_balance_id = ?", hCB.InternalID)
 
-	// in order to use hocb.history_claimable_balance_id index
-	q.opIdCol = "hocb.history_claimable_balance_id"
+	// in order to use hocb.history_operation_id index
+	q.opIdCol = "hocb.history_operation_id"
+
+	return q
+}
+
+// ForLiquidityPools filters the query to only operations pertaining to a
+// liquidity pool, specified by the liquidity pool id as an hex-encoded string.
+func (q *OperationsQ) ForLiquidityPool(ctx context.Context, lpID string) *OperationsQ {
+	var hLP HistoryLiquidityPool
+	hLP, q.Err = q.parent.LiquidityPoolByID(ctx, lpID)
+	if q.Err != nil {
+		return q
+	}
+
+	q.sql = q.sql.Join(
+		"history_operation_liquidity_pools holp ON "+
+			"holp.history_operation_id = hop.id",
+	).Where("holp.history_liquidity_pool_id = ?", hLP.InternalID)
+
+	// in order to use holp.history_operation_id index
+	q.opIdCol = "holp.history_operation_id"
 
 	return q
 }

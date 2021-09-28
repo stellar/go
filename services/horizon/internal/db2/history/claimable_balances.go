@@ -54,7 +54,7 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, string, error) {
 }
 
 // ApplyCursor applies cursor to the given sql. For performance reason the limit
-// is not apply here. This allows us to hint the planner later to use the right
+// is not applied here. This allows us to hint the planner later to use the right
 // indexes.
 func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
 	p := cbq.PageQuery
@@ -115,7 +115,7 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }
 
-// QClaimableBalances defines account related queries.
+// QClaimableBalances defines claimable-balance-related related queries.
 type QClaimableBalances interface {
 	UpsertClaimableBalances(ctx context.Context, cb []ClaimableBalance) error
 	RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error)

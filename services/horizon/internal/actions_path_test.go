@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/guregu/null"
+
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -169,33 +171,48 @@ func TestPathActionsStrictReceive(t *testing.T) {
 		if code == "native" {
 			continue
 		}
-		trustline := xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 1234,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeTrustline,
-				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(sourceAccount),
-					Asset:     asset.ToTrustLineAsset(),
-					Balance:   10000,
-					Limit:     123456789,
-					Flags:     0,
-					Ext: xdr.TrustLineEntryExt{
-						V: 1,
-						V1: &xdr.TrustLineEntryV1{
-							Liabilities: xdr.Liabilities{
-								Buying:  1,
-								Selling: 2,
-							},
-						},
-					},
-				},
-			},
-		}
 
-		rows, err1 := q.InsertTrustLine(tt.Ctx, trustline)
-		assert.NoError(t, err1)
-		assert.Equal(t, int64(1), rows)
+		var assetType, assetCode, assetIssuer string
+		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
+
+		var lk xdr.LedgerKey
+		var lkStr string
+		assert.NoError(t, lk.SetTrustline(xdr.MustAddress(sourceAccount), asset.ToTrustLineAsset()))
+		lkStr, err = lk.MarshalBinaryBase64()
+		assert.NoError(t, err)
+
+		err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+			{
+				AccountID:          sourceAccount,
+				AssetType:          asset.Type,
+				AssetIssuer:        assetIssuer,
+				AssetCode:          assetCode,
+				Balance:            10000,
+				LedgerKey:          lkStr,
+				Limit:              123456789,
+				LiquidityPoolID:    "",
+				BuyingLiabilities:  1,
+				SellingLiabilities: 2,
+				Flags:              0,
+				LastModifiedLedger: 1234,
+				Sponsor:            null.String{},
+			},
+		})
+		assert.NoError(t, err)
 	}
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		{
+			AccountID:          sourceAccount,
+			AssetType:          xdr.AssetTypeAssetTypePoolShare,
+			Balance:            9876,
+			LedgerKey:          "poolshareid1",
+			Limit:              123456789,
+			LiquidityPoolID:    "lpid123",
+			Flags:              0,
+			LastModifiedLedger: 1234,
+			Sponsor:            null.String{},
+		},
+	}))
 
 	finder := paths.MockFinder{}
 	withSourceAssetsBalance := true
@@ -515,33 +532,48 @@ func TestPathActionsStrictSend(t *testing.T) {
 		if code == "native" {
 			continue
 		}
-		trustline := xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 1234,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeTrustline,
-				TrustLine: &xdr.TrustLineEntry{
-					AccountId: xdr.MustAddress(destinationAccount),
-					Asset:     asset.ToTrustLineAsset(),
-					Balance:   10000,
-					Limit:     123456789,
-					Flags:     0,
-					Ext: xdr.TrustLineEntryExt{
-						V: 1,
-						V1: &xdr.TrustLineEntryV1{
-							Liabilities: xdr.Liabilities{
-								Buying:  1,
-								Selling: 2,
-							},
-						},
-					},
-				},
-			},
-		}
 
-		rows, err := historyQ.InsertTrustLine(tt.Ctx, trustline)
+		var assetType, assetCode, assetIssuer string
+		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
+
+		var lk xdr.LedgerKey
+		var lkStr string
+		assert.NoError(t, lk.SetTrustline(xdr.MustAddress(destinationAccount), asset.ToTrustLineAsset()))
+		lkStr, err = lk.MarshalBinaryBase64()
 		assert.NoError(t, err)
-		assert.Equal(t, int64(1), rows)
+
+		err = historyQ.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+			{
+				AccountID:          destinationAccount,
+				AssetType:          asset.Type,
+				AssetIssuer:        assetIssuer,
+				AssetCode:          assetCode,
+				Balance:            10000,
+				LedgerKey:          lkStr,
+				Limit:              123456789,
+				LiquidityPoolID:    "",
+				BuyingLiabilities:  1,
+				SellingLiabilities: 2,
+				Flags:              0,
+				LastModifiedLedger: 1234,
+				Sponsor:            null.String{},
+			},
+		})
+		assert.NoError(t, err)
 	}
+	tt.Assert.NoError(historyQ.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+		{
+			AccountID:          destinationAccount,
+			AssetType:          xdr.AssetTypeAssetTypePoolShare,
+			Balance:            9876,
+			LedgerKey:          "poolshareid1",
+			Limit:              123456789,
+			LiquidityPoolID:    "lpid123",
+			Flags:              0,
+			LastModifiedLedger: 1234,
+			Sponsor:            null.String{},
+		},
+	}))
 
 	finder := paths.MockFinder{}
 	// withSourceAssetsBalance := true

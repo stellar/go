@@ -36,6 +36,8 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeClawback:                      "clawback",
 	xdr.OperationTypeClawbackClaimableBalance:      "clawback_claimable_balance",
 	xdr.OperationTypeSetTrustLineFlags:             "set_trust_line_flags",
+	xdr.OperationTypeLiquidityPoolDeposit:          "liquidity_pool_deposit",
+	xdr.OperationTypeLiquidityPoolWithdraw:         "liquidity_pool_withdraw",
 }
 
 // Base represents the common attributes of an operation resource
@@ -197,9 +199,9 @@ type SetOptions struct {
 // is ChangeTrust.
 type ChangeTrust struct {
 	Base
-	base.Asset
+	base.LiquidityPoolOrAsset
 	Limit          string `json:"limit"`
-	Trustee        string `json:"trustee"`
+	Trustee        string `json:"trustee,omitempty"`
 	Trustor        string `json:"trustor"`
 	TrustorMuxed   string `json:"trustor_muxed,omitempty"`
 	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty,string"`
@@ -276,15 +278,16 @@ type EndSponsoringFutureReserves struct {
 // RevokeSponsorship.
 type RevokeSponsorship struct {
 	Base
-	AccountID          *string `json:"account_id,omitempty"`
-	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
-	DataAccountID      *string `json:"data_account_id,omitempty"`
-	DataName           *string `json:"data_name,omitempty"`
-	OfferID            *int64  `json:"offer_id,omitempty,string"`
-	TrustlineAccountID *string `json:"trustline_account_id,omitempty"`
-	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
-	SignerAccountID    *string `json:"signer_account_id,omitempty"`
-	SignerKey          *string `json:"signer_key,omitempty"`
+	AccountID                *string `json:"account_id,omitempty"`
+	ClaimableBalanceID       *string `json:"claimable_balance_id,omitempty"`
+	DataAccountID            *string `json:"data_account_id,omitempty"`
+	DataName                 *string `json:"data_name,omitempty"`
+	OfferID                  *int64  `json:"offer_id,omitempty,string"`
+	TrustlineAccountID       *string `json:"trustline_account_id,omitempty"`
+	TrustlineLiquidityPoolID *string `json:"trustline_liquidity_pool_id,omitempty"`
+	TrustlineAsset           *string `json:"trustline_asset,omitempty"`
+	SignerAccountID          *string `json:"signer_account_id,omitempty"`
+	SignerKey                *string `json:"signer_key,omitempty"`
 }
 
 // Clawback is the json resource representing a single operation whose type is
@@ -315,6 +318,30 @@ type SetTrustLineFlags struct {
 	SetFlagsS   []string `json:"set_flags_s,omitempty"`
 	ClearFlags  []int    `json:"clear_flags,omitempty"`
 	ClearFlagsS []string `json:"clear_flags_s,omitempty"`
+}
+
+// LiquidityPoolDeposit is the json resource representing a single operation whose type is
+// LiquidityPoolDeposit.
+type LiquidityPoolDeposit struct {
+	Base
+	LiquidityPoolID   string             `json:"liquidity_pool_id"`
+	ReservesMax       []base.AssetAmount `json:"reserves_max"`
+	MinPrice          string             `json:"min_price"`
+	MinPriceR         base.Price         `json:"min_price_r"`
+	MaxPrice          string             `json:"max_price"`
+	MaxPriceR         base.Price         `json:"max_price_r"`
+	ReservesDeposited []base.AssetAmount `json:"reserves_deposited"`
+	SharesReceived    string             `json:"shares_received"`
+}
+
+// LiquidityPoolWithdraw is the json resource representing a single operation whose type is
+// LiquidityPoolWithdraw.
+type LiquidityPoolWithdraw struct {
+	Base
+	LiquidityPoolID  string             `json:"liquidity_pool_id"`
+	ReservesMin      []base.AssetAmount `json:"reserves_min"`
+	Shares           string             `json:"shares"`
+	ReservesReceived []base.AssetAmount `json:"reserves_received"`
 }
 
 // Operation interface contains methods implemented by the operation types
@@ -522,6 +549,18 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeSetTrustLineFlags:
 		var op SetTrustLineFlags
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		var op LiquidityPoolDeposit
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		var op LiquidityPoolWithdraw
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

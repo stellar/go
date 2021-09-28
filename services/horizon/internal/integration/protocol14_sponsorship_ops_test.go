@@ -508,7 +508,7 @@ func TestSponsorships(t *testing.T) {
 		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.ChangeTrust{
 				SourceAccount: newAccount.GetAccountID(),
-				Line:          asset,
+				Line:          asset.MustToChangeTrustAsset(),
 				Limit:         txnbuild.MaxTrustlineLimit,
 			},
 			&txnbuild.ManageSellOffer{
@@ -586,7 +586,7 @@ func TestSponsorships(t *testing.T) {
 				SponsorshipType: txnbuild.RevokeSponsorshipTypeTrustLine,
 				TrustLine: &txnbuild.TrustLineID{
 					Account: newAccountPair.Address(),
-					Asset:   asset,
+					Asset:   asset.MustToTrustLineAsset(),
 				},
 			},
 			&txnbuild.EndSponsoringFutureReserves{},
@@ -628,7 +628,7 @@ func TestSponsorships(t *testing.T) {
 				SponsorshipType: txnbuild.RevokeSponsorshipTypeTrustLine,
 				TrustLine: &txnbuild.TrustLineID{
 					Account: newAccountPair.Address(),
-					Asset:   asset,
+					Asset:   asset.MustToTrustLineAsset(),
 				},
 			},
 		}

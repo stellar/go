@@ -10,7 +10,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
-	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.39.5
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/fatih/structs v1.0.0 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6 // indirect
-	github.com/xdrpp/goxdr v0.1.0
+	github.com/xdrpp/goxdr v0.1.1
 	github.com/xeipuuv/gojsonpointer v0.0.0-20151027082146-e0fe6f683076 // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20161231055540-f06f290571ce // indirect

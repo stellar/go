@@ -10,7 +10,12 @@ services:
       - "5641:5641"
     command: ["-p", "5641"]
   core:
-    image: ${CORE_IMAGE:-stellar/stellar-core:v17.1.0}
+    # TODO replace with official SDF image when ready. Note that this:
+    # https://github.com/stellar/stellar-core/commit/31597b760f8e325fc84da0937adc373a78878ca9
+    # breaks the tests. I reverted it before building temp docker image.
+    # Command used to build custom image:
+    # docker build -t bartekno/stellar-core:17.4.0-p18 --build-arg STELLAR_CORE_VERSION=17.3.1-679.c5f6349.focal~protocol18~buildtests --build-arg DISTRO=focal .
+    image: ${CORE_IMAGE:-bartekno/stellar-core:17.4.0-p18}
     depends_on:
       - core-postgres
     restart: on-failure

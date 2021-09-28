@@ -45,7 +45,7 @@ var (
 
 type Config struct {
 	PostgresURL           string
-	ProtocolVersion       int32
+	ProtocolVersion       uint32
 	SkipContainerCreation bool
 	CoreDockerImage       string
 
@@ -406,23 +406,23 @@ func (i *Test) waitForCore() {
 }
 
 func (i *Test) WaitForHorizon() {
-	for t := 200; t >= 0; t -= 1 {
+	for t := 60; t >= 0; t -= 1 {
+		time.Sleep(time.Second)
+
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.horizonClient.Root()
 		if err != nil {
 			i.t.Logf("could not obtain root response %v", err)
-			time.Sleep(time.Second)
 			continue
 		}
 
 		if root.HorizonSequence < 3 ||
 			int(root.HorizonSequence) != int(root.IngestSequence) {
 			i.t.Logf("Horizon ingesting... %v", root)
-			time.Sleep(time.Second)
 			continue
 		}
 
-		if root.CurrentProtocolVersion == i.config.ProtocolVersion {
+		if uint32(root.CurrentProtocolVersion) == i.config.ProtocolVersion {
 			i.t.Logf("Horizon protocol version matches... %v", root)
 			return
 		}
@@ -563,8 +563,12 @@ func (i *Test) EstablishTrustline(
 	if asset.IsNative() {
 		return proto.Transaction{}, nil
 	}
+	line, err := asset.ToChangeTrustAsset()
+	if err != nil {
+		return proto.Transaction{}, err
+	}
 	return i.SubmitOperations(account, truster, &txnbuild.ChangeTrust{
-		Line:  asset,
+		Line:  line,
 		Limit: "2000",
 	})
 }
@@ -639,6 +643,14 @@ func (i *Test) SubmitMultiSigOperations(
 		return proto.Transaction{}, err
 	}
 	return i.Client().SubmitTransaction(tx)
+}
+
+func (i *Test) MustSubmitMultiSigOperations(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitMultiSigOperations(source, signers, ops...)
+	panicIf(err)
+	return tx
 }
 
 func (i *Test) CreateSignedTransaction(

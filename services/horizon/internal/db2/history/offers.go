@@ -94,7 +94,7 @@ func (q *Q) GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]O
 	return offers, err
 }
 
-// UpsertOffers upserts a batch of offers in the offerss table.
+// UpsertOffers upserts a batch of offers in the offers table.
 // There's currently no limit of the number of offers this method can
 // accept other than 2GB limit of the query string length what should be enough
 // for each ledger with the current limits.

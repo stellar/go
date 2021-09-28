@@ -78,6 +78,24 @@ func trustlineChange(pre, post *xdr.TrustLineEntry) ingest.Change {
 	return c
 }
 
+func TestAddPoolShareTrustline(t *testing.T) {
+	set := AssetStatSet{}
+	assert.NoError(
+		t,
+		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset: xdr.TrustLineAsset{
+				Type:            xdr.AssetTypeAssetTypePoolShare,
+				LiquidityPoolId: &xdr.PoolId{1, 2, 3},
+			},
+			Balance: 1,
+			Flags:   xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+		},
+		)),
+	)
+	assert.Empty(t, set.All())
+}
+
 func TestAddAndRemoveAssetStats(t *testing.T) {
 	set := AssetStatSet{}
 	eur := "EUR"
@@ -93,6 +111,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
 		},
 		Amount:      "1",
 		NumAccounts: 1,
@@ -116,8 +135,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 	assert.NoError(
 		t,
 		set.addDelta(
-			&eurAsset,
-			nil,
+			eurAsset,
 			delta{ClaimableBalances: 23},
 			delta{ClaimableBalances: 1},
 		),
@@ -198,6 +216,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 				AuthorizedToMaintainLiabilities: "4",
 				Unauthorized:                    "5",
 				ClaimableBalances:               "0",
+				LiquidityPools:                  "0",
 			},
 			Amount:      "3",
 			NumAccounts: 1,
@@ -215,6 +234,7 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 				AuthorizedToMaintainLiabilities: "0",
 				Unauthorized:                    "0",
 				ClaimableBalances:               "0",
+				LiquidityPools:                  "0",
 			},
 			Amount:      "10",
 			NumAccounts: 1,
@@ -264,6 +284,7 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
 		},
 		Amount:      "9223372036854775807",
 		NumAccounts: 1,
@@ -298,6 +319,7 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
 		},
 		Amount:      "18446744073709551614",
 		NumAccounts: 2,

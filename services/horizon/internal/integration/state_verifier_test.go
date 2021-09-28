@@ -11,13 +11,16 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProtocol14StateVerifier(t *testing.T) {
-	itest := integration.NewTest(t, protocol15Config)
+func TestStateVerifier(t *testing.T) {
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: ingest.MaxSupportedProtocolVersion,
+	})
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{
@@ -42,8 +45,21 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredSource.AccountID,
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()}.MustToChangeTrustAsset(),
 			Limit:         txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
+					AssetA: txnbuild.NativeAsset{},
+					AssetB: txnbuild.CreditAsset{
+						Code:   "ABCD",
+						Issuer: master.Address(),
+					},
+					Fee: 30,
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
 		},
 		&txnbuild.ManageSellOffer{
 			SourceAccount: sponsoredSource.AccountID,

@@ -119,6 +119,22 @@ func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID string) *T
 	return q
 }
 
+// ForLiquidityPool filters the transactions collection to a specific liquidity pool
+func (q *TransactionsQ) ForLiquidityPool(ctx context.Context, poolID string) *TransactionsQ {
+
+	var hLP HistoryLiquidityPool
+	hLP, q.Err = q.parent.LiquidityPoolByID(ctx, poolID)
+	if q.Err != nil {
+		return q
+	}
+
+	q.sql = q.sql.
+		Join("history_transaction_liquidity_pools htlp ON htlp.history_transaction_id = ht.id").
+		Where("htlp.history_liquidity_pool_id = ?", hLP.InternalID)
+
+	return q
+}
+
 // ForLedger filters the query to a only transactions in a specific ledger,
 // specified by its sequence.
 func (q *TransactionsQ) ForLedger(ctx context.Context, seq int32) *TransactionsQ {
