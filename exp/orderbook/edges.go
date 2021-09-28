@@ -9,21 +9,34 @@ import (
 // edgeSet maintains a mapping of strings (asset keys) to a set of venues, which
 // is composed of a sorted lists of offers and, optionally, a liquidity pool.
 // The offers are sorted by ascending price (in terms of the buying asset).
-type edgeSet map[string]Venues
+type edgeSet struct {
+	keys   []string
+	values []Venues
+}
+
+func findKey(keys []string, key string) int {
+	for i := 0; i < len(keys); i++ {
+		if keys[i] == key {
+			return i
+		}
+	}
+	return -1
+}
 
 // addOffer will insert the given offer into the edge set
-func (e edgeSet) addOffer(key string, offer xdr.OfferEntry) {
+func (e *edgeSet) addOffer(key string, offer xdr.OfferEntry) {
 	// The list of offers in a venue is sorted by cheapest to most expensive
 	// price to convert buyingAsset to sellingAsset
-	venues := e[key]
-	if len(venues.offers) == 0 {
-		e[key] = Venues{
+	i := findKey(e.keys, key)
+	if i < 0 {
+		e.keys = append(e.keys, key)
+		e.values = append(e.values, Venues{
 			offers: []xdr.OfferEntry{offer},
-			pool:   venues.pool,
-		}
+		})
 		return
 	}
 
+	venues := e.values[i]
 	// find the smallest i such that Price of offers[i] >  Price of offer
 	insertIndex := sort.Search(len(venues.offers), func(i int) bool {
 		return offer.Price.Cheaper(venues.offers[i].Price)
@@ -35,22 +48,32 @@ func (e edgeSet) addOffer(key string, offer xdr.OfferEntry) {
 	copy(offers[insertIndex+1:], offers[insertIndex:]) // shift right by 1
 	offers[insertIndex] = offer                        // insert
 
-	e[key] = Venues{offers: offers, pool: venues.pool}
+	e.values[i] = Venues{offers: offers, pool: venues.pool}
 }
 
 // addPool makes `pool` a viable venue at `key`.
-func (e edgeSet) addPool(key string, pool xdr.LiquidityPoolEntry) {
-	venues := e[key]
-	venues.pool = pool
-	e[key] = venues
+func (e *edgeSet) addPool(key string, pool xdr.LiquidityPoolEntry) {
+	i := findKey(e.keys, key)
+	if i < 0 {
+		e.keys = append(e.keys, key)
+		e.values = append(e.values, Venues{
+			pool: pool,
+		})
+		return
+	}
+	e.values[i].pool = pool
 }
 
 // removeOffer will delete the given offer from the edge set, returning whether
 // or not the given offer was actually found.
-func (e edgeSet) removeOffer(key string, offerID xdr.Int64) bool {
-	venues := e[key]
-	offers := venues.offers
+func (e *edgeSet) removeOffer(key string, offerID xdr.Int64) bool {
+	i := findKey(e.keys, key)
+	if i < 0 {
+		return false
+	}
 
+	offers := e.values[i].offers
+	updatedOffers := offers
 	contains := false
 	for i, offer := range offers {
 		if offer.OfferId != offerID {
@@ -59,7 +82,7 @@ func (e edgeSet) removeOffer(key string, offerID xdr.Int64) bool {
 
 		// remove the entry in the slice at this location (taken from
 		// https://github.com/golang/go/wiki/SliceTricks#cut).
-		offers = append(offers[:i], offers[i+1:]...)
+		updatedOffers = append(offers[:i], offers[i+1:]...)
 		contains = true
 		break
 	}
@@ -68,20 +91,27 @@ func (e edgeSet) removeOffer(key string, offerID xdr.Int64) bool {
 		return false
 	}
 
-	if len(offers) == 0 && venues.pool.Body.ConstantProduct == nil {
-		delete(e, key)
+	if len(updatedOffers) == 0 && e.values[i].pool.Body.ConstantProduct == nil {
+		e.values = append(e.values[:i], e.values[i+1:]...)
+		e.keys = append(e.keys[:i], e.keys[i+1:]...)
 	} else {
-		venues.offers = offers
-		e[key] = venues
+		e.values[i].offers = updatedOffers
 	}
 
 	return true
 }
 
-func (e edgeSet) removePool(key string) {
-	e[key] = Venues{offers: e[key].offers}
-}
+func (e *edgeSet) removePool(key string) {
+	i := findKey(e.keys, key)
+	if i < 0 {
+		return
+	}
 
-func (e edgeSet) isEmpty(key string) bool {
-	return len(e[key].offers) == 0 && e[key].pool.Body.ConstantProduct == nil
+	if len(e.values[i].offers) == 0 {
+		e.values = append(e.values[:i], e.values[i+1:]...)
+		e.keys = append(e.keys[:i], e.keys[i+1:]...)
+		return
+	}
+
+	e.values[i] = Venues{offers: e.values[i].offers}
 }

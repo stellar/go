@@ -260,12 +260,13 @@ func assertGraphEquals(t *testing.T, a, b *OrderBookGraph) {
 	for sellingAsset, edgeSet := range a.venuesForSellingAsset {
 		otherEdgeSet := b.venuesForSellingAsset[sellingAsset]
 
-		assert.Equalf(t, len(edgeSet), len(otherEdgeSet),
+		assert.Equalf(t, len(edgeSet.keys), len(otherEdgeSet.keys),
 			"expected edge set for %v to have same length but got %v %v",
 			sellingAsset, edgeSet, otherEdgeSet)
 
-		for buyingAsset, venues := range edgeSet {
-			otherVenues := otherEdgeSet[buyingAsset]
+		for i, buyingAsset := range edgeSet.keys {
+			venues := edgeSet.values[i]
+			otherVenues := findByAsset(otherEdgeSet, buyingAsset)
 
 			assert.Equalf(t, venues.pool, otherVenues.pool,
 				"expected pools for %v to be equal")
@@ -320,6 +321,15 @@ func assertPathEquals(t *testing.T, a, b []Path) {
 	}
 }
 
+func findByAsset(edges edgeSet, asset string) Venues {
+	for i, key := range edges.keys {
+		if key == asset {
+			return edges.values[i]
+		}
+	}
+	return Venues{}
+}
+
 func TestAddEdgeSet(t *testing.T) {
 	set := edgeSet{}
 
@@ -332,17 +342,17 @@ func TestAddEdgeSet(t *testing.T) {
 	set.addPool(usdAsset.String(), eurUsdLiquidityPool)
 	set.addPool(eurAsset.String(), eurUsdLiquidityPool)
 
-	assert.Lenf(t, set, 2, "expected set to have 2 entries but got %v", set)
-	assert.Equal(t, set[usdAsset.String()].pool, eurUsdLiquidityPool)
-	assert.Equal(t, set[eurAsset.String()].pool, eurUsdLiquidityPool)
+	assert.Lenf(t, set.keys, 2, "expected set to have 2 entries but got %v", set)
+	assert.Equal(t, findByAsset(set, usdAsset.String()).pool, eurUsdLiquidityPool)
+	assert.Equal(t, findByAsset(set, eurAsset.String()).pool, eurUsdLiquidityPool)
 
-	assertOfferListEquals(t, set[usdAsset.String()].offers, []xdr.OfferEntry{
+	assertOfferListEquals(t, findByAsset(set, usdAsset.String()).offers, []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 		dollarOffer,
 	})
 
-	assertOfferListEquals(t, set[eurAsset.String()].offers, []xdr.OfferEntry{
+	assertOfferListEquals(t, findByAsset(set, eurAsset.String()).offers, []xdr.OfferEntry{
 		eurOffer,
 		twoEurOffer,
 		threeEurOffer,
@@ -364,7 +374,7 @@ func TestRemoveEdgeSet(t *testing.T) {
 	set.addPool(usdAsset.String(), eurUsdLiquidityPool)
 
 	set.removePool(usdAsset.String())
-	assert.Nil(t, set[usdAsset.String()].pool.Body.ConstantProduct)
+	assert.Nil(t, findByAsset(set, usdAsset.String()).pool.Body.ConstantProduct)
 
 	assert.Truef(t, set.removeOffer(usdAsset.String(), dollarOffer.OfferId),
 		"expected set to contain dollar offer but is %v", set)
@@ -382,9 +392,9 @@ func TestRemoveEdgeSet(t *testing.T) {
 	assert.Falsef(t, set.removeOffer(eurAsset.String(), eurOffer.OfferId),
 		"expected set to not contain euro offer after deletion but is %v", set)
 
-	assert.Lenf(t, set, 1, "%v", set)
+	assert.Lenf(t, set.keys, 1, "%v", set)
 
-	assertOfferListEquals(t, set[usdAsset.String()].offers, []xdr.OfferEntry{
+	assertOfferListEquals(t, findByAsset(set, usdAsset.String()).offers, []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 	})
@@ -489,24 +499,52 @@ func TestAddOffersOrderBook(t *testing.T) {
 	expectedGraph := &OrderBookGraph{
 		venuesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
-				eurAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				keys: []string{
+					usdAsset.String(),
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				},
 			},
 			usdAsset.String(): {
-				eurAsset.String(): makeVenues(eurUsdOffer, otherEurUsdOffer),
+				keys: []string{
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(eurUsdOffer, otherEurUsdOffer),
+				},
 			},
 			eurAsset.String(): {
-				usdAsset.String(): makeVenues(usdEurOffer),
+				keys: []string{
+					usdAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(usdEurOffer),
+				},
 			},
 		},
 		venuesForBuyingAsset: map[string]edgeSet{
 			usdAsset.String(): {
-				eurAsset.String():    makeVenues(usdEurOffer),
-				nativeAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+				keys: []string{
+					eurAsset.String(),
+					nativeAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(usdEurOffer),
+					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+				},
 			},
 			eurAsset.String(): {
-				usdAsset.String():    makeVenues(eurUsdOffer, otherEurUsdOffer),
-				nativeAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				keys: []string{
+					usdAsset.String(),
+					nativeAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(eurUsdOffer, otherEurUsdOffer),
+					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
@@ -681,24 +719,52 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 	expectedGraph := &OrderBookGraph{
 		venuesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
-				eurAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				keys: []string{
+					usdAsset.String(),
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				},
 			},
 			usdAsset.String(): {
-				eurAsset.String(): makeVenues(otherEurUsdOffer, eurUsdOffer),
+				keys: []string{
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(otherEurUsdOffer, eurUsdOffer),
+				},
 			},
 			eurAsset.String(): {
-				usdAsset.String(): makeVenues(usdEurOffer),
+				keys: []string{
+					usdAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(usdEurOffer),
+				},
 			},
 		},
 		venuesForBuyingAsset: map[string]edgeSet{
 			usdAsset.String(): {
-				nativeAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
-				eurAsset.String():    makeVenues(usdEurOffer),
+				keys: []string{
+					nativeAsset.String(),
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
+					makeVenues(usdEurOffer),
+				},
 			},
 			eurAsset.String(): {
-				nativeAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
-				usdAsset.String():    makeVenues(otherEurUsdOffer, eurUsdOffer),
+				keys: []string{
+					nativeAsset.String(),
+					usdAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+					makeVenues(otherEurUsdOffer, eurUsdOffer),
+				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
@@ -815,20 +881,42 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 	expectedGraph := &OrderBookGraph{
 		venuesForSellingAsset: map[string]edgeSet{
 			nativeAsset.String(): {
-				usdAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer),
-				eurAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				keys: []string{
+					usdAsset.String(),
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(quarterOffer, fiftyCentsOffer),
+					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+				},
 			},
 			usdAsset.String(): {
-				eurAsset.String(): makeVenues(eurUsdOffer),
+				keys: []string{
+					eurAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(eurUsdOffer),
+				},
 			},
 		},
 		venuesForBuyingAsset: map[string]edgeSet{
 			usdAsset.String(): {
-				nativeAsset.String(): makeVenues(quarterOffer, fiftyCentsOffer),
+				keys: []string{
+					nativeAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(quarterOffer, fiftyCentsOffer),
+				},
 			},
 			eurAsset.String(): {
-				nativeAsset.String(): makeVenues(eurOffer, twoEurOffer, threeEurOffer),
-				usdAsset.String():    makeVenues(eurUsdOffer),
+				keys: []string{
+					nativeAsset.String(),
+					usdAsset.String(),
+				},
+				values: []Venues{
+					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
+					makeVenues(eurUsdOffer),
+				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
