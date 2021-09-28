@@ -98,6 +98,7 @@ func xdrToTrustline(ledgerEntry xdr.LedgerEntry) (history.TrustLine, error) {
 
 func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 	var batchUpsertTrustLines []history.TrustLine
+	var batchRemoveTrustLineKeys []string
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -116,31 +117,32 @@ func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 			if err != nil {
 				return errors.Wrap(err, "Error extracting ledger key")
 			}
+			batchRemoveTrustLineKeys = append(batchRemoveTrustLineKeys, ledgerKeyString)
 
-			var rowsAffected int64
-			rowsAffected, err = p.trustLinesQ.RemoveTrustLine(ctx, ledgerKeyString)
-			if err != nil {
-				return err
-			}
-
-			if rowsAffected != 1 {
-				return ingest.NewStateError(errors.Errorf(
-					"%d rows affected when removing trustline: %s %s",
-					rowsAffected,
-					trustLineEntry.AccountId.Address(),
-					ledgerKeyString,
-				))
-			}
 		default:
 			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
 	}
 
-	// Upsert accounts
 	if len(batchUpsertTrustLines) > 0 {
 		err := p.trustLinesQ.UpsertTrustLines(ctx, batchUpsertTrustLines)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertTrustLines")
+		}
+	}
+
+	if len(batchRemoveTrustLineKeys) > 0 {
+		rowsAffected, err := p.trustLinesQ.RemoveTrustLines(ctx, batchRemoveTrustLineKeys)
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected != int64(len(batchRemoveTrustLineKeys)) {
+			return ingest.NewStateError(errors.Errorf(
+				"%d rows affected when removing %d trust lines",
+				rowsAffected,
+				len(batchRemoveTrustLineKeys),
+			))
 		}
 	}
 

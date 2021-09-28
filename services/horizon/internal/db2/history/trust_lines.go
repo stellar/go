@@ -2,10 +2,8 @@ package history
 
 import (
 	"context"
+
 	sq "github.com/Masterminds/squirrel"
-	"github.com/guregu/null"
-	"github.com/lib/pq"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -56,100 +54,50 @@ func (q *Q) GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]Tru
 // accept other than 2GB limit of the query string length what should be enough
 // for each ledger with the current limits.
 func (q *Q) UpsertTrustLines(ctx context.Context, trustLines []TrustLine) error {
-	var ledgerKey, accountID, assetIssuer, assetCode []string
-	var balance, limit, buyingLiabilities, sellingLiabilities []int64
-	var flags, lastModifiedLedger []uint32
-	var assetType []xdr.AssetType
-	var liquidityPoolIds, sponsor []null.String
 
-	for _, entry := range trustLines {
-		ledgerKey = append(ledgerKey, entry.LedgerKey)
-		accountID = append(accountID, entry.AccountID)
-		assetType = append(assetType, entry.AssetType)
-		assetIssuer = append(assetIssuer, entry.AssetIssuer)
-		assetCode = append(assetCode, entry.AssetCode)
-		liquidityPoolIds = append(liquidityPoolIds, null.NewString(entry.LiquidityPoolID, len(entry.LiquidityPoolID) > 0))
-		balance = append(balance, entry.Balance)
-		limit = append(limit, entry.Limit)
-		buyingLiabilities = append(buyingLiabilities, entry.BuyingLiabilities)
-		sellingLiabilities = append(sellingLiabilities, entry.SellingLiabilities)
-		flags = append(flags, entry.Flags)
-		lastModifiedLedger = append(lastModifiedLedger, entry.LastModifiedLedger)
-		sponsor = append(sponsor, entry.Sponsor)
+	var accountID, assetType, assetIssuer, assetCode, balance, ledgerKey, limit, liquidityPoolID, buyingLiabilities,
+		sellingLiabilites, flags, lastModifiedLedger, sponsor []interface{}
+
+	for _, trustLine := range trustLines {
+		accountID = append(accountID, trustLine.AccountID)
+		assetCode = append(assetCode, trustLine.AssetCode)
+		assetIssuer = append(assetIssuer, trustLine.AssetIssuer)
+		assetType = append(assetType, trustLine.AssetType)
+		balance = append(balance, trustLine.Balance)
+		ledgerKey = append(ledgerKey, trustLine.LedgerKey)
+		limit = append(limit, trustLine.Limit)
+		liquidityPoolID = append(liquidityPoolID, trustLine.LiquidityPoolID)
+		buyingLiabilities = append(buyingLiabilities, trustLine.BuyingLiabilities)
+		sellingLiabilites = append(sellingLiabilites, trustLine.SellingLiabilities)
+		flags = append(flags, trustLine.Flags)
+		lastModifiedLedger = append(lastModifiedLedger, trustLine.LastModifiedLedger)
+		sponsor = append(sponsor, trustLine.Sponsor)
 	}
 
-	sql := `
-	WITH r AS
-		(SELECT
-			unnest(?::text[]),
-			unnest(?::text[]),
-			unnest(?::int[]),
-			unnest(?::text[]),
-			unnest(?::text[]),
-			unnest(?::text[]),
-			unnest(?::bigint[]),
-			unnest(?::bigint[]),
-			unnest(?::bigint[]),
-			unnest(?::bigint[]),
-			unnest(?::int[]),
-			unnest(?::int[]),
-			unnest(?::text[])
-		)
-	INSERT INTO trust_lines ( 
-		ledger_key,
-		account_id,
-		asset_type,
-		asset_issuer,
-		asset_code,
-		liquidity_pool_id,
-		balance,
-		trust_line_limit,
-		buying_liabilities,
-		selling_liabilities,
-		flags,
-		last_modified_ledger,
-		sponsor
-	)
-	SELECT * from r 
-	ON CONFLICT (ledger_key) DO UPDATE SET 
-		ledger_key = excluded.ledger_key,
-		account_id = excluded.account_id,
-		asset_type = excluded.asset_type,
-		asset_issuer = excluded.asset_issuer,
-		asset_code = excluded.asset_code,
-		liquidity_pool_id = excluded.liquidity_pool_id,
-		balance = excluded.balance,
-		trust_line_limit = excluded.trust_line_limit,
-		buying_liabilities = excluded.buying_liabilities,
-		selling_liabilities = excluded.selling_liabilities,
-		flags = excluded.flags,
-		last_modified_ledger = excluded.last_modified_ledger,
-		sponsor = excluded.sponsor`
+	upsertFields := []upsertField{
+		{"account_id", "character varying(56)", accountID},
+		{"asset_code", "character varying(12)", assetCode},
+		{"asset_issuer", "character varying(56)", assetIssuer},
+		{"asset_type", "int", assetType},
+		{"balance", "bigint", balance},
+		{"ledger_key", "character varying(150)", ledgerKey},
+		{"trust_line_limit", "bigint", limit},
+		{"liquidity_pool_id", "text", liquidityPoolID},
+		{"buying_liabilities", "bigint", buyingLiabilities},
+		{"selling_liabilities", "bigint", sellingLiabilites},
+		{"flags", "int", flags},
+		{"last_modified_ledger", "int", lastModifiedLedger},
+		{"sponsor", "text", sponsor},
+	}
 
-	_, err := q.ExecRaw(
-		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
-		sql,
-		pq.Array(ledgerKey),
-		pq.Array(accountID),
-		pq.Array(assetType),
-		pq.Array(assetIssuer),
-		pq.Array(assetCode),
-		pq.Array(liquidityPoolIds),
-		pq.Array(balance),
-		pq.Array(limit),
-		pq.Array(buyingLiabilities),
-		pq.Array(sellingLiabilities),
-		pq.Array(flags),
-		pq.Array(lastModifiedLedger),
-		pq.Array(sponsor))
-	return err
+	return q.upsertRows(ctx, "trust_lines", "ledger_key", upsertFields)
 }
 
 // RemoveTrustLine deletes a row in the trust lines table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveTrustLine(ctx context.Context, ledgerKey string) (int64, error) {
+func (q *Q) RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error) {
 	sql := sq.Delete("trust_lines").
-		Where(map[string]interface{}{"ledger_key": ledgerKey})
+		Where(map[string]interface{}{"ledger_key": ledgerKeys})
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err

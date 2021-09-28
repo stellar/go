@@ -21,7 +21,7 @@ func (m *MockQTrustLines) UpsertTrustLines(ctx context.Context, trustLines []Tru
 	return a.Error(0)
 }
 
-func (m *MockQTrustLines) RemoveTrustLine(ctx context.Context, key string) (int64, error) {
-	a := m.Called(ctx, key)
+func (m *MockQTrustLines) RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error) {
+	a := m.Called(ctx, ledgerKeys)
 	return a.Get(0).(int64), a.Error(1)
 }
