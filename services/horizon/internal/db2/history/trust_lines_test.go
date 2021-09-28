@@ -177,7 +177,7 @@ func TestRemoveTrustLine(t *testing.T) {
 	err := q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTrustLine})
 	assert.NoError(t, err)
 
-	rows, err := q.RemoveTrustLine(tt.Ctx, eurTrustLine.LedgerKey)
+	rows, err := q.RemoveTrustLines(tt.Ctx, []string{eurTrustLine.LedgerKey})
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
@@ -186,7 +186,7 @@ func TestRemoveTrustLine(t *testing.T) {
 	assert.Len(t, lines, 0)
 
 	// Doesn't exist anymore
-	rows, err = q.RemoveTrustLine(tt.Ctx, eurTrustLine.LedgerKey)
+	rows, err = q.RemoveTrustLines(tt.Ctx, []string{eurTrustLine.LedgerKey})
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
 }

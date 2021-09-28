@@ -548,19 +548,15 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	lkStr, err := xdr.LedgerKey{
+	lkStr1, err := xdr.LedgerKey{
 		Type: xdr.LedgerEntryTypeTrustline,
 		TrustLine: &xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 		},
 	}.MarshalBinaryBase64()
-	s.Assert().NoError(err)
-	s.mockQ.On(
-		"RemoveTrustLine", s.ctx, lkStr,
-	).Return(int64(1), nil).Once()
 
-	lkStr, err = xdr.LedgerKey{
+	lkStr2, err := xdr.LedgerKey{
 		Type: xdr.LedgerEntryTypeTrustline,
 		TrustLine: &xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
@@ -569,8 +565,15 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	}.MarshalBinaryBase64()
 	s.Assert().NoError(err)
 	s.mockQ.On(
-		"RemoveTrustLine", s.ctx, lkStr,
-	).Return(int64(1), nil).Once()
+		"RemoveTrustLines", s.ctx, mock.Anything,
+	).Run(func(args mock.Arguments) {
+		// To fix order issue due to using ChangeCompactor
+		ledgerKeys := args.Get(1).([]string)
+		s.Assert().ElementsMatch(
+			ledgerKeys,
+			[]string{lkStr1, lkStr2},
+		)
+	}).Return(int64(2), nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
@@ -674,11 +677,11 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 	s.Assert().NoError(err)
 
 	s.mockQ.On(
-		"RemoveTrustLine", s.ctx, lkStr,
+		"RemoveTrustLines", s.ctx, []string{lkStr},
 	).Return(int64(0), nil).Once()
 
 	err = s.processor.Commit(s.ctx)
 	s.Assert().Error(err)
 	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "0 rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB "+lkStr)
+	s.Assert().EqualError(err, "0 rows affected when removing 1 trust lines")
 }

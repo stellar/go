@@ -742,7 +742,7 @@ type TrustLine struct {
 type QTrustLines interface {
 	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
 	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
-	RemoveTrustLine(ctx context.Context, ledgerKey string) (int64, error)
+	RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error)
 }
 
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
