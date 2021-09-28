@@ -10,6 +10,29 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking
 * The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
 
+## v2.8.3
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### DB State Migration
+
+* This release comes with a small DB migration. It should not take more than a couple minutes.
+
+### Scheduled Changes
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+### Changes
+
+* Fix ingestion of fee bump transactions which have muxed source accounts ([3948](https://github.com/stellar/go/pull/3948)).
+* Add an index on trade aggregations, to improve ingestion performance ([3947](https://github.com/stellar/go/pull/3947)).
+
+## v2.8.2
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* Improve performance of `OffersProcessor`. This should speed up ingestion of latest Stellar Public Network activity by up to 30%. Please note that this change does not improve reingestion speed because ledger entries are not processed during reingestion. ([3917](https://github.com/stellar/go/pull/3917))
+
 ## v2.8.1
 **Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 

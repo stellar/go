@@ -15,7 +15,6 @@ type QOffers interface {
 	CountOffers(ctx context.Context) (int, error)
 	GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]Offer, error)
 	UpsertOffers(ctx context.Context, offers []Offer) error
-	RemoveOffers(ctx context.Context, offerIDs []int64, lastModifiedLedger uint32) (int64, error)
 	CompactOffers(ctx context.Context, cutOffSequence uint32) (int64, error)
 }
 
@@ -101,7 +100,7 @@ func (q *Q) GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]O
 // for each ledger with the current limits.
 func (q *Q) UpsertOffers(ctx context.Context, offers []Offer) error {
 	var sellerID, sellingAsset, buyingAsset, offerID, amount, priceN, priceD,
-		price, flags, lastModifiedLedger, sponsor []interface{}
+		price, flags, lastModifiedLedger, deleted, sponsor []interface{}
 
 	for _, offer := range offers {
 		sellerID = append(sellerID, offer.SellerID)
@@ -114,6 +113,7 @@ func (q *Q) UpsertOffers(ctx context.Context, offers []Offer) error {
 		price = append(price, offer.Price)
 		flags = append(flags, offer.Flags)
 		lastModifiedLedger = append(lastModifiedLedger, offer.LastModifiedLedger)
+		deleted = append(deleted, offer.Deleted)
 		sponsor = append(sponsor, offer.Sponsor)
 	}
 
@@ -127,27 +127,12 @@ func (q *Q) UpsertOffers(ctx context.Context, offers []Offer) error {
 		{"priced", "integer", priceD},
 		{"price", "double precision", price},
 		{"flags", "integer", flags},
+		{"deleted", "bool", deleted},
 		{"last_modified_ledger", "integer", lastModifiedLedger},
 		{"sponsor", "text", sponsor},
 	}
 
 	return q.upsertRows(ctx, "offers", "offer_id", upsertFields)
-}
-
-// RemoveOffers marks rows in the offers table as deleted.
-// Returns number of rows affected and error.
-func (q *Q) RemoveOffers(ctx context.Context, offerIDs []int64, lastModifiedLedger uint32) (int64, error) {
-	sql := sq.Update("offers").
-		Set("deleted", true).
-		Set("last_modified_ledger", lastModifiedLedger).
-		Where(map[string]interface{}{"offer_id": offerIDs})
-
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
 }
 
 // CompactOffers removes rows from the offers table which are marked for deletion.

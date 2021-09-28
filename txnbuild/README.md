@@ -1,6 +1,6 @@
 # txnbuild
 
-`txnbuild` is a [Stellar SDK](https://www.stellar.org/developers/reference/), implemented in [Go](https://golang.org/). It provides a reference implementation of the complete [set of operations](https://www.stellar.org/developers/guides/concepts/list-of-operations.html) that compose [transactions](https://www.stellar.org/developers/guides/concepts/transactions.html) for the Stellar distributed ledger.
+`txnbuild` is a [Stellar SDK](https://developers.stellar.org/docs/software-and-sdks/), implemented in [Go](https://golang.org/). It provides a reference implementation of the complete [set of operations](https://developers.stellar.org/docs/start/list-of-operations/) that compose [transactions](https://developers.stellar.org/docs/glossary/transactions/) for the Stellar distributed ledger.
 
 This project is maintained by the Stellar Development Foundation.
 

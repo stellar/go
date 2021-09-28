@@ -235,11 +235,6 @@ type AccountEntry struct {
 	NumSponsoring        uint32      `db:"num_sponsoring"`
 }
 
-type AccountsBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
 type IngestionQ interface {
 	QAccounts
 	QAssetStats
@@ -285,10 +280,9 @@ type IngestionQ interface {
 
 // QAccounts defines account related queries.
 type QAccounts interface {
-	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
 	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
-	UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error
-	RemoveAccount(ctx context.Context, accountID string) (int64, error)
+	UpsertAccounts(ctx context.Context, accounts []AccountEntry) error
+	RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error)
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
@@ -320,24 +314,17 @@ type Data struct {
 
 type AccountDataValue []byte
 
-type AccountDataBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
-// accountDataBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type accountDataBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
+type AccountDataKey struct {
+	AccountID string
+	DataName  string
 }
 
 // QData defines account data related queries.
 type QData interface {
-	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
 	CountAccountsData(ctx context.Context) (int, error)
-	GetAccountDataByKeys(ctx context.Context, keys []xdr.LedgerKeyData) ([]Data, error)
-	InsertAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	UpdateAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	RemoveAccountData(ctx context.Context, key xdr.LedgerKeyData) (int64, error)
+	GetAccountDataByKeys(ctx context.Context, keys []AccountDataKey) ([]Data, error)
+	UpsertAccountData(ctx context.Context, data []Data) error
+	RemoveAccountData(ctx context.Context, keys []AccountDataKey) (int64, error)
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -758,28 +745,10 @@ type QTrustLines interface {
 	RemoveTrustLine(ctx context.Context, ledgerKey string) (int64, error)
 }
 
-func (q *Q) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
-	return &accountsBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("accounts_signers"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
-func (q *Q) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder {
-	return &accountDataBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts_data"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}

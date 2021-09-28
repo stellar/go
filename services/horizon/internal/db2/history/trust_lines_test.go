@@ -14,7 +14,7 @@ var (
 	trustLineIssuer = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
 
 	eurTrustLine = TrustLine{
-		AccountID:          account1.Data.Account.AccountId.Address(),
+		AccountID:          account1.AccountID,
 		AssetType:          xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer:        trustLineIssuer,
 		AssetCode:          "EUR",
@@ -26,7 +26,7 @@ var (
 		SellingLiabilities: 4,
 		Flags:              1,
 		LastModifiedLedger: 1234,
-		Sponsor:            null.StringFrom(sponsor.Address()),
+		Sponsor:            null.StringFrom(sponsor),
 	}
 
 	usdTrustLine = TrustLine{
@@ -98,7 +98,7 @@ func TestInsertTrustLine(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lines, 2)
 
-	tt.Assert.Equal(null.StringFrom(sponsor.Address()), lines[0].Sponsor)
+	tt.Assert.Equal(null.StringFrom(sponsor), lines[0].Sponsor)
 	tt.Assert.Equal([]TrustLine{eurTrustLine, usdTrustLine}, lines)
 }
 
@@ -246,10 +246,30 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 	tt.Assert.Empty(records)
 
 	err = q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTrustLine})
-	assert.NoError(t, err)
+	tt.Assert.NoError(err)
 
 	records, err = q.GetSortedTrustLinesByAccountID(tt.Ctx, eurTrustLine.AccountID)
 	tt.Assert.NoError(err)
 
+	tt.Assert.Equal(eurTrustLine, records[0])
+
+}
+
+func TestAssetsForAddress(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	ledgerEntries := []AccountEntry{account1}
+
+	err := q.UpsertAccounts(tt.Ctx, ledgerEntries)
+	assert.NoError(t, err)
+
+	err = q.UpsertTrustLines(tt.Ctx, []TrustLine{eurTrustLine})
+	tt.Assert.NoError(err)
+
+	records, err := q.GetSortedTrustLinesByAccountID(tt.Ctx, eurTrustLine.AccountID)
+	tt.Assert.NoError(err)
 	tt.Assert.Equal(eurTrustLine, records[0])
 }

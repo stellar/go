@@ -155,7 +155,7 @@ func (q *OperationsQ) ForAccount(ctx context.Context, aid string) *OperationsQ {
 
 // ForClaimableBalance filters the query to only operations pertaining to a
 // claimable balance, specified by the claimable balance's hex-encoded id.
-func (q *OperationsQ) ForClaimableBalance(ctx context.Context, cbID xdr.ClaimableBalanceId) *OperationsQ {
+func (q *OperationsQ) ForClaimableBalance(ctx context.Context, cbID string) *OperationsQ {
 	var hCB HistoryClaimableBalance
 	hCB, q.Err = q.parent.ClaimableBalanceByID(ctx, cbID)
 	if q.Err != nil {

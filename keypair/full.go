@@ -10,21 +10,68 @@ import (
 )
 
 type Full struct {
-	seed string
+	address    string
+	seed       string
+	publicKey  ed25519.PublicKey
+	privateKey ed25519.PrivateKey
+}
+
+func newFull(seed string) (*Full, error) {
+	rawSeed, err := strkey.Decode(strkey.VersionByteSeed, seed)
+	if err != nil {
+		return nil, err
+	}
+	reader := bytes.NewReader(rawSeed)
+	pub, priv, err := ed25519.GenerateKey(reader)
+	if err != nil {
+		return nil, err
+	}
+	address, err := strkey.Encode(strkey.VersionByteAccountID, pub)
+	if err != nil {
+		return nil, err
+	}
+	return &Full{
+		address:    address,
+		seed:       seed,
+		publicKey:  pub,
+		privateKey: priv,
+	}, nil
+}
+
+func newFullFromRawSeed(rawSeed [32]byte) (*Full, error) {
+	seed, err := strkey.Encode(strkey.VersionByteSeed, rawSeed[:])
+	if err != nil {
+		return nil, err
+	}
+	reader := bytes.NewReader(rawSeed[:])
+	pub, priv, err := ed25519.GenerateKey(reader)
+	if err != nil {
+		return nil, err
+	}
+	address, err := strkey.Encode(strkey.VersionByteAccountID, pub)
+	if err != nil {
+		return nil, err
+	}
+	return &Full{
+		address:    address,
+		seed:       seed,
+		publicKey:  pub,
+		privateKey: priv,
+	}, nil
 }
 
 func (kp *Full) Address() string {
-	return strkey.MustEncode(strkey.VersionByteAccountID, kp.publicKey()[:])
+	return kp.address
 }
 
 // FromAddress gets the address-only representation, or public key, of this
 // Full keypair.
 func (kp *Full) FromAddress() *FromAddress {
-	return &FromAddress{address: kp.Address()}
+	return newFromAddressWithPublicKey(kp.address, kp.publicKey)
 }
 
 func (kp *Full) Hint() (r [4]byte) {
-	copy(r[:], kp.publicKey()[28:])
+	copy(r[:], kp.publicKey[28:])
 	return
 }
 
@@ -36,15 +83,14 @@ func (kp *Full) Verify(input []byte, sig []byte) error {
 	if len(sig) != 64 {
 		return ErrInvalidSignature
 	}
-	if !ed25519.Verify(kp.publicKey(), input, sig) {
+	if !ed25519.Verify(kp.publicKey, input, sig) {
 		return ErrInvalidSignature
 	}
 	return nil
 }
 
 func (kp *Full) Sign(input []byte) ([]byte, error) {
-	_, priv := kp.keys()
-	return ed25519.Sign(priv, input), nil
+	return ed25519.Sign(kp.privateKey, input), nil
 }
 
 // SignBase64 signs the input data and returns a base64 encoded string, the
@@ -77,22 +123,4 @@ func (kp *Full) Equal(f *Full) bool {
 		return false
 	}
 	return kp.seed == f.seed
-}
-
-func (kp *Full) publicKey() ed25519.PublicKey {
-	pub, _ := kp.keys()
-	return pub
-}
-
-func (kp *Full) keys() (ed25519.PublicKey, ed25519.PrivateKey) {
-	reader := bytes.NewReader(kp.rawSeed())
-	pub, priv, err := ed25519.GenerateKey(reader)
-	if err != nil {
-		panic(err)
-	}
-	return pub, priv
-}
-
-func (kp *Full) rawSeed() []byte {
-	return strkey.MustDecode(strkey.VersionByteSeed, kp.seed)
 }

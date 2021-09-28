@@ -40,22 +40,17 @@ func (s *AccountsProcessorTestSuiteState) TestNoEntries() {
 }
 
 func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
-	account := xdr.AccountEntry{
-		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-		Thresholds: [4]byte{1, 1, 1, 1},
-	}
-	lastModifiedLedgerSeq := xdr.Uint32(123)
-
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
 		"UpsertAccounts", s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.AccountEntry{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:    xdr.LedgerEntryTypeAccount,
-					Account: &account,
-				},
+				LastModifiedLedger: 123,
+				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				MasterWeight:       1,
+				ThresholdLow:       1,
+				ThresholdMedium:    1,
+				ThresholdHigh:      1,
 			},
 		},
 	).Return(nil).Once()
@@ -65,10 +60,13 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
-				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &account,
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Thresholds: [4]byte{1, 1, 1, 1},
+				},
 			},
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			LastModifiedLedgerSeq: xdr.Uint32(123),
 		},
 	})
 	s.Assert().NoError(err)
@@ -150,13 +148,15 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	s.mockQ.On(
 		"UpsertAccounts",
 		s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.AccountEntry{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-				Data: xdr.LedgerEntryData{
-					Type:    xdr.LedgerEntryTypeAccount,
-					Account: &updatedAccount,
-				},
+				LastModifiedLedger: 123,
+				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				MasterWeight:       0,
+				ThresholdLow:       1,
+				ThresholdMedium:    2,
+				ThresholdHigh:      3,
+				HomeDomain:         "stellar.org",
 			},
 		},
 	).Return(nil).Once()
@@ -164,9 +164,9 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 
 func (s *AccountsProcessorTestSuiteLedger) TestRemoveAccount() {
 	s.mockQ.On(
-		"RemoveAccount",
+		"RemoveAccounts",
 		s.ctx,
-		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		[]string{"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"},
 	).Return(int64(1), nil).Once()
 
 	err := s.processor.ProcessChange(s.ctx, ingest.Change{
@@ -233,13 +233,15 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockQ.On(
 		"UpsertAccounts",
 		s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.AccountEntry{
 			{
-				LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
-				Data: xdr.LedgerEntryData{
-					Type:    xdr.LedgerEntryTypeAccount,
-					Account: &updatedAccount,
-				},
+				LastModifiedLedger: uint32(lastModifiedLedgerSeq) + 1,
+				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				MasterWeight:       0,
+				ThresholdLow:       1,
+				ThresholdMedium:    2,
+				ThresholdHigh:      3,
+				HomeDomain:         "stellar.org",
 			},
 		},
 	).Return(nil).Once()
@@ -292,21 +294,14 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 	})
 	s.Assert().NoError(err)
 
-	expectedAccount := xdr.AccountEntry{
-		AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
-		Balance:   300,
-	}
-
 	s.mockQ.On(
 		"UpsertAccounts",
 		s.ctx,
-		[]xdr.LedgerEntry{
+		[]history.AccountEntry{
 			{
-				LastModifiedLedgerSeq: 0,
-				Data: xdr.LedgerEntryData{
-					Type:    xdr.LedgerEntryTypeAccount,
-					Account: &expectedAccount,
-				},
+				LastModifiedLedger: 0,
+				AccountID:          "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+				Balance:            300,
 			},
 		},
 	).Return(nil).Once()

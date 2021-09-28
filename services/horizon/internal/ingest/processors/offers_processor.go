@@ -17,8 +17,7 @@ type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	cache       *ingest.ChangeCompactor
-	removeBatch []int64
+	cache *ingest.ChangeCompactor
 }
 
 func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcessor {
@@ -29,7 +28,6 @@ func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcess
 
 func (p *OffersProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
-	p.removeBatch = []int64{}
 }
 
 func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -69,7 +67,7 @@ func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer
 }
 
 func (p *OffersProcessor) flushCache(ctx context.Context) error {
-	batchUpsertOffers := []history.Offer{}
+	var batchUpsertOffers []history.Offer
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		switch {
@@ -79,8 +77,10 @@ func (p *OffersProcessor) flushCache(ctx context.Context) error {
 			batchUpsertOffers = append(batchUpsertOffers, row)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
-			offer := change.Pre.Data.MustOffer()
-			p.removeBatch = append(p.removeBatch, int64(offer.OfferId))
+			row := p.ledgerEntryToRow(change.Pre)
+			row.Deleted = true
+			row.LastModifiedLedger = p.sequence
+			batchUpsertOffers = append(batchUpsertOffers, row)
 		default:
 			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
@@ -90,21 +90,6 @@ func (p *OffersProcessor) flushCache(ctx context.Context) error {
 		err := p.offersQ.UpsertOffers(ctx, batchUpsertOffers)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertOffers")
-		}
-	}
-
-	if len(p.removeBatch) > 0 {
-		rowsAffected, err := p.offersQ.RemoveOffers(ctx, p.removeBatch, p.sequence)
-		if err != nil {
-			return errors.Wrap(err, "error in RemoveOffers")
-		}
-
-		if rowsAffected != int64(len(p.removeBatch)) {
-			return ingest.NewStateError(errors.Errorf(
-				"%d rows affected when removing %d offers",
-				rowsAffected,
-				len(p.removeBatch),
-			))
 		}
 	}
 

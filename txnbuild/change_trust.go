@@ -9,7 +9,7 @@ import (
 )
 
 // ChangeTrust represents the Stellar change trust operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html.
+// https://developers.stellar.org/docs/start/list-of-operations/
 // If Limit is omitted, it defaults to txnbuild.MaxTrustlineLimit.
 type ChangeTrust struct {
 	Line          ChangeTrustAsset

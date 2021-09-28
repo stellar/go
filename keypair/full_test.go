@@ -50,7 +50,7 @@ var _ = Describe("keypair.Full", func() {
 	var subject KP
 
 	JustBeforeEach(func() {
-		subject = &Full{seed}
+		subject = MustParseFull(seed)
 	})
 
 	ItBehavesLikeAKP(&subject)

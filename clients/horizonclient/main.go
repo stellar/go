@@ -6,7 +6,7 @@ top of the Stellar network (https://www.stellar.org/). Transactions may be const
 this one, txnbuild (https://github.com/stellar/go/tree/master/txnbuild), and then submitted with this client to any
 Horizon instance for processing onto the ledger. Together, these two libraries provide a complete Stellar SDK.
 
-For more information and further examples, see https://www.stellar.org/developers/go/reference/index.html.
+For more information and further examples, see https://github.com/stellar/go/blob/master/docs/reference/readme.md
 */
 package horizonclient
 
@@ -365,7 +365,7 @@ type OrderBookRequest struct {
 // PathsRequest struct contains data for getting available strict receive path payments from a horizon server.
 // All the Destination related parameters are required and you need to include either
 // SourceAccount or SourceAssets.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html
+// See https://developers.stellar.org/api/aggregations/paths/strict-receive/
 type PathsRequest struct {
 	DestinationAccount     string
 	DestinationAssetType   AssetType
@@ -379,7 +379,7 @@ type PathsRequest struct {
 // StrictSendPathsRequest struct contains data for getting available strict send path payments from a horizon server.
 // All the Source related parameters are required and you need to include either
 // DestinationAccount or DestinationAssets.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html
+// See https://developers.stellar.org/api/aggregations/paths/strict-send/
 type StrictSendPathsRequest struct {
 	DestinationAccount string
 	DestinationAssets  string

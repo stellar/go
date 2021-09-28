@@ -140,28 +140,14 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
 func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQuery, pq db2.PageQuery) ([]history.Transaction, error) {
-
-	var cbID *xdr.ClaimableBalanceId
-	if qp.ClaimableBalanceID != "" {
-		var cb xdr.ClaimableBalanceId
-		cb, err := balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
-		if err != nil {
-			return nil, err
-		}
-		cbID = &cb
-	}
-	if qp.AccountID != "" && qp.LedgerID != 0 {
-		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
-	}
-
 	var records []history.Transaction
 
 	txs := hq.Transactions()
 	switch {
 	case qp.AccountID != "":
 		txs.ForAccount(ctx, qp.AccountID)
-	case cbID != nil:
-		txs.ForClaimableBalance(ctx, *cbID)
+	case qp.ClaimableBalanceID != "":
+		txs.ForClaimableBalance(ctx, qp.ClaimableBalanceID)
 	case qp.LiquidityPoolID != "":
 		txs.ForLiquidityPool(ctx, qp.LiquidityPoolID)
 	case qp.LedgerID > 0:
