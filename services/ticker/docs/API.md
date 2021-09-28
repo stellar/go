@@ -118,7 +118,7 @@ GET `https://ticker.stellar.org/markets.json`
 }
 ```
 ## Asset (Currency) Data
-Lists all the valid assets within the Stellar network. The provided fields are based on the [Currency Documentation of SEP-0001](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md#currency-documentation) and the [Asset fields from Horizon](https://www.stellar.org/developers/horizon/reference/resources/asset.html).
+Lists all the valid assets within the Stellar network. The provided fields are based on the [Currency Documentation of SEP-0001](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md#currency-documentation) and the [Asset fields from Horizon](https://developers.stellar.org/api/resources/assets/).
 ### Response Fields
 
 * `generated_at`: UNIX timestamp of when data was generated
@@ -234,7 +234,7 @@ Apart from the orderbook data provided by `markets.json`, orderbook data can be 
 The `type`, `code` and `issuer` parameters for any given asset can be found in the Ticker's `assets.json` endpoint described in the previous section.
 
 
-Full documentation on Horizon's Orderbook endpoint can be found [here](https://www.stellar.org/developers/horizon/reference/endpoints/orderbook-details.html).
+Full documentation on Horizon's Orderbook endpoint can be found [here](https://developers.stellar.org/api/aggregations/order-books/).
 
 ### Example
 #### Endpoint

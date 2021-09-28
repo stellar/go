@@ -7,7 +7,7 @@ import (
 )
 
 // Payment represents the Stellar payment operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type Payment struct {
 	Destination   string
 	Amount        string

@@ -90,25 +90,6 @@ var _ = Describe("sql.Scanner implementations", func() {
 		Entry("number", 0, Thresholds{}, false),
 	)
 
-	DescribeTable("ClaimableBalanceId",
-		func(in interface{}, val ClaimableBalanceId, shouldSucceed bool) {
-			var scanned ClaimableBalanceId
-			err := scanned.Scan(in)
-
-			if shouldSucceed {
-				Expect(err).To(BeNil())
-			} else {
-				Expect(err).ToNot(BeNil())
-			}
-
-			Expect(scanned).To(Equal(val))
-		},
-		Entry("default", "000000000102030000000000000000000000000000000000000000000000000000000000", ClaimableBalanceId{
-			Type: ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &Hash{1, 2, 3},
-		}, true),
-	)
-
 	DescribeTable("ClaimPredicate",
 		func(in interface{}, val ClaimPredicate, shouldSucceed bool) {
 			var scanned ClaimPredicate
@@ -148,14 +129,5 @@ var _ = Describe("sql.Scanner implementations", func() {
 			"AAAAAAAAAAEAAAACAAAAAAAAAAIAAAAAAAAAAOQRQdvh7PNQ0JP3AJSXrOUdPtz1EGmetjWSaCj7AVp7AAAAAlQL5AAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3DeC2sVNYGtQAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA"),
 		Entry("TransactionResult", &TransactionResult{},
 			"AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="),
-	)
-
-	DescribeTable("Scanning hex strings (happy paths only)",
-		func(dest interface{}, in string) {
-			err := dest.(sql.Scanner).Scan(in)
-			Expect(err).To(BeNil())
-		},
-		Entry("ClaimableBalance", &ClaimableBalanceId{},
-			"000000000102030000000000000000000000000000000000000000000000000000000000"),
 	)
 })

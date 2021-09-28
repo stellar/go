@@ -18,7 +18,7 @@ const (
 	_                    = iota
 	historyArchiveSource = ingestionSource(iota)
 	ledgerSource         = ingestionSource(iota)
-	logFrequency         = 100000
+	logFrequency         = 50000
 )
 
 type horizonChangeProcessor interface {

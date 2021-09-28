@@ -6,7 +6,7 @@ import (
 )
 
 // AccountMerge represents the Stellar merge account operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type AccountMerge struct {
 	Destination   string
 	SourceAccount string

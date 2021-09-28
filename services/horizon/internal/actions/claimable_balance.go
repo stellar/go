@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -23,28 +22,7 @@ type GetClaimableBalanceByIDHandler struct{}
 
 // ClaimableBalanceQuery query struct for claimables_balances/id end-point
 type ClaimableBalanceQuery struct {
-	ID string `schema:"id" valid:"-"`
-}
-
-// Validate validates the balance id
-func (q ClaimableBalanceQuery) Validate() error {
-	if _, err := balanceIDHex2XDR(q.ID, "id"); err != nil {
-		return err
-	}
-	return nil
-}
-
-// balanceIDHex2XDR returns the xdr.ClaimableBalanceId from it's hex representation
-func balanceIDHex2XDR(claimableBalanceID string, fieldName string) (xdr.ClaimableBalanceId, error) {
-	var balanceID xdr.ClaimableBalanceId
-	err := xdr.SafeUnmarshalHex(claimableBalanceID, &balanceID)
-	if err != nil {
-		return balanceID, problem.MakeInvalidFieldProblem(
-			fieldName,
-			fmt.Errorf("Invalid claimable balance ID"),
-		)
-	}
-	return balanceID, nil
+	ID string `schema:"id" valid:"claimableBalanceID,required"`
 }
 
 // GetResource returns an claimable balance page.
@@ -60,11 +38,7 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 	if err != nil {
 		return nil, err
 	}
-	balanceID, err := balanceIDHex2XDR(qp.ID, "id")
-	if err != nil {
-		return nil, err
-	}
-	cb, err := historyQ.FindClaimableBalanceByID(ctx, balanceID)
+	cb, err := historyQ.FindClaimableBalanceByID(ctx, qp.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -21,8 +21,10 @@ func TestPopulateClaimableBalance(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	id, err := xdr.MarshalHex(&balanceID)
+	tt.NoError(err)
 	claimableBalance := history.ClaimableBalance{
-		BalanceID: balanceID,
+		BalanceID: id,
 		Asset:     xdr.MustNewNativeAsset(),
 		Amount:    100000000,
 		Sponsor:   null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
@@ -38,7 +40,7 @@ func TestPopulateClaimableBalance(t *testing.T) {
 		Flags:              uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
 	}
 
-	err := PopulateClaimableBalance(ctx, &resource, claimableBalance, nil)
+	err = PopulateClaimableBalance(ctx, &resource, claimableBalance, nil)
 	tt.NoError(err)
 
 	tt.Equal("000000000102030000000000000000000000000000000000000000000000000000000000", resource.BalanceID)

@@ -104,7 +104,7 @@ func (q *TransactionsQ) ForAccount(ctx context.Context, aid string) *Transaction
 }
 
 // ForClaimableBalance filters the transactions collection to a specific claimable balance
-func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID xdr.ClaimableBalanceId) *TransactionsQ {
+func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID string) *TransactionsQ {
 
 	var hCB HistoryClaimableBalance
 	hCB, q.Err = q.parent.ClaimableBalanceByID(ctx, cbID)

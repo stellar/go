@@ -112,12 +112,12 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 	hexID, _ := xdr.MarshalHex(balanceID)
 
 	// Setup a q
-	s.mockQ.On("CreateHistoryClaimableBalances", s.ctx, mock.AnythingOfType("[]xdr.ClaimableBalanceId"), maxBatchSize).
+	s.mockQ.On("CreateHistoryClaimableBalances", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(1).([]xdr.ClaimableBalanceId)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
-				[]xdr.ClaimableBalanceId{
-					balanceID,
+				[]string{
+					hexID,
 				},
 				arg,
 			)

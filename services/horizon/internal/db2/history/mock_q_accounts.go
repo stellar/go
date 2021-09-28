@@ -2,9 +2,8 @@ package history
 
 import (
 	"context"
-	"github.com/stretchr/testify/mock"
 
-	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/mock"
 )
 
 // MockQAccounts is a mock implementation of the QAccounts interface
@@ -17,17 +16,12 @@ func (m *MockQAccounts) GetAccountsByIDs(ctx context.Context, ids []string) ([]A
 	return a.Get(0).([]AccountEntry), a.Error(1)
 }
 
-func (m *MockQAccounts) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
-	a := m.Called(maxBatchSize)
-	return a.Get(0).(AccountsBatchInsertBuilder)
-}
-
-func (m *MockQAccounts) UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error {
+func (m *MockQAccounts) UpsertAccounts(ctx context.Context, accounts []AccountEntry) error {
 	a := m.Called(ctx, accounts)
 	return a.Error(0)
 }
 
-func (m *MockQAccounts) RemoveAccount(ctx context.Context, accountID string) (int64, error) {
-	a := m.Called(ctx, accountID)
+func (m *MockQAccounts) RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error) {
+	a := m.Called(ctx, accountIDs)
 	return a.Get(0).(int64), a.Error(1)
 }

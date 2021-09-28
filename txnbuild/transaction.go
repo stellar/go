@@ -5,7 +5,7 @@ top of the Stellar network (https://www.stellar.org/). Transactions constructed 
 to any Horizon instance for processing onto the ledger, using any Stellar SDK client. The recommended client for Go
 programmers is horizonclient (https://github.com/stellar/go/tree/master/clients/horizonclient). Together, these two
 libraries provide a complete Stellar SDK.
-For more information and further examples, see https://www.stellar.org/developers/go/reference/index.html.
+For more information and further examples, see https://github.com/stellar/go/blob/master/docs/reference/readme.md
 */
 package txnbuild
 
@@ -32,7 +32,7 @@ import (
 const MinBaseFee = 100
 
 // Account represents the aspects of a Stellar account necessary to construct transactions. See
-// https://www.stellar.org/developers/guides/concepts/accounts.html
+// https://developers.stellar.org/docs/glossary/accounts/
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (int64, error)
@@ -201,7 +201,7 @@ func marshallBase64Bytes(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSi
 }
 
 // Transaction represents a Stellar transaction. See
-// https://www.stellar.org/developers/guides/concepts/transactions.html
+// https://developers.stellar.org/docs/glossary/transactions/
 // A Transaction may be wrapped by a FeeBumpTransaction in which case
 // the account authorizing the FeeBumpTransaction will pay for the transaction fees
 // instead of the Transaction's source account.
@@ -313,7 +313,7 @@ func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transa
 
 // SignHashX returns a new Transaction instance which extends the current instance
 // with HashX signature type.
-// See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
+// See description here: https://developers.stellar.org/docs/glossary/multisig/#hashx
 func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {
@@ -509,7 +509,7 @@ func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (
 
 // SignHashX returns a new FeeBumpTransaction instance which extends the current instance
 // with HashX signature type.
-// See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
+// See description here: https://developers.stellar.org/docs/glossary/multisig/#hashx
 func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
 	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {

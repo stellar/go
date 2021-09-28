@@ -86,7 +86,7 @@ func Reset(client *horizonclient.Client, keys []Account) {
 		}
 
 		// It exists - so we will proceed to deconstruct any existing account entries, and then merge it
-		// See https://www.stellar.org/developers/guides/concepts/ledger.html#ledger-entries
+		// See https://developers.stellar.org/docs/glossary/ledger/#ledger-entries
 		log.Info("Found testnet account with ID:", k.HAccount.ID)
 
 		// Find any offers that need deleting...

@@ -7,7 +7,7 @@ The Go SDK is a set of packages for interacting with most aspects of the Stellar
 ## Horizon SDK
 
 The Horizon SDK is composed of two complementary libraries: `txnbuild` + `horizonclient`.
-The `txnbuild` ([source](https://github.com/stellar/go/tree/master/txnbuild), [docs](https://godoc.org/github.com/stellar/go/txnbuild)) package enables the construction, signing and encoding of Stellar [transactions](https://www.stellar.org/developers/guides/concepts/transactions.html) and [operations](https://www.stellar.org/developers/guides/concepts/list-of-operations.html) in Go. The `horizonclient` ([source](https://github.com/stellar/go/tree/master/clients/horizonclient), [docs](https://godoc.org/github.com/stellar/go/clients/horizonclient)) package provides a web client for interfacing with [Horizon](https://www.stellar.org/developers/guides/get-started/) server REST endpoints to retrieve ledger information, and to submit transactions built with `txnbuild`.
+The `txnbuild` ([source](https://github.com/stellar/go/tree/master/txnbuild), [docs](https://godoc.org/github.com/stellar/go/txnbuild)) package enables the construction, signing and encoding of Stellar [transactions](https://developers.stellar.org/docs/glossary/transactions/) and [operations](https://developers.stellar.org/docs/start/list-of-operations/) in Go. The `horizonclient` ([source](https://github.com/stellar/go/tree/master/clients/horizonclient), [docs](https://godoc.org/github.com/stellar/go/clients/horizonclient)) package provides a web client for interfacing with [Horizon](https://developers.stellar.org/docs/start/introduction/) server REST endpoints to retrieve ledger information, and to submit transactions built with `txnbuild`.
 
 ## List of major SDK packages
 

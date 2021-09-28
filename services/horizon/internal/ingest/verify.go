@@ -434,11 +434,17 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 	return nil
 }
 
-func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, keys []xdr.LedgerKeyData) error {
-	if len(keys) == 0 {
+func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, lkeys []xdr.LedgerKeyData) error {
+	if len(lkeys) == 0 {
 		return nil
 	}
-
+	var keys []history.AccountDataKey
+	for _, k := range lkeys {
+		keys = append(keys, history.AccountDataKey{
+			AccountID: k.AccountId.Address(),
+			DataName:  string(k.DataName),
+		})
+	}
 	data, err := q.GetAccountDataByKeys(ctx, keys)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetAccountDataByKeys")
@@ -628,7 +634,15 @@ func addClaimableBalanceToStateVerifier(
 		return nil
 	}
 
-	cBalances, err := q.GetClaimableBalancesByID(ctx, ids)
+	var idStrings []string
+	for _, id := range ids {
+		idString, err := xdr.MarshalHex(id)
+		if err != nil {
+			return err
+		}
+		idStrings = append(idStrings, idString)
+	}
+	cBalances, err := q.GetClaimableBalancesByID(ctx, idStrings)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
 	}
@@ -645,8 +659,12 @@ func addClaimableBalanceToStateVerifier(
 			})
 		}
 		claimants = xdr.SortClaimantsByDestination(claimants)
-		var cBalance = xdr.ClaimableBalanceEntry{
-			BalanceId: row.BalanceID,
+		var balanceID xdr.ClaimableBalanceId
+		if err := xdr.SafeUnmarshalHex(row.BalanceID, &balanceID); err != nil {
+			return err
+		}
+		cBalance := xdr.ClaimableBalanceEntry{
+			BalanceId: balanceID,
 			Claimants: claimants,
 			Asset:     row.Asset,
 			Amount:    row.Amount,
