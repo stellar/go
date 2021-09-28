@@ -207,17 +207,6 @@ func TestUpdateOffer(t *testing.T) {
 	tt.Assert.Equal(offers[0], modifiedEurOffer)
 }
 
-func TestRemoveNonExistantOffer(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &Q{tt.HorizonSession()}
-
-	numAffected, err := q.RemoveOffers(tt.Ctx, []int64{12345}, 1236)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(0), numAffected)
-}
-
 func TestRemoveOffer(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -231,10 +220,12 @@ func TestRemoveOffer(t *testing.T) {
 	tt.Assert.Len(offers, 1)
 	tt.Assert.Equal(offers[0], eurOffer)
 
-	expectedUpdates := offers
-	rowsAffected, err := q.RemoveOffers(tt.Ctx, []int64{eurOffer.OfferID}, 1236)
-	tt.Assert.Equal(int64(1), rowsAffected)
+	deletedOffer := eurOffer
+	deletedOffer.Deleted = true
+	deletedOffer.LastModifiedLedger = 1236
+	err = q.UpsertOffers(tt.Ctx, []Offer{deletedOffer})
 	tt.Assert.NoError(err)
+	expectedUpdates := offers
 	expectedUpdates[0].LastModifiedLedger = 1236
 	expectedUpdates[0].Deleted = true
 
@@ -242,7 +233,7 @@ func TestRemoveOffer(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 0)
 
-	offers, err = q.GetOffersByIDs(tt.Ctx, []int64{int64(expectedUpdates[0].OfferID)})
+	offers, err = q.GetOffersByIDs(tt.Ctx, []int64{expectedUpdates[0].OfferID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 0)
 
@@ -287,9 +278,11 @@ func TestGetOffers(t *testing.T) {
 	// check removed offers aren't included in GetOffer queries
 	err = insertOffer(tt, q, threeEurOffer)
 	tt.Assert.NoError(err)
-	count, err := q.RemoveOffers(tt.Ctx, []int64{threeEurOffer.OfferID}, 1235)
+	deletedOffer := threeEurOffer
+	deletedOffer.Deleted = true
+	deletedOffer.LastModifiedLedger = 1235
+	err = q.UpsertOffers(tt.Ctx, []Offer{deletedOffer})
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), count)
 
 	pageQuery, err := db2.NewPageQuery("", false, "", 10)
 	tt.Assert.NoError(err)

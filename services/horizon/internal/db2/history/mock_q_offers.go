@@ -36,11 +36,6 @@ func (m *MockQOffers) UpsertOffers(ctx context.Context, rows []Offer) error {
 	return a.Error(0)
 }
 
-func (m *MockQOffers) RemoveOffers(ctx context.Context, offerIDs []int64, lastModifiedLedger uint32) (int64, error) {
-	a := m.Called(ctx, offerIDs, lastModifiedLedger)
-	return a.Get(0).(int64), a.Error(1)
-}
-
 func (m *MockQOffers) CompactOffers(ctx context.Context, cutOffSequence uint32) (int64, error) {
 	a := m.Called(ctx, cutOffSequence)
 	return a.Get(0).(int64), a.Error(1)
