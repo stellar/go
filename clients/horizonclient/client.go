@@ -289,14 +289,14 @@ func (c *Client) HorizonTimeout() time.Duration {
 
 // Accounts returns accounts who have a given signer or
 // have a trustline to an asset.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/accounts.html
+// See https://developers.stellar.org/api/resources/accounts/
 func (c *Client) Accounts(request AccountsRequest) (accounts hProtocol.AccountsPage, err error) {
 	err = c.sendRequest(request, &accounts)
 	return
 }
 
 // AccountDetail returns information for a single account.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/accounts-single.html
+// See https://developers.stellar.org/api/resources/accounts/single/
 func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Account, err error) {
 	if request.AccountID == "" {
 		err = errors.New("no account ID provided")
@@ -311,7 +311,7 @@ func (c *Client) AccountDetail(request AccountRequest) (account hProtocol.Accoun
 }
 
 // AccountData returns a single data associated with a given account
-// See https://www.stellar.org/developers/horizon/reference/endpoints/data-for-account.html
+// See https://developers.stellar.org/api/resources/accounts/data/
 func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.AccountData, err error) {
 	if request.AccountID == "" || request.DataKey == "" {
 		err = errors.New("too few parameters")
@@ -325,7 +325,7 @@ func (c *Client) AccountData(request AccountRequest) (accountData hProtocol.Acco
 	return
 }
 
-// Effects returns effects(https://www.stellar.org/developers/horizon/reference/resources/effect.html)
+// Effects returns effects (https://developers.stellar.org/api/resources/effects/)
 // It can be used to return effects for an account, a ledger, an operation, a transaction and all effects on the network.
 func (c *Client) Effects(request EffectRequest) (effects effects.EffectsPage, err error) {
 	err = c.sendRequest(request, &effects)
@@ -333,21 +333,21 @@ func (c *Client) Effects(request EffectRequest) (effects effects.EffectsPage, er
 }
 
 // Assets returns asset information.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/assets-all.html
+// See https://developers.stellar.org/api/resources/assets/list/
 func (c *Client) Assets(request AssetRequest) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequest(request, &assets)
 	return
 }
 
 // Ledgers returns information about all ledgers.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-all.html
+// See https://developers.stellar.org/api/resources/ledgers/list/
 func (c *Client) Ledgers(request LedgerRequest) (ledgers hProtocol.LedgersPage, err error) {
 	err = c.sendRequest(request, &ledgers)
 	return
 }
 
 // LedgerDetail returns information about a particular ledger for a given sequence number
-// See https://www.stellar.org/developers/horizon/reference/endpoints/ledgers-single.html
+// See https://developers.stellar.org/api/resources/ledgers/single/
 func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err error) {
 	if sequence == 0 {
 		err = errors.New("invalid sequence number provided")
@@ -363,7 +363,7 @@ func (c *Client) LedgerDetail(sequence uint32) (ledger hProtocol.Ledger, err err
 }
 
 // FeeStats returns information about fees in the last 5 ledgers.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/fee-stats.html
+// See https://developers.stellar.org/api/aggregations/fee-stats/
 func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 	request := feeStatsRequest{endpoint: "fee_stats"}
 	err = c.sendRequest(request, &feestats)
@@ -371,14 +371,14 @@ func (c *Client) FeeStats() (feestats hProtocol.FeeStats, err error) {
 }
 
 // Offers returns information about offers made on the SDEX.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/offers-for-account.html
+// See https://developers.stellar.org/api/resources/offers/list/
 func (c *Client) Offers(request OfferRequest) (offers hProtocol.OffersPage, err error) {
 	err = c.sendRequest(request, &offers)
 	return
 }
 
 // OfferDetails returns information for a single offer.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/offer-details.html
+// See https://developers.stellar.org/api/resources/offers/single/
 func (c *Client) OfferDetails(offerID string) (offer hProtocol.Offer, err error) {
 	if len(offerID) == 0 {
 		err = errors.New("no offer ID provided")
@@ -394,7 +394,7 @@ func (c *Client) OfferDetails(offerID string) (offer hProtocol.Offer, err error)
 	return
 }
 
-// Operations returns stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
+// Operations returns stellar operations (https://developers.stellar.org/api/resources/operations/list/)
 // It can be used to return operations for an account, a ledger, a transaction and all operations on the network.
 func (c *Client) Operations(request OperationRequest) (ops operations.OperationsPage, err error) {
 	err = c.sendRequest(request.SetOperationsEndpoint(), &ops)
@@ -402,7 +402,7 @@ func (c *Client) Operations(request OperationRequest) (ops operations.Operations
 }
 
 // OperationDetail returns a single stellar operation for a given operation id
-// See https://www.stellar.org/developers/horizon/reference/resources/operation.html
+// See https://developers.stellar.org/api/resources/operations/single/
 func (c *Client) OperationDetail(id string) (ops operations.Operation, err error) {
 	if id == "" {
 		return ops, errors.New("invalid operation id provided")
@@ -434,7 +434,7 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 }
 
 // SubmitTransactionXDR submits a transaction represented as a base64 XDR string to the network. err can be either error object or horizon.Error object.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+// See https://developers.stellar.org/api/resources/transactions/post/
 func (c *Client) SubmitTransactionXDR(transactionXdr string) (tx hProtocol.Transaction,
 	err error) {
 	request := submitRequest{endpoint: "transactions", transactionXdr: transactionXdr}
@@ -450,7 +450,7 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (tx hProtocol.Trans
 //
 // If you want to skip this check, use SubmitTransactionWithOptions.
 //
-// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+// See https://developers.stellar.org/api/resources/transactions/post/
 func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction) (tx hProtocol.Transaction, err error) {
 	return c.SubmitFeeBumpTransactionWithOptions(transaction, SubmitTxOpts{})
 }
@@ -458,7 +458,7 @@ func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransacti
 // SubmitFeeBumpTransactionWithOptions submits a fee bump transaction to the network, allowing
 // you to pass SubmitTxOpts. err can be either an error object or a horizon.Error object.
 //
-// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+// See https://developers.stellar.org/api/resources/transactions/post/
 func (c *Client) SubmitFeeBumpTransactionWithOptions(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (tx hProtocol.Transaction, err error) {
 	// only check if memo is required if skip is false and the inner transaction
 	// doesn't have a memo.
@@ -486,7 +486,7 @@ func (c *Client) SubmitFeeBumpTransactionWithOptions(transaction *txnbuild.FeeBu
 //
 // If you want to skip this check, use SubmitTransactionWithOptions.
 //
-// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+// See https://developers.stellar.org/api/resources/transactions/post/
 func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction) (tx hProtocol.Transaction, err error) {
 	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{})
 }
@@ -494,7 +494,7 @@ func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction) (tx hProto
 // SubmitTransactionWithOptions submits a transaction to the network, allowing
 // you to pass SubmitTxOpts. err can be either an error object or a horizon.Error object.
 //
-// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+// See https://developers.stellar.org/api/resources/transactions/post/
 func (c *Client) SubmitTransactionWithOptions(transaction *txnbuild.Transaction, opts SubmitTxOpts) (tx hProtocol.Transaction, err error) {
 	// only check if memo is required if skip is false and the transaction
 	// doesn't have a memo.
@@ -514,7 +514,7 @@ func (c *Client) SubmitTransactionWithOptions(transaction *txnbuild.Transaction,
 	return c.SubmitTransactionXDR(txeBase64)
 }
 
-// Transactions returns stellar transactions (https://www.stellar.org/developers/horizon/reference/resources/transaction.html)
+// Transactions returns stellar transactions (https://developers.stellar.org/api/resources/transactions/list/)
 // It can be used to return transactions for an account, a ledger,and all transactions on the network.
 func (c *Client) Transactions(request TransactionRequest) (txs hProtocol.TransactionsPage, err error) {
 	err = c.sendRequest(request, &txs)
@@ -522,7 +522,7 @@ func (c *Client) Transactions(request TransactionRequest) (txs hProtocol.Transac
 }
 
 // TransactionDetail returns information about a particular transaction for a given transaction hash
-// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-single.html
+// See https://developers.stellar.org/api/resources/transactions/single/
 func (c *Client) TransactionDetail(txHash string) (tx hProtocol.Transaction, err error) {
 	if txHash == "" {
 		return tx, errors.New("no transaction hash provided")
@@ -533,26 +533,26 @@ func (c *Client) TransactionDetail(txHash string) (tx hProtocol.Transaction, err
 	return
 }
 
-// OrderBook returns the orderbook for an asset pair (https://www.stellar.org/developers/horizon/reference/resources/orderbook.html)
+// OrderBook returns the orderbook for an asset pair (https://developers.stellar.org/api/aggregations/order-books/single/)
 func (c *Client) OrderBook(request OrderBookRequest) (obs hProtocol.OrderBookSummary, err error) {
 	err = c.sendRequest(request, &obs)
 	return
 }
 
-// Paths returns the available paths to make a strict receive path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html
+// Paths returns the available paths to make a strict receive path payment. See https://developers.stellar.org/api/aggregations/paths/strict-receive/
 // This function is an alias for `client.StrictReceivePaths` and will be deprecated, use `client.StrictReceivePaths` instead.
 func (c *Client) Paths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
 	paths, err = c.StrictReceivePaths(request)
 	return
 }
 
-// StrictReceivePaths returns the available paths to make a strict receive path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html
+// StrictReceivePaths returns the available paths to make a strict receive path payment. See https://developers.stellar.org/api/aggregations/paths/strict-receive/
 func (c *Client) StrictReceivePaths(request PathsRequest) (paths hProtocol.PathsPage, err error) {
 	err = c.sendRequest(request, &paths)
 	return
 }
 
-// StrictSendPaths returns the available paths to make a strict send path payment. See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html
+// StrictSendPaths returns the available paths to make a strict send path payment. See https://developers.stellar.org/api/aggregations/paths/strict-send/
 func (c *Client) StrictSendPaths(request StrictSendPathsRequest) (paths hProtocol.PathsPage, err error) {
 	err = c.sendRequest(request, &paths)
 	return
@@ -565,7 +565,7 @@ func (c *Client) Payments(request OperationRequest) (ops operations.OperationsPa
 	return
 }
 
-// Trades returns stellar trades (https://www.stellar.org/developers/horizon/reference/resources/trade.html)
+// Trades returns stellar trades (https://developers.stellar.org/api/resources/trades/list/)
 // It can be used to return trades for an account, an offer and all trades on the network.
 func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err error) {
 	err = c.sendRequest(request, &tds)
@@ -573,7 +573,7 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 }
 
 // Fund creates a new account funded from friendbot. It only works on test networks. See
-// https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
+// https://developers.stellar.org/docs/tutorials/create-account/ for more information.
 func (c *Client) Fund(addr string) (tx hProtocol.Transaction, err error) {
 	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
 	err = c.sendGetRequest(friendbotURL, &tx)
@@ -591,7 +591,7 @@ func (c *Client) StreamTrades(ctx context.Context, request TradeRequest, handler
 	return
 }
 
-// TradeAggregations returns stellar trade aggregations (https://www.stellar.org/developers/horizon/reference/resources/trade_aggregation.html)
+// TradeAggregations returns stellar trade aggregations (https://developers.stellar.org/api/aggregations/trade-aggregations/list/)
 func (c *Client) TradeAggregations(request TradeAggregationRequest) (tds hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequest(request, &tds)
 	return

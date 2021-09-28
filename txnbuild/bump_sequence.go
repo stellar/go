@@ -6,7 +6,7 @@ import (
 )
 
 // BumpSequence represents the Stellar bump sequence operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type BumpSequence struct {
 	BumpTo        int64
 	SourceAccount string

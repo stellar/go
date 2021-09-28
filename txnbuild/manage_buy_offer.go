@@ -7,7 +7,7 @@ import (
 )
 
 // ManageBuyOffer represents the Stellar manage buy offer operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type ManageBuyOffer struct {
 	Selling       Asset
 	Buying        Asset

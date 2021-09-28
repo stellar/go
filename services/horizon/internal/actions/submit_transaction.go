@@ -98,7 +98,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 			Detail: "The transaction failed when submitted to the stellar network. " +
 				"The `extras.result_codes` field on this response contains further " +
 				"details.  Descriptions of each code can be found at: " +
-				"https://www.stellar.org/developers/guides/concepts/list-of-operations.html",
+				"https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/transaction-failed/",
 			Extras: map[string]interface{}{
 				"envelope_xdr": info.raw,
 				"result_xdr":   err.ResultXDR,

@@ -6,7 +6,7 @@ import (
 )
 
 // Inflation represents the Stellar inflation operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type Inflation struct {
 	SourceAccount string
 }
