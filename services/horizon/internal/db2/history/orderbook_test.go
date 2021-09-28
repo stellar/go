@@ -269,12 +269,14 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 
 	assert.NoError(t, q.Rollback())
 
+	var offersToDelete []Offer
 	for i, offer := range offers {
-		var count int64
-		count, err = q.RemoveOffers(tt.Ctx, []int64{offer.OfferID}, uint32(i+2))
-		assert.NoError(t, err)
-		assert.Equal(t, int64(1), count)
+		toDelete := offer
+		toDelete.Deleted = true
+		toDelete.LastModifiedLedger = uint32(i + 2)
+		offersToDelete = append(offersToDelete, toDelete)
 	}
+	assert.NoError(t, q.UpsertOffers(tt.Ctx, offersToDelete))
 
 	assert.NoError(t, q.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
