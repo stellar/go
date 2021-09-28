@@ -565,8 +565,15 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	}.MarshalBinaryBase64()
 	s.Assert().NoError(err)
 	s.mockQ.On(
-		"RemoveTrustLines", s.ctx, []string{lkStr1, lkStr2},
-	).Return(int64(2), nil).Once()
+		"RemoveTrustLines", s.ctx, mock.Anything,
+	).Run(func(args mock.Arguments) {
+		// To fix order issue due to using ChangeCompactor
+		ledgerKeys := args.Get(1).([]string)
+		s.Assert().ElementsMatch(
+			ledgerKeys,
+			[]string{lkStr1, lkStr2},
+		)
+	}).Return(int64(2), nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
