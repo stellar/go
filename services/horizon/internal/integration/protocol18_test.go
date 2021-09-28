@@ -166,7 +166,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	liquidityPoolBalance := account.Balances[0]
 	tt.Equal("liquidity_pool_shares", liquidityPoolBalance.Asset.Type)
 	tt.Equal(poolIDHexString, liquidityPoolBalance.LiquidityPoolId)
-	tt.Equal("557.4943946", liquidityPoolBalance.Balance)
+	tt.Equal("557.4943945", liquidityPoolBalance.Balance)
 
 	usdBalance := account.Balances[1]
 	tt.Equal("credit_alphanum4", usdBalance.Asset.Type)
@@ -273,7 +273,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("400.0000000", op2.ReservesMax[0].Amount)
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op2.ReservesMax[1].Asset)
 	tt.Equal("777.0000000", op2.ReservesMax[1].Amount)
-	tt.Equal("557.4943946", op2.SharesReceived)
+	tt.Equal("557.4943945", op2.SharesReceived)
 
 	op3 := (ops.Embedded.Records[2]).(operations.PathPayment)
 	tt.Equal("path_payment_strict_receive", op3.Payment.Base.Type)
@@ -299,7 +299,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op4.ReservesReceived[1].Asset)
 	tt.Equal("775.0000000", op4.ReservesReceived[1].Amount)
 
-	tt.Equal("557.4943946", op4.Shares)
+	tt.Equal("557.4943945", op4.Shares)
 
 	op5 := (ops.Embedded.Records[4]).(operations.ChangeTrust)
 	tt.Equal("change_trust", op5.Type)
@@ -350,7 +350,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef3.LiquidityPool.ID)
 	tt.Equal("constant_product", ef3.LiquidityPool.Type)
 	tt.Equal(uint32(30), ef3.LiquidityPool.FeeBP)
-	tt.Equal("557.4943946", ef3.LiquidityPool.TotalShares)
+	tt.Equal("557.4943945", ef3.LiquidityPool.TotalShares)
 	tt.Equal(uint64(1), ef3.LiquidityPool.TotalTrustlines)
 
 	tt.Equal("native", ef3.LiquidityPool.Reserves[0].Asset)
@@ -363,7 +363,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef3.ReservesDeposited[1].Asset)
 	tt.Equal("777.0000000", ef3.ReservesDeposited[1].Amount)
 
-	tt.Equal("557.4943946", ef3.SharesReceived)
+	tt.Equal("557.4943945", ef3.SharesReceived)
 
 	ef4 := (effs.Embedded.Records[3]).(effects.AccountCredited)
 	tt.Equal("account_credited", ef4.Base.Type)
@@ -379,7 +379,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef6.LiquidityPool.ID)
 	tt.Equal("constant_product", ef6.LiquidityPool.Type)
 	tt.Equal(uint32(30), ef6.LiquidityPool.FeeBP)
-	tt.Equal("557.4943946", ef3.LiquidityPool.TotalShares)
+	tt.Equal("557.4943945", ef3.LiquidityPool.TotalShares)
 	tt.Equal(uint64(1), ef6.LiquidityPool.TotalTrustlines)
 	tt.Equal("native", ef6.LiquidityPool.Reserves[0].Asset)
 	tt.Equal("401.0353642", ef6.LiquidityPool.Reserves[0].Amount)
@@ -409,7 +409,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), ef7.ReservesReceived[1].Asset)
 	tt.Equal("775.0000000", ef7.ReservesReceived[1].Amount)
 
-	tt.Equal("557.4943946", ef7.SharesRedeemed)
+	tt.Equal("557.4943945", ef7.SharesRedeemed)
 
 	ef8 := (effs.Embedded.Records[7]).(effects.TrustlineRemoved)
 	tt.Equal("trustline_removed", ef8.Type)
@@ -570,7 +570,7 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	tt.Equal("400.0000000", op2.ReservesDeposited[0].Amount)
 	tt.Equal(fmt.Sprintf("USD:%s", master.Address()), op2.ReservesDeposited[1].Asset)
 	tt.Equal("777.0000000", op2.ReservesDeposited[1].Amount)
-	tt.Equal("557.4943946", op2.SharesReceived)
+	tt.Equal("557.4943945", op2.SharesReceived)
 
 	op3 := (ops.Embedded.Records[2]).(operations.SetTrustLineFlags)
 	tt.Equal("set_trust_line_flags", op3.Base.Type)
@@ -625,7 +625,7 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef3.LiquidityPool.ID)
 	tt.Equal("constant_product", ef3.LiquidityPool.Type)
 	tt.Equal(uint32(30), ef3.LiquidityPool.FeeBP)
-	tt.Equal("557.4943946", ef3.LiquidityPool.TotalShares)
+	tt.Equal("557.4943945", ef3.LiquidityPool.TotalShares)
 	tt.Equal(uint64(1), ef3.LiquidityPool.TotalTrustlines)
 
 	ef4 := (effs.Embedded.Records[3]).(effects.TrustlineFlagsUpdated)
@@ -665,7 +665,7 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 	tt.Equal("64e163b66108152665ee325cc333211446277c86bfe021b9da6bb1769b0daea1", ef9.LiquidityPool.ID)
 	tt.Equal("constant_product", ef9.LiquidityPool.Type)
 	tt.Equal(uint32(30), ef9.LiquidityPool.FeeBP)
-	tt.Equal("557.4943946", ef9.LiquidityPool.TotalShares)
+	tt.Equal("557.4943945", ef9.LiquidityPool.TotalShares)
 	tt.Equal(uint64(1), ef9.LiquidityPool.TotalTrustlines)
 	tt.Equal("native", ef9.LiquidityPool.Reserves[0].Asset)
 	tt.Equal("400.0000000", ef9.LiquidityPool.Reserves[0].Amount)
