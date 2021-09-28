@@ -115,8 +115,8 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 	// divide & check overflow
 	result := numer.Div(numer, denom)
 
-	// flooring might cause us to return 0, which is invalid
-	return xdr.Int64(result.Int64()), result.IsInt64() && result.Cmp(big.NewInt(0)) > 0
+	i := xdr.Int64(result.Int64())
+	return i, result.IsInt64() && i > 0
 }
 
 // calculatePoolExpectation determines how much of `reserveA` you would need to
