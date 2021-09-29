@@ -34,19 +34,19 @@ func (e edgeSet) addOffer(key string, offer xdr.OfferEntry) edgeSet {
 		return append(e, edge{key: key, value: Venues{offers: []xdr.OfferEntry{offer}}})
 	}
 
-	edge := e[i]
+	offers := e[i].value.offers
 	// find the smallest i such that Price of offers[i] >  Price of offer
-	insertIndex := sort.Search(len(edge.value.offers), func(j int) bool {
-		return offer.Price.Cheaper(edge.value.offers[j].Price)
+	insertIndex := sort.Search(len(offers), func(j int) bool {
+		return offer.Price.Cheaper(offers[j].Price)
 	})
 
 	// then insert it into the slice (taken from Method 2 at
 	// https://github.com/golang/go/wiki/SliceTricks#insert).
-	offers := append(edge.value.offers, xdr.OfferEntry{}) // add to end
-	copy(offers[insertIndex+1:], offers[insertIndex:])    // shift right by 1
-	offers[insertIndex] = offer                           // insert
+	offers = append(offers, xdr.OfferEntry{})          // add to end
+	copy(offers[insertIndex+1:], offers[insertIndex:]) // shift right by 1
+	offers[insertIndex] = offer                        // insert
 
-	e[i].value = Venues{offers: offers, pool: edge.value.pool}
+	e[i].value = Venues{offers: offers, pool: e[i].value.pool}
 	return e
 }
 
@@ -68,8 +68,7 @@ func (e edgeSet) removeOffer(key string, offerID xdr.Int64) (edgeSet, bool) {
 		return e, false
 	}
 
-	edge := e[i]
-	offers := edge.value.offers
+	offers := e[i].value.offers
 	updatedOffers := offers
 	contains := false
 	for i, offer := range offers {
@@ -88,7 +87,7 @@ func (e edgeSet) removeOffer(key string, offerID xdr.Int64) (edgeSet, bool) {
 		return e, false
 	}
 
-	if len(updatedOffers) == 0 && edge.value.pool.Body.ConstantProduct == nil {
+	if len(updatedOffers) == 0 && e[i].value.pool.Body.ConstantProduct == nil {
 		return append(e[:i], e[i+1:]...), true
 	}
 	e[i].value.offers = updatedOffers
