@@ -110,7 +110,9 @@ func dfs(
 		return nil
 	}
 
-	for nextAssetString, venues := range state.venues(currentAssetString) {
+	edges := state.venues(currentAssetString)
+	for i := 0; i < len(edges); i++ {
+		nextAssetString, venues := edges[i].key, edges[i].value
 		if contains(visitedAssetStrings, nextAssetString) {
 			continue
 		}
