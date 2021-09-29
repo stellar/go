@@ -290,11 +290,9 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		argsUInt32 := make([]uint32, 2)
 		for i, arg := range args {
-			if seq, err := strconv.Atoi(arg); err != nil {
+			if seq, err := strconv.ParseUint(arg, 10, 32); err != nil {
 				cmd.Usage()
 				return fmt.Errorf(`Invalid sequence number "%s"`, arg)
-			} else if seq < 0 {
-				return fmt.Errorf("sequence number %s cannot be negative", arg)
 			} else {
 				argsUInt32[i] = uint32(seq)
 			}
