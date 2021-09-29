@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Fails at unused DecodeOfferID but it may be useful in the future.
 package processors
 
 type OfferIDType uint64
