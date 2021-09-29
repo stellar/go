@@ -142,8 +142,8 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 
 	var offers []xdr.OfferEntry
 	for _, edges := range graph.venuesForSellingAsset {
-		for _, venue := range edges.values {
-			offers = append(offers, venue.offers...)
+		for _, edge := range edges {
+			offers = append(offers, edge.value.offers...)
 		}
 	}
 
@@ -202,15 +202,8 @@ func (graph *OrderBookGraph) addOffer(offer xdr.OfferEntry) error {
 		buyingAsset: buying, sellingAsset: selling,
 	}
 
-	sellingEdges := graph.venuesForSellingAsset[selling]
-	buyingEdges := graph.venuesForBuyingAsset[buying]
-
-	// Now shove the new offer into them.
-	sellingEdges.addOffer(buying, offer)
-	buyingEdges.addOffer(selling, offer)
-
-	graph.venuesForSellingAsset[selling] = sellingEdges
-	graph.venuesForBuyingAsset[buying] = buyingEdges
+	graph.venuesForSellingAsset[selling] = graph.venuesForSellingAsset[selling].addOffer(buying, offer)
+	graph.venuesForBuyingAsset[buying] = graph.venuesForBuyingAsset[buying].addOffer(selling, offer)
 
 	return nil
 }
@@ -226,12 +219,8 @@ func (graph *OrderBookGraph) addPool(pool xdr.LiquidityPoolEntry) {
 		graph.venuesForBuyingAsset,
 		graph.venuesForSellingAsset,
 	} {
-		edgesForX := table[x]
-		edgesForX.addPool(y, pool)
-		edgesForY := table[y]
-		edgesForY.addPool(x, pool)
-		table[x] = edgesForX
-		table[y] = edgesForY
+		table[x] = table[x].addPool(y, pool)
+		table[y] = table[y].addPool(x, pool)
 	}
 }
 
@@ -246,9 +235,9 @@ func (graph *OrderBookGraph) removeOffer(offerID xdr.Int64) error {
 
 	if set, ok := graph.venuesForSellingAsset[pair.sellingAsset]; !ok {
 		return errOfferNotPresent
-	} else if !set.removeOffer(pair.buyingAsset, offerID) {
+	} else if set, ok = set.removeOffer(pair.buyingAsset, offerID); !ok {
 		return errOfferNotPresent
-	} else if len(set.values) == 0 {
+	} else if len(set) == 0 {
 		delete(graph.venuesForSellingAsset, pair.sellingAsset)
 	} else {
 		graph.venuesForSellingAsset[pair.sellingAsset] = set
@@ -256,9 +245,9 @@ func (graph *OrderBookGraph) removeOffer(offerID xdr.Int64) error {
 
 	if set, ok := graph.venuesForBuyingAsset[pair.buyingAsset]; !ok {
 		return errOfferNotPresent
-	} else if !set.removeOffer(pair.sellingAsset, offerID) {
+	} else if set, ok = set.removeOffer(pair.sellingAsset, offerID); !ok {
 		return errOfferNotPresent
-	} else if len(set.values) == 0 {
+	} else if len(set) == 0 {
 		delete(graph.venuesForBuyingAsset, pair.buyingAsset)
 	} else {
 		graph.venuesForBuyingAsset[pair.buyingAsset] = set
@@ -281,9 +270,7 @@ func (graph *OrderBookGraph) removePool(pool xdr.LiquidityPoolEntry) {
 			graph.venuesForBuyingAsset,
 			graph.venuesForSellingAsset,
 		} {
-			edges := table[asset]
-			edges.removePool(otherAsset)
-			table[asset] = edges
+			table[asset] = table[asset].removePool(otherAsset)
 		}
 	}
 

@@ -9,14 +9,16 @@ import (
 // edgeSet maintains a mapping of strings (asset keys) to a set of venues, which
 // is composed of a sorted lists of offers and, optionally, a liquidity pool.
 // The offers are sorted by ascending price (in terms of the buying asset).
-type edgeSet struct {
-	keys   []string
-	values []Venues
+type edgeSet []edge
+
+type edge struct {
+	key   string
+	value Venues
 }
 
-func findKey(keys []string, key string) int {
-	for i := 0; i < len(keys); i++ {
-		if keys[i] == key {
+func (e edgeSet) find(key string) int {
+	for i := 0; i < len(e); i++ {
+		if e[i].key == key {
 			return i
 		}
 	}
@@ -24,55 +26,50 @@ func findKey(keys []string, key string) int {
 }
 
 // addOffer will insert the given offer into the edge set
-func (e *edgeSet) addOffer(key string, offer xdr.OfferEntry) {
+func (e edgeSet) addOffer(key string, offer xdr.OfferEntry) edgeSet {
 	// The list of offers in a venue is sorted by cheapest to most expensive
 	// price to convert buyingAsset to sellingAsset
-	i := findKey(e.keys, key)
+	i := e.find(key)
 	if i < 0 {
-		e.keys = append(e.keys, key)
-		e.values = append(e.values, Venues{
-			offers: []xdr.OfferEntry{offer},
-		})
-		return
+		return append(e, edge{key: key, value: Venues{offers: []xdr.OfferEntry{offer}}})
 	}
 
-	venues := e.values[i]
+	edge := e[i]
 	// find the smallest i such that Price of offers[i] >  Price of offer
-	insertIndex := sort.Search(len(venues.offers), func(i int) bool {
-		return offer.Price.Cheaper(venues.offers[i].Price)
+	insertIndex := sort.Search(len(edge.value.offers), func(j int) bool {
+		return offer.Price.Cheaper(edge.value.offers[j].Price)
 	})
 
 	// then insert it into the slice (taken from Method 2 at
 	// https://github.com/golang/go/wiki/SliceTricks#insert).
-	offers := append(venues.offers, xdr.OfferEntry{})  // add to end
-	copy(offers[insertIndex+1:], offers[insertIndex:]) // shift right by 1
-	offers[insertIndex] = offer                        // insert
+	offers := append(edge.value.offers, xdr.OfferEntry{}) // add to end
+	copy(offers[insertIndex+1:], offers[insertIndex:])    // shift right by 1
+	offers[insertIndex] = offer                           // insert
 
-	e.values[i] = Venues{offers: offers, pool: venues.pool}
+	e[i].value = Venues{offers: offers, pool: edge.value.pool}
+	return e
 }
 
 // addPool makes `pool` a viable venue at `key`.
-func (e *edgeSet) addPool(key string, pool xdr.LiquidityPoolEntry) {
-	i := findKey(e.keys, key)
+func (e edgeSet) addPool(key string, pool xdr.LiquidityPoolEntry) edgeSet {
+	i := e.find(key)
 	if i < 0 {
-		e.keys = append(e.keys, key)
-		e.values = append(e.values, Venues{
-			pool: pool,
-		})
-		return
+		return append(e, edge{key: key, value: Venues{pool: pool}})
 	}
-	e.values[i].pool = pool
+	e[i].value.pool = pool
+	return e
 }
 
 // removeOffer will delete the given offer from the edge set, returning whether
 // or not the given offer was actually found.
-func (e *edgeSet) removeOffer(key string, offerID xdr.Int64) bool {
-	i := findKey(e.keys, key)
+func (e edgeSet) removeOffer(key string, offerID xdr.Int64) (edgeSet, bool) {
+	i := e.find(key)
 	if i < 0 {
-		return false
+		return e, false
 	}
 
-	offers := e.values[i].offers
+	edge := e[i]
+	offers := edge.value.offers
 	updatedOffers := offers
 	contains := false
 	for i, offer := range offers {
@@ -88,30 +85,26 @@ func (e *edgeSet) removeOffer(key string, offerID xdr.Int64) bool {
 	}
 
 	if !contains {
-		return false
+		return e, false
 	}
 
-	if len(updatedOffers) == 0 && e.values[i].pool.Body.ConstantProduct == nil {
-		e.values = append(e.values[:i], e.values[i+1:]...)
-		e.keys = append(e.keys[:i], e.keys[i+1:]...)
-	} else {
-		e.values[i].offers = updatedOffers
+	if len(updatedOffers) == 0 && edge.value.pool.Body.ConstantProduct == nil {
+		return append(e[:i], e[i+1:]...), true
 	}
-
-	return true
+	e[i].value.offers = updatedOffers
+	return e, true
 }
 
-func (e *edgeSet) removePool(key string) {
-	i := findKey(e.keys, key)
+func (e edgeSet) removePool(key string) edgeSet {
+	i := e.find(key)
 	if i < 0 {
-		return
+		return e
 	}
 
-	if len(e.values[i].offers) == 0 {
-		e.values = append(e.values[:i], e.values[i+1:]...)
-		e.keys = append(e.keys[:i], e.keys[i+1:]...)
-		return
+	if len(e[i].value.offers) == 0 {
+		return append(e[:i], e[i+1:]...)
 	}
 
-	e.values[i] = Venues{offers: e.values[i].offers}
+	e[i].value = Venues{offers: e[i].value.offers}
+	return e
 }

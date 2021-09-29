@@ -111,16 +111,14 @@ func dfs(
 	}
 
 	edges := state.venues(currentAssetString)
-	assets := edges.keys
-	venues := edges.values
-	for i := 0; i < len(assets); i++ {
-		nextAssetString := assets[i]
+	for i := 0; i < len(edges); i++ {
+		nextAssetString, venues := edges[i].key, edges[i].value
 		if contains(visitedAssetStrings, nextAssetString) {
 			continue
 		}
 
 		nextAsset, nextAssetAmount, err := processVenues(state,
-			currentAsset, currentAssetAmount, venues[i])
+			currentAsset, currentAssetAmount, venues)
 		if err != nil {
 			return err
 		}
