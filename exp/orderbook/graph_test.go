@@ -322,10 +322,9 @@ func assertPathEquals(t *testing.T, a, b []Path) {
 }
 
 func findByAsset(edges edgeSet, asset string) Venues {
-	for _, edge := range edges {
-		if edge.key == asset {
-			return edge.value
-		}
+	i := edges.find(asset)
+	if i >= 0 {
+		return edges[i].value
 	}
 	return Venues{}
 }
