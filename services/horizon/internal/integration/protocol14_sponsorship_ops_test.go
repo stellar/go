@@ -612,6 +612,7 @@ func TestSponsorships(t *testing.T) {
 		effRecords := getEffectsByOp(revokeOp.ID)
 		tt.Len(effRecords, 1)
 		effect := effRecords[0].(effects.TrustlineSponsorshipUpdated)
+		tt.Equal("credit_alphanum4", effect.Type)
 		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
 		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
 
@@ -638,6 +639,7 @@ func TestSponsorships(t *testing.T) {
 		effRecords = getEffectsByTx(txResp.ID)
 		tt.Len(effRecords, 1)
 		sponsorshipRemoved := effRecords[0].(effects.TrustlineSponsorshipRemoved)
+		tt.Equal("credit_alphanum4", sponsorshipRemoved.Type)
 		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
 		tt.Equal(canonicalAsset, sponsorshipRemoved.Asset)
 	})

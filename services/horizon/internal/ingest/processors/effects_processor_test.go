@@ -2710,9 +2710,9 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 			operationID: 4294967297,
 			details: map[string]interface{}{
-				"asset":      "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"asset_type": "credit_alphanum4",
-				"sponsor":    "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+				"asset": "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				// `asset_type` set in `Effect.UnmarshalDetails` to prevent reingestion
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 			},
 		},
 		{
@@ -2721,8 +2721,8 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 			operationID: 4294967297,
 			details: map[string]interface{}{
-				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"asset_type":     "credit_alphanum4",
+				"asset": "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				// `asset_type` set in `Effect.UnmarshalDetails` to prevent reingestion
 				"former_sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 				"new_sponsor":    "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 			},
@@ -2733,8 +2733,8 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 			operationID: 4294967297,
 			details: map[string]interface{}{
-				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"asset_type":     "credit_alphanum4",
+				"asset": "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				// `asset_type` set in `Effect.UnmarshalDetails` to prevent reingestion
 				"former_sponsor": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 			},
 		},
