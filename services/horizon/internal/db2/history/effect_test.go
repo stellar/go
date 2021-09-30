@@ -135,7 +135,8 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 	opID := toid.New(sequence, 1, 1).ToInt64()
 
 	for i, test := range tests {
-		bytes, err := json.Marshal(test.details)
+		var bytes []byte
+		bytes, err = json.Marshal(test.details)
 		tt.Require.NoError(err)
 
 		err = builder.Add(tt.Ctx,
