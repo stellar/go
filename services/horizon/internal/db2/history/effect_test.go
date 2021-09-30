@@ -2,9 +2,11 @@ package history
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
@@ -18,7 +20,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	// Insert Effect
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accounIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
+	accountIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
 	tt.Assert.NoError(err)
 
 	builder := q.NewEffectBatchInsertBuilder(2)
@@ -29,7 +31,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	})
 	opID := toid.New(sequence, 1, 1).ToInt64()
 	err = builder.Add(tt.Ctx,
-		accounIDs[address],
+		accountIDs[address],
 		null.StringFrom(muxedAddres),
 		opID,
 		1,
@@ -61,4 +63,120 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	tt.Assert.Len(result, 1)
 	tt.Assert.Equal(result[0].Account, address)
 
+}
+
+func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
+	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
+	accountIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
+	tt.Assert.NoError(err)
+
+	builder := q.NewEffectBatchInsertBuilder(1)
+	sequence := int32(56)
+	tests := []struct {
+		effectType        EffectType
+		details           map[string]string
+		expectedAssetType string
+	}{
+		{
+			EffectTrustlineSponsorshipCreated,
+			map[string]string{
+				"asset":   "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+			"credit_alphanum4",
+		},
+		{
+			EffectTrustlineSponsorshipCreated,
+			map[string]string{
+				"asset":   "USDCE:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+			"credit_alphanum12",
+		},
+		{
+			EffectTrustlineSponsorshipUpdated,
+			map[string]string{
+				"asset":   "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+			"credit_alphanum4",
+		},
+		{
+			EffectTrustlineSponsorshipUpdated,
+			map[string]string{
+				"asset":   "USDCE:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+			"credit_alphanum12",
+		},
+		{
+			EffectTrustlineSponsorshipRemoved,
+			map[string]string{
+				"asset":   "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+			"credit_alphanum4",
+		},
+		{
+			EffectTrustlineSponsorshipRemoved,
+			map[string]string{
+				"asset":   "USDCE:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			},
+			"credit_alphanum12",
+		},
+	}
+	opID := toid.New(sequence, 1, 1).ToInt64()
+
+	for i, test := range tests {
+		var bytes []byte
+		bytes, err = json.Marshal(test.details)
+		tt.Require.NoError(err)
+
+		err = builder.Add(tt.Ctx,
+			accountIDs[address],
+			null.StringFrom(muxedAddres),
+			opID,
+			uint32(i),
+			test.effectType,
+			bytes,
+		)
+		tt.Require.NoError(err)
+	}
+
+	err = builder.Exec(tt.Ctx)
+	tt.Require.NoError(err)
+
+	var results []Effect
+	err = q.Effects().Select(tt.Ctx, &results)
+	tt.Require.NoError(err)
+	tt.Require.Len(results, len(tests))
+
+	for i, test := range tests {
+		switch test.effectType {
+		case EffectTrustlineSponsorshipCreated:
+			var eff effects.TrustlineSponsorshipCreated
+			err := results[i].UnmarshalDetails(&eff)
+			tt.Require.NoError(err)
+			tt.Assert.Equal(test.expectedAssetType, eff.Type)
+		case EffectTrustlineSponsorshipUpdated:
+			var eff effects.TrustlineSponsorshipUpdated
+			err := results[i].UnmarshalDetails(&eff)
+			tt.Require.NoError(err)
+			tt.Assert.Equal(test.expectedAssetType, eff.Type)
+		case EffectTrustlineSponsorshipRemoved:
+			var eff effects.TrustlineSponsorshipRemoved
+			err := results[i].UnmarshalDetails(&eff)
+			tt.Require.NoError(err)
+			tt.Assert.Equal(test.expectedAssetType, eff.Type)
+		default:
+			panic(fmt.Sprintf("Unknown type %v", test.effectType))
+		}
+	}
 }

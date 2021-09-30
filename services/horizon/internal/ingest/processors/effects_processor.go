@@ -424,13 +424,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 			details["asset_type"] = "liquidity_pool"
 			details["liquidity_pool_id"] = PoolIDToString(*tl.Asset.LiquidityPoolId)
 		} else {
-			asset := tl.Asset.ToAsset()
-			var assetType string
-			if err := asset.Extract(&assetType, nil, nil); err != nil {
-				return err
-			}
-			details["asset_type"] = assetType
-			details["asset"] = asset.StringCanonical()
+			details["asset"] = tl.Asset.ToAsset().StringCanonical()
 		}
 	case xdr.LedgerEntryTypeData:
 		muxedAccount = e.operation.SourceAccount()
