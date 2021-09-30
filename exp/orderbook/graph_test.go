@@ -561,6 +561,13 @@ func TestAddOffersOrderBook(t *testing.T) {
 	assertGraphEquals(t, expectedGraph, graph)
 }
 
+func clonePool(entry xdr.LiquidityPoolEntry) xdr.LiquidityPoolEntry {
+	clone := entry
+	body := entry.Body.MustConstantProduct()
+	clone.Body.ConstantProduct = &body
+	return clone
+}
+
 func setupGraphWithLiquidityPools(t *testing.T) (*OrderBookGraph, []xdr.LiquidityPoolEntry) {
 	graph := NewOrderBookGraph()
 	graph.AddLiquidityPools(nativeEurPool, nativeUsdPool)
@@ -602,8 +609,12 @@ func TestAddLiquidityPools(t *testing.T) {
 
 func TestUpdateLiquidityPools(t *testing.T) {
 	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
-	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
-	expectedLiquidityPools[1].Body.ConstantProduct.ReserveB -= 2
+	p0 := clonePool(expectedLiquidityPools[0])
+	p1 := clonePool(expectedLiquidityPools[1])
+	p0.Body.ConstantProduct.ReserveA += 100
+	p1.Body.ConstantProduct.ReserveB -= 2
+	expectedLiquidityPools[0] = p0
+	expectedLiquidityPools[1] = p1
 
 	graph.AddLiquidityPools(expectedLiquidityPools[:2]...)
 	if !assert.NoError(t, graph.Apply(2)) {
@@ -615,7 +626,9 @@ func TestUpdateLiquidityPools(t *testing.T) {
 
 func TestRemoveLiquidityPools(t *testing.T) {
 	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
-	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
+	p0 := clonePool(expectedLiquidityPools[0])
+	p0.Body.ConstantProduct.ReserveA += 100
+	expectedLiquidityPools[0] = p0
 
 	graph.AddLiquidityPools(expectedLiquidityPools[0])
 	graph.RemoveLiquidityPool(expectedLiquidityPools[1])
@@ -2059,7 +2072,7 @@ func TestInterleavedPaths(t *testing.T) {
 		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
 	}, {
 		SourceAsset:       chfAsset,
-		SourceAmount:      58,
+		SourceAmount:      53,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 5,
 		InteriorNodes:     []xdr.Asset{usdAsset},
@@ -2079,7 +2092,7 @@ func TestInterleavedPaths(t *testing.T) {
 
 	expectedPaths = []Path{{
 		SourceAsset:       chfAsset,
-		SourceAmount:      186,
+		SourceAmount:      164,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 11,
 		InteriorNodes:     []xdr.Asset{usdAsset},
@@ -2128,7 +2141,7 @@ func TestInterleavedFixedPaths(t *testing.T) {
 			SourceAsset:       nativeAsset,
 			SourceAmount:      1234,
 			DestinationAsset:  chfAsset,
-			DestinationAmount: 12,
+			DestinationAmount: 13,
 			InteriorNodes:     []xdr.Asset{usdAsset},
 		}, {
 			SourceAsset:       nativeAsset,

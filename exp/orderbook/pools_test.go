@@ -37,7 +37,7 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 		}{
 			{yenAsset, eurYenLiquidityPool, 100, 112},
 			{eurAsset, eurUsdLiquidityPool, 112, 127},
-			{nativeAsset, nativeUsdPool, 5, 27},
+			{nativeAsset, nativeUsdPool, 5, 25},
 			{usdAsset, usdChfLiquidityPool, 127, 342},
 			{usdAsset, usdChfLiquidityPool, 27, 58},
 		}
