@@ -964,7 +964,8 @@ func (e *effectsWrapper) addClaimableBalanceEntryCreatedEffects(source *xdr.Muxe
 	// operation causing a revocation.
 	// In case of `create_claimable_balance` we use `op.Claimants` to make
 	// effects backward compatible. The reason for this is that Stellar-Core
-	// changes all `rel_before` predicated to `abs_before`.
+	// changes all `rel_before` predicated to `abs_before` when tx is included
+	// in the ledger.
 	var claimants []xdr.Claimant
 	if op, ok := e.operation.operation.Body.GetCreateClaimableBalanceOp(); ok {
 		claimants = op.Claimants
