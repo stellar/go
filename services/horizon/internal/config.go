@@ -45,8 +45,8 @@ type Config struct {
 	LogFile            string
 
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
-	MaxPathLength         uint
-	EnablePoolPathFinding bool
+	MaxPathLength          uint
+	DisablePoolPathFinding bool
 
 	NetworkPassphrase string
 	SentryDSN         string
