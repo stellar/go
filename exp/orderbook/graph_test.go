@@ -561,6 +561,13 @@ func TestAddOffersOrderBook(t *testing.T) {
 	assertGraphEquals(t, expectedGraph, graph)
 }
 
+func clonePool(entry xdr.LiquidityPoolEntry) xdr.LiquidityPoolEntry {
+	clone := entry
+	body := entry.Body.MustConstantProduct()
+	clone.Body.ConstantProduct = &body
+	return clone
+}
+
 func setupGraphWithLiquidityPools(t *testing.T) (*OrderBookGraph, []xdr.LiquidityPoolEntry) {
 	graph := NewOrderBookGraph()
 	graph.AddLiquidityPools(nativeEurPool, nativeUsdPool)
@@ -602,8 +609,12 @@ func TestAddLiquidityPools(t *testing.T) {
 
 func TestUpdateLiquidityPools(t *testing.T) {
 	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
-	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
-	expectedLiquidityPools[1].Body.ConstantProduct.ReserveB -= 2
+	p0 := clonePool(expectedLiquidityPools[0])
+	p1 := clonePool(expectedLiquidityPools[1])
+	p0.Body.ConstantProduct.ReserveA += 100
+	p1.Body.ConstantProduct.ReserveB -= 2
+	expectedLiquidityPools[0] = p0
+	expectedLiquidityPools[1] = p1
 
 	graph.AddLiquidityPools(expectedLiquidityPools[:2]...)
 	if !assert.NoError(t, graph.Apply(2)) {
@@ -615,7 +626,9 @@ func TestUpdateLiquidityPools(t *testing.T) {
 
 func TestRemoveLiquidityPools(t *testing.T) {
 	graph, expectedLiquidityPools := setupGraphWithLiquidityPools(t)
-	expectedLiquidityPools[0].Body.ConstantProduct.ReserveA += 100
+	p0 := clonePool(expectedLiquidityPools[0])
+	p0.Body.ConstantProduct.ReserveA += 100
+	expectedLiquidityPools[0] = p0
 
 	graph.AddLiquidityPools(expectedLiquidityPools[0])
 	graph.RemoveLiquidityPool(expectedLiquidityPools[1])
@@ -1453,6 +1466,7 @@ func TestFindPaths(t *testing.T) {
 		},
 		true,
 		5,
+		true,
 	)
 	assert.NoError(t, err)
 	assertPathEquals(t, paths, []Path{})
@@ -1474,6 +1488,7 @@ func TestFindPaths(t *testing.T) {
 		},
 		true,
 		5,
+		true,
 	)
 
 	expectedPaths := []Path{
@@ -1525,6 +1540,7 @@ func TestFindPaths(t *testing.T) {
 		},
 		false,
 		5,
+		true,
 	)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, lastLedger)
@@ -1546,6 +1562,7 @@ func TestFindPaths(t *testing.T) {
 		},
 		true,
 		5,
+		true,
 	)
 
 	expectedPaths = []Path{
@@ -1608,6 +1625,7 @@ func TestFindPaths(t *testing.T) {
 		},
 		true,
 		5,
+		true,
 	)
 
 	expectedPaths = []Path{
@@ -1738,6 +1756,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		5,
 		[]xdr.Asset{nativeAsset},
 		5,
+		true,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1774,6 +1793,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		5,
 		[]xdr.Asset{nativeAsset},
 		5,
+		true,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1793,6 +1813,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		5,
 		[]xdr.Asset{nativeAsset},
 		5,
+		true,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1823,6 +1844,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		5,
 		[]xdr.Asset{nativeAsset},
 		5,
+		true,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1864,6 +1886,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		5,
 		[]xdr.Asset{nativeAsset, usdAsset},
 		5,
+		true,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
@@ -1931,6 +1954,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			[]xdr.Int64{127}, // we only exactly the right amount of $ to trade
 			true,
 			5, // irrelevant
+			true,
 		)
 
 		// The path should go USD -> EUR -> Yen, jumping through both liquidity
@@ -1950,11 +1974,30 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		assertPathEquals(t, expectedPaths, paths)
 	})
 
+	t.Run("exclude pools", func(t *testing.T) {
+		paths, _, err := graph.FindPaths(
+			context.TODO(),
+			5,           // more than enough hops
+			yenAsset,    // path should go USD -> EUR -> Yen
+			100,         // less than LP reserves for either pool
+			&fakeSource, // fake source account to ignore pools from
+			[]xdr.Asset{usdAsset},
+			[]xdr.Int64{127}, // we only exactly the right amount of $ to trade
+			true,
+			5, // irrelevant
+			false,
+		)
+
+		assert.NoError(t, err)
+		assert.Empty(t, paths)
+	})
+
 	t.Run("not enough source balance", func(t *testing.T) {
 		paths, _, err := graph.FindPaths(context.TODO(),
 			5, yenAsset, 100, &fakeSource, []xdr.Asset{usdAsset},
 			[]xdr.Int64{126}, // the only change: we're short on balance now
 			true, 5,
+			true,
 		)
 
 		assert.NoError(t, err)
@@ -1973,6 +2016,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			[]xdr.Int64{342},
 			true,
 			5,
+			true,
 		)
 
 		expectedPaths := []Path{{
@@ -2041,6 +2085,7 @@ func TestInterleavedPaths(t *testing.T) {
 		[]xdr.Int64{1000},
 		true,
 		5,
+		true,
 	)
 
 	// There should be two paths: one that consumes the EUR/XLM offers and one
@@ -2059,12 +2104,46 @@ func TestInterleavedPaths(t *testing.T) {
 		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
 	}, {
 		SourceAsset:       chfAsset,
-		SourceAmount:      58,
+		SourceAmount:      53,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 5,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
 
+	assert.NoError(t, err)
+	assertPathEquals(t, expectedPaths, paths)
+
+	paths, _, err = graph.FindPaths(context.TODO(),
+		5,
+		nativeAsset,
+		5,
+		&fakeSource,
+		[]xdr.Asset{chfAsset},
+		[]xdr.Int64{1000},
+		true,
+		5,
+		false,
+	)
+	assert.NoError(t, err)
+
+	onlyOffersGraph := NewOrderBookGraph()
+	for _, offer := range graph.Offers() {
+		onlyOffersGraph.addOffer(offer)
+	}
+	if !assert.NoErrorf(t, onlyOffersGraph.Apply(2), "applying offers to graph failed") {
+		t.FailNow()
+	}
+	expectedPaths, _, err = onlyOffersGraph.FindPaths(context.TODO(),
+		5,
+		nativeAsset,
+		5,
+		&fakeSource,
+		[]xdr.Asset{chfAsset},
+		[]xdr.Int64{1000},
+		true,
+		5,
+		false,
+	)
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
 
@@ -2074,12 +2153,12 @@ func TestInterleavedPaths(t *testing.T) {
 		5,
 		nativeAsset, 11, // only change: more than the offer has
 		&fakeSource, []xdr.Asset{chfAsset}, []xdr.Int64{1000},
-		true, 5,
+		true, 5, true,
 	)
 
 	expectedPaths = []Path{{
 		SourceAsset:       chfAsset,
-		SourceAmount:      186,
+		SourceAmount:      164,
 		DestinationAsset:  nativeAsset,
 		DestinationAmount: 11,
 		InteriorNodes:     []xdr.Asset{usdAsset},
@@ -2121,6 +2200,7 @@ func TestInterleavedFixedPaths(t *testing.T) {
 		1234,
 		[]xdr.Asset{chfAsset},
 		5,
+		true,
 	)
 
 	expectedPaths := []Path{
@@ -2128,7 +2208,7 @@ func TestInterleavedFixedPaths(t *testing.T) {
 			SourceAsset:       nativeAsset,
 			SourceAmount:      1234,
 			DestinationAsset:  chfAsset,
-			DestinationAmount: 12,
+			DestinationAmount: 13,
 			InteriorNodes:     []xdr.Asset{usdAsset},
 		}, {
 			SourceAsset:       nativeAsset,
@@ -2138,6 +2218,35 @@ func TestInterleavedFixedPaths(t *testing.T) {
 			InteriorNodes:     []xdr.Asset{eurAsset, usdAsset},
 		},
 	}
+
+	assert.NoError(t, err)
+	assertPathEquals(t, expectedPaths, paths)
+
+	paths, _, err = graph.FindFixedPaths(context.TODO(),
+		5,
+		nativeAsset,
+		1234,
+		[]xdr.Asset{chfAsset},
+		5,
+		false,
+	)
+	assert.NoError(t, err)
+
+	onlyOffersGraph := NewOrderBookGraph()
+	for _, offer := range graph.Offers() {
+		onlyOffersGraph.addOffer(offer)
+	}
+	if !assert.NoErrorf(t, onlyOffersGraph.Apply(2), "applying offers to graph failed") {
+		t.FailNow()
+	}
+	expectedPaths, _, err = onlyOffersGraph.FindFixedPaths(context.TODO(),
+		5,
+		nativeAsset,
+		1234,
+		[]xdr.Asset{chfAsset},
+		5,
+		true,
+	)
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)

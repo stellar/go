@@ -45,6 +45,8 @@ type Venues struct {
 }
 
 type searchState interface {
+	considerPools() bool
+
 	isTerminalNode(
 		currentAsset string,
 		currentAssetAmount xdr.Int64,
@@ -162,6 +164,7 @@ type sellingGraphSearchState struct {
 	targetAssets           map[string]xdr.Int64
 	validateSourceBalance  bool
 	paths                  []Path
+	includePools           bool
 }
 
 func (state *sellingGraphSearchState) isTerminalNode(
@@ -219,6 +222,10 @@ func (state *sellingGraphSearchState) consumeOffers(
 	return nextAsset, positiveMin(currentBestAmount, nextAmount), err
 }
 
+func (state *sellingGraphSearchState) considerPools() bool {
+	return state.includePools
+}
+
 func (state *sellingGraphSearchState) consumePool(
 	pool xdr.LiquidityPoolEntry,
 	currentAsset xdr.Asset,
@@ -241,6 +248,7 @@ type buyingGraphSearchState struct {
 	sourceAssetAmount xdr.Int64
 	targetAssets      map[string]bool
 	paths             []Path
+	includePools      bool
 }
 
 func (state *buyingGraphSearchState) isTerminalNode(
@@ -291,6 +299,10 @@ func (state *buyingGraphSearchState) consumeOffers(
 	}
 
 	return nextAsset, max(nextAmount, currentBestAmount), err
+}
+
+func (state *buyingGraphSearchState) considerPools() bool {
+	return state.includePools
 }
 
 func (state *buyingGraphSearchState) consumePool(
@@ -440,7 +452,7 @@ func processVenues(
 	// We evaluate the pool venue (if any) before offers, because pool exchange
 	// rates can only be evaluated with an amount.
 	poolAmount := xdr.Int64(0)
-	if pool := venues.pool; pool.Body.ConstantProduct != nil {
+	if pool := venues.pool; state.considerPools() && pool.Body.ConstantProduct != nil {
 		amount, err := state.consumePool(pool, currentAsset, currentAssetAmount)
 		if err == nil {
 			nextAsset = getOtherAsset(currentAsset, pool)

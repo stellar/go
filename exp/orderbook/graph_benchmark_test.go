@@ -174,6 +174,7 @@ func BenchmarkMultipleDestinationAssets(b *testing.B) {
 				xdr.MustNewCreditAsset("EURT", "GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S"),
 			},
 			5,
+			true,
 		)
 		if err != nil {
 			b.Fatal("could not find path")
@@ -208,6 +209,7 @@ func BenchmarkTestData(b *testing.B) {
 				req.amt,
 				req.dst,
 				5,
+				true,
 			)
 			if err != nil {
 				b.Fatal("could not find path")

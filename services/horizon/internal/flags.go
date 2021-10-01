@@ -365,6 +365,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 		},
 		&support.ConfigOption{
+			Name:        "disable-pool-path-finding",
+			ConfigKey:   &config.DisablePoolPathFinding,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
+		},
+		&support.ConfigOption{
 			Name:      "network-passphrase",
 			ConfigKey: &config.NetworkPassphrase,
 			OptType:   types.String,
