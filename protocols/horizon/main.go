@@ -5,6 +5,8 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 	"time"
@@ -110,8 +112,11 @@ func (a *Account) IncrementSequenceNumber() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if seqNum == int64(math.MaxInt64) {
+		return 0, fmt.Errorf("sequence cannot be increased, it already reached MaxInt64 (%d)", int64(math.MaxInt64))
+	}
 	seqNum++
-	a.Sequence = strconv.FormatInt(int64(seqNum), 10)
+	a.Sequence = strconv.FormatInt(seqNum, 10)
 	return seqNum, nil
 }
 
