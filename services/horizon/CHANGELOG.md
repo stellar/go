@@ -3,17 +3,35 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## v2.9.0
 
-* Update `/paths` endpoint to take liquidity pools into account when searching for possible routes between assets ([3921](https://github.com/stellar/go/pull/3921)).
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
-### Breaking
+**Protocol 18 support:** This release adds support for Protocol 18 ([CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers).
+
+### DB Schema Migration
+
+* This release comes with a DB migration removing `offer_id` field from `history_trades` table and adding new tables related to AMM. It should not take more than 15 minutes to complete the migration.
+
+### Breaking changes
+
 * The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
+
+### Changes
+
+* **[CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers) support.**
+* Update `/paths` endpoint to take liquidity pools into account when searching for possible routes between assets ([3818](https://github.com/stellar/go/pull/3818)).
+* Multiple performance improvements in `/paths`: [3816](https://github.com/stellar/go/pull/3816), [3965](https://github.com/stellar/go/pull/3965), [3933](https://github.com/stellar/go/pull/3933).
+* Requests to `/paths` are now cancelled, respecting `--connection-timeout` flag value ([3081](https://github.com/stellar/go/pull/3081)).
+* Multiple performance improvements to state ingestion processors: [3945](https://github.com/stellar/go/pull/3945), [3956](https://github.com/stellar/go/pull/3956), [3963](https://github.com/stellar/go/pull/3963), [3953](https://github.com/stellar/go/pull/3953), [3944](https://github.com/stellar/go/pull/3944).
+* Add missing tx result codes in `txsub` ([3866](https://github.com/stellar/go/pull/3866)).
+* Add new metric `ProcessorsRunDurationSummary`, old `ProcessorsRunDuration` is deprecated ([3940](https://github.com/stellar/go/pull/3940)).
+* Logs during state ingesiton now display `progress` value which is percentage progress indicator ([3946](https://github.com/stellar/go/pull/3946)).
 
 ## v2.8.3
 **Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
-### DB State Migration
+### DB Schema Migration
 
 * This release comes with a small DB migration. It should not take more than a couple minutes.
 
