@@ -137,6 +137,8 @@ func run() (err error) {
 
 func handleBatchFunc(s *stats) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
 		ctx := r.Context()
 		l := log.Ctx(ctx)
 
@@ -148,7 +150,6 @@ func handleBatchFunc(s *stats) http.HandlerFunc {
 			return
 		}
 		dec := json.NewDecoder(z)
-		// dec := xdr.NewDecoder(z)
 
 		reqHeader := batchPostRequestHeader{}
 		err = dec.Decode(&reqHeader)

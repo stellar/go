@@ -130,7 +130,7 @@ func run() (err error) {
 
 	// Send payments.
 	b := buffer.NewPaymentBuffer(buffer.PaymentBufferConfig{
-		MaxBatchSize:    4_000_000,
+		MaxBatchSize:    7_000_000,
 		NewBatchIDFunc:  buffer.PaymentBufferNewBatchIDFunc(newBatchID),
 		SubmitBatchFunc: submitBatchFunc(networkDetails.NetworkPassphrase, horizonClient, sourceAccountKey, destinationAccount, destinationAddr, &stats),
 	})
@@ -189,7 +189,6 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 				defer z.Close()
 				insideCounter := NewCountWriter(z)
 				enc := json.NewEncoder(insideCounter)
-				// enc := xdr.NewEncoder(insideCounter)
 				reqHeader := batchPostRequestHeader{
 					ID:           batchID,
 					PaymentCount: len(payments),
@@ -219,8 +218,13 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 			}()
 
 			// Make the request using the request body streaming it to the destination.
-			// req.Header.Set("Content-Encoding", "gzip")
-			resp, err := http.Post(destinationAddr, "application/json", pr)
+			req, err := http.NewRequest("POST", destinationAddr, pr)
+			if err != nil {
+				return fmt.Errorf("creating request to send batch meta: %w\n", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Content-Encoding", "gzip")
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				return fmt.Errorf("sending batch meta to destination address: %w\n", err)
 			}
