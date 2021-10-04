@@ -7,11 +7,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
-This release comes with support for Protocol 18 ([CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers).
+**Protocol 18 support:** This release adds support for Protocol 18 ([CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers).
 
 ### DB Schema Migration
 
-* This release comes with a DB migration removing `offer_id` field from `history_trades` table and adding new tables related to AMM. It should not take more than 15 minutes.
+* This release comes with a DB migration removing `offer_id` field from `history_trades` table and adding new tables related to AMM. It should not take more than 15 minutes to complete the migration.
 
 ### Breaking changes
 
