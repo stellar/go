@@ -3,11 +3,21 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## Unreleased
 
-* The restriction that `Fund` can only be called on the DefaultTestNetClient has
-been removed. Any horizonclient.Client may now call Fund. Horizon instances not
-supporting Fund will error with a resource not found error.
+
+## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
+
+**This release adds support for Protocol 18.**
+
+* The restriction that `Fund` can only be called on the DefaultTestNetClient has been removed. Any `horizonclient.Client` may now call Fund. Horizon instances not supporting funding will error with a resource not found error.
+* Change `AccountRequest` to accept `Sponsor` and `LiquidityPool` filters
+* Change `EffectRequest`, `TransactionRequest`, and `OperationRequest` to accept a `ForLiquidityPool` filter
+* Change `TradeRequest` to accept both a `ForLiquidityPool` filter or a `TradeType` filter
+* Add `LiquidityPoolsRequest` for getting details about liquidity pools, with an optional `Reserves` field to filter by pools' reserve asset(s).
+* Add `LiquidityPoolRequest` for getting details about a _specific_ liquidity pool via the `LiquidityPoolID` filter.
+
 
 ## [v7.1.1](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.1) - 2021-06-25
 

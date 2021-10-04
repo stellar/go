@@ -6,9 +6,30 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* GenericTransaction, Transaction, and FeeBumpTransaction now implement
-encoding.TextMarshaler and encoding.TextUnmarshaler.
-* Adds 5-minute grace period to `transaction.ReadChallengeTx`'s minimum time bound constraint. ([#3824](https://github.com/stellar/go/pull/3824))
+
+## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
+
+**This release adds support for Protocol 18.**
+
+### New features
+* `GenericTransaction`, `Transaction`, and `FeeBumpTransaction` now implement
+`encoding.TextMarshaler` and `encoding.TextUnmarshaler`.
+* New asset structures that conform to the new ChangeTrust and New assets: 
+* Support for the core liquidity pool XDR types: `LiquidityPoolId`, `LiquidityPoolParameters`, `LiquidityPoolDeposit`, and `LiquidityPoolWithdraw`.
+* Support for the new asset structures: `ChangeTrustAsset` and `TrustLineAsset`.
+
+### Changes
+* There's now a 5-minute grace period to `transaction.ReadChallengeTx`'s minimum time bound constraint ([#3824](https://github.com/stellar/go/pull/3824)).
+* Assets can now be liquidity pool shares (`AssetTypePoolShare`).
+* All asset objects can now be converted to the new `ChangeTrustAsset` and `TrustLineAsset` objects.
+* Assets can now be compared in accordance with the protocol, see their respective `LessThan()` implementations.
+
+### Breaking changes
+* `ChangeTrust` requires a `ChangeTrustAsset`.
+* `RevokeSponsorship` requires a `TrustLineAsset` when revoking trustlines.
+* `RemoveTrustlineOp` helper now requires a `ChangeTrustAsset`
+* `validate*Asset` helpers now require more-specific asset types.
+
 
 ## [v7.1.1](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.1) - 2021-06-25
 
