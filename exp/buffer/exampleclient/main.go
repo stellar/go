@@ -19,8 +19,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/exp/buffer"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/exp/buffer"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"golang.org/x/sync/errgroup"
