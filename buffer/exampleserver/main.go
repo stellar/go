@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"compress/gzip"
 	"errors"
 	"flag"
 	"fmt"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	xdr "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	supporthttp "github.com/stellar/go/support/http"
@@ -117,7 +118,7 @@ func run() (err error) {
 	mux.Post("/batch", handleBatchFunc(&s))
 	supporthttp.Run(supporthttp.Config{
 		ListenAddr:  listenAddr,
-		ReadTimeout: 30 * time.Second,
+		ReadTimeout: 120 * time.Second,
 		Handler:     mux,
 		OnStarting: func() {
 			logger.Infof("Starting listening on %s...", listenAddr)
@@ -140,10 +141,17 @@ func handleBatchFunc(s *stats) http.HandlerFunc {
 		l := log.Ctx(ctx)
 
 		byteCounter := NewCountReader(r.Body)
-		dec := json.NewDecoder(byteCounter)
+		// dec := json.NewDecoder(byteCounter)
+		z, err := gzip.NewReader(byteCounter)
+		if err != nil {
+			l.Warn(err.Error())
+			httpjson.RenderStatus(w, http.StatusBadRequest, errorResponse{Error: err.Error()}, httpjson.JSON)
+			return
+		}
+		dec := xdr.NewDecoder(z)
 
 		reqHeader := batchPostRequestHeader{}
-		err := dec.Decode(&reqHeader)
+		_, err = dec.Decode(&reqHeader)
 		if err != nil {
 			l.Warn(err.Error())
 			httpjson.RenderStatus(w, http.StatusBadRequest, errorResponse{Error: err.Error()}, httpjson.JSON)
@@ -157,7 +165,7 @@ func handleBatchFunc(s *stats) http.HandlerFunc {
 		count := 0
 		for {
 			reqEntry := batchPostRequestEntry{}
-			err = dec.Decode(&reqEntry)
+			_, err = dec.Decode(&reqEntry)
 			if errors.Is(err, io.EOF) {
 				break
 			}

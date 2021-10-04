@@ -1,8 +1,8 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	xdr "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/buffer"
 	"github.com/stellar/go/clients/horizonclient"
@@ -129,7 +130,7 @@ func run() (err error) {
 
 	// Send payments.
 	b := buffer.NewPaymentBuffer(buffer.PaymentBufferConfig{
-		MaxBatchSize:    2_000_000,
+		MaxBatchSize:    4_000_000,
 		NewBatchIDFunc:  buffer.PaymentBufferNewBatchIDFunc(newBatchID),
 		SubmitBatchFunc: submitBatchFunc(networkDetails.NetworkPassphrase, horizonClient, sourceAccountKey, destinationAccount, destinationAddr, &stats),
 	})
@@ -171,37 +172,54 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 		g := errgroup.Group{}
 		g.Go(func() error {
 			pr, pw := io.Pipe()
+			timeStart := time.Now()
 
 			// Write the request body as JSON.
 			go func() {
 				var err error
 				defer func() {
-					pw.CloseWithError(err)
+					_ = pw.CloseWithError(err)
 				}()
-				enc := json.NewEncoder(pw)
+				// enc := json.NewEncoder(pw)
+				outsideCounter := NewCountWriter(pw)
+				z, err := gzip.NewWriterLevel(outsideCounter, gzip.BestCompression)
+				if err != nil {
+					err = fmt.Errorf("creating gzip writer: %w\n", err)
+					return
+				}
+				defer z.Close()
+				insideCounter := NewCountWriter(z)
+				enc := xdr.NewEncoder(insideCounter)
 				reqHeader := batchPostRequestHeader{
 					ID:           batchID,
 					PaymentCount: len(payments),
 				}
-				err = enc.Encode(reqHeader)
+				_, err = enc.Encode(reqHeader)
 				if err != nil {
 					err = fmt.Errorf("encoding header: %w\n", err)
 					return
 				}
-				for _, p := range payments {
+				z.Flush()
+				for i, p := range payments {
 					reqEntry := batchPostRequestEntry{
 						Amount: p.Amount,
 						Memo:   p.Memo,
 					}
-					err := enc.Encode(reqEntry)
+					_, err = enc.Encode(reqEntry)
 					if err != nil {
 						err = fmt.Errorf("encoding payment memo=%d: %w", p.Memo, err)
 						return
 					}
+					if i%100_000 == 0 {
+						z.Flush()
+					}
 				}
+				z.Flush()
+				fmt.Println("batch", batchID, "count =", len(payments), "size =", insideCounter.Count, " gzip size =", outsideCounter.Count)
 			}()
 
 			// Make the request using the request body streaming it to the destination.
+			// req.Header.Set("Content-Encoding", "gzip")
 			resp, err := http.Post(destinationAddr, "application/json", pr)
 			if err != nil {
 				return fmt.Errorf("sending batch meta to destination address: %w\n", err)
@@ -210,6 +228,9 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 				respBody, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
 				return fmt.Errorf("sending batch meta to destination address: %s\n", string(respBody))
 			}
+			timeFinished := time.Now()
+			timeSpent := timeFinished.Sub(timeStart)
+			fmt.Println("batch", batchID, "duration =", timeSpent)
 			return nil
 		})
 
@@ -309,4 +330,19 @@ func (s stats) String() string {
 func newBatchID() string {
 	uuid := uuid.New()
 	return base64.StdEncoding.EncodeToString(uuid[:])
+}
+
+func NewCountWriter(w io.Writer) *CountWriter {
+	return &CountWriter{Writer: w}
+}
+
+type CountWriter struct {
+	io.Writer
+	Count int
+}
+
+func (w *CountWriter) Write(b []byte) (n int, err error) {
+	n, err = w.Writer.Write(b)
+	w.Count += n
+	return n, err
 }
