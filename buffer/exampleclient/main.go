@@ -3,6 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	xdr "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/buffer"
 	"github.com/stellar/go/clients/horizonclient"
@@ -180,7 +180,6 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 				defer func() {
 					_ = pw.CloseWithError(err)
 				}()
-				// enc := json.NewEncoder(pw)
 				outsideCounter := NewCountWriter(pw)
 				z, err := gzip.NewWriterLevel(outsideCounter, gzip.BestCompression)
 				if err != nil {
@@ -189,12 +188,13 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 				}
 				defer z.Close()
 				insideCounter := NewCountWriter(z)
-				enc := xdr.NewEncoder(insideCounter)
+				enc := json.NewEncoder(insideCounter)
+				// enc := xdr.NewEncoder(insideCounter)
 				reqHeader := batchPostRequestHeader{
 					ID:           batchID,
 					PaymentCount: len(payments),
 				}
-				_, err = enc.Encode(reqHeader)
+				err = enc.Encode(reqHeader)
 				if err != nil {
 					err = fmt.Errorf("encoding header: %w\n", err)
 					return
@@ -205,7 +205,7 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 						Amount: p.Amount,
 						Memo:   p.Memo,
 					}
-					_, err = enc.Encode(reqEntry)
+					err = enc.Encode(reqEntry)
 					if err != nil {
 						err = fmt.Errorf("encoding payment memo=%d: %w", p.Memo, err)
 						return

@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	xdr "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	supporthttp "github.com/stellar/go/support/http"
@@ -141,17 +141,17 @@ func handleBatchFunc(s *stats) http.HandlerFunc {
 		l := log.Ctx(ctx)
 
 		byteCounter := NewCountReader(r.Body)
-		// dec := json.NewDecoder(byteCounter)
 		z, err := gzip.NewReader(byteCounter)
 		if err != nil {
 			l.Warn(err.Error())
 			httpjson.RenderStatus(w, http.StatusBadRequest, errorResponse{Error: err.Error()}, httpjson.JSON)
 			return
 		}
-		dec := xdr.NewDecoder(z)
+		dec := json.NewDecoder(z)
+		// dec := xdr.NewDecoder(z)
 
 		reqHeader := batchPostRequestHeader{}
-		_, err = dec.Decode(&reqHeader)
+		err = dec.Decode(&reqHeader)
 		if err != nil {
 			l.Warn(err.Error())
 			httpjson.RenderStatus(w, http.StatusBadRequest, errorResponse{Error: err.Error()}, httpjson.JSON)
@@ -165,7 +165,7 @@ func handleBatchFunc(s *stats) http.HandlerFunc {
 		count := 0
 		for {
 			reqEntry := batchPostRequestEntry{}
-			_, err = dec.Decode(&reqEntry)
+			err = dec.Decode(&reqEntry)
 			if errors.Is(err, io.EOF) {
 				break
 			}
