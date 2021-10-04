@@ -64,7 +64,8 @@ func run() (err error) {
 	}
 
 	if cpuProfileFile != "" {
-		f, err := os.Create(cpuProfileFile)
+		var f *os.File
+		f, err = os.Create(cpuProfileFile)
 		if err != nil {
 			return fmt.Errorf("error creating cpu profile file: %w", err)
 		}
@@ -163,117 +164,16 @@ func run() (err error) {
 
 func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Client, sourceAccountKey *keypair.Full, destinationAccount, destinationAddr string, s *stats) buffer.PaymentBufferSubmitBatchFunc {
 	return func(batchID string, batchAmount int64, payments []buffer.PaymentParams) {
-		a, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: sourceAccountKey.Address()})
-		if err != nil {
-			fmt.Printf("Error getting source account details: %v\n", err)
-			return
-		}
-
 		g := errgroup.Group{}
 		g.Go(func() error {
-			pr, pw := io.Pipe()
-			timeStart := time.Now()
-
-			// Write the request body as JSON.
-			go func() {
-				var err error
-				defer func() {
-					_ = pw.CloseWithError(err)
-				}()
-				outsideCounter := NewCountWriter(pw)
-				z, err := gzip.NewWriterLevel(outsideCounter, gzip.BestCompression)
-				if err != nil {
-					err = fmt.Errorf("creating gzip writer: %w\n", err)
-					return
-				}
-				defer z.Close()
-				insideCounter := NewCountWriter(z)
-				enc := json.NewEncoder(insideCounter)
-				reqHeader := batchPostRequestHeader{
-					ID:           batchID,
-					PaymentCount: len(payments),
-				}
-				err = enc.Encode(reqHeader)
-				if err != nil {
-					err = fmt.Errorf("encoding header: %w\n", err)
-					return
-				}
-				z.Flush()
-				for i, p := range payments {
-					reqEntry := batchPostRequestEntry{
-						Amount: p.Amount,
-						Memo:   p.Memo,
-					}
-					err = enc.Encode(reqEntry)
-					if err != nil {
-						err = fmt.Errorf("encoding payment memo=%d: %w", p.Memo, err)
-						return
-					}
-					if i%100_000 == 0 {
-						z.Flush()
-					}
-				}
-				z.Flush()
-				fmt.Println("batch", batchID, "count =", len(payments), "size =", insideCounter.Count, " gzip size =", outsideCounter.Count)
-			}()
-
-			// Make the request using the request body streaming it to the destination.
-			req, err := http.NewRequest("POST", destinationAddr, pr)
-			if err != nil {
-				return fmt.Errorf("creating request to send batch meta: %w\n", err)
-			}
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Content-Encoding", "gzip")
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return fmt.Errorf("sending batch meta to destination address: %w\n", err)
-			}
-			if resp.StatusCode/100 != 2 {
-				respBody, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
-				return fmt.Errorf("sending batch meta to destination address: %s\n", string(respBody))
-			}
-			timeFinished := time.Now()
-			timeSpent := timeFinished.Sub(timeStart)
-			fmt.Println("batch", batchID, "duration =", timeSpent)
-			return nil
+			return submitBatchMeta(destinationAddr, batchID, payments)
 		})
 
 		g.Go(func() error {
-			seqNum, err := a.GetSequenceNumber()
-			if err != nil {
-				return fmt.Errorf("getting source account sequence number: %w\n", err)
-			}
-			tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
-				SourceAccount: &txnbuild.SimpleAccount{
-					AccountID: sourceAccountKey.Address(),
-					Sequence:  seqNum + 1,
-				},
-				BaseFee:    txnbuild.MinBaseFee,
-				Timebounds: txnbuild.NewInfiniteTimeout(),
-				Memo:       txnbuild.MemoText(batchID),
-				Operations: []txnbuild.Operation{
-					&txnbuild.Payment{
-						Destination: destinationAccount,
-						Asset:       txnbuild.NativeAsset{},
-						Amount:      amount.StringFromInt64(batchAmount),
-					},
-				},
-			})
-			if err != nil {
-				return fmt.Errorf("building tx: %w\n", err)
-			}
-			tx, err = tx.Sign(networkPassphrase, sourceAccountKey)
-			if err != nil {
-				return fmt.Errorf("signing tx: %w\n", err)
-			}
-			_, err = horizonClient.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true})
-			if err != nil {
-				return fmt.Errorf("submitting tx: %w\n", err)
-			}
-			return nil
+			return submitBatchTx(networkPassphrase, horizonClient, sourceAccountKey, destinationAccount, batchID, batchAmount)
 		})
 
-		err = g.Wait()
+		err := g.Wait()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			return
@@ -281,6 +181,114 @@ func submitBatchFunc(networkPassphrase string, horizonClient *horizonclient.Clie
 		s.AddPaymentsSent(int64(len(payments)))
 		s.AddBatchesSent(1)
 	}
+}
+
+func submitBatchMeta(destinationAddr, batchID string, payments []buffer.PaymentParams) error {
+	pr, pw := io.Pipe()
+	timeStart := time.Now()
+
+	// Write the request body as JSON.
+	go func() {
+		var err error
+		defer func() {
+			_ = pw.CloseWithError(err)
+		}()
+		outsideCounter := NewCountWriter(pw)
+		z, err := gzip.NewWriterLevel(outsideCounter, gzip.BestCompression)
+		if err != nil {
+			err = fmt.Errorf("creating gzip writer: %w\n", err)
+			return
+		}
+		defer z.Close()
+		insideCounter := NewCountWriter(z)
+		enc := json.NewEncoder(insideCounter)
+		reqHeader := batchPostRequestHeader{
+			ID:           batchID,
+			PaymentCount: len(payments),
+		}
+		err = enc.Encode(reqHeader)
+		if err != nil {
+			err = fmt.Errorf("encoding header: %w\n", err)
+			return
+		}
+		z.Flush()
+		for i, p := range payments {
+			reqEntry := batchPostRequestEntry{
+				Amount: p.Amount,
+				Memo:   p.Memo,
+			}
+			err = enc.Encode(reqEntry)
+			if err != nil {
+				err = fmt.Errorf("encoding payment memo=%d: %w", p.Memo, err)
+				return
+			}
+			if i%100_000 == 0 {
+				z.Flush()
+			}
+		}
+		z.Flush()
+		fmt.Println("batch", batchID, "count =", len(payments), "size =", insideCounter.Count, " gzip size =", outsideCounter.Count)
+	}()
+
+	// Make the request using the request body streaming it to the destination.
+	req, err := http.NewRequest("POST", destinationAddr, pr)
+	if err != nil {
+		return fmt.Errorf("creating request to send batch meta: %w\n", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending batch meta to destination address: %w\n", err)
+	}
+	if resp.StatusCode/100 != 2 {
+		respBody, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("sending batch meta to destination address: %s\n", string(respBody))
+	}
+	timeFinished := time.Now()
+	timeSpent := timeFinished.Sub(timeStart)
+	fmt.Println("batch", batchID, "duration =", timeSpent)
+	return nil
+}
+
+func submitBatchTx(networkPassphrase string, horizonClient *horizonclient.Client, sourceAccountKey *keypair.Full, destinationAccount, batchID string, batchAmount int64) error {
+	a, err := horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: sourceAccountKey.Address()})
+	if err != nil {
+		return fmt.Errorf("getting source account details: %w", err)
+	}
+
+	seqNum, err := a.GetSequenceNumber()
+	if err != nil {
+		return fmt.Errorf("getting source account sequence number: %w\n", err)
+	}
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: sourceAccountKey.Address(),
+			Sequence:  seqNum + 1,
+		},
+		BaseFee:    txnbuild.MinBaseFee,
+		Timebounds: txnbuild.NewInfiniteTimeout(),
+		Memo:       txnbuild.MemoText(batchID),
+		Operations: []txnbuild.Operation{
+			&txnbuild.Payment{
+				Destination: destinationAccount,
+				Asset:       txnbuild.NativeAsset{},
+				Amount:      amount.StringFromInt64(batchAmount),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("building tx: %w\n", err)
+	}
+	tx, err = tx.Sign(networkPassphrase, sourceAccountKey)
+	if err != nil {
+		return fmt.Errorf("signing tx: %w\n", err)
+	}
+	_, err = horizonClient.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if err != nil {
+		return fmt.Errorf("submitting tx: %w\n", err)
+	}
+	return nil
 }
 
 type batchPostRequestHeader struct {

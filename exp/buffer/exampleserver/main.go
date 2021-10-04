@@ -58,7 +58,8 @@ func run() (err error) {
 	}
 
 	if cpuProfileFile != "" {
-		f, err := os.Create(cpuProfileFile)
+		var f *os.File
+		f, err = os.Create(cpuProfileFile)
 		if err != nil {
 			return fmt.Errorf("error creating cpu profile file: %w", err)
 		}
