@@ -7,7 +7,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 
-## [8.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0) - 2021-10-04
+## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
 
 **This release adds support for Protocol 18.**
 
