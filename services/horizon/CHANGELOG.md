@@ -19,7 +19,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changes
 
-* **[CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers) support.**
+* **[CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers) support.** All the API changes have been outlined in [Horizon Liquidity Pool API](https://docs.google.com/document/d/1pXL8kr1a2vfYSap9T67R-g72B_WWbaE1YsLMa04OgoU/edit) doc.
 * Update `/paths` endpoint to take liquidity pools into account when searching for possible routes between assets ([3818](https://github.com/stellar/go/pull/3818)).
 * Multiple performance improvements in `/paths`: [3816](https://github.com/stellar/go/pull/3816), [3965](https://github.com/stellar/go/pull/3965), [3933](https://github.com/stellar/go/pull/3933).
 * Requests to `/paths` are now cancelled, respecting `--connection-timeout` flag value ([3081](https://github.com/stellar/go/pull/3081)).
