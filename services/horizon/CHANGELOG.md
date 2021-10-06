@@ -15,6 +15,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking changes
 
+* In all `/trades` endpoints, the `price` fraction will represent its numerator and denominator values as strings to be consistent with the liquidity pool trade JSON object. Before this release, the values are JSON integers.
+* In the account response there is a balances field which consists of a list of balance objects. We will introduce the following breaking changes on the balance object which is included in the balances list:
+  * `asset_type` can be `liquidity_pool_shares`. Previously the `asset_type` field was restricted to: `native`, `credit_alphanum4`, or `credit_alphanum12`.
+  * `buying_liabilities`, `selling_liabilities`, `asset_code`, and `asset_issuer` are removed from the response for pool shares because they are not relevant to liquidity pools.
+
 * The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
 
 ### Changes
