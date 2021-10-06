@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -145,7 +146,8 @@ func hProtocolTradeToDBTrade(
 		return
 	}
 
-	fPrice := float64(hpt.Price.D) / float64(hpt.Price.N)
+	rPrice := big.NewRat(int64(hpt.Price.D), int64(hpt.Price.N))
+	fPrice, _ := rPrice.Float64()
 
 	trade = tickerdb.Trade{
 		HorizonID:       hpt.ID,
