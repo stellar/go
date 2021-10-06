@@ -60,6 +60,7 @@ func initConfig() {
 	}
 }
 
+// Execute executes the root command and panics upon error.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
