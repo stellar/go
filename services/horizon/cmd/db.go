@@ -325,7 +325,6 @@ func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 	if reingestForce && parallelWorkers > 1 {
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
-	fmt.Println(config.DatabaseURL)
 	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("cannot open Horizon DB: %v", err)
