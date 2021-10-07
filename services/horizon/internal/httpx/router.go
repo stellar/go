@@ -93,7 +93,7 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedHeaders: []string{"*"},
-		ExposedHeaders: []string{"Date"},
+		ExposedHeaders: []string{"Date", "Latest-Ledger"},
 	})
 	r.Use(c.Handler)
 
