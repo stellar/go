@@ -290,18 +290,19 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		argsUInt32 := make([]uint32, 2)
 		for i, arg := range args {
-			if seq, err := strconv.Atoi(arg); err != nil {
+			if seq, err := strconv.ParseUint(arg, 10, 32); err != nil {
 				cmd.Usage()
 				return fmt.Errorf(`Invalid sequence number "%s"`, arg)
-			} else if seq < 0 {
-				return fmt.Errorf("sequence number %s cannot be negative", arg)
 			} else {
 				argsUInt32[i] = uint32(seq)
 			}
 		}
 
-		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
-		err := runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
+		err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err != nil {
+			return err
+		}
+		err = runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
 		if err != nil {
 			if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
 				return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
@@ -324,6 +325,7 @@ func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 	if reingestForce && parallelWorkers > 1 {
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
+	fmt.Println(config.DatabaseURL)
 	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("cannot open Horizon DB: %v", err)
