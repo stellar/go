@@ -5,11 +5,12 @@
 package historyarchive
 
 import (
-	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type FsArchiveBackend struct {
@@ -26,7 +27,7 @@ func (b *FsArchiveBackend) Exists(pth string) (bool, error) {
 	_, err := os.Stat(pth)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.WithField("path", pth).WithError(err).Warn("fs: check exists")
+			log.WithField("path", pth).WithField("exists", false).Trace("fs: check exists")
 			return false, nil
 		} else {
 			log.WithField("path", pth).WithError(err).Error("fs: check exists")
@@ -90,19 +91,26 @@ func (b *FsArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	errs := make(chan error)
 	go func() {
 		log.WithField("path", pth).Trace("fs: list files")
-		filepath.Walk(path.Join(b.prefix, pth),
-			func(p string, info os.FileInfo, err error) error {
-				if err != nil {
-					log.WithField("path", pth).WithError(err).Error("fs: list files (walk)")
-					errs <- err
+		exists, err := b.Exists(pth)
+		if err != nil {
+			errs <- err
+			return
+		}
+		if exists {
+			filepath.Walk(path.Join(b.prefix, pth),
+				func(p string, info os.FileInfo, err error) error {
+					if err != nil {
+						log.WithField("path", pth).WithError(err).Error("fs: list files (walk)")
+						errs <- err
+						return nil
+					}
+					if info != nil && !info.IsDir() {
+						log.WithField("found", p).Trace("fs: list files (walk)")
+						ch <- p
+					}
 					return nil
-				}
-				if info != nil && !info.IsDir() {
-					log.WithField("found", p).Trace("fs: list files (walk)")
-					ch <- p
-				}
-				return nil
-			})
+				})
+		}
 		close(ch)
 		close(errs)
 	}()
