@@ -2300,16 +2300,112 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TrustLineAsset)(nil)
 )
 
+// TrustLineEntryExtensionV2Ext is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type TrustLineEntryExtensionV2Ext struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u TrustLineEntryExtensionV2Ext) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of TrustLineEntryExtensionV2Ext
+func (u TrustLineEntryExtensionV2Ext) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewTrustLineEntryExtensionV2Ext creates a new  TrustLineEntryExtensionV2Ext.
+func NewTrustLineEntryExtensionV2Ext(v int32, value interface{}) (result TrustLineEntryExtensionV2Ext, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrustLineEntryExtensionV2Ext) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrustLineEntryExtensionV2Ext) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrustLineEntryExtensionV2Ext)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExtensionV2Ext)(nil)
+)
+
+// TrustLineEntryExtensionV2 is an XDR Struct defines as:
+//
+//   struct TrustLineEntryExtensionV2
+//    {
+//        int32 liquidityPoolUseCount;
+//
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type TrustLineEntryExtensionV2 struct {
+	LiquidityPoolUseCount Int32
+	Ext                   TrustLineEntryExtensionV2Ext
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrustLineEntryExtensionV2) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrustLineEntryExtensionV2) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrustLineEntryExtensionV2)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrustLineEntryExtensionV2)(nil)
+)
+
 // TrustLineEntryV1Ext is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //
 type TrustLineEntryV1Ext struct {
-	V int32
+	V  int32
+	V2 *TrustLineEntryExtensionV2
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2324,6 +2420,8 @@ func (u TrustLineEntryV1Ext) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "", true
+	case 2:
+		return "V2", true
 	}
 	return "-", false
 }
@@ -2334,7 +2432,39 @@ func NewTrustLineEntryV1Ext(v int32, value interface{}) (result TrustLineEntryV1
 	switch int32(v) {
 	case 0:
 		// void
+	case 2:
+		tv, ok := value.(TrustLineEntryExtensionV2)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TrustLineEntryExtensionV2")
+			return
+		}
+		result.V2 = &tv
 	}
+	return
+}
+
+// MustV2 retrieves the V2 value from the union,
+// panicing if the value is not set.
+func (u TrustLineEntryV1Ext) MustV2() TrustLineEntryExtensionV2 {
+	val, ok := u.GetV2()
+
+	if !ok {
+		panic("arm V2 is not set")
+	}
+
+	return val
+}
+
+// GetV2 retrieves the V2 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TrustLineEntryV1Ext) GetV2() (result TrustLineEntryExtensionV2, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V2" {
+		result = *u.V2
+		ok = true
+	}
+
 	return
 }
 
@@ -2366,6 +2496,8 @@ var (
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //                ext;
 //            }
@@ -2408,6 +2540,8 @@ var (
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //                ext;
 //            } v1;
@@ -2522,6 +2656,8 @@ var (
 //                {
 //                case 0:
 //                    void;
+//                case 2:
+//                    TrustLineEntryExtensionV2 v2;
 //                }
 //                ext;
 //            } v1;
@@ -3300,17 +3436,20 @@ var (
 //
 //   enum ClaimableBalanceIDType
 //    {
-//        CLAIMABLE_BALANCE_ID_TYPE_V0 = 0
+//        CLAIMABLE_BALANCE_ID_TYPE_V0 = 0,
+//        CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE = 1
 //    };
 //
 type ClaimableBalanceIdType int32
 
 const (
-	ClaimableBalanceIdTypeClaimableBalanceIdTypeV0 ClaimableBalanceIdType = 0
+	ClaimableBalanceIdTypeClaimableBalanceIdTypeV0             ClaimableBalanceIdType = 0
+	ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke ClaimableBalanceIdType = 1
 )
 
 var claimableBalanceIdTypeMap = map[int32]string{
 	0: "ClaimableBalanceIdTypeClaimableBalanceIdTypeV0",
+	1: "ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -3350,11 +3489,14 @@ var (
 //    {
 //    case CLAIMABLE_BALANCE_ID_TYPE_V0:
 //        Hash v0;
+//    case CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
+//        Hash fromPoolRevoke;
 //    };
 //
 type ClaimableBalanceId struct {
-	Type ClaimableBalanceIdType
-	V0   *Hash
+	Type           ClaimableBalanceIdType
+	V0             *Hash
+	FromPoolRevoke *Hash
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -3369,6 +3511,8 @@ func (u ClaimableBalanceId) ArmForSwitch(sw int32) (string, bool) {
 	switch ClaimableBalanceIdType(sw) {
 	case ClaimableBalanceIdTypeClaimableBalanceIdTypeV0:
 		return "V0", true
+	case ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke:
+		return "FromPoolRevoke", true
 	}
 	return "-", false
 }
@@ -3384,6 +3528,13 @@ func NewClaimableBalanceId(aType ClaimableBalanceIdType, value interface{}) (res
 			return
 		}
 		result.V0 = &tv
+	case ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke:
+		tv, ok := value.(Hash)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Hash")
+			return
+		}
+		result.FromPoolRevoke = &tv
 	}
 	return
 }
@@ -3407,6 +3558,31 @@ func (u ClaimableBalanceId) GetV0() (result Hash, ok bool) {
 
 	if armName == "V0" {
 		result = *u.V0
+		ok = true
+	}
+
+	return
+}
+
+// MustFromPoolRevoke retrieves the FromPoolRevoke value from the union,
+// panicing if the value is not set.
+func (u ClaimableBalanceId) MustFromPoolRevoke() Hash {
+	val, ok := u.GetFromPoolRevoke()
+
+	if !ok {
+		panic("arm FromPoolRevoke is not set")
+	}
+
+	return val
+}
+
+// GetFromPoolRevoke retrieves the FromPoolRevoke value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ClaimableBalanceId) GetFromPoolRevoke() (result Hash, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "FromPoolRevoke" {
+		result = *u.FromPoolRevoke
 		ok = true
 	}
 
@@ -4941,19 +5117,21 @@ var (
 //        ENVELOPE_TYPE_AUTH = 3,
 //        ENVELOPE_TYPE_SCPVALUE = 4,
 //        ENVELOPE_TYPE_TX_FEE_BUMP = 5,
-//        ENVELOPE_TYPE_OP_ID = 6
+//        ENVELOPE_TYPE_OP_ID = 6,
+//        ENVELOPE_TYPE_POOL_REVOKE_OP_ID = 7
 //    };
 //
 type EnvelopeType int32
 
 const (
-	EnvelopeTypeEnvelopeTypeTxV0      EnvelopeType = 0
-	EnvelopeTypeEnvelopeTypeScp       EnvelopeType = 1
-	EnvelopeTypeEnvelopeTypeTx        EnvelopeType = 2
-	EnvelopeTypeEnvelopeTypeAuth      EnvelopeType = 3
-	EnvelopeTypeEnvelopeTypeScpvalue  EnvelopeType = 4
-	EnvelopeTypeEnvelopeTypeTxFeeBump EnvelopeType = 5
-	EnvelopeTypeEnvelopeTypeOpId      EnvelopeType = 6
+	EnvelopeTypeEnvelopeTypeTxV0           EnvelopeType = 0
+	EnvelopeTypeEnvelopeTypeScp            EnvelopeType = 1
+	EnvelopeTypeEnvelopeTypeTx             EnvelopeType = 2
+	EnvelopeTypeEnvelopeTypeAuth           EnvelopeType = 3
+	EnvelopeTypeEnvelopeTypeScpvalue       EnvelopeType = 4
+	EnvelopeTypeEnvelopeTypeTxFeeBump      EnvelopeType = 5
+	EnvelopeTypeEnvelopeTypeOpId           EnvelopeType = 6
+	EnvelopeTypeEnvelopeTypePoolRevokeOpId EnvelopeType = 7
 )
 
 var envelopeTypeMap = map[int32]string{
@@ -4964,6 +5142,7 @@ var envelopeTypeMap = map[int32]string{
 	4: "EnvelopeTypeEnvelopeTypeScpvalue",
 	5: "EnvelopeTypeEnvelopeTypeTxFeeBump",
 	6: "EnvelopeTypeEnvelopeTypeOpId",
+	7: "EnvelopeTypeEnvelopeTypePoolRevokeOpId",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -5212,7 +5391,7 @@ var (
 //        // this is a vector of encoded 'LedgerUpgrade' so that nodes can drop
 //        // unknown steps during consensus if needed.
 //        // see notes below on 'LedgerUpgrade' for more detail
-//        // max size is dictated by number of upgrade types (+ room for future)
+//        // max size is dictated by number of upgrade types ( room for future)
 //        UpgradeType upgrades<6>;
 //
 //        // reserved for future use
@@ -5251,7 +5430,68 @@ var (
 	_ encoding.BinaryUnmarshaler = (*StellarValue)(nil)
 )
 
-// LedgerHeaderExt is an XDR NestedUnion defines as:
+// MaskLedgerheaderFlags is an XDR Const defines as:
+//
+//   const MASK_LEDGERHEADER_FLAGS = 0x7;
+//
+const MaskLedgerheaderFlags = 0x7
+
+// LedgerHeaderFlags is an XDR Enum defines as:
+//
+//   enum LedgerHeaderFlags
+//    { // masks for each flag
+//
+//        DISABLE_LIQUIDITY_POOL_TRADING_FLAG = 0x1,
+//        DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG = 0x2,
+//        DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG = 0x4
+//    };
+//
+type LedgerHeaderFlags int32
+
+const (
+	LedgerHeaderFlagsDisableLiquidityPoolTradingFlag    LedgerHeaderFlags = 1
+	LedgerHeaderFlagsDisableLiquidityPoolDepositFlag    LedgerHeaderFlags = 2
+	LedgerHeaderFlagsDisableLiquidityPoolWithdrawalFlag LedgerHeaderFlags = 4
+)
+
+var ledgerHeaderFlagsMap = map[int32]string{
+	1: "LedgerHeaderFlagsDisableLiquidityPoolTradingFlag",
+	2: "LedgerHeaderFlagsDisableLiquidityPoolDepositFlag",
+	4: "LedgerHeaderFlagsDisableLiquidityPoolWithdrawalFlag",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for LedgerHeaderFlags
+func (e LedgerHeaderFlags) ValidEnum(v int32) bool {
+	_, ok := ledgerHeaderFlagsMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e LedgerHeaderFlags) String() string {
+	name, _ := ledgerHeaderFlagsMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerHeaderFlags) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerHeaderFlags) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerHeaderFlags)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerHeaderFlags)(nil)
+)
+
+// LedgerHeaderExtensionV1Ext is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
 //        {
@@ -5259,8 +5499,104 @@ var (
 //            void;
 //        }
 //
-type LedgerHeaderExt struct {
+type LedgerHeaderExtensionV1Ext struct {
 	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u LedgerHeaderExtensionV1Ext) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of LedgerHeaderExtensionV1Ext
+func (u LedgerHeaderExtensionV1Ext) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewLedgerHeaderExtensionV1Ext creates a new  LedgerHeaderExtensionV1Ext.
+func NewLedgerHeaderExtensionV1Ext(v int32, value interface{}) (result LedgerHeaderExtensionV1Ext, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerHeaderExtensionV1Ext) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerHeaderExtensionV1Ext) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerHeaderExtensionV1Ext)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerHeaderExtensionV1Ext)(nil)
+)
+
+// LedgerHeaderExtensionV1 is an XDR Struct defines as:
+//
+//   struct LedgerHeaderExtensionV1
+//    {
+//        uint32 flags; // UpgradeFlags
+//
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type LedgerHeaderExtensionV1 struct {
+	Flags Uint32
+	Ext   LedgerHeaderExtensionV1Ext
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerHeaderExtensionV1) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerHeaderExtensionV1) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerHeaderExtensionV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerHeaderExtensionV1)(nil)
+)
+
+// LedgerHeaderExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        case 1:
+//            LedgerHeaderExtensionV1 v1;
+//        }
+//
+type LedgerHeaderExt struct {
+	V  int32
+	V1 *LedgerHeaderExtensionV1
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -5275,6 +5611,8 @@ func (u LedgerHeaderExt) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "", true
+	case 1:
+		return "V1", true
 	}
 	return "-", false
 }
@@ -5285,7 +5623,39 @@ func NewLedgerHeaderExt(v int32, value interface{}) (result LedgerHeaderExt, err
 	switch int32(v) {
 	case 0:
 		// void
+	case 1:
+		tv, ok := value.(LedgerHeaderExtensionV1)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerHeaderExtensionV1")
+			return
+		}
+		result.V1 = &tv
 	}
+	return
+}
+
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u LedgerHeaderExt) MustV1() LedgerHeaderExtensionV1 {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerHeaderExt) GetV1() (result LedgerHeaderExtensionV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
 	return
 }
 
@@ -5343,6 +5713,8 @@ var (
 //        {
 //        case 0:
 //            void;
+//        case 1:
+//            LedgerHeaderExtensionV1 v1;
 //        }
 //        ext;
 //    };
@@ -5390,7 +5762,8 @@ var (
 //        LEDGER_UPGRADE_VERSION = 1,
 //        LEDGER_UPGRADE_BASE_FEE = 2,
 //        LEDGER_UPGRADE_MAX_TX_SET_SIZE = 3,
-//        LEDGER_UPGRADE_BASE_RESERVE = 4
+//        LEDGER_UPGRADE_BASE_RESERVE = 4,
+//        LEDGER_UPGRADE_FLAGS = 5
 //    };
 //
 type LedgerUpgradeType int32
@@ -5400,6 +5773,7 @@ const (
 	LedgerUpgradeTypeLedgerUpgradeBaseFee      LedgerUpgradeType = 2
 	LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize LedgerUpgradeType = 3
 	LedgerUpgradeTypeLedgerUpgradeBaseReserve  LedgerUpgradeType = 4
+	LedgerUpgradeTypeLedgerUpgradeFlags        LedgerUpgradeType = 5
 )
 
 var ledgerUpgradeTypeMap = map[int32]string{
@@ -5407,6 +5781,7 @@ var ledgerUpgradeTypeMap = map[int32]string{
 	2: "LedgerUpgradeTypeLedgerUpgradeBaseFee",
 	3: "LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize",
 	4: "LedgerUpgradeTypeLedgerUpgradeBaseReserve",
+	5: "LedgerUpgradeTypeLedgerUpgradeFlags",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -5452,6 +5827,8 @@ var (
 //        uint32 newMaxTxSetSize; // update maxTxSetSize
 //    case LEDGER_UPGRADE_BASE_RESERVE:
 //        uint32 newBaseReserve; // update baseReserve
+//    case LEDGER_UPGRADE_FLAGS:
+//        uint32 newFlags; // update flags
 //    };
 //
 type LedgerUpgrade struct {
@@ -5460,6 +5837,7 @@ type LedgerUpgrade struct {
 	NewBaseFee       *Uint32
 	NewMaxTxSetSize  *Uint32
 	NewBaseReserve   *Uint32
+	NewFlags         *Uint32
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -5480,6 +5858,8 @@ func (u LedgerUpgrade) ArmForSwitch(sw int32) (string, bool) {
 		return "NewMaxTxSetSize", true
 	case LedgerUpgradeTypeLedgerUpgradeBaseReserve:
 		return "NewBaseReserve", true
+	case LedgerUpgradeTypeLedgerUpgradeFlags:
+		return "NewFlags", true
 	}
 	return "-", false
 }
@@ -5516,6 +5896,13 @@ func NewLedgerUpgrade(aType LedgerUpgradeType, value interface{}) (result Ledger
 			return
 		}
 		result.NewBaseReserve = &tv
+	case LedgerUpgradeTypeLedgerUpgradeFlags:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.NewFlags = &tv
 	}
 	return
 }
@@ -5614,6 +6001,31 @@ func (u LedgerUpgrade) GetNewBaseReserve() (result Uint32, ok bool) {
 
 	if armName == "NewBaseReserve" {
 		result = *u.NewBaseReserve
+		ok = true
+	}
+
+	return
+}
+
+// MustNewFlags retrieves the NewFlags value from the union,
+// panicing if the value is not set.
+func (u LedgerUpgrade) MustNewFlags() Uint32 {
+	val, ok := u.GetNewFlags()
+
+	if !ok {
+		panic("arm NewFlags is not set")
+	}
+
+	return val
+}
+
+// GetNewFlags retrieves the NewFlags value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerUpgrade) GetNewFlags() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "NewFlags" {
+		result = *u.NewFlags
 		ok = true
 	}
 
@@ -9199,7 +9611,9 @@ var (
 //        REVOKE_SPONSORSHIP = 18,
 //        CLAWBACK = 19,
 //        CLAWBACK_CLAIMABLE_BALANCE = 20,
-//        SET_TRUST_LINE_FLAGS = 21
+//        SET_TRUST_LINE_FLAGS = 21,
+//        LIQUIDITY_POOL_DEPOSIT = 22,
+//        LIQUIDITY_POOL_WITHDRAW = 23
 //    };
 //
 type OperationType int32
@@ -9227,6 +9641,8 @@ const (
 	OperationTypeClawback                      OperationType = 19
 	OperationTypeClawbackClaimableBalance      OperationType = 20
 	OperationTypeSetTrustLineFlags             OperationType = 21
+	OperationTypeLiquidityPoolDeposit          OperationType = 22
+	OperationTypeLiquidityPoolWithdraw         OperationType = 23
 )
 
 var operationTypeMap = map[int32]string{
@@ -9252,6 +9668,8 @@ var operationTypeMap = map[int32]string{
 	19: "OperationTypeClawback",
 	20: "OperationTypeClawbackClaimableBalance",
 	21: "OperationTypeSetTrustLineFlags",
+	22: "OperationTypeLiquidityPoolDeposit",
+	23: "OperationTypeLiquidityPoolWithdraw",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -10306,6 +10724,78 @@ var (
 //
 const LiquidityPoolFeeV18 = 30
 
+// LiquidityPoolDepositOp is an XDR Struct defines as:
+//
+//   struct LiquidityPoolDepositOp
+//    {
+//        PoolID liquidityPoolID;
+//        int64 maxAmountA;     // maximum amount of first asset to deposit
+//        int64 maxAmountB;     // maximum amount of second asset to deposit
+//        Price minPrice;       // minimum depositA/depositB
+//        Price maxPrice;       // maximum depositA/depositB
+//    };
+//
+type LiquidityPoolDepositOp struct {
+	LiquidityPoolId PoolId
+	MaxAmountA      Int64
+	MaxAmountB      Int64
+	MinPrice        Price
+	MaxPrice        Price
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolDepositOp) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolDepositOp) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolDepositOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositOp)(nil)
+)
+
+// LiquidityPoolWithdrawOp is an XDR Struct defines as:
+//
+//   struct LiquidityPoolWithdrawOp
+//    {
+//        PoolID liquidityPoolID;
+//        int64 amount;         // amount of pool shares to withdraw
+//        int64 minAmountA;     // minimum amount of first asset to withdraw
+//        int64 minAmountB;     // minimum amount of second asset to withdraw
+//    };
+//
+type LiquidityPoolWithdrawOp struct {
+	LiquidityPoolId PoolId
+	Amount          Int64
+	MinAmountA      Int64
+	MinAmountB      Int64
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolWithdrawOp) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolWithdrawOp) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolWithdrawOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolWithdrawOp)(nil)
+)
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -10354,6 +10844,10 @@ const LiquidityPoolFeeV18 = 30
 //            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsOp setTrustLineFlagsOp;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositOp liquidityPoolDepositOp;
+//        case LIQUIDITY_POOL_WITHDRAW:
+//            LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
 //        }
 //
 type OperationBody struct {
@@ -10378,6 +10872,8 @@ type OperationBody struct {
 	ClawbackOp                      *ClawbackOp
 	ClawbackClaimableBalanceOp      *ClawbackClaimableBalanceOp
 	SetTrustLineFlagsOp             *SetTrustLineFlagsOp
+	LiquidityPoolDepositOp          *LiquidityPoolDepositOp
+	LiquidityPoolWithdrawOp         *LiquidityPoolWithdrawOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -10434,6 +10930,10 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "ClawbackClaimableBalanceOp", true
 	case OperationTypeSetTrustLineFlags:
 		return "SetTrustLineFlagsOp", true
+	case OperationTypeLiquidityPoolDeposit:
+		return "LiquidityPoolDepositOp", true
+	case OperationTypeLiquidityPoolWithdraw:
+		return "LiquidityPoolWithdrawOp", true
 	}
 	return "-", false
 }
@@ -10586,6 +11086,20 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.SetTrustLineFlagsOp = &tv
+	case OperationTypeLiquidityPoolDeposit:
+		tv, ok := value.(LiquidityPoolDepositOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LiquidityPoolDepositOp")
+			return
+		}
+		result.LiquidityPoolDepositOp = &tv
+	case OperationTypeLiquidityPoolWithdraw:
+		tv, ok := value.(LiquidityPoolWithdrawOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LiquidityPoolWithdrawOp")
+			return
+		}
+		result.LiquidityPoolWithdrawOp = &tv
 	}
 	return
 }
@@ -11090,6 +11604,56 @@ func (u OperationBody) GetSetTrustLineFlagsOp() (result SetTrustLineFlagsOp, ok 
 	return
 }
 
+// MustLiquidityPoolDepositOp retrieves the LiquidityPoolDepositOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustLiquidityPoolDepositOp() LiquidityPoolDepositOp {
+	val, ok := u.GetLiquidityPoolDepositOp()
+
+	if !ok {
+		panic("arm LiquidityPoolDepositOp is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPoolDepositOp retrieves the LiquidityPoolDepositOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetLiquidityPoolDepositOp() (result LiquidityPoolDepositOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPoolDepositOp" {
+		result = *u.LiquidityPoolDepositOp
+		ok = true
+	}
+
+	return
+}
+
+// MustLiquidityPoolWithdrawOp retrieves the LiquidityPoolWithdrawOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustLiquidityPoolWithdrawOp() LiquidityPoolWithdrawOp {
+	val, ok := u.GetLiquidityPoolWithdrawOp()
+
+	if !ok {
+		panic("arm LiquidityPoolWithdrawOp is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPoolWithdrawOp retrieves the LiquidityPoolWithdrawOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetLiquidityPoolWithdrawOp() (result LiquidityPoolWithdrawOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPoolWithdrawOp" {
+		result = *u.LiquidityPoolWithdrawOp
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationBody) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -11163,6 +11727,10 @@ var (
 //            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsOp setTrustLineFlagsOp;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositOp liquidityPoolDepositOp;
+//        case LIQUIDITY_POOL_WITHDRAW:
+//            LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
 //        }
 //        body;
 //    };
@@ -11223,6 +11791,43 @@ var (
 	_ encoding.BinaryUnmarshaler = (*OperationIdId)(nil)
 )
 
+// OperationIdRevokeId is an XDR NestedStruct defines as:
+//
+//   struct
+//        {
+//            AccountID sourceAccount;
+//            SequenceNumber seqNum;
+//            uint32 opNum;
+//            PoolID liquidityPoolID;
+//            Asset asset;
+//        }
+//
+type OperationIdRevokeId struct {
+	SourceAccount   AccountId
+	SeqNum          SequenceNumber
+	OpNum           Uint32
+	LiquidityPoolId PoolId
+	Asset           Asset
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s OperationIdRevokeId) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *OperationIdRevokeId) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*OperationIdRevokeId)(nil)
+	_ encoding.BinaryUnmarshaler = (*OperationIdRevokeId)(nil)
+)
+
 // OperationId is an XDR Union defines as:
 //
 //   union OperationID switch (EnvelopeType type)
@@ -11234,11 +11839,21 @@ var (
 //            SequenceNumber seqNum;
 //            uint32 opNum;
 //        } id;
+//    case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
+//        struct
+//        {
+//            AccountID sourceAccount;
+//            SequenceNumber seqNum;
+//            uint32 opNum;
+//            PoolID liquidityPoolID;
+//            Asset asset;
+//        } revokeId;
 //    };
 //
 type OperationId struct {
-	Type EnvelopeType
-	Id   *OperationIdId
+	Type     EnvelopeType
+	Id       *OperationIdId
+	RevokeId *OperationIdRevokeId
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -11253,6 +11868,8 @@ func (u OperationId) ArmForSwitch(sw int32) (string, bool) {
 	switch EnvelopeType(sw) {
 	case EnvelopeTypeEnvelopeTypeOpId:
 		return "Id", true
+	case EnvelopeTypeEnvelopeTypePoolRevokeOpId:
+		return "RevokeId", true
 	}
 	return "-", false
 }
@@ -11268,6 +11885,13 @@ func NewOperationId(aType EnvelopeType, value interface{}) (result OperationId, 
 			return
 		}
 		result.Id = &tv
+	case EnvelopeTypeEnvelopeTypePoolRevokeOpId:
+		tv, ok := value.(OperationIdRevokeId)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be OperationIdRevokeId")
+			return
+		}
+		result.RevokeId = &tv
 	}
 	return
 }
@@ -11291,6 +11915,31 @@ func (u OperationId) GetId() (result OperationIdId, ok bool) {
 
 	if armName == "Id" {
 		result = *u.Id
+		ok = true
+	}
+
+	return
+}
+
+// MustRevokeId retrieves the RevokeId value from the union,
+// panicing if the value is not set.
+func (u OperationId) MustRevokeId() OperationIdRevokeId {
+	val, ok := u.GetRevokeId()
+
+	if !ok {
+		panic("arm RevokeId is not set")
+	}
+
+	return val
+}
+
+// GetRevokeId retrieves the RevokeId value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationId) GetRevokeId() (result OperationIdRevokeId, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RevokeId" {
+		result = *u.RevokeId
 		ok = true
 	}
 
@@ -12448,19 +13097,22 @@ var (
 //   enum ClaimAtomType
 //    {
 //        CLAIM_ATOM_TYPE_V0 = 0,
-//        CLAIM_ATOM_TYPE_ORDER_BOOK = 1
+//        CLAIM_ATOM_TYPE_ORDER_BOOK = 1,
+//        CLAIM_ATOM_TYPE_LIQUIDITY_POOL = 2
 //    };
 //
 type ClaimAtomType int32
 
 const (
-	ClaimAtomTypeClaimAtomTypeV0        ClaimAtomType = 0
-	ClaimAtomTypeClaimAtomTypeOrderBook ClaimAtomType = 1
+	ClaimAtomTypeClaimAtomTypeV0            ClaimAtomType = 0
+	ClaimAtomTypeClaimAtomTypeOrderBook     ClaimAtomType = 1
+	ClaimAtomTypeClaimAtomTypeLiquidityPool ClaimAtomType = 2
 )
 
 var claimAtomTypeMap = map[int32]string{
 	0: "ClaimAtomTypeClaimAtomTypeV0",
 	1: "ClaimAtomTypeClaimAtomTypeOrderBook",
+	2: "ClaimAtomTypeClaimAtomTypeLiquidityPool",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -12582,6 +13234,47 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimOfferAtom)(nil)
 )
 
+// ClaimLiquidityAtom is an XDR Struct defines as:
+//
+//   struct ClaimLiquidityAtom
+//    {
+//        PoolID liquidityPoolID;
+//
+//        // amount and asset taken from the pool
+//        Asset assetSold;
+//        int64 amountSold;
+//
+//        // amount and asset sent to the pool
+//        Asset assetBought;
+//        int64 amountBought;
+//    };
+//
+type ClaimLiquidityAtom struct {
+	LiquidityPoolId PoolId
+	AssetSold       Asset
+	AmountSold      Int64
+	AssetBought     Asset
+	AmountBought    Int64
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ClaimLiquidityAtom) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ClaimLiquidityAtom) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ClaimLiquidityAtom)(nil)
+	_ encoding.BinaryUnmarshaler = (*ClaimLiquidityAtom)(nil)
+)
+
 // ClaimAtom is an XDR Union defines as:
 //
 //   union ClaimAtom switch (ClaimAtomType type)
@@ -12590,12 +13283,15 @@ var (
 //        ClaimOfferAtomV0 v0;
 //    case CLAIM_ATOM_TYPE_ORDER_BOOK:
 //        ClaimOfferAtom orderBook;
+//    case CLAIM_ATOM_TYPE_LIQUIDITY_POOL:
+//        ClaimLiquidityAtom liquidityPool;
 //    };
 //
 type ClaimAtom struct {
-	Type      ClaimAtomType
-	V0        *ClaimOfferAtomV0
-	OrderBook *ClaimOfferAtom
+	Type          ClaimAtomType
+	V0            *ClaimOfferAtomV0
+	OrderBook     *ClaimOfferAtom
+	LiquidityPool *ClaimLiquidityAtom
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -12612,6 +13308,8 @@ func (u ClaimAtom) ArmForSwitch(sw int32) (string, bool) {
 		return "V0", true
 	case ClaimAtomTypeClaimAtomTypeOrderBook:
 		return "OrderBook", true
+	case ClaimAtomTypeClaimAtomTypeLiquidityPool:
+		return "LiquidityPool", true
 	}
 	return "-", false
 }
@@ -12634,6 +13332,13 @@ func NewClaimAtom(aType ClaimAtomType, value interface{}) (result ClaimAtom, err
 			return
 		}
 		result.OrderBook = &tv
+	case ClaimAtomTypeClaimAtomTypeLiquidityPool:
+		tv, ok := value.(ClaimLiquidityAtom)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ClaimLiquidityAtom")
+			return
+		}
+		result.LiquidityPool = &tv
 	}
 	return
 }
@@ -12682,6 +13387,31 @@ func (u ClaimAtom) GetOrderBook() (result ClaimOfferAtom, ok bool) {
 
 	if armName == "OrderBook" {
 		result = *u.OrderBook
+		ok = true
+	}
+
+	return
+}
+
+// MustLiquidityPool retrieves the LiquidityPool value from the union,
+// panicing if the value is not set.
+func (u ClaimAtom) MustLiquidityPool() ClaimLiquidityAtom {
+	val, ok := u.GetLiquidityPool()
+
+	if !ok {
+		panic("arm LiquidityPool is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPool retrieves the LiquidityPool value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ClaimAtom) GetLiquidityPool() (result ClaimLiquidityAtom, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPool" {
+		result = *u.LiquidityPool
 		ok = true
 	}
 
@@ -13132,7 +13862,8 @@ var (
 
 // PathPaymentStrictReceiveResult is an XDR Union defines as:
 //
-//   union PathPaymentStrictReceiveResult switch (PathPaymentStrictReceiveResultCode code)
+//   union PathPaymentStrictReceiveResult switch (
+//        PathPaymentStrictReceiveResultCode code)
 //    {
 //    case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
 //        struct
@@ -14379,7 +15110,9 @@ var (
 //                                        // source account does not require trust
 //        ALLOW_TRUST_TRUST_NOT_REQUIRED = -3,
 //        ALLOW_TRUST_CANT_REVOKE = -4,     // source account can't revoke trust,
-//        ALLOW_TRUST_SELF_NOT_ALLOWED = -5 // trusting self is not allowed
+//        ALLOW_TRUST_SELF_NOT_ALLOWED = -5, // trusting self is not allowed
+//        ALLOW_TRUST_LOW_RESERVE = -6 // claimable balances can't be created
+//                                     // on revoke due to low reserves
 //    };
 //
 type AllowTrustResultCode int32
@@ -14391,6 +15124,7 @@ const (
 	AllowTrustResultCodeAllowTrustTrustNotRequired AllowTrustResultCode = -3
 	AllowTrustResultCodeAllowTrustCantRevoke       AllowTrustResultCode = -4
 	AllowTrustResultCodeAllowTrustSelfNotAllowed   AllowTrustResultCode = -5
+	AllowTrustResultCodeAllowTrustLowReserve       AllowTrustResultCode = -6
 )
 
 var allowTrustResultCodeMap = map[int32]string{
@@ -14400,6 +15134,7 @@ var allowTrustResultCodeMap = map[int32]string{
 	-3: "AllowTrustResultCodeAllowTrustTrustNotRequired",
 	-4: "AllowTrustResultCodeAllowTrustCantRevoke",
 	-5: "AllowTrustResultCodeAllowTrustSelfNotAllowed",
+	-6: "AllowTrustResultCodeAllowTrustLowReserve",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -15138,7 +15873,8 @@ var (
 
 // CreateClaimableBalanceResult is an XDR Union defines as:
 //
-//   union CreateClaimableBalanceResult switch (CreateClaimableBalanceResultCode code)
+//   union CreateClaimableBalanceResult switch (
+//        CreateClaimableBalanceResultCode code)
 //    {
 //    case CREATE_CLAIMABLE_BALANCE_SUCCESS:
 //        ClaimableBalanceID balanceID;
@@ -15415,7 +16151,8 @@ var (
 
 // BeginSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union BeginSponsoringFutureReservesResult switch (BeginSponsoringFutureReservesResultCode code)
+//   union BeginSponsoringFutureReservesResult switch (
+//        BeginSponsoringFutureReservesResultCode code)
 //    {
 //    case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
@@ -15530,7 +16267,8 @@ var (
 
 // EndSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union EndSponsoringFutureReservesResult switch (EndSponsoringFutureReservesResultCode code)
+//   union EndSponsoringFutureReservesResult switch (
+//        EndSponsoringFutureReservesResultCode code)
 //    {
 //    case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
@@ -15902,7 +16640,8 @@ var (
 
 // ClawbackClaimableBalanceResult is an XDR Union defines as:
 //
-//   union ClawbackClaimableBalanceResult switch (ClawbackClaimableBalanceResultCode code)
+//   union ClawbackClaimableBalanceResult switch (
+//        ClawbackClaimableBalanceResultCode code)
 //    {
 //    case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
 //        void;
@@ -15972,7 +16711,9 @@ var (
 //        SET_TRUST_LINE_FLAGS_MALFORMED = -1,
 //        SET_TRUST_LINE_FLAGS_NO_TRUST_LINE = -2,
 //        SET_TRUST_LINE_FLAGS_CANT_REVOKE = -3,
-//        SET_TRUST_LINE_FLAGS_INVALID_STATE = -4
+//        SET_TRUST_LINE_FLAGS_INVALID_STATE = -4,
+//        SET_TRUST_LINE_FLAGS_LOW_RESERVE = -5 // claimable balances can't be created
+//                                              // on revoke due to low reserves
 //    };
 //
 type SetTrustLineFlagsResultCode int32
@@ -15983,6 +16724,7 @@ const (
 	SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine  SetTrustLineFlagsResultCode = -2
 	SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke   SetTrustLineFlagsResultCode = -3
 	SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState SetTrustLineFlagsResultCode = -4
+	SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve   SetTrustLineFlagsResultCode = -5
 )
 
 var setTrustLineFlagsResultCodeMap = map[int32]string{
@@ -15991,6 +16733,7 @@ var setTrustLineFlagsResultCodeMap = map[int32]string{
 	-2: "SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine",
 	-3: "SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke",
 	-4: "SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState",
+	-5: "SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -16083,6 +16826,275 @@ func (s *SetTrustLineFlagsResult) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*SetTrustLineFlagsResult)(nil)
 	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsResult)(nil)
+)
+
+// LiquidityPoolDepositResultCode is an XDR Enum defines as:
+//
+//   enum LiquidityPoolDepositResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        LIQUIDITY_POOL_DEPOSIT_SUCCESS = 0,
+//
+//        // codes considered as "failure" for the operation
+//        LIQUIDITY_POOL_DEPOSIT_MALFORMED = -1,      // bad input
+//        LIQUIDITY_POOL_DEPOSIT_NO_TRUST = -2,       // no trust line for one of the
+//                                                    // assets
+//        LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED = -3, // not authorized for one of the
+//                                                    // assets
+//        LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED = -4,    // not enough balance for one of
+//                                                    // the assets
+//        LIQUIDITY_POOL_DEPOSIT_LINE_FULL = -5,      // pool share trust line doesn't
+//                                                    // have sufficient limit
+//        LIQUIDITY_POOL_DEPOSIT_BAD_PRICE = -6,      // deposit price outside bounds
+//        LIQUIDITY_POOL_DEPOSIT_POOL_FULL = -7       // pool reserves are full
+//    };
+//
+type LiquidityPoolDepositResultCode int32
+
+const (
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess       LiquidityPoolDepositResultCode = 0
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed     LiquidityPoolDepositResultCode = -1
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust       LiquidityPoolDepositResultCode = -2
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized LiquidityPoolDepositResultCode = -3
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded   LiquidityPoolDepositResultCode = -4
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull      LiquidityPoolDepositResultCode = -5
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice      LiquidityPoolDepositResultCode = -6
+	LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull      LiquidityPoolDepositResultCode = -7
+)
+
+var liquidityPoolDepositResultCodeMap = map[int32]string{
+	0:  "LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess",
+	-1: "LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed",
+	-2: "LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust",
+	-3: "LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized",
+	-4: "LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded",
+	-5: "LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull",
+	-6: "LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice",
+	-7: "LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for LiquidityPoolDepositResultCode
+func (e LiquidityPoolDepositResultCode) ValidEnum(v int32) bool {
+	_, ok := liquidityPoolDepositResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e LiquidityPoolDepositResultCode) String() string {
+	name, _ := liquidityPoolDepositResultCodeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolDepositResultCode) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolDepositResultCode) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolDepositResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositResultCode)(nil)
+)
+
+// LiquidityPoolDepositResult is an XDR Union defines as:
+//
+//   union LiquidityPoolDepositResult switch (
+//        LiquidityPoolDepositResultCode code)
+//    {
+//    case LIQUIDITY_POOL_DEPOSIT_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type LiquidityPoolDepositResult struct {
+	Code LiquidityPoolDepositResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u LiquidityPoolDepositResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of LiquidityPoolDepositResult
+func (u LiquidityPoolDepositResult) ArmForSwitch(sw int32) (string, bool) {
+	switch LiquidityPoolDepositResultCode(sw) {
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewLiquidityPoolDepositResult creates a new  LiquidityPoolDepositResult.
+func NewLiquidityPoolDepositResult(code LiquidityPoolDepositResultCode, value interface{}) (result LiquidityPoolDepositResult, err error) {
+	result.Code = code
+	switch LiquidityPoolDepositResultCode(code) {
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolDepositResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolDepositResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolDepositResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolDepositResult)(nil)
+)
+
+// LiquidityPoolWithdrawResultCode is an XDR Enum defines as:
+//
+//   enum LiquidityPoolWithdrawResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        LIQUIDITY_POOL_WITHDRAW_SUCCESS = 0,
+//
+//        // codes considered as "failure" for the operation
+//        LIQUIDITY_POOL_WITHDRAW_MALFORMED = -1,      // bad input
+//        LIQUIDITY_POOL_WITHDRAW_NO_TRUST = -2,       // no trust line for one of the
+//                                                     // assets
+//        LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED = -3,    // not enough balance of the
+//                                                     // pool share
+//        LIQUIDITY_POOL_WITHDRAW_LINE_FULL = -4,      // would go above limit for one
+//                                                     // of the assets
+//        LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM = -5   // didn't withdraw enough
+//    };
+//
+type LiquidityPoolWithdrawResultCode int32
+
+const (
+	LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess      LiquidityPoolWithdrawResultCode = 0
+	LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed    LiquidityPoolWithdrawResultCode = -1
+	LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust      LiquidityPoolWithdrawResultCode = -2
+	LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded  LiquidityPoolWithdrawResultCode = -3
+	LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull     LiquidityPoolWithdrawResultCode = -4
+	LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum LiquidityPoolWithdrawResultCode = -5
+)
+
+var liquidityPoolWithdrawResultCodeMap = map[int32]string{
+	0:  "LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess",
+	-1: "LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed",
+	-2: "LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust",
+	-3: "LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded",
+	-4: "LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull",
+	-5: "LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for LiquidityPoolWithdrawResultCode
+func (e LiquidityPoolWithdrawResultCode) ValidEnum(v int32) bool {
+	_, ok := liquidityPoolWithdrawResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e LiquidityPoolWithdrawResultCode) String() string {
+	name, _ := liquidityPoolWithdrawResultCodeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolWithdrawResultCode) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolWithdrawResultCode) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolWithdrawResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolWithdrawResultCode)(nil)
+)
+
+// LiquidityPoolWithdrawResult is an XDR Union defines as:
+//
+//   union LiquidityPoolWithdrawResult switch (
+//        LiquidityPoolWithdrawResultCode code)
+//    {
+//    case LIQUIDITY_POOL_WITHDRAW_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type LiquidityPoolWithdrawResult struct {
+	Code LiquidityPoolWithdrawResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u LiquidityPoolWithdrawResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of LiquidityPoolWithdrawResult
+func (u LiquidityPoolWithdrawResult) ArmForSwitch(sw int32) (string, bool) {
+	switch LiquidityPoolWithdrawResultCode(sw) {
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewLiquidityPoolWithdrawResult creates a new  LiquidityPoolWithdrawResult.
+func NewLiquidityPoolWithdrawResult(code LiquidityPoolWithdrawResultCode, value interface{}) (result LiquidityPoolWithdrawResult, err error) {
+	result.Code = code
+	switch LiquidityPoolWithdrawResultCode(code) {
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LiquidityPoolWithdrawResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LiquidityPoolWithdrawResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LiquidityPoolWithdrawResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*LiquidityPoolWithdrawResult)(nil)
 )
 
 // OperationResultCode is an XDR Enum defines as:
@@ -16200,6 +17212,10 @@ var (
 //            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsResult setTrustLineFlagsResult;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositResult liquidityPoolDepositResult;
+//        case LIQUIDITY_POOL_WITHDRAW:
+//            LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
 //        }
 //
 type OperationResultTr struct {
@@ -16226,6 +17242,8 @@ type OperationResultTr struct {
 	ClawbackResult                      *ClawbackResult
 	ClawbackClaimableBalanceResult      *ClawbackClaimableBalanceResult
 	SetTrustLineFlagsResult             *SetTrustLineFlagsResult
+	LiquidityPoolDepositResult          *LiquidityPoolDepositResult
+	LiquidityPoolWithdrawResult         *LiquidityPoolWithdrawResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -16282,6 +17300,10 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "ClawbackClaimableBalanceResult", true
 	case OperationTypeSetTrustLineFlags:
 		return "SetTrustLineFlagsResult", true
+	case OperationTypeLiquidityPoolDeposit:
+		return "LiquidityPoolDepositResult", true
+	case OperationTypeLiquidityPoolWithdraw:
+		return "LiquidityPoolWithdrawResult", true
 	}
 	return "-", false
 }
@@ -16444,6 +17466,20 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.SetTrustLineFlagsResult = &tv
+	case OperationTypeLiquidityPoolDeposit:
+		tv, ok := value.(LiquidityPoolDepositResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LiquidityPoolDepositResult")
+			return
+		}
+		result.LiquidityPoolDepositResult = &tv
+	case OperationTypeLiquidityPoolWithdraw:
+		tv, ok := value.(LiquidityPoolWithdrawResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LiquidityPoolWithdrawResult")
+			return
+		}
+		result.LiquidityPoolWithdrawResult = &tv
 	}
 	return
 }
@@ -16998,6 +18034,56 @@ func (u OperationResultTr) GetSetTrustLineFlagsResult() (result SetTrustLineFlag
 	return
 }
 
+// MustLiquidityPoolDepositResult retrieves the LiquidityPoolDepositResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustLiquidityPoolDepositResult() LiquidityPoolDepositResult {
+	val, ok := u.GetLiquidityPoolDepositResult()
+
+	if !ok {
+		panic("arm LiquidityPoolDepositResult is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPoolDepositResult retrieves the LiquidityPoolDepositResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetLiquidityPoolDepositResult() (result LiquidityPoolDepositResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPoolDepositResult" {
+		result = *u.LiquidityPoolDepositResult
+		ok = true
+	}
+
+	return
+}
+
+// MustLiquidityPoolWithdrawResult retrieves the LiquidityPoolWithdrawResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustLiquidityPoolWithdrawResult() LiquidityPoolWithdrawResult {
+	val, ok := u.GetLiquidityPoolWithdrawResult()
+
+	if !ok {
+		panic("arm LiquidityPoolWithdrawResult is not set")
+	}
+
+	return val
+}
+
+// GetLiquidityPoolWithdrawResult retrieves the LiquidityPoolWithdrawResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetLiquidityPoolWithdrawResult() (result LiquidityPoolWithdrawResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "LiquidityPoolWithdrawResult" {
+		result = *u.LiquidityPoolWithdrawResult
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationResultTr) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -17067,6 +18153,10 @@ var (
 //            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
 //        case SET_TRUST_LINE_FLAGS:
 //            SetTrustLineFlagsResult setTrustLineFlagsResult;
+//        case LIQUIDITY_POOL_DEPOSIT:
+//            LiquidityPoolDepositResult liquidityPoolDepositResult;
+//        case LIQUIDITY_POOL_WITHDRAW:
+//            LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
 //        }
 //        tr;
 //    default:

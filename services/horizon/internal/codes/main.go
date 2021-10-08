@@ -252,6 +252,12 @@ func String(code interface{}) (string, error) {
 			return OpLowReserve, nil
 		case xdr.ChangeTrustResultCodeChangeTrustSelfNotAllowed:
 			return "op_self_not_allowed", nil
+		case xdr.ChangeTrustResultCodeChangeTrustTrustLineMissing:
+			return "op_trust_line_missing", nil
+		case xdr.ChangeTrustResultCodeChangeTrustCannotDelete:
+			return "op_cannot_delete", nil
+		case xdr.ChangeTrustResultCodeChangeTrustNotAuthMaintainLiabilities:
+			return "op_not_aut_maintain_liabilities", nil
 		}
 	case xdr.AllowTrustResultCode:
 		switch code {
@@ -265,6 +271,10 @@ func String(code interface{}) (string, error) {
 			return "op_not_required", nil
 		case xdr.AllowTrustResultCodeAllowTrustCantRevoke:
 			return "op_cant_revoke", nil
+		case xdr.AllowTrustResultCodeAllowTrustSelfNotAllowed:
+			return "op_self_not_allowed", nil
+		case xdr.AllowTrustResultCodeAllowTrustLowReserve:
+			return OpLowReserve, nil
 		}
 	case xdr.AccountMergeResultCode:
 		switch code {
@@ -282,6 +292,8 @@ func String(code interface{}) (string, error) {
 			return "op_seq_num_too_far", nil
 		case xdr.AccountMergeResultCodeAccountMergeDestFull:
 			return "op_dest_full", nil
+		case xdr.AccountMergeResultCodeAccountMergeIsSponsor:
+			return "op_is_sponsor", nil
 		}
 	case xdr.InflationResultCode:
 		switch code {
@@ -299,7 +311,7 @@ func String(code interface{}) (string, error) {
 		case xdr.ManageDataResultCodeManageDataNameNotFound:
 			return "op_data_name_not_found", nil
 		case xdr.ManageDataResultCodeManageDataLowReserve:
-			return "op_low_reserve", nil
+			return OpLowReserve, nil
 		case xdr.ManageDataResultCodeManageDataInvalidName:
 			return "op_data_invalid_name", nil
 		}
@@ -399,6 +411,8 @@ func String(code interface{}) (string, error) {
 			return OpLowReserve, nil
 		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable:
 			return "op_only_transferable", nil
+		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipMalformed:
+			return OpMalformed, nil
 		}
 	case xdr.ClawbackResultCode:
 		switch code {
@@ -436,6 +450,42 @@ func String(code interface{}) (string, error) {
 			return "op_cant_revoke", nil
 		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState:
 			return "op_invalid_state", nil
+		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve:
+			return OpLowReserve, nil
+		}
+	case xdr.LiquidityPoolDepositResultCode:
+		switch code {
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
+			return OpSuccess, nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed:
+			return OpMalformed, nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust:
+			return OpNoTrust, nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized:
+			return OpNotAuthorized, nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded:
+			return OpUnderfunded, nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull:
+			return OpLineFull, nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice:
+			return "op_bad_price", nil
+		case xdr.LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull:
+			return "op_pool_full", nil
+		}
+	case xdr.LiquidityPoolWithdrawResultCode:
+		switch code {
+		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
+			return OpSuccess, nil
+		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed:
+			return OpMalformed, nil
+		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust:
+			return OpNoTrust, nil
+		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded:
+			return OpUnderfunded, nil
+		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull:
+			return OpLineFull, nil
+		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
+			return "op_under_minimum", nil
 		}
 	}
 
@@ -497,6 +547,10 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustClawbackClaimableBalanceResult().Code
 	case xdr.OperationTypeSetTrustLineFlags:
 		ic = ir.MustSetTrustLineFlagsResult().Code
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		ic = ir.MustLiquidityPoolDepositResult().Code
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		ic = ir.MustLiquidityPoolWithdrawResult().Code
 	}
 
 	return String(ic)

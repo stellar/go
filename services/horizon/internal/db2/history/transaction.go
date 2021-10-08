@@ -104,7 +104,7 @@ func (q *TransactionsQ) ForAccount(ctx context.Context, aid string) *Transaction
 }
 
 // ForClaimableBalance filters the transactions collection to a specific claimable balance
-func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID xdr.ClaimableBalanceId) *TransactionsQ {
+func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID string) *TransactionsQ {
 
 	var hCB HistoryClaimableBalance
 	hCB, q.Err = q.parent.ClaimableBalanceByID(ctx, cbID)
@@ -115,6 +115,22 @@ func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID xdr.Claima
 	q.sql = q.sql.
 		Join("history_transaction_claimable_balances htcb ON htcb.history_transaction_id = ht.id").
 		Where("htcb.history_claimable_balance_id = ?", hCB.InternalID)
+
+	return q
+}
+
+// ForLiquidityPool filters the transactions collection to a specific liquidity pool
+func (q *TransactionsQ) ForLiquidityPool(ctx context.Context, poolID string) *TransactionsQ {
+
+	var hLP HistoryLiquidityPool
+	hLP, q.Err = q.parent.LiquidityPoolByID(ctx, poolID)
+	if q.Err != nil {
+		return q
+	}
+
+	q.sql = q.sql.
+		Join("history_transaction_liquidity_pools htlp ON htlp.history_transaction_id = ht.id").
+		Where("htlp.history_liquidity_pool_id = ?", hLP.InternalID)
 
 	return q
 }

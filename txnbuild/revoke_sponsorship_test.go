@@ -44,7 +44,7 @@ func TestRevokeSponsorship(t *testing.T) {
 					Asset: CreditAsset{
 						Code:   "USD",
 						Issuer: newKeypair0().Address(),
-					},
+					}.MustToTrustLineAsset(),
 				},
 			},
 		},

@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,10 +10,12 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
@@ -333,7 +336,48 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, error) {
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "could not obtain historyQ from request")
 	}
-	return historyQ.AssetsForAddress(r.Context(), addy)
+	if historyQ.SessionInterface.GetTx() == nil {
+		return nil, nil, errors.New("cannot be called outside of a transaction")
+	}
+	if opts := historyQ.SessionInterface.GetTxOptions(); opts == nil || !opts.ReadOnly || opts.Isolation != sql.LevelRepeatableRead {
+		return nil, nil, errors.New("should only be called in a repeatable read transaction")
+	}
+
+	var account history.AccountEntry
+	account, err = historyQ.GetAccountByID(r.Context(), addy)
+	if historyQ.NoRows(err) {
+		return []xdr.Asset{}, []xdr.Int64{}, nil
+	} else if err != nil {
+		return nil, nil, errors.Wrap(err, "could not fetch account")
+	}
+
+	var trustlines []history.TrustLine
+	trustlines, err = historyQ.GetSortedTrustLinesByAccountID(r.Context(), addy)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not fetch trustlines for account")
+	}
+
+	var assets []xdr.Asset
+	var balances []xdr.Int64
+
+	for _, trustline := range trustlines {
+		// Ignore pool share assets because pool shares are not transferable and cannot be traded.
+		// Therefore, it doesn't make sense to send path payments where the source / destination assets are pool shares.
+		if trustline.AssetType == xdr.AssetTypeAssetTypePoolShare {
+			continue
+		}
+		var asset xdr.Asset
+		asset, err = xdr.NewCreditAsset(trustline.AssetCode, trustline.AssetIssuer)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "invalid trustline asset")
+		}
+		assets = append(assets, asset)
+		balances = append(balances, xdr.Int64(trustline.Balance))
+	}
+	assets = append(assets, xdr.MustNewNativeAsset())
+	balances = append(balances, xdr.Int64(account.Balance))
+
+	return assets, balances, nil
 }

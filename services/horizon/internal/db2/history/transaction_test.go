@@ -7,6 +7,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -15,6 +16,7 @@ import (
 
 func TestTransactionQueries(t *testing.T) {
 	tt := test.Start(t)
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
@@ -30,12 +32,70 @@ func TestTransactionQueries(t *testing.T) {
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
 
+func TestTransactionByLiquidityPool(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	txIndex := int32(1)
+	sequence := int32(56)
+	txID := toid.New(sequence, int32(1), 0).ToInt64()
+
+	// Insert a phony ledger
+	ledgerCloseTime := time.Now().Unix()
+	_, err := q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: xdr.Uint32(sequence),
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0, 0)
+	tt.Assert.NoError(err)
+
+	// Insert a phony transaction
+	transactionBuilder := q.NewTransactionBatchInsertBuilder(2)
+	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
+		index:         uint32(txIndex),
+		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
+		resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+		feeChangesXDR: "AAAAAA==",
+		metaXDR:       "AAAAAQAAAAAAAAAA",
+		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
+	})
+	err = transactionBuilder.Add(tt.Ctx, firstTransaction, uint32(sequence))
+	tt.Assert.NoError(err)
+	err = transactionBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	// Insert Liquidity Pool history
+	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
+	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
+	tt.Assert.NoError(err)
+	lpTransactionBuilder := q.NewTransactionLiquidityPoolBatchInsertBuilder(2)
+	tt.Assert.NoError(err)
+	internalID, ok := toInternalID[liquidityPoolID]
+	tt.Assert.True(ok)
+	err = lpTransactionBuilder.Add(tt.Ctx, txID, internalID)
+	tt.Assert.NoError(err)
+	err = lpTransactionBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
+	var records []Transaction
+	err = q.Transactions().ForLiquidityPool(tt.Ctx, liquidityPoolID).Select(tt.Ctx, &records)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 1)
+
+}
+
 // TestTransactionSuccessfulOnly tests if default query returns successful
 // transactions only.
 // If it's not enclosed in brackets, it may return incorrect result when mixed
 // with `ForAccount` or `ForLedger` filters.
 func TestTransactionSuccessfulOnly(t *testing.T) {
 	tt := test.Start(t)
+	test.ResetHorizonDB(t, tt.HorizonDB)
 	tt.Scenario("failed_transactions")
 	defer tt.Finish()
 

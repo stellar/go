@@ -17,6 +17,8 @@ func (cb ClaimableBalanceId) MarshalBinaryCompress() ([]byte, error) {
 			return nil, err
 		}
 		m = append(m, hash...)
+	// TODO fix before Protocol 18
+	// case ClaimableBalanceIdTypeClaimableBalanceIdTypeFromPoolRevoke:
 	default:
 		panic("Unknown type")
 	}

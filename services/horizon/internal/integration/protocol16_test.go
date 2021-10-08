@@ -16,14 +16,14 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func NewProtocol16Test(t *testing.T) *integration.Test {
+func NewProtocol17Test(t *testing.T) *integration.Test {
 	config := integration.Config{ProtocolVersion: 17}
 	return integration.NewTest(t, config)
 }
 
 func TestProtocol16Basics(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	t.Run("Sanity", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestProtocol16Basics(t *testing.T) {
 
 func TestHappyClawbackAccount(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
@@ -95,7 +95,7 @@ func TestHappyClawbackAccount(t *testing.T) {
 
 func TestHappyClawbackAccountPartial(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
@@ -112,7 +112,7 @@ func TestHappyClawbackAccountPartial(t *testing.T) {
 
 func TestHappyClawbackAccountSellingLiabilities(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	asset, fromKey, fromAccount := setupClawbackAccountTest(tt, itest, master)
@@ -151,7 +151,7 @@ func TestHappyClawbackAccountSellingLiabilities(t *testing.T) {
 
 func TestSadClawbackAccountInsufficientFunds(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
@@ -167,7 +167,7 @@ func TestSadClawbackAccountInsufficientFunds(t *testing.T) {
 
 func TestSadClawbackAccountSufficientFundsSellingLiabilities(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	asset, fromKey, fromAccount := setupClawbackAccountTest(tt, itest, master)
@@ -268,7 +268,7 @@ func assertAccountBalance(tt *assert.Assertions, itest *integration.Test, accoun
 
 func TestHappyClawbackClaimableBalance(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -400,7 +400,7 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 
 func TestHappySetTrustLineFlags(t *testing.T) {
 	tt := assert.New(t)
-	itest := NewProtocol16Test(t)
+	itest := NewProtocol17Test(t)
 	master := itest.Master()
 
 	// Give the master account the revocable flag (needed to set the clawback flag)

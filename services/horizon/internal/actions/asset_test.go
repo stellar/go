@@ -130,12 +130,14 @@ func TestAssetStats(t *testing.T) {
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
 			ClaimableBalances:               1,
+			LiquidityPools:                  5,
 		},
 		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "1",
 			AuthorizedToMaintainLiabilities: "2",
 			Unauthorized:                    "3",
 			ClaimableBalances:               "10",
+			LiquidityPools:                  "20",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -147,12 +149,14 @@ func TestAssetStats(t *testing.T) {
 			Unauthorized:                    usdAssetStat.Accounts.Unauthorized,
 		},
 		NumClaimableBalances: usdAssetStat.Accounts.ClaimableBalances,
+		NumLiquidityPools:    usdAssetStat.Accounts.LiquidityPools,
 		Balances: horizon.AssetStatBalances{
 			Authorized:                      "0.0000001",
 			AuthorizedToMaintainLiabilities: "0.0000002",
 			Unauthorized:                    "0.0000003",
 		},
 		ClaimableBalancesAmount: "0.0000010",
+		LiquidityPoolsAmount:    "0.0000020",
 		Amount:                  "0.0000001",
 		NumAccounts:             usdAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -179,6 +183,7 @@ func TestAssetStats(t *testing.T) {
 			AuthorizedToMaintainLiabilities: "46",
 			Unauthorized:                    "92",
 			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
 		},
 		Amount:      "23",
 		NumAccounts: 1,
@@ -196,6 +201,7 @@ func TestAssetStats(t *testing.T) {
 			Unauthorized:                    "0.0000092",
 		},
 		ClaimableBalancesAmount: "0.0000000",
+		LiquidityPoolsAmount:    "0.0000000",
 		Amount:                  "0.0000023",
 		NumAccounts:             etherAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -222,6 +228,7 @@ func TestAssetStats(t *testing.T) {
 			AuthorizedToMaintainLiabilities: "2",
 			Unauthorized:                    "3",
 			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -239,6 +246,7 @@ func TestAssetStats(t *testing.T) {
 			Unauthorized:                    "0.0000003",
 		},
 		ClaimableBalancesAmount: "0.0000000",
+		LiquidityPoolsAmount:    "0.0000000",
 		Amount:                  "0.0000001",
 		NumAccounts:             otherUSDAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -267,6 +275,7 @@ func TestAssetStats(t *testing.T) {
 			AuthorizedToMaintainLiabilities: "222",
 			Unauthorized:                    "333",
 			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
 		},
 		Amount:      "111",
 		NumAccounts: 3,
@@ -284,6 +293,7 @@ func TestAssetStats(t *testing.T) {
 			Unauthorized:                    "0.0000333",
 		},
 		ClaimableBalancesAmount: "0.0000000",
+		LiquidityPoolsAmount:    "0.0000000",
 		Amount:                  "0.0000111",
 		NumAccounts:             eurAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -312,23 +322,15 @@ func TestAssetStats(t *testing.T) {
 		issuer,
 		otherIssuer,
 	} {
-		accountEntry := xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 100,
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeAccount,
-				Account: &xdr.AccountEntry{
-					Flags:      xdr.Uint32(account.Flags),
-					HomeDomain: xdr.String32(account.HomeDomain),
-				},
-			},
+		accountEntry := history.AccountEntry{
+			LastModifiedLedger: 100,
+			AccountID:          account.AccountID,
+			Flags:              account.Flags,
+			HomeDomain:         account.HomeDomain,
 		}
-		if err := accountEntry.Data.Account.AccountId.SetAddress(account.AccountID); err != nil {
-			t.Fatalf("unexpected error %v", err)
-		}
-		batch := q.NewAccountsBatchInsertBuilder(0)
-		err := batch.Add(tt.Ctx, accountEntry)
+
+		err := q.UpsertAccounts(tt.Ctx, []history.AccountEntry{accountEntry})
 		tt.Assert.NoError(err)
-		tt.Assert.NoError(batch.Exec(tt.Ctx))
 	}
 
 	for _, testCase := range []struct {
@@ -467,6 +469,7 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 			Unauthorized:                    "0.0000003",
 		},
 		ClaimableBalancesAmount: "0.0000000",
+		LiquidityPoolsAmount:    "0.0000000",
 		Amount:                  "0.0000001",
 		NumAccounts:             usdAssetStat.NumAccounts,
 		Asset: base.Asset{

@@ -5,7 +5,7 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 
-	"github.com/stellar/go/crc16"
+	"github.com/stellar/go/strkey/internal/crc16"
 	"github.com/stellar/go/support/errors"
 )
 

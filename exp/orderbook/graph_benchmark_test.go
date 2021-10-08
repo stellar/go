@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -35,7 +37,7 @@ func loadGraphFromFile(filePath string) (*OrderBookGraph, error) {
 			return nil, errors.Wrap(err, "could not base64 decode entry")
 		}
 
-		graph.AddOffer(offer)
+		graph.AddOffers(offer)
 	}
 	if err := graph.Apply(1); err != nil {
 		return nil, err
@@ -163,4 +165,42 @@ func BenchmarkTestData(b *testing.B) {
 			}
 		}
 	}
+}
+
+func BenchmarkSingleLiquidityPoolExchange(b *testing.B) {
+	b.Run("deposit", func(b *testing.B) {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, math.MaxInt64/2)
+	})
+	b.Run("exchange", func(b *testing.B) {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, math.MaxInt64/2)
+	})
+}
+
+// Note: making these subtests with one randomness pool doesn't work, because
+// the benchmark doesn't do enough runs on the parent test...
+
+func BenchmarkLiquidityPoolDeposits(b *testing.B) {
+	amounts := createRandomAmounts(b.N)
+
+	b.ResetTimer()
+	for _, amount := range amounts {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, amount)
+	}
+}
+
+func BenchmarkLiquidityPoolExpectations(b *testing.B) {
+	amounts := createRandomAmounts(b.N)
+
+	b.ResetTimer()
+	for _, amount := range amounts {
+		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, amount)
+	}
+}
+
+func createRandomAmounts(quantity int) []xdr.Int64 {
+	amounts := make([]xdr.Int64, quantity)
+	for i, _ := range amounts {
+		amounts[i] = xdr.Int64(1 + rand.Int63n(math.MaxInt64-100))
+	}
+	return amounts
 }

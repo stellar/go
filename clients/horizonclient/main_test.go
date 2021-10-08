@@ -2,10 +2,11 @@ package horizonclient
 
 import (
 	"fmt"
-	"github.com/jarcoal/httpmock"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/jarcoal/httpmock"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -188,7 +189,7 @@ func TestAccounts(t *testing.T) {
 	accountRequest := AccountsRequest{}
 	_, err := client.Accounts(accountRequest)
 	if tt.Error(err) {
-		tt.Contains(err.Error(), "invalid request: no parameters - Signer or Asset must be provided")
+		tt.Contains(err.Error(), "invalid request: no parameters")
 	}
 
 	accountRequest = AccountsRequest{
@@ -197,7 +198,7 @@ func TestAccounts(t *testing.T) {
 	}
 	_, err = client.Accounts(accountRequest)
 	if tt.Error(err) {
-		tt.Contains(err.Error(), "invalid request: too many parameters - Signer and Asset provided, provide a single filter")
+		tt.Contains(err.Error(), "invalid request: too many parameters")
 	}
 
 	var accounts hProtocol.AccountsPage
@@ -257,6 +258,7 @@ func TestAccounts(t *testing.T) {
 		tt.Equal(ok, false)
 	}
 }
+
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -2323,7 +2325,7 @@ var transactionFailure = `{
   "type": "https://stellar.org/horizon-errors/transaction_failed",
   "title": "Transaction Failed",
   "status": 400,
-  "detail": "The transaction failed when submitted to the stellar network. The extras.result_codes field on this response contains further details.  Descriptions of each code can be found at: https://www.stellar.org/developers/learn/concepts/list-of-operations.html",
+  "detail": "The transaction failed when submitted to the stellar network. The extras.result_codes field on this response contains further details.  Descriptions of each code can be found at: https://developers.stellar.org/docs/start/list-of-operations/",
   "instance": "horizon-testnet-001.prd.stellar001.internal.stellar-ops.com/4elYz2fHhC-528285",
   "extras": {
     "envelope_xdr": "AAAAAKpmDL6Z4hvZmkTBkYpHftan4ogzTaO4XTB7joLgQnYYAAAAZAAAAAAABeoyAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAD3sEVVGZGi/NoC3ta/8f/YZKMzyi9ZJpOi0H47x7IqYAAAAAAAAAAAF9eEAAAAAAAAAAAA=",

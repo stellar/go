@@ -9,10 +9,10 @@ import (
 )
 
 // ChangeTrust represents the Stellar change trust operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html.
+// https://developers.stellar.org/docs/start/list-of-operations/
 // If Limit is omitted, it defaults to txnbuild.MaxTrustlineLimit.
 type ChangeTrust struct {
-	Line          Asset
+	Line          ChangeTrustAsset
 	Limit         string
 	SourceAccount string
 }
@@ -22,7 +22,7 @@ var MaxTrustlineLimit = amount.StringFromInt64(math.MaxInt64)
 
 // RemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
 // by setting the limit to "0".
-func RemoveTrustlineOp(issuedAsset Asset) ChangeTrust {
+func RemoveTrustlineOp(issuedAsset ChangeTrustAsset) ChangeTrust {
 	return ChangeTrust{
 		Line:  issuedAsset,
 		Limit: "0",
@@ -50,7 +50,7 @@ func (ct *ChangeTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeChangeTrust
 	xdrOp := xdr.ChangeTrustOp{
-		Line:  xdrLine.ToChangeTrustAsset(),
+		Line:  xdrLine,
 		Limit: xdrLimit,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)

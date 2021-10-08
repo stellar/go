@@ -6,7 +6,7 @@ top of the Stellar network (https://www.stellar.org/). Transactions may be const
 this one, txnbuild (https://github.com/stellar/go/tree/master/txnbuild), and then submitted with this client to any
 Horizon instance for processing onto the ledger. Together, these two libraries provide a complete Stellar SDK.
 
-For more information and further examples, see https://www.stellar.org/developers/go/reference/index.html.
+For more information and further examples, see https://github.com/stellar/go/blob/master/docs/reference/readme.md
 */
 package horizonclient
 
@@ -49,6 +49,9 @@ type AssetType string
 
 // join represents `join` param in queries
 type join string
+
+// reserves represents `reserves` param in queries
+type reserves []string
 
 const (
 	// OrderAsc represents an ascending order parameter
@@ -207,6 +210,10 @@ type ClientInterface interface {
 	HomeDomainForAccount(aid string) (string, error)
 	NextTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
 	PrevTradeAggregationsPage(hProtocol.TradeAggregationsPage) (hProtocol.TradeAggregationsPage, error)
+	LiquidityPoolDetail(request LiquidityPoolRequest) (hProtocol.LiquidityPool, error)
+	LiquidityPools(request LiquidityPoolsRequest) (hProtocol.LiquidityPoolsPage, error)
+	NextLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
+	PrevLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
 }
 
 // DefaultTestNetClient is a default client to connect to test network.
@@ -234,11 +241,13 @@ type HorizonRequest interface {
 // Either "Signer" or "Asset" fields should be set when retrieving Accounts.
 // At the moment, you can't use both filters at the same time.
 type AccountsRequest struct {
-	Signer string
-	Asset  string
-	Order  Order
-	Cursor string
-	Limit  uint
+	Signer        string
+	Asset         string
+	Sponsor       string
+	LiquidityPool string
+	Order         Order
+	Cursor        string
+	Limit         uint
 }
 
 // AccountRequest struct contains data for making requests to the show account endpoint of a horizon server.
@@ -254,13 +263,14 @@ type AccountRequest struct {
 // can be set at a time. If none are set, the default is to return all effects.
 // The query parameters (Order, Cursor and Limit) are optional. All or none can be set.
 type EffectRequest struct {
-	ForAccount     string
-	ForLedger      string
-	ForOperation   string
-	ForTransaction string
-	Order          Order
-	Cursor         string
-	Limit          uint
+	ForAccount       string
+	ForLedger        string
+	ForLiquidityPool string
+	ForOperation     string
+	ForTransaction   string
+	Order            Order
+	Cursor           string
+	Limit            uint
 }
 
 // AssetRequest struct contains data for getting asset details from a horizon server.
@@ -308,6 +318,7 @@ type OperationRequest struct {
 	ForAccount          string
 	ForClaimableBalance string
 	ForLedger           uint
+	ForLiquidityPool    string
 	ForTransaction      string
 	forOperationID      string
 	Order               Order
@@ -331,6 +342,7 @@ type TransactionRequest struct {
 	ForAccount          string
 	ForClaimableBalance string
 	ForLedger           uint
+	ForLiquidityPool    string
 	forTransactionHash  string
 	Order               Order
 	Cursor              string
@@ -353,7 +365,7 @@ type OrderBookRequest struct {
 // PathsRequest struct contains data for getting available strict receive path payments from a horizon server.
 // All the Destination related parameters are required and you need to include either
 // SourceAccount or SourceAssets.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-receive.html
+// See https://developers.stellar.org/api/aggregations/paths/strict-receive/
 type PathsRequest struct {
 	DestinationAccount     string
 	DestinationAssetType   AssetType
@@ -367,7 +379,7 @@ type PathsRequest struct {
 // StrictSendPathsRequest struct contains data for getting available strict send path payments from a horizon server.
 // All the Source related parameters are required and you need to include either
 // DestinationAccount or DestinationAssets.
-// See https://www.stellar.org/developers/horizon/reference/endpoints/path-finding-strict-send.html
+// See https://developers.stellar.org/api/aggregations/paths/strict-send/
 type StrictSendPathsRequest struct {
 	DestinationAccount string
 	DestinationAssets  string
@@ -384,12 +396,14 @@ type StrictSendPathsRequest struct {
 type TradeRequest struct {
 	ForOfferID         string
 	ForAccount         string
+	ForLiquidityPool   string
 	BaseAssetType      AssetType
 	BaseAssetCode      string
 	BaseAssetIssuer    string
 	CounterAssetType   AssetType
 	CounterAssetCode   string
 	CounterAssetIssuer string
+	TradeType          string
 	Order              Order
 	Cursor             string
 	Limit              uint

@@ -138,6 +138,14 @@ func NewOperation(
 		e := operations.SetTrustLineFlags{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		e := operations.LiquidityPoolDeposit{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		e := operations.LiquidityPoolWithdraw{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
 	default:
 		result = base
 	}

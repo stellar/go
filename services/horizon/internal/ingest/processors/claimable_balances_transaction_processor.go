@@ -32,7 +32,7 @@ func (b *claimableBalance) addOperationID(id int64) {
 
 type ClaimableBalancesTransactionProcessor struct {
 	sequence            uint32
-	claimableBalanceSet map[xdr.ClaimableBalanceId]claimableBalance
+	claimableBalanceSet map[string]claimableBalance
 	qClaimableBalances  history.QHistoryClaimableBalances
 }
 
@@ -40,7 +40,7 @@ func NewClaimableBalancesTransactionProcessor(Q history.QHistoryClaimableBalance
 	return &ClaimableBalancesTransactionProcessor{
 		qClaimableBalances:  Q,
 		sequence:            sequence,
-		claimableBalanceSet: map[xdr.ClaimableBalanceId]claimableBalance{},
+		claimableBalanceSet: map[string]claimableBalance{},
 	}
 }
 
@@ -58,7 +58,7 @@ func (p *ClaimableBalancesTransactionProcessor) ProcessTransaction(ctx context.C
 	return nil
 }
 
-func (p *ClaimableBalancesTransactionProcessor) addTransactionClaimableBalances(cbSet map[xdr.ClaimableBalanceId]claimableBalance, sequence uint32, transaction ingest.LedgerTransaction) error {
+func (p *ClaimableBalancesTransactionProcessor) addTransactionClaimableBalances(cbSet map[string]claimableBalance, sequence uint32, transaction ingest.LedgerTransaction) error {
 	transactionID := toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64()
 	transactionClaimableBalances, err := claimableBalancesForTransaction(
 		sequence,
@@ -80,7 +80,7 @@ func (p *ClaimableBalancesTransactionProcessor) addTransactionClaimableBalances(
 func claimableBalancesForTransaction(
 	sequence uint32,
 	transaction ingest.LedgerTransaction,
-) ([]xdr.ClaimableBalanceId, error) {
+) ([]string, error) {
 	changes, err := transaction.GetChanges()
 	if err != nil {
 		return nil, err
@@ -92,17 +92,13 @@ func claimableBalancesForTransaction(
 	return dedupeClaimableBalances(cbs)
 }
 
-func dedupeClaimableBalances(in []xdr.ClaimableBalanceId) (out []xdr.ClaimableBalanceId, err error) {
-	set := map[string]xdr.ClaimableBalanceId{}
+func dedupeClaimableBalances(in []string) (out []string, err error) {
+	set := map[string]struct{}{}
 	for _, id := range in {
-		hexID, err := xdr.MarshalHex(id)
-		if err != nil {
-			return out, errors.New("error parsing BalanceID")
-		}
-		set[hexID] = id
+		set[id] = struct{}{}
 	}
 
-	for _, id := range set {
+	for id := range set {
 		out = append(out, id)
 	}
 	return
@@ -110,8 +106,8 @@ func dedupeClaimableBalances(in []xdr.ClaimableBalanceId) (out []xdr.ClaimableBa
 
 func claimableBalancesForChanges(
 	changes []ingest.Change,
-) ([]xdr.ClaimableBalanceId, error) {
-	var cbs []xdr.ClaimableBalanceId
+) ([]string, error) {
+	var cbs []string
 
 	for _, c := range changes {
 		if c.Type != xdr.LedgerEntryTypeClaimableBalance {
@@ -122,18 +118,24 @@ func claimableBalancesForChanges(
 			return nil, errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
 
+		var claimableBalanceID xdr.ClaimableBalanceId
 		if c.Pre != nil {
-			cbs = append(cbs, c.Pre.Data.MustClaimableBalance().BalanceId)
+			claimableBalanceID = c.Pre.Data.MustClaimableBalance().BalanceId
 		}
 		if c.Post != nil {
-			cbs = append(cbs, c.Post.Data.MustClaimableBalance().BalanceId)
+			claimableBalanceID = c.Post.Data.MustClaimableBalance().BalanceId
 		}
+		id, err := xdr.MarshalHex(claimableBalanceID)
+		if err != nil {
+			return nil, err
+		}
+		cbs = append(cbs, id)
 	}
 
 	return cbs, nil
 }
 
-func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(cbSet map[xdr.ClaimableBalanceId]claimableBalance, sequence uint32, transaction ingest.LedgerTransaction) error {
+func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(cbSet map[string]claimableBalance, sequence uint32, transaction ingest.LedgerTransaction) error {
 	claimableBalances, err := claimableBalancesForOperations(transaction, sequence)
 	if err != nil {
 		return errors.Wrap(err, "could not determine operation claimable balances")
@@ -150,8 +152,8 @@ func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(cb
 	return nil
 }
 
-func claimableBalancesForOperations(transaction ingest.LedgerTransaction, sequence uint32) (map[int64][]xdr.ClaimableBalanceId, error) {
-	cbs := map[int64][]xdr.ClaimableBalanceId{}
+func claimableBalancesForOperations(transaction ingest.LedgerTransaction, sequence uint32) (map[int64][]string, error) {
+	cbs := map[int64][]string{}
 
 	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
@@ -193,8 +195,8 @@ func (p *ClaimableBalancesTransactionProcessor) Commit(ctx context.Context) erro
 	return nil
 }
 
-func (p *ClaimableBalancesTransactionProcessor) loadClaimableBalanceIDs(ctx context.Context, claimableBalanceSet map[xdr.ClaimableBalanceId]claimableBalance) error {
-	ids := make([]xdr.ClaimableBalanceId, 0, len(claimableBalanceSet))
+func (p *ClaimableBalancesTransactionProcessor) loadClaimableBalanceIDs(ctx context.Context, claimableBalanceSet map[string]claimableBalance) error {
+	ids := make([]string, 0, len(claimableBalanceSet))
 	for id := range claimableBalanceSet {
 		ids = append(ids, id)
 	}
@@ -205,11 +207,7 @@ func (p *ClaimableBalancesTransactionProcessor) loadClaimableBalanceIDs(ctx cont
 	}
 
 	for _, id := range ids {
-		hexID, err := xdr.MarshalHex(id)
-		if err != nil {
-			return errors.New("error parsing BalanceID")
-		}
-		internalID, ok := toInternalID[hexID]
+		internalID, ok := toInternalID[id]
 		if !ok {
 			// TODO: Figure out the right way to convert the id to a string here. %v will be nonsense.
 			return errors.Errorf("no internal id found for claimable balance %v", id)
@@ -223,7 +221,7 @@ func (p *ClaimableBalancesTransactionProcessor) loadClaimableBalanceIDs(ctx cont
 	return nil
 }
 
-func (p ClaimableBalancesTransactionProcessor) insertDBTransactionClaimableBalances(ctx context.Context, claimableBalanceSet map[xdr.ClaimableBalanceId]claimableBalance) error {
+func (p ClaimableBalancesTransactionProcessor) insertDBTransactionClaimableBalances(ctx context.Context, claimableBalanceSet map[string]claimableBalance) error {
 	batch := p.qClaimableBalances.NewTransactionClaimableBalanceBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range claimableBalanceSet {
@@ -240,7 +238,7 @@ func (p ClaimableBalancesTransactionProcessor) insertDBTransactionClaimableBalan
 	return nil
 }
 
-func (p ClaimableBalancesTransactionProcessor) insertDBOperationsClaimableBalances(ctx context.Context, claimableBalanceSet map[xdr.ClaimableBalanceId]claimableBalance) error {
+func (p ClaimableBalancesTransactionProcessor) insertDBOperationsClaimableBalances(ctx context.Context, claimableBalanceSet map[string]claimableBalance) error {
 	batch := p.qClaimableBalances.NewOperationClaimableBalanceBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range claimableBalanceSet {

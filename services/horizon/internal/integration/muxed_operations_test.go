@@ -42,7 +42,7 @@ func TestMuxedOperations(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredMuxed.Address(),
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()}.MustToChangeTrustAsset(),
 			Limit:         txnbuild.MaxTrustlineLimit,
 		},
 		&txnbuild.ManageSellOffer{
@@ -97,7 +97,7 @@ func TestMuxedOperations(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredMuxed.Address(),
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()}.MustToChangeTrustAsset(),
 			Limit:         "0",
 		},
 		&txnbuild.ManageData{

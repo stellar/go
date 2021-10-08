@@ -71,7 +71,7 @@ func TestRandClaimPredicateJSON(t *testing.T) {
 		gen.Next(
 			shape,
 			[]randxdr.Preset{
-				{randxdr.IsPtr, randxdr.SetPtrToPresent},
+				{randxdr.IsPtr, randxdr.SetPtr(true)},
 			},
 		)
 		assert.NoError(t, gxdr.Convert(shape, cp))

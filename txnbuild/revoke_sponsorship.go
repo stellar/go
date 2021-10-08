@@ -37,7 +37,7 @@ type RevokeSponsorship struct {
 
 type TrustLineID struct {
 	Account string
-	Asset   Asset
+	Asset   TrustLineAsset
 }
 
 type OfferID struct {
@@ -83,7 +83,7 @@ func (r *RevokeSponsorship) BuildXDR(withMuxedAccounts bool) (xdr.Operation, err
 		if err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect TrustLine asset")
 		}
-		key.Asset = asset.ToTrustLineAsset()
+		key.Asset = asset
 		xdrOp.Type = xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry
 		xdrOp.LedgerKey = &xdr.LedgerKey{
 			Type:      xdr.LedgerEntryTypeTrustline,

@@ -5,6 +5,7 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -166,16 +167,18 @@ type AssetStat struct {
 	} `json:"_links"`
 
 	base.Asset
-	PT                   string            `json:"paging_token"`
-	Accounts             AssetStatAccounts `json:"accounts"`
-	NumClaimableBalances int32             `json:"num_claimable_balances"`
+	PT string `json:"paging_token"`
+	// Action needed in release: horizon-v3.0.0: deprecated field
+	NumAccounts          int32 `json:"num_accounts"`
+	NumClaimableBalances int32 `json:"num_claimable_balances"`
+	NumLiquidityPools    int32 `json:"num_liquidity_pools"`
 	// Action needed in release: horizon-v3.0.0: deprecated field
 	Amount                  string            `json:"amount"`
-	Balances                AssetStatBalances `json:"balances"`
+	Accounts                AssetStatAccounts `json:"accounts"`
 	ClaimableBalancesAmount string            `json:"claimable_balances_amount"`
-	// Action needed in release: horizon-v3.0.0: deprecated field
-	NumAccounts int32        `json:"num_accounts"`
-	Flags       AccountFlags `json:"flags"`
+	LiquidityPoolsAmount    string            `json:"liquidity_pools_amount"`
+	Balances                AssetStatBalances `json:"balances"`
+	Flags                   AccountFlags      `json:"flags"`
 }
 
 // PagingToken implementation for hal.Pageable
@@ -197,12 +200,14 @@ type AssetStatAccounts struct {
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
-// Balance represents an account's holdings for a single currency type
+// Balance represents an account's holdings for either a single currency type or
+// shares in a liquidity pool.
 type Balance struct {
 	Balance                           string `json:"balance"`
+	LiquidityPoolId                   string `json:"liquidity_pool_id,omitempty"`
 	Limit                             string `json:"limit,omitempty"`
-	BuyingLiabilities                 string `json:"buying_liabilities"`
-	SellingLiabilities                string `json:"selling_liabilities"`
+	BuyingLiabilities                 string `json:"buying_liabilities,omitempty"`
+	SellingLiabilities                string `json:"selling_liabilities,omitempty"`
 	Sponsor                           string `json:"sponsor,omitempty"`
 	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
 	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
@@ -293,7 +298,7 @@ func (p Path) PagingToken() string {
 	return ""
 }
 
-// Price represents a price
+// Price represents a price for an offer
 type Price base.Price
 
 // PriceLevel represents an aggregation of offers that share a given price
@@ -316,6 +321,7 @@ type Root struct {
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
 		Ledger              hal.Link  `json:"ledger"`
 		Ledgers             hal.Link  `json:"ledgers"`
+		LiquidityPools      *hal.Link `json:"liquidity_pools"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
 		Operation           hal.Link  `json:"operation"`
@@ -351,6 +357,44 @@ type Signer struct {
 	Sponsor string `json:"sponsor,omitempty"`
 }
 
+// TradePrice represents a price for a trade
+type TradePrice struct {
+	N int64 `json:"n,string"`
+	D int64 `json:"d,string"`
+}
+
+// String returns a string representation of the trade price
+func (p TradePrice) String() string {
+	return big.NewRat(p.N, p.D).FloatString(7)
+}
+
+// UnmarshalJSON implements a custom unmarshaler for TradePrice
+// which can handle a numerator and denominator fields which can be a string or int
+func (p *TradePrice) UnmarshalJSON(data []byte) error {
+	v := struct {
+		N json.Number `json:"n"`
+		D json.Number `json:"d"`
+	}{}
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+
+	if v.N != "" {
+		p.N, err = v.N.Int64()
+		if err != nil {
+			return err
+		}
+	}
+	if v.D != "" {
+		p.D, err = v.D.Int64()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Trade represents a horizon digested trade
 type Trade struct {
 	Links struct {
@@ -360,24 +404,28 @@ type Trade struct {
 		Operation hal.Link `json:"operation"`
 	} `json:"_links"`
 
-	ID                 string    `json:"id"`
-	PT                 string    `json:"paging_token"`
-	LedgerCloseTime    time.Time `json:"ledger_close_time"`
-	OfferID            string    `json:"offer_id"`
-	BaseOfferID        string    `json:"base_offer_id"`
-	BaseAccount        string    `json:"base_account"`
-	BaseAmount         string    `json:"base_amount"`
-	BaseAssetType      string    `json:"base_asset_type"`
-	BaseAssetCode      string    `json:"base_asset_code,omitempty"`
-	BaseAssetIssuer    string    `json:"base_asset_issuer,omitempty"`
-	CounterOfferID     string    `json:"counter_offer_id"`
-	CounterAccount     string    `json:"counter_account"`
-	CounterAmount      string    `json:"counter_amount"`
-	CounterAssetType   string    `json:"counter_asset_type"`
-	CounterAssetCode   string    `json:"counter_asset_code,omitempty"`
-	CounterAssetIssuer string    `json:"counter_asset_issuer,omitempty"`
-	BaseIsSeller       bool      `json:"base_is_seller"`
-	Price              *Price    `json:"price"`
+	ID                     string     `json:"id"`
+	PT                     string     `json:"paging_token"`
+	LedgerCloseTime        time.Time  `json:"ledger_close_time"`
+	OfferID                string     `json:"offer_id,omitempty"`
+	TradeType              string     `json:"trade_type"`
+	LiquidityPoolFeeBP     uint32     `json:"liquidity_pool_fee_bp,omitempty"`
+	BaseLiquidityPoolID    string     `json:"base_liquidity_pool_id,omitempty"`
+	BaseOfferID            string     `json:"base_offer_id,omitempty"`
+	BaseAccount            string     `json:"base_account,omitempty"`
+	BaseAmount             string     `json:"base_amount"`
+	BaseAssetType          string     `json:"base_asset_type"`
+	BaseAssetCode          string     `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer        string     `json:"base_asset_issuer,omitempty"`
+	CounterLiquidityPoolID string     `json:"counter_liquidity_pool_id,omitempty"`
+	CounterOfferID         string     `json:"counter_offer_id,omitempty"`
+	CounterAccount         string     `json:"counter_account,omitempty"`
+	CounterAmount          string     `json:"counter_amount"`
+	CounterAssetType       string     `json:"counter_asset_type"`
+	CounterAssetCode       string     `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer     string     `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller           bool       `json:"base_is_seller"`
+	Price                  TradePrice `json:"price,omitempty"`
 }
 
 // PagingToken implementation for hal.Pageable
@@ -412,19 +460,19 @@ type TradeEffect struct {
 
 // TradeAggregation represents trade data aggregation over a period of time
 type TradeAggregation struct {
-	Timestamp     int64     `json:"timestamp,string"`
-	TradeCount    int64     `json:"trade_count,string"`
-	BaseVolume    string    `json:"base_volume"`
-	CounterVolume string    `json:"counter_volume"`
-	Average       string    `json:"avg"`
-	High          string    `json:"high"`
-	HighR         xdr.Price `json:"high_r"`
-	Low           string    `json:"low"`
-	LowR          xdr.Price `json:"low_r"`
-	Open          string    `json:"open"`
-	OpenR         xdr.Price `json:"open_r"`
-	Close         string    `json:"close"`
-	CloseR        xdr.Price `json:"close_r"`
+	Timestamp     int64      `json:"timestamp,string"`
+	TradeCount    int64      `json:"trade_count,string"`
+	BaseVolume    string     `json:"base_volume"`
+	CounterVolume string     `json:"counter_volume"`
+	Average       string     `json:"avg"`
+	High          string     `json:"high"`
+	HighR         TradePrice `json:"high_r"`
+	Low           string     `json:"low"`
+	LowR          TradePrice `json:"low_r"`
+	Open          string     `json:"open"`
+	OpenR         TradePrice `json:"open_r"`
+	Close         string     `json:"close"`
+	CloseR        TradePrice `json:"close_r"`
 }
 
 // PagingToken implementation for hal.Pageable. Not actually used
@@ -515,7 +563,7 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements a custom unmarshaler for Transaction
-// which can handle a max_fee field which can be a string of int
+// which can handle a max_fee field which can be a string or int
 func (t *Transaction) UnmarshalJSON(data []byte) error {
 	type Alias Transaction // we define Alias to avoid infinite recursion when calling UnmarshalJSON()
 	v := &struct {
@@ -725,4 +773,42 @@ func (res ClaimableBalance) PagingToken() string {
 type Claimant struct {
 	Destination string             `json:"destination"`
 	Predicate   xdr.ClaimPredicate `json:"predicate"`
+}
+
+// LiquidityPool represents a liquidity pool
+type LiquidityPool struct {
+	Links struct {
+		Self         hal.Link `json:"self"`
+		Transactions hal.Link `json:"transactions"`
+		Operations   hal.Link `json:"operations"`
+	} `json:"_links"`
+
+	ID                 string                 `json:"id"`
+	PT                 string                 `json:"paging_token"`
+	FeeBP              uint32                 `json:"fee_bp"`
+	Type               string                 `json:"type"`
+	TotalTrustlines    uint64                 `json:"total_trustlines,string"`
+	TotalShares        string                 `json:"total_shares"`
+	Reserves           []LiquidityPoolReserve `json:"reserves"`
+	LastModifiedLedger uint32                 `json:"last_modified_ledger"`
+	LastModifiedTime   *time.Time             `json:"last_modified_time"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res LiquidityPool) PagingToken() string {
+	return res.PT
+}
+
+// LiquidityPoolsPage returns a list of liquidity pool records
+type LiquidityPoolsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []LiquidityPool `json:"records"`
+	} `json:"_embedded"`
+}
+
+// LiquidityPoolReserve represents a liquidity pool asset reserve
+type LiquidityPoolReserve struct {
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
 }

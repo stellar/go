@@ -431,3 +431,43 @@ func (a Asset) ToTrustLineAsset() TrustLineAsset {
 
 	return tla
 }
+
+func (a *Asset) GetCode() string {
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		return ""
+	case AssetTypeAssetTypeCreditAlphanum4:
+		return string((*a.AlphaNum4).AssetCode[:])
+	case AssetTypeAssetTypeCreditAlphanum12:
+		return string((*a.AlphaNum12).AssetCode[:])
+	default:
+		return ""
+	}
+}
+
+func (a *Asset) GetIssuer() string {
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		return ""
+	case AssetTypeAssetTypeCreditAlphanum4:
+		addr, _ := (*a.AlphaNum4).Issuer.GetAddress()
+		return addr
+	case AssetTypeAssetTypeCreditAlphanum12:
+		addr, _ := (*a.AlphaNum12).Issuer.GetAddress()
+		return addr
+	default:
+		return ""
+	}
+}
+
+func (a *Asset) LessThan(b Asset) bool {
+	if a.Type != b.Type {
+		return int32(a.Type) < int32(b.Type)
+	}
+
+	if a.GetCode() != b.GetCode() {
+		return a.GetCode() < b.GetCode()
+	}
+
+	return a.GetIssuer() < b.GetIssuer()
+}

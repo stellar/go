@@ -11,7 +11,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
-	"github.com/stellar/go/xdr"
 )
 
 // AllowedResolutions is the set of trade aggregation time windows allowed to be used as the
@@ -36,30 +35,14 @@ type TradeAggregation struct {
 	BaseVolume    string  `db:"base_volume"`
 	CounterVolume string  `db:"counter_volume"`
 	Average       float64 `db:"avg"`
-	HighN         int32   `db:"high_n"`
-	HighD         int32   `db:"high_d"`
-	LowN          int32   `db:"low_n"`
-	LowD          int32   `db:"low_d"`
-	OpenN         int32   `db:"open_n"`
-	OpenD         int32   `db:"open_d"`
-	CloseN        int32   `db:"close_n"`
-	CloseD        int32   `db:"close_d"`
-}
-
-func (t TradeAggregation) High() xdr.Price {
-	return xdr.Price{N: xdr.Int32(t.HighN), D: xdr.Int32(t.HighD)}
-}
-
-func (t TradeAggregation) Low() xdr.Price {
-	return xdr.Price{N: xdr.Int32(t.LowN), D: xdr.Int32(t.LowD)}
-}
-
-func (t TradeAggregation) Open() xdr.Price {
-	return xdr.Price{N: xdr.Int32(t.OpenN), D: xdr.Int32(t.OpenD)}
-}
-
-func (t TradeAggregation) Close() xdr.Price {
-	return xdr.Price{N: xdr.Int32(t.CloseN), D: xdr.Int32(t.CloseD)}
+	HighN         int64   `db:"high_n"`
+	HighD         int64   `db:"high_d"`
+	LowN          int64   `db:"low_n"`
+	LowD          int64   `db:"low_d"`
+	OpenN         int64   `db:"open_n"`
+	OpenD         int64   `db:"open_d"`
+	CloseN        int64   `db:"close_n"`
+	CloseD        int64   `db:"close_d"`
 }
 
 // TradeAggregationsQ is a helper struct to aid in configuring queries to

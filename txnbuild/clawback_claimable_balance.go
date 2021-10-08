@@ -7,7 +7,7 @@ import (
 )
 
 // ClawbackClaimableBalance represents the Stellar clawback claimable balance operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type ClawbackClaimableBalance struct {
 	BalanceID     string
 	SourceAccount string

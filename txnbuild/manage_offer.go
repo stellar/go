@@ -71,7 +71,7 @@ func DeleteOfferOp(offerID int64, sourceAccount ...string) (ManageSellOffer, err
 }
 
 // ManageSellOffer represents the Stellar manage offer operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type ManageSellOffer struct {
 	Selling       Asset
 	Buying        Asset

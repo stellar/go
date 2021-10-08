@@ -16,6 +16,7 @@ func (q *Q) TruncateIngestStateTables(ctx context.Context) error {
 		"accounts_signers",
 		"claimable_balances",
 		"exp_asset_stats",
+		"liquidity_pools",
 		"offers",
 		"trust_lines",
 	})

@@ -150,7 +150,7 @@ func TestSetup(t *testing.T) {
 				},
 				// a trustline is generated to the desired so horizon creates entry at `{horizon-url}/assets`. This was added as many Wallets reach that endpoint to check if a given asset exists.
 				&txnbuild.ChangeTrust{
-					Line:          testAsset,
+					Line:          testAsset.MustToChangeTrustAsset(),
 					SourceAccount: trustorAccKP,
 					Limit:         "922337203685.4775807",
 				},

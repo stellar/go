@@ -82,6 +82,10 @@ func operationFromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) (Operation, e
 		newOp = &ClawbackClaimableBalance{}
 	case xdr.OperationTypeSetTrustLineFlags:
 		newOp = &SetTrustLineFlags{}
+	case xdr.OperationTypeLiquidityPoolDeposit:
+		newOp = &LiquidityPoolDeposit{}
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+		newOp = &LiquidityPoolWithdraw{}
 	default:
 		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}

@@ -23,83 +23,165 @@ func (r *Trade) HasPrice() bool {
 	return r.PriceN.Valid && r.PriceD.Valid
 }
 
-// Trades provides a helper to filter rows from the `history_trades` table
-// with pre-defined filters.  See `TradesQ` methods for the available filters.
-func (q *Q) Trades() *TradesQ {
-	return &TradesQ{
-		parent: q,
-		sql: joinTradeAssets(
+const (
+	AllTrades           = "all"
+	OrderbookTrades     = "orderbook"
+	LiquidityPoolTrades = "liquidity_pool"
+)
+
+type tradesQuery struct {
+	baseAsset     *xdr.Asset
+	counterAsset  *xdr.Asset
+	tradeType     string
+	account       string
+	liquidityPool string
+	offer         int64
+}
+
+func (q *Q) GetTrades(
+	ctx context.Context, page db2.PageQuery, account string, tradeType string,
+) ([]Trade, error) {
+	return q.getTrades(ctx, page, tradesQuery{
+		account:   account,
+		tradeType: tradeType,
+	})
+}
+
+func (q *Q) GetTradesForOffer(
+	ctx context.Context, page db2.PageQuery, offerID int64,
+) ([]Trade, error) {
+	return q.getTrades(ctx, page, tradesQuery{
+		offer:     offerID,
+		tradeType: AllTrades,
+	})
+}
+
+func (q *Q) GetTradesForLiquidityPool(
+	ctx context.Context, page db2.PageQuery, poolID string,
+) ([]Trade, error) {
+	return q.getTrades(ctx, page, tradesQuery{
+		liquidityPool: poolID,
+		tradeType:     AllTrades,
+	})
+}
+
+func (q *Q) GetTradesForAssets(
+	ctx context.Context, page db2.PageQuery, account, tradeType string, baseAsset, counterAsset xdr.Asset,
+) ([]Trade, error) {
+	return q.getTrades(ctx, page, tradesQuery{
+		account:      account,
+		baseAsset:    &baseAsset,
+		counterAsset: &counterAsset,
+		tradeType:    tradeType,
+	})
+}
+
+type historyTradesQuery struct {
+	baseAssetID    int64
+	counterAssetID int64
+	accountID      int64
+	offerID        int64
+	poolID         int64
+	orderPreserved bool
+	tradeType      string
+}
+
+func (q *Q) getTrades(ctx context.Context, page db2.PageQuery, query tradesQuery) ([]Trade, error) {
+	// Add explicit query type for prometheus metrics, since we use raw sql.
+	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
+
+	internalTradesQuery, err := q.transformTradesQuery(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid trade query")
+	}
+	rawSQL, args, err := createTradesSQL(page, internalTradesQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create trades sql query")
+	}
+
+	var dest []Trade
+	if err = q.SelectRaw(ctx, &dest, rawSQL, args...); err != nil {
+		return nil, errors.Wrap(err, "could not select trades")
+	}
+
+	return dest, nil
+}
+
+func (q *Q) transformTradesQuery(ctx context.Context, query tradesQuery) (historyTradesQuery, error) {
+	internalQuery := historyTradesQuery{
+		orderPreserved: true,
+		tradeType:      query.tradeType,
+		offerID:        query.offer,
+	}
+
+	if query.account != "" {
+		var account Account
+		if err := q.AccountByAddress(ctx, &account, query.account); err != nil {
+			return internalQuery, errors.Wrap(err, "could not get account by address")
+		}
+		internalQuery.accountID = account.ID
+	}
+
+	if query.baseAsset != nil {
+		var err error
+		internalQuery.baseAssetID, err = q.GetAssetID(ctx, *query.baseAsset)
+		if err != nil {
+			return internalQuery, errors.Wrap(err, "could not get base asset id")
+		}
+
+		internalQuery.counterAssetID, err = q.GetAssetID(ctx, *query.counterAsset)
+		if err != nil {
+			return internalQuery, errors.Wrap(err, "could not get counter asset id")
+		}
+		internalQuery.orderPreserved, internalQuery.baseAssetID, internalQuery.counterAssetID = getCanonicalAssetOrder(
+			internalQuery.baseAssetID, internalQuery.counterAssetID,
+		)
+	}
+
+	if query.liquidityPool != "" {
+		historyPool, err := q.LiquidityPoolByID(ctx, query.liquidityPool)
+		if err != nil {
+			return internalQuery, errors.Wrap(err, "could not get pool id")
+		}
+		internalQuery.poolID = historyPool.InternalID
+	}
+
+	return internalQuery, nil
+}
+
+func createTradesSQL(page db2.PageQuery, query historyTradesQuery) (string, []interface{}, error) {
+	base := selectTradeFields
+	if !query.orderPreserved {
+		base = selectReverseTradeFields
+	}
+	sql := joinTradeAssets(
+		joinTradeLiquidityPools(
 			joinTradeAccounts(
-				selectTradeFields.From("history_trades htrd"),
+				base.From("history_trades htrd"),
 				"history_accounts",
 			),
-			"history_assets",
+			"history_liquidity_pools",
 		),
-	}
-}
+		"history_assets",
+	)
 
-// ReverseTrades provides a helper to filter rows from the `history_trades` table
-// with pre-defined filters and reversed base/counter.  See `TradesQ` methods for the available filters.
-func (q *Q) ReverseTrades() *TradesQ {
-	return &TradesQ{
-		parent: q,
-		sql: joinTradeAssets(
-			joinTradeAccounts(
-				selectReverseTradeFields.From("history_trades htrd"),
-				"history_accounts",
-			),
-			"history_assets",
-		),
-	}
-}
-
-// TradesForAssetPair provides a helper to filter rows from the `history_trades` table
-// with the base filter of a specific asset pair.  See `TradesQ` methods for further available filters.
-func (q *Q) TradesForAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ {
-	orderPreserved, baseAssetId, counterAssetId := getCanonicalAssetOrder(baseAssetId, counterAssetId)
-	var trades *TradesQ
-	if orderPreserved {
-		trades = q.Trades()
-	} else {
-		trades = q.ReverseTrades()
-	}
-	return trades.forAssetPair(baseAssetId, counterAssetId)
-}
-
-// ForOffer filters the query results by the offer id.
-func (q *TradesQ) ForOffer(id int64) *TradesQ {
-	q.forOfferID = id
-	return q
-}
-
-//Filter by asset pair. This function is private to ensure that correct order and proper select statement are coupled
-func (q *TradesQ) forAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ {
-	q.sql = q.sql.Where(sq.Eq{"base_asset_id": baseAssetId, "counter_asset_id": counterAssetId})
-	return q
-}
-
-// ForAccount filter Trades by account id
-func (q *TradesQ) ForAccount(ctx context.Context, aid string) *TradesQ {
-	var account Account
-	q.Err = q.parent.AccountByAddress(ctx, &account, aid)
-	if q.Err != nil {
-		return q
+	if query.baseAssetID != 0 {
+		sql = sql.Where(sq.Eq{"base_asset_id": query.baseAssetID, "counter_asset_id": query.counterAssetID})
 	}
 
-	q.forAccountID = account.ID
-	return q
-}
-
-// Page specifies the paging constraints for the query being built by `q`.
-func (q *TradesQ) Page(ctx context.Context, page db2.PageQuery) *TradesQ {
-	if q.Err != nil {
-		return q
+	switch query.tradeType {
+	case OrderbookTrades:
+		sql = sql.Where(sq.Eq{"htrd.base_liquidity_pool_id": nil, "htrd.counter_liquidity_pool_id": nil})
+	case LiquidityPoolTrades:
+		sql = sql.Where(sq.Eq{"htrd.base_offer_id": nil, "htrd.counter_offer_id": nil})
+	case AllTrades:
+	default:
+		return "", nil, errors.Errorf("Invalid trade type: %v", query.tradeType)
 	}
 
 	op, idx, err := page.CursorInt64Pair(db2.DefaultPairSep)
 	if err != nil {
-		q.Err = err
-		return q
+		return "", nil, errors.Wrap(err, "could not parse cursor")
 	}
 
 	// constrain the second portion of the cursor pair to 32-bits
@@ -107,57 +189,57 @@ func (q *TradesQ) Page(ctx context.Context, page db2.PageQuery) *TradesQ {
 		idx = math.MaxInt32
 	}
 
-	q.pageCalled = true
-
-	if q.forAccountID != 0 || q.forOfferID != 0 {
+	if query.accountID != 0 || query.offerID != 0 || query.poolID != 0 {
 		// Construct UNION query
 		var firstSelect, secondSelect sq.SelectBuilder
 		switch {
-		case q.forAccountID != 0:
-			firstSelect = q.sql.Where("htrd.base_account_id = ?", q.forAccountID)
-			secondSelect = q.sql.Where("htrd.counter_account_id = ?", q.forAccountID)
-		case q.forOfferID != 0:
-			firstSelect = q.sql.Where("htrd.base_offer_id = ?", q.forOfferID)
-			secondSelect = q.sql.Where("htrd.counter_offer_id = ?", q.forOfferID)
+		case query.accountID != 0:
+			firstSelect = sql.Where("htrd.base_account_id = ?", query.accountID)
+			secondSelect = sql.Where("htrd.counter_account_id = ?", query.accountID)
+		case query.offerID != 0:
+			firstSelect = sql.Where("htrd.base_offer_id = ?", query.offerID)
+			secondSelect = sql.Where("htrd.counter_offer_id = ?", query.offerID)
+		case query.poolID != 0:
+			firstSelect = sql.Where("htrd.base_liquidity_pool_id = ?", query.poolID)
+			secondSelect = sql.Where("htrd.counter_liquidity_pool_id = ?", query.poolID)
 		}
 
-		firstSelect = q.appendOrdering(ctx, firstSelect, op, idx, page.Order)
-		secondSelect = q.appendOrdering(ctx, secondSelect, op, idx, page.Order)
-
+		firstSelect = appendOrdering(firstSelect, op, idx, page.Order)
+		secondSelect = appendOrdering(secondSelect, op, idx, page.Order)
 		firstSQL, firstArgs, err := firstSelect.ToSql()
 		if err != nil {
-			q.Err = errors.New("error building a firstSelect query")
-			return q
+			return "", nil, errors.Wrap(err, "error building a firstSelect query")
 		}
 		secondSQL, secondArgs, err := secondSelect.ToSql()
 		if err != nil {
-			q.Err = errors.New("error building a secondSelect query")
-			return q
+			return "", nil, errors.Wrap(err, "error building a secondSelect query")
 		}
 
-		q.rawSQL = fmt.Sprintf("(%s) UNION (%s) ", firstSQL, secondSQL)
-		q.rawArgs = append(q.rawArgs, firstArgs...)
-		q.rawArgs = append(q.rawArgs, secondArgs...)
+		rawSQL := fmt.Sprintf("(%s) UNION (%s) ", firstSQL, secondSQL)
+		args := append(firstArgs, secondArgs...)
 		// Order the final UNION:
 		switch page.Order {
 		case "asc":
-			q.rawSQL = q.rawSQL + `ORDER BY history_operation_id asc, "order" asc `
+			rawSQL = rawSQL + `ORDER BY history_operation_id asc, "order" asc `
 		case "desc":
-			q.rawSQL = q.rawSQL + `ORDER BY history_operation_id desc, "order" desc `
+			rawSQL = rawSQL + `ORDER BY history_operation_id desc, "order" desc `
 		default:
 			panic("Invalid order")
 		}
-		q.rawSQL = q.rawSQL + fmt.Sprintf("LIMIT %d", page.Limit)
-		// Reset sql so it's not used accidentally
-		q.sql = sq.SelectBuilder{}
+		rawSQL = rawSQL + fmt.Sprintf("LIMIT %d", page.Limit)
+		return rawSQL, args, nil
 	} else {
-		q.sql = q.appendOrdering(ctx, q.sql, op, idx, page.Order)
-		q.sql = q.sql.Limit(page.Limit)
+		sql = appendOrdering(sql, op, idx, page.Order)
+		sql = sql.Limit(page.Limit)
+		rawSQL, args, err := sql.ToSql()
+		if err != nil {
+			return "", nil, errors.Wrap(err, "error building sql query")
+		}
+		return rawSQL, args, nil
 	}
-	return q
 }
 
-func (q *TradesQ) appendOrdering(ctx context.Context, sel sq.SelectBuilder, op, idx int64, order string) sq.SelectBuilder {
+func appendOrdering(sel sq.SelectBuilder, op, idx int64, order string) sq.SelectBuilder {
 	// NOTE: Remember to test the queries below with EXPLAIN / EXPLAIN ANALYZE
 	// before changing them.
 	// This condition is using multicolumn index and it's easy to write it in a way that
@@ -186,30 +268,10 @@ func (q *TradesQ) appendOrdering(ctx context.Context, sel sq.SelectBuilder, op, 
 	}
 }
 
-// Select loads the results of the query specified by `q` into `dest`.
-func (q *TradesQ) Select(ctx context.Context, dest interface{}) error {
-	if q.Err != nil {
-		return q.Err
-	}
-
-	if !q.pageCalled {
-		return errors.New("TradesQ.Page call is required before calling Select")
-	}
-
-	// Add explicit query type for prometheus metrics, since we use raw sql.
-	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
-	if q.rawSQL != "" {
-		q.Err = q.parent.SelectRaw(ctx, dest, q.rawSQL, q.rawArgs...)
-	} else {
-		q.Err = q.parent.Select(ctx, dest, q.sql)
-	}
-	return q.Err
-}
-
 func joinTradeAccounts(selectBuilder sq.SelectBuilder, historyAccountsTable string) sq.SelectBuilder {
 	return selectBuilder.
-		Join(historyAccountsTable + " base_accounts ON base_account_id = base_accounts.id").
-		Join(historyAccountsTable + " counter_accounts ON counter_account_id = counter_accounts.id")
+		LeftJoin(historyAccountsTable + " base_accounts ON base_account_id = base_accounts.id").
+		LeftJoin(historyAccountsTable + " counter_accounts ON counter_account_id = counter_accounts.id")
 }
 
 func joinTradeAssets(selectBuilder sq.SelectBuilder, historyAssetsTable string) sq.SelectBuilder {
@@ -218,23 +280,31 @@ func joinTradeAssets(selectBuilder sq.SelectBuilder, historyAssetsTable string) 
 		Join(historyAssetsTable + " counter_assets ON counter_asset_id = counter_assets.id")
 }
 
+func joinTradeLiquidityPools(selectBuilder sq.SelectBuilder, historyLiquidityPoolsTable string) sq.SelectBuilder {
+	return selectBuilder.
+		LeftJoin(historyLiquidityPoolsTable + " blp ON base_liquidity_pool_id = blp.id").
+		LeftJoin(historyLiquidityPoolsTable + " clp ON counter_liquidity_pool_id = clp.id")
+}
+
 var selectTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
-	"htrd.offer_id",
 	"htrd.base_offer_id",
 	"base_accounts.address as base_account",
 	"base_assets.asset_type as base_asset_type",
 	"base_assets.asset_code as base_asset_code",
 	"base_assets.asset_issuer as base_asset_issuer",
+	"blp.liquidity_pool_id as base_liquidity_pool_id",
 	"htrd.base_amount",
 	"htrd.counter_offer_id",
 	"counter_accounts.address as counter_account",
 	"counter_assets.asset_type as counter_asset_type",
 	"counter_assets.asset_code as counter_asset_code",
 	"counter_assets.asset_issuer as counter_asset_issuer",
+	"clp.liquidity_pool_id as counter_liquidity_pool_id",
 	"htrd.counter_amount",
+	"liquidity_pool_fee",
 	"htrd.base_is_seller",
 	"htrd.price_n",
 	"htrd.price_d",
@@ -244,25 +314,29 @@ var selectReverseTradeFields = sq.Select(
 	"history_operation_id",
 	"htrd.\"order\"",
 	"htrd.ledger_closed_at",
-	"htrd.offer_id",
 	"htrd.counter_offer_id as base_offer_id",
 	"counter_accounts.address as base_account",
 	"counter_assets.asset_type as base_asset_type",
 	"counter_assets.asset_code as base_asset_code",
 	"counter_assets.asset_issuer as base_asset_issuer",
+	"clp.liquidity_pool_id as base_liquidity_pool_id",
 	"htrd.counter_amount as base_amount",
 	"htrd.base_offer_id as counter_offer_id",
 	"base_accounts.address as counter_account",
 	"base_assets.asset_type as counter_asset_type",
 	"base_assets.asset_code as counter_asset_code",
 	"base_assets.asset_issuer as counter_asset_issuer",
+	"blp.liquidity_pool_id as counter_liquidity_pool_id",
 	"htrd.base_amount as counter_amount",
+	"liquidity_pool_fee",
 	"NOT(htrd.base_is_seller) as base_is_seller",
 	"htrd.price_d as price_n",
 	"htrd.price_n as price_d",
 )
 
-func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool, baseAssetId int64, counterAssetId int64) {
+func getCanonicalAssetOrder(
+	assetId1 int64, assetId2 int64,
+) (orderPreserved bool, baseAssetId int64, counterAssetId int64) {
 	if assetId1 < assetId2 {
 		return true, assetId1, assetId2
 	} else {
@@ -275,4 +349,5 @@ type QTrades interface {
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	RebuildTradeAggregationBuckets(ctx context.Context, fromledger, toLedger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
+	CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, batchSize int) (map[string]int64, error)
 }
