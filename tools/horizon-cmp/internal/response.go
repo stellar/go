@@ -35,7 +35,7 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 	// regexp.MustCompile(`,\s*"paging_token": ?""`),
 	// Removes last_modified_time field, introduced in horizon 1.3.0
-	regexp.MustCompile(`\s*"last_modified_time": ?"[^"]*",`),
+	// regexp.MustCompile(`\s*"last_modified_time": ?"[^"]*",`),
 }
 
 type replace struct {
@@ -45,38 +45,37 @@ type replace struct {
 
 var replaceRegexps = []replace{
 	// Offer ID in /offers
-	{regexp.MustCompile(`"id":( ?)([0-9]+)`), `"id":${1}"${2}"`},
-	{regexp.MustCompile(`"offer_id":( ?)([0-9]+)`), `"offer_id":${1}"${2}"`},
-	{regexp.MustCompile(`"timestamp":( ?)([0-9]+)`), `"timestamp":${1}"${2}"`},
-	{regexp.MustCompile(`"trade_count":( ?)([0-9]+)`), `"trade_count":${1}"${2}"`},
-	{regexp.MustCompile(`"type":( ?)"manage_offer",`), `"type":${1}"manage_sell_offer",`},
-	{regexp.MustCompile(`"type":( ?)"path_payment",`), `"type":${1}"path_payment_strict_receive",`},
-	{regexp.MustCompile(`"type":( ?)"create_passive_offer",`), `"type":${1}"create_passive_sell_offer",`},
-	{regexp.MustCompile(
-		// Removes paging_token from /accounts/*
-		`"data":( ?){([^}]*)},\s*"paging_token":( ?)"([0-9A-Z]*)"`),
-		`"data":${1}{${2}},"paging_token":${3}""`,
-	},
-	{regexp.MustCompile(
-		// fee_charged is a string since horizon 1.3.0
-		`"fee_charged":( ?)([\d]+),`),
-		`"fee_charged":${1}"${2}",`,
-	},
-	{regexp.MustCompile(
-		// max_fee is a string since horizon 1.3.0
-		`"max_fee":( ?)([\d]+),`),
-		`"max_fee":${1}"${2}",`,
-	},
-	// Removes trailing SSE data, fixed in horizon 1.7.0
-	{regexp.MustCompile(
-		`\nretry:.*\nevent:.*\ndata:.*\n`),
-		``,
-	},
-	// Removes clawback, fixed in horizon 2.1.0
-	{regexp.MustCompile(
-		`,\s*"auth_clawback_enabled":\s*false`),
-		``,
-	},
+	// {regexp.MustCompile(`"id":( ?)([0-9]+)`), `"id":${1}"${2}"`},
+	// {regexp.MustCompile(`"timestamp":( ?)([0-9]+)`), `"timestamp":${1}"${2}"`},
+	// {regexp.MustCompile(`"trade_count":( ?)([0-9]+)`), `"trade_count":${1}"${2}"`},
+	// {regexp.MustCompile(`"type":( ?)"manage_offer",`), `"type":${1}"manage_sell_offer",`},
+	// {regexp.MustCompile(`"type":( ?)"path_payment",`), `"type":${1}"path_payment_strict_receive",`},
+	// {regexp.MustCompile(`"type":( ?)"create_passive_offer",`), `"type":${1}"create_passive_sell_offer",`},
+	// {regexp.MustCompile(
+	// 	// Removes paging_token from /accounts/*
+	// 	`"data":( ?){([^}]*)},\s*"paging_token":( ?)"([0-9A-Z]*)"`),
+	// 	`"data":${1}{${2}},"paging_token":${3}""`,
+	// },
+	// {regexp.MustCompile(
+	// 	// fee_charged is a string since horizon 1.3.0
+	// 	`"fee_charged":( ?)([\d]+),`),
+	// 	`"fee_charged":${1}"${2}",`,
+	// },
+	// {regexp.MustCompile(
+	// 	// max_fee is a string since horizon 1.3.0
+	// 	`"max_fee":( ?)([\d]+),`),
+	// 	`"max_fee":${1}"${2}",`,
+	// },
+	// // Removes trailing SSE data, fixed in horizon 1.7.0
+	// {regexp.MustCompile(
+	// 	`\nretry:.*\nevent:.*\ndata:.*\n`),
+	// 	``,
+	// },
+	// // Removes clawback, fixed in horizon 2.1.0
+	// {regexp.MustCompile(
+	// 	`,\s*"auth_clawback_enabled":\s*false`),
+	// 	``,
+	// },
 }
 
 var newAccountDetailsPathWithLastestLedger = regexp.MustCompile(`^/accounts/[A-Z0-9]+/(transactions|operations|payments|effects|trades)/?`)
@@ -174,8 +173,9 @@ func NewResponse(domain, path string, stream bool) *Response {
 		strings.HasPrefix(path, "/effects") ||
 		strings.HasPrefix(path, "/transactions") ||
 		strings.Contains(path, "/trade")) {
-		response.NormalizedBody = fmt.Sprintf("Latest-Ledger: %s\n%s", resp.Header.Get("Latest-Ledger"), normalizedBody)
+		normalizedBody = fmt.Sprintf("Latest-Ledger: %s\n%s", resp.Header.Get("Latest-Ledger"), normalizedBody)
 	}
+	response.NormalizedBody = normalizedBody
 	return response
 }
 

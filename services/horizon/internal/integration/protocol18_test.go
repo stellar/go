@@ -812,8 +812,9 @@ func TestProtocol18TradesPriceBreakingChange(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	tt.NoError(err)
-	tt.Contains(string(body), `"n": 1,`) // Number
-	tt.Contains(string(body), `"d": 1`)  // Number
+	tt.Contains(string(body), `"offer_id": "1",`) // Contains non-empty offer_id
+	tt.Contains(string(body), `"n": 1,`)          // Number
+	tt.Contains(string(body), `"d": 1`)           // Number
 
 	// Now upgrade to protocol 18 and update core info manually to check
 	// responses format
@@ -825,6 +826,7 @@ func TestProtocol18TradesPriceBreakingChange(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	tt.NoError(err)
-	tt.Contains(string(body), `"n": "1",`) // String
-	tt.Contains(string(body), `"d": "1"`)  // String
+	tt.NotContains(string(body), `"offer_id"`) // No offer_id
+	tt.Contains(string(body), `"n": "1",`)     // String
+	tt.Contains(string(body), `"d": "1"`)      // String
 }
