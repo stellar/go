@@ -381,14 +381,7 @@ func (i *Test) waitForCore() {
 		break
 	}
 
-	{
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := i.coreClient.Upgrade(ctx, int(i.config.ProtocolVersion))
-		cancel()
-		if err != nil {
-			i.t.Fatalf("could not upgrade protocol: %v", err)
-		}
-	}
+	i.UpgradeProtocol(i.config.ProtocolVersion)
 
 	for t := 0; t < 5; t++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -403,6 +396,35 @@ func (i *Test) waitForCore() {
 		return
 	}
 	i.t.Fatal("Core could not sync after 30s")
+}
+
+// UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
+func (i *Test) UpgradeProtocol(version uint32) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	err := i.coreClient.Upgrade(ctx, int(version))
+	cancel()
+	if err != nil {
+		i.t.Fatalf("could not upgrade protocol: %v", err)
+	}
+
+	for t := 0; t < 10; t++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		info, err := i.coreClient.Info(ctx)
+		cancel()
+		if err != nil {
+			i.t.Logf("could not obtain info response: %v", err)
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if info.Info.Ledger.Version == int(version) {
+			i.t.Logf("Protocol upgraded to: %d", info.Info.Ledger.Version)
+			return
+		}
+		time.Sleep(time.Second)
+	}
+
+	i.t.Fatalf("could not upgrade protocol in 10s")
 }
 
 func (i *Test) WaitForHorizon() {

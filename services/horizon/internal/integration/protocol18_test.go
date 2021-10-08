@@ -1,7 +1,10 @@
 package integration
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -758,4 +761,70 @@ func TestLiquidityPoolFailedDepositAndWithdraw(t *testing.T) {
 	tt.Equal("0.0000000", withdrawal.ReservesReceived[1].Amount)
 
 	tt.Equal("0.0000010", withdrawal.Shares)
+}
+
+// TestProtocol18TradesPriceBreakingChange checks if the breaking change in
+// `/trades` (`price.n` and `price.d` change to string) activates after the
+// protocol upgrade.
+func TestProtocol18TradesPriceBreakingChange(t *testing.T) {
+	tt := assert.New(t)
+	// Start at Protocol 17!
+	config := integration.Config{ProtocolVersion: 17}
+	itest := integration.NewTest(t, config)
+	master := itest.Master()
+
+	keys, accounts := itest.CreateAccounts(1, "1000")
+	tradeKeys, tradeAccount := keys[0], accounts[0]
+
+	itest.MustSubmitMultiSigOperations(tradeAccount, []*keypair.Full{tradeKeys, master},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: txnbuild.CreditAsset{
+					Code:   "USD",
+					Issuer: master.Address(),
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.ManageBuyOffer{
+			Selling: txnbuild.NativeAsset{},
+			Buying: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Amount: "500",
+			Price:  "1",
+		},
+		&txnbuild.ManageBuyOffer{
+			SourceAccount: master.Address(),
+			Selling: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Buying: txnbuild.NativeAsset{},
+			Amount: "500",
+			Price:  "1",
+		},
+	)
+
+	resp, err := http.Get(fmt.Sprintf("%strades", itest.Client().HorizonURL))
+	tt.NoError(err)
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	tt.NoError(err)
+	tt.Contains(string(body), `"n": 1,`) // Number
+	tt.Contains(string(body), `"d": 1`)  // Number
+
+	// Now upgrade to protocol 18 and update core info manually to check
+	// responses format
+	itest.UpgradeProtocol(18)
+	itest.Horizon().UpdateStellarCoreInfo(context.Background())
+
+	resp, err = http.Get(fmt.Sprintf("%strades", itest.Client().HorizonURL))
+	tt.NoError(err)
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	tt.NoError(err)
+	tt.Contains(string(body), `"n": "1",`) // String
+	tt.Contains(string(body), `"d": "1"`)  // String
 }

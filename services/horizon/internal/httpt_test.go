@@ -34,15 +34,17 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 			"network": "test",
 			"build": "test-core",
 			"ledger": {
-				"version": 13,
+				"version": 18,
 				"num": 64
 			},
-			"protocol_version": 4
+			"protocol_version": 18,
+			"network": "Test SDF Network ; September 2015"
 		}
 	}`)
 
 	ret.App.config.StellarCoreURL = ret.coreServer.URL
 	ret.App.UpdateCoreLedgerState(context.Background())
+	ret.App.UpdateStellarCoreInfo(context.Background())
 	ret.App.UpdateHorizonLedgerState(context.Background())
 
 	return ret

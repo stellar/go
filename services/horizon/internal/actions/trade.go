@@ -20,6 +20,41 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TradeP17 represents a horizon digested trade.
+// This can be removed in release after P18 upgrade.
+type TradeP17 struct {
+	Links struct {
+		Self      hal.Link `json:"self"`
+		Base      hal.Link `json:"base"`
+		Counter   hal.Link `json:"counter"`
+		Operation hal.Link `json:"operation"`
+	} `json:"_links"`
+
+	ID                 string         `json:"id"`
+	PT                 string         `json:"paging_token"`
+	LedgerCloseTime    gTime.Time     `json:"ledger_close_time"`
+	OfferID            string         `json:"offer_id"`
+	BaseOfferID        string         `json:"base_offer_id"`
+	BaseAccount        string         `json:"base_account"`
+	BaseAmount         string         `json:"base_amount"`
+	BaseAssetType      string         `json:"base_asset_type"`
+	BaseAssetCode      string         `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer    string         `json:"base_asset_issuer,omitempty"`
+	CounterOfferID     string         `json:"counter_offer_id"`
+	CounterAccount     string         `json:"counter_account"`
+	CounterAmount      string         `json:"counter_amount"`
+	CounterAssetType   string         `json:"counter_asset_type"`
+	CounterAssetCode   string         `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer string         `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller       bool           `json:"base_is_seller"`
+	Price              *horizon.Price `json:"price"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res TradeP17) PagingToken() string {
+	return res.PT
+}
+
 // TradeAssetsQueryParams represents the base and counter assets on trade related end-points.
 type TradeAssetsQueryParams struct {
 	BaseAssetType      string `schema:"base_asset_type" valid:"assetType,optional"`
@@ -152,6 +187,7 @@ func (q TradesQuery) Validate() error {
 // GetTradesHandler is the action handler for all end-points returning a list of trades.
 type GetTradesHandler struct {
 	LedgerState *ledger.State
+	CoreStateGetter
 }
 
 // GetResourcePage returns a page of trades.
@@ -207,10 +243,20 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	var response []hal.Pageable
+	protocolVersion := handler.GetCoreState().CurrentProtocolVersion
 	for _, record := range records {
-		var res horizon.Trade
-		resourceadapter.PopulateTrade(ctx, &res, record)
-		response = append(response, res)
+		if protocolVersion >= 18 {
+			var res horizon.Trade
+			resourceadapter.PopulateTrade(ctx, &res, record)
+			response = append(response, res)
+		} else {
+			// This can be removed in release after P18 upgrade and is here
+			// to remove breaking change before protocol upgrade.
+			var res TradeP17
+			PopulateTradeP17(ctx, &res, record)
+			response = append(response, res)
+		}
+
 	}
 
 	return response, nil

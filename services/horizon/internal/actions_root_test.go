@@ -104,6 +104,6 @@ func TestRootCoreClientInfoErrored(t *testing.T) {
 		var actual horizon.Root
 		err := json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
-		ht.Assert.Equal(int32(0), actual.CurrentProtocolVersion)
+		ht.Assert.Equal(int32(18), actual.CurrentProtocolVersion)
 	}
 }
