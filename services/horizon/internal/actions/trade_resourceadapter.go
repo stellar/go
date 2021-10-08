@@ -8,6 +8,7 @@ import (
 	protocol "github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
@@ -41,6 +42,13 @@ func PopulateTradeP17(
 	dest.CounterAmount = amount.String(xdr.Int64(row.CounterAmount))
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.BaseIsSeller = row.BaseIsSeller
+
+	_, counterOfferIDType := processors.DecodeOfferID(row.CounterOfferID.Int64)
+	if counterOfferIDType == processors.CoreOfferIDType {
+		dest.OfferID = fmt.Sprintf("%d", row.CounterOfferID.Int64)
+	} else {
+		dest.OfferID = fmt.Sprintf("%d", row.BaseOfferID.Int64)
+	}
 
 	if row.HasPrice() {
 		dest.Price = &protocol.Price{
