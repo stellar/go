@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -763,10 +766,10 @@ func TestLiquidityPoolFailedDepositAndWithdraw(t *testing.T) {
 	tt.Equal("0.0000010", withdrawal.Shares)
 }
 
-// TestProtocol18TradesPriceBreakingChange checks if the breaking change in
-// `/trades` (`price.n` and `price.d` change to string) activates after the
-// protocol upgrade.
-func TestProtocol18TradesPriceBreakingChange(t *testing.T) {
+// TestProtocol18TradesPriceBreakingChanges checks if the breaking changes in
+// `/trades` and `/trade_aggegations` (`price.n` and `price.d` change to string)
+// activate after the protocol upgrade.
+func TestProtocol18TradesPriceBreakingChanges(t *testing.T) {
 	tt := assert.New(t)
 	// Start at Protocol 17!
 	config := integration.Config{ProtocolVersion: 17}
@@ -807,26 +810,59 @@ func TestProtocol18TradesPriceBreakingChange(t *testing.T) {
 		},
 	)
 
-	resp, err := http.Get(fmt.Sprintf("%strades", itest.Client().HorizonURL))
+	body, err := getHorizonResponseBody(itest, "/trades")
 	tt.NoError(err)
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
+	tt.Contains(body, `"offer_id": "1",`) // Contains non-empty offer_id
+	tt.Contains(body, `"n": 1,`)          // Number
+	tt.Contains(body, `"d": 1`)           // Number
+
+	body, err = getHorizonResponseBody(itest,
+		"/trade_aggregations?"+
+			"base_asset_type=credit_alphanum4&"+
+			"base_asset_code=USD&"+
+			"base_asset_issuer="+master.Address()+"&"+
+			"counter_asset_type=native&"+
+			"start_time="+strconv.FormatInt(time.Now().Unix()-3600, 10)+"000&"+
+			"end_time="+strconv.FormatInt(time.Now().Unix()+60, 10)+"000&"+
+			"resolution=60000&order=desc&limit=200")
 	tt.NoError(err)
-	tt.Contains(string(body), `"offer_id": "1",`) // Contains non-empty offer_id
-	tt.Contains(string(body), `"n": 1,`)          // Number
-	tt.Contains(string(body), `"d": 1`)           // Number
+	tt.Contains(body, `"N": 1,`) // Number
+	tt.Contains(body, `"D": 1`)  // Number
 
 	// Now upgrade to protocol 18 and update core info manually to check
 	// responses format
 	itest.UpgradeProtocol(18)
 	itest.Horizon().UpdateStellarCoreInfo(context.Background())
 
-	resp, err = http.Get(fmt.Sprintf("%strades", itest.Client().HorizonURL))
+	body, err = getHorizonResponseBody(itest, "/trades")
 	tt.NoError(err)
-	body, err = ioutil.ReadAll(resp.Body)
+	tt.NotContains(body, `"offer_id"`) // No offer_id
+	tt.Contains(body, `"n": "1",`)     // String
+	tt.Contains(body, `"d": "1"`)      // String
+
+	body, err = getHorizonResponseBody(itest,
+		"/trade_aggregations?"+
+			"base_asset_type=credit_alphanum4&"+
+			"base_asset_code=USD&"+
+			"base_asset_issuer="+master.Address()+"&"+
+			"counter_asset_type=native&"+
+			"start_time="+strconv.FormatInt(time.Now().Unix()-3600, 10)+"000&"+
+			"end_time="+strconv.FormatInt(time.Now().Unix()+60, 10)+"000&"+
+			"resolution=60000&order=desc&limit=200")
+	tt.NoError(err)
+	tt.Contains(body, `"n": "1",`)  // String
+	tt.Contains(body, `"n": "1"`)   // String
+	tt.NotContains(body, `"N": 1,`) // Not Number
+	tt.NotContains(body, `"D": 1`)  // Not Number
+}
+
+func getHorizonResponseBody(itest *integration.Test, query string) (string, error) {
+	query = strings.TrimLeft(query, "/")
+	resp, err := http.Get(fmt.Sprintf("%s%s", itest.Client().HorizonURL, query))
+	if err != nil {
+		return "", err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	tt.NoError(err)
-	tt.NotContains(string(body), `"offer_id"`) // No offer_id
-	tt.Contains(string(body), `"n": "1",`)     // String
-	tt.Contains(string(body), `"d": "1"`)      // String
+	return string(body), err
 }

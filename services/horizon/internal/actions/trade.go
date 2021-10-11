@@ -55,6 +55,29 @@ func (res TradeP17) PagingToken() string {
 	return res.PT
 }
 
+// TradeAggregationP17 represents trade data aggregation over a period of time
+// This can be removed in release after P18 upgrade.
+type TradeAggregationP17 struct {
+	Timestamp     int64     `json:"timestamp,string"`
+	TradeCount    int64     `json:"trade_count,string"`
+	BaseVolume    string    `json:"base_volume"`
+	CounterVolume string    `json:"counter_volume"`
+	Average       string    `json:"avg"`
+	High          string    `json:"high"`
+	HighR         xdr.Price `json:"high_r"`
+	Low           string    `json:"low"`
+	LowR          xdr.Price `json:"low_r"`
+	Open          string    `json:"open"`
+	OpenR         xdr.Price `json:"open_r"`
+	Close         string    `json:"close"`
+	CloseR        xdr.Price `json:"close_r"`
+}
+
+// PagingToken implementation for hal.Pageable. Not actually used
+func (res TradeAggregationP17) PagingToken() string {
+	return strconv.FormatInt(res.Timestamp, 10)
+}
+
 // TradeAssetsQueryParams represents the base and counter assets on trade related end-points.
 type TradeAssetsQueryParams struct {
 	BaseAssetType      string `schema:"base_asset_type" valid:"assetType,optional"`
@@ -256,7 +279,6 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 			PopulateTradeP17(ctx, &res, record)
 			response = append(response, res)
 		}
-
 	}
 
 	return response, nil
@@ -322,6 +344,7 @@ func (q TradeAggregationsQuery) Validate() error {
 // GetTradeAggregationsHandler is the action handler for trade_aggregations
 type GetTradeAggregationsHandler struct {
 	LedgerState *ledger.State
+	CoreStateGetter
 }
 
 // GetResource returns a page of trade aggregations
@@ -349,15 +372,23 @@ func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.R
 	if err != nil {
 		return nil, err
 	}
-	aggregations := []horizon.TradeAggregation{}
+	var aggregations []hal.Pageable
+	protocolVersion := handler.GetCoreState().CurrentProtocolVersion
 	for _, record := range records {
-		var res horizon.TradeAggregation
-		err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
-		if err != nil {
-			return nil, err
+		if protocolVersion >= 18 {
+			var res horizon.TradeAggregation
+			err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
+			if err != nil {
+				return nil, err
+			}
+			aggregations = append(aggregations, res)
+		} else {
+			// This can be removed in release after P18 upgrade and is here
+			// to remove breaking change before protocol upgrade.
+			var res TradeAggregationP17
+			PopulateTradeAggregationP17(ctx, &res, record)
+			aggregations = append(aggregations, res)
 		}
-
-		aggregations = append(aggregations, res)
 	}
 
 	return handler.buildPage(r, aggregations)
@@ -450,7 +481,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(ctx context.Context, his
 }
 
 // BuildPage builds a custom hal page for this handler
-func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []horizon.TradeAggregation) (hal.Page, error) {
+func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	ctx := r.Context()
 	pageQuery, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
@@ -482,8 +513,19 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 		page.Links.Next = page.Links.Self
 	} else {
 		lastRecord := records[len(records)-1]
+
+		var timestamp int64
+		switch lastRecord := lastRecord.(type) {
+		case horizon.TradeAggregation:
+			timestamp = lastRecord.Timestamp
+		case TradeAggregationP17:
+			timestamp = lastRecord.Timestamp
+		default:
+			panic(fmt.Sprintf("Unknown type: %T", lastRecord))
+		}
+
 		if page.Order == "asc" {
-			newStartTime := lastRecord.Timestamp + int64(qp.ResolutionFilter)
+			newStartTime := timestamp + int64(qp.ResolutionFilter)
 			if newStartTime >= qp.EndTimeFilter.ToInt64() {
 				newStartTime = qp.EndTimeFilter.ToInt64()
 			}
@@ -491,7 +533,7 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 			newURL.RawQuery = q.Encode()
 			page.Links.Next = hal.NewLink(newURL.String())
 		} else { //desc
-			newEndTime := lastRecord.Timestamp
+			newEndTime := timestamp
 			if newEndTime <= qp.StartTimeFilter.ToInt64() {
 				newEndTime = qp.StartTimeFilter.ToInt64()
 			}

@@ -299,7 +299,9 @@ func getPathFromAccessLog(line string) (string, error) {
 		return "", nil
 	}
 
-	return matches[2], nil
+	// Remove duplicate /
+	path := "/" + strings.TrimLeft(matches[2], "/")
+	return path, nil
 }
 
 func streamFile(accessLog *cmp.Scanner) {

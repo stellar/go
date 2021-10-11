@@ -295,7 +295,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 		// trading related endpoints
 		r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/trade_aggregations", ObjectActionHandler{actions.GetTradeAggregationsHandler{LedgerState: ledgerState}})
+		r.With(historyMiddleware).Method(http.MethodGet, "/trade_aggregations", ObjectActionHandler{actions.GetTradeAggregationsHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}})
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
 		r.With(historyMiddleware).Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
