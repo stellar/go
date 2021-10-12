@@ -15,7 +15,7 @@ services:
     # breaks the tests. I reverted it before building temp docker image.
     # Command used to build custom image:
     # docker build -t bartekno/stellar-core:17.4.0-p18 --build-arg STELLAR_CORE_VERSION=17.3.1-679.c5f6349.focal~protocol18~buildtests --build-arg DISTRO=focal .
-    image: ${CORE_IMAGE:-bartekno/stellar-core:18.0.0}
+    image: ${CORE_IMAGE:-bartekno/stellar-core:18.0.3}
     depends_on:
       - core-postgres
     restart: on-failure

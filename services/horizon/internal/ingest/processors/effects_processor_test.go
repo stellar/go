@@ -2120,6 +2120,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			},
 		},
 	}
+	relBefore := xdr.Int64(1000)
 	cb1 := xdr.ClaimableBalanceEntry{
 		BalanceId: balanceIDOp1,
 		Amount:    xdr.Int64(200000000),
@@ -2130,7 +2131,8 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 				V0: &xdr.ClaimantV0{
 					Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
 					Predicate: xdr.ClaimPredicate{
-						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+						Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
+						RelBefore: &relBefore,
 					},
 				},
 			},
@@ -2216,6 +2218,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 	}
 }
 func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
+	relBefore := xdr.Int64(1000)
 	testCases := []struct {
 		desc     string
 		op       xdr.Operation
@@ -2282,7 +2285,11 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 						"amount":     "20.0000000",
 						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
-						"predicate":  xdr.ClaimPredicate{Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional},
+						// Make sure data ingested from op body (rel_before)
+						"predicate": xdr.ClaimPredicate{
+							Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
+							RelBefore: &relBefore,
+						},
 					},
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
 					operationID: int64(4294967298),
@@ -2710,9 +2717,9 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 			operationID: 4294967297,
 			details: map[string]interface{}{
-				"asset":      "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"asset_type": "credit_alphanum4",
-				"sponsor":    "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+				"asset": "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				// `asset_type` set in `Effect.UnmarshalDetails` to prevent reingestion
+				"sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 			},
 		},
 		{
@@ -2721,8 +2728,8 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 			operationID: 4294967297,
 			details: map[string]interface{}{
-				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"asset_type":     "credit_alphanum4",
+				"asset": "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				// `asset_type` set in `Effect.UnmarshalDetails` to prevent reingestion
 				"former_sponsor": "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 				"new_sponsor":    "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 			},
@@ -2733,8 +2740,8 @@ func TestTrustlineSponsorhipEffects(t *testing.T) {
 			address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 			operationID: 4294967297,
 			details: map[string]interface{}{
-				"asset":          "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-				"asset_type":     "credit_alphanum4",
+				"asset": "USD:GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				// `asset_type` set in `Effect.UnmarshalDetails` to prevent reingestion
 				"former_sponsor": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 			},
 		},

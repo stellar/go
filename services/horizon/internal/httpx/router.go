@@ -174,7 +174,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 				}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 				r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
-				r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
+				r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
 			})
 		})
 
@@ -224,7 +224,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			LedgerState:  ledgerState,
 			OnlyPayments: true,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
 		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 	})
 	// ledger actions
@@ -294,11 +294,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 
 		// trading related endpoints
-		r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/trade_aggregations", ObjectActionHandler{actions.GetTradeAggregationsHandler{LedgerState: ledgerState}})
+		r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/trade_aggregations", ObjectActionHandler{actions.GetTradeAggregationsHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}})
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
-		r.With(historyMiddleware).Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState, CoreStateGetter: config.CoreGetter}, streamHandler))
 	})
 
 	// Transaction submission API

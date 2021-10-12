@@ -112,7 +112,7 @@ func initPathFinder(app *App) {
 		orderBookGraph,
 	)
 
-	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
+	app.paths = simplepath.NewInMemoryFinder(orderBookGraph, !app.config.DisablePoolPathFinding)
 }
 
 // initSentry initialized the default sentry client with the configured DSN

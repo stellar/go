@@ -5,9 +5,10 @@ package processors
 import (
 	"context"
 	"fmt"
-	"github.com/guregu/null"
 	"testing"
 	"time"
+
+	"github.com/guregu/null"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -232,6 +233,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseAmount:         int64(s.strictReceiveTrade.AmountBought()),
 			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
 			BaseAssetID:        s.assetToID[s.strictReceiveTrade.AssetBought().String()].ID,
+			BaseOfferID:        null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 2).ToInt64()), TOIDType)),
 			CounterAmount:      int64(s.strictReceiveTrade.AmountSold()),
 			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.strictReceiveTrade.SellerId().Address()]),
 			CounterAssetID:     s.assetToID[s.strictReceiveTrade.AssetSold().String()].ID,
@@ -247,6 +249,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterAmount:      int64(s.strictSendTrade.AmountBought()),
 			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
 			CounterAssetID:     s.assetToID[s.strictSendTrade.AssetBought().String()].ID,
+			CounterOfferID:     null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 3).ToInt64()), TOIDType)),
 			BaseAmount:         int64(s.strictSendTrade.AmountSold()),
 			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.strictSendTrade.SellerId().Address()]),
 			BaseAssetID:        s.assetToID[s.strictSendTrade.AssetSold().String()].ID,
@@ -278,6 +281,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterAmount:      int64(s.sellOfferTrade.AmountBought()),
 			CounterAssetID:     s.assetToID[s.sellOfferTrade.AssetBought().String()].ID,
 			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			CounterOfferID:     null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 5).ToInt64()), TOIDType)),
 			BaseAmount:         int64(s.sellOfferTrade.AmountSold()),
 			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.sellOfferTrade.SellerId().Address()]),
 			BaseAssetID:        s.assetToID[s.sellOfferTrade.AssetSold().String()].ID,
@@ -293,6 +297,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseAmount:         int64(s.passiveSellOfferTrade.AmountBought()),
 			BaseAssetID:        s.assetToID[s.passiveSellOfferTrade.AssetBought().String()].ID,
 			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.unmuxedSourceAccount.Address()]),
+			BaseOfferID:        null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 6).ToInt64()), TOIDType)),
 			CounterAmount:      int64(s.passiveSellOfferTrade.AmountSold()),
 			CounterAccountID:   null.IntFrom(s.unmuxedAccountToID[s.passiveSellOfferTrade.SellerId().Address()]),
 			CounterAssetID:     s.assetToID[s.passiveSellOfferTrade.AssetSold().String()].ID,
@@ -310,6 +315,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterAmount:    int64(s.otherPassiveSellOfferTrade.AmountBought()),
 			CounterAssetID:   s.assetToID[s.otherPassiveSellOfferTrade.AssetBought().String()].ID,
 			CounterAccountID: null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			CounterOfferID:   null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 7).ToInt64()), TOIDType)),
 			BaseAmount:       int64(s.otherPassiveSellOfferTrade.AmountSold()),
 			BaseAccountID:    null.IntFrom(s.unmuxedAccountToID[s.otherPassiveSellOfferTrade.SellerId().Address()]),
 			BaseAssetID:      s.assetToID[s.otherPassiveSellOfferTrade.AssetSold().String()].ID,
@@ -325,6 +331,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseAmount:             int64(s.strictReceiveTradeLP.AmountBought()),
 			BaseAssetID:            s.assetToID[s.strictReceiveTradeLP.AssetBought().String()].ID,
 			BaseAccountID:          null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			BaseOfferID:            null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 8).ToInt64()), TOIDType)),
 			CounterAmount:          int64(s.strictReceiveTradeLP.AmountSold()),
 			CounterLiquidityPoolID: null.IntFrom(s.lpToID[s.strictReceiveTradeLP.MustLiquidityPool().LiquidityPoolId]),
 			CounterAssetID:         s.assetToID[s.strictReceiveTradeLP.AssetSold().String()].ID,
@@ -340,6 +347,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterAmount:       int64(s.strictSendTradeLP.AmountBought()),
 			CounterAssetID:      s.assetToID[s.strictSendTradeLP.AssetBought().String()].ID,
 			CounterAccountID:    null.IntFrom(s.unmuxedAccountToID[s.unmuxedOpSourceAccount.Address()]),
+			CounterOfferID:      null.IntFrom(EncodeOfferId(uint64(toid.New(int32(ledger.Header.LedgerSeq), 1, 9).ToInt64()), TOIDType)),
 			BaseAmount:          int64(s.strictSendTradeLP.AmountSold()),
 			BaseLiquidityPoolID: null.IntFrom(s.lpToID[s.strictSendTradeLP.MustLiquidityPool().LiquidityPoolId]),
 			BaseAssetID:         s.assetToID[s.strictSendTradeLP.AssetSold().String()].ID,

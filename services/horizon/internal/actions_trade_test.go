@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/guregu/null"
-	"github.com/stellar/go/amount"
-	"github.com/stellar/go/keypair"
 	"net/url"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/guregu/null"
+	"github.com/stellar/go/amount"
+	"github.com/stellar/go/keypair"
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"

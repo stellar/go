@@ -23,13 +23,15 @@ var (
 // InMemoryFinder is an implementation of the path finding interface
 // using the in memory orderbook
 type InMemoryFinder struct {
-	graph *orderbook.OrderBookGraph
+	graph        *orderbook.OrderBookGraph
+	includePools bool
 }
 
 // NewInMemoryFinder constructs a new InMemoryFinder instance
-func NewInMemoryFinder(graph *orderbook.OrderBookGraph) InMemoryFinder {
+func NewInMemoryFinder(graph *orderbook.OrderBookGraph, includePools bool) InMemoryFinder {
 	return InMemoryFinder{
-		graph: graph,
+		graph:        graph,
+		includePools: includePools,
 	}
 }
 
@@ -56,6 +58,7 @@ func (finder InMemoryFinder) Find(ctx context.Context, q paths.Query, maxLength 
 		q.SourceAssetBalances,
 		q.ValidateSourceBalance,
 		maxAssetsPerPath,
+		finder.includePools,
 	)
 	results := make([]paths.Path, len(orderbookPaths))
 	for i, path := range orderbookPaths {
@@ -100,6 +103,7 @@ func (finder InMemoryFinder) FindFixedPaths(
 		amountToSpend,
 		destinationAssets,
 		maxAssetsPerPath,
+		finder.includePools,
 	)
 	results := make([]paths.Path, len(orderbookPaths))
 	for i, path := range orderbookPaths {

@@ -20,6 +20,64 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TradeP17 represents a horizon digested trade.
+// This can be removed in release after P18 upgrade.
+type TradeP17 struct {
+	Links struct {
+		Self      hal.Link `json:"self"`
+		Base      hal.Link `json:"base"`
+		Counter   hal.Link `json:"counter"`
+		Operation hal.Link `json:"operation"`
+	} `json:"_links"`
+
+	ID                 string         `json:"id"`
+	PT                 string         `json:"paging_token"`
+	LedgerCloseTime    gTime.Time     `json:"ledger_close_time"`
+	OfferID            string         `json:"offer_id"`
+	BaseOfferID        string         `json:"base_offer_id"`
+	BaseAccount        string         `json:"base_account"`
+	BaseAmount         string         `json:"base_amount"`
+	BaseAssetType      string         `json:"base_asset_type"`
+	BaseAssetCode      string         `json:"base_asset_code,omitempty"`
+	BaseAssetIssuer    string         `json:"base_asset_issuer,omitempty"`
+	CounterOfferID     string         `json:"counter_offer_id"`
+	CounterAccount     string         `json:"counter_account"`
+	CounterAmount      string         `json:"counter_amount"`
+	CounterAssetType   string         `json:"counter_asset_type"`
+	CounterAssetCode   string         `json:"counter_asset_code,omitempty"`
+	CounterAssetIssuer string         `json:"counter_asset_issuer,omitempty"`
+	BaseIsSeller       bool           `json:"base_is_seller"`
+	Price              *horizon.Price `json:"price"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res TradeP17) PagingToken() string {
+	return res.PT
+}
+
+// TradeAggregationP17 represents trade data aggregation over a period of time
+// This can be removed in release after P18 upgrade.
+type TradeAggregationP17 struct {
+	Timestamp     int64     `json:"timestamp,string"`
+	TradeCount    int64     `json:"trade_count,string"`
+	BaseVolume    string    `json:"base_volume"`
+	CounterVolume string    `json:"counter_volume"`
+	Average       string    `json:"avg"`
+	High          string    `json:"high"`
+	HighR         xdr.Price `json:"high_r"`
+	Low           string    `json:"low"`
+	LowR          xdr.Price `json:"low_r"`
+	Open          string    `json:"open"`
+	OpenR         xdr.Price `json:"open_r"`
+	Close         string    `json:"close"`
+	CloseR        xdr.Price `json:"close_r"`
+}
+
+// PagingToken implementation for hal.Pageable. Not actually used
+func (res TradeAggregationP17) PagingToken() string {
+	return strconv.FormatInt(res.Timestamp, 10)
+}
+
 // TradeAssetsQueryParams represents the base and counter assets on trade related end-points.
 type TradeAssetsQueryParams struct {
 	BaseAssetType      string `schema:"base_asset_type" valid:"assetType,optional"`
@@ -152,6 +210,7 @@ func (q TradesQuery) Validate() error {
 // GetTradesHandler is the action handler for all end-points returning a list of trades.
 type GetTradesHandler struct {
 	LedgerState *ledger.State
+	CoreStateGetter
 }
 
 // GetResourcePage returns a page of trades.
@@ -207,10 +266,19 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	var response []hal.Pageable
+	protocolVersion := handler.GetCoreState().CurrentProtocolVersion
 	for _, record := range records {
-		var res horizon.Trade
-		resourceadapter.PopulateTrade(ctx, &res, record)
-		response = append(response, res)
+		if protocolVersion >= 18 {
+			var res horizon.Trade
+			resourceadapter.PopulateTrade(ctx, &res, record)
+			response = append(response, res)
+		} else {
+			// This can be removed in release after P18 upgrade and is here
+			// to remove breaking change before protocol upgrade.
+			var res TradeP17
+			PopulateTradeP17(ctx, &res, record)
+			response = append(response, res)
+		}
 	}
 
 	return response, nil
@@ -276,6 +344,7 @@ func (q TradeAggregationsQuery) Validate() error {
 // GetTradeAggregationsHandler is the action handler for trade_aggregations
 type GetTradeAggregationsHandler struct {
 	LedgerState *ledger.State
+	CoreStateGetter
 }
 
 // GetResource returns a page of trade aggregations
@@ -303,15 +372,23 @@ func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.R
 	if err != nil {
 		return nil, err
 	}
-	aggregations := []horizon.TradeAggregation{}
+	var aggregations []hal.Pageable
+	protocolVersion := handler.GetCoreState().CurrentProtocolVersion
 	for _, record := range records {
-		var res horizon.TradeAggregation
-		err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
-		if err != nil {
-			return nil, err
+		if protocolVersion >= 18 {
+			var res horizon.TradeAggregation
+			err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
+			if err != nil {
+				return nil, err
+			}
+			aggregations = append(aggregations, res)
+		} else {
+			// This can be removed in release after P18 upgrade and is here
+			// to remove breaking change before protocol upgrade.
+			var res TradeAggregationP17
+			PopulateTradeAggregationP17(ctx, &res, record)
+			aggregations = append(aggregations, res)
 		}
-
-		aggregations = append(aggregations, res)
 	}
 
 	return handler.buildPage(r, aggregations)
@@ -404,7 +481,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(ctx context.Context, his
 }
 
 // BuildPage builds a custom hal page for this handler
-func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []horizon.TradeAggregation) (hal.Page, error) {
+func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	ctx := r.Context()
 	pageQuery, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
@@ -436,8 +513,19 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 		page.Links.Next = page.Links.Self
 	} else {
 		lastRecord := records[len(records)-1]
+
+		var timestamp int64
+		switch lastRecord := lastRecord.(type) {
+		case horizon.TradeAggregation:
+			timestamp = lastRecord.Timestamp
+		case TradeAggregationP17:
+			timestamp = lastRecord.Timestamp
+		default:
+			panic(fmt.Sprintf("Unknown type: %T", lastRecord))
+		}
+
 		if page.Order == "asc" {
-			newStartTime := lastRecord.Timestamp + int64(qp.ResolutionFilter)
+			newStartTime := timestamp + int64(qp.ResolutionFilter)
 			if newStartTime >= qp.EndTimeFilter.ToInt64() {
 				newStartTime = qp.EndTimeFilter.ToInt64()
 			}
@@ -445,7 +533,7 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 			newURL.RawQuery = q.Encode()
 			page.Links.Next = hal.NewLink(newURL.String())
 		} else { //desc
-			newEndTime := lastRecord.Timestamp
+			newEndTime := timestamp
 			if newEndTime <= qp.StartTimeFilter.ToInt64() {
 				newEndTime = qp.StartTimeFilter.ToInt64()
 			}
