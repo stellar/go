@@ -463,7 +463,7 @@ func (a *App) init() error {
 
 	// log
 	log.DefaultLogger.Logger.SetLevel(a.config.LogLevel)
-	log.DefaultLogger.Logger.Hooks.Add(logmetrics.DefaultMetrics)
+	log.DefaultLogger.Logger.AddHook(logmetrics.DefaultMetrics)
 
 	// sentry
 	initSentry(a)
