@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -42,6 +43,9 @@ func contextRoute(ctx context.Context) string {
 
 type SessionWithMetrics struct {
 	SessionInterface
+
+	close                    chan struct{}
+	closeOnce                sync.Once
 	registry                 *prometheus.Registry
 	queryCounter             *prometheus.CounterVec
 	queryDurationSummary     *prometheus.SummaryVec
@@ -54,11 +58,13 @@ type SessionWithMetrics struct {
 	maxIdleClosedCounter     prometheus.CounterFunc
 	maxIdleTimeClosedCounter prometheus.CounterFunc
 	maxLifetimeClosedCounter prometheus.CounterFunc
+	roundTripTimeSummary     prometheus.Summary
 }
 
 func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *prometheus.Registry) SessionInterface {
 	s := &SessionWithMetrics{
 		SessionInterface: base,
+		close:            make(chan struct{}),
 		registry:         registry,
 	}
 
@@ -221,10 +227,41 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 	)
 	registry.MustRegister(s.maxLifetimeClosedCounter)
 
+	s.roundTripTimeSummary = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "round_trip_time_seconds",
+			Help:        "time required to run `select 1` query in a DB - effectively measures round trip time",
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
+		},
+	)
+	registry.MustRegister(s.roundTripTimeSummary)
+
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Second):
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				startTime := time.Now()
+				_, err := s.ExecRaw(ctx, "select 1")
+				if err == nil {
+					s.roundTripTimeSummary.Observe(time.Since(startTime).Seconds())
+				}
+				cancel()
+			case <-s.close:
+				return
+			}
+		}
+	}()
+
 	return s
 }
 
 func (s *SessionWithMetrics) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.close)
+	})
 	s.registry.Unregister(s.queryCounter)
 	s.registry.Unregister(s.queryDurationSummary)
 	// s.registry.Unregister(s.txnCounter)
