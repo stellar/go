@@ -64,7 +64,6 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 		SessionInterface: base,
 		registry:         registry,
 	}
-	s.roundTripProbe = &roundTripProbe{session: s}
 
 	s.queryCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -236,6 +235,10 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 	)
 	registry.MustRegister(s.roundTripTimeSummary)
 
+	s.roundTripProbe = &roundTripProbe{
+		session:              base.Clone(),
+		roundTripTimeSummary: s.roundTripTimeSummary,
+	}
 	s.roundTripProbe.start()
 	return s
 }

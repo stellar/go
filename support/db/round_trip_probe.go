@@ -4,10 +4,13 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type roundTripProbe struct {
-	session *SessionWithMetrics
+	session              SessionInterface
+	roundTripTimeSummary prometheus.Summary
 
 	closeChan chan struct{}
 	closeOnce sync.Once
@@ -15,6 +18,9 @@ type roundTripProbe struct {
 
 func (p *roundTripProbe) start() {
 	p.closeChan = make(chan struct{})
+	// session must be cloned because will be used concurrently in a
+	// separate go routine in roundTripProbe
+	p.session = p.session.Clone()
 
 	go func() {
 		for {
@@ -24,7 +30,7 @@ func (p *roundTripProbe) start() {
 				startTime := time.Now()
 				_, err := p.session.ExecRaw(ctx, "select 1")
 				if err == nil {
-					p.session.roundTripTimeSummary.Observe(time.Since(startTime).Seconds())
+					p.roundTripTimeSummary.Observe(time.Since(startTime).Seconds())
 				}
 				cancel()
 			case <-p.closeChan:
