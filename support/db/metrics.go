@@ -44,8 +44,9 @@ func contextRoute(ctx context.Context) string {
 type SessionWithMetrics struct {
 	SessionInterface
 
-	close                    chan struct{}
-	closeOnce                sync.Once
+	close     chan struct{}
+	closeOnce sync.Once
+
 	registry                 *prometheus.Registry
 	queryCounter             *prometheus.CounterVec
 	queryDurationSummary     *prometheus.SummaryVec
@@ -307,7 +308,11 @@ func (s *SessionWithMetrics) TruncateTables(ctx context.Context, tables []string
 
 func (s *SessionWithMetrics) Clone() SessionInterface {
 	return &SessionWithMetrics{
-		SessionInterface:     s.SessionInterface.Clone(),
+		SessionInterface: s.SessionInterface.Clone(),
+
+		close:     s.close,
+		closeOnce: s.closeOnce,
+
 		registry:             s.registry,
 		queryCounter:         s.queryCounter,
 		queryDurationSummary: s.queryDurationSummary,
