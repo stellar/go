@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -44,9 +43,6 @@ func contextRoute(ctx context.Context) string {
 type SessionWithMetrics struct {
 	SessionInterface
 
-	close     chan struct{}
-	closeOnce sync.Once
-
 	registry                 *prometheus.Registry
 	queryCounter             *prometheus.CounterVec
 	queryDurationSummary     *prometheus.SummaryVec
@@ -59,15 +55,16 @@ type SessionWithMetrics struct {
 	maxIdleClosedCounter     prometheus.CounterFunc
 	maxIdleTimeClosedCounter prometheus.CounterFunc
 	maxLifetimeClosedCounter prometheus.CounterFunc
+	roundTripProbe           *roundTripProbe
 	roundTripTimeSummary     prometheus.Summary
 }
 
 func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *prometheus.Registry) SessionInterface {
 	s := &SessionWithMetrics{
 		SessionInterface: base,
-		close:            make(chan struct{}),
 		registry:         registry,
 	}
+	s.roundTripProbe = &roundTripProbe{session: s}
 
 	s.queryCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -239,30 +236,13 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 	)
 	registry.MustRegister(s.roundTripTimeSummary)
 
-	go func() {
-		for {
-			select {
-			case <-time.After(time.Second):
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				startTime := time.Now()
-				_, err := s.ExecRaw(ctx, "select 1")
-				if err == nil {
-					s.roundTripTimeSummary.Observe(time.Since(startTime).Seconds())
-				}
-				cancel()
-			case <-s.close:
-				return
-			}
-		}
-	}()
-
+	s.roundTripProbe.start()
 	return s
 }
 
 func (s *SessionWithMetrics) Close() error {
-	s.closeOnce.Do(func() {
-		close(s.close)
-	})
+	s.roundTripProbe.close()
+
 	s.registry.Unregister(s.queryCounter)
 	s.registry.Unregister(s.queryDurationSummary)
 	// s.registry.Unregister(s.txnCounter)
@@ -310,8 +290,9 @@ func (s *SessionWithMetrics) Clone() SessionInterface {
 	return &SessionWithMetrics{
 		SessionInterface: s.SessionInterface.Clone(),
 
-		close:     make(chan struct{}),
-		closeOnce: sync.Once{},
+		// Note that clonned Session will point at the same roundTripProbe
+		// to avoid starting multiple go routines.
+		roundTripProbe: s.roundTripProbe,
 
 		registry:             s.registry,
 		queryCounter:         s.queryCounter,
