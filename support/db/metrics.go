@@ -310,8 +310,8 @@ func (s *SessionWithMetrics) Clone() SessionInterface {
 	return &SessionWithMetrics{
 		SessionInterface: s.SessionInterface.Clone(),
 
-		close:     s.close,
-		closeOnce: s.closeOnce,
+		close:     make(chan struct{}),
+		closeOnce: sync.Once{},
 
 		registry:             s.registry,
 		queryCounter:         s.queryCounter,
