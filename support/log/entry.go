@@ -142,17 +142,17 @@ func (e *Entry) StartTest(level logrus.Level) func() []logrus.Entry {
 	e.isTesting = true
 
 	hook := &test.Hook{}
-	e.Logger.AddHook(hook)
+	e.Logger.Hooks.Add(hook)
 
 	old := e.Logger.Out
 	e.Logger.Out = ioutil.Discard
 
-	oldLevel := e.Logger.GetLevel()
-	e.Logger.SetLevel(level)
+	oldLevel := e.Logger.Level
+	e.Logger.Level = level
 
 	return func() []logrus.Entry {
-		e.Logger.SetLevel(oldLevel)
-		e.Logger.SetOutput(old)
+		e.Logger.Level = oldLevel
+		e.Logger.Out = old
 		e.removeHook(hook)
 		e.isTesting = false
 		return hook.Entries

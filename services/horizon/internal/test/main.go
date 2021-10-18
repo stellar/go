@@ -4,6 +4,7 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
+	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	tdb "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
@@ -25,12 +27,15 @@ type StaticMockServer struct {
 
 // T provides a common set of functionality for each test in horizon
 type T struct {
-	T         *testing.T
-	Assert    *assert.Assertions
-	Require   *require.Assertions
-	Ctx       context.Context
-	HorizonDB *sqlx.DB
-	CoreDB    *sqlx.DB
+	T          *testing.T
+	Assert     *assert.Assertions
+	Require    *require.Assertions
+	Ctx        context.Context
+	HorizonDB  *sqlx.DB
+	CoreDB     *sqlx.DB
+	Logger     *log.Entry
+	LogMetrics *logmetrics.Metrics
+	LogBuffer  *bytes.Buffer
 }
 
 // Context provides a context suitable for testing in tests that do not create
@@ -58,25 +63,25 @@ func DatabaseURL() string {
 // OverrideLogger sets the default logger used by horizon to `l`.  This is used
 // by the testing system so that we can collect output from logs during test
 // runs.  Panics if the logger is already overridden.
-func OverrideLogger() {
-	if endLogTest != nil {
+func OverrideLogger(l *log.Entry) {
+	if oldDefault != nil {
 		panic("logger already overridden")
 	}
 
-	endLogTest = log.StartTest(log.DebugLevel)
+	oldDefault = log.DefaultLogger
+	log.DefaultLogger = l
 }
 
 // RestoreLogger restores the default horizon logger after it is overridden
 // using a call to `OverrideLogger`.  Panics if the default logger is not
 // presently overridden.
-func RestoreLogger() []logrus.Entry {
-	if endLogTest == nil {
+func RestoreLogger() {
+	if oldDefault == nil {
 		panic("logger not overridden, cannot restore")
 	}
 
-	entries := endLogTest()
-	endLogTest = nil
-	return entries
+	log.DefaultLogger = oldDefault
+	oldDefault = nil
 }
 
 // Start initializes a new test helper object and conceptually "starts" a new
@@ -85,10 +90,15 @@ func Start(t *testing.T) *T {
 	result := &T{}
 
 	result.T = t
+	result.LogBuffer = new(bytes.Buffer)
+	result.Logger, result.LogMetrics = logmetrics.New()
+	result.Logger.Logger.Out = result.LogBuffer
+	result.Logger.Logger.Formatter.(*logrus.TextFormatter).DisableColors = true
+	result.Logger.Logger.Level = logrus.DebugLevel
 
-	OverrideLogger()
+	OverrideLogger(result.Logger)
 
-	result.Ctx = log.Set(context.Background(), log.DefaultLogger)
+	result.Ctx = log.Set(context.Background(), result.Logger)
 	result.HorizonDB = Database(t)
 	result.CoreDB = StellarCoreDatabase(t)
 	result.Assert = assert.New(t)
@@ -112,4 +122,4 @@ func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
 }
 
-var endLogTest func() []logrus.Entry = nil
+var oldDefault *log.Entry = nil

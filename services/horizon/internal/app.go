@@ -462,8 +462,8 @@ func (a *App) init() error {
 	a.ctx, a.cancel = context.WithCancel(context.Background())
 
 	// log
-	log.DefaultLogger.Logger.SetLevel(a.config.LogLevel)
-	log.DefaultLogger.Logger.AddHook(logmetrics.DefaultMetrics)
+	log.DefaultLogger.Logger.Level = a.config.LogLevel
+	log.DefaultLogger.Logger.Hooks.Add(logmetrics.DefaultMetrics)
 
 	// sentry
 	initSentry(a)
