@@ -56,14 +56,14 @@ func main() {
 			os.Exit(1)
 		}
 
-		log.DefaultLogger.Logger.Out = logFile
+		log.DefaultLogger.SetOutput(logFile)
 
 		ll, err := logrus.ParseLevel(*logLevel)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not parse log-level: %v\n", err)
 			os.Exit(1)
 		}
-		log.DefaultLogger.Logger.SetLevel(ll)
+		log.DefaultLogger.SetLevel(ll)
 	}
 
 	cfg := getConfig()
