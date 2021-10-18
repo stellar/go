@@ -42,6 +42,10 @@ func (e *Entry) DisableColors() {
 	e.entry.Logger.Formatter.(*logrus.TextFormatter).DisableColors = true
 }
 
+func (e *Entry) DisableTimestamp() {
+	e.entry.Logger.Formatter.(*logrus.TextFormatter).DisableTimestamp = true
+}
+
 // WithField creates a child logger annotated with the provided key value pair.
 // A subsequent call to one of the logging methods (Debug(), Error(), etc.) to
 // the return value from this function will cause the emitted log line to
