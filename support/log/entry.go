@@ -85,9 +85,18 @@ func (e *Entry) WithStack(stackProvider interface{}) *Entry {
 	return e.WithField("stack", stack)
 }
 
+// Add an error as single field to the log entry.  All it does is call
+// `WithError` for the given `error`.
 func (e *Entry) WithError(err error) *Entry {
 	return &Entry{
 		entry: *e.entry.WithError(err),
+	}
+}
+
+// Add a context to the log entry.
+func (e *Entry) WithContext(ctx context.Context) *Entry {
+	return &Entry{
+		entry: *e.entry.WithContext(ctx),
 	}
 }
 
@@ -149,6 +158,10 @@ func (e *Entry) Panicf(format string, args ...interface{}) {
 // Panic logs a message at the Panic severity.
 func (e *Entry) Panic(args ...interface{}) {
 	e.entry.Panic(args...)
+}
+
+func (e *Entry) Print(args ...interface{}) {
+	e.entry.Print(args...)
 }
 
 // StartTest shifts this logger into "test" mode, ensuring that log lines will

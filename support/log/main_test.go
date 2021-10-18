@@ -71,7 +71,7 @@ func TestLoggingStatements(t *testing.T) {
 	// when on debug level, all statements are logged
 	output.Reset()
 	assert.Empty(t, output.String())
-	l.Logger.Level = logrus.DebugLevel
+	l.SetLevel(logrus.DebugLevel)
 	l.Debug("1")
 	l.Info("1")
 	l.Warn("1")
