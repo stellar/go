@@ -34,7 +34,7 @@ func (e *Entry) Ctx(ctx context.Context) *Entry {
 }
 
 func (e *Entry) SetLevel(level logrus.Level) {
-	e.Logger.Level = level
+	e.Logger.SetLevel(level)
 }
 
 // WithField creates a child logger annotated with the provided key value pair.
@@ -142,17 +142,17 @@ func (e *Entry) StartTest(level logrus.Level) func() []logrus.Entry {
 	e.isTesting = true
 
 	hook := &test.Hook{}
-	e.Logger.Hooks.Add(hook)
+	e.Logger.AddHook(hook)
 
 	old := e.Logger.Out
 	e.Logger.Out = ioutil.Discard
 
-	oldLevel := e.Logger.Level
-	e.Logger.Level = level
+	oldLevel := e.Logger.GetLevel()
+	e.Logger.SetLevel(level)
 
 	return func() []logrus.Entry {
-		e.Logger.Level = oldLevel
-		e.Logger.Out = old
+		e.Logger.SetLevel(oldLevel)
+		e.Logger.SetOutput(old)
 		e.removeHook(hook)
 		e.isTesting = false
 		return hook.Entries
