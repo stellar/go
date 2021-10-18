@@ -655,14 +655,14 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if config.LogFile != "" {
 		logFile, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err == nil {
-			log.DefaultLogger.Logger.Out = logFile
+			log.DefaultLogger.SetOutput(logFile)
 		} else {
 			return fmt.Errorf("Failed to open file to log: %s", err)
 		}
 	}
 
 	// Configure log level
-	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
+	log.DefaultLogger.SetLevel(config.LogLevel)
 
 	// Configure DB params. When config.MaxDBConnections is set, set other
 	// DB params to that value for backward compatibility.

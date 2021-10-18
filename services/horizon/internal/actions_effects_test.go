@@ -104,7 +104,7 @@ func TestEffectActions_Index(t *testing.T) {
 		ht.ReapHistory(1)
 		w = ht.Get("/effects?order=desc&cursor=8589938689-1")
 		ht.Assert.Equal(410, w.Code)
-		ht.Logger.Error(w.Body.String())
+		ht.T.T.Log(w.Body.String())
 	})
 
 	t.Run("Effect resource props", func(t *testing.T) {

@@ -230,8 +230,8 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 
 	// declare a logging buffer to validate output logs
 	buf := new(strings.Builder)
-	log.DefaultLogger.Logger.SetOutput(buf)
-	log.DefaultLogger.Logger.SetLevel(log.InfoLevel)
+	log.DefaultLogger.SetOutput(buf)
+	log.DefaultLogger.SetLevel(log.InfoLevel)
 
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.

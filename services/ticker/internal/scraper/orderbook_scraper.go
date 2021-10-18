@@ -33,7 +33,7 @@ func (c *ScraperConfig) fetchOrderbook(bType, bCode, bIssuer, cType, cCode, cIss
 	err = utils.Retry(5, 5*time.Second, c.Logger, func() error {
 		summary, err = c.Client.OrderBook(r)
 		if err != nil {
-			c.Logger.Infoln("Horizon rate limit reached!")
+			c.Logger.Info("Horizon rate limit reached!")
 		}
 		return err
 	})

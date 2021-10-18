@@ -20,8 +20,8 @@ func init() {
 func New() (l *log.Entry, m *Metrics) {
 	m = NewMetrics()
 	l = log.New()
-	l.Level = logrus.WarnLevel
-	l.Logger.Hooks.Add(m)
+	l.SetLevel(logrus.WarnLevel)
+	l.AddHook(m)
 	return
 }
 

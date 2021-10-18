@@ -9,7 +9,7 @@ import (
 
 func main() {
 	logger := supportlog.New()
-	logger.Logger.Level = logrus.TraceLevel
+	logger.SetLevel(logrus.TraceLevel)
 
 	rootCmd := &cobra.Command{
 		Use:   "recoverysigner [command]",

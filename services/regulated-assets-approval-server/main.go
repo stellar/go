@@ -9,7 +9,7 @@ import (
 
 func main() {
 	log.DefaultLogger = log.New()
-	log.DefaultLogger.Logger.Level = logrus.TraceLevel
+	log.DefaultLogger.SetLevel(logrus.TraceLevel)
 
 	rootCmd := &cobra.Command{
 		Use:   "regulated-assets-approval-server [command]",

@@ -137,7 +137,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	// Log Captive Core straight to stdout by default
 	if config.Log == nil {
 		config.Log = log.New()
-		config.Log.Logger.SetOutput(os.Stdout)
+		config.Log.SetOutput(os.Stdout)
 		config.Log.SetLevel(logrus.InfoLevel)
 	}
 
