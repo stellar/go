@@ -15,6 +15,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking changes
 
+* There are multiple breaking changes that will activate on Protocol 18 upgrade. Please check the [Horizon Liquidity Pool API](https://docs.google.com/document/d/1pXL8kr1a2vfYSap9T67R-g72B_WWbaE1YsLMa04OgoU/edit) doc for more information. Please upgrade to the latest SDKs that are backward compatible.
 * The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
 
 ### Changes

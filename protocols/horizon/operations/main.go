@@ -207,7 +207,7 @@ type ChangeTrust struct {
 	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty,string"`
 }
 
-// Deprecated: use TrustlineFlagsUpdated instead.
+// Deprecated: use SetTrustLineFlags instead.
 // AllowTrust is the json resource representing a single operation whose type is
 // AllowTrust.
 type AllowTrust struct {

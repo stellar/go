@@ -298,8 +298,11 @@ var dbReingestRangeCmd = &cobra.Command{
 			}
 		}
 
-		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
-		err := runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
+		err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err != nil {
+			return err
+		}
+		err = runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
 		if err != nil {
 			if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
 				return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
@@ -402,7 +405,7 @@ var dbDetectGapsCmd = &cobra.Command{
 		fmt.Println("Horizon commands to run in order to fill in the gaps:")
 		cmdname := os.Args[0]
 		for _, g := range gaps {
-			fmt.Printf("%s db reingest %d %d\n", cmdname, g.StartSequence, g.EndSequence)
+			fmt.Printf("%s db reingest range %d %d\n", cmdname, g.StartSequence, g.EndSequence)
 		}
 		return nil
 	},

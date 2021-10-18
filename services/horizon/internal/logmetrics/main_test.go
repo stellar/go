@@ -13,9 +13,9 @@ import (
 func TestLogPackageMetrics(t *testing.T) {
 	output := new(bytes.Buffer)
 	l, m := New()
-	l.Logger.Formatter.(*logrus.TextFormatter).DisableColors = true
-	l.Logger.Level = logrus.DebugLevel
-	l.Logger.Out = output
+	l.DisableColors()
+	l.SetLevel(logrus.DebugLevel)
+	l.SetOutput(output)
 
 	for _, meter := range *m {
 		assert.Equal(t, float64(0), getMetricValue(meter).GetCounter().GetValue())
