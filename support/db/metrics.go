@@ -293,7 +293,7 @@ func (s *SessionWithMetrics) Clone() SessionInterface {
 	return &SessionWithMetrics{
 		SessionInterface: s.SessionInterface.Clone(),
 
-		// Note that clonned Session will point at the same roundTripProbe
+		// Note that cloned Session will point at the same roundTripProbe
 		// to avoid starting multiple go routines.
 		roundTripProbe: s.roundTripProbe,
 
