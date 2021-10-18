@@ -229,14 +229,14 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 			Namespace:   namespace,
 			Subsystem:   "db",
 			Name:        "round_trip_time_seconds",
-			Help:        "time required to run `select 1` query in a DB - effectively measures round trip time",
+			Help:        "time required to run `select 1` query in a DB - effectively measures round trip time, if time exceeds 1s it will be recorded as 1",
 			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 	)
 	registry.MustRegister(s.roundTripTimeSummary)
 
 	s.roundTripProbe = &roundTripProbe{
-		session:              base.Clone(),
+		session:              base,
 		roundTripTimeSummary: s.roundTripTimeSummary,
 	}
 	s.roundTripProbe.start()

@@ -21,19 +21,23 @@ func (p *roundTripProbe) start() {
 	// session must be cloned because will be used concurrently in a
 	// separate go routine in roundTripProbe
 	p.session = p.session.Clone()
+	ticker := time.NewTicker(time.Second)
 
 	go func() {
 		for {
 			select {
-			case <-time.After(time.Second):
+			case <-ticker.C:
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				startTime := time.Now()
 				_, err := p.session.ExecRaw(ctx, "select 1")
-				if err == nil {
-					p.roundTripTimeSummary.Observe(time.Since(startTime).Seconds())
+				duration := time.Since(startTime).Seconds()
+				if err != nil {
+					duration = 1
 				}
+				p.roundTripTimeSummary.Observe(duration)
 				cancel()
 			case <-p.closeChan:
+				ticker.Stop()
 				return
 			}
 		}
