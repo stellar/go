@@ -2252,6 +2252,77 @@ func TestInterleavedFixedPaths(t *testing.T) {
 	assertPathEquals(t, expectedPaths, paths)
 }
 
+func TestRepro(t *testing.T) {
+	// A reproduction of the bug report:
+	// https://github.com/stellar/go/issues/4014
+	usdc := xdr.MustNewCreditAsset("USDC", "GAEB3HSAWRVILER6T5NMX5VAPTK4PPO2BAL37HR2EOUIK567GJFEO437")
+	eurt := xdr.MustNewCreditAsset("EURT", "GABHG6C7YL2WA2ZJSONPD6ZBWLPAWKYDPYMK6BQRFLZXPQE7IBSTMPNN")
+
+	ybx := xdr.MustNewCreditAsset("YBX", "GCIWMQHPST7LQ7V4LHAF2UP6ZSDCFRYYP7IM4BBAFSBZMVTR3BB4OQZ5")
+	btc := xdr.MustNewCreditAsset("BTC", "GA2RETJWNREEUY4JHMZVXCE6EJG6MGBUEXK2QXXMNE5EYAQMG22XCXHA")
+	eth := xdr.MustNewCreditAsset("ETH", "GATPY6X6OYTXKNRKVP6LEMUUQKFDUW5P7HL4XI3KWRCY52RAWYJ5FLMC")
+
+	usdcYbxPool := makePool(usdc, ybx, 115066115, 9133346)
+	eurtYbxPool := makePool(eurt, ybx, 871648100, 115067)
+	btcYbxPool := makePool(btc, ybx, 453280, 19884933)
+	ethYbxPool := makePool(eth, ybx, 900000, 10000000)
+	usdcForBtcOffer := xdr.OfferEntry{
+		OfferId: 42,
+		Selling: usdc,
+		Buying:  btc,
+		Amount:  1000000000000000,
+		Price:   xdr.Price{N: 81, D: 5000000},
+	}
+
+	graph := NewOrderBookGraph()
+	graph.AddLiquidityPools(usdcYbxPool, eurtYbxPool, btcYbxPool, ethYbxPool)
+	graph.AddOffers(usdcForBtcOffer)
+	if !assert.NoError(t, graph.Apply(2)) {
+		t.FailNow()
+	}
+
+	// get me 70000.0000000 USDC if I have some ETH
+	paths, _, err := graph.FindPaths(context.TODO(), 5,
+		usdc, 700000000000, nil, []xdr.Asset{eth}, []xdr.Int64{0},
+		false, 5, true,
+	)
+
+	btcNeeded, usdcSold, _ := price.ConvertToBuyingUnits(
+		int64(usdcForBtcOffer.Amount),
+		int64(700000000000),
+		int64(usdcForBtcOffer.Price.N),
+		int64(usdcForBtcOffer.Price.D),
+	)
+	assert.EqualValues(t, usdcSold, 700000000000)
+
+	hop2, _ := makeTrade(btcYbxPool, btc, tradeTypeExpectation, xdr.Int64(btcNeeded))
+	hop3, _ := makeTrade(ethYbxPool, ybx, tradeTypeExpectation, hop2)
+	fmt.Println(btcNeeded, hop2, hop3)
+
+	assert.NoError(t, err)
+	for _, path := range paths {
+		printPath(path)
+	}
+
+	expectedPaths := []Path{{
+		SourceAsset:       eth,
+		SourceAmount:      hop3,
+		DestinationAsset:  usdc,
+		DestinationAmount: 700000000000,
+		InteriorNodes:     []xdr.Asset{ybx, btc},
+	}}
+	assertPathEquals(t, expectedPaths, paths)
+
+	// Does it really work?
+	payout1, _ := makeTrade(ethYbxPool, eth, tradeTypeDeposit, 20400907)
+	payout2, _ := makeTrade(btcYbxPool, ybx, tradeTypeDeposit, payout1)
+	fmt.Println("eth -> ", payout1, "ybx -> ", payout2, "btc")
+	fmt.Println("need", btcNeeded, "for", usdcSold, "usdc")
+
+	// We need `bought` BTC from the pool to get 70k usdc, yet...
+	assert.GreaterOrEqual(t, payout2, btcNeeded)
+}
+
 func printPath(path Path) {
 	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
 
@@ -2269,6 +2340,32 @@ func makeVenues(offers ...xdr.OfferEntry) Venues {
 
 func makeTradingPair(buying, selling xdr.Asset) tradingPair {
 	return tradingPair{buyingAsset: buying.String(), sellingAsset: selling.String()}
+}
+
+func makePool(A, B xdr.Asset, a, b xdr.Int64) xdr.LiquidityPoolEntry {
+	if !A.LessThan(B) {
+		B, A = A, B
+		b, a = a, b
+	}
+
+	poolId, _ := xdr.NewPoolId(A, B, xdr.LiquidityPoolFeeV18)
+	return xdr.LiquidityPoolEntry{
+		LiquidityPoolId: poolId,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: A,
+					AssetB: B,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 a,
+				ReserveB:                 b,
+				TotalPoolShares:          123,
+				PoolSharesTrustLineCount: 456,
+			},
+		},
+	}
 }
 
 func getCode(asset xdr.Asset) string {
