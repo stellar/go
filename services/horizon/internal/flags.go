@@ -454,6 +454,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
 		},
 		&support.ConfigOption{
+			Name:        "ingest-enable-extended-log-ledger-stats",
+			ConfigKey:   &config.IngestEnableExtendedLogLedgerStats,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Usage:       "enables extended ledger stats in the log (ledger entry changes and operations stats)",
+		},
+		&support.ConfigOption{
 			Name:        "apply-migrations",
 			ConfigKey:   &config.ApplyMigrations,
 			OptType:     types.Bool,
