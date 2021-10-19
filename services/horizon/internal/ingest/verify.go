@@ -125,7 +125,6 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		}
 	}
 
-	total := int64(0)
 	totalByType := map[string]int64{}
 
 	startTime := time.Now()
@@ -158,6 +157,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 
 	assetStats := processors.AssetStatSet{}
+	total := int64(0)
 	for {
 		var keys []xdr.LedgerKey
 		keys, err = verifier.GetLedgerKeys(verifyBatchSize)
