@@ -2287,40 +2287,9 @@ func TestRepro(t *testing.T) {
 		false, 5, true,
 	)
 
-	btcNeeded, usdcSold, _ := price.ConvertToBuyingUnits(
-		int64(usdcForBtcOffer.Amount),
-		int64(700000000000),
-		int64(usdcForBtcOffer.Price.N),
-		int64(usdcForBtcOffer.Price.D),
-	)
-	assert.EqualValues(t, usdcSold, 700000000000)
-
-	hop2, _ := makeTrade(btcYbxPool, btc, tradeTypeExpectation, xdr.Int64(btcNeeded))
-	hop3, _ := makeTrade(ethYbxPool, ybx, tradeTypeExpectation, hop2)
-	fmt.Println(btcNeeded, hop2, hop3)
-
 	assert.NoError(t, err)
-	for _, path := range paths {
-		printPath(path)
-	}
-
-	expectedPaths := []Path{{
-		SourceAsset:       eth,
-		SourceAmount:      hop3,
-		DestinationAsset:  usdc,
-		DestinationAmount: 700000000000,
-		InteriorNodes:     []xdr.Asset{ybx, btc},
-	}}
-	assertPathEquals(t, expectedPaths, paths)
-
-	// Does it really work?
-	payout1, _ := makeTrade(ethYbxPool, eth, tradeTypeDeposit, 20400907)
-	payout2, _ := makeTrade(btcYbxPool, ybx, tradeTypeDeposit, payout1)
-	fmt.Println("eth -> ", payout1, "ybx -> ", payout2, "btc")
-	fmt.Println("need", btcNeeded, "for", usdcSold, "usdc")
-
-	// We need `bought` BTC from the pool to get 70k usdc, yet...
-	assert.GreaterOrEqual(t, payout2, btcNeeded)
+	assertPathEquals(t, []Path{}, paths)
+	// can't, because BTC/YBX pool is too small
 }
 
 func printPath(path Path) {

@@ -1,7 +1,6 @@
 package orderbook
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 
@@ -35,8 +34,8 @@ var (
 // In (1), this returns the amount that would be paid out by the pool (in terms
 // of the *other* asset) for depositing `amount` of `asset`.
 //
-// In (2), this returns the amount of `asset` necessary to give to the pool in
-// order to get `amount` of the *other* asset in return.
+// In (2), this returns the amount of `asset` you'd need to deposit to get
+// `amount` of the *other* asset in return.
 //
 // Refer to https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md#pathpaymentstrictsendop-and-pathpaymentstrictreceiveop
 // and the calculation functions (below) for details on the exchange algorithm.
@@ -61,15 +60,7 @@ func makeTrade(
 	// determine which asset `amount` corresponds to
 	X, Y := details.ReserveA, details.ReserveB
 	if !details.Params.AssetA.Equals(asset) {
-		X, Y = details.ReserveB, details.ReserveA
-	}
-
-	if details.Params.AssetA.Equals(asset) {
-		fmt.Println("X is", details.Params.AssetA.String())
-		fmt.Println("Y is", details.Params.AssetB.String())
-	} else {
-		fmt.Println("X is", details.Params.AssetB.String())
-		fmt.Println("Y is", details.Params.AssetA.String())
+		X, Y = Y, X
 	}
 
 	ok = false
