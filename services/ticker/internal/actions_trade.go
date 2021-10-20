@@ -31,18 +31,18 @@ func StreamTrades(
 		scraper.NormalizeTradeAssets(&trade)
 		bID, cID, err := findBaseAndCounter(ctx, s, trade)
 		if err != nil {
-			l.Errorln(err)
+			l.Error(err)
 			return
 		}
 		dbTrade, err := hProtocolTradeToDBTrade(trade, bID, cID)
 		if err != nil {
-			l.Errorln(err)
+			l.Error(err)
 			return
 		}
 
 		err = s.BulkInsertTrades(ctx, []tickerdb.Trade{dbTrade})
 		if err != nil {
-			l.Errorln("Could not insert trade in database: ", trade.ID)
+			l.Error("Could not insert trade in database: ", trade.ID)
 		}
 	}
 
@@ -89,7 +89,7 @@ func BackfillTrades(
 		var dbTrade tickerdb.Trade
 		dbTrade, err = hProtocolTradeToDBTrade(trade, bID, cID)
 		if err != nil {
-			l.Errorln("Could not convert entry to DB Trade: ", err)
+			l.Error("Could not convert entry to DB Trade: ", err)
 			continue
 		}
 		dbTrades = append(dbTrades, dbTrade)
