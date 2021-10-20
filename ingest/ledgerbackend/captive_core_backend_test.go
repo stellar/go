@@ -299,6 +299,7 @@ func TestCaptivePrepareRangeCloseNotFullyTerminated(t *testing.T) {
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
 	assert.NoError(t, err)
 
+	// Simulates a long (but graceful) shutdown...
 	cancel()
 	mockRunner.On("close").Return(nil)
 	mockRunner.On("getProcessExitError").Return(false, nil).Once()
