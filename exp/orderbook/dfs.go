@@ -231,7 +231,9 @@ func (state *sellingGraphSearchState) consumePool(
 	currentAsset xdr.Asset,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
-	return makeTrade(pool, currentAsset, tradeTypeExpectation, currentAssetAmount)
+	// How many of the previous hop do we need to get this amount?
+	return makeTrade(pool, getOtherAsset(currentAsset, pool),
+		tradeTypeExpectation, currentAssetAmount)
 }
 
 // buyingGraphSearchState configures a DFS on the orderbook graph where only
