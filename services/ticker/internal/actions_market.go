@@ -13,19 +13,19 @@ import (
 // GenerateMarketSummaryFile generates a MarketSummary with the statistics for all
 // valid markets within the database and outputs it to <filename>.
 func GenerateMarketSummaryFile(s *tickerdb.TickerSession, l *hlog.Entry, filename string) error {
-	l.Infoln("Generating market data...")
+	l.Info("Generating market data...")
 	marketSummary, err := GenerateMarketSummary(s)
 	if err != nil {
 		return err
 	}
-	l.Infoln("Market data successfully generated!")
+	l.Info("Market data successfully generated!")
 
 	jsonMkt, err := json.MarshalIndent(marketSummary, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	l.Infoln("Writing market data to: ", filename)
+	l.Info("Writing market data to: ", filename)
 	numBytes, err := utils.WriteJSONToFile(jsonMkt, filename)
 	if err != nil {
 		return err

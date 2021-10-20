@@ -243,20 +243,6 @@ func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 	return cmd
 }
 
-func (r *stellarCoreRunner) runCmd(params ...string) error {
-	cmd := r.createCmd(params...)
-	defer r.closeLogLineWriters(cmd)
-
-	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "could not start `stellar-core %v` cmd", params)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return errors.Wrapf(err, "error waiting for `stellar-core %v` subprocess", params)
-	}
-	return nil
-}
-
 // context returns the context.Context instance associated with the running captive core instance
 func (r *stellarCoreRunner) context() context.Context {
 	return r.ctx
@@ -274,9 +260,6 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 
 	if r.started {
 		return errors.New("runner already started")
-	}
-	if err := r.runCmd("new-db"); err != nil {
-		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
