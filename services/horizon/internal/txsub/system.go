@@ -101,6 +101,11 @@ func (sys *System) Submit(
 		"tx":      rawTx,
 	}).Info("Processing transaction")
 
+	if envelope.SeqNum() < 0 {
+		sys.finish(ctx, hash, response, Result{Err: ErrBadSequence})
+		return
+	}
+
 	tx, sequenceNumber, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")

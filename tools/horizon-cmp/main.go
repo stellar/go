@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	client "github.com/stellar/go/clients/horizonclient"
 	protocol "github.com/stellar/go/protocols/horizon"
@@ -72,7 +71,7 @@ var historyCmd = &cobra.Command{
 func init() {
 	log = slog.New()
 	log.SetLevel(slog.InfoLevel)
-	log.Logger.Formatter.(*logrus.TextFormatter).DisableTimestamp = true
+	log.DisableTimestamp()
 
 	if cap(paths) < len(initPaths) {
 		panic("cap(paths) must be higher or equal len(initPaths)")
@@ -299,7 +298,9 @@ func getPathFromAccessLog(line string) (string, error) {
 		return "", nil
 	}
 
-	return matches[2], nil
+	// Remove duplicate /
+	path := "/" + strings.TrimLeft(matches[2], "/")
+	return path, nil
 }
 
 func streamFile(accessLog *cmp.Scanner) {

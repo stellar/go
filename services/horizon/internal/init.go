@@ -112,7 +112,7 @@ func initPathFinder(app *App) {
 		orderBookGraph,
 	)
 
-	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
+	app.paths = simplepath.NewInMemoryFinder(orderBookGraph, !app.config.DisablePoolPathFinding)
 }
 
 // initSentry initialized the default sentry client with the configured DSN
@@ -140,7 +140,7 @@ func initLogglyLog(app *App) {
 	}).Info("Initializing loggly hook")
 
 	hook := log.NewLogglyHook(app.config.LogglyToken, app.config.LogglyTag)
-	log.DefaultLogger.Logger.Hooks.Add(hook)
+	log.DefaultLogger.AddHook(hook)
 
 	go func() {
 		<-app.ctx.Done()

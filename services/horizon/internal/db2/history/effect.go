@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -19,7 +20,37 @@ func (r *Effect) UnmarshalDetails(dest interface{}) error {
 		return nil
 	}
 
-	return errors.Wrap(json.Unmarshal([]byte(r.DetailsString.String), &dest), "unmarshal effect details failed")
+	err := errors.Wrap(json.Unmarshal([]byte(r.DetailsString.String), &dest), "unmarshal effect details failed")
+	if err == nil {
+		// In 2.9.0 a new `asset_type` was introduced to include liquidity
+		// pools. Instead of reingesting entire history, let's fill the
+		// `asset_type` here if it's empty.
+		// (I hate to convert to `protocol` types here but there's no other way
+		// without larger refactor.)
+		switch dest := dest.(type) {
+		case *effects.TrustlineSponsorshipCreated:
+			if dest.Type == "" {
+				dest.Type = getAssetTypeForCanonicalAsset(dest.Asset)
+			}
+		case *effects.TrustlineSponsorshipUpdated:
+			if dest.Type == "" {
+				dest.Type = getAssetTypeForCanonicalAsset(dest.Asset)
+			}
+		case *effects.TrustlineSponsorshipRemoved:
+			if dest.Type == "" {
+				dest.Type = getAssetTypeForCanonicalAsset(dest.Asset)
+			}
+		}
+	}
+	return err
+}
+
+func getAssetTypeForCanonicalAsset(canonicalAsset string) string {
+	if len(canonicalAsset) <= 61 {
+		return "credit_alphanum4"
+	} else {
+		return "credit_alphanum12"
+	}
 }
 
 // ID returns a lexically ordered id for this effect record

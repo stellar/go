@@ -47,7 +47,7 @@ func RefreshAssets(ctx context.Context, s *tickerdb.TickerSession, c *horizoncli
 
 // GenerateAssetsFile generates a file with the info about all valid scraped Assets
 func GenerateAssetsFile(ctx context.Context, s *tickerdb.TickerSession, l *hlog.Entry, filename string) error {
-	l.Infoln("Retrieving asset data from db...")
+	l.Info("Retrieving asset data from db...")
 	var assets []Asset
 	validAssets, err := s.GetAssetsWithNestedIssuer(ctx)
 	if err != nil {
@@ -58,7 +58,7 @@ func GenerateAssetsFile(ctx context.Context, s *tickerdb.TickerSession, l *hlog.
 		asset := dbAssetToAsset(dbAsset)
 		assets = append(assets, asset)
 	}
-	l.Infoln("Asset data successfully retrieved! Writing to: ", filename)
+	l.Info("Asset data successfully retrieved! Writing to: ", filename)
 	now := time.Now()
 	assetSummary := AssetSummary{
 		GeneratedAt:        utils.TimeToUnixEpoch(now),

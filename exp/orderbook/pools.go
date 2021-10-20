@@ -84,8 +84,8 @@ func makeTrade(
 	return result, nil
 }
 
-// calculatePoolPayout calculates the amount disbursed from the pool for an
-// amount received. From CAP-38:
+// calculatePoolPayout calculates the amount of `reserveB` disbursed from the
+// pool for a `received` amount of `reserveA` . From CAP-38:
 //
 //      y = floor[(1 - F) Yx / (X + x - Fx)]
 //
@@ -95,7 +95,7 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 	F, x := big.NewInt(int64(feeBips)), big.NewInt(int64(received))
 
 	// would this deposit overflow the reserve?
-	if math.MaxInt64-received < reserveA {
+	if received > math.MaxInt64-reserveA {
 		return 0, false
 	}
 
@@ -115,13 +115,14 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 	// divide & check overflow
 	result := numer.Div(numer, denom)
 
-	return xdr.Int64(result.Int64()), result.IsInt64()
+	i := xdr.Int64(result.Int64())
+	return i, result.IsInt64() && i > 0
 }
 
-// calculatePoolExpectation determines how much you would need to put into a
-// pool to get a certain amount disbursed.
+// calculatePoolExpectation determines how much of `reserveA` you would need to
+// put into a pool to get the `disbursed` amount of `reserveB`.
 //
-//      x = ceil[Xy / (Y - y) / (1 - F)]
+//      x = ceil[Xy / ((Y - y)(1 - F))]
 //
 // It returns false if the calculation overflows.
 func calculatePoolExpectation(
@@ -131,7 +132,7 @@ func calculatePoolExpectation(
 	F, y := big.NewInt(int64(feeBips)), big.NewInt(int64(disbursed))
 
 	// sanity check: disbursing shouldn't underflow the reserve
-	if reserveA-disbursed <= 0 {
+	if disbursed >= reserveB {
 		return 0, false
 	}
 
@@ -139,12 +140,12 @@ func calculatePoolExpectation(
 	maxBips := big.NewInt(10000)
 	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
 
-	denom := Y.Sub(Y, y).Mul(Y, f)     // right half:
+	denom := Y.Sub(Y, y).Mul(Y, f)     // right half: (Y - y)(1 - F)
 	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
 		return 0, false
 	}
 
-	numer := X.Mul(X, y).Mul(X, maxBips)
+	numer := X.Mul(X, y).Mul(X, maxBips) // left half: Xy
 
 	result, rem := new(big.Int), new(big.Int)
 	result.DivMod(numer, denom, rem)

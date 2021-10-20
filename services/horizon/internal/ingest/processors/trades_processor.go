@@ -290,7 +290,9 @@ func (p *TradeProcessor) extractTrades(
 			}
 
 			if buyOfferExists {
-				row.CounterOfferID = null.IntFrom(int64(buyOffer.OfferId))
+				row.CounterOfferID = null.IntFrom(EncodeOfferId(uint64(buyOffer.OfferId), CoreOfferIDType))
+			} else {
+				row.CounterOfferID = null.IntFrom(EncodeOfferId(uint64(opID), TOIDType))
 			}
 
 			var buyerAddress string

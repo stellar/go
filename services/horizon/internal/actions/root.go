@@ -5,14 +5,9 @@ import (
 	"net/url"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/corestate"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 )
-
-type CoreStateGetter interface {
-	GetCoreState() corestate.State
-}
 
 type GetRootHandler struct {
 	LedgerState *ledger.State

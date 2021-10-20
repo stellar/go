@@ -365,6 +365,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 		},
 		&support.ConfigOption{
+			Name:        "disable-pool-path-finding",
+			ConfigKey:   &config.DisablePoolPathFinding,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
+		},
+		&support.ConfigOption{
 			Name:      "network-passphrase",
 			ConfigKey: &config.NetworkPassphrase,
 			OptType:   types.String,
@@ -403,20 +411,11 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "TLS private key file to use for securing connections to horizon",
 		},
 		&support.ConfigOption{
-			Name:      "ingest",
-			ConfigKey: &config.Ingest,
-			OptType:   types.Bool,
-			// Action needed in release: horizon-v2.9.0: make --ingest default true
-			FlagDefault: false,
-			CustomSetValue: func(opt *support.ConfigOption) error {
-				if support.IsExplicitlySet(opt) {
-					*opt.ConfigKey.(*bool) = viper.GetBool(opt.Name)
-				} else {
-					stdLog.Println("WARNING: in the 2.9.0 Horizon release the --ingest flag will default to true. Update your configuration so that --ingest is explicitly set to false.")
-				}
-				return nil
-			},
-			Usage: "causes this horizon process to ingest data from stellar-core into horizon's db",
+			Name:        "ingest",
+			ConfigKey:   &config.Ingest,
+			OptType:     types.Bool,
+			FlagDefault: true,
+			Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 		},
 		&support.ConfigOption{
 			Name:        "cursor-name",
@@ -656,14 +655,14 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if config.LogFile != "" {
 		logFile, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err == nil {
-			log.DefaultLogger.Logger.Out = logFile
+			log.DefaultLogger.SetOutput(logFile)
 		} else {
 			return fmt.Errorf("Failed to open file to log: %s", err)
 		}
 	}
 
 	// Configure log level
-	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
+	log.DefaultLogger.SetLevel(config.LogLevel)
 
 	// Configure DB params. When config.MaxDBConnections is set, set other
 	// DB params to that value for backward compatibility.

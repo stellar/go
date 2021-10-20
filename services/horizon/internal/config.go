@@ -43,8 +43,11 @@ type Config struct {
 	FriendbotURL       *url.URL
 	LogLevel           logrus.Level
 	LogFile            string
+
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
-	MaxPathLength     uint
+	MaxPathLength          uint
+	DisablePoolPathFinding bool
+
 	NetworkPassphrase string
 	SentryDSN         string
 	LogglyToken       string

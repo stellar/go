@@ -147,7 +147,7 @@ commands:
     parameters:
       core-version:
         type: string
-        default: "18.0.0-734.e381447.focal"
+        default: "18.0.3-746.f3baea6.focal"
     steps:
       - run:
           name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
