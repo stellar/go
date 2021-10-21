@@ -139,6 +139,10 @@ type Metrics struct {
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
 
+	// LedgerFetchDurationSummary exposes a summary of durations required to
+	// fetch data from ledger backend.
+	LedgerFetchDurationSummary prometheus.Summary
+
 	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
 	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
 	CaptiveStellarCoreSynced prometheus.GaugeFunc
@@ -351,6 +355,13 @@ func (s *system) initMetrics() {
 			Help: "run durations of ingestion processors, sliding window = 10m",
 		},
 		[]string{"name"},
+	)
+
+	s.metrics.LedgerFetchDurationSummary = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "ledger_fetch_duration_seconds",
+			Help: "duration of fetching ledgers from ledger backend, sliding window = 10m",
+		},
 	)
 
 	s.metrics.CaptiveStellarCoreSynced = prometheus.NewGaugeFunc(
