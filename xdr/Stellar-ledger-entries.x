@@ -257,10 +257,10 @@ struct TrustLineEntryExtensionV2
 
 struct TrustLineEntry
 {
-    AccountID accountID; // account this trustline belongs to
-    TrustLineAsset asset;         // type of asset (with issuer)
-    int64 balance;       // how much of this asset the user has.
-                         // Asset defines the unit for this;
+    AccountID accountID;  // account this trustline belongs to
+    TrustLineAsset asset; // type of asset (with issuer)
+    int64 balance;        // how much of this asset the user has.
+                          // Asset defines the unit for this;
 
     int64 limit;  // balance cannot be above this
     uint32 flags; // see TrustLineFlags
@@ -391,16 +391,13 @@ case CLAIMANT_TYPE_V0:
 
 enum ClaimableBalanceIDType
 {
-    CLAIMABLE_BALANCE_ID_TYPE_V0 = 0,
-    CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE = 1
+    CLAIMABLE_BALANCE_ID_TYPE_V0 = 0
 };
 
 union ClaimableBalanceID switch (ClaimableBalanceIDType type)
 {
 case CLAIMABLE_BALANCE_ID_TYPE_V0:
     Hash v0;
-case CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
-    Hash fromPoolRevoke;
 };
 
 enum ClaimableBalanceFlags
