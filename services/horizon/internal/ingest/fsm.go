@@ -495,17 +495,21 @@ func (r resumeState) run(s *system) (transition, error) {
 	r.addLedgerStatsMetricFromMap(s, "ledger", transactionStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, transactionDurations)
 
-	log.
-		WithFields(changeStatsMap).
-		WithFields(transactionStatsMap).
-		WithFields(logpkg.F{
-			"sequence": ingestLedger,
-			"duration": duration,
-			"state":    true,
-			"ledger":   true,
-			"commit":   true,
-		}).
-		Info("Processed ledger")
+	localLog := log.WithFields(logpkg.F{
+		"sequence": ingestLedger,
+		"duration": duration,
+		"state":    true,
+		"ledger":   true,
+		"commit":   true,
+	})
+
+	if s.config.EnableExtendedLogLedgerStats {
+		localLog = localLog.
+			WithFields(changeStatsMap).
+			WithFields(transactionStatsMap)
+	}
+
+	localLog.Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
 

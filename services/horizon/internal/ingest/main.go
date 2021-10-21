@@ -78,9 +78,11 @@ type Config struct {
 	RemoteCaptiveCoreURL        string
 	NetworkPassphrase           string
 
-	HistorySession           db.SessionInterface
-	HistoryArchiveURL        string
-	DisableStateVerification bool
+	HistorySession    db.SessionInterface
+	HistoryArchiveURL string
+
+	DisableStateVerification     bool
+	EnableExtendedLogLedgerStats bool
 
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
