@@ -64,7 +64,7 @@ var recordMetricsCmd = &cobra.Command{
 				return err
 			}
 
-			if _, err := io.Copy(metricsFile, metricsResponse.Body); err != nil {
+			if _, err = io.Copy(metricsFile, metricsResponse.Body); err != nil {
 				return errors.Wrap(err, "Error reading response body. Is admin server running?")
 			}
 
