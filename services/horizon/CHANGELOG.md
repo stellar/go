@@ -12,6 +12,7 @@ This is a minor release with no DB Schema migrations nor explicit state rebuild.
 * Use the correct asset when calculating liquidity pool disbursements ([4018](https://github.com/stellar/go/pull/4018))
 * Make sure Stellar-Core is not started before previous instance termination ([4020](https://github.com/stellar/go/pull/4020))
 * Add a new feature flag `--ingest-enable-extended-log-ledger-stats` (`false` by default) that enables extra ledger stats when logging ledger processing info ([4017](https://github.com/stellar/go/pull/4017))
+* Add a new command `horizon record-metrics` that records `:[ADMIN_PORT]/metrics` into a zip file for debugging purposes ([4023](https://github.com/stellar/go/pull/4023))
 * Expose the `Latest-Ledger` header to browser web pages ([3995](https://github.com/stellar/go/pull/3995))
 * Correct `horizon db reingest range` output command name when invoking `horizon db detect-gaps` ([4007](https://github.com/stellar/go/pull/4007))
 * Add new prometheus metrics:
