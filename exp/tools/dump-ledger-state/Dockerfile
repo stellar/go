@@ -1,11 +1,16 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget curl gnupg
-RUN wget -qO - https://apt.stellar.org/SDF.asc | apt-key add -
-RUN echo "deb https://apt.stellar.org xenial stable" | tee -a /etc/apt/sources.list.d/SDF.list
+ENV STELLAR_CORE_VERSION=18.1.0-760.rc1.dc5f5a392.focal
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils
+RUN wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true apt-key add -
+RUN echo "deb https://apt.stellar.org focal stable" >/etc/apt/sources.list.d/SDF.list
+RUN echo "deb https://apt.stellar.org focal unstable" >/etc/apt/sources.list.d/SDF-unstable.list
 RUN apt-get update -y
 
-RUN apt-get install -y stellar-core jq
+RUN apt-get install -y stellar-core=${STELLAR_CORE_VERSION} jq
+RUN apt-get clean
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ $(env -i bash -c '. /etc/os-release; echo $VERSION_CODENAME')-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     apt-get update && \

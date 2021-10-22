@@ -1,4 +1,4 @@
-ENTRIES=(accounts accountdata offers trustlines claimablebalances)
+ENTRIES=(accounts accountdata offers trustlines claimablebalances pools)
 
 echo "Sorting dump-ledger-state output files..."
 for i in "${ENTRIES[@]}"
