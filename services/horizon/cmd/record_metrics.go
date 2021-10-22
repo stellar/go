@@ -30,7 +30,7 @@ var recordMetricsCmd = &cobra.Command{
 		)
 
 		client := &http.Client{
-			Timeout: 2 * time.Second,
+			Timeout: 5 * time.Second,
 		}
 
 		outputFileName := fmt.Sprintf("./metrics-%s.zip", time.Now().Format(timeFormat))
