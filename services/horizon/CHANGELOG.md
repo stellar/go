@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.10.0
+
+This is a minor release with no DB Schema migrations nor explicit state rebuild.
+
+### Changes
+
+* Use the correct asset when calculating liquidity pool disbursements ([4018](https://github.com/stellar/go/pull/4018))
+* Make sure Stellar-Core is not started before previous instance termination ([4020](https://github.com/stellar/go/pull/4020))
+* Add a new feature flag `--ingest-enable-extended-log-ledger-stats` (`false` by default) that enables extra ledger stats when logging ledger processing info ([4017](https://github.com/stellar/go/pull/4017))
+* Expose the `Latest-Ledger` header to browser web pages ([3995](https://github.com/stellar/go/pull/3995))
+* Correct `horizon db reingest range` output command name when invoking `horizon db detect-gaps` ([4007](https://github.com/stellar/go/pull/4007))
+* Add new prometheus metrics:
+  * `round_trip_time_seconds`:  time required to run `select 1` query in the DB ([4009](https://github.com/stellar/go/pull/4009))
+  * `state_verify_ledger_entries_count`: number of ledger entries downloaded from buckets in a single state verifier run ([4015](https://github.com/stellar/go/pull/4015))
+  * `ledger_fetch_duration_seconds`: duration of fetching ledgers from ledger backend, sliding window = 10m ([4016](https://github.com/stellar/go/pull/4016))
+
+
 ## v2.9.0
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
