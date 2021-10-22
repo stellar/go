@@ -267,6 +267,8 @@ func initIngestMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDurationSummary)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveStellarCoreSynced)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveCoreSupportedProtocolVersion)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerFetchDurationSummary)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyLedgerEntriesCount)
 }
 
 func initTxSubMetrics(app *App) {
