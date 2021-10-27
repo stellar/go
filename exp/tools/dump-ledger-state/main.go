@@ -124,26 +124,12 @@ func (processor csvProcessor) ProcessChange(change ingest.Change) error {
 			legerExt,
 		})
 	case xdr.LedgerEntryTypeTrustline:
-		trustline := change.Post.Data.MustTrustLine()
-
-		var assetType, assetCode, assetIssuer string
-		trustline.Asset.MustExtract(&assetType, &assetCode, &assetIssuer)
-
-		trustlineExt, err := xdr.MarshalBase64(trustline.Ext)
+		ledgerEntry, err := xdr.MarshalBase64(change.Post)
 		if err != nil {
 			return err
 		}
-
 		csvWriter.Write([]string{
-			trustline.AccountId.Address(),
-			strconv.FormatInt(int64(trustline.Asset.Type), 10),
-			assetIssuer,
-			assetCode,
-			strconv.FormatInt(int64(trustline.Limit), 10),
-			strconv.FormatInt(int64(trustline.Balance), 10),
-			strconv.FormatInt(int64(trustline.Flags), 10),
-			trustlineExt,
-			legerExt,
+			ledgerEntry,
 		})
 	case xdr.LedgerEntryTypeOffer:
 		offer := change.Post.Data.MustOffer()
@@ -206,6 +192,14 @@ func (processor csvProcessor) ProcessChange(change ingest.Change) error {
 			balanceID,
 			ledgerEntry,
 		})
+	case xdr.LedgerEntryTypeLiquidityPool:
+		ledgerEntry, err := xdr.MarshalBase64(change.Post)
+		if err != nil {
+			return err
+		}
+		csvWriter.Write([]string{
+			ledgerEntry,
+		})
 	default:
 		return errors.Errorf("Invalid LedgerEntryType: %d", change.Type)
 	}
@@ -241,6 +235,7 @@ func main() {
 		xdr.LedgerEntryTypeOffer:            "./offers.csv",
 		xdr.LedgerEntryTypeTrustline:        "./trustlines.csv",
 		xdr.LedgerEntryTypeClaimableBalance: "./claimablebalances.csv",
+		xdr.LedgerEntryTypeLiquidityPool:    "./pools.csv",
 	} {
 		if err = files.put(entryType, fileName); err != nil {
 			log.WithField("err", err).
