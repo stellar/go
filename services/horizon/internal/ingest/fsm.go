@@ -390,10 +390,13 @@ func (r resumeState) run(s *system) (transition, error) {
 	if err != nil {
 		return start(), errors.Wrap(err, "error getting ledger blocking")
 	}
+	duration := time.Since(startTime).Seconds()
 	log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
-		"duration": time.Since(startTime).Seconds(),
+		"duration": duration,
 	}).Info("Ledger returned from the backend")
+
+	s.Metrics().LedgerFetchDurationSummary.Observe(float64(duration))
 
 	if err = s.historyQ.Begin(); err != nil {
 		return retryResume(r),
@@ -480,7 +483,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
 
-	duration := time.Since(startTime).Seconds()
+	duration = time.Since(startTime).Seconds()
 	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
 
 	// Update stats metrics
@@ -492,17 +495,21 @@ func (r resumeState) run(s *system) (transition, error) {
 	r.addLedgerStatsMetricFromMap(s, "ledger", transactionStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, transactionDurations)
 
-	log.
-		WithFields(changeStatsMap).
-		WithFields(transactionStatsMap).
-		WithFields(logpkg.F{
-			"sequence": ingestLedger,
-			"duration": duration,
-			"state":    true,
-			"ledger":   true,
-			"commit":   true,
-		}).
-		Info("Processed ledger")
+	localLog := log.WithFields(logpkg.F{
+		"sequence": ingestLedger,
+		"duration": duration,
+		"state":    true,
+		"ledger":   true,
+		"commit":   true,
+	})
+
+	if s.config.EnableExtendedLogLedgerStats {
+		localLog = localLog.
+			WithFields(changeStatsMap).
+			WithFields(transactionStatsMap)
+	}
+
+	localLog.Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
 

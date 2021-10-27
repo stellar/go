@@ -78,6 +78,9 @@ type Config struct {
 	// IngestDisableStateVerification disables state verification
 	// `System.verifyState()` when set to `true`.
 	IngestDisableStateVerification bool
+	// IngestEnableExtendedLogLedgerStats enables extended ledger stats in
+	// logging.
+	IngestEnableExtendedLogLedgerStats bool
 	// ApplyMigrations will apply pending migrations to the horizon database
 	// before starting the horizon service
 	ApplyMigrations bool

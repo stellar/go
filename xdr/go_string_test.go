@@ -39,10 +39,10 @@ func TestMemoGoStringerText(t *testing.T) {
 	assert.Equal(t, `xdr.MemoText("abc")`, fmt.Sprintf("%#v", memo))
 }
 
-func TestMemoGoStringerId(t *testing.T) {
+func TestMemoGoStringerID(t *testing.T) {
 	id := xdr.Uint64(123)
 	memo := xdr.Memo{Type: xdr.MemoTypeMemoId, Id: &id}
-	assert.Equal(t, `xdr.MemoId(123)`, fmt.Sprintf("%#v", memo))
+	assert.Equal(t, `xdr.MemoID(123)`, fmt.Sprintf("%#v", memo))
 }
 
 func TestMemoGoStringerHash(t *testing.T) {

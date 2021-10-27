@@ -444,6 +444,12 @@ func (r *stellarCoreRunner) close() error {
 		return nil
 	}
 
+	if !started {
+		// Update processExited if handleExit that updates it not even started
+		// (error before command run).
+		r.processExited = true
+	}
+
 	r.cancel()
 	r.lock.Unlock()
 
