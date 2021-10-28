@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"io"
-	"math"
 	"math/rand"
 	"regexp"
 	"testing"
@@ -27,7 +26,7 @@ func genAccount(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
 			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.ACCOUNT.GetU32())},
 			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
-			{randxdr.FieldEquals("created.data.account.seqNum"), randxdr.SetPositiveNum64WithUpperBound(math.MaxInt32)},
+			{randxdr.FieldEquals("created.data.account.seqNum"), randxdr.SetPositiveNum64},
 			{randxdr.FieldEquals("created.data.account.numSubEntries"), randxdr.SetPositiveNum32},
 			{randxdr.FieldEquals("created.data.account.balance"), randxdr.SetPositiveNum64},
 			{randxdr.FieldEquals("created.data.account.homeDomain"), randxdr.SetPrintableASCII},
