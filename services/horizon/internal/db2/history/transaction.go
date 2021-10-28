@@ -88,7 +88,7 @@ func (q *Q) Transactions() *TransactionsQ {
 	}
 }
 
-// ForAccount filters the transactions collection to a specific account
+// ForAccount filters the transactions collection to a specific participating account (source, destination etc ...)
 func (q *TransactionsQ) ForAccount(ctx context.Context, aid string) *TransactionsQ {
 	var account Account
 	q.Err = q.parent.AccountByAddress(ctx, &account, aid)
@@ -100,6 +100,13 @@ func (q *TransactionsQ) ForAccount(ctx context.Context, aid string) *Transaction
 		Join("history_transaction_participants htp ON htp.history_transaction_id = ht.id").
 		Where("htp.history_account_id = ?", account.ID)
 
+	return q
+}
+
+// ForSourceAccount filters the transactions collection to a specific source account
+func (q *TransactionsQ) ForSourceAccount(ctx context.Context, aid string) *TransactionsQ {
+	q.sql = q.sql.
+		Where("ht.account = ?", aid)
 	return q
 }
 

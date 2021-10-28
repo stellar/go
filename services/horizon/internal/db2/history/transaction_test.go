@@ -92,7 +92,7 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 // TestTransactionSuccessfulOnly tests if default query returns successful
 // transactions only.
 // If it's not enclosed in brackets, it may return incorrect result when mixed
-// with `ForAccount` or `ForLedger` filters.
+// with `ForAccount`/`ForSourceAccount` or `ForLedger` filters.
 func TestTransactionSuccessfulOnly(t *testing.T) {
 	tt := test.Start(t)
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -118,6 +118,17 @@ func TestTransactionSuccessfulOnly(t *testing.T) {
 	tt.Assert.NoError(err)
 	// Note: brackets around `(ht.successful = true OR ht.successful IS NULL)` are critical!
 	tt.Assert.Contains(sql, "WHERE htp.history_account_id = ? AND (ht.successful = true OR ht.successful IS NULL)")
+
+	query = q.Transactions().
+		ForSourceAccount(tt.Ctx, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+
+	err = query.Select(tt.Ctx, &transactions)
+	tt.Assert.NoError(err)
+
+	tt.Assert.Equal(1, len(transactions))
+
+	tt.Assert.True(transactions[0].Successful)
+
 }
 
 // TestTransactionIncludeFailed tests `IncludeFailed` method.

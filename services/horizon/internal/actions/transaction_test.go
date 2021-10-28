@@ -55,6 +55,43 @@ func TestGetTransactionsHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 2)
 
+	// filter by source account
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"source_account_id": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"include_failed":    "true",
+			}, map[string]string{}, q,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 3)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"source_account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+				"include_failed":    "true",
+			}, map[string]string{}, q,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 0)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"source_account_id": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+				"include_failed":    "true",
+			}, map[string]string{}, q,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 1)
+
 	// // filter by ledger
 	records, err = handler.GetResourcePage(
 		httptest.NewRecorder(),
