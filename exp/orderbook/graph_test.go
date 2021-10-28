@@ -122,100 +122,11 @@ var (
 		Amount: xdr.Int64(500),
 	}
 
-	eurUsdLiquidityPoolId, _ = xdr.NewPoolId(eurAsset, usdAsset, xdr.LiquidityPoolFeeV18)
-	eurUsdLiquidityPool      = xdr.LiquidityPoolEntry{
-		LiquidityPoolId: eurUsdLiquidityPoolId,
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: eurAsset,
-					AssetB: usdAsset,
-					Fee:    xdr.LiquidityPoolFeeV18,
-				},
-				ReserveA:                 1000,
-				ReserveB:                 1000,
-				TotalPoolShares:          123, // note: these two don't matter
-				PoolSharesTrustLineCount: 456,
-			},
-		},
-	}
-
-	eurYenLiquidityPoolId, _ = xdr.NewPoolId(eurAsset, yenAsset, xdr.LiquidityPoolFeeV18)
-	eurYenLiquidityPool      = xdr.LiquidityPoolEntry{
-		LiquidityPoolId: eurYenLiquidityPoolId,
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: eurAsset,
-					AssetB: yenAsset,
-					Fee:    xdr.LiquidityPoolFeeV18,
-				},
-				ReserveA:                 1000,
-				ReserveB:                 1000,
-				TotalPoolShares:          123,
-				PoolSharesTrustLineCount: 456,
-			},
-		},
-	}
-
-	usdChfLiquidityPoolId, _ = xdr.NewPoolId(chfAsset, usdAsset, xdr.LiquidityPoolFeeV18)
-	usdChfLiquidityPool      = xdr.LiquidityPoolEntry{
-		LiquidityPoolId: usdChfLiquidityPoolId,
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: chfAsset,
-					AssetB: usdAsset,
-					Fee:    xdr.LiquidityPoolFeeV18,
-				},
-				ReserveA:                 500,
-				ReserveB:                 1000,
-				TotalPoolShares:          123,
-				PoolSharesTrustLineCount: 456,
-			},
-		},
-	}
-
-	nativeEurPoolId, _ = xdr.NewPoolId(nativeAsset, eurAsset, xdr.LiquidityPoolFeeV18)
-	nativeEurPool      = xdr.LiquidityPoolEntry{
-		LiquidityPoolId: nativeEurPoolId,
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewNativeAsset(),
-					AssetB: eurAsset,
-					Fee:    xdr.LiquidityPoolFeeV18,
-				},
-				ReserveA:                 1500, // 50:1 ratio of XLM to EUR
-				ReserveB:                 30,
-				TotalPoolShares:          123,
-				PoolSharesTrustLineCount: 456,
-			},
-		},
-	}
-
-	nativeUsdPoolId, _ = xdr.NewPoolId(nativeAsset, usdAsset, xdr.LiquidityPoolFeeV18)
-	nativeUsdPool      = xdr.LiquidityPoolEntry{
-		LiquidityPoolId: nativeUsdPoolId,
-		Body: xdr.LiquidityPoolEntryBody{
-			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
-				Params: xdr.LiquidityPoolConstantProductParameters{
-					AssetA: xdr.MustNewNativeAsset(),
-					AssetB: usdAsset,
-					Fee:    xdr.LiquidityPoolFeeV18,
-				},
-				ReserveA:                 120, // 4:1 ratio of XLM to USD
-				ReserveB:                 30,
-				TotalPoolShares:          123,
-				PoolSharesTrustLineCount: 456,
-			},
-		},
-	}
+	eurUsdLiquidityPool = makePool(eurAsset, usdAsset, 1000, 1000)
+	eurYenLiquidityPool = makePool(eurAsset, yenAsset, 1000, 1000)
+	usdChfLiquidityPool = makePool(chfAsset, usdAsset, 500, 1000)
+	nativeEurPool       = makePool(xdr.MustNewNativeAsset(), eurAsset, 1500, 30)
+	nativeUsdPool       = makePool(xdr.MustNewNativeAsset(), usdAsset, 120, 30)
 )
 
 func assertBinaryMarshalerEquals(t *testing.T, a, b encoding.BinaryMarshaler) {
@@ -2013,7 +1924,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 			100,
 			&fakeSource,
 			[]xdr.Asset{chfAsset},
-			[]xdr.Int64{342},
+			[]xdr.Int64{73},
 			true,
 			5,
 			true,
@@ -2021,7 +1932,7 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 
 		expectedPaths := []Path{{
 			SourceAsset:       chfAsset,
-			SourceAmount:      342,
+			SourceAmount:      73,
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 100,
 			InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
@@ -2034,9 +1945,8 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 
 func TestInterleavedPaths(t *testing.T) {
 	graph := NewOrderBookGraph()
-	graph.AddLiquidityPools(nativeUsdPool, nativeEurPool,
-		eurUsdLiquidityPool, usdChfLiquidityPool)
-	if !assert.NoErrorf(t, graph.Apply(1), "applying LPs to graph failed") {
+	graph.AddLiquidityPools(nativeUsdPool, eurUsdLiquidityPool, usdChfLiquidityPool)
+	if !assert.NoError(t, graph.Apply(1)) {
 		t.FailNow()
 	}
 
@@ -2045,7 +1955,7 @@ func TestInterleavedPaths(t *testing.T) {
 		OfferId:  xdr.Int64(42),
 		Selling:  nativeAsset,
 		Buying:   eurAsset,
-		Amount:   10,
+		Amount:   100,
 		Price:    xdr.Price{1, 1},
 	}, xdr.OfferEntry{
 		SellerId: issuer,
@@ -2055,7 +1965,7 @@ func TestInterleavedPaths(t *testing.T) {
 		Amount:   1,
 		Price:    xdr.Price{1, 1},
 	})
-	if !assert.NoErrorf(t, graph.Apply(2), "applying offers to graph failed") {
+	if !assert.NoError(t, graph.Apply(2)) {
 		t.FailNow()
 	}
 
@@ -2064,8 +1974,8 @@ func TestInterleavedPaths(t *testing.T) {
 
 	// The final graph looks like the following:
 	//
-	//  - XLM: Offer 10 for 1 EUR each
-	//         LP       for USD, 50:1
+	//  - XLM: Offer 100 for 1 EUR each
+	//         LP        for USD, 50:1
 	//
 	//  - EUR: LP for USD, 1:1
 	//
@@ -2079,7 +1989,7 @@ func TestInterleavedPaths(t *testing.T) {
 	paths, _, err := graph.FindPaths(context.TODO(),
 		5,
 		nativeAsset,
-		5,
+		100,
 		&fakeSource,
 		[]xdr.Asset{chfAsset},
 		[]xdr.Int64{1000},
@@ -2092,80 +2002,68 @@ func TestInterleavedPaths(t *testing.T) {
 	// that goes through the USD/XLM liquidity pool.
 	//
 	// If we take up the offers, it's very efficient:
-	//   13 CHF for 6 USD for 5 EUR for 5 XLM
+	//   64 CHF for 166 USD for 142 EUR for 100 XLM
 	//
 	// If we only go through pools, it's less-so:
-	//   58 CHF for 26 USD for 5 XLM
+	//   90 CHF for 152 USD for 100 XLM
 	expectedPaths := []Path{{
 		SourceAsset:       chfAsset,
-		SourceAmount:      13,
+		SourceAmount:      64,
 		DestinationAsset:  nativeAsset,
-		DestinationAmount: 5,
+		DestinationAmount: 100,
 		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
 	}, {
 		SourceAsset:       chfAsset,
-		SourceAmount:      53,
+		SourceAmount:      90,
 		DestinationAsset:  nativeAsset,
-		DestinationAmount: 5,
+		DestinationAmount: 100,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
 
-	paths, _, err = graph.FindPaths(context.TODO(),
-		5,
-		nativeAsset,
-		5,
-		&fakeSource,
-		[]xdr.Asset{chfAsset},
-		[]xdr.Int64{1000},
-		true,
-		5,
-		false,
-	)
-	assert.NoError(t, err)
-
-	onlyOffersGraph := NewOrderBookGraph()
-	for _, offer := range graph.Offers() {
-		onlyOffersGraph.addOffer(offer)
-	}
-	if !assert.NoErrorf(t, onlyOffersGraph.Apply(2), "applying offers to graph failed") {
-		t.FailNow()
-	}
-	expectedPaths, _, err = onlyOffersGraph.FindPaths(context.TODO(),
-		5,
-		nativeAsset,
-		5,
-		&fakeSource,
-		[]xdr.Asset{chfAsset},
-		[]xdr.Int64{1000},
-		true,
-		5,
-		false,
-	)
-	assert.NoError(t, err)
-	assertPathEquals(t, expectedPaths, paths)
-
 	// If we ask for more than the offer can handle, though, it should only go
 	// through the LPs, not some sort of mix of the two:
-	paths, _, err = graph.FindPaths(context.TODO(),
-		5,
-		nativeAsset, 11, // only change: more than the offer has
+	paths, _, err = graph.FindPaths(context.TODO(), 5,
+		nativeAsset, 101, // only change: more than the offer has
 		&fakeSource, []xdr.Asset{chfAsset}, []xdr.Int64{1000},
 		true, 5, true,
 	)
 
 	expectedPaths = []Path{{
 		SourceAsset:       chfAsset,
-		SourceAmount:      164,
+		SourceAmount:      96,
 		DestinationAsset:  nativeAsset,
-		DestinationAmount: 11,
+		DestinationAmount: 101,
 		InteriorNodes:     []xdr.Asset{usdAsset},
 	}}
 
 	assert.NoError(t, err)
 	assertPathEquals(t, expectedPaths, paths)
+
+	t.Run("without pools", func(t *testing.T) {
+		paths, _, err = graph.FindPaths(context.TODO(), 5,
+			nativeAsset, 100, &fakeSource,
+			[]xdr.Asset{chfAsset}, []xdr.Int64{1000}, true, 5,
+			false, // only change: no pools
+		)
+		assert.NoError(t, err)
+
+		onlyOffersGraph := NewOrderBookGraph()
+		onlyOffersGraph.AddOffers(graph.Offers()...)
+		if !assert.NoError(t, onlyOffersGraph.Apply(2)) {
+			t.FailNow()
+		}
+		expectedPaths, _, err = onlyOffersGraph.FindPaths(context.TODO(), 5,
+			nativeAsset, 100, &fakeSource,
+			[]xdr.Asset{chfAsset}, []xdr.Int64{1000}, true, 5,
+			true,
+		)
+		assert.NoError(t, err)
+
+		assertPathEquals(t, expectedPaths, paths)
+	})
 }
 
 func TestInterleavedFixedPaths(t *testing.T) {
@@ -2252,6 +2150,46 @@ func TestInterleavedFixedPaths(t *testing.T) {
 	assertPathEquals(t, expectedPaths, paths)
 }
 
+func TestRepro(t *testing.T) {
+	// A reproduction of the bug report:
+	// https://github.com/stellar/go/issues/4014
+	usdc := xdr.MustNewCreditAsset("USDC", "GAEB3HSAWRVILER6T5NMX5VAPTK4PPO2BAL37HR2EOUIK567GJFEO437")
+	eurt := xdr.MustNewCreditAsset("EURT", "GABHG6C7YL2WA2ZJSONPD6ZBWLPAWKYDPYMK6BQRFLZXPQE7IBSTMPNN")
+
+	ybx := xdr.MustNewCreditAsset("YBX", "GCIWMQHPST7LQ7V4LHAF2UP6ZSDCFRYYP7IM4BBAFSBZMVTR3BB4OQZ5")
+	btc := xdr.MustNewCreditAsset("BTC", "GA2RETJWNREEUY4JHMZVXCE6EJG6MGBUEXK2QXXMNE5EYAQMG22XCXHA")
+	eth := xdr.MustNewCreditAsset("ETH", "GATPY6X6OYTXKNRKVP6LEMUUQKFDUW5P7HL4XI3KWRCY52RAWYJ5FLMC")
+
+	usdcYbxPool := makePool(usdc, ybx, 115066115, 9133346)
+	eurtYbxPool := makePool(eurt, ybx, 871648100, 115067)
+	btcYbxPool := makePool(btc, ybx, 453280, 19884933)
+	ethYbxPool := makePool(eth, ybx, 900000, 10000000)
+	usdcForBtcOffer := xdr.OfferEntry{
+		OfferId: 42,
+		Selling: usdc,
+		Buying:  btc,
+		Amount:  1000000000000000,
+		Price:   xdr.Price{N: 81, D: 5000000},
+	}
+
+	graph := NewOrderBookGraph()
+	graph.AddLiquidityPools(usdcYbxPool, eurtYbxPool, btcYbxPool, ethYbxPool)
+	graph.AddOffers(usdcForBtcOffer)
+	if !assert.NoError(t, graph.Apply(2)) {
+		t.FailNow()
+	}
+
+	// get me 70000.0000000 USDC if I have some ETH
+	paths, _, err := graph.FindPaths(context.TODO(), 5,
+		usdc, 700000000000, nil, []xdr.Asset{eth}, []xdr.Int64{0},
+		false, 5, true,
+	)
+
+	assert.NoError(t, err)
+	assertPathEquals(t, []Path{}, paths)
+	// can't, because BTC/YBX pool is too small
+}
+
 func printPath(path Path) {
 	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
 
@@ -2269,6 +2207,32 @@ func makeVenues(offers ...xdr.OfferEntry) Venues {
 
 func makeTradingPair(buying, selling xdr.Asset) tradingPair {
 	return tradingPair{buyingAsset: buying.String(), sellingAsset: selling.String()}
+}
+
+func makePool(A, B xdr.Asset, a, b xdr.Int64) xdr.LiquidityPoolEntry {
+	if !A.LessThan(B) {
+		B, A = A, B
+		b, a = a, b
+	}
+
+	poolId, _ := xdr.NewPoolId(A, B, xdr.LiquidityPoolFeeV18)
+	return xdr.LiquidityPoolEntry{
+		LiquidityPoolId: poolId,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: A,
+					AssetB: B,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 a,
+				ReserveB:                 b,
+				TotalPoolShares:          123,
+				PoolSharesTrustLineCount: 456,
+			},
+		},
+	}
 }
 
 func getCode(asset xdr.Asset) string {
