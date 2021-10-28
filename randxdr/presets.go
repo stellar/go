@@ -98,15 +98,6 @@ var SetPositiveNum64 Setter = func(x *randMarshaller, field string, xdrType goxd
 	f.SetU64(uint64(x.rand.Int63n(math.MaxInt64)))
 }
 
-// SetPositiveNum64WithUpperBound returns a Setter which sets a uint64 XDR field to a random positive value
-// which is bounded by a given value
-func SetPositiveNum64WithUpperBound(limit int64) Setter {
-	return func(x *randMarshaller, field string, xdrType goxdr.XdrType) {
-		f := goxdr.XdrBaseType(xdrType).(goxdr.XdrNum64)
-		f.SetU64(uint64(x.rand.Int63n(limit)))
-	}
-}
-
 // SetPositiveNum32 returns a Setter which sets a uint32 XDR field to a random positive value
 var SetPositiveNum32 Setter = func(x *randMarshaller, field string, xdrType goxdr.XdrType) {
 
