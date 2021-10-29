@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+
 	"github.com/lib/pq"
 	"github.com/spf13/cobra"
 	ticker "github.com/stellar/go/services/ticker/internal"
