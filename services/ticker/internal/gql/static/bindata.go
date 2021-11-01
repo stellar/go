@@ -205,9 +205,6 @@ var _bindata = map[string]func() (*asset, error){
 	"schema.gql":    schemaGql,
 }
 
-// AssetDebug is true if the assets were built with the debug flag enabled.
-const AssetDebug = false
-
 // AssetDir returns the file names below a certain
 // directory embedded in the file by go-bindata.
 // For example if you run go-bindata on data/... and data contains the
@@ -249,8 +246,8 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"graphiql.html": {graphiqlHtml, map[string]*bintree{}},
-	"schema.gql":    {schemaGql, map[string]*bintree{}},
+	"graphiql.html": &bintree{graphiqlHtml, map[string]*bintree{}},
+	"schema.gql":    &bintree{schemaGql, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory.
