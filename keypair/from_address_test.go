@@ -59,14 +59,12 @@ var _ = Describe("keypair.FromAddress", func() {
 			_, err := subject.Sign(message)
 			Expect(err).To(HaveOccurred())
 		})
-
 	})
 	Describe("SignBase64()", func() {
 		It("fails", func() {
 			_, err := subject.SignBase64(message)
 			Expect(err).To(HaveOccurred())
 		})
-
 	})
 	Describe("SignDecorated()", func() {
 		It("fails", func() {
@@ -146,4 +144,74 @@ var _ = Describe("keypair.FromAddress", func() {
 		)
 	})
 
+	Describe("MarshalBinary()", func() {
+		type Case struct {
+			Input     *FromAddress
+			BytesCase types.GomegaMatcher
+			ErrCase   types.GomegaMatcher
+		}
+		DescribeTable("MarshalBinary()",
+			func(c Case) {
+				bytes, err := c.Input.MarshalBinary()
+				Expect(bytes).To(c.BytesCase)
+				Expect(err).To(c.ErrCase)
+			},
+			Entry("a valid address", Case{
+				Input:     MustParseAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+				BytesCase: Equal([]byte{0, 0, 0, 0, 98, 252, 29, 11, 208, 145, 178, 182, 28, 13, 214, 86, 52, 107, 42, 104, 215, 211, 71, 198, 242, 194, 200, 238, 109, 4, 71, 2, 86, 252, 5, 247}),
+				ErrCase:   Not(HaveOccurred()),
+			}),
+			Entry("an empty address", Case{
+				Input:     &FromAddress{},
+				BytesCase: Equal([]byte("")),
+				ErrCase:   HaveOccurred(),
+			}),
+		)
+	})
+
+	Describe("UnmarshalBinary()", func() {
+		type Case struct {
+			Address     *FromAddress
+			Input       []byte
+			AddressCase types.GomegaMatcher
+			ErrCase     types.GomegaMatcher
+			FuncCase    types.GomegaMatcher
+		}
+		DescribeTable("UnmarshalBinary()",
+			func(c Case) {
+				f := func() {
+					err := c.Address.UnmarshalBinary(c.Input)
+					Expect(c.Address).To(c.AddressCase)
+					Expect(err).To(c.ErrCase)
+				}
+				Expect(f).To(c.FuncCase)
+			},
+			Entry("a valid address into an empty FromAddress", Case{
+				Address:     &FromAddress{},
+				Input:       []byte{0, 0, 0, 0, 98, 252, 29, 11, 208, 145, 178, 182, 28, 13, 214, 86, 52, 107, 42, 104, 215, 211, 71, 198, 242, 194, 200, 238, 109, 4, 71, 2, 86, 252, 5, 247},
+				AddressCase: Equal(MustParseAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")),
+				ErrCase:     Not(HaveOccurred()),
+				FuncCase:    Not(Panic()),
+			}),
+			Entry("an invalid address into an empty FromAddress", Case{
+				Address:     &FromAddress{},
+				Input:       []byte{0, 0, 0, 1, 98, 252, 29, 11, 208, 145, 178, 182, 28, 13, 214, 86, 52, 107, 42, 104, 215, 211, 71, 198, 242, 194, 200, 238, 109, 4, 71, 2, 86, 252, 5, 247},
+				AddressCase: Equal(&FromAddress{}),
+				ErrCase:     HaveOccurred(),
+				FuncCase:    Not(Panic()),
+			}),
+			Entry("a valid address into a nil FromAddress", Case{
+				// This test case is included to indicate nil handling is not
+				// supported. Handling this case is unnecessary because the
+				// encoding packages in the stdlib protect against unmarshaling
+				// into nil objects when calling Unmarshal directly on a nil
+				// object and by allocating a new value in other cases.
+				Address:     nil,
+				Input:       []byte{0, 0, 0, 0, 98, 252, 29, 11, 208, 145, 178, 182, 28, 13, 214, 86, 52, 107, 42, 104, 215, 211, 71, 198, 242, 194, 200, 238, 109, 4, 71, 2, 86, 252, 5, 247},
+				AddressCase: Equal(MustParseAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")),
+				ErrCase:     Not(HaveOccurred()),
+				FuncCase:    Panic(),
+			}),
+		)
+	})
 })
