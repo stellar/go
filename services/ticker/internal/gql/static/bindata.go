@@ -250,7 +250,7 @@ type bintree struct {
 
 var _bintree = &bintree{nil, map[string]*bintree{
 	"graphiql.html": {graphiqlHtml, map[string]*bintree{}},
-	"schema.gql": {schemaGql, map[string]*bintree{}},
+	"schema.gql":    {schemaGql, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory.
