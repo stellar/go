@@ -137,7 +137,7 @@ func TestGetLiquidityPools(t *testing.T) {
 	tt.Assert.Equal(lp2.PoolID, resource.ID)
 }
 
-func TestGetLiquidityPoolsByAccount(t *testing.T) {
+func TestFilteringLiquidityPoolsByAccount(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
