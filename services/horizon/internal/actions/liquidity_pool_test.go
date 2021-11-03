@@ -146,8 +146,8 @@ func TestGetLiquidityPools(t *testing.T) {
 		accountId := keypair.MustRandom().Address()
 
 		tls := []history.TrustLine{
-			history.MakeTestTrustline(accountId, nativeAsset, ""),
-			history.MakeTestTrustline(accountId, eurAsset, ""),
+			//history.MakeTestTrustline(accountId, nativeAsset, ""),
+			//history.MakeTestTrustline(accountId, eurAsset, ""),
 			history.MakeTestTrustline(accountId, xdr.Asset{}, lp1.PoolID),
 		}
 		err = q.UpsertTrustLines(tt.Ctx, tls)
