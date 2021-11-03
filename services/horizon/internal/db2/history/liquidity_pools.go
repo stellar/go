@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -15,6 +16,7 @@ import (
 type LiquidityPoolsQuery struct {
 	PageQuery db2.PageQuery
 	Assets    []xdr.Asset
+	AccountID string
 }
 
 // LiquidityPool is a row of data from the `liquidity_pools`.
@@ -150,8 +152,28 @@ func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (
 	return lp, err
 }
 
-// GetLiquidityPools finds all liquidity pools where accountID is one of the claimants
+// findLiquidityPoolsByAccountId finds all liquidity pools that accountID is a participant of
+func (q *Q) findLiquidityPoolsByAccountId(ctx context.Context, accountID string) ([]LiquidityPool, error) {
+	var results []LiquidityPool
+	sql := selectLiquidityPoolsJoinedTrustlines.Where("lp.deleted = ?", false)
+	sql = sql.Where("trust_lines.account_id = ?", accountID)
+	if err := q.Select(ctx, &results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select join query")
+	}
+
+	return results, nil
+}
+
+// GetLiquidityPools finds all liquidity pools where accountID owns assets
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
+	if len(query.AccountID) > 0 && len(query.Assets) > 0 {
+		return nil, fmt.Errorf("only one of `account id` or `assets` can be specified in a liquidity pool request")
+	}
+
+	if len(query.AccountID) > 0 {
+		return q.findLiquidityPoolsByAccountId(ctx, query.AccountID)
+	}
+
 	sql, err := query.PageQuery.ApplyRawTo(selectLiquidityPools, "lp.id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
@@ -219,3 +241,4 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
+var selectLiquidityPoolsJoinedTrustlines = selectLiquidityPools.LeftJoin("trust_lines USING (liquidity_pool_id)")
