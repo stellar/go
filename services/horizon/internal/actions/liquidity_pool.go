@@ -60,15 +60,15 @@ func (handler GetLiquidityPoolByIDHandler) GetResource(w HeaderWriter, r *http.R
 
 // LiquidityPoolsQuery query struct for liquidity_pools end-point
 type LiquidityPoolsQuery struct {
-	Reserves  string `schema:"reserves" valid:"optional"`
-	AccountId string `schema:"account_id" valid:"optional"`
+	Reserves string `schema:"reserves" valid:"optional"`
+	Account  string `schema:"account" valid:"optional"`
 
 	reserves []xdr.Asset
 }
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q LiquidityPoolsQuery) URITemplate() string {
-	return "/liquidity_pools?{?reserves}{?account_id}"
+	return "/liquidity_pools?{?reserves,?account}"
 }
 
 // Validate validates and parses the query
@@ -122,7 +122,7 @@ func (handler GetLiquidityPoolsHandler) GetResourcePage(w HeaderWriter, r *http.
 
 	query := history.LiquidityPoolsQuery{
 		PageQuery: pq,
-		AccountID: qp.AccountId,
+		AccountID: qp.Account,
 		Assets:    qp.reserves,
 	}
 

@@ -5,10 +5,13 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -166,11 +169,13 @@ func (q *Q) findLiquidityPoolsByAccountId(ctx context.Context, accountID string)
 
 // GetLiquidityPools finds all liquidity pools where accountID owns assets
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
+	log.Infof("%+v", query)
 	if len(query.AccountID) > 0 && len(query.Assets) > 0 {
 		return nil, fmt.Errorf("only one of `account id` or `assets` can be specified in a liquidity pool request")
 	}
 
 	if len(query.AccountID) > 0 {
+		log.Infof("find by account id")
 		return q.findLiquidityPoolsByAccountId(ctx, query.AccountID)
 	}
 
@@ -241,4 +246,71 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
-var selectLiquidityPoolsJoinedTrustlines = selectLiquidityPools.LeftJoin("trust_lines USING (liquidity_pool_id)")
+var selectLiquidityPoolsJoinedTrustlines = selectLiquidityPools.LeftJoin("trust_lines tl USING (lp.id = tl.liquidity_pool_id)")
+
+// MakeTestPool is a helper to make liquidity pools for testing purposes. It's
+// public because it's used in other test suites.
+func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
+	if !A.LessThan(B) {
+		B, A = A, B
+		b, a = a, b
+	}
+
+	poolId, _ := xdr.NewPoolId(A, B, xdr.LiquidityPoolFeeV18)
+	hexPoolId, _ := xdr.MarshalHex(poolId)
+	return LiquidityPool{
+		PoolID:         hexPoolId,
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            xdr.LiquidityPoolFeeV18,
+		TrustlineCount: 12345,
+		ShareCount:     67890,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{Asset: A, Reserve: a},
+			{Asset: B, Reserve: b},
+		},
+		LastModifiedLedger: 123,
+	}
+}
+
+func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine {
+	trustline := TrustLine{
+		AccountID:          account,
+		Balance:            1000,
+		AssetCode:          "",
+		AssetIssuer:        "",
+		LedgerKey:          "irrelevant",
+		LiquidityPoolID:    poolId,
+		Flags:              0,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
+	}
+
+	if poolId == "" {
+		trustline.AssetType = asset.Type
+		switch asset.Type {
+		case xdr.AssetTypeAssetTypeNative:
+			trustline.AssetCode = "native"
+
+		case xdr.AssetTypeAssetTypeCreditAlphanum4:
+			fallthrough
+		case xdr.AssetTypeAssetTypeCreditAlphanum12:
+			fmt.Println("Code:", asset.GetCode())
+			trustline.AssetCode = strings.TrimRight(asset.GetCode(), "\x00") // no nulls in db string
+			fmt.Println("Code:", trustline.AssetCode)
+			trustline.AssetIssuer = asset.GetIssuer()
+			trustline.BuyingLiabilities = 1
+			trustline.SellingLiabilities = 1
+
+		default:
+			panic("invalid asset type")
+		}
+
+		trustline.Limit = trustline.Balance * 10
+		trustline.BuyingLiabilities = 1
+		trustline.SellingLiabilities = 2
+	} else {
+		trustline.AssetType = xdr.AssetTypeAssetTypePoolShare
+	}
+
+	return trustline
+}
