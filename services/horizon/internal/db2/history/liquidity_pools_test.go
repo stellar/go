@@ -3,7 +3,6 @@ package history
 import (
 	"testing"
 
-	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -297,48 +296,4 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 	r, err = q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 0)
-}
-
-func TestGetLiquidityPoolsByAccount(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &Q{tt.HorizonSession()}
-
-	var err error
-	// prep work: make accounts & pools, establish trustlines
-
-	withPoolshareTrustlines := keypair.MustRandom().Address()
-	withNonshareTrustlines := keypair.MustRandom().Address()
-	withNoTrustlines := keypair.MustRandom().Address()
-
-	_, err = q.CreateAccounts(tt.Ctx, []string{
-		withPoolshareTrustlines,
-		withNonshareTrustlines,
-		withNoTrustlines,
-	}, 3)
-	tt.Assert.NoError(err)
-
-	pools := []LiquidityPool{
-		MakeTestPool(usdAsset, 4500, xlmAsset, 4500),
-		MakeTestPool(eurAsset, 4500, xlmAsset, 9000),
-		MakeTestPool(eurAsset, 9000, usdAsset, 4500),
-	}
-	err = q.UpsertLiquidityPools(tt.Ctx, pools)
-	tt.Assert.NoError(err)
-
-	trustlines := []TrustLine{
-		makeAssetTrustline(withPoolshareTrustlines, xdr.Asset{}, pools[0].PoolID),
-		makeAssetTrustline(withPoolshareTrustlines, xdr.Asset{}, pools[0].PoolID),
-		makeAssetTrustline(withPoolshareTrustlines, xdr.Asset{}, pools[0].PoolID),
-	}
-
-	err = q.UpsertTrustLines(tt.Ctx, trustlines)
-	tt.Assert.NoError(err)
-
-	// actual test: try getting pools for all three accounts
-
-	r, err := q.GetLiquidityPoolsForAccount(tt.Ctx, withPoolshareTrustlines)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(r, 2)
 }
