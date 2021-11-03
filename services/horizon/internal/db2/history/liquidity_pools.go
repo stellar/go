@@ -246,7 +246,7 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
-var selectLiquidityPoolsJoinedTrustlines = selectLiquidityPools.LeftJoin("trust_lines tl USING (lp.id = tl.liquidity_pool_id)")
+var selectLiquidityPoolsJoinedTrustlines = selectLiquidityPools.LeftJoin("trust_lines ON id = liquidity_pool_id")
 
 // MakeTestPool is a helper to make liquidity pools for testing purposes. It's
 // public because it's used in other test suites.
