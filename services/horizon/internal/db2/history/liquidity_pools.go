@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -253,4 +254,46 @@ func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
 		},
 		LastModifiedLedger: 123,
 	}
+}
+
+func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine {
+	if (asset == xdr.Asset{} && poolId == "") ||
+		(asset != xdr.Asset{} && poolId != "") {
+		panic("can't make trustline to both asset and pool share")
+	}
+
+	trustline := TrustLine{
+		AccountID:          account,
+		Balance:            1000,
+		LedgerKey:          "irrelevant",
+		LiquidityPoolID:    poolId,
+		Flags:              0,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
+	}
+
+	if poolId == "" {
+		trustline.AssetType = asset.Type
+		switch asset.Type {
+		case xdr.AssetTypeAssetTypeNative:
+			trustline.AssetCode = "native"
+
+		case xdr.AssetTypeAssetTypeCreditAlphanum4:
+			fallthrough
+		case xdr.AssetTypeAssetTypeCreditAlphanum12:
+			trustline.AssetCode = asset.GetCode()
+			trustline.AssetIssuer = asset.GetIssuer()
+
+		default:
+			panic("invalid asset type")
+		}
+
+		trustline.Limit = trustline.Balance * 10
+		trustline.BuyingLiabilities = 1
+		trustline.SellingLiabilities = 2
+	} else {
+		trustline.AssetType = xdr.AssetTypeAssetTypePoolShare
+	}
+
+	return trustline
 }
