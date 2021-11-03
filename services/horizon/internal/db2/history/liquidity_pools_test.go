@@ -228,26 +228,6 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	tt.Assert.Len(lps, 0)
 }
 
-func clonePool(lp LiquidityPool) LiquidityPool {
-	assetReserveCopy := make([]LiquidityPoolAssetReserve, len(lp.AssetReserves))
-	for i, reserve := range lp.AssetReserves {
-		assetReserveCopy[i] = LiquidityPoolAssetReserve{
-			Asset:   reserve.Asset,
-			Reserve: reserve.Reserve,
-		}
-	}
-
-	return LiquidityPool{
-		PoolID:             lp.PoolID,
-		Type:               lp.Type,
-		Fee:                lp.Fee,
-		TrustlineCount:     lp.TrustlineCount,
-		ShareCount:         lp.ShareCount,
-		AssetReserves:      assetReserveCopy,
-		LastModifiedLedger: lp.LastModifiedLedger,
-	}
-}
-
 func TestUpdateLiquidityPool(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -296,4 +276,24 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 	r, err = q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 0)
+}
+
+func clonePool(lp LiquidityPool) LiquidityPool {
+	assetReserveCopy := make([]LiquidityPoolAssetReserve, len(lp.AssetReserves))
+	for i, reserve := range lp.AssetReserves {
+		assetReserveCopy[i] = LiquidityPoolAssetReserve{
+			Asset:   reserve.Asset,
+			Reserve: reserve.Reserve,
+		}
+	}
+
+	return LiquidityPool{
+		PoolID:             lp.PoolID,
+		Type:               lp.Type,
+		Fee:                lp.Fee,
+		TrustlineCount:     lp.TrustlineCount,
+		ShareCount:         lp.ShareCount,
+		AssetReserves:      assetReserveCopy,
+		LastModifiedLedger: lp.LastModifiedLedger,
+	}
 }
