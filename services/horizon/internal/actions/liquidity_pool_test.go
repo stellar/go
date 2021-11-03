@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetLiquidityPoolByID(t *testing.T) {
@@ -116,58 +117,53 @@ func TestGetLiquidityPools(t *testing.T) {
 	tt.Assert.Equal(usdAsset.StringCanonical(), resource.Reserves[1].Asset)
 	tt.Assert.Equal("0.0000400", resource.Reserves[1].Amount)
 
-	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
-		t,
-		map[string]string{"reserves": "native"},
-		map[string]string{},
-		q,
-	))
-	tt.Assert.NoError(err)
-	tt.Assert.Len(response, 1)
+	t.Run("filtering by reserves", func(t *testing.T) {
+		response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+			t,
+			map[string]string{"reserves": "native"},
+			map[string]string{},
+			q,
+		))
+		assert.NoError(t, err)
+		assert.Len(t, response, 1)
+	})
 
-	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
-		t,
-		map[string]string{"cursor": lp1.PoolID},
-		map[string]string{},
-		q,
-	))
-	tt.Assert.NoError(err)
-	tt.Assert.Len(response, 1)
-	resource = response[0].(protocol.LiquidityPool)
-	tt.Assert.Equal(lp2.PoolID, resource.ID)
-}
+	t.Run("paging via cursor", func(t *testing.T) {
+		response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+			t,
+			map[string]string{"cursor": lp1.PoolID},
+			map[string]string{},
+			q,
+		))
+		assert.NoError(t, err)
+		assert.Len(t, response, 1)
+		resource = response[0].(protocol.LiquidityPool)
+		assert.Equal(t, lp2.PoolID, resource.ID)
+	})
 
-func TestFilteringLiquidityPoolsByAccount(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-	q := &history.Q{tt.HorizonSession()}
+	t.Run("filtering by participating account", func(t *testing.T) {
+		// we need to add trustlines to filter by account
+		accountId := keypair.MustRandom().Address()
 
-	// setup: create pools, then trustlines to some of them
+		tls := []history.TrustLine{
+			history.MakeTestTrustline(accountId, nativeAsset, ""),
+			history.MakeTestTrustline(accountId, eurAsset, ""),
+			history.MakeTestTrustline(accountId, xdr.Asset{}, lp1.PoolID),
+		}
+		err = q.UpsertTrustLines(tt.Ctx, tls)
+		assert.NoError(t, err)
 
-	lp1 := history.MakeTestPool(xdr.MustNewNativeAsset(), 100, usdAsset, 200)
-	lp2 := history.MakeTestPool(eurAsset, 300, usdAsset, 400)
-	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp1, lp2})
-	tt.Assert.NoError(err)
+		request := makeRequest(
+			t,
+			map[string]string{"account": accountId},
+			map[string]string{},
+			q,
+		)
+		assert.Contains(t, request.URL.String(), fmt.Sprintf("account=%s", accountId))
 
-	accountId := keypair.MustRandom().Address()
-
-	tl1 := history.MakeTestTrustline(accountId, xdr.Asset{}, lp1.PoolID)
-	err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{tl1})
-	tt.Assert.NoError(err)
-
-	// now perform the query and check results
-
-	request := makeRequest(
-		t,
-		map[string]string{"account": accountId},
-		map[string]string{},
-		q,
-	)
-	tt.Assert.Contains(request.URL, fmt.Sprintf("account=%s", accountId))
-
-	handler := GetLiquidityPoolsHandler{}
-	response, err := handler.GetResourcePage(httptest.NewRecorder(), request)
-	tt.Assert.NoError(err)
-	tt.Assert.Len(response, 1)
+		handler := GetLiquidityPoolsHandler{}
+		response, err := handler.GetResourcePage(httptest.NewRecorder(), request)
+		assert.NoError(t, err)
+		assert.Len(t, response, 1)
+	})
 }

@@ -3,7 +3,6 @@ package history
 import (
 	"testing"
 
-	"github.com/guregu/null"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -342,46 +341,4 @@ func TestGetLiquidityPoolsByAccount(t *testing.T) {
 	r, err := q.GetLiquidityPoolsForAccount(tt.Ctx, withPoolshareTrustlines)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 2)
-}
-
-func makeAssetTrustline(account string, asset xdr.Asset, poolId string) TrustLine {
-	if (asset == xdr.Asset{} && poolId == "") ||
-		(asset != xdr.Asset{} && poolId != "") {
-		panic("can't make trustline to both asset and pool share")
-	}
-
-	trustline := TrustLine{
-		AccountID:          account,
-		Balance:            1000,
-		LedgerKey:          "irrelevant",
-		LiquidityPoolID:    poolId,
-		Flags:              0,
-		LastModifiedLedger: 1234,
-		Sponsor:            null.String{},
-	}
-
-	if poolId == "" {
-		trustline.AssetType = asset.Type
-		switch asset.Type {
-		case xdr.AssetTypeAssetTypeNative:
-			trustline.AssetCode = "native"
-
-		case xdr.AssetTypeAssetTypeCreditAlphanum4:
-			fallthrough
-		case xdr.AssetTypeAssetTypeCreditAlphanum12:
-			trustline.AssetCode = asset.GetCode()
-			trustline.AssetIssuer = asset.GetIssuer()
-
-		default:
-			panic("invalid asset type")
-		}
-
-		trustline.Limit = trustline.Balance * 10
-		trustline.BuyingLiabilities = 1
-		trustline.SellingLiabilities = 2
-	} else {
-		trustline.AssetType = xdr.AssetTypeAssetTypePoolShare
-	}
-
-	return trustline
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
@@ -257,14 +259,11 @@ func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
 }
 
 func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine {
-	if (asset == xdr.Asset{} && poolId == "") ||
-		(asset != xdr.Asset{} && poolId != "") {
-		panic("can't make trustline to both asset and pool share")
-	}
-
 	trustline := TrustLine{
 		AccountID:          account,
 		Balance:            1000,
+		AssetCode:          "",
+		AssetIssuer:        "",
 		LedgerKey:          "irrelevant",
 		LiquidityPoolID:    poolId,
 		Flags:              0,
@@ -281,8 +280,12 @@ func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine
 		case xdr.AssetTypeAssetTypeCreditAlphanum4:
 			fallthrough
 		case xdr.AssetTypeAssetTypeCreditAlphanum12:
-			trustline.AssetCode = asset.GetCode()
+			fmt.Println("Code:", asset.GetCode())
+			trustline.AssetCode = strings.TrimRight(asset.GetCode(), "\x00") // no nulls in db string
+			fmt.Println("Code:", trustline.AssetCode)
 			trustline.AssetIssuer = asset.GetIssuer()
+			trustline.BuyingLiabilities = 1
+			trustline.SellingLiabilities = 1
 
 		default:
 			panic("invalid asset type")
