@@ -150,6 +150,17 @@ func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (
 	return lp, err
 }
 
+// LiquidityPoolsForAccount returns all (valid) liquidity pools that a
+// particular account is participating in.
+func (q *Q) GetLiquidityPoolsForAccount(ctx context.Context, address string) (dest []HistoryLiquidityPool, err error) {
+	sql := selectLiquidityPools.
+		Join("trust_lines tl USING (lp.id = tl.liquidity_pool_id)").
+		Where("tl.deleted = ?", false).
+		Where("tl.account_id = ?", address)
+	err = q.Select(ctx, &dest, sql)
+	return dest, err
+}
+
 // GetLiquidityPools finds all liquidity pools where accountID is one of the claimants
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
 	sql, err := query.PageQuery.ApplyRawTo(selectLiquidityPools, "lp.id")
@@ -219,3 +230,27 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
+
+// MakeTestPool is a helper to make liquidity pools for testing purposes. It's
+// public because it's used in other test suites.
+func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
+	if !A.LessThan(B) {
+		B, A = A, B
+		b, a = a, b
+	}
+
+	poolId, _ := xdr.NewPoolId(A, B, xdr.LiquidityPoolFeeV18)
+	hexPoolId, _ := xdr.MarshalHex(poolId)
+	return LiquidityPool{
+		PoolID:         hexPoolId,
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            xdr.LiquidityPoolFeeV18,
+		TrustlineCount: 12345,
+		ShareCount:     67890,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{Asset: A, Reserve: a},
+			{Asset: B, Reserve: b},
+		},
+		LastModifiedLedger: 123,
+	}
+}
