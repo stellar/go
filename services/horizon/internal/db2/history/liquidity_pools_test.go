@@ -8,30 +8,17 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var (
+	xlmAsset = xdr.MustNewNativeAsset()
+)
+
 func TestFindLiquidityPool(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	lp := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 450,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 450,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
+	lp := MakeTestPool(usdAsset, 450, xlmAsset, 450)
 
 	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
@@ -56,24 +43,7 @@ func TestRemoveLiquidityPool(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	lp := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 450,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 450,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
+	lp := MakeTestPool(usdAsset, 450, xlmAsset, 450)
 
 	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
@@ -126,24 +96,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	lp := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 450,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 450,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
+	lp := MakeTestPool(usdAsset, 450, xlmAsset, 450)
 
 	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
@@ -166,7 +119,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by one asset
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
+		Assets:    []xdr.Asset{usdAsset},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -176,10 +129,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by two assets
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets: []xdr.Asset{
-			xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			xdr.MustNewNativeAsset(),
-		},
+		Assets:    []xdr.Asset{usdAsset, xlmAsset},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -189,7 +139,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by an asset not present
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("EUR", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
+		Assets:    []xdr.Asset{eurAsset},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -209,7 +159,7 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	// query by one asset
 	query = LiquidityPoolsQuery{
 		PageQuery: db2.MustPageQuery("", false, "", 10),
-		Assets:    []xdr.Asset{xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")},
+		Assets:    []xdr.Asset{usdAsset},
 	}
 
 	lps, err = q.GetLiquidityPools(tt.Ctx, query)
@@ -223,24 +173,7 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	lp := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 450,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 450,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
+	lp := MakeTestPool(usdAsset, 450, xlmAsset, 450)
 
 	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
@@ -301,46 +234,16 @@ func TestUpdateLiquidityPool(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	initialLP := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 450,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 450,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
-
+	initialLP := MakeTestPool(usdAsset, 450, xlmAsset, 450)
 	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{initialLP})
 	tt.Assert.NoError(err)
 
-	updatedLP := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52116,
-		ShareCount:     100000,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 500,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 600,
-			},
-		},
-		LastModifiedLedger: 124,
-	}
+	updatedLP := clonePool(initialLP)
+	updatedLP.TrustlineCount += 1
+	updatedLP.ShareCount = 100000
+	updatedLP.AssetReserves[0].Reserve = 500
+	updatedLP.AssetReserves[1].Reserve = 600
+	updatedLP.LastModifiedLedger += 1
 
 	err = q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{updatedLP})
 	tt.Assert.NoError(err)
@@ -359,24 +262,7 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	lp := LiquidityPool{
-		PoolID:         "cafebabedeadbeef000000000000000000000000000000000000000000000000",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            34,
-		TrustlineCount: 52115,
-		ShareCount:     412241,
-		AssetReserves: []LiquidityPoolAssetReserve{
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 450,
-			},
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 450,
-			},
-		},
-		LastModifiedLedger: 123,
-	}
+	lp := MakeTestPool(usdAsset, 450, xlmAsset, 450)
 
 	err := q.UpsertLiquidityPools(tt.Ctx, []LiquidityPool{lp})
 	tt.Assert.NoError(err)
@@ -390,4 +276,56 @@ func TestGetLiquidityPoolsByID(t *testing.T) {
 	r, err = q.GetLiquidityPoolsByID(tt.Ctx, []string{lp.PoolID})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 0)
+}
+
+func clonePool(lp LiquidityPool) LiquidityPool {
+	assetReserveCopy := make([]LiquidityPoolAssetReserve, len(lp.AssetReserves))
+	for i, reserve := range lp.AssetReserves {
+		assetReserveCopy[i] = LiquidityPoolAssetReserve{
+			Asset:   reserve.Asset,
+			Reserve: reserve.Reserve,
+		}
+	}
+
+	return LiquidityPool{
+		PoolID:             lp.PoolID,
+		Type:               lp.Type,
+		Fee:                lp.Fee,
+		TrustlineCount:     lp.TrustlineCount,
+		ShareCount:         lp.ShareCount,
+		AssetReserves:      assetReserveCopy,
+		LastModifiedLedger: lp.LastModifiedLedger,
+	}
+}
+
+func TestLiquidityPoolByAccountId(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	pools := []LiquidityPool{
+		MakeTestPool(usdAsset, 450, xlmAsset, 450),
+		MakeTestPool(eurAsset, 450, xlmAsset, 450),
+	}
+	err := q.UpsertLiquidityPools(tt.Ctx, pools)
+	tt.Assert.NoError(err)
+
+	lines := []TrustLine{
+		MakeTestTrustline(account1.AccountID, xlmAsset, ""),
+		MakeTestTrustline(account1.AccountID, eurAsset, ""),
+		MakeTestTrustline(account1.AccountID, usdAsset, ""),
+		MakeTestTrustline(account1.AccountID, xdr.Asset{}, pools[0].PoolID),
+		MakeTestTrustline(account1.AccountID, xdr.Asset{}, pools[1].PoolID),
+	}
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, lines))
+
+	query := LiquidityPoolsQuery{
+		PageQuery: db2.MustPageQuery("", false, "asc", 10),
+		Account:   account1.AccountID,
+	}
+
+	lps, err := q.GetLiquidityPools(tt.Ctx, query)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(lps, 2)
 }

@@ -1,15 +1,18 @@
 package actions
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stellar/go/keypair"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetLiquidityPoolByID(t *testing.T) {
@@ -18,25 +21,7 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
-	lp := history.LiquidityPool{
-		PoolID:         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            30,
-		TrustlineCount: 100,
-		ShareCount:     2000000000,
-		AssetReserves: history.LiquidityPoolAssetReserves{
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 100,
-			},
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 200,
-			},
-		},
-		LastModifiedLedger: 100,
-	}
-
+	lp := history.MakeTestPool(xdr.MustNewNativeAsset(), 100, usdAsset, 200)
 	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp})
 	tt.Assert.NoError(err)
 
@@ -53,13 +38,12 @@ func TestGetLiquidityPoolByID(t *testing.T) {
 	tt.Assert.Equal(lp.PoolID, resource.ID)
 	tt.Assert.Equal("constant_product", resource.Type)
 	tt.Assert.Equal(uint32(30), resource.FeeBP)
-	tt.Assert.Equal(uint64(100), resource.TotalTrustlines)
-	tt.Assert.Equal("200.0000000", resource.TotalShares)
-
+	tt.Assert.Equal(uint64(12345), resource.TotalTrustlines)
+	tt.Assert.Equal("0.0067890", resource.TotalShares)
 	tt.Assert.Equal("native", resource.Reserves[0].Asset)
 	tt.Assert.Equal("0.0000100", resource.Reserves[0].Amount)
 
-	tt.Assert.Equal("USD:GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Reserves[1].Asset)
+	tt.Assert.Equal(usdAsset.StringCanonical(), resource.Reserves[1].Asset)
 	tt.Assert.Equal("0.0000200", resource.Reserves[1].Amount)
 
 	// try to fetch pool which does not exist
@@ -92,42 +76,8 @@ func TestGetLiquidityPools(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 
-	lp1 := history.LiquidityPool{
-		PoolID:         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            30,
-		TrustlineCount: 100,
-		ShareCount:     2000000000,
-		AssetReserves: history.LiquidityPoolAssetReserves{
-			{
-				Asset:   xdr.MustNewNativeAsset(),
-				Reserve: 100,
-			},
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 200,
-			},
-		},
-		LastModifiedLedger: 100,
-	}
-	lp2 := history.LiquidityPool{
-		PoolID:         "d827bf10a721d217de3cd9ab3f10198a54de558c093a511ec426028618df2633",
-		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
-		Fee:            30,
-		TrustlineCount: 300,
-		ShareCount:     4000000000,
-		AssetReserves: history.LiquidityPoolAssetReserves{
-			{
-				Asset:   xdr.MustNewCreditAsset("EUR", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 300,
-			},
-			{
-				Asset:   xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-				Reserve: 400,
-			},
-		},
-		LastModifiedLedger: 100,
-	}
+	lp1 := history.MakeTestPool(nativeAsset, 100, usdAsset, 200)
+	lp2 := history.MakeTestPool(eurAsset, 300, usdAsset, 400)
 	err := q.UpsertLiquidityPools(tt.Ctx, []history.LiquidityPool{lp1, lp2})
 	tt.Assert.NoError(err)
 
@@ -142,48 +92,79 @@ func TestGetLiquidityPools(t *testing.T) {
 	tt.Assert.Len(response, 2)
 
 	resource := response[0].(protocol.LiquidityPool)
-	tt.Assert.Equal("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", resource.ID)
+	tt.Assert.Equal(lp1.PoolID, resource.ID)
 	tt.Assert.Equal("constant_product", resource.Type)
 	tt.Assert.Equal(uint32(30), resource.FeeBP)
-	tt.Assert.Equal(uint64(100), resource.TotalTrustlines)
-	tt.Assert.Equal("200.0000000", resource.TotalShares)
+	tt.Assert.Equal(uint64(12345), resource.TotalTrustlines)
+	tt.Assert.Equal("0.0067890", resource.TotalShares)
 
 	tt.Assert.Equal("native", resource.Reserves[0].Asset)
 	tt.Assert.Equal("0.0000100", resource.Reserves[0].Amount)
 
-	tt.Assert.Equal("USD:GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Reserves[1].Asset)
+	tt.Assert.Equal(usdAsset.StringCanonical(), resource.Reserves[1].Asset)
 	tt.Assert.Equal("0.0000200", resource.Reserves[1].Amount)
 
 	resource = response[1].(protocol.LiquidityPool)
-	tt.Assert.Equal("d827bf10a721d217de3cd9ab3f10198a54de558c093a511ec426028618df2633", resource.ID)
+	tt.Assert.Equal(lp2.PoolID, resource.ID)
 	tt.Assert.Equal("constant_product", resource.Type)
 	tt.Assert.Equal(uint32(30), resource.FeeBP)
-	tt.Assert.Equal(uint64(300), resource.TotalTrustlines)
-	tt.Assert.Equal("400.0000000", resource.TotalShares)
+	tt.Assert.Equal(uint64(12345), resource.TotalTrustlines)
+	tt.Assert.Equal("0.0067890", resource.TotalShares)
 
-	tt.Assert.Equal("EUR:GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Reserves[0].Asset)
+	tt.Assert.Equal(eurAsset.StringCanonical(), resource.Reserves[0].Asset)
 	tt.Assert.Equal("0.0000300", resource.Reserves[0].Amount)
 
-	tt.Assert.Equal("USD:GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Reserves[1].Asset)
+	tt.Assert.Equal(usdAsset.StringCanonical(), resource.Reserves[1].Asset)
 	tt.Assert.Equal("0.0000400", resource.Reserves[1].Amount)
 
-	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
-		t,
-		map[string]string{"reserves": "native"},
-		map[string]string{},
-		q,
-	))
-	tt.Assert.NoError(err)
-	tt.Assert.Len(response, 1)
+	t.Run("filtering by reserves", func(t *testing.T) {
+		response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+			t,
+			map[string]string{"reserves": "native"},
+			map[string]string{},
+			q,
+		))
+		assert.NoError(t, err)
+		assert.Len(t, response, 1)
+	})
 
-	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
-		t,
-		map[string]string{"cursor": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
-		map[string]string{},
-		q,
-	))
-	tt.Assert.NoError(err)
-	tt.Assert.Len(response, 1)
-	resource = response[0].(protocol.LiquidityPool)
-	tt.Assert.Equal("d827bf10a721d217de3cd9ab3f10198a54de558c093a511ec426028618df2633", resource.ID)
+	t.Run("paging via cursor", func(t *testing.T) {
+		response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+			t,
+			map[string]string{"cursor": lp1.PoolID},
+			map[string]string{},
+			q,
+		))
+		assert.NoError(t, err)
+		assert.Len(t, response, 1)
+		resource = response[0].(protocol.LiquidityPool)
+		assert.Equal(t, lp2.PoolID, resource.ID)
+	})
+
+	t.Run("filtering by participating account", func(t *testing.T) {
+		// we need to add trustlines to filter by account
+		accountId := keypair.MustRandom().Address()
+		assert.NoError(t, q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
+			history.MakeTestTrustline(accountId, nativeAsset, ""),
+			history.MakeTestTrustline(accountId, eurAsset, ""),
+			history.MakeTestTrustline(accountId, xdr.Asset{}, lp1.PoolID),
+		}))
+
+		request := makeRequest(
+			t,
+			map[string]string{"account": accountId},
+			map[string]string{},
+			q,
+		)
+		assert.Contains(t, request.URL.String(), fmt.Sprintf("account=%s", accountId))
+
+		handler := GetLiquidityPoolsHandler{}
+		response, err := handler.GetResourcePage(httptest.NewRecorder(), request)
+		assert.NoError(t, err)
+		assert.Len(t, response, 1)
+
+		assert.IsType(t, protocol.LiquidityPool{}, response[0])
+		resource = response[0].(protocol.LiquidityPool)
+		assert.Equal(t, lp1.PoolID, resource.ID)
+	})
 }
