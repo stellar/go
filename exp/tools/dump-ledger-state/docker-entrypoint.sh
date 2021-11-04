@@ -34,6 +34,6 @@ fi
 echo "Latest ledger: $LATEST_LEDGER"
 
 if ! ./run_test.sh; then
-    curl -X POST --data-urlencode "payload={ \"username\": \"ingestion-check\", \"text\": \"@horizon-team ingestion dump (git commit \`$GITCOMMIT\`) of ledger \`$LATEST_LEDGER\` does not match stellar core db.\"}" $SLACK_URL
+    echo "ingestion dump (git commit \`$GITCOMMIT\`) of ledger \`$LATEST_LEDGER\` does not match stellar core db."
     exit 1
 fi
