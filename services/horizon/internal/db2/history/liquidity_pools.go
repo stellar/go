@@ -11,7 +11,6 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -19,7 +18,7 @@ import (
 type LiquidityPoolsQuery struct {
 	PageQuery db2.PageQuery
 	Assets    []xdr.Asset
-	AccountID string
+	Account   string
 }
 
 // LiquidityPool is a row of data from the `liquidity_pools`.
@@ -155,44 +154,29 @@ func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (
 	return lp, err
 }
 
-// findLiquidityPoolsByAccountId finds all liquidity pools that accountID is a participant of
-func (q *Q) findLiquidityPoolsByAccountId(ctx context.Context, accountID string) ([]LiquidityPool, error) {
-	var results []LiquidityPool
-	sql := selectLiquidityPoolsJoinedTrustlines.Where("lp.deleted = ?", false)
-	sql = sql.Where("trust_lines.account_id = ?", accountID)
-	if err := q.Select(ctx, &results, sql); err != nil {
-		return nil, errors.Wrap(err, "could not run select join query")
-	}
-
-	return results, nil
-}
-
 // GetLiquidityPools finds all liquidity pools where accountID owns assets
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
-	log.Infof("%+v", query)
-	if len(query.AccountID) > 0 && len(query.Assets) > 0 {
-		return nil, fmt.Errorf("only one of `account id` or `assets` can be specified in a liquidity pool request")
-	}
-
-	if len(query.AccountID) > 0 {
-		log.Infof("find by account id")
-		return q.findLiquidityPoolsByAccountId(ctx, query.AccountID)
+	if len(query.Account) > 0 && len(query.Assets) > 0 {
+		return nil, fmt.Errorf("this endpoint does not support filtering by both accountID and reserve assets.")
 	}
 
 	sql, err := query.PageQuery.ApplyRawTo(selectLiquidityPools, "lp.id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
-	sql = sql.Where("deleted = ?", false)
-
-	for _, asset := range query.Assets {
-		assetB64, err := xdr.MarshalBase64(asset)
-		if err != nil {
-			return nil, err
+	if len(query.Account) > 0 {
+		sql = sql.LeftJoin("trust_lines ON id = liquidity_pool_id").Where("trust_lines.account_id = ?", query.Account)
+	} else if len(query.Assets) > 0 {
+		for _, asset := range query.Assets {
+			assetB64, err := xdr.MarshalBase64(asset)
+			if err != nil {
+				return nil, err
+			}
+			sql = sql.
+				Where(`lp.asset_reserves @> '[{"asset": "` + assetB64 + `"}]'`)
 		}
-		sql = sql.
-			Where(`lp.asset_reserves @> '[{"asset": "` + assetB64 + `"}]'`)
 	}
+	sql = sql.Where("lp.deleted = ?", false)
 
 	var results []LiquidityPool
 	if err := q.Select(ctx, &results, sql); err != nil {
@@ -246,7 +230,6 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
-var selectLiquidityPoolsJoinedTrustlines = selectLiquidityPools.LeftJoin("trust_lines ON id = liquidity_pool_id")
 
 // MakeTestPool is a helper to make liquidity pools for testing purposes. It's
 // public because it's used in other test suites.
@@ -294,9 +277,7 @@ func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine
 		case xdr.AssetTypeAssetTypeCreditAlphanum4:
 			fallthrough
 		case xdr.AssetTypeAssetTypeCreditAlphanum12:
-			fmt.Println("Code:", asset.GetCode())
 			trustline.AssetCode = strings.TrimRight(asset.GetCode(), "\x00") // no nulls in db string
-			fmt.Println("Code:", trustline.AssetCode)
 			trustline.AssetIssuer = asset.GetIssuer()
 			trustline.BuyingLiabilities = 1
 			trustline.SellingLiabilities = 1

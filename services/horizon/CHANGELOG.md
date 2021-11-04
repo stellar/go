@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Changes
+
+* Add an endpoint that allows querying for which liquidity pools an account is participating in 
+
 ## v2.10.0
 
 This is a minor release with no DB Schema migrations nor explicit state rebuild.
