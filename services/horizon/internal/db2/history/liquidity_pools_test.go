@@ -297,3 +297,33 @@ func clonePool(lp LiquidityPool) LiquidityPool {
 		LastModifiedLedger: lp.LastModifiedLedger,
 	}
 }
+
+func TestLiquidityPoolByAccountId(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	pools := []LiquidityPool{
+		MakeTestPool(usdAsset, 450, xlmAsset, 450),
+		MakeTestPool(eurAsset, 450, xlmAsset, 450),
+	}
+	err := q.UpsertLiquidityPools(tt.Ctx, pools)
+	tt.Assert.NoError(err)
+	lines := []TrustLine{
+		MakeTestTrustline(account1.AccountID, xlmAsset, pools[0].PoolID),
+		MakeTestTrustline(account1.AccountID, eurAsset, pools[1].PoolID),
+	}
+	err = q.UpsertTrustLines(tt.Ctx, []TrustLine{lines[0]})
+	err = q.UpsertTrustLines(tt.Ctx, []TrustLine{lines[1]})
+	tt.Assert.NoError(err)
+
+	query := LiquidityPoolsQuery{
+		PageQuery: db2.MustPageQuery("", false, "", 10),
+		Account:   account1.AccountID,
+	}
+
+	lps, err := q.GetLiquidityPools(tt.Ctx, query)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(lps, 2)
+}

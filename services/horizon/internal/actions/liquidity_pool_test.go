@@ -166,5 +166,7 @@ func TestGetLiquidityPools(t *testing.T) {
 		response, err := handler.GetResourcePage(httptest.NewRecorder(), request)
 		assert.NoError(t, err)
 		assert.Len(t, response, 1)
+		resource = response[0].(protocol.LiquidityPool)
+		assert.Equal(t, resource.ID, lp1.PoolID)
 	})
 }
