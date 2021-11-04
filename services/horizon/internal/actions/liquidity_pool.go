@@ -122,7 +122,7 @@ func (handler GetLiquidityPoolsHandler) GetResourcePage(w HeaderWriter, r *http.
 
 	query := history.LiquidityPoolsQuery{
 		PageQuery: pq,
-		AccountID: qp.Account,
+		Account:   qp.Account,
 		Assets:    qp.reserves,
 	}
 
