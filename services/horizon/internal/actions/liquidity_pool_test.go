@@ -144,15 +144,11 @@ func TestGetLiquidityPools(t *testing.T) {
 	t.Run("filtering by participating account", func(t *testing.T) {
 		// we need to add trustlines to filter by account
 		accountId := keypair.MustRandom().Address()
-
-		for _, tl := range []history.TrustLine{
+		assert.NoError(t, q.UpsertTrustLines(tt.Ctx, []history.TrustLine{
 			history.MakeTestTrustline(accountId, nativeAsset, ""),
 			history.MakeTestTrustline(accountId, eurAsset, ""),
 			history.MakeTestTrustline(accountId, xdr.Asset{}, lp1.PoolID),
-		} {
-			err = q.UpsertTrustLines(tt.Ctx, []history.TrustLine{tl})
-			assert.NoError(t, err)
-		}
+		}))
 
 		request := makeRequest(
 			t,
@@ -166,7 +162,9 @@ func TestGetLiquidityPools(t *testing.T) {
 		response, err := handler.GetResourcePage(httptest.NewRecorder(), request)
 		assert.NoError(t, err)
 		assert.Len(t, response, 1)
+
+		assert.IsType(t, protocol.LiquidityPool{}, response[0])
 		resource = response[0].(protocol.LiquidityPool)
-		assert.Equal(t, resource.ID, lp1.PoolID)
+		assert.Equal(t, lp1.PoolID, resource.ID)
 	})
 }
