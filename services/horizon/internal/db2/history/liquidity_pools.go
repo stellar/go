@@ -11,7 +11,6 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -19,7 +18,7 @@ import (
 type LiquidityPoolsQuery struct {
 	PageQuery db2.PageQuery
 	Assets    []xdr.Asset
-	AccountID string
+	Account   string
 }
 
 // LiquidityPool is a row of data from the `liquidity_pools`.
@@ -169,14 +168,12 @@ func (q *Q) findLiquidityPoolsByAccountId(ctx context.Context, accountID string)
 
 // GetLiquidityPools finds all liquidity pools where accountID owns assets
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
-	log.Infof("%+v", query)
-	if len(query.AccountID) > 0 && len(query.Assets) > 0 {
-		return nil, fmt.Errorf("only one of `account id` or `assets` can be specified in a liquidity pool request")
+	if len(query.Account) > 0 && len(query.Assets) > 0 {
+		return nil, fmt.Errorf("this endpoint does not support filtering by both accountID and reserve assets.")
 	}
 
-	if len(query.AccountID) > 0 {
-		log.Infof("find by account id")
-		return q.findLiquidityPoolsByAccountId(ctx, query.AccountID)
+	if len(query.Account) > 0 {
+		return q.findLiquidityPoolsByAccountId(ctx, query.Account)
 	}
 
 	sql, err := query.PageQuery.ApplyRawTo(selectLiquidityPools, "lp.id")
@@ -294,9 +291,7 @@ func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine
 		case xdr.AssetTypeAssetTypeCreditAlphanum4:
 			fallthrough
 		case xdr.AssetTypeAssetTypeCreditAlphanum12:
-			fmt.Println("Code:", asset.GetCode())
 			trustline.AssetCode = strings.TrimRight(asset.GetCode(), "\x00") // no nulls in db string
-			fmt.Println("Code:", trustline.AssetCode)
 			trustline.AssetIssuer = asset.GetIssuer()
 			trustline.BuyingLiabilities = 1
 			trustline.SellingLiabilities = 1
