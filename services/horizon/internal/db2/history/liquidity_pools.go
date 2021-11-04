@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -15,6 +18,7 @@ import (
 type LiquidityPoolsQuery struct {
 	PageQuery db2.PageQuery
 	Assets    []xdr.Asset
+	Account   string
 }
 
 // LiquidityPool is a row of data from the `liquidity_pools`.
@@ -150,22 +154,29 @@ func (q *Q) FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (
 	return lp, err
 }
 
-// GetLiquidityPools finds all liquidity pools where accountID is one of the claimants
+// GetLiquidityPools finds all liquidity pools where accountID owns assets
 func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([]LiquidityPool, error) {
+	if len(query.Account) > 0 && len(query.Assets) > 0 {
+		return nil, fmt.Errorf("this endpoint does not support filtering by both accountID and reserve assets.")
+	}
+
 	sql, err := query.PageQuery.ApplyRawTo(selectLiquidityPools, "lp.id")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
-	sql = sql.Where("deleted = ?", false)
-
-	for _, asset := range query.Assets {
-		assetB64, err := xdr.MarshalBase64(asset)
-		if err != nil {
-			return nil, err
+	if len(query.Account) > 0 {
+		sql = sql.LeftJoin("trust_lines ON id = liquidity_pool_id").Where("trust_lines.account_id = ?", query.Account)
+	} else if len(query.Assets) > 0 {
+		for _, asset := range query.Assets {
+			assetB64, err := xdr.MarshalBase64(asset)
+			if err != nil {
+				return nil, err
+			}
+			sql = sql.
+				Where(`lp.asset_reserves @> '[{"asset": "` + assetB64 + `"}]'`)
 		}
-		sql = sql.
-			Where(`lp.asset_reserves @> '[{"asset": "` + assetB64 + `"}]'`)
 	}
+	sql = sql.Where("lp.deleted = ?", false)
 
 	var results []LiquidityPool
 	if err := q.Select(ctx, &results, sql); err != nil {
@@ -219,3 +230,68 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 	"lp.last_modified_ledger"
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
+
+// MakeTestPool is a helper to make liquidity pools for testing purposes. It's
+// public because it's used in other test suites.
+func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
+	if !A.LessThan(B) {
+		B, A = A, B
+		b, a = a, b
+	}
+
+	poolId, _ := xdr.NewPoolId(A, B, xdr.LiquidityPoolFeeV18)
+	hexPoolId, _ := xdr.MarshalHex(poolId)
+	return LiquidityPool{
+		PoolID:         hexPoolId,
+		Type:           xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+		Fee:            xdr.LiquidityPoolFeeV18,
+		TrustlineCount: 12345,
+		ShareCount:     67890,
+		AssetReserves: []LiquidityPoolAssetReserve{
+			{Asset: A, Reserve: a},
+			{Asset: B, Reserve: b},
+		},
+		LastModifiedLedger: 123,
+	}
+}
+
+func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine {
+	trustline := TrustLine{
+		AccountID:          account,
+		Balance:            1000,
+		AssetCode:          "",
+		AssetIssuer:        "",
+		LedgerKey:          account + asset.StringCanonical() + poolId, // irrelevant, just needs to be unique
+		LiquidityPoolID:    poolId,
+		Flags:              0,
+		LastModifiedLedger: 1234,
+		Sponsor:            null.String{},
+	}
+
+	if poolId == "" {
+		trustline.AssetType = asset.Type
+		switch asset.Type {
+		case xdr.AssetTypeAssetTypeNative:
+			trustline.AssetCode = "native"
+
+		case xdr.AssetTypeAssetTypeCreditAlphanum4:
+			fallthrough
+		case xdr.AssetTypeAssetTypeCreditAlphanum12:
+			trustline.AssetCode = strings.TrimRight(asset.GetCode(), "\x00") // no nulls in db string
+			trustline.AssetIssuer = asset.GetIssuer()
+			trustline.BuyingLiabilities = 1
+			trustline.SellingLiabilities = 1
+
+		default:
+			panic("invalid asset type")
+		}
+
+		trustline.Limit = trustline.Balance * 10
+		trustline.BuyingLiabilities = 1
+		trustline.SellingLiabilities = 2
+	} else {
+		trustline.AssetType = xdr.AssetTypeAssetTypePoolShare
+	}
+
+	return trustline
+}
