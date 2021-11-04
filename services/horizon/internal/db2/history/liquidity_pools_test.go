@@ -310,16 +310,18 @@ func TestLiquidityPoolByAccountId(t *testing.T) {
 	}
 	err := q.UpsertLiquidityPools(tt.Ctx, pools)
 	tt.Assert.NoError(err)
+
 	lines := []TrustLine{
-		MakeTestTrustline(account1.AccountID, xlmAsset, pools[0].PoolID),
-		MakeTestTrustline(account1.AccountID, eurAsset, pools[1].PoolID),
+		MakeTestTrustline(account1.AccountID, xlmAsset, ""),
+		MakeTestTrustline(account1.AccountID, eurAsset, ""),
+		MakeTestTrustline(account1.AccountID, usdAsset, ""),
+		MakeTestTrustline(account1.AccountID, xdr.Asset{}, pools[0].PoolID),
+		MakeTestTrustline(account1.AccountID, xdr.Asset{}, pools[1].PoolID),
 	}
-	err = q.UpsertTrustLines(tt.Ctx, []TrustLine{lines[0]})
-	err = q.UpsertTrustLines(tt.Ctx, []TrustLine{lines[1]})
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.UpsertTrustLines(tt.Ctx, lines))
 
 	query := LiquidityPoolsQuery{
-		PageQuery: db2.MustPageQuery("", false, "", 10),
+		PageQuery: db2.MustPageQuery("", false, "asc", 10),
 		Account:   account1.AccountID,
 	}
 

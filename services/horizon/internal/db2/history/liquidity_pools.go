@@ -261,7 +261,7 @@ func MakeTestTrustline(account string, asset xdr.Asset, poolId string) TrustLine
 		Balance:            1000,
 		AssetCode:          "",
 		AssetIssuer:        "",
-		LedgerKey:          "irrelevant",
+		LedgerKey:          account + asset.StringCanonical() + poolId, // irrelevant, just needs to be unique
 		LiquidityPoolID:    poolId,
 		Flags:              0,
 		LastModifiedLedger: 1234,
