@@ -116,7 +116,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
-			key,
+			base64.StdEncoding.EncodeToString(key),
 		))
 	}
 	delete(v.currentEntries, string(key))
