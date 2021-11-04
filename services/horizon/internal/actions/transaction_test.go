@@ -60,8 +60,9 @@ func TestGetTransactionsHandler(t *testing.T) {
 		httptest.NewRecorder(),
 		makeRequest(
 			t, map[string]string{
-				"source_account_id": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-				"include_failed":    "true",
+				"account_id":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"is_source":      "true",
+				"include_failed": "true",
 			}, map[string]string{}, q,
 		),
 	)
@@ -72,8 +73,9 @@ func TestGetTransactionsHandler(t *testing.T) {
 		httptest.NewRecorder(),
 		makeRequest(
 			t, map[string]string{
-				"source_account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-				"include_failed":    "true",
+				"account_id":     "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+				"is_source":      "true",
+				"include_failed": "true",
 			}, map[string]string{}, q,
 		),
 	)
@@ -84,8 +86,9 @@ func TestGetTransactionsHandler(t *testing.T) {
 		httptest.NewRecorder(),
 		makeRequest(
 			t, map[string]string{
-				"source_account_id": "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
-				"include_failed":    "true",
+				"account_id":     "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+				"is_source":      "true",
+				"include_failed": "true",
 			}, map[string]string{}, q,
 		),
 	)
