@@ -85,10 +85,12 @@ func (c *ChangeCompactor) AddChange(change Change) error {
 // addCreatedChange adds a change to the cache, but returns an error if create
 // change is unexpected.
 func (c *ChangeCompactor) addCreatedChange(change Change) error {
-	ledgerKeyString, err := change.Post.LedgerKey().MarshalBinaryBase64()
+	ledgerKey, err := change.Post.LedgerKey().MarshalBinaryCompress()
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinaryBase64")
+		return errors.Wrap(err, "Error MarshalBinaryCompress")
 	}
+
+	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
 	if !exist {
@@ -125,10 +127,12 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 // addUpdatedChange adds a change to the cache, but returns an error if update
 // change is unexpected.
 func (c *ChangeCompactor) addUpdatedChange(change Change) error {
-	ledgerKeyString, err := change.Post.LedgerKey().MarshalBinaryBase64()
+	ledgerKey, err := change.Post.LedgerKey().MarshalBinaryCompress()
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinaryBase64")
+		return errors.Wrap(err, "Error MarshalBinaryCompress")
 	}
+
+	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
 	if !exist {
@@ -166,10 +170,12 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 // addRemovedChange adds a change to the cache, but returns an error if remove
 // change is unexpected.
 func (c *ChangeCompactor) addRemovedChange(change Change) error {
-	ledgerKeyString, err := change.Pre.LedgerKey().MarshalBinaryBase64()
+	ledgerKey, err := change.Pre.LedgerKey().MarshalBinaryCompress()
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinaryBase64")
+		return errors.Wrap(err, "Error MarshalBinaryCompress")
 	}
+
+	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
 	if !exist {
