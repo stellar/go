@@ -5,6 +5,7 @@ import (
 	"encoding/base32"
 	"encoding/binary"
 
+	xdr "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/strkey/internal/crc16"
 	"github.com/stellar/go/support/errors"
 )
@@ -264,4 +265,43 @@ func IsValidEd25519SecretSeed(i interface{}) bool {
 	_, err := Decode(VersionByteSeed, enc)
 
 	return err == nil
+}
+
+type MuxedAccount struct {
+	id      uint64
+	ed25519 [32]byte
+}
+
+// ID returns the muxed account id according with SEP-23 definition for
+// multiplexed accounts.
+func (m *MuxedAccount) ID() uint64 {
+	return m.id
+}
+
+// Address returns the muxed account G-address according with SEP-23 definition
+// for multiplexed accounts.
+func (m *MuxedAccount) Address() (string, error) {
+	if m.ed25519 == [32]byte{} {
+		return "", errors.New("muxed account has no ed25519 key")
+	}
+
+	return Encode(VersionByteAccountID, m.ed25519[:])
+}
+
+func (m *MuxedAccount) MuxedAddress() (string, error) {
+	if m.ed25519 == [32]byte{} {
+		return "", errors.New("muxed account has no ed25519 key")
+	}
+
+	b := new(bytes.Buffer)
+	_, err := xdr.Marshal(b, m.id)
+	if err != nil {
+		return "", errors.Wrap(err, "marshaling muxed address id")
+	}
+
+	raw := make([]byte, 0, 40)
+	raw = append(raw, m.ed25519[:]...)
+	raw = append(raw, b.Bytes()...)
+
+	return Encode(VersionByteMuxedAccount, raw)
 }

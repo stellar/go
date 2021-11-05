@@ -112,3 +112,38 @@ func TestIsValidEd25519SecretSeed(t *testing.T) {
 	isValid = IsValidEd25519SecretSeed(invalidKey)
 	assert.Equal(t, false, isValid)
 }
+
+func TestMuxedAccount_id(t *testing.T) {
+	muxed := MuxedAccount{}
+	assert.Equal(t, uint64(0), muxed.ID())
+
+	muxed = MuxedAccount{id: uint64(9223372036854775808)}
+	assert.Equal(t, uint64(9223372036854775808), muxed.ID())
+}
+
+func TestMuxedAccount_address(t *testing.T) {
+	muxed := MuxedAccount{}
+	publicKey, err := muxed.Address()
+	assert.EqualError(t, err, "muxed account has no ed25519 key")
+	assert.Empty(t, publicKey)
+
+	muxed = MuxedAccount{ed25519: [32]byte{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154}}
+	publicKey, err = muxed.Address()
+	assert.NoError(t, err)
+	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", publicKey)
+}
+
+func TestMuxedAccount_muxedAddress(t *testing.T) {
+	muxed := MuxedAccount{}
+	publicKey, err := muxed.MuxedAddress()
+	assert.EqualError(t, err, "muxed account has no ed25519 key")
+	assert.Empty(t, publicKey)
+
+	muxed = MuxedAccount{
+		id:      uint64(9223372036854775808),
+		ed25519: [32]byte{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154},
+	}
+	publicKey, err = muxed.MuxedAddress()
+	assert.NoError(t, err)
+	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", publicKey)
+}
