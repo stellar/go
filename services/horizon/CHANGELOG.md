@@ -11,6 +11,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changes
 
+* Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve ([4046](https://github.com/stellar/go/pull/4046))
 * Add `is_source=true` parameter to transaction endpoints (e.g. `GET /accounts/{account_id}/transactions?is_source=true` ) to
   allow filtering transactions based on their source account. [4044](https://github.com/stellar/go/pull/4044)
 * Add an endpoint that allows querying for which liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
