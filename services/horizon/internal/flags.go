@@ -207,14 +207,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-reuse-storage-path",
-			OptType:     types.Bool,
-			Required:    false,
-			FlagDefault: false,
-			Usage:       "determines if storage-path should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
-			ConfigKey:   &config.CaptiveCoreReuseStoragePath,
-		},
-		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
 			OptType:        types.Uint,
 			FlagDefault:    uint(0),

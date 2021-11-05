@@ -93,7 +93,6 @@ func initIngester(app *App) {
 		StellarCoreCursor:            app.config.CursorName,
 		CaptiveCoreBinaryPath:        app.config.CaptiveCoreBinaryPath,
 		CaptiveCoreStoragePath:       app.config.CaptiveCoreStoragePath,
-		CaptiveCoreReuseStoragePath:  app.config.CaptiveCoreReuseStoragePath,
 		CaptiveCoreToml:              app.config.CaptiveCoreToml,
 		RemoteCaptiveCoreURL:         app.config.RemoteCaptiveCoreURL,
 		EnableCaptiveCore:            app.config.EnableCaptiveCoreIngestion,

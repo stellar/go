@@ -17,7 +17,6 @@ import (
 )
 
 var defaultCaptiveCoreParameters = map[string]string{
-	"captive-core-reuse-storage-path": "true",
 	horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	horizon.StellarCoreURLFlagName:    "",
 	horizon.StellarCoreDBURLFlagName:  "",
