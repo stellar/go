@@ -240,6 +240,19 @@ func IsValidEd25519PublicKey(i interface{}) bool {
 	return err == nil
 }
 
+// IsValidMuxedAccountMed25519PublicKey validates a Stellar SEP-23 muxed address.
+func IsValidMuxedAccountMed25519PublicKey(i interface{}) bool {
+	enc, ok := i.(string)
+
+	if !ok {
+		return false
+	}
+
+	_, err := Decode(VersionByteMuxedAccount, enc)
+
+	return err == nil
+}
+
 // IsValidEd25519SecretSeed validates a stellar secret key
 func IsValidEd25519SecretSeed(i interface{}) bool {
 	enc, ok := i.(string)

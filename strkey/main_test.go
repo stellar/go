@@ -63,6 +63,32 @@ func TestIsValidEd25519PublicKey(t *testing.T) {
 	invalidKey = "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO"
 	isValid = IsValidEd25519PublicKey(invalidKey)
 	assert.Equal(t, false, isValid)
+
+	invalidKey = "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
+	isValid = IsValidEd25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+}
+
+func TestIsValidMuxedAccountMed25519PublicKey(t *testing.T) {
+	validKey := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
+	isValid := IsValidMuxedAccountMed25519PublicKey(validKey)
+	assert.Equal(t, true, isValid)
+
+	invalidKey := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAA"
+	isValid = IsValidMuxedAccountMed25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
+	isValid = IsValidMuxedAccountMed25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = ""
+	isValid = IsValidMuxedAccountMed25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = "SBCVMMCBEDB64TVJZFYJOJAERZC4YVVUOE6SYR2Y76CBTENGUSGWRRVO"
+	isValid = IsValidMuxedAccountMed25519PublicKey(invalidKey)
+	assert.Equal(t, false, isValid)
 }
 
 func TestIsValidEd25519SecretSeed(t *testing.T) {
@@ -79,6 +105,10 @@ func TestIsValidEd25519SecretSeed(t *testing.T) {
 	assert.Equal(t, false, isValid)
 
 	invalidKey = "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
+	isValid = IsValidEd25519SecretSeed(invalidKey)
+	assert.Equal(t, false, isValid)
+
+	invalidKey = "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
 	isValid = IsValidEd25519SecretSeed(invalidKey)
 	assert.Equal(t, false, isValid)
 }
