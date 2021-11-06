@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Changes
+
+* Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve ([4046](https://github.com/stellar/go/pull/4046))
+* Add an endpoint that allows querying for which liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
+
 ## v2.10.0
 
 This is a minor release with no DB Schema migrations nor explicit state rebuild.

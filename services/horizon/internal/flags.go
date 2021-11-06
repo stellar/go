@@ -207,14 +207,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-reuse-storage-path",
-			OptType:     types.Bool,
-			Required:    false,
-			FlagDefault: false,
-			Usage:       "determines if storage-path should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
-			ConfigKey:   &config.CaptiveCoreReuseStoragePath,
-		},
-		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
 			OptType:        types.Uint,
 			FlagDefault:    uint(0),
@@ -363,6 +355,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: uint(3),
 			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
+		},
+		&support.ConfigOption{
+			Name:        "max-assets-per-path-request",
+			ConfigKey:   &config.MaxAssetsPerPathRequest,
+			OptType:     types.Int,
+			FlagDefault: int(15),
+			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-recieve' endpoints",
 		},
 		&support.ConfigOption{
 			Name:        "disable-pool-path-finding",

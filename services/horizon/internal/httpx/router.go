@@ -26,27 +26,26 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-const maxAssetsForPathFinding = 15
-
 type RouterConfig struct {
 	DBSession        db.SessionInterface
 	PrimaryDBSession db.SessionInterface
 	TxSubmitter      *txsub.System
 	RateQuota        *throttled.RateQuota
 
-	BehindCloudflare      bool
-	BehindAWSLoadBalancer bool
-	SSEUpdateFrequency    time.Duration
-	StaleThreshold        uint
-	ConnectionTimeout     time.Duration
-	NetworkPassphrase     string
-	MaxPathLength         uint
-	PathFinder            paths.Finder
-	PrometheusRegistry    *prometheus.Registry
-	CoreGetter            actions.CoreStateGetter
-	HorizonVersion        string
-	FriendbotURL          *url.URL
-	HealthCheck           http.Handler
+	BehindCloudflare        bool
+	BehindAWSLoadBalancer   bool
+	SSEUpdateFrequency      time.Duration
+	StaleThreshold          uint
+	ConnectionTimeout       time.Duration
+	NetworkPassphrase       string
+	MaxPathLength           uint
+	MaxAssetsPerPathRequest int
+	PathFinder              paths.Finder
+	PrometheusRegistry      *prometheus.Registry
+	CoreGetter              actions.CoreStateGetter
+	HorizonVersion          string
+	FriendbotURL            *url.URL
+	HealthCheck             http.Handler
 }
 
 type Router struct {
@@ -189,13 +188,13 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			StaleThreshold:       config.StaleThreshold,
 			SetLastLedgerHeader:  true,
 			MaxPathLength:        config.MaxPathLength,
-			MaxAssetsParamLength: maxAssetsForPathFinding,
+			MaxAssetsParamLength: config.MaxAssetsPerPathRequest,
 			PathFinder:           config.PathFinder,
 		}}
 		findFixedPaths := ObjectActionHandler{actions.FindFixedPathsHandler{
 			MaxPathLength:        config.MaxPathLength,
 			SetLastLedgerHeader:  true,
-			MaxAssetsParamLength: maxAssetsForPathFinding,
+			MaxAssetsParamLength: config.MaxAssetsPerPathRequest,
 			PathFinder:           config.PathFinder,
 		}}
 		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths", findPaths)

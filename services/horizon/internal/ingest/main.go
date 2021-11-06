@@ -67,16 +67,15 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession                 db.SessionInterface
-	StellarCoreURL              string
-	StellarCoreCursor           string
-	EnableCaptiveCore           bool
-	CaptiveCoreBinaryPath       string
-	CaptiveCoreStoragePath      string
-	CaptiveCoreReuseStoragePath bool
-	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
-	RemoteCaptiveCoreURL        string
-	NetworkPassphrase           string
+	CoreSession            db.SessionInterface
+	StellarCoreURL         string
+	StellarCoreCursor      string
+	EnableCaptiveCore      bool
+	CaptiveCoreBinaryPath  string
+	CaptiveCoreStoragePath string
+	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
+	RemoteCaptiveCoreURL   string
+	NetworkPassphrase      string
 
 	HistorySession    db.SessionInterface
 	HistoryArchiveURL string
@@ -224,7 +223,6 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
-					ReuseStoragePath:    config.CaptiveCoreReuseStoragePath,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},

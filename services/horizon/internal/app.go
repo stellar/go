@@ -211,6 +211,10 @@ func (a *App) HorizonSession() db.SessionInterface {
 	return a.historyQ.SessionInterface.Clone()
 }
 
+func (a *App) Config() Config {
+	return a.config
+}
+
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
 // This is done separately from Horizon ledger state update to prevent issues
 // in case Stellar-Core query timeout.
@@ -511,21 +515,22 @@ func (a *App) init() error {
 	initTxSubMetrics(a)
 
 	routerConfig := httpx.RouterConfig{
-		DBSession:             a.historyQ.SessionInterface,
-		TxSubmitter:           a.submitter,
-		RateQuota:             a.config.RateQuota,
-		BehindCloudflare:      a.config.BehindCloudflare,
-		BehindAWSLoadBalancer: a.config.BehindAWSLoadBalancer,
-		SSEUpdateFrequency:    a.config.SSEUpdateFrequency,
-		StaleThreshold:        a.config.StaleThreshold,
-		ConnectionTimeout:     a.config.ConnectionTimeout,
-		NetworkPassphrase:     a.config.NetworkPassphrase,
-		MaxPathLength:         a.config.MaxPathLength,
-		PathFinder:            a.paths,
-		PrometheusRegistry:    a.prometheusRegistry,
-		CoreGetter:            a,
-		HorizonVersion:        a.horizonVersion,
-		FriendbotURL:          a.config.FriendbotURL,
+		DBSession:               a.historyQ.SessionInterface,
+		TxSubmitter:             a.submitter,
+		RateQuota:               a.config.RateQuota,
+		BehindCloudflare:        a.config.BehindCloudflare,
+		BehindAWSLoadBalancer:   a.config.BehindAWSLoadBalancer,
+		SSEUpdateFrequency:      a.config.SSEUpdateFrequency,
+		StaleThreshold:          a.config.StaleThreshold,
+		ConnectionTimeout:       a.config.ConnectionTimeout,
+		NetworkPassphrase:       a.config.NetworkPassphrase,
+		MaxPathLength:           a.config.MaxPathLength,
+		MaxAssetsPerPathRequest: a.config.MaxAssetsPerPathRequest,
+		PathFinder:              a.paths,
+		PrometheusRegistry:      a.prometheusRegistry,
+		CoreGetter:              a,
+		HorizonVersion:          a.horizonVersion,
+		FriendbotURL:            a.config.FriendbotURL,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,
