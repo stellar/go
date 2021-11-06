@@ -127,12 +127,12 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 	s.Assert().NoError(err)
 
 	// Check currentEntries
-	ledgerKeyBase64, err := xdr.MarshalBase64(accountEntry.LedgerKey())
+	ledgerKey, err := accountEntry.LedgerKey().MarshalBinary()
 	s.Assert().NoError(err)
 
 	// Account entry transformed and offer entry ignored
 	s.Assert().Len(s.verifier.currentEntries, 1)
-	s.Assert().Equal(accountEntry, s.verifier.currentEntries[ledgerKeyBase64])
+	s.Assert().Equal(accountEntry, s.verifier.currentEntries[string(ledgerKey)])
 }
 
 func (s *StateVerifierTestSuite) TestOnlyRequestedNumberOfKeysReturned() {
