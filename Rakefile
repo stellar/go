@@ -50,12 +50,14 @@ namespace :xdr do
     )
     compilation.compile
     xdr_generated = IO.read("xdr/xdr_generated.go")
+
     IO.write("xdr/xdr_generated.go", <<~EOS)
       //lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
       //lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
       //lint:file-ignore S1021 xdrgen separates the declarations of error variables from their definitions because it is easier to generate code that way.
       #{xdr_generated}
     EOS
+
     system("gofmt -w xdr/xdr_generated.go")
   end
 end
