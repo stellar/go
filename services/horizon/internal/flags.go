@@ -207,14 +207,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-reuse-storage-path",
-			OptType:     types.Bool,
-			Required:    false,
-			FlagDefault: false,
-			Usage:       "determines if storage-path should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
-			ConfigKey:   &config.CaptiveCoreReuseStoragePath,
-		},
-		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
 			OptType:        types.Uint,
 			FlagDefault:    uint(0),
@@ -365,6 +357,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 		},
 		&support.ConfigOption{
+			Name:        "max-assets-per-path-request",
+			ConfigKey:   &config.MaxAssetsPerPathRequest,
+			OptType:     types.Int,
+			FlagDefault: int(15),
+			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-recieve' endpoints",
+		},
+		&support.ConfigOption{
 			Name:        "disable-pool-path-finding",
 			ConfigKey:   &config.DisablePoolPathFinding,
 			OptType:     types.Bool,
@@ -452,6 +451,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
+		},
+		&support.ConfigOption{
+			Name:        "ingest-enable-extended-log-ledger-stats",
+			ConfigKey:   &config.IngestEnableExtendedLogLedgerStats,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Usage:       "enables extended ledger stats in the log (ledger entry changes and operations stats)",
 		},
 		&support.ConfigOption{
 			Name:        "apply-migrations",

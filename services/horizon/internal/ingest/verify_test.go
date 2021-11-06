@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"io"
+	"math/rand"
 	"regexp"
 	"testing"
 
@@ -14,6 +15,52 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
+
+func genAccount(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	numSigners := uint32(rand.Int31n(xdr.MaxSigners))
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.ACCOUNT.GetU32())},
+			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.account.seqNum"), randxdr.SetPositiveNum64},
+			{randxdr.FieldEquals("created.data.account.numSubEntries"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.account.balance"), randxdr.SetPositiveNum64},
+			{randxdr.FieldEquals("created.data.account.homeDomain"), randxdr.SetPrintableASCII},
+			{randxdr.FieldEquals("created.data.account.flags"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.account.signers"), randxdr.SetVecLen(numSigners)},
+			{randxdr.FieldMatches(regexp.MustCompile("created\\.data\\.account\\.signers.*weight")), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.account.ext.v1.liabilities.selling"), randxdr.SetPositiveNum64},
+			{randxdr.FieldEquals("created.data.account.ext.v1.liabilities.buying"), randxdr.SetPositiveNum64},
+			{randxdr.FieldEquals("created.data.account.ext.v1.ext.v2.numSponsoring"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.account.ext.v1.ext.v2.numSponsored"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.account.ext.v1.ext.v2.signerSponsoringIDs"), randxdr.SetVecLen(numSigners)},
+		},
+	)
+
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
+func genAccountData(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.DATA.GetU32())},
+			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
+			{randxdr.FieldEquals("created.data.data.dataName"), randxdr.SetPrintableASCII},
+		},
+	)
+
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
 
 func genOffer(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	change := xdr.LedgerEntryChange{}
@@ -125,6 +172,8 @@ func TestStateVerifier(t *testing.T) {
 			genClaimableBalance(tt, gen),
 			genOffer(tt, gen),
 			genTrustLine(tt, gen),
+			genAccount(tt, gen),
+			genAccountData(tt, gen),
 		)
 	}
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {

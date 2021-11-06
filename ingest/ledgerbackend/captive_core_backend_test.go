@@ -266,6 +266,51 @@ func TestCaptivePrepareRangeTerminated(t *testing.T) {
 	mockArchive.AssertExpectations(t)
 }
 
+func TestCaptivePrepareRangeCloseNotFullyTerminated(t *testing.T) {
+	metaChan := make(chan metaResult, 100)
+	for i := 64; i <= 100; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+	}
+
+	err := captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
+	assert.NoError(t, err)
+
+	// Simulates a long (but graceful) shutdown...
+	cancel()
+	mockRunner.On("close").Return(nil)
+	mockRunner.On("getProcessExitError").Return(false, nil).Once()
+
+	err = captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
+	assert.EqualError(t, err, "error starting prepare range: the previous Stellar-Core instance is still running")
+
+	mockRunner.AssertExpectations(t)
+	mockArchive.AssertExpectations(t)
+}
+
 func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}

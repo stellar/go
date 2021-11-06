@@ -520,16 +520,13 @@ type XdrAnon_Claimant_V0 struct {
 type ClaimableBalanceIDType int32
 
 const (
-	CLAIMABLE_BALANCE_ID_TYPE_V0               ClaimableBalanceIDType = 0
-	CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE ClaimableBalanceIDType = 1
+	CLAIMABLE_BALANCE_ID_TYPE_V0 ClaimableBalanceIDType = 0
 )
 
 type ClaimableBalanceID struct {
 	// The union discriminant Type selects among the following arms:
 	//   CLAIMABLE_BALANCE_ID_TYPE_V0:
 	//      V0() *Hash
-	//   CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
-	//      FromPoolRevoke() *Hash
 	Type ClaimableBalanceIDType
 	_u   interface{}
 }
@@ -740,7 +737,7 @@ type StellarValue struct {
 	// this is a vector of encoded 'LedgerUpgrade' so that nodes can drop
 	// unknown steps during consensus if needed.
 	// see notes below on 'LedgerUpgrade' for more detail
-	// max size is dictated by number of upgrade types ( room for future)
+	// max size is dictated by number of upgrade types (+ room for future)
 	Upgrades []UpgradeType // bound 6
 	Ext      XdrAnon_StellarValue_Ext
 }
@@ -756,7 +753,7 @@ type XdrAnon_StellarValue_Ext struct {
 	_u interface{}
 }
 
-const MASK_LEDGERHEADER_FLAGS = 0x7
+const MASK_LEDGER_HEADER_FLAGS = 0x7
 
 type LedgerHeaderFlags int32
 
@@ -767,7 +764,7 @@ const (
 )
 
 type LedgerHeaderExtensionV1 struct {
-	// UpgradeFlags
+	// LedgerHeaderFlags
 	Flags Uint32
 	Ext   XdrAnon_LedgerHeaderExtensionV1_Ext
 }
@@ -1796,21 +1793,21 @@ type XdrAnon_Operation_Body struct {
 	_u   interface{}
 }
 
-type OperationID struct {
+type HashIDPreimage struct {
 	// The union discriminant Type selects among the following arms:
 	//   ENVELOPE_TYPE_OP_ID:
-	//      Id() *XdrAnon_OperationID_Id
+	//      OperationID() *XdrAnon_HashIDPreimage_OperationID
 	//   ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
-	//      RevokeId() *XdrAnon_OperationID_RevokeId
+	//      RevokeID() *XdrAnon_HashIDPreimage_RevokeID
 	Type EnvelopeType
 	_u   interface{}
 }
-type XdrAnon_OperationID_Id struct {
+type XdrAnon_HashIDPreimage_OperationID struct {
 	SourceAccount AccountID
 	SeqNum        SequenceNumber
 	OpNum         Uint32
 }
-type XdrAnon_OperationID_RevokeId struct {
+type XdrAnon_HashIDPreimage_RevokeID struct {
 	SourceAccount   AccountID
 	SeqNum          SequenceNumber
 	OpNum           Uint32
@@ -5874,12 +5871,10 @@ func (u *Claimant) XdrRecurse(x XDR, name string) {
 func XDR_Claimant(v *Claimant) *Claimant { return v }
 
 var _XdrNames_ClaimableBalanceIDType = map[int32]string{
-	int32(CLAIMABLE_BALANCE_ID_TYPE_V0):               "CLAIMABLE_BALANCE_ID_TYPE_V0",
-	int32(CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE): "CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE",
+	int32(CLAIMABLE_BALANCE_ID_TYPE_V0): "CLAIMABLE_BALANCE_ID_TYPE_V0",
 }
 var _XdrValues_ClaimableBalanceIDType = map[string]int32{
-	"CLAIMABLE_BALANCE_ID_TYPE_V0":               int32(CLAIMABLE_BALANCE_ID_TYPE_V0),
-	"CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE": int32(CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE),
+	"CLAIMABLE_BALANCE_ID_TYPE_V0": int32(CLAIMABLE_BALANCE_ID_TYPE_V0),
 }
 
 func (ClaimableBalanceIDType) XdrEnumNames() map[int32]string {
@@ -5919,8 +5914,7 @@ type XdrType_ClaimableBalanceIDType = *ClaimableBalanceIDType
 func XDR_ClaimableBalanceIDType(v *ClaimableBalanceIDType) *ClaimableBalanceIDType { return v }
 
 var _XdrTags_ClaimableBalanceID = map[int32]bool{
-	XdrToI32(CLAIMABLE_BALANCE_ID_TYPE_V0):               true,
-	XdrToI32(CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE): true,
+	XdrToI32(CLAIMABLE_BALANCE_ID_TYPE_V0): true,
 }
 
 func (_ ClaimableBalanceID) XdrValidTags() map[int32]bool {
@@ -5941,24 +5935,9 @@ func (u *ClaimableBalanceID) V0() *Hash {
 		return nil
 	}
 }
-func (u *ClaimableBalanceID) FromPoolRevoke() *Hash {
-	switch u.Type {
-	case CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
-		if v, ok := u._u.(*Hash); ok {
-			return v
-		} else {
-			var zero Hash
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("ClaimableBalanceID.FromPoolRevoke accessed when Type == %v", u.Type)
-		return nil
-	}
-}
 func (u ClaimableBalanceID) XdrValid() bool {
 	switch u.Type {
-	case CLAIMABLE_BALANCE_ID_TYPE_V0, CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
+	case CLAIMABLE_BALANCE_ID_TYPE_V0:
 		return true
 	}
 	return false
@@ -5973,8 +5952,6 @@ func (u *ClaimableBalanceID) XdrUnionBody() XdrType {
 	switch u.Type {
 	case CLAIMABLE_BALANCE_ID_TYPE_V0:
 		return XDR_Hash(u.V0())
-	case CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
-		return XDR_Hash(u.FromPoolRevoke())
 	}
 	return nil
 }
@@ -5982,8 +5959,6 @@ func (u *ClaimableBalanceID) XdrUnionBodyName() string {
 	switch u.Type {
 	case CLAIMABLE_BALANCE_ID_TYPE_V0:
 		return "V0"
-	case CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
-		return "FromPoolRevoke"
 	}
 	return ""
 }
@@ -6002,9 +5977,6 @@ func (u *ClaimableBalanceID) XdrRecurse(x XDR, name string) {
 	switch u.Type {
 	case CLAIMABLE_BALANCE_ID_TYPE_V0:
 		x.Marshal(x.Sprintf("%sv0", name), XDR_Hash(u.V0()))
-		return
-	case CLAIMABLE_BALANCE_ID_TYPE_FROM_POOL_REVOKE:
-		x.Marshal(x.Sprintf("%sfromPoolRevoke", name), XDR_Hash(u.FromPoolRevoke()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in ClaimableBalanceID", u.Type)
@@ -12547,13 +12519,15 @@ func (v *Operation) XdrRecurse(x XDR, name string) {
 }
 func XDR_Operation(v *Operation) *Operation { return v }
 
-type XdrType_XdrAnon_OperationID_Id = *XdrAnon_OperationID_Id
+type XdrType_XdrAnon_HashIDPreimage_OperationID = *XdrAnon_HashIDPreimage_OperationID
 
-func (v *XdrAnon_OperationID_Id) XdrPointer() interface{}       { return v }
-func (XdrAnon_OperationID_Id) XdrTypeName() string              { return "XdrAnon_OperationID_Id" }
-func (v XdrAnon_OperationID_Id) XdrValue() interface{}          { return v }
-func (v *XdrAnon_OperationID_Id) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *XdrAnon_OperationID_Id) XdrRecurse(x XDR, name string) {
+func (v *XdrAnon_HashIDPreimage_OperationID) XdrPointer() interface{} { return v }
+func (XdrAnon_HashIDPreimage_OperationID) XdrTypeName() string {
+	return "XdrAnon_HashIDPreimage_OperationID"
+}
+func (v XdrAnon_HashIDPreimage_OperationID) XdrValue() interface{}          { return v }
+func (v *XdrAnon_HashIDPreimage_OperationID) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_HashIDPreimage_OperationID) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
@@ -12561,15 +12535,17 @@ func (v *XdrAnon_OperationID_Id) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sseqNum", name), XDR_SequenceNumber(&v.SeqNum))
 	x.Marshal(x.Sprintf("%sopNum", name), XDR_Uint32(&v.OpNum))
 }
-func XDR_XdrAnon_OperationID_Id(v *XdrAnon_OperationID_Id) *XdrAnon_OperationID_Id { return v }
+func XDR_XdrAnon_HashIDPreimage_OperationID(v *XdrAnon_HashIDPreimage_OperationID) *XdrAnon_HashIDPreimage_OperationID {
+	return v
+}
 
-type XdrType_XdrAnon_OperationID_RevokeId = *XdrAnon_OperationID_RevokeId
+type XdrType_XdrAnon_HashIDPreimage_RevokeID = *XdrAnon_HashIDPreimage_RevokeID
 
-func (v *XdrAnon_OperationID_RevokeId) XdrPointer() interface{}       { return v }
-func (XdrAnon_OperationID_RevokeId) XdrTypeName() string              { return "XdrAnon_OperationID_RevokeId" }
-func (v XdrAnon_OperationID_RevokeId) XdrValue() interface{}          { return v }
-func (v *XdrAnon_OperationID_RevokeId) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *XdrAnon_OperationID_RevokeId) XdrRecurse(x XDR, name string) {
+func (v *XdrAnon_HashIDPreimage_RevokeID) XdrPointer() interface{}       { return v }
+func (XdrAnon_HashIDPreimage_RevokeID) XdrTypeName() string              { return "XdrAnon_HashIDPreimage_RevokeID" }
+func (v XdrAnon_HashIDPreimage_RevokeID) XdrValue() interface{}          { return v }
+func (v *XdrAnon_HashIDPreimage_RevokeID) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_HashIDPreimage_RevokeID) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
@@ -12579,102 +12555,102 @@ func (v *XdrAnon_OperationID_RevokeId) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sliquidityPoolID", name), XDR_PoolID(&v.LiquidityPoolID))
 	x.Marshal(x.Sprintf("%sasset", name), XDR_Asset(&v.Asset))
 }
-func XDR_XdrAnon_OperationID_RevokeId(v *XdrAnon_OperationID_RevokeId) *XdrAnon_OperationID_RevokeId {
+func XDR_XdrAnon_HashIDPreimage_RevokeID(v *XdrAnon_HashIDPreimage_RevokeID) *XdrAnon_HashIDPreimage_RevokeID {
 	return v
 }
 
-var _XdrTags_OperationID = map[int32]bool{
+var _XdrTags_HashIDPreimage = map[int32]bool{
 	XdrToI32(ENVELOPE_TYPE_OP_ID):             true,
 	XdrToI32(ENVELOPE_TYPE_POOL_REVOKE_OP_ID): true,
 }
 
-func (_ OperationID) XdrValidTags() map[int32]bool {
-	return _XdrTags_OperationID
+func (_ HashIDPreimage) XdrValidTags() map[int32]bool {
+	return _XdrTags_HashIDPreimage
 }
-func (u *OperationID) Id() *XdrAnon_OperationID_Id {
+func (u *HashIDPreimage) OperationID() *XdrAnon_HashIDPreimage_OperationID {
 	switch u.Type {
 	case ENVELOPE_TYPE_OP_ID:
-		if v, ok := u._u.(*XdrAnon_OperationID_Id); ok {
+		if v, ok := u._u.(*XdrAnon_HashIDPreimage_OperationID); ok {
 			return v
 		} else {
-			var zero XdrAnon_OperationID_Id
+			var zero XdrAnon_HashIDPreimage_OperationID
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("OperationID.Id accessed when Type == %v", u.Type)
+		XdrPanic("HashIDPreimage.OperationID accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *OperationID) RevokeId() *XdrAnon_OperationID_RevokeId {
+func (u *HashIDPreimage) RevokeID() *XdrAnon_HashIDPreimage_RevokeID {
 	switch u.Type {
 	case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
-		if v, ok := u._u.(*XdrAnon_OperationID_RevokeId); ok {
+		if v, ok := u._u.(*XdrAnon_HashIDPreimage_RevokeID); ok {
 			return v
 		} else {
-			var zero XdrAnon_OperationID_RevokeId
+			var zero XdrAnon_HashIDPreimage_RevokeID
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("OperationID.RevokeId accessed when Type == %v", u.Type)
+		XdrPanic("HashIDPreimage.RevokeID accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u OperationID) XdrValid() bool {
+func (u HashIDPreimage) XdrValid() bool {
 	switch u.Type {
 	case ENVELOPE_TYPE_OP_ID, ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
 		return true
 	}
 	return false
 }
-func (u *OperationID) XdrUnionTag() XdrNum32 {
+func (u *HashIDPreimage) XdrUnionTag() XdrNum32 {
 	return XDR_EnvelopeType(&u.Type)
 }
-func (u *OperationID) XdrUnionTagName() string {
+func (u *HashIDPreimage) XdrUnionTagName() string {
 	return "Type"
 }
-func (u *OperationID) XdrUnionBody() XdrType {
+func (u *HashIDPreimage) XdrUnionBody() XdrType {
 	switch u.Type {
 	case ENVELOPE_TYPE_OP_ID:
-		return XDR_XdrAnon_OperationID_Id(u.Id())
+		return XDR_XdrAnon_HashIDPreimage_OperationID(u.OperationID())
 	case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
-		return XDR_XdrAnon_OperationID_RevokeId(u.RevokeId())
+		return XDR_XdrAnon_HashIDPreimage_RevokeID(u.RevokeID())
 	}
 	return nil
 }
-func (u *OperationID) XdrUnionBodyName() string {
+func (u *HashIDPreimage) XdrUnionBodyName() string {
 	switch u.Type {
 	case ENVELOPE_TYPE_OP_ID:
-		return "Id"
+		return "OperationID"
 	case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
-		return "RevokeId"
+		return "RevokeID"
 	}
 	return ""
 }
 
-type XdrType_OperationID = *OperationID
+type XdrType_HashIDPreimage = *HashIDPreimage
 
-func (v *OperationID) XdrPointer() interface{}       { return v }
-func (OperationID) XdrTypeName() string              { return "OperationID" }
-func (v OperationID) XdrValue() interface{}          { return v }
-func (v *OperationID) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *OperationID) XdrRecurse(x XDR, name string) {
+func (v *HashIDPreimage) XdrPointer() interface{}       { return v }
+func (HashIDPreimage) XdrTypeName() string              { return "HashIDPreimage" }
+func (v HashIDPreimage) XdrValue() interface{}          { return v }
+func (v *HashIDPreimage) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *HashIDPreimage) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
 	XDR_EnvelopeType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
 	case ENVELOPE_TYPE_OP_ID:
-		x.Marshal(x.Sprintf("%sid", name), XDR_XdrAnon_OperationID_Id(u.Id()))
+		x.Marshal(x.Sprintf("%soperationID", name), XDR_XdrAnon_HashIDPreimage_OperationID(u.OperationID()))
 		return
 	case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
-		x.Marshal(x.Sprintf("%srevokeId", name), XDR_XdrAnon_OperationID_RevokeId(u.RevokeId()))
+		x.Marshal(x.Sprintf("%srevokeID", name), XDR_XdrAnon_HashIDPreimage_RevokeID(u.RevokeID()))
 		return
 	}
-	XdrPanic("invalid Type (%v) in OperationID", u.Type)
+	XdrPanic("invalid Type (%v) in HashIDPreimage", u.Type)
 }
-func (v *OperationID) XdrInitialize() {
+func (v *HashIDPreimage) XdrInitialize() {
 	var zero EnvelopeType
 	switch zero {
 	case ENVELOPE_TYPE_OP_ID, ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
@@ -12684,7 +12660,7 @@ func (v *OperationID) XdrInitialize() {
 		}
 	}
 }
-func XDR_OperationID(v *OperationID) *OperationID { return v }
+func XDR_HashIDPreimage(v *HashIDPreimage) *HashIDPreimage { return v }
 
 var _XdrNames_MemoType = map[int32]string{
 	int32(MEMO_NONE):   "MEMO_NONE",

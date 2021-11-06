@@ -123,10 +123,6 @@ type CaptiveCoreConfig struct {
 	// stored. We always append /captive-core to this directory, since we clean
 	// it up entirely on shutdown.
 	StoragePath string
-	// ReuseStoragePath determines if the storage dir in StoragePath should
-	// be reused between Stellar-Core executions. Defaults to false because of
-	// Stellar-Core 17.1.0 issue.
-	ReuseStoragePath bool
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -346,6 +342,12 @@ func (c *CaptiveStellarCore) startPreparingRange(ctx context.Context, ledgerRang
 	if c.stellarCoreRunner != nil {
 		if err := c.stellarCoreRunner.close(); err != nil {
 			return false, errors.Wrap(err, "error closing existing session")
+		}
+
+		// Make sure Stellar-Core is terminated before starting a new instance.
+		processExited, _ := c.stellarCoreRunner.getProcessExitError()
+		if !processExited {
+			return false, errors.New("the previous Stellar-Core instance is still running")
 		}
 	}
 

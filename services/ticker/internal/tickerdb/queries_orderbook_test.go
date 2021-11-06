@@ -1,4 +1,4 @@
-package tickerdb_test
+package tickerdb
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
-	"github.com/stellar/go/services/ticker/internal/tickerdb"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,15 +15,15 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session tickerdb.TickerSession
+	var session TickerSession
 	session.DB = db.Open()
-	defer session.DB.Close()
 	ctx := context.Background()
+	defer session.DB.Close()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "../migrations",
+		Dir: "./migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
@@ -35,14 +34,14 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	code := "XLM"
 
 	// Adding a seed issuer to be used later:
-	issuer := tickerdb.Issuer{
+	issuer := Issuer{
 		PublicKey: publicKey,
 		Name:      name,
 	}
 	tbl := session.GetTable("issuers")
 	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
-	var dbIssuer tickerdb.Issuer
+	var dbIssuer Issuer
 	err = session.GetRaw(ctx, &dbIssuer, `
 		SELECT *
 		FROM issuers
@@ -53,7 +52,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 
 	// Creating first asset:
 	firstTime := time.Now()
-	a := tickerdb.Asset{
+	a := Asset{
 		Code:          code,
 		IssuerAccount: issuerAccount,
 		IssuerID:      dbIssuer.ID,
@@ -63,7 +62,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	err = session.InsertOrUpdateAsset(ctx, &a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
-	var dbAsset1 tickerdb.Asset
+	var dbAsset1 Asset
 	err = session.GetRaw(ctx, &dbAsset1, `
 		SELECT *
 		FROM assets
@@ -85,7 +84,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	err = session.InsertOrUpdateAsset(ctx, &a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
-	var dbAsset2 tickerdb.Asset
+	var dbAsset2 Asset
 	err = session.GetRaw(ctx, &dbAsset2, `
 		SELECT *
 		FROM assets
@@ -96,7 +95,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 
 	// Creating an orderbook_stats entry:
 	obTime := time.Now()
-	orderbookStats := tickerdb.OrderbookStats{
+	orderbookStats := OrderbookStats{
 		BaseAssetID:    dbAsset1.ID,
 		CounterAssetID: dbAsset2.ID,
 		NumBids:        15,
@@ -115,7 +114,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	var dbOS tickerdb.OrderbookStats
+	var dbOS OrderbookStats
 	err = session.GetRaw(ctx, &dbOS, `
 		SELECT *
 		FROM orderbook_stats
@@ -138,7 +137,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 
 	// Making sure we're upserting:
 	obTime2 := time.Now()
-	orderbookStats2 := tickerdb.OrderbookStats{
+	orderbookStats2 := OrderbookStats{
 		BaseAssetID:    dbAsset1.ID,
 		CounterAssetID: dbAsset2.ID,
 		NumBids:        30,
@@ -157,7 +156,7 @@ func TestInsertOrUpdateOrderbokStats(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	var dbOS2 tickerdb.OrderbookStats
+	var dbOS2 OrderbookStats
 	err = session.GetRaw(ctx, &dbOS2, `
 		SELECT *
 		FROM orderbook_stats

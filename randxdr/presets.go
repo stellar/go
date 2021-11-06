@@ -124,3 +124,17 @@ var SetAssetCode Setter = func(x *randMarshaller, field string, xdrType goxdr.Xd
 		slice[i] = alphaNumeric[x.rand.Int31n(int32(len(alphaNumeric)))]
 	}
 }
+
+// SetPrintableASCII returns a Setter which sets a home domain string32 with a random
+// printable ascii string
+var SetPrintableASCII Setter = func(x *randMarshaller, field string, xdrType goxdr.XdrType) {
+	f := goxdr.XdrBaseType(xdrType).(goxdr.XdrString)
+	end := int(x.rand.Int31n(int32(f.Bound)))
+	var text []byte
+	for i := 0; i <= end; i++ {
+		// printable ascii range is from 32 - 127
+		printableChar := byte(32 + x.rand.Int31n(95))
+		text = append(text, printableChar)
+	}
+	f.SetString(string(text))
+}

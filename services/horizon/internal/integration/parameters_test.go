@@ -17,7 +17,6 @@ import (
 )
 
 var defaultCaptiveCoreParameters = map[string]string{
-	"captive-core-reuse-storage-path": "true",
 	horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	horizon.StellarCoreURLFlagName:    "",
 	horizon.StellarCoreDBURLFlagName:  "",
@@ -143,6 +142,25 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 
 	t.Run("no bucket dir", func(t *testing.T) {
 		validateNoBucketDirPath(test, storagePath)
+	})
+}
+
+func TestMaxAssetsForPathRequests(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 15)
+		test.Shutdown()
+	})
+	t.Run("set to 2", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"max-assets-per-path-request": "2"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 2)
+		test.Shutdown()
 	})
 }
 

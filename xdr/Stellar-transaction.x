@@ -527,7 +527,7 @@ struct Operation
     body;
 };
 
-union OperationID switch (EnvelopeType type)
+union HashIDPreimage switch (EnvelopeType type)
 {
 case ENVELOPE_TYPE_OP_ID:
     struct
@@ -535,7 +535,7 @@ case ENVELOPE_TYPE_OP_ID:
         AccountID sourceAccount;
         SequenceNumber seqNum;
         uint32 opNum;
-    } id;
+    } operationID;
 case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
     struct
     {
@@ -544,7 +544,7 @@ case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
         uint32 opNum;
         PoolID liquidityPoolID;
         Asset asset;
-    } revokeId;
+    } revokeID;
 };
 
 enum MemoType
@@ -1082,7 +1082,7 @@ enum AllowTrustResultCode
     ALLOW_TRUST_CANT_REVOKE = -4,     // source account can't revoke trust,
     ALLOW_TRUST_SELF_NOT_ALLOWED = -5, // trusting self is not allowed
     ALLOW_TRUST_LOW_RESERVE = -6 // claimable balances can't be created
-                                 // on revoke due to low reserves 
+                                 // on revoke due to low reserves
 };
 
 union AllowTrustResult switch (AllowTrustResultCode code)
@@ -1414,7 +1414,6 @@ case LIQUIDITY_POOL_WITHDRAW_SUCCESS:
 default:
     void;
 };
-
 
 /* High level Operation Result */
 enum OperationResultCode

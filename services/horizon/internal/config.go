@@ -45,8 +45,10 @@ type Config struct {
 	LogFile            string
 
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
-	MaxPathLength          uint
-	DisablePoolPathFinding bool
+	MaxPathLength uint
+	// MaxAssetsPerPathRequest is the maximum number of assets considered for `/paths/strict-send` and `/paths/strict-recieve`
+	MaxAssetsPerPathRequest int
+	DisablePoolPathFinding  bool
 
 	NetworkPassphrase string
 	SentryDSN         string
@@ -78,6 +80,9 @@ type Config struct {
 	// IngestDisableStateVerification disables state verification
 	// `System.verifyState()` when set to `true`.
 	IngestDisableStateVerification bool
+	// IngestEnableExtendedLogLedgerStats enables extended ledger stats in
+	// logging.
+	IngestEnableExtendedLogLedgerStats bool
 	// ApplyMigrations will apply pending migrations to the horizon database
 	// before starting the horizon service
 	ApplyMigrations bool

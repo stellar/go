@@ -15,9 +15,13 @@ psql -d core -t -A -F"," --variable="FETCH_COUNT=10000" -c "select sellerid, off
 rm offers_core_sorted.csv || true # Remove if exist in case original files are rebuilt
 
 echo "Fetching trustlines from stellar-core DB..."
-psql -d core -t -A -F"," --variable="FETCH_COUNT=10000" -c "select accountid, assettype, issuer, assetcode, tlimit, balance, flags, COALESCE(extension, 'AAAAAA=='), ledgerext from trustlines" > trustlines_core.csv
+psql -d core -t -A -F"," --variable="FETCH_COUNT=10000" -c "select ledgerentry from trustlines" > trustlines_core.csv
 rm trustlines_core_sorted.csv || true # Remove if exist in case original files are rebuilt
 
 echo "Fetching claimable balances from stellar-core DB..."
 psql -d core -t -A -F"," --variable="FETCH_COUNT=10000" -c "select balanceid, ledgerentry from claimablebalance" > claimablebalances_core.csv
 rm claimablebalances_core_sorted.csv || true # Remove if exist in case original files are rebuilt
+
+echo "Fetching liquidity pools from stellar-core DB..."
+psql -d core -t -A -F"," --variable="FETCH_COUNT=10000" -c "select ledgerentry from liquiditypool" > pools_core.csv
+rm pools_core_sorted.csv || true # Remove if exist in case original files are rebuilt

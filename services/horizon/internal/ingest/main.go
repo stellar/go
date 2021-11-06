@@ -67,20 +67,21 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession                 db.SessionInterface
-	StellarCoreURL              string
-	StellarCoreCursor           string
-	EnableCaptiveCore           bool
-	CaptiveCoreBinaryPath       string
-	CaptiveCoreStoragePath      string
-	CaptiveCoreReuseStoragePath bool
-	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
-	RemoteCaptiveCoreURL        string
-	NetworkPassphrase           string
+	CoreSession            db.SessionInterface
+	StellarCoreURL         string
+	StellarCoreCursor      string
+	EnableCaptiveCore      bool
+	CaptiveCoreBinaryPath  string
+	CaptiveCoreStoragePath string
+	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
+	RemoteCaptiveCoreURL   string
+	NetworkPassphrase      string
 
-	HistorySession           db.SessionInterface
-	HistoryArchiveURL        string
-	DisableStateVerification bool
+	HistorySession    db.SessionInterface
+	HistoryArchiveURL string
+
+	DisableStateVerification     bool
+	EnableExtendedLogLedgerStats bool
 
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
@@ -125,6 +126,10 @@ type Metrics struct {
 	// 0 otherwise.
 	StateInvalidGauge prometheus.GaugeFunc
 
+	// StateVerifyLedgerEntriesCount exposes total number of ledger entries
+	// checked by the state verifier by type.
+	StateVerifyLedgerEntriesCount *prometheus.SummaryVec
+
 	// LedgerStatsCounter exposes ledger stats counters (like number of ops/changes).
 	LedgerStatsCounter *prometheus.CounterVec
 
@@ -134,6 +139,10 @@ type Metrics struct {
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
+
+	// LedgerFetchDurationSummary exposes a summary of durations required to
+	// fetch data from ledger backend.
+	LedgerFetchDurationSummary prometheus.Summary
 
 	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
 	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
@@ -214,7 +223,6 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
-					ReuseStoragePath:    config.CaptiveCoreReuseStoragePath,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
@@ -315,6 +323,16 @@ func (s *system) initMetrics() {
 		},
 	)
 
+	s.metrics.StateVerifyLedgerEntriesCount = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_ledger_entries_count",
+			Help: "number of ledger entries downloaded from buckets in a single state verifier run",
+			// Quantile ranks are not relevant here so pass empty map.
+			Objectives: map[float64]float64{},
+		},
+		[]string{"type"},
+	)
+
 	s.metrics.LedgerStatsCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "ingest", Name: "ledger_stats_total",
@@ -337,6 +355,13 @@ func (s *system) initMetrics() {
 			Help: "run durations of ingestion processors, sliding window = 10m",
 		},
 		[]string{"name"},
+	)
+
+	s.metrics.LedgerFetchDurationSummary = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "ledger_fetch_duration_seconds",
+			Help: "duration of fetching ledgers from ledger backend, sliding window = 10m",
+		},
 	)
 
 	s.metrics.CaptiveStellarCoreSynced = prometheus.NewGaugeFunc(
