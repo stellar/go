@@ -73,3 +73,16 @@ func TestMuxedAccount_muxedAddress(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", publicKey)
 }
+
+func TestParseMuxedAccount(t *testing.T) {
+	muxed, err := ParseMuxedAccount("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ")
+	assert.EqualError(t, err, "invalid muxed account")
+	assert.Nil(t, muxed)
+
+	muxed, err = ParseMuxedAccount("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK")
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9223372036854775808), muxed.ID())
+	publicKey, err := muxed.Address()
+	assert.NoError(t, err)
+	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", publicKey)
+}

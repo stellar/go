@@ -72,3 +72,28 @@ func (m *MuxedAccount) MuxedAddress() (string, error) {
 
 	return Encode(VersionByteMuxedAccount, raw)
 }
+
+// ParseMuxedAccount receives a muxed account M-address and parses it into a
+// MuxedAccount object containing ed25519 and id attributes.
+func ParseMuxedAccount(mAddress string) (*MuxedAccount, error) {
+	if !IsValidMuxedAccountMed25519PublicKey(mAddress) {
+		return nil, errors.New("invalid muxed account")
+	}
+
+	raw, err := Decode(VersionByteMuxedAccount, mAddress)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid muxed account")
+	}
+	if len(raw) != 40 {
+		return nil, errors.Errorf("invalid binary length: %d", len(raw))
+	}
+
+	var muxed MuxedAccount
+	copy(muxed.ed25519[:], raw[:32])
+	_, err = xdr.Unmarshal(bytes.NewReader(raw[32:]), &muxed.id)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't marshall binary")
+	}
+
+	return &muxed, nil
+}
