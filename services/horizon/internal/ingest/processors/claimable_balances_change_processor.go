@@ -10,12 +10,14 @@ import (
 )
 
 type ClaimableBalancesChangeProcessor struct {
+	encoder            *xdr.Encoder
 	qClaimableBalances history.QClaimableBalances
 	cache              *ingest.ChangeCompactor
 }
 
 func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances) *ClaimableBalancesChangeProcessor {
 	p := &ClaimableBalancesChangeProcessor{
+		encoder:            xdr.NewEncoder(),
 		qClaimableBalances: Q,
 	}
 	p.reset()
@@ -65,7 +67,7 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			cBalance := change.Pre.Data.MustClaimableBalance()
-			id, err := xdr.MarshalHex(cBalance.BalanceId)
+			id, err := p.encoder.MarshalHex(cBalance.BalanceId)
 			if err != nil {
 				return err
 			}
