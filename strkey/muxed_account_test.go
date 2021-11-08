@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMuxedAccount_id(t *testing.T) {
+func TestMuxedAccount_ID(t *testing.T) {
 	muxed := MuxedAccount{}
 	assert.Equal(t, uint64(0), muxed.ID())
 
@@ -14,7 +14,7 @@ func TestMuxedAccount_id(t *testing.T) {
 	assert.Equal(t, uint64(9223372036854775808), muxed.ID())
 }
 
-func TestMuxedAccount_setID(t *testing.T) {
+func TestMuxedAccount_SetID(t *testing.T) {
 	muxed := MuxedAccount{}
 	muxed.SetID(123)
 	assert.Equal(t, uint64(123), muxed.ID())
@@ -23,7 +23,7 @@ func TestMuxedAccount_setID(t *testing.T) {
 	assert.Equal(t, uint64(456), muxed.ID())
 }
 
-func TestMuxedAccount_address(t *testing.T) {
+func TestMuxedAccount_Address(t *testing.T) {
 	muxed := MuxedAccount{}
 	publicKey, err := muxed.Address()
 	assert.EqualError(t, err, "muxed account has no ed25519 key")
@@ -59,7 +59,7 @@ func TestMuxedAccount_SetAddress(t *testing.T) {
 	assert.Equal(t, wantMuxed, muxed)
 }
 
-func TestMuxedAccount_muxedAddress(t *testing.T) {
+func TestMuxedAccount_MuxedAddress(t *testing.T) {
 	muxed := MuxedAccount{}
 	publicKey, err := muxed.MuxedAddress()
 	assert.EqualError(t, err, "muxed account has no ed25519 key")
