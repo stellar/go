@@ -83,24 +83,14 @@ func SafeUnmarshal(data []byte, dest interface{}) error {
 	return nil
 }
 
-func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
-	var raw bytes.Buffer
-
-	_, err := Marshal(&raw, v)
-
-	if err != nil {
-		return "", err
-	}
-
-	return encoder(raw.Bytes()), nil
-}
-
 func MarshalBase64(v interface{}) (string, error) {
-	return marshalString(base64.StdEncoding.EncodeToString, v)
+	e := NewEncoder()
+	return e.MarshalBase64(v)
 }
 
 func MarshalHex(v interface{}) (string, error) {
-	return marshalString(hex.EncodeToString, v)
+	e := NewEncoder()
+	return e.MarshalHex(v)
 }
 
 // Encoder reuses internal buffers between invocations
