@@ -69,10 +69,10 @@ func (m *MuxedAccount) MuxedAddress() (string, error) {
 	return Encode(VersionByteMuxedAccount, raw)
 }
 
-// ParseMuxedAccount receives a muxed account M-address and parses it into a
+// DecodeMuxedAccount receives a muxed account M-address and parses it into a
 // MuxedAccount object containing an ed25519 address and an id.
-func ParseMuxedAccount(mAddress string) (*MuxedAccount, error) {
-	raw, err := Decode(VersionByteMuxedAccount, mAddress)
+func DecodeMuxedAccount(address string) (*MuxedAccount, error) {
+	raw, err := Decode(VersionByteMuxedAccount, address)
 	if err != nil {
 		return nil, errors.New("invalid muxed account")
 	}
