@@ -18,8 +18,8 @@ func (m *MuxedAccount) SetID(id uint64) {
 	m.id = id
 }
 
-// SetAddress populates the muxed account ed25519 address.
-func (m *MuxedAccount) SetAddress(address string) error {
+// SetAccountID populates the muxed account G-address.
+func (m *MuxedAccount) SetAccountID(address string) error {
 	raw, err := Decode(VersionByteAccountID, address)
 	if err != nil {
 		return errors.New("invalid ed25519 public key")
@@ -39,9 +39,9 @@ func (m *MuxedAccount) ID() uint64 {
 	return m.id
 }
 
-// Address returns the muxed account G-address according with the SEP-23
+// AccountID returns the muxed account G-address according with the SEP-23
 // definition for multiplexed accounts.
-func (m *MuxedAccount) Address() (string, error) {
+func (m *MuxedAccount) AccountID() (string, error) {
 	if m.ed25519 == [32]byte{} {
 		return "", errors.New("muxed account has no ed25519 key")
 	}
@@ -49,9 +49,9 @@ func (m *MuxedAccount) Address() (string, error) {
 	return Encode(VersionByteAccountID, m.ed25519[:])
 }
 
-// MuxedAddress returns the muxed account M-address according with the SEP-23
+// Address returns the muxed account M-address according with the SEP-23
 // definition for multiplexed accounts.
-func (m *MuxedAccount) MuxedAddress() (string, error) {
+func (m *MuxedAccount) Address() (string, error) {
 	if m.ed25519 == [32]byte{} {
 		return "", errors.New("muxed account has no ed25519 key")
 	}

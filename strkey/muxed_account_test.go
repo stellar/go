@@ -23,29 +23,29 @@ func TestMuxedAccount_SetID(t *testing.T) {
 	assert.Equal(t, uint64(456), muxed.ID())
 }
 
-func TestMuxedAccount_Address(t *testing.T) {
+func TestMuxedAccount_AccountID(t *testing.T) {
 	muxed := MuxedAccount{}
-	publicKey, err := muxed.Address()
+	publicKey, err := muxed.AccountID()
 	assert.EqualError(t, err, "muxed account has no ed25519 key")
 	assert.Empty(t, publicKey)
 
 	muxed = MuxedAccount{ed25519: [32]byte{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154}}
-	publicKey, err = muxed.Address()
+	publicKey, err = muxed.AccountID()
 	assert.NoError(t, err)
 	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", publicKey)
 }
 
-func TestMuxedAccount_SetAddress(t *testing.T) {
+func TestMuxedAccount_SetAccountID(t *testing.T) {
 	muxed := MuxedAccount{}
-	err := muxed.SetAddress("")
+	err := muxed.SetAccountID("")
 	assert.EqualError(t, err, "invalid ed25519 public key")
 
-	err = muxed.SetAddress("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZ")
+	err = muxed.SetAccountID("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZ")
 	assert.EqualError(t, err, "invalid ed25519 public key")
 
-	err = muxed.SetAddress("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ")
+	err = muxed.SetAccountID("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ")
 	assert.NoError(t, err)
-	publicKey, err := muxed.Address()
+	publicKey, err := muxed.AccountID()
 	assert.NoError(t, err)
 	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", publicKey)
 	wantMuxed := MuxedAccount{ed25519: [32]byte{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154}}
@@ -59,9 +59,9 @@ func TestMuxedAccount_SetAddress(t *testing.T) {
 	assert.Equal(t, wantMuxed, muxed)
 }
 
-func TestMuxedAccount_MuxedAddress(t *testing.T) {
+func TestMuxedAccount_Address(t *testing.T) {
 	muxed := MuxedAccount{}
-	publicKey, err := muxed.MuxedAddress()
+	publicKey, err := muxed.Address()
 	assert.EqualError(t, err, "muxed account has no ed25519 key")
 	assert.Empty(t, publicKey)
 
@@ -69,7 +69,7 @@ func TestMuxedAccount_MuxedAddress(t *testing.T) {
 		id:      uint64(9223372036854775808),
 		ed25519: [32]byte{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154},
 	}
-	publicKey, err = muxed.MuxedAddress()
+	publicKey, err = muxed.Address()
 	assert.NoError(t, err)
 	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", publicKey)
 }
@@ -82,7 +82,7 @@ func TestDecodeMuxedAccount(t *testing.T) {
 	muxed, err = DecodeMuxedAccount("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK")
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(9223372036854775808), muxed.ID())
-	publicKey, err := muxed.Address()
+	publicKey, err := muxed.AccountID()
 	assert.NoError(t, err)
 	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", publicKey)
 }
