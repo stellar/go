@@ -35,18 +35,38 @@ var gxdrInput = func() gxdr.TransactionEnvelope {
 	return te
 }()
 
-func BenchmarkXDRUnmarshal(b *testing.B) {
+func BenchmarkXDRUnmarshalWithReflection(b *testing.B) {
+	var (
+		r  bytes.Reader
+		te xdr.TransactionEnvelope
+	)
 	for i := 0; i < b.N; i++ {
-		_ = xdrInput.UnmarshalBinary(input)
+		r.Reset(input)
+		_, _ = xdr.Unmarshal(&r, &te)
+	}
+}
+
+func BenchmarkXDRUnmarshal(b *testing.B) {
+	var te xdr.TransactionEnvelope
+	for i := 0; i < b.N; i++ {
+		_ = te.UnmarshalBinary(input)
 	}
 }
 
 func BenchmarkGXDRUnmarshal(b *testing.B) {
-	var te gxdr.TransactionEnvelope
-	r := bytes.NewReader(input)
+	var (
+		te gxdr.TransactionEnvelope
+		r  bytes.Reader
+	)
 	for i := 0; i < b.N; i++ {
 		r.Reset(input)
-		te.XdrMarshal(&goxdr.XdrIn{In: r}, "")
+		te.XdrMarshal(&goxdr.XdrIn{In: &r}, "")
+	}
+}
+
+func BenchmarkXDRMarshalWithReflection(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = xdr.Marshal(&bytes.Buffer{}, xdrInput)
 	}
 }
 
