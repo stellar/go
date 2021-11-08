@@ -20,13 +20,9 @@ func (m *MuxedAccount) SetID(id uint64) {
 
 // SetAddress populates the muxed account ed25519 address.
 func (m *MuxedAccount) SetAddress(address string) error {
-	if !IsValidEd25519PublicKey(address) {
-		return errors.New("invalid ed25519 public key")
-	}
-
 	raw, err := Decode(VersionByteAccountID, address)
 	if err != nil {
-		return errors.Wrap(err, "decoding ed25519 address")
+		return errors.New("invalid ed25519 public key")
 	}
 	if len(raw) != 32 {
 		return fmt.Errorf("invalid binary length: %d", len(raw))
@@ -76,13 +72,9 @@ func (m *MuxedAccount) MuxedAddress() (string, error) {
 // ParseMuxedAccount receives a muxed account M-address and parses it into a
 // MuxedAccount object containing an ed25519 address and an id.
 func ParseMuxedAccount(mAddress string) (*MuxedAccount, error) {
-	if !IsValidMuxedAccountMed25519PublicKey(mAddress) {
-		return nil, errors.New("invalid muxed account")
-	}
-
 	raw, err := Decode(VersionByteMuxedAccount, mAddress)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid muxed account")
+		return nil, errors.New("invalid muxed account")
 	}
 	if len(raw) != 40 {
 		return nil, errors.Errorf("invalid binary length: %d", len(raw))
