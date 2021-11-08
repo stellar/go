@@ -145,6 +145,25 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 	})
 }
 
+func TestMaxAssetsForPathRequests(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 15)
+		test.Shutdown()
+	})
+	t.Run("set to 2", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"max-assets-per-path-request": "2"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 2)
+		test.Shutdown()
+	})
+}
+
 // Pattern taken from testify issue:
 // https://github.com/stretchr/testify/issues/858#issuecomment-600491003
 //

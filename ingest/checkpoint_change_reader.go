@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"context"
-	"encoding/base64"
 	"io"
 	"sync"
 	"time"
@@ -376,7 +375,7 @@ LoopBucketEntry:
 					return false
 				}
 
-				h := base64.StdEncoding.EncodeToString(keyBytes)
+				h := string(keyBytes)
 				preloadKeys = append(preloadKeys, h)
 			}
 
@@ -432,7 +431,7 @@ LoopBucketEntry:
 			return false
 		}
 
-		h := base64.StdEncoding.EncodeToString(keyBytes)
+		h := string(keyBytes)
 
 		switch entry.Type {
 		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:

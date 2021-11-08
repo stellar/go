@@ -58,7 +58,6 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 // TransactionsQuery query struct for transactions end-points
 type TransactionsQuery struct {
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
-	IsSource                  bool   `schema:"is_source" valid:"-"`
 	ClaimableBalanceID        string `schema:"claimable_balance_id" valid:"claimableBalanceID,optional"`
 	LiquidityPoolID           string `schema:"liquidity_pool_id" valid:"sha256,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
@@ -146,11 +145,7 @@ func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQ
 	txs := hq.Transactions()
 	switch {
 	case qp.AccountID != "":
-		if qp.IsSource {
-			txs.ForSourceAccount(ctx, qp.AccountID)
-		} else {
-			txs.ForAccount(ctx, qp.AccountID)
-		}
+		txs.ForAccount(ctx, qp.AccountID)
 	case qp.ClaimableBalanceID != "":
 		txs.ForClaimableBalance(ctx, qp.ClaimableBalanceID)
 	case qp.LiquidityPoolID != "":

@@ -5,14 +5,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### DB Schema Migration
-
-* This release comes with a DB migration removing unused indexes (`by_account` and `by_fee_account`) and adding a new index (`history_transactions_by_source_account`). It should not take more than 15 minutes to complete the migration.
-
 ### Changes
 
-* Add `is_source=true` parameter to transaction endpoints (e.g. `GET /accounts/{account_id}/transactions?is_source=true` ) to
-  allow filtering transactions based on their source account. [4044](https://github.com/stellar/go/pull/4044)
+* Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve ([4046](https://github.com/stellar/go/pull/4046))
 * Add an endpoint that allows querying for which liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
 
 ## v2.10.0
