@@ -121,6 +121,10 @@ func growSlice(old []byte, newSize int) []byte {
 	return make([]byte, newSize, 2*newSize)
 }
 
+type xdrEncodable interface {
+	EncodeTo(e *xdr.Encoder) error
+}
+
 func NewEncoder() *Encoder {
 	var ret Encoder
 	ret.encoder = xdr.NewEncoder(&ret.xdrEncoderBuf)
@@ -133,8 +137,15 @@ func NewEncoder() *Encoder {
 // Subsequent calls to marshalling methods will overwrite the returned buffer.
 func (e *Encoder) UnsafeMarshalBinary(v interface{}) ([]byte, error) {
 	e.xdrEncoderBuf.Reset()
-	if _, err := e.encoder.Encode(v); err != nil {
-		return nil, err
+	if encodable, ok := v.(xdrEncodable); ok {
+		// higher performance
+		if err := encodable.EncodeTo(e.encoder); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, err := e.encoder.Encode(v); err != nil {
+			return nil, err
+		}
 	}
 	return e.xdrEncoderBuf.Bytes(), nil
 }
