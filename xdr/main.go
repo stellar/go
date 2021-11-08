@@ -47,7 +47,7 @@ func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, 
 }
 
 // SafeUnmarshalBase64 first decodes the provided reader from base64 before
-// decoding the xdr into the provided destination.  Also ensures that the reader
+// decoding the xdr into the provided destination. Also ensures that the reader
 // is fully consumed.
 func SafeUnmarshalBase64(data string, dest interface{}) error {
 	return safeUnmarshalString(
@@ -60,7 +60,7 @@ func SafeUnmarshalBase64(data string, dest interface{}) error {
 }
 
 // SafeUnmarshalHex first decodes the provided reader from hex before
-// decoding the xdr into the provided destination.  Also ensures that the reader
+// decoding the xdr into the provided destination. Also ensures that the reader
 // is fully consumed.
 func SafeUnmarshalHex(data string, dest interface{}) error {
 	return safeUnmarshalString(hex.NewDecoder, data, dest)
@@ -101,6 +101,82 @@ func MarshalBase64(v interface{}) (string, error) {
 
 func MarshalHex(v interface{}) (string, error) {
 	return marshalString(hex.EncodeToString, v)
+}
+
+// Encoder reuses internal buffers between invocations
+// to minimize allocations.
+type Encoder struct {
+	encoder          *xdr.Encoder
+	xdrEncoderBuf    bytes.Buffer
+	otherEncodersBuf []byte
+}
+
+func growSlice(old []byte, newSize int) []byte {
+	oldCap := cap(old)
+	if newSize <= oldCap {
+		return old[:newSize]
+	}
+	// the array doesn't fit, lets return a new one with double the capacity
+	// to avoid further resizing
+	return make([]byte, newSize, 2*newSize)
+}
+
+func NewEncoder() *Encoder {
+	var ret Encoder
+	ret.encoder = xdr.NewEncoder(&ret.xdrEncoderBuf)
+	return &ret
+}
+
+// UnsafeMarshalBinary marshals the input XDR binary, returning
+// a slice pointing to the internal encoder's buffer. Handled with care, this saves
+// allows copying the buffer (e.g. like when returning a string).
+// Subsequent calls to marshalling methods will overwrite the returned buffer.
+func (e *Encoder) UnsafeMarshalBinary(v interface{}) ([]byte, error) {
+	e.xdrEncoderBuf.Reset()
+	if _, err := e.encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return e.xdrEncoderBuf.Bytes(), nil
+}
+
+// UnsafeMarshalBase64 is the base64 version of UnsafeMarshalBinary
+func (e *Encoder) UnsafeMarshalBase64(v interface{}) ([]byte, error) {
+	xdrEncoded, err := e.UnsafeMarshalBinary(v)
+	if err != nil {
+		return nil, err
+	}
+	neededLen := base64.StdEncoding.EncodedLen(len(xdrEncoded))
+	e.otherEncodersBuf = growSlice(e.otherEncodersBuf, neededLen)
+	base64.StdEncoding.Encode(e.otherEncodersBuf, xdrEncoded)
+	return e.otherEncodersBuf, nil
+}
+
+// UnsafeMarshalHex is the hex version of UnsafeMarshalBinary
+func (e *Encoder) UnsafeMarshalHex(v interface{}) ([]byte, error) {
+	xdrEncoded, err := e.UnsafeMarshalBinary(v)
+	if err != nil {
+		return nil, err
+	}
+	neededLen := hex.EncodedLen(len(xdrEncoded))
+	e.otherEncodersBuf = growSlice(e.otherEncodersBuf, neededLen)
+	hex.Encode(e.otherEncodersBuf, xdrEncoded)
+	return e.otherEncodersBuf, nil
+}
+
+func (e *Encoder) MarshalBase64(v interface{}) (string, error) {
+	b, err := e.UnsafeMarshalBase64(v)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (e *Encoder) MarshalHex(v interface{}) (string, error) {
+	b, err := e.UnsafeMarshalHex(v)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 func MarshalFramed(w io.Writer, v interface{}) error {

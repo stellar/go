@@ -7,7 +7,6 @@ import (
 
 	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/require"
 	goxdr "github.com/xdrpp/goxdr/xdr"
 )
 
@@ -21,30 +20,29 @@ var input = func() []byte {
 	return decoded
 }()
 
-func BenchmarkXDRUnmarshal(b *testing.B) {
-	b.StopTimer()
-	te := xdr.TransactionEnvelope{}
+var xdrInput = func() xdr.TransactionEnvelope {
+	var te xdr.TransactionEnvelope
+	if err := te.UnmarshalBinary(input); err != nil {
+		panic(err)
+	}
+	return te
+}()
 
-	// Make sure the input is valid.
-	err := te.UnmarshalBinary(input)
-	require.NoError(b, err)
-	b.StartTimer()
-	// Benchmark.
+var gxdrInput = func() gxdr.TransactionEnvelope {
+	var te gxdr.TransactionEnvelope
+	// note goxdr will panic if there's a marshaling error.
+	te.XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(input)}, "")
+	return te
+}()
+
+func BenchmarkXDRUnmarshal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = te.UnmarshalBinary(input)
+		_ = xdrInput.UnmarshalBinary(input)
 	}
 }
 
 func BenchmarkGXDRUnmarshal(b *testing.B) {
-	b.StopTimer()
-	te := gxdr.TransactionEnvelope{}
-
-	// Make sure the input is valid, note goxdr will panic if there's a
-	// marshaling error.
-	te.XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(input)}, "")
-	b.StartTimer()
-
-	// Benchmark.
+	var te gxdr.TransactionEnvelope
 	r := bytes.NewReader(input)
 	for i := 0; i < b.N; i++ {
 		r.Reset(input)
@@ -53,37 +51,63 @@ func BenchmarkGXDRUnmarshal(b *testing.B) {
 }
 
 func BenchmarkXDRMarshal(b *testing.B) {
-	b.StopTimer()
-	te := xdr.TransactionEnvelope{}
-
-	// Make sure the input is valid.
-	err := te.UnmarshalBinary(input)
-	require.NoError(b, err)
-	output, err := te.MarshalBinary()
-	require.NoError(b, err)
-	require.Equal(b, input, output)
-	b.StartTimer()
-
-	// Benchmark.
 	for i := 0; i < b.N; i++ {
-		_, _ = te.MarshalBinary()
+		_, _ = xdrInput.MarshalBinary()
+	}
+}
+
+func BenchmarkXDRMarshalWithEncoder(b *testing.B) {
+	e := xdr.NewEncoder()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.UnsafeMarshalBinary(xdrInput)
 	}
 }
 
 func BenchmarkGXDRMarshal(b *testing.B) {
-	b.StopTimer()
-	te := gxdr.TransactionEnvelope{}
-
-	// Make sure the input is valid, note goxdr will panic if there's a
-	// marshaling error.
-	te.XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(input)}, "")
-	output := bytes.Buffer{}
-	te.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
-
-	b.StartTimer()
+	var output bytes.Buffer
 	// Benchmark.
 	for i := 0; i < b.N; i++ {
 		output.Reset()
-		te.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
+		gxdrInput.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
+	}
+}
+
+func BenchmarkXDRMarshalHex(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = xdr.MarshalHex(xdrInput)
+	}
+}
+
+func BenchmarkXDRMarshalHexWithEncoder(b *testing.B) {
+	e := xdr.NewEncoder()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.MarshalHex(xdrInput)
+	}
+}
+
+func BenchmarkXDRUnsafeMarshalHexWithEncoder(b *testing.B) {
+	e := xdr.NewEncoder()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.UnsafeMarshalHex(xdrInput)
+	}
+}
+
+func BenchmarkXDRMarshalBase64(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = xdr.MarshalBase64(xdrInput)
+	}
+}
+
+func BenchmarkXDRMarshalBase64WithEncoder(b *testing.B) {
+	e := xdr.NewEncoder()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.MarshalBase64(xdrInput)
+	}
+}
+
+func BenchmarkXDRUnsafeMarshalBase64WithEncoder(b *testing.B) {
+	e := xdr.NewEncoder()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.UnsafeMarshalBase64(xdrInput)
 	}
 }
