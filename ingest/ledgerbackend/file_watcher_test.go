@@ -3,7 +3,6 @@ package ledgerbackend
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -13,67 +12,39 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mockFile struct {
-	modTime time.Time
-}
-
-func (mockFile) Name() string {
-	return ""
-}
-
-func (mockFile) Size() int64 {
-	return 0
-}
-
-func (mockFile) Mode() os.FileMode {
-	return 0
-}
-
-func (mockFile) IsDir() bool {
-	return false
-}
-
-func (mockFile) Sys() interface{} {
-	return nil
-}
-func (m mockFile) ModTime() time.Time {
-	return m.modTime
-}
-
-type mockStat struct {
+type mockHash struct {
 	sync.Mutex
 	t            *testing.T
 	expectedPath string
-	modTime      time.Time
+	hashResult   hash
 	err          error
 	callCount    int
 }
 
-func (m *mockStat) setResponse(modTime time.Time, err error) {
+func (m *mockHash) setResponse(hashResult hash, err error) {
 	m.Lock()
 	defer m.Unlock()
-	m.modTime = modTime
+	m.hashResult = hashResult
 	m.err = err
 }
 
-func (m *mockStat) getCallCount() int {
+func (m *mockHash) getCallCount() int {
 	m.Lock()
 	defer m.Unlock()
 	return m.callCount
 }
 
-func (m *mockStat) stat(fp string) (os.FileInfo, error) {
+func (m *mockHash) hashFile(fp string) (hash, error) {
 	m.Lock()
 	defer m.Unlock()
 	m.callCount++
 	assert.Equal(m.t, m.expectedPath, fp)
-	//defer m.onCall(m)
-	return mockFile{m.modTime}, m.err
+	return m.hashResult, m.err
 }
 
-func createFWFixtures(t *testing.T) (*mockStat, *stellarCoreRunner, *fileWatcher) {
-	ms := &mockStat{
-		modTime:      time.Now(),
+func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher) {
+	ms := &mockHash{
+		hashResult:   hash{},
 		expectedPath: "/some/path",
 		t:            t,
 	}
@@ -90,7 +61,7 @@ func createFWFixtures(t *testing.T) (*mockStat, *stellarCoreRunner, *fileWatcher
 	}, stellarCoreRunnerModeOffline)
 	assert.NoError(t, err)
 
-	fw, err := newFileWatcherWithOptions(runner, ms.stat, time.Millisecond)
+	fw, err := newFileWatcherWithOptions(runner, ms.hashFile, time.Millisecond)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, ms.getCallCount())
 
@@ -98,12 +69,12 @@ func createFWFixtures(t *testing.T) (*mockStat, *stellarCoreRunner, *fileWatcher
 }
 
 func TestNewFileWatcherError(t *testing.T) {
-	ms := &mockStat{
-		modTime:      time.Now(),
+	ms := &mockHash{
+		hashResult:   hash{},
 		expectedPath: "/some/path",
 		t:            t,
 	}
-	ms.setResponse(time.Time{}, fmt.Errorf("test error"))
+	ms.setResponse(hash{}, fmt.Errorf("test error"))
 
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
@@ -117,29 +88,27 @@ func TestNewFileWatcherError(t *testing.T) {
 	}, stellarCoreRunnerModeOffline)
 	assert.NoError(t, err)
 
-	_, err = newFileWatcherWithOptions(runner, ms.stat, time.Millisecond)
-	assert.EqualError(t, err, "could not stat captive core binary: test error")
+	_, err = newFileWatcherWithOptions(runner, ms.hashFile, time.Millisecond)
+	assert.EqualError(t, err, "could not hash captive core binary: test error")
 	assert.Equal(t, 1, ms.getCallCount())
 }
 
 func TestFileChanged(t *testing.T) {
 	ms, _, fw := createFWFixtures(t)
 
-	modTime := ms.modTime
-
 	assert.False(t, fw.fileChanged())
 	assert.False(t, fw.fileChanged())
 	assert.Equal(t, 3, ms.getCallCount())
 
-	ms.setResponse(time.Time{}, fmt.Errorf("test error"))
+	ms.setResponse(hash{}, fmt.Errorf("test error"))
 	assert.False(t, fw.fileChanged())
 	assert.Equal(t, 4, ms.getCallCount())
 
-	ms.setResponse(modTime, nil)
+	ms.setResponse(ms.hashResult, nil)
 	assert.False(t, fw.fileChanged())
 	assert.Equal(t, 5, ms.getCallCount())
 
-	ms.setResponse(time.Now().Add(time.Hour), nil)
+	ms.setResponse(hash{1}, nil)
 	assert.True(t, fw.fileChanged())
 	assert.Equal(t, 6, ms.getCallCount())
 }
@@ -161,7 +130,7 @@ func TestCloseRunnerDuringFileWatcherLoop(t *testing.T) {
 		close(done)
 	}()
 
-	// fw.loop will repeatedly check if the file has changed by calling stat.
+	// fw.loop will repeatedly check if the file has changed by calling hash.
 	// This test ensures that closing the runner will exit fw.loop so that the goroutine is not leaked.
 
 	closedRunner := false
@@ -187,7 +156,7 @@ func TestFileChangesTriggerRunnerClose(t *testing.T) {
 		close(done)
 	}()
 
-	// fw.loop will repeatedly check if the file has changed by calling stat.
+	// fw.loop will repeatedly check if the file has changed by calling hash
 	// This test ensures that modifying the file will trigger the closing of the runner.
 	modifiedFile := false
 	for {
@@ -199,7 +168,7 @@ func TestFileChangesTriggerRunnerClose(t *testing.T) {
 			return
 		default:
 			if ms.getCallCount() > 20 {
-				ms.setResponse(time.Now().Add(time.Hour), nil)
+				ms.setResponse(hash{1}, nil)
 				modifiedFile = true
 			}
 		}

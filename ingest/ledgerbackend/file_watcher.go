@@ -1,37 +1,60 @@
 package ledgerbackend
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"io"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
+type hash []byte
+
+func (h hash) Equals(other hash) bool {
+	return bytes.Equal(h, other)
+}
+
 type fileWatcher struct {
-	pathToFile  string
-	duration    time.Duration
-	onChange    func()
-	exit        <-chan struct{}
-	log         *log.Entry
-	stat        func(string) (os.FileInfo, error)
-	lastModTime time.Time
+	pathToFile string
+	duration   time.Duration
+	onChange   func()
+	exit       <-chan struct{}
+	log        *log.Entry
+	hashFile   func(string) (hash, error)
+	lastHash   hash
+}
+
+func hashFile(filename string) (hash, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return hash{}, errors.Wrapf(err, "unable to open %v", f)
+	}
+	defer f.Close()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return hash{}, errors.Wrapf(err, "unable to copy %v into buffer", f)
+	}
+
+	return h.Sum(nil), nil
 }
 
 func newFileWatcher(runner *stellarCoreRunner) (*fileWatcher, error) {
-	return newFileWatcherWithOptions(runner, os.Stat, 10*time.Second)
+	return newFileWatcherWithOptions(runner, hashFile, 10*time.Second)
 }
 
 func newFileWatcherWithOptions(
 	runner *stellarCoreRunner,
-	stat func(string) (os.FileInfo, error),
+	hashFile func(string) (hash, error),
 	tickerDuration time.Duration,
 ) (*fileWatcher, error) {
-	info, err := stat(runner.executablePath)
+	hashResult, err := hashFile(runner.executablePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not stat captive core binary")
+		return nil, errors.Wrap(err, "could not hash captive core binary")
 	}
 
 	once := &sync.Once{}
@@ -46,10 +69,10 @@ func newFileWatcherWithOptions(
 				}
 			})
 		},
-		exit:        runner.ctx.Done(),
-		log:         runner.log,
-		stat:        stat,
-		lastModTime: info.ModTime(),
+		exit:     runner.ctx.Done(),
+		log:      runner.log,
+		hashFile: hashFile,
+		lastHash: hashResult,
 	}, nil
 }
 
@@ -70,18 +93,18 @@ func (f *fileWatcher) loop() {
 }
 
 func (f *fileWatcher) fileChanged() bool {
-	info, err := f.stat(f.pathToFile)
+	hashResult, err := f.hashFile(f.pathToFile)
 	if err != nil {
-		f.log.Warnf("could not stat %s: %v", f.pathToFile, err)
+		f.log.Warnf("could not hash contents of %s: %v", f.pathToFile, err)
 		return false
 	}
 
-	if modTime := info.ModTime(); !f.lastModTime.Equal(modTime) {
+	if !f.lastHash.Equals(hashResult) {
 		f.log.Infof(
-			"detected update to %s. previous file timestamp was %v current timestamp is %v",
+			"detected update to %s. previous file hash was %v current hash is %v",
 			f.pathToFile,
-			f.lastModTime,
-			modTime,
+			f.lastHash,
+			hashResult,
 		)
 		return true
 	}
