@@ -37,14 +37,14 @@ func (m *MuxedAccount) SetAddress(address string) error {
 	return nil
 }
 
-// ID returns the muxed account id according with SEP-23 definition for
+// ID returns the muxed account id according with the SEP-23 definition for
 // multiplexed accounts.
 func (m *MuxedAccount) ID() uint64 {
 	return m.id
 }
 
-// Address returns the muxed account G-address according with SEP-23 definition
-// for multiplexed accounts.
+// Address returns the muxed account G-address according with the SEP-23
+// definition for multiplexed accounts.
 func (m *MuxedAccount) Address() (string, error) {
 	if m.ed25519 == [32]byte{} {
 		return "", errors.New("muxed account has no ed25519 key")
@@ -53,7 +53,7 @@ func (m *MuxedAccount) Address() (string, error) {
 	return Encode(VersionByteAccountID, m.ed25519[:])
 }
 
-// MuxedAddress returns the muxed account M-address according with SEP-23
+// MuxedAddress returns the muxed account M-address according with the SEP-23
 // definition for multiplexed accounts.
 func (m *MuxedAccount) MuxedAddress() (string, error) {
 	if m.ed25519 == [32]byte{} {
@@ -74,7 +74,7 @@ func (m *MuxedAccount) MuxedAddress() (string, error) {
 }
 
 // ParseMuxedAccount receives a muxed account M-address and parses it into a
-// MuxedAccount object containing ed25519 and id attributes.
+// MuxedAccount object containing an ed25519 address and an id.
 func ParseMuxedAccount(mAddress string) (*MuxedAccount, error) {
 	if !IsValidMuxedAccountMed25519PublicKey(mAddress) {
 		return nil, errors.New("invalid muxed account")
