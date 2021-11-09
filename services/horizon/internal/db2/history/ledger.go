@@ -130,11 +130,11 @@ func (q *Q) InsertLedger(ctx context.Context,
 	return result.RowsAffected()
 }
 
-// GetLedgerGaps, obtains ingestion gaps in the history_ledgers table.
+// GetLedgerGaps obtains ingestion gaps in the history_ledgers table.
 // Returns the gaps and error.
 func (q *Q) GetLedgerGaps(ctx context.Context) ([]LedgerGap, error) {
-	var result []LedgerGap
-	err := q.SelectRaw(ctx, &result, `
+	var gaps []LedgerGap
+	query := `
     SELECT sequence + 1 AS gap_start,
 		next_number - 1 AS gap_end
 	FROM (
@@ -142,8 +142,79 @@ func (q *Q) GetLedgerGaps(ctx context.Context) ([]LedgerGap, error) {
 		LEAD(sequence) OVER (ORDER BY sequence) AS next_number
 	FROM history_ledgers
 	) number
-	WHERE sequence + 1 <> next_number;`)
-	return result, err
+	WHERE sequence + 1 <> next_number;`
+	if err := q.SelectRaw(ctx, &gaps, query); err != nil {
+		return nil, err
+	}
+	return gaps, nil
+}
+
+func max(a, b uint32) uint32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b uint32) uint32 {
+	if a > b {
+		return b
+	}
+	return a
+}
+
+// GetLedgerGapsInRange obtains ingestion gaps in the history_ledgers table within the given range.
+// Returns the gaps and error.
+func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]LedgerGap, error) {
+	var result []LedgerGap
+	var oldestLedger, latestLedger uint32
+
+	if err := q.ElderLedger(ctx, &oldestLedger); err != nil {
+		return nil, errors.Wrap(err, "Could not query elder ledger")
+	} else if oldestLedger == 0 {
+		return []LedgerGap{{
+			StartSequence: start,
+			EndSequence:   end,
+		}}, nil
+	}
+
+	if err := q.LatestLedger(ctx, &latestLedger); err != nil {
+		return nil, errors.Wrap(err, "Could not query latest ledger")
+	}
+
+	if start < oldestLedger {
+		result = append(result, LedgerGap{
+			StartSequence: start,
+			EndSequence:   min(end, oldestLedger-1),
+		})
+	}
+
+	gaps, err := q.GetLedgerGaps(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, gap := range gaps {
+		if gap.EndSequence < start {
+			continue
+		}
+		if gap.StartSequence > end {
+			break
+		}
+		result = append(result, LedgerGap{
+			StartSequence: max(gap.StartSequence, start),
+			EndSequence:   min(gap.EndSequence, end),
+		})
+	}
+
+	if latestLedger < end {
+		result = append(result, LedgerGap{
+			StartSequence: max(latestLedger+1, start),
+			EndSequence:   end,
+		})
+	}
+
+	return result, nil
 }
 
 func ledgerHeaderToMap(

@@ -309,19 +309,18 @@ func (s *ReingestHistoryRangeStateTestSuite) TearDownTest() {
 func (s *ReingestHistoryRangeStateTestSuite) TestInvalidRange() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("GetTx").Return(nil)
 
-	err := s.system.ReingestRange(0, 0, false)
-	s.Assert().EqualError(err, "invalid range: [0, 0]")
+	err := s.system.ReingestRange([][2]uint32{{0, 0}}, false)
+	s.Assert().EqualError(err, "Invalid range: [0 0] genesis ledger starts at 1")
 
-	err = s.system.ReingestRange(0, 100, false)
-	s.Assert().EqualError(err, "invalid range: [0, 100]")
+	err = s.system.ReingestRange([][2]uint32{{0, 100}}, false)
+	s.Assert().EqualError(err, "Invalid range: [0 100] genesis ledger starts at 1")
 
-	err = s.system.ReingestRange(100, 0, false)
-	s.Assert().EqualError(err, "invalid range: [100, 0]")
+	err = s.system.ReingestRange([][2]uint32{{100, 0}}, false)
+	s.Assert().EqualError(err, "Invalid range: [100 0] from > to")
 
-	err = s.system.ReingestRange(100, 99, false)
-	s.Assert().EqualError(err, "invalid range: [100, 99]")
+	err = s.system.ReingestRange([][2]uint32{{100, 99}}, false)
+	s.Assert().EqualError(err, "Invalid range: [100 99] from > to")
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestBeginReturnsError() {
@@ -332,7 +331,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestBeginReturnsError() {
 
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
 }
 
@@ -342,7 +341,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestGetLastLedgerIngestNonBlockingE
 
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
 }
 
@@ -352,7 +351,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlaps() {
 
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(190), nil).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().Equal(ErrReingestRangeConflict{190}, err)
 }
 
@@ -362,7 +361,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlapsAtEnd() {
 
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(200), nil).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().Equal(ErrReingestRangeConflict{200}, err)
 }
 
@@ -381,7 +380,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestClearHistoryFails() {
 
 	s.historyQ.On("Rollback").Return(nil).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().EqualError(err, "error in DeleteRangeAll: my error")
 }
 
@@ -417,7 +416,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 		).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().EqualError(err, "error processing ledger sequence=100: my error")
 }
 
@@ -454,7 +453,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().EqualError(err, "Error committing db transaction: my error")
 }
 
@@ -495,7 +494,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 	}
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200)).Return(nil).Once()
 
-	err := s.system.ReingestRange(100, 200, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, false)
 	s.Assert().NoError(err)
 }
 
@@ -532,14 +531,14 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 100)).Return(nil).Once()
 	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(meta, nil).Once()
 
-	err := s.system.ReingestRange(100, 100, false)
+	err := s.system.ReingestRange([][2]uint32{{100, 100}}, false)
 	s.Assert().NoError(err)
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestGetLastLedgerIngestError() {
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
-	err := s.system.ReingestRange(100, 200, true)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, true)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
 }
 
@@ -577,6 +576,6 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 
 	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200)).Return(nil).Once()
 
-	err := s.system.ReingestRange(100, 200, true)
+	err := s.system.ReingestRange([][2]uint32{{100, 200}}, true)
 	s.Assert().NoError(err)
 }

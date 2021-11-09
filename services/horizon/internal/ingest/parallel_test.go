@@ -35,43 +35,42 @@ func TestParallelReingestRange(t *testing.T) {
 		rangesCalled sorteableRanges
 		m            sync.Mutex
 	)
+	result := &mockSystem{}
+	result.On("ReingestRange", mock.AnythingOfType("[][2]uint32"), mock.AnythingOfType("bool")).Run(
+		func(args mock.Arguments) {
+			m.Lock()
+			defer m.Unlock()
+			for _, pair := range args.Get(0).([][2]uint32) {
+				rangesCalled = append(rangesCalled, ledgerRange{from: pair[0], to: pair[1]})
+			}
+			// simulate call
+			time.Sleep(time.Millisecond * time.Duration(10+rand.Int31n(50)))
+		}).Return(error(nil))
 	factory := func(c Config) (System, error) {
-		result := &mockSystem{}
-		result.On("ReingestRange", mock.AnythingOfType("uint32"), mock.AnythingOfType("uint32"), mock.AnythingOfType("bool")).Run(
-			func(args mock.Arguments) {
-				r := ledgerRange{
-					from: args.Get(0).(uint32),
-					to:   args.Get(1).(uint32),
-				}
-				m.Lock()
-				defer m.Unlock()
-				rangesCalled = append(rangesCalled, r)
-				// simulate call
-				time.Sleep(time.Millisecond * time.Duration(10+rand.Int31n(50)))
-			}).Return(error(nil))
 		return result, nil
 	}
 	system, err := newParallelSystems(config, 3, factory)
 	assert.NoError(t, err)
-	err = system.ReingestRange(0, 2050, 258)
+	err = system.ReingestRange([][2]uint32{{1, 2050}}, 258)
 	assert.NoError(t, err)
 
 	sort.Sort(rangesCalled)
 	expected := sorteableRanges{
-		{from: 0, to: 255}, {from: 256, to: 511}, {from: 512, to: 767}, {from: 768, to: 1023}, {from: 1024, to: 1279},
-		{from: 1280, to: 1535}, {from: 1536, to: 1791}, {from: 1792, to: 2047}, {from: 2048, to: 2050},
+		{from: 1, to: 256}, {from: 257, to: 512}, {from: 513, to: 768}, {from: 769, to: 1024}, {from: 1025, to: 1280},
+		{from: 1281, to: 1536}, {from: 1537, to: 1792}, {from: 1793, to: 2048}, {from: 2049, to: 2050},
 	}
 	assert.Equal(t, expected, rangesCalled)
 
 	rangesCalled = nil
 	system, err = newParallelSystems(config, 1, factory)
 	assert.NoError(t, err)
-	err = system.ReingestRange(0, 1024, 64)
+	err = system.ReingestRange([][2]uint32{{1, 1024}}, 64)
+	result.AssertExpectations(t)
 	expected = sorteableRanges{
-		{from: 0, to: 63}, {from: 64, to: 127}, {from: 128, to: 191}, {from: 192, to: 255}, {from: 256, to: 319},
-		{from: 320, to: 383}, {from: 384, to: 447}, {from: 448, to: 511}, {from: 512, to: 575}, {from: 576, to: 639},
-		{from: 640, to: 703}, {from: 704, to: 767}, {from: 768, to: 831}, {from: 832, to: 895}, {from: 896, to: 959},
-		{from: 960, to: 1023},
+		{from: 1, to: 64}, {from: 65, to: 128}, {from: 129, to: 192}, {from: 193, to: 256}, {from: 257, to: 320},
+		{from: 321, to: 384}, {from: 385, to: 448}, {from: 449, to: 512}, {from: 513, to: 576}, {from: 577, to: 640},
+		{from: 641, to: 704}, {from: 705, to: 768}, {from: 769, to: 832}, {from: 833, to: 896}, {from: 897, to: 960},
+		{from: 961, to: 1024},
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, expected, rangesCalled)
@@ -79,45 +78,47 @@ func TestParallelReingestRange(t *testing.T) {
 
 func TestParallelReingestRangeError(t *testing.T) {
 	config := Config{}
+	result := &mockSystem{}
+	// Fail on the second range
+	result.On("ReingestRange", [][2]uint32{{1537, 1792}}, mock.AnythingOfType("bool")).Return(errors.New("failed because of foo"))
+	result.On("ReingestRange", mock.AnythingOfType("[][2]uint32"), mock.AnythingOfType("bool")).Return(error(nil))
 	factory := func(c Config) (System, error) {
-		result := &mockSystem{}
-		// Fail on the second range
-		result.On("ReingestRange", uint32(1536), uint32(1791), mock.AnythingOfType("bool")).Return(errors.New("failed because of foo"))
-		result.On("ReingestRange", mock.AnythingOfType("uint32"), mock.AnythingOfType("uint32"), mock.AnythingOfType("bool")).Return(error(nil))
 		return result, nil
 	}
 	system, err := newParallelSystems(config, 3, factory)
 	assert.NoError(t, err)
-	err = system.ReingestRange(0, 2050, 258)
+	err = system.ReingestRange([][2]uint32{{1, 2050}}, 258)
+	result.AssertExpectations(t)
 	assert.Error(t, err)
-	assert.Equal(t, "job failed, recommended restart range: [1536, 2050]: error when processing [1536, 1791] range: failed because of foo", err.Error())
-
+	assert.Equal(t, "job failed, recommended restart range: [1537, 2050]: error when processing [1537, 1792] range: failed because of foo", err.Error())
 }
 
 func TestParallelReingestRangeErrorInEarlierJob(t *testing.T) {
 	config := Config{}
 	var wg sync.WaitGroup
 	wg.Add(1)
+	result := &mockSystem{}
+	// Fail on an lower subrange after the first error
+	result.On("ReingestRange", [][2]uint32{{1025, 1280}}, mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
+		// Wait for a more recent range to error
+		wg.Wait()
+		// This sleep should help making sure the result of this range is processed later than the one below
+		// (there are no guarantees without instrumenting ReingestRange(), but that's too complicated)
+		time.Sleep(50 * time.Millisecond)
+	}).Return(errors.New("failed because of foo"))
+	result.On("ReingestRange", [][2]uint32{{1537, 1792}}, mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
+		wg.Done()
+	}).Return(errors.New("failed because of bar"))
+	result.On("ReingestRange", mock.AnythingOfType("[][2]uint32"), mock.AnythingOfType("bool")).Return(error(nil))
+
 	factory := func(c Config) (System, error) {
-		result := &mockSystem{}
-		// Fail on an lower subrange after the first error
-		result.On("ReingestRange", uint32(1024), uint32(1279), mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
-			// Wait for a more recent range to error
-			wg.Wait()
-			// This sleep should help making sure the result of this range is processed later than the one below
-			// (there are no guarantees without instrumenting ReingestRange(), but that's too complicated)
-			time.Sleep(50 * time.Millisecond)
-		}).Return(errors.New("failed because of foo"))
-		result.On("ReingestRange", uint32(1536), uint32(1791), mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
-			wg.Done()
-		}).Return(errors.New("failed because of bar"))
-		result.On("ReingestRange", mock.AnythingOfType("uint32"), mock.AnythingOfType("uint32"), mock.AnythingOfType("bool")).Return(error(nil))
 		return result, nil
 	}
 	system, err := newParallelSystems(config, 3, factory)
 	assert.NoError(t, err)
-	err = system.ReingestRange(0, 2050, 258)
+	err = system.ReingestRange([][2]uint32{{1, 2050}}, 258)
+	result.AssertExpectations(t)
 	assert.Error(t, err)
-	assert.Equal(t, "job failed, recommended restart range: [1024, 2050]: error when processing [1024, 1279] range: failed because of foo", err.Error())
+	assert.Equal(t, "job failed, recommended restart range: [1025, 2050]: error when processing [1025, 1280] range: failed because of foo", err.Error())
 
 }
