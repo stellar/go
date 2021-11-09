@@ -107,7 +107,7 @@ func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint
 func totalRangeSize(ledgerRanges [][2]uint32) uint32 {
 	var sum uint32
 	for _, pair := range ledgerRanges {
-		sum += pair[1] - pair[0]
+		sum += pair[1] - pair[0] + 1
 	}
 	return sum
 }
