@@ -48,6 +48,10 @@ func decode(content string, dest interface{}) error {
 		return errors.New("Unknown fields: " + fmt.Sprintf("%+v", undecoded))
 	}
 
+	return Validate(dest)
+}
+
+func Validate(dest interface{}) error {
 	valid, err := govalidator.ValidateStruct(dest)
 
 	if valid {
@@ -66,7 +70,6 @@ func init() {
 	govalidator.CustomTypeTagMap.Set("stellar_accountid", govalidator.CustomTypeValidator(isStellarAccountID))
 	govalidator.CustomTypeTagMap.Set("stellar_seed", govalidator.CustomTypeValidator(isStellarSeed))
 	govalidator.CustomTypeTagMap.Set("stellar_amount", govalidator.CustomTypeValidator(isStellarAmount))
-
 }
 
 func isStellarAmount(i interface{}, context interface{}) bool {

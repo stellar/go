@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/services/friendbot/internal"
 	"github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/env"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
@@ -20,10 +21,10 @@ import (
 // Config represents the configuration of a friendbot server
 type Config struct {
 	Port                   int         `toml:"port" valid:"required"`
-	FriendbotSecret        string      `toml:"friendbot_secret" valid:"required"`
+	FriendbotSecret        string      `toml:"friendbot_secret" valid:"required,stellar_seed"`
 	NetworkPassphrase      string      `toml:"network_passphrase" valid:"required"`
 	HorizonURL             string      `toml:"horizon_url" valid:"required"`
-	StartingBalance        string      `toml:"starting_balance" valid:"required"`
+	StartingBalance        string      `toml:"starting_balance" valid:"required,stellar_amount"`
 	TLS                    *config.TLS `valid:"optional"`
 	NumMinions             int         `toml:"num_minions" valid:"optional"`
 	BaseFee                int64       `toml:"base_fee" valid:"optional"`
@@ -32,7 +33,6 @@ type Config struct {
 }
 
 func main() {
-
 	rootCmd := &cobra.Command{
 		Use:   "friendbot",
 		Short: "friendbot for the Stellar Test Network",
@@ -40,7 +40,7 @@ func main() {
 		Run:   run,
 	}
 
-	rootCmd.PersistentFlags().String("conf", "./friendbot.cfg", "config file path")
+	rootCmd.PersistentFlags().String("conf", "", "config file path")
 	rootCmd.Execute()
 }
 
@@ -51,7 +51,23 @@ func run(cmd *cobra.Command, args []string) {
 	)
 	log.SetLevel(log.InfoLevel)
 
-	err := config.Read(cfgPath, &cfg)
+	// Set config values based on env vars with defaults where possible
+	cfg.Port = env.Int("PORT", 8000)
+	cfg.FriendbotSecret = env.String("FRIENDBOT_SECRET", "")
+	cfg.NetworkPassphrase = env.String("NETWORK_PASSPHRASE", "")
+	cfg.HorizonURL = env.String("HORIZON_URL", "")
+	cfg.StartingBalance = env.String("STARTING_BALANCE", "10000")
+	cfg.NumMinions = env.Int("NUM_MINIONS", 0)
+	cfg.BaseFee = int64(env.Int("BASE_FEE", 100000))
+	cfg.MinionBatchSize = env.Int("MINION_BATCH_SIZE", 0)
+	cfg.SubmitTxRetriesAllowed = env.Int("SUBMIT_TX_RETRIES_ALLOWED", 0)
+
+	var err error
+	if cfgPath != "" {
+		err = config.Read(cfgPath, &cfg)
+	} else {
+		err = config.Validate(&cfg)
+	}
 	if err != nil {
 		switch cause := errors.Cause(err).(type) {
 		case *config.InvalidConfigError:
