@@ -42,10 +42,6 @@ func (m *MuxedAccount) ID() uint64 {
 // AccountID returns the muxed account G-address according with the SEP-23
 // definition for multiplexed accounts.
 func (m *MuxedAccount) AccountID() (string, error) {
-	if m.ed25519 == [32]byte{} {
-		return "", errors.New("muxed account has no ed25519 key")
-	}
-
 	return Encode(VersionByteAccountID, m.ed25519[:])
 }
 
