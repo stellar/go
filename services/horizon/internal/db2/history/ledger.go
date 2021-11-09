@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -132,11 +133,11 @@ func (q *Q) InsertLedger(ctx context.Context,
 
 // GetLedgerGaps obtains ingestion gaps in the history_ledgers table.
 // Returns the gaps and error.
-func (q *Q) GetLedgerGaps(ctx context.Context) ([]LedgerGap, error) {
-	var gaps []LedgerGap
+func (q *Q) GetLedgerGaps(ctx context.Context) ([]LedgerRange, error) {
+	var gaps []LedgerRange
 	query := `
-    SELECT sequence + 1 AS gap_start,
-		next_number - 1 AS gap_end
+    SELECT sequence + 1 AS start,
+		next_number - 1 AS end
 	FROM (
 		SELECT sequence,
 		LEAD(sequence) OVER (ORDER BY sequence) AS next_number
@@ -146,6 +147,9 @@ func (q *Q) GetLedgerGaps(ctx context.Context) ([]LedgerGap, error) {
 	if err := q.SelectRaw(ctx, &gaps, query); err != nil {
 		return nil, err
 	}
+	sort.Slice(gaps, func(i, j int) bool {
+		return gaps[i].StartSequence < gaps[j].StartSequence
+	})
 	return gaps, nil
 }
 
@@ -165,14 +169,14 @@ func min(a, b uint32) uint32 {
 
 // GetLedgerGapsInRange obtains ingestion gaps in the history_ledgers table within the given range.
 // Returns the gaps and error.
-func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]LedgerGap, error) {
-	var result []LedgerGap
+func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]LedgerRange, error) {
+	var result []LedgerRange
 	var oldestLedger, latestLedger uint32
 
 	if err := q.ElderLedger(ctx, &oldestLedger); err != nil {
 		return nil, errors.Wrap(err, "Could not query elder ledger")
 	} else if oldestLedger == 0 {
-		return []LedgerGap{{
+		return []LedgerRange{{
 			StartSequence: start,
 			EndSequence:   end,
 		}}, nil
@@ -183,10 +187,13 @@ func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]Ledg
 	}
 
 	if start < oldestLedger {
-		result = append(result, LedgerGap{
+		result = append(result, LedgerRange{
 			StartSequence: start,
 			EndSequence:   min(end, oldestLedger-1),
 		})
+	}
+	if end <= oldestLedger {
+		return result, nil
 	}
 
 	gaps, err := q.GetLedgerGaps(ctx)
@@ -201,14 +208,14 @@ func (q *Q) GetLedgerGapsInRange(ctx context.Context, start, end uint32) ([]Ledg
 		if gap.StartSequence > end {
 			break
 		}
-		result = append(result, LedgerGap{
+		result = append(result, LedgerRange{
 			StartSequence: max(gap.StartSequence, start),
 			EndSequence:   min(gap.EndSequence, end),
 		})
 	}
 
 	if latestLedger < end {
-		result = append(result, LedgerGap{
+		result = append(result, LedgerRange{
 			StartSequence: max(latestLedger+1, start),
 			EndSequence:   end,
 		})

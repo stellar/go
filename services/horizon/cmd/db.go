@@ -302,7 +302,12 @@ var dbReingestRangeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return runDBReingestRange([][2]uint32{{argsUInt32[0], argsUInt32[1]}}, reingestForce, parallelWorkers, *config)
+		return runDBReingestRange(
+			[]history.LedgerRange{{StartSequence: argsUInt32[0], EndSequence: argsUInt32[1]}},
+			reingestForce,
+			parallelWorkers,
+			*config,
+		)
 	},
 }
 
@@ -344,7 +349,7 @@ var dbFillGapsCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		var gaps []history.LedgerGap
+		var gaps []history.LedgerRange
 		if withRange {
 			gaps, err = runDBDetectGapsInRange(*config, uint32(start), uint32(end))
 			if err != nil {
@@ -359,15 +364,11 @@ var dbFillGapsCmd = &cobra.Command{
 			hlog.Infof("found gaps %v", gaps)
 		}
 
-		var ledgerRanges [][2]uint32
-		for _, gap := range gaps {
-			ledgerRanges = append(ledgerRanges, [2]uint32{gap.StartSequence, gap.EndSequence})
-		}
-		return runDBReingestRange(ledgerRanges, reingestForce, parallelWorkers, *config)
+		return runDBReingestRange(gaps, reingestForce, parallelWorkers, *config)
 	},
 }
 
-func runDBReingestRange(ledgerRanges [][2]uint32, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
+func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
 	if reingestForce && parallelWorkers > 1 {
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
@@ -466,7 +467,7 @@ var dbDetectGapsCmd = &cobra.Command{
 	},
 }
 
-func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
+func runDBDetectGaps(config horizon.Config) ([]history.LedgerRange, error) {
 	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
@@ -475,7 +476,7 @@ func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
 	return q.GetLedgerGaps(context.Background())
 }
 
-func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history.LedgerGap, error) {
+func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history.LedgerRange, error) {
 	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err

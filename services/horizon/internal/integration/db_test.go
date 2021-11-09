@@ -205,10 +205,10 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.Equal(int64(3), oldestLedger)
 	tt.Equal(int64(7), latestLedger)
-	var gaps []history.LedgerGap
+	var gaps []history.LedgerRange
 	gaps, err = historyQ.GetLedgerGaps(context.Background())
 	tt.NoError(err)
-	tt.Equal([]history.LedgerGap{{StartSequence: 5, EndSequence: 5}}, gaps)
+	tt.Equal([]history.LedgerRange{{StartSequence: 5, EndSequence: 5}}, gaps)
 
 	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps"))
 	tt.NoError(horizoncmd.RootCmd.Execute())

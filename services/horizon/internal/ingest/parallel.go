@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 )
@@ -13,18 +14,13 @@ const (
 	minBatchSize                    = historyCheckpointLedgerInterval
 )
 
-type ledgerRange struct {
-	from uint32
-	to   uint32
-}
-
 type rangeError struct {
 	err         error
-	ledgerRange ledgerRange
+	ledgerRange history.LedgerRange
 }
 
 func (e rangeError) Error() string {
-	return fmt.Sprintf("error when processing [%d, %d] range: %s", e.ledgerRange.from, e.ledgerRange.to, e.err)
+	return fmt.Sprintf("error when processing [%d, %d] range: %s", e.ledgerRange.StartSequence, e.ledgerRange.EndSequence, e.err)
 }
 
 type ParallelSystems struct {
@@ -51,38 +47,37 @@ func newParallelSystems(config Config, workerCount uint, systemFactory func(Conf
 	}, nil
 }
 
-func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, reingestJobQueue <-chan ledgerRange) rangeError {
+func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, reingestJobQueue <-chan history.LedgerRange) rangeError {
 
 	for {
 		select {
 		case <-stop:
 			return rangeError{}
 		case reingestRange := <-reingestJobQueue:
-			err := s.ReingestRange([][2]uint32{{reingestRange.from, reingestRange.to}}, false)
+			err := s.ReingestRange([]history.LedgerRange{reingestRange}, false)
 			if err != nil {
 				return rangeError{
 					err:         err,
 					ledgerRange: reingestRange,
 				}
 			}
-			log.WithFields(logpkg.F{"from": reingestRange.from, "to": reingestRange.to}).Info("successfully reingested range")
+			log.WithFields(logpkg.F{"from": reingestRange.StartSequence, "to": reingestRange.EndSequence}).Info("successfully reingested range")
 		}
 	}
 }
 
-func enqueueReingestTasks(ledgerRanges [][2]uint32, batchSize uint32, stop <-chan struct{}, reingestJobQueue chan<- ledgerRange) {
-	for _, pair := range ledgerRanges {
-		fromLedger, toLedger := pair[0], pair[1]
-		for subRangeFrom := fromLedger; subRangeFrom < toLedger; {
+func enqueueReingestTasks(ledgerRanges []history.LedgerRange, batchSize uint32, stop <-chan struct{}, reingestJobQueue chan<- history.LedgerRange) {
+	for _, cur := range ledgerRanges {
+		for subRangeFrom := cur.StartSequence; subRangeFrom < cur.EndSequence; {
 			// job queuing
 			subRangeTo := subRangeFrom + (batchSize - 1) // we subtract one because both from and to are part of the batch
-			if subRangeTo > toLedger {
-				subRangeTo = toLedger
+			if subRangeTo > cur.EndSequence {
+				subRangeTo = cur.EndSequence
 			}
 			select {
 			case <-stop:
 				return
-			case reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
+			case reingestJobQueue <- history.LedgerRange{StartSequence: subRangeFrom, EndSequence: subRangeTo}:
 			}
 			subRangeFrom = subRangeTo + 1
 		}
@@ -104,18 +99,18 @@ func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint
 	return (batchSize / historyCheckpointLedgerInterval) * historyCheckpointLedgerInterval
 }
 
-func totalRangeSize(ledgerRanges [][2]uint32) uint32 {
+func totalRangeSize(ledgerRanges []history.LedgerRange) uint32 {
 	var sum uint32
-	for _, pair := range ledgerRanges {
-		sum += pair[1] - pair[0] + 1
+	for _, ledgerRange := range ledgerRanges {
+		sum += ledgerRange.EndSequence - ledgerRange.StartSequence + 1
 	}
 	return sum
 }
 
-func (ps *ParallelSystems) ReingestRange(ledgerRanges [][2]uint32, batchSizeSuggestion uint32) error {
+func (ps *ParallelSystems) ReingestRange(ledgerRanges []history.LedgerRange, batchSizeSuggestion uint32) error {
 	var (
 		batchSize        = calculateParallelLedgerBatchSize(totalRangeSize(ledgerRanges), batchSizeSuggestion, ps.workerCount)
-		reingestJobQueue = make(chan ledgerRange)
+		reingestJobQueue = make(chan history.LedgerRange)
 		wg               sync.WaitGroup
 
 		// stopOnce is used to close the stop channel once: closing a closed channel panics and it can happen in case
@@ -149,7 +144,7 @@ func (ps *ParallelSystems) ReingestRange(ledgerRanges [][2]uint32, batchSizeSugg
 			if rangeErr.err != nil {
 				log.WithError(rangeErr).Error("error in reingest worker")
 				lowestRangeErrMutex.Lock()
-				if lowestRangeErr == nil || lowestRangeErr.ledgerRange.from > rangeErr.ledgerRange.from {
+				if lowestRangeErr == nil || lowestRangeErr.ledgerRange.StartSequence > rangeErr.ledgerRange.StartSequence {
 					lowestRangeErr = &rangeErr
 				}
 				lowestRangeErrMutex.Unlock()
@@ -170,8 +165,8 @@ func (ps *ParallelSystems) ReingestRange(ledgerRanges [][2]uint32, batchSizeSugg
 	close(reingestJobQueue)
 
 	if lowestRangeErr != nil {
-		lastLedger := ledgerRanges[len(ledgerRanges)-1][1]
-		return errors.Wrapf(lowestRangeErr, "job failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.from, lastLedger)
+		lastLedger := ledgerRanges[len(ledgerRanges)-1].EndSequence
+		return errors.Wrapf(lowestRangeErr, "job failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.StartSequence, lastLedger)
 	}
 	return nil
 }

@@ -158,7 +158,7 @@ type System interface {
 	Metrics() Metrics
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
-	ReingestRange(ledgerRanges [][2]uint32, force bool) error
+	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
 	BuildGenesisState() error
 	Shutdown()
 }
@@ -486,21 +486,20 @@ func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 	})
 }
 
-func validateRanges(ledgerRanges [][2]uint32) error {
-	for i, pair := range ledgerRanges {
-		from, to := pair[0], pair[1]
-		if from > to {
-			return errors.Errorf("Invalid range: %v from > to", pair)
+func validateRanges(ledgerRanges []history.LedgerRange) error {
+	for i, cur := range ledgerRanges {
+		if cur.StartSequence > cur.EndSequence {
+			return errors.Errorf("Invalid range: %v from > to", cur)
 		}
-		if from == 0 {
-			return errors.Errorf("Invalid range: %v genesis ledger starts at 1", pair)
+		if cur.StartSequence == 0 {
+			return errors.Errorf("Invalid range: %v genesis ledger starts at 1", cur)
 		}
 		if i == 0 {
 			continue
 		}
 		prev := ledgerRanges[i-1]
-		if prev[1] >= from {
-			return errors.Errorf("ranges are not sorted prevRange %v curRange %v", prev, pair)
+		if prev.EndSequence >= cur.StartSequence {
+			return errors.Errorf("ranges are not sorted prevRange %v curRange %v", prev, cur)
 		}
 	}
 	return nil
@@ -508,22 +507,21 @@ func validateRanges(ledgerRanges [][2]uint32) error {
 
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
-func (s *system) ReingestRange(ledgerRanges [][2]uint32, force bool) error {
+func (s *system) ReingestRange(ledgerRanges []history.LedgerRange, force bool) error {
 	if err := validateRanges(ledgerRanges); err != nil {
 		return err
 	}
-	for _, pair := range ledgerRanges {
-		fromLedger, toLedger := pair[0], pair[1]
+	for _, cur := range ledgerRanges {
 		run := func() error {
 			return s.runStateMachine(reingestHistoryRangeState{
-				fromLedger: fromLedger,
-				toLedger:   toLedger,
+				fromLedger: cur.StartSequence,
+				toLedger:   cur.EndSequence,
 				force:      force,
 			})
 		}
 		err := run()
 		for retry := 0; err != nil && retry < s.maxReingestRetries; retry++ {
-			log.Warnf("reingest range [%d, %d] failed (%s), retrying", fromLedger, toLedger, err.Error())
+			log.Warnf("reingest range [%d, %d] failed (%s), retrying", cur.StartSequence, cur.EndSequence, err.Error())
 			time.Sleep(time.Second * time.Duration(s.reingestRetryBackoffSeconds))
 			err = run()
 		}

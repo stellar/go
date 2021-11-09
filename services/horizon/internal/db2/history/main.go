@@ -576,9 +576,9 @@ type LedgerCache struct {
 	queued map[int32]struct{}
 }
 
-type LedgerGap struct {
-	StartSequence uint32 `db:"gap_start"`
-	EndSequence   uint32 `db:"gap_end"`
+type LedgerRange struct {
+	StartSequence uint32 `db:"start"`
+	EndSequence   uint32 `db:"end"`
 }
 
 // LedgersQ is a helper struct to aid in configuring queries that loads
