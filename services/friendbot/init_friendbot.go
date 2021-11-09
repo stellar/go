@@ -27,9 +27,6 @@ func initFriendbot(
 		return nil, errors.New("invalid input param(s)")
 	}
 
-	// Guarantee that friendbotSecret is a seed, if not blank.
-	strkey.MustDecode(strkey.VersionByteSeed, friendbotSecret)
-
 	hclient := &horizonclient.Client{
 		HorizonURL: horizonURL,
 		HTTP:       http.DefaultClient,
