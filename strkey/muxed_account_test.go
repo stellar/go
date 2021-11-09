@@ -26,8 +26,8 @@ func TestMuxedAccount_SetID(t *testing.T) {
 func TestMuxedAccount_AccountID(t *testing.T) {
 	muxed := MuxedAccount{}
 	publicKey, err := muxed.AccountID()
-	assert.EqualError(t, err, "muxed account has no ed25519 key")
-	assert.Empty(t, publicKey)
+	assert.NoError(t, err)
+	assert.Equal(t, "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF", publicKey)
 
 	muxed = MuxedAccount{ed25519: [32]byte{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154}}
 	publicKey, err = muxed.AccountID()
