@@ -31,14 +31,14 @@ type TransactionBatchInsertBuilder interface {
 
 // transactionBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type transactionBatchInsertBuilder struct {
-	encoder *xdr.Encoder
-	builder db.BatchInsertBuilder
+	encodingBuffer *xdr.EncodingBuffer
+	builder        db.BatchInsertBuilder
 }
 
 // NewTransactionBatchInsertBuilder constructs a new TransactionBatchInsertBuilder instance
 func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder {
 	return &transactionBatchInsertBuilder{
-		encoder: xdr.NewEncoder(),
+		encodingBuffer: xdr.NewEncodingBuffer(),
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("history_transactions"),
 			MaxBatchSize: maxBatchSize,
@@ -232,19 +232,19 @@ type TransactionWithoutLedger struct {
 }
 
 func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
-	envelopeBase64, err := i.encoder.MarshalBase64(transaction.Envelope)
+	envelopeBase64, err := i.encodingBuffer.MarshalBase64(transaction.Envelope)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	resultBase64, err := i.encoder.MarshalBase64(transaction.Result.Result)
+	resultBase64, err := i.encodingBuffer.MarshalBase64(transaction.Result.Result)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	metaBase64, err := i.encoder.MarshalBase64(transaction.UnsafeMeta)
+	metaBase64, err := i.encodingBuffer.MarshalBase64(transaction.UnsafeMeta)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	feeMetaBase64, err := i.encoder.MarshalBase64(transaction.FeeChanges)
+	feeMetaBase64, err := i.encodingBuffer.MarshalBase64(transaction.FeeChanges)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}

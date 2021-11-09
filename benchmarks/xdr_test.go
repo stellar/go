@@ -76,8 +76,8 @@ func BenchmarkXDRMarshal(b *testing.B) {
 	}
 }
 
-func BenchmarkXDRMarshalWithEncoder(b *testing.B) {
-	e := xdr.NewEncoder()
+func BenchmarkXDRMarshalWithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.UnsafeMarshalBinary(xdrInput)
 	}
@@ -98,15 +98,15 @@ func BenchmarkXDRMarshalHex(b *testing.B) {
 	}
 }
 
-func BenchmarkXDRMarshalHexWithEncoder(b *testing.B) {
-	e := xdr.NewEncoder()
+func BenchmarkXDRMarshalHexWithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.MarshalHex(xdrInput)
 	}
 }
 
-func BenchmarkXDRUnsafeMarshalHexWithEncoder(b *testing.B) {
-	e := xdr.NewEncoder()
+func BenchmarkXDRUnsafeMarshalHexWithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.UnsafeMarshalHex(xdrInput)
 	}
@@ -118,15 +118,15 @@ func BenchmarkXDRMarshalBase64(b *testing.B) {
 	}
 }
 
-func BenchmarkXDRMarshalBase64WithEncoder(b *testing.B) {
-	e := xdr.NewEncoder()
+func BenchmarkXDRMarshalBase64WithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.MarshalBase64(xdrInput)
 	}
 }
 
-func BenchmarkXDRUnsafeMarshalBase64WithEncoder(b *testing.B) {
-	e := xdr.NewEncoder()
+func BenchmarkXDRUnsafeMarshalBase64WithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.UnsafeMarshalBase64(xdrInput)
 	}
