@@ -78,14 +78,14 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 		}
 
 		ledgerKey := entry.LedgerKey()
-		key, err := xdr.MarshalBase64(ledgerKey)
+		key, err := ledgerKey.MarshalBinary()
 		if err != nil {
 			return keys, errors.Wrap(err, "Error marshaling ledgerKey")
 		}
 
 		keys = append(keys, ledgerKey)
 		entry.Normalize()
-		v.currentEntries[key] = entry
+		v.currentEntries[string(key)] = entry
 
 		count--
 		v.readEntries++
@@ -106,20 +106,20 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 		return errors.Wrap(err, "Error marshaling actualEntry")
 	}
 
-	key, err := xdr.MarshalBase64(actualEntry.LedgerKey())
+	key, err := actualEntry.LedgerKey().MarshalBinary()
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling ledgerKey")
 	}
 
-	expectedEntry, exist := v.currentEntries[key]
+	expectedEntry, exist := v.currentEntries[string(key)]
 	if !exist {
 		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
-			key,
+			base64.StdEncoding.EncodeToString(key),
 		))
 	}
-	delete(v.currentEntries, key)
+	delete(v.currentEntries, string(key))
 
 	preTransformExpectedEntry := expectedEntry
 	preTransformExpectedEntryMarshaled, err := preTransformExpectedEntry.MarshalBinary()
