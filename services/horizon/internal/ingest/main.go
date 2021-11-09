@@ -500,7 +500,7 @@ func validateRanges(ledgerRanges [][2]uint32) error {
 		}
 		prev := ledgerRanges[i-1]
 		if prev[1] >= from {
-			return errors.Errorf("ranges are not sorted prevRange %v  curRange %v", prev, pair)
+			return errors.Errorf("ranges are not sorted prevRange %v curRange %v", prev, pair)
 		}
 	}
 	return nil
