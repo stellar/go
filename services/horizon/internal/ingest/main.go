@@ -128,7 +128,7 @@ type Metrics struct {
 
 	// StateVerifyLedgerEntriesCount exposes total number of ledger entries
 	// checked by the state verifier by type.
-	StateVerifyLedgerEntriesCount *prometheus.SummaryVec
+	StateVerifyLedgerEntriesCount *prometheus.GaugeVec
 
 	// LedgerStatsCounter exposes ledger stats counters (like number of ops/changes).
 	LedgerStatsCounter *prometheus.CounterVec
@@ -323,12 +323,10 @@ func (s *system) initMetrics() {
 		},
 	)
 
-	s.metrics.StateVerifyLedgerEntriesCount = prometheus.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_ledger_entries_count",
+	s.metrics.StateVerifyLedgerEntriesCount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_ledger_entries",
 			Help: "number of ledger entries downloaded from buckets in a single state verifier run",
-			// Quantile ranks are not relevant here so pass empty map.
-			Objectives: map[float64]float64{},
 		},
 		[]string{"type"},
 	)

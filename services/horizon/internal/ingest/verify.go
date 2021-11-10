@@ -136,7 +136,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				s.Metrics().StateVerifyDuration.Observe(float64(duration))
 				for typ, tot := range totalByType {
 					s.Metrics().StateVerifyLedgerEntriesCount.
-						With(prometheus.Labels{"type": typ}).Observe(float64(tot))
+						With(prometheus.Labels{"type": typ}).Set(float64(tot))
 				}
 			}
 		}
