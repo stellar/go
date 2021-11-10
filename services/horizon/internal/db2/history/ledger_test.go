@@ -234,6 +234,10 @@ func TestGetLedgerGaps(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(gaps, 0)
 
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 1, 100)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 1, EndSequence: 100}}, gaps)
+
 	// Lets insert a few gaps and make sure they are detected incrementally
 	insertLedgerWithSequence(tt, q, 4)
 	insertLedgerWithSequence(tt, q, 5)
@@ -246,7 +250,43 @@ func TestGetLedgerGaps(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(gaps, 0)
 
-	var expectedGaps []LedgerGap
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 1, 2)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 1, EndSequence: 2}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 1, 3)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 1, EndSequence: 3}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 1, 6)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 1, EndSequence: 3}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 3, 5)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 3, EndSequence: 3}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 4, 6)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(gaps, 0)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 4, 8)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 8, EndSequence: 8}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 4, 10)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 8, EndSequence: 10}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 8, 10)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 8, EndSequence: 10}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 9, 11)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 9, EndSequence: 11}}, gaps)
+
+	var expectedGaps []LedgerRange
 
 	insertLedgerWithSequence(tt, q, 99)
 	insertLedgerWithSequence(tt, q, 100)
@@ -255,22 +295,45 @@ func TestGetLedgerGaps(t *testing.T) {
 
 	gaps, err = q.GetLedgerGaps(context.Background())
 	tt.Assert.NoError(err)
-	expectedGaps = append(expectedGaps, LedgerGap{8, 98})
+	expectedGaps = append(expectedGaps, LedgerRange{8, 98})
 	tt.Assert.Equal(expectedGaps, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 10, 11)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 10, EndSequence: 11}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 4, 11)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 8, EndSequence: 11}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 1, 11)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 1, EndSequence: 3}, {StartSequence: 8, EndSequence: 11}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 10, 105)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 10, EndSequence: 98}, {StartSequence: 103, EndSequence: 105}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 100, 105)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 103, EndSequence: 105}}, gaps)
+
+	gaps, err = q.GetLedgerGapsInRange(context.Background(), 105, 110)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal([]LedgerRange{{StartSequence: 105, EndSequence: 110}}, gaps)
 
 	// Yet another gap, this time to a single-ledger cluster
 	insertLedgerWithSequence(tt, q, 1000)
 
 	gaps, err = q.GetLedgerGaps(context.Background())
 	tt.Assert.NoError(err)
-	expectedGaps = append(expectedGaps, LedgerGap{103, 999})
+	expectedGaps = append(expectedGaps, LedgerRange{103, 999})
 	tt.Assert.Equal(expectedGaps, gaps)
 
 	// Yet another gap, this time the gap only contains a ledger
 	insertLedgerWithSequence(tt, q, 1002)
 	gaps, err = q.GetLedgerGaps(context.Background())
 	tt.Assert.NoError(err)
-	expectedGaps = append(expectedGaps, LedgerGap{1001, 1001})
+	expectedGaps = append(expectedGaps, LedgerRange{1001, 1001})
 	tt.Assert.Equal(expectedGaps, gaps)
-
 }
