@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"testing"
 
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/xdr"
 	goxdr "github.com/xdrpp/goxdr/xdr"
@@ -66,7 +67,7 @@ func BenchmarkGXDRUnmarshal(b *testing.B) {
 
 func BenchmarkXDRMarshalWithReflection(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, _ = xdr.Marshal(&bytes.Buffer{}, xdrInput)
+		_, _ = xdr3.Marshal(&bytes.Buffer{}, xdrInput)
 	}
 }
 
