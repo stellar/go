@@ -83,18 +83,28 @@ func SafeUnmarshal(data []byte, dest interface{}) error {
 	return nil
 }
 
+func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
+	var raw bytes.Buffer
+
+	_, err := Marshal(&raw, v)
+
+	if err != nil {
+		return "", err
+	}
+
+	return encoder(raw.Bytes()), nil
+}
+
 func MarshalBase64(v interface{}) (string, error) {
-	e := NewEncodingBuffer()
-	return e.MarshalBase64(v)
+	return marshalString(base64.StdEncoding.EncodeToString, v)
 }
 
 func MarshalHex(v interface{}) (string, error) {
-	e := NewEncodingBuffer()
-	return e.MarshalHex(v)
+	return marshalString(hex.EncodeToString, v)
 }
 
-// EncodingBuffer reuses internal buffers between invocations
-// to minimize allocations.
+// EncodingBuffer reuses internal buffers between invocations to minimize allocations.
+// It intentionally only allows EncodeTo method arguments, to guarantee high performance encoding.
 type EncodingBuffer struct {
 	encoder          *xdr.Encoder
 	xdrEncoderBuf    bytes.Buffer
@@ -111,7 +121,7 @@ func growSlice(old []byte, newSize int) []byte {
 	return make([]byte, newSize, 2*newSize)
 }
 
-type xdrEncodable interface {
+type XDREncodable interface {
 	EncodeTo(e *xdr.Encoder) error
 }
 
@@ -125,24 +135,17 @@ func NewEncodingBuffer() *EncodingBuffer {
 // a slice pointing to the internal buffer. Handled with care this improveds
 // performance since copying is not required.
 // Subsequent calls to marshalling methods will overwrite the returned buffer.
-func (e *EncodingBuffer) UnsafeMarshalBinary(v interface{}) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalBinary(encodable XDREncodable) ([]byte, error) {
 	e.xdrEncoderBuf.Reset()
-	if encodable, ok := v.(xdrEncodable); ok {
-		// higher performance
-		if err := encodable.EncodeTo(e.encoder); err != nil {
-			return nil, err
-		}
-	} else {
-		if _, err := e.encoder.Encode(v); err != nil {
-			return nil, err
-		}
+	if err := encodable.EncodeTo(e.encoder); err != nil {
+		return nil, err
 	}
 	return e.xdrEncoderBuf.Bytes(), nil
 }
 
 // UnsafeMarshalBase64 is the base64 version of UnsafeMarshalBinary
-func (e *EncodingBuffer) UnsafeMarshalBase64(v interface{}) ([]byte, error) {
-	xdrEncoded, err := e.UnsafeMarshalBinary(v)
+func (e *EncodingBuffer) UnsafeMarshalBase64(encodable XDREncodable) ([]byte, error) {
+	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +156,8 @@ func (e *EncodingBuffer) UnsafeMarshalBase64(v interface{}) ([]byte, error) {
 }
 
 // UnsafeMarshalHex is the hex version of UnsafeMarshalBinary
-func (e *EncodingBuffer) UnsafeMarshalHex(v interface{}) ([]byte, error) {
-	xdrEncoded, err := e.UnsafeMarshalBinary(v)
+func (e *EncodingBuffer) UnsafeMarshalHex(encodable XDREncodable) ([]byte, error) {
+	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
 	}
@@ -164,16 +167,16 @@ func (e *EncodingBuffer) UnsafeMarshalHex(v interface{}) ([]byte, error) {
 	return e.otherEncodersBuf, nil
 }
 
-func (e *EncodingBuffer) MarshalBase64(v interface{}) (string, error) {
-	b, err := e.UnsafeMarshalBase64(v)
+func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
+	b, err := e.UnsafeMarshalBase64(encodable)
 	if err != nil {
 		return "", err
 	}
 	return string(b), nil
 }
 
-func (e *EncodingBuffer) MarshalHex(v interface{}) (string, error) {
-	b, err := e.UnsafeMarshalHex(v)
+func (e *EncodingBuffer) MarshalHex(encodable XDREncodable) (string, error) {
+	b, err := e.UnsafeMarshalHex(encodable)
 	if err != nil {
 		return "", err
 	}

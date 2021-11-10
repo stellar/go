@@ -236,7 +236,7 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	resultBase64, err := i.encodingBuffer.MarshalBase64(transaction.Result.Result)
+	resultBase64, err := i.encodingBuffer.MarshalBase64(&transaction.Result.Result)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
