@@ -31,12 +31,14 @@ type TransactionBatchInsertBuilder interface {
 
 // transactionBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type transactionBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
+	encodingBuffer *xdr.EncodingBuffer
+	builder        db.BatchInsertBuilder
 }
 
 // NewTransactionBatchInsertBuilder constructs a new TransactionBatchInsertBuilder instance
 func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder {
 	return &transactionBatchInsertBuilder{
+		encodingBuffer: xdr.NewEncodingBuffer(),
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("history_transactions"),
 			MaxBatchSize: maxBatchSize,
@@ -46,7 +48,7 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 
 // Add adds a new transaction to the batch
 func (i *transactionBatchInsertBuilder) Add(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32) error {
-	row, err := transactionToRow(transaction, sequence)
+	row, err := i.transactionToRow(transaction, sequence)
 	if err != nil {
 		return err
 	}
@@ -229,20 +231,20 @@ type TransactionWithoutLedger struct {
 	InnerSignatures      pq.StringArray `db:"inner_signatures"`
 }
 
-func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
-	envelopeBase64, err := xdr.MarshalBase64(transaction.Envelope)
+func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
+	envelopeBase64, err := i.encodingBuffer.MarshalBase64(transaction.Envelope)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	resultBase64, err := xdr.MarshalBase64(transaction.Result.Result)
+	resultBase64, err := i.encodingBuffer.MarshalBase64(&transaction.Result.Result)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	metaBase64, err := xdr.MarshalBase64(transaction.UnsafeMeta)
+	metaBase64, err := i.encodingBuffer.MarshalBase64(transaction.UnsafeMeta)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	feeMetaBase64, err := xdr.MarshalBase64(transaction.FeeChanges)
+	feeMetaBase64, err := i.encodingBuffer.MarshalBase64(transaction.FeeChanges)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}

@@ -35,6 +35,7 @@ type OrderBookStream struct {
 	LatestLedgerGauge prometheus.Gauge
 	lastLedger        uint32
 	lastVerification  time.Time
+	encodingBuffer    *xdr.EncodingBuffer
 }
 
 // NewOrderBookStream constructs and initializes an OrderBookStream instance
@@ -46,6 +47,7 @@ func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *O
 			Namespace: "horizon", Subsystem: "order_book_stream", Name: "latest_ledger",
 		}),
 		lastVerification: time.Now(),
+		encodingBuffer:   xdr.NewEncodingBuffer(),
 	}
 }
 
@@ -226,11 +228,11 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context) (bool, error) {
 		for i, offerRow := range ingestionOffers {
 			offerEntry := offers[i]
 			offerRowXDR := offerToXDR(offerRow)
-			offerEntryBase64, err := xdr.MarshalBase64(offerEntry)
+			offerEntryBase64, err := o.encodingBuffer.MarshalBase64(&offerEntry)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling offerEntry")
 			}
-			offerRowBase64, err := xdr.MarshalBase64(offerRowXDR)
+			offerRowBase64, err := o.encodingBuffer.MarshalBase64(&offerRowXDR)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling offerRowXDR")
 			}
@@ -275,11 +277,11 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context) (bool, er
 			if err != nil {
 				return false, errors.Wrap(err, "Error from converting liquidity pool row to xdr")
 			}
-			liquidityPoolEntryBase64, err := xdr.MarshalBase64(liquidityPoolEntry)
+			liquidityPoolEntryBase64, err := o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling liquidityPoolEntry")
 			}
-			liquidityPoolRowBase64, err := xdr.MarshalBase64(liquidityPoolRowXDR)
+			liquidityPoolRowBase64, err := o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling liquidityPoolRowXDR")
 			}

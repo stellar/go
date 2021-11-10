@@ -648,8 +648,9 @@ func addClaimableBalanceToStateVerifier(
 	}
 
 	var idStrings []string
+	e := xdr.NewEncodingBuffer()
 	for _, id := range ids {
-		idString, err := xdr.MarshalHex(id)
+		idString, err := e.MarshalHex(id)
 		if err != nil {
 			return err
 		}
