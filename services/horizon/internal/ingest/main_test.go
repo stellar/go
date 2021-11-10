@@ -495,8 +495,8 @@ func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) 
 	return args.Error(0)
 }
 
-func (m *mockSystem) ReingestRange(fromLedger, toLedger uint32, force bool) error {
-	args := m.Called(fromLedger, toLedger, force)
+func (m *mockSystem) ReingestRange(ledgerRanges []history.LedgerRange, force bool) error {
+	args := m.Called(ledgerRanges, force)
 	return args.Error(0)
 }
 

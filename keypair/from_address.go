@@ -102,3 +102,31 @@ func (kp *FromAddress) UnmarshalText(text []byte) error {
 func (kp *FromAddress) MarshalText() ([]byte, error) {
 	return []byte(kp.address), nil
 }
+
+var (
+	_ = encoding.BinaryMarshaler(&FromAddress{})
+	_ = encoding.BinaryUnmarshaler(&FromAddress{})
+)
+
+func (kp *FromAddress) UnmarshalBinary(b []byte) error {
+	accountID := xdr.AccountId{}
+	err := xdr.SafeUnmarshal(b, &accountID)
+	if err != nil {
+		return err
+	}
+	address := accountID.Address()
+	binKP, err := ParseAddress(address)
+	if err != nil {
+		return err
+	}
+	*kp = *binKP
+	return nil
+}
+
+func (kp *FromAddress) MarshalBinary() ([]byte, error) {
+	accountID, err := xdr.AddressToAccountId(kp.address)
+	if err != nil {
+		return nil, err
+	}
+	return accountID.MarshalBinary()
+}
