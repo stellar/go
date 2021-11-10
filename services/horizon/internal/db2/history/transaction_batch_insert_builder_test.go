@@ -84,7 +84,10 @@ func TestTransactionToMap_muxed(t *testing.T) {
 			},
 		},
 	}
-	row, err := transactionToRow(tx, 20)
+	b := &transactionBatchInsertBuilder{
+		encodingBuffer: xdr.NewEncodingBuffer(),
+	}
+	row, err := b.transactionToRow(tx, 20)
 	assert.NoError(t, err)
 
 	assert.Equal(t, innerAccountID.Address(), row.Account)
@@ -165,7 +168,10 @@ func TestTransactionToMap_SourceMuxedAndFeeSourceUnmuxed(t *testing.T) {
 			},
 		},
 	}
-	row, err := transactionToRow(tx, 20)
+	b := &transactionBatchInsertBuilder{
+		encodingBuffer: xdr.NewEncodingBuffer(),
+	}
+	row, err := b.transactionToRow(tx, 20)
 	assert.NoError(t, err)
 
 	assert.Equal(t, innerAccountID.Address(), row.Account)

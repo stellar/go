@@ -136,7 +136,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				s.Metrics().StateVerifyDuration.Observe(float64(duration))
 				for typ, tot := range totalByType {
 					s.Metrics().StateVerifyLedgerEntriesCount.
-						With(prometheus.Labels{"type": typ}).Observe(float64(tot))
+						With(prometheus.Labels{"type": typ}).Set(float64(tot))
 				}
 			}
 		}
@@ -648,8 +648,9 @@ func addClaimableBalanceToStateVerifier(
 	}
 
 	var idStrings []string
+	e := xdr.NewEncodingBuffer()
 	for _, id := range ids {
-		idString, err := xdr.MarshalHex(id)
+		idString, err := e.MarshalHex(id)
 		if err != nil {
 			return err
 		}

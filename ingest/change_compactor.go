@@ -49,14 +49,16 @@ import (
 //       already removed.
 type ChangeCompactor struct {
 	// ledger key => Change
-	cache map[string]Change
-	mutex sync.Mutex
+	cache          map[string]Change
+	mutex          sync.Mutex
+	encodingBuffer *xdr.EncodingBuffer
 }
 
 // NewChangeCompactor returns a new ChangeCompactor.
 func NewChangeCompactor() *ChangeCompactor {
 	return &ChangeCompactor{
-		cache: make(map[string]Change),
+		cache:          make(map[string]Change),
+		encodingBuffer: xdr.NewEncodingBuffer(),
 	}
 }
 
@@ -86,7 +88,8 @@ func (c *ChangeCompactor) AddChange(change Change) error {
 // addCreatedChange adds a change to the cache, but returns an error if create
 // change is unexpected.
 func (c *ChangeCompactor) addCreatedChange(change Change) error {
-	ledgerKey, err := change.Post.LedgerKey().MarshalBinary()
+	// safe, since we later cast to string (causing a copy)
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Post.LedgerKey())
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinary")
 	}
@@ -128,7 +131,8 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 // addUpdatedChange adds a change to the cache, but returns an error if update
 // change is unexpected.
 func (c *ChangeCompactor) addUpdatedChange(change Change) error {
-	ledgerKey, err := change.Post.LedgerKey().MarshalBinary()
+	// safe, since we later cast to string (causing a copy)
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Post.LedgerKey())
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinary")
 	}
@@ -171,7 +175,8 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 // addRemovedChange adds a change to the cache, but returns an error if remove
 // change is unexpected.
 func (c *ChangeCompactor) addRemovedChange(change Change) error {
-	ledgerKey, err := change.Pre.LedgerKey().MarshalBinary()
+	// safe, since we later cast to string (causing a copy)
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Pre.LedgerKey())
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinary")
 	}
