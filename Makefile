@@ -8,6 +8,8 @@ xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
 xdr/Stellar-types.x
 
+.PHONY: xdr
+
 keystore:
 	$(MAKE) -C services/keystore/ docker-build
 

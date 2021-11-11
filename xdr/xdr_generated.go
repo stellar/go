@@ -1064,7 +1064,7 @@ func (e Thresholds) XDRMaxSize() int {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s Thresholds) EncodeTo(e *xdr.Encoder) error {
+func (s *Thresholds) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	_, err = e.EncodeFixedOpaque(s[:])
 	if err != nil {
@@ -1327,7 +1327,7 @@ type PoolId Hash
 // EncodeTo encodes this value using the Encoder.
 func (s PoolId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = Hash(s).EncodeTo(e)
+	err = (*Hash)(&s).EncodeTo(e)
 	if err != nil {
 		return err
 	}
@@ -1371,7 +1371,7 @@ func (e AssetCode4) XDRMaxSize() int {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AssetCode4) EncodeTo(e *xdr.Encoder) error {
+func (s *AssetCode4) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	_, err = e.EncodeFixedOpaque(s[:])
 	if err != nil {
@@ -1417,7 +1417,7 @@ func (e AssetCode12) XDRMaxSize() int {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AssetCode12) EncodeTo(e *xdr.Encoder) error {
+func (s *AssetCode12) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	_, err = e.EncodeFixedOpaque(s[:])
 	if err != nil {
@@ -25927,7 +25927,7 @@ func (e Hash) XDRMaxSize() int {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s Hash) EncodeTo(e *xdr.Encoder) error {
+func (s *Hash) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	_, err = e.EncodeFixedOpaque(s[:])
 	if err != nil {
@@ -25973,7 +25973,7 @@ func (e Uint256) XDRMaxSize() int {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s Uint256) EncodeTo(e *xdr.Encoder) error {
+func (s *Uint256) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	_, err = e.EncodeFixedOpaque(s[:])
 	if err != nil {
@@ -26747,7 +26747,7 @@ func (e SignatureHint) XDRMaxSize() int {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SignatureHint) EncodeTo(e *xdr.Encoder) error {
+func (s *SignatureHint) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	_, err = e.EncodeFixedOpaque(s[:])
 	if err != nil {
