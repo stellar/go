@@ -127,12 +127,43 @@ func (q *EffectsQ) ForOperation(id int64) *EffectsQ {
 	return q
 }
 
-// ForLiquidityPoolID filters the query to only effects in a specific liquidity pool,
+// ForLiquidityPool filters the query to only effects in a specific liquidity pool,
 // specified by its id.
-func (q *EffectsQ) ForLiquidityPool(id string) *EffectsQ {
-	q.sql = q.sql.InnerJoin("history_operation_liquidity_pools holp ON holp.history_operation_id = heff.history_operation_id")
-	q.sql = q.sql.InnerJoin("history_liquidity_pools hlp ON hlp.id = holp.history_liquidity_pool_id")
-	q.sql = q.sql.Where("hlp.liquidity_pool_id = ?", id)
+func (q *EffectsQ) ForLiquidityPool(ctx context.Context, page db2.PageQuery, id string) *EffectsQ {
+	if q.Err != nil {
+		return q
+	}
+
+	op, _, err := page.CursorInt64Pair(db2.DefaultPairSep)
+	if err != nil {
+		q.Err = err
+		return q
+	}
+
+	query := `SELECT holp.history_operation_id
+	FROM history_operation_liquidity_pools holp
+	WHERE holp.history_liquidity_pool_id = (SELECT id FROM history_liquidity_pools WHERE liquidity_pool_id =  ?)
+	`
+	switch page.Order {
+	case "asc":
+		query += "AND holp.history_operation_id >= ? ORDER BY holp.history_operation_id asc LIMIT ?"
+	case "desc":
+		query += "AND holp.history_operation_id <= ? ORDER BY holp.history_operation_id desc LIMIT ?"
+	default:
+		q.Err = errors.Errorf("invalid paging order: %s", page.Order)
+		return q
+	}
+
+	var liquidityPoolOperationIDs []int64
+	err = q.parent.SelectRaw(ctx, &liquidityPoolOperationIDs, query, id, op, page.Limit)
+	if err != nil {
+		q.Err = err
+		return q
+	}
+
+	q.sql = q.sql.Where(map[string]interface{}{
+		"heff.history_operation_id": liquidityPoolOperationIDs,
+	})
 	return q
 }
 

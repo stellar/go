@@ -101,7 +101,7 @@ func loadEffectRecords(ctx context.Context, hq *history.Q, qp EffectsQuery, pq d
 	case qp.AccountID != "":
 		effects.ForAccount(ctx, qp.AccountID)
 	case qp.LiquidityPoolID != "":
-		effects.ForLiquidityPool(qp.LiquidityPoolID)
+		effects.ForLiquidityPool(ctx, pq, qp.LiquidityPoolID)
 	case qp.OperationID > 0:
 		effects.ForOperation(int64(qp.OperationID))
 	case qp.LedgerID > 0:
