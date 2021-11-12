@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/stellar/xdrgen.git
-  revision: 4677de9fcda28ce314415b3246211ec4657a0eab
-  ref: master
+  revision: 09e472e88afb29475dc1409093a1f4fae672edb2
+  ref: encodeto-improvements
   specs:
     xdrgen (0.1.1)
       activesupport (~> 6)

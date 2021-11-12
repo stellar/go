@@ -1,6 +1,5 @@
 //lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
 //lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
-//lint:file-ignore S1021 xdrgen separates the declarations of error variables from their definitions because it is easier to generate code that way.
 // Package xdr is generated from:
 //
 //  xdr/Stellar-SCP.x
@@ -56,8 +55,7 @@ type Value []byte
 // EncodeTo encodes this value using the Encoder.
 func (s Value) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -104,12 +102,10 @@ type ScpBallot struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpBallot) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Counter.EncodeTo(e)
-	if err != nil {
+	if err = s.Counter.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Value.EncodeTo(e)
-	if err != nil {
+	if err = s.Value.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -180,13 +176,12 @@ func (e ScpStatementType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ScpStatementType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ScpStatementType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := scpStatementTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ScpStatementType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -232,35 +227,24 @@ type ScpNomination struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpNomination) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.QuorumSetHash.EncodeTo(e)
-	if err != nil {
+	if err = s.QuorumSetHash.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Votes)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Votes))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Votes); i++ {
-		err = s.Votes[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Votes[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.Accepted)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Accepted))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Accepted); i++ {
-		err = s.Accepted[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Accepted[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -314,40 +298,32 @@ type ScpStatementPrepare struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpStatementPrepare) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.QuorumSetHash.EncodeTo(e)
-	if err != nil {
+	if err = s.QuorumSetHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ballot.EncodeTo(e)
-	if err != nil {
+	if err = s.Ballot.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeBool(s.Prepared != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.Prepared != nil); err != nil {
 		return err
 	}
 	if s.Prepared != nil {
-		err = (*s.Prepared).EncodeTo(e)
+		if err = (*s.Prepared).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.PreparedPrime != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.PreparedPrime != nil); err != nil {
 		return err
 	}
 	if s.PreparedPrime != nil {
-		err = (*s.PreparedPrime).EncodeTo(e)
+		if err = (*s.PreparedPrime).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
+	if err = s.NC.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NC.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	err = s.NH.EncodeTo(e)
-	if err != nil {
+	if err = s.NH.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -400,24 +376,19 @@ type ScpStatementConfirm struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpStatementConfirm) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Ballot.EncodeTo(e)
-	if err != nil {
+	if err = s.Ballot.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NPrepared.EncodeTo(e)
-	if err != nil {
+	if err = s.NPrepared.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NCommit.EncodeTo(e)
-	if err != nil {
+	if err = s.NCommit.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NH.EncodeTo(e)
-	if err != nil {
+	if err = s.NH.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.QuorumSetHash.EncodeTo(e)
-	if err != nil {
+	if err = s.QuorumSetHash.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -466,16 +437,13 @@ type ScpStatementExternalize struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpStatementExternalize) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Commit.EncodeTo(e)
-	if err != nil {
+	if err = s.Commit.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NH.EncodeTo(e)
-	if err != nil {
+	if err = s.NH.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.CommitQuorumSetHash.EncodeTo(e)
-	if err != nil {
+	if err = s.CommitQuorumSetHash.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -707,34 +675,34 @@ func (u ScpStatementPledges) GetNominate() (result ScpNomination, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ScpStatementPledges) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u ScpStatementPledges) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ScpStatementType(s.Type) {
+	switch ScpStatementType(u.Type) {
 	case ScpStatementTypeScpStPrepare:
-		err = (*s.Prepare).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Prepare).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ScpStatementTypeScpStConfirm:
-		err = (*s.Confirm).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Confirm).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ScpStatementTypeScpStExternalize:
-		err = (*s.Externalize).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Externalize).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ScpStatementTypeScpStNominate:
-		err = (*s.Nominate).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Nominate).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (ScpStatementType) switch value '%d' is not valid for union ScpStatementPledges", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -812,16 +780,13 @@ type ScpStatement struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpStatement) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.NodeId.EncodeTo(e)
-	if err != nil {
+	if err = s.NodeId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SlotIndex.EncodeTo(e)
-	if err != nil {
+	if err = s.SlotIndex.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Pledges.EncodeTo(e)
-	if err != nil {
+	if err = s.Pledges.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -868,12 +833,10 @@ type ScpEnvelope struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpEnvelope) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Statement.EncodeTo(e)
-	if err != nil {
+	if err = s.Statement.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Signature.EncodeTo(e)
-	if err != nil {
+	if err = s.Signature.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -922,35 +885,24 @@ type ScpQuorumSet struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpQuorumSet) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Threshold.EncodeTo(e)
-	if err != nil {
+	if err = s.Threshold.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Validators)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Validators))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Validators); i++ {
-		err = s.Validators[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Validators[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.InnerSets)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.InnerSets))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.InnerSets); i++ {
-		err = s.InnerSets[i].EncodeTo(e)
-		if err != nil {
+		if err = s.InnerSets[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -1020,8 +972,7 @@ func (u AccountId) GetEd25519() (result Uint256, ok bool) {
 // EncodeTo encodes this value using the Encoder.
 func (s AccountId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = PublicKey(s).EncodeTo(e)
-	if err != nil {
+	if err = PublicKey(s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1066,8 +1017,7 @@ func (e Thresholds) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s *Thresholds) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1112,8 +1062,7 @@ func (e String32) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s String32) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeString(string(s))
-	if err != nil {
+	if _, err = e.EncodeString(string(s)); err != nil {
 		return err
 	}
 	return nil
@@ -1158,8 +1107,7 @@ func (e String64) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s String64) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeString(string(s))
-	if err != nil {
+	if _, err = e.EncodeString(string(s)); err != nil {
 		return err
 	}
 	return nil
@@ -1199,8 +1147,7 @@ type SequenceNumber Int64
 // EncodeTo encodes this value using the Encoder.
 func (s SequenceNumber) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = Int64(s).EncodeTo(e)
-	if err != nil {
+	if err = Int64(s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1240,8 +1187,7 @@ type TimePoint Uint64
 // EncodeTo encodes this value using the Encoder.
 func (s TimePoint) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = Uint64(s).EncodeTo(e)
-	if err != nil {
+	if err = Uint64(s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1286,8 +1232,7 @@ func (e DataValue) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s DataValue) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1327,8 +1272,7 @@ type PoolId Hash
 // EncodeTo encodes this value using the Encoder.
 func (s PoolId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = (*Hash)(&s).EncodeTo(e)
-	if err != nil {
+	if err = (*Hash)(&s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1373,8 +1317,7 @@ func (e AssetCode4) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s *AssetCode4) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1419,8 +1362,7 @@ func (e AssetCode12) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s *AssetCode12) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -1491,13 +1433,12 @@ func (e AssetType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AssetType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e AssetType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := assetTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid AssetType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -1635,24 +1576,24 @@ func (u AssetCode) GetAssetCode12() (result AssetCode12, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AssetCode) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u AssetCode) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch AssetType(s.Type) {
+	switch AssetType(u.Type) {
 	case AssetTypeAssetTypeCreditAlphanum4:
-		err = (*s.AssetCode4).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AssetCode4).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum12:
-		err = (*s.AssetCode12).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AssetCode12).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (AssetType) switch value '%d' is not valid for union AssetCode", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -1696,12 +1637,10 @@ type AlphaNum4 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AlphaNum4) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AssetCode.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetCode.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Issuer.EncodeTo(e)
-	if err != nil {
+	if err = s.Issuer.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1748,12 +1687,10 @@ type AlphaNum12 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AlphaNum12) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AssetCode.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetCode.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Issuer.EncodeTo(e)
-	if err != nil {
+	if err = s.Issuer.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1901,26 +1838,27 @@ func (u Asset) GetAlphaNum12() (result AlphaNum12, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s Asset) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u Asset) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch AssetType(s.Type) {
+	switch AssetType(u.Type) {
 	case AssetTypeAssetTypeNative:
 		// Void
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum4:
-		err = (*s.AlphaNum4).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AlphaNum4).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum12:
-		err = (*s.AlphaNum12).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AlphaNum12).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (AssetType) switch value '%d' is not valid for union Asset", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -1964,12 +1902,10 @@ type Price struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Price) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.N.EncodeTo(e)
-	if err != nil {
+	if err = s.N.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.D.EncodeTo(e)
-	if err != nil {
+	if err = s.D.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -2016,12 +1952,10 @@ type Liabilities struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Liabilities) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Buying.EncodeTo(e)
-	if err != nil {
+	if err = s.Buying.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Selling.EncodeTo(e)
-	if err != nil {
+	if err = s.Selling.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -2092,13 +2026,12 @@ func (e ThresholdIndexes) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ThresholdIndexes) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ThresholdIndexes) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := thresholdIndexesMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ThresholdIndexes enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -2172,13 +2105,12 @@ func (e LedgerEntryType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerEntryType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LedgerEntryType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := ledgerEntryTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LedgerEntryType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -2222,12 +2154,10 @@ type Signer struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Signer) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Key.EncodeTo(e)
-	if err != nil {
+	if err = s.Key.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Weight.EncodeTo(e)
-	if err != nil {
+	if err = s.Weight.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -2308,13 +2238,12 @@ func (e AccountFlags) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AccountFlags) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e AccountFlags) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := accountFlagsMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid AccountFlags enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -2405,16 +2334,17 @@ func NewAccountEntryExtensionV2Ext(v int32, value interface{}) (result AccountEn
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AccountEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u AccountEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union AccountEntryExtensionV2Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -2468,35 +2398,26 @@ type AccountEntryExtensionV2 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AccountEntryExtensionV2) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.NumSponsored.EncodeTo(e)
-	if err != nil {
+	if err = s.NumSponsored.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NumSponsoring.EncodeTo(e)
-	if err != nil {
+	if err = s.NumSponsoring.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.SignerSponsoringIDs)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.SignerSponsoringIDs))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.SignerSponsoringIDs); i++ {
-		_, err = e.EncodeBool(s.SignerSponsoringIDs[i] != nil)
-		if err != nil {
+		if _, err = e.EncodeBool(s.SignerSponsoringIDs[i] != nil); err != nil {
 			return err
 		}
 		if s.SignerSponsoringIDs[i] != nil {
-			err = s.SignerSponsoringIDs[i].EncodeTo(e)
-			if err != nil {
+			if err = s.SignerSponsoringIDs[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -2603,21 +2524,22 @@ func (u AccountEntryExtensionV1Ext) GetV2() (result AccountEntryExtensionV2, ok 
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AccountEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u AccountEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 2:
-		err = (*s.V2).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V2).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union AccountEntryExtensionV1Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -2669,12 +2591,10 @@ type AccountEntryExtensionV1 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AccountEntryExtensionV1) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Liabilities.EncodeTo(e)
-	if err != nil {
+	if err = s.Liabilities.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -2781,21 +2701,22 @@ func (u AccountEntryExt) GetV1() (result AccountEntryExtensionV1, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AccountEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u AccountEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 1:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union AccountEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -2870,59 +2791,44 @@ type AccountEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AccountEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Balance.EncodeTo(e)
-	if err != nil {
+	if err = s.Balance.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SeqNum.EncodeTo(e)
-	if err != nil {
+	if err = s.SeqNum.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NumSubEntries.EncodeTo(e)
-	if err != nil {
+	if err = s.NumSubEntries.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeBool(s.InflationDest != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.InflationDest != nil); err != nil {
 		return err
 	}
 	if s.InflationDest != nil {
-		err = (*s.InflationDest).EncodeTo(e)
-	}
-	if err != nil {
-		return err
-	}
-	err = s.Flags.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	err = s.HomeDomain.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	err = s.Thresholds.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.Signers)))
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(s.Signers); i++ {
-		err = s.Signers[i].EncodeTo(e)
-		if err != nil {
+		if err = (*s.InflationDest).EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
+	if err = s.Flags.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.HomeDomain.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Thresholds.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Signers))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Signers); i++ {
+		if err = s.Signers[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -2995,13 +2901,12 @@ func (e TrustLineFlags) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TrustLineFlags) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e TrustLineFlags) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := trustLineFlagsMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid TrustLineFlags enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3078,13 +2983,12 @@ func (e LiquidityPoolType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LiquidityPoolType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := liquidityPoolTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LiquidityPoolType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3267,31 +3171,32 @@ func (u TrustLineAsset) GetLiquidityPoolId() (result PoolId, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TrustLineAsset) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u TrustLineAsset) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch AssetType(s.Type) {
+	switch AssetType(u.Type) {
 	case AssetTypeAssetTypeNative:
 		// Void
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum4:
-		err = (*s.AlphaNum4).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AlphaNum4).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum12:
-		err = (*s.AlphaNum12).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AlphaNum12).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case AssetTypeAssetTypePoolShare:
-		err = (*s.LiquidityPoolId).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPoolId).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (AssetType) switch value '%d' is not valid for union TrustLineAsset", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3358,16 +3263,17 @@ func NewTrustLineEntryExtensionV2Ext(v int32, value interface{}) (result TrustLi
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TrustLineEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TrustLineEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TrustLineEntryExtensionV2Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3417,12 +3323,10 @@ type TrustLineEntryExtensionV2 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TrustLineEntryExtensionV2) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LiquidityPoolUseCount.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolUseCount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -3529,21 +3433,22 @@ func (u TrustLineEntryV1Ext) GetV2() (result TrustLineEntryExtensionV2, ok bool)
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TrustLineEntryV1Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TrustLineEntryV1Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 2:
-		err = (*s.V2).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V2).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TrustLineEntryV1Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3595,12 +3500,10 @@ type TrustLineEntryV1 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TrustLineEntryV1) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Liabilities.EncodeTo(e)
-	if err != nil {
+	if err = s.Liabilities.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -3719,21 +3622,22 @@ func (u TrustLineEntryExt) GetV1() (result TrustLineEntryV1, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TrustLineEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TrustLineEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 1:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TrustLineEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3808,28 +3712,22 @@ type TrustLineEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TrustLineEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Balance.EncodeTo(e)
-	if err != nil {
+	if err = s.Balance.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Limit.EncodeTo(e)
-	if err != nil {
+	if err = s.Limit.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Flags.EncodeTo(e)
-	if err != nil {
+	if err = s.Flags.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -3892,13 +3790,12 @@ func (e OfferEntryFlags) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OfferEntryFlags) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e OfferEntryFlags) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := offerEntryFlagsMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid OfferEntryFlags enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -3971,16 +3868,17 @@ func NewOfferEntryExt(v int32, value interface{}) (result OfferEntryExt, err err
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OfferEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u OfferEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union OfferEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -4049,36 +3947,28 @@ type OfferEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *OfferEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SellerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SellerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OfferId.EncodeTo(e)
-	if err != nil {
+	if err = s.OfferId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Selling.EncodeTo(e)
-	if err != nil {
+	if err = s.Selling.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Buying.EncodeTo(e)
-	if err != nil {
+	if err = s.Buying.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Price.EncodeTo(e)
-	if err != nil {
+	if err = s.Price.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Flags.EncodeTo(e)
-	if err != nil {
+	if err = s.Flags.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -4148,16 +4038,17 @@ func NewDataEntryExt(v int32, value interface{}) (result DataEntryExt, err error
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s DataEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u DataEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union DataEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -4212,20 +4103,16 @@ type DataEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *DataEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DataName.EncodeTo(e)
-	if err != nil {
+	if err = s.DataName.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DataValue.EncodeTo(e)
-	if err != nil {
+	if err = s.DataValue.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -4302,13 +4189,12 @@ func (e ClaimPredicateType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimPredicateType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClaimPredicateType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := claimPredicateTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClaimPredicateType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -4561,65 +4447,57 @@ func (u ClaimPredicate) GetRelBefore() (result Int64, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimPredicate) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u ClaimPredicate) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClaimPredicateType(s.Type) {
+	switch ClaimPredicateType(u.Type) {
 	case ClaimPredicateTypeClaimPredicateUnconditional:
 		// Void
+		return nil
 	case ClaimPredicateTypeClaimPredicateAnd:
-		_, err = e.EncodeUint(uint32(len((*s.AndPredicates))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.AndPredicates)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.AndPredicates)); i++ {
-			err = (*s.AndPredicates)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.AndPredicates)); i++ {
+			if err = (*u.AndPredicates)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case ClaimPredicateTypeClaimPredicateOr:
-		_, err = e.EncodeUint(uint32(len((*s.OrPredicates))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.OrPredicates)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.OrPredicates)); i++ {
-			err = (*s.OrPredicates)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.OrPredicates)); i++ {
+			if err = (*u.OrPredicates)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case ClaimPredicateTypeClaimPredicateNot:
-		_, err = e.EncodeBool((*s.NotPredicate) != nil)
-		if err != nil {
+		if _, err = e.EncodeBool((*u.NotPredicate) != nil); err != nil {
 			return err
 		}
-		if (*s.NotPredicate) != nil {
-			err = (*(*s.NotPredicate)).EncodeTo(e)
+		if (*u.NotPredicate) != nil {
+			if err = (*(*u.NotPredicate)).EncodeTo(e); err != nil {
+				return err
+			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		err = (*s.AbsBefore).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AbsBefore).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
-		err = (*s.RelBefore).EncodeTo(e)
-		if err != nil {
+		if err = (*u.RelBefore).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (ClaimPredicateType) switch value '%d' is not valid for union ClaimPredicate", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -4678,13 +4556,12 @@ func (e ClaimantType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimantType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClaimantType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := claimantTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClaimantType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -4728,12 +4605,10 @@ type ClaimantV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimantV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Predicate.EncodeTo(e)
-	if err != nil {
+	if err = s.Predicate.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -4838,19 +4713,19 @@ func (u Claimant) GetV0() (result ClaimantV0, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s Claimant) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u Claimant) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClaimantType(s.Type) {
+	switch ClaimantType(u.Type) {
 	case ClaimantTypeClaimantTypeV0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (ClaimantType) switch value '%d' is not valid for union Claimant", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -4909,13 +4784,12 @@ func (e ClaimableBalanceIdType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimableBalanceIdType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClaimableBalanceIdType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := claimableBalanceIdTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClaimableBalanceIdType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5013,19 +4887,19 @@ func (u ClaimableBalanceId) GetV0() (result Hash, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimableBalanceId) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u ClaimableBalanceId) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClaimableBalanceIdType(s.Type) {
+	switch ClaimableBalanceIdType(u.Type) {
 	case ClaimableBalanceIdTypeClaimableBalanceIdTypeV0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (ClaimableBalanceIdType) switch value '%d' is not valid for union ClaimableBalanceId", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5086,13 +4960,12 @@ func (e ClaimableBalanceFlags) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimableBalanceFlags) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClaimableBalanceFlags) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := claimableBalanceFlagsMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClaimableBalanceFlags enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5165,16 +5038,17 @@ func NewClaimableBalanceEntryExtensionV1Ext(v int32, value interface{}) (result 
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimableBalanceEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u ClaimableBalanceEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union ClaimableBalanceEntryExtensionV1Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5224,12 +5098,10 @@ type ClaimableBalanceEntryExtensionV1 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimableBalanceEntryExtensionV1) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Flags.EncodeTo(e)
-	if err != nil {
+	if err = s.Flags.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -5336,21 +5208,22 @@ func (u ClaimableBalanceEntryExt) GetV1() (result ClaimableBalanceEntryExtension
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimableBalanceEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u ClaimableBalanceEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 1:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union ClaimableBalanceEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5416,33 +5289,24 @@ type ClaimableBalanceEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimableBalanceEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.BalanceId.EncodeTo(e)
-	if err != nil {
+	if err = s.BalanceId.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Claimants)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Claimants))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Claimants); i++ {
-		err = s.Claimants[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Claimants[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -5491,16 +5355,13 @@ type LiquidityPoolConstantProductParameters struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LiquidityPoolConstantProductParameters) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AssetA.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetA.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetB.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetB.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Fee.EncodeTo(e)
-	if err != nil {
+	if err = s.Fee.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -5554,24 +5415,19 @@ type LiquidityPoolEntryConstantProduct struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LiquidityPoolEntryConstantProduct) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Params.EncodeTo(e)
-	if err != nil {
+	if err = s.Params.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.ReserveA.EncodeTo(e)
-	if err != nil {
+	if err = s.ReserveA.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.ReserveB.EncodeTo(e)
-	if err != nil {
+	if err = s.ReserveB.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TotalPoolShares.EncodeTo(e)
-	if err != nil {
+	if err = s.TotalPoolShares.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.PoolSharesTrustLineCount.EncodeTo(e)
-	if err != nil {
+	if err = s.PoolSharesTrustLineCount.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -5680,19 +5536,19 @@ func (u LiquidityPoolEntryBody) GetConstantProduct() (result LiquidityPoolEntryC
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolEntryBody) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u LiquidityPoolEntryBody) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LiquidityPoolType(s.Type) {
+	switch LiquidityPoolType(u.Type) {
 	case LiquidityPoolTypeLiquidityPoolConstantProduct:
-		err = (*s.ConstantProduct).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ConstantProduct).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (LiquidityPoolType) switch value '%d' is not valid for union LiquidityPoolEntryBody", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5750,12 +5606,10 @@ type LiquidityPoolEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LiquidityPoolEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LiquidityPoolId.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Body.EncodeTo(e)
-	if err != nil {
+	if err = s.Body.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -5825,16 +5679,17 @@ func NewLedgerEntryExtensionV1Ext(v int32, value interface{}) (result LedgerEntr
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u LedgerEntryExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerEntryExtensionV1Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -5884,18 +5739,15 @@ type LedgerEntryExtensionV1 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerEntryExtensionV1) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeBool(s.SponsoringId != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.SponsoringId != nil); err != nil {
 		return err
 	}
 	if s.SponsoringId != nil {
-		err = (*s.SponsoringId).EncodeTo(e)
+		if err = (*s.SponsoringId).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6181,44 +6033,44 @@ func (u LedgerEntryData) GetLiquidityPool() (result LiquidityPoolEntry, ok bool)
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerEntryData) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u LedgerEntryData) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LedgerEntryType(s.Type) {
+	switch LedgerEntryType(u.Type) {
 	case LedgerEntryTypeAccount:
-		err = (*s.Account).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Account).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeTrustline:
-		err = (*s.TrustLine).EncodeTo(e)
-		if err != nil {
+		if err = (*u.TrustLine).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeOffer:
-		err = (*s.Offer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Offer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeData:
-		err = (*s.Data).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Data).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeClaimableBalance:
-		err = (*s.ClaimableBalance).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClaimableBalance).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeLiquidityPool:
-		err = (*s.LiquidityPool).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPool).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (LedgerEntryType) switch value '%d' is not valid for union LedgerEntryData", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -6322,21 +6174,22 @@ func (u LedgerEntryExt) GetV1() (result LedgerEntryExtensionV1, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u LedgerEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 1:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -6407,16 +6260,13 @@ type LedgerEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LastModifiedLedgerSeq.EncodeTo(e)
-	if err != nil {
+	if err = s.LastModifiedLedgerSeq.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Data.EncodeTo(e)
-	if err != nil {
+	if err = s.Data.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6461,8 +6311,7 @@ type LedgerKeyAccount struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyAccount) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6509,12 +6358,10 @@ type LedgerKeyTrustLine struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyTrustLine) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6561,12 +6408,10 @@ type LedgerKeyOffer struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyOffer) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SellerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SellerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OfferId.EncodeTo(e)
-	if err != nil {
+	if err = s.OfferId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6613,12 +6458,10 @@ type LedgerKeyData struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyData) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DataName.EncodeTo(e)
-	if err != nil {
+	if err = s.DataName.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6663,8 +6506,7 @@ type LedgerKeyClaimableBalance struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyClaimableBalance) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.BalanceId.EncodeTo(e)
-	if err != nil {
+	if err = s.BalanceId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -6709,8 +6551,7 @@ type LedgerKeyLiquidityPool struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyLiquidityPool) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LiquidityPoolId.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -7022,44 +6863,44 @@ func (u LedgerKey) GetLiquidityPool() (result LedgerKeyLiquidityPool, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerKey) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u LedgerKey) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LedgerEntryType(s.Type) {
+	switch LedgerEntryType(u.Type) {
 	case LedgerEntryTypeAccount:
-		err = (*s.Account).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Account).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeTrustline:
-		err = (*s.TrustLine).EncodeTo(e)
-		if err != nil {
+		if err = (*u.TrustLine).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeOffer:
-		err = (*s.Offer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Offer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeData:
-		err = (*s.Data).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Data).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeClaimableBalance:
-		err = (*s.ClaimableBalance).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClaimableBalance).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryTypeLiquidityPool:
-		err = (*s.LiquidityPool).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPool).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (LedgerEntryType) switch value '%d' is not valid for union LedgerKey", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7139,13 +6980,12 @@ func (e EnvelopeType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s EnvelopeType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e EnvelopeType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := envelopeTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid EnvelopeType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7187,8 +7027,7 @@ func (e UpgradeType) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s UpgradeType) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -7253,13 +7092,12 @@ func (e StellarValueType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s StellarValueType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e StellarValueType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := stellarValueTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid StellarValueType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7303,12 +7141,10 @@ type LedgerCloseValueSignature struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerCloseValueSignature) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.NodeId.EncodeTo(e)
-	if err != nil {
+	if err = s.NodeId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Signature.EncodeTo(e)
-	if err != nil {
+	if err = s.Signature.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -7415,21 +7251,22 @@ func (u StellarValueExt) GetLcValueSignature() (result LedgerCloseValueSignature
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s StellarValueExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u StellarValueExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.V.EncodeTo(e); err != nil {
 		return err
 	}
-	switch StellarValueType(s.V) {
+	switch StellarValueType(u.V) {
 	case StellarValueTypeStellarValueBasic:
 		// Void
+		return nil
 	case StellarValueTypeStellarValueSigned:
-		err = (*s.LcValueSignature).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LcValueSignature).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (StellarValueType) switch value '%d' is not valid for union StellarValueExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7492,29 +7329,21 @@ type StellarValue struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *StellarValue) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.TxSetHash.EncodeTo(e)
-	if err != nil {
+	if err = s.TxSetHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.CloseTime.EncodeTo(e)
-	if err != nil {
+	if err = s.CloseTime.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Upgrades)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Upgrades))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Upgrades); i++ {
-		err = s.Upgrades[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Upgrades[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -7588,13 +7417,12 @@ func (e LedgerHeaderFlags) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerHeaderFlags) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LedgerHeaderFlags) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := ledgerHeaderFlagsMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LedgerHeaderFlags enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7661,16 +7489,17 @@ func NewLedgerHeaderExtensionV1Ext(v int32, value interface{}) (result LedgerHea
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerHeaderExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u LedgerHeaderExtensionV1Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerHeaderExtensionV1Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7720,12 +7549,10 @@ type LedgerHeaderExtensionV1 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerHeaderExtensionV1) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Flags.EncodeTo(e)
-	if err != nil {
+	if err = s.Flags.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -7832,21 +7659,22 @@ func (u LedgerHeaderExt) GetV1() (result LedgerHeaderExtensionV1, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerHeaderExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u LedgerHeaderExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	case 1:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerHeaderExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7937,69 +7765,51 @@ type LedgerHeader struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerHeader) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerVersion.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerVersion.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.PreviousLedgerHash.EncodeTo(e)
-	if err != nil {
+	if err = s.PreviousLedgerHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.ScpValue.EncodeTo(e)
-	if err != nil {
+	if err = s.ScpValue.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TxSetResultHash.EncodeTo(e)
-	if err != nil {
+	if err = s.TxSetResultHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.BucketListHash.EncodeTo(e)
-	if err != nil {
+	if err = s.BucketListHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.LedgerSeq.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerSeq.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TotalCoins.EncodeTo(e)
-	if err != nil {
+	if err = s.TotalCoins.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.FeePool.EncodeTo(e)
-	if err != nil {
+	if err = s.FeePool.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.InflationSeq.EncodeTo(e)
-	if err != nil {
+	if err = s.InflationSeq.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.IdPool.EncodeTo(e)
-	if err != nil {
+	if err = s.IdPool.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.BaseFee.EncodeTo(e)
-	if err != nil {
+	if err = s.BaseFee.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.BaseReserve.EncodeTo(e)
-	if err != nil {
+	if err = s.BaseReserve.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MaxTxSetSize.EncodeTo(e)
-	if err != nil {
+	if err = s.MaxTxSetSize.EncodeTo(e); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.SkipList); i++ {
-		err = s.SkipList[i].EncodeTo(e)
-		if err != nil {
+		if err = s.SkipList[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -8073,13 +7883,12 @@ func (e LedgerUpgradeType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerUpgradeType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LedgerUpgradeType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := ledgerUpgradeTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LedgerUpgradeType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8325,39 +8134,39 @@ func (u LedgerUpgrade) GetNewFlags() (result Uint32, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerUpgrade) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u LedgerUpgrade) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LedgerUpgradeType(s.Type) {
+	switch LedgerUpgradeType(u.Type) {
 	case LedgerUpgradeTypeLedgerUpgradeVersion:
-		err = (*s.NewLedgerVersion).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NewLedgerVersion).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerUpgradeTypeLedgerUpgradeBaseFee:
-		err = (*s.NewBaseFee).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NewBaseFee).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerUpgradeTypeLedgerUpgradeMaxTxSetSize:
-		err = (*s.NewMaxTxSetSize).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NewMaxTxSetSize).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerUpgradeTypeLedgerUpgradeBaseReserve:
-		err = (*s.NewBaseReserve).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NewBaseReserve).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerUpgradeTypeLedgerUpgradeFlags:
-		err = (*s.NewFlags).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NewFlags).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (LedgerUpgradeType) switch value '%d' is not valid for union LedgerUpgrade", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8427,13 +8236,12 @@ func (e BucketEntryType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BucketEntryType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e BucketEntryType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := bucketEntryTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BucketEntryType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8500,16 +8308,17 @@ func NewBucketMetadataExt(v int32, value interface{}) (result BucketMetadataExt,
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BucketMetadataExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u BucketMetadataExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union BucketMetadataExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8561,12 +8370,10 @@ type BucketMetadata struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *BucketMetadata) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerVersion.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerVersion.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -8752,34 +8559,34 @@ func (u BucketEntry) GetMetaEntry() (result BucketMetadata, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BucketEntry) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u BucketEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch BucketEntryType(s.Type) {
+	switch BucketEntryType(u.Type) {
 	case BucketEntryTypeLiveentry:
-		err = (*s.LiveEntry).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiveEntry).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case BucketEntryTypeInitentry:
-		err = (*s.LiveEntry).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiveEntry).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case BucketEntryTypeDeadentry:
-		err = (*s.DeadEntry).EncodeTo(e)
-		if err != nil {
+		if err = (*u.DeadEntry).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case BucketEntryTypeMetaentry:
-		err = (*s.MetaEntry).EncodeTo(e)
-		if err != nil {
+		if err = (*u.MetaEntry).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (BucketEntryType) switch value '%d' is not valid for union BucketEntry", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8823,22 +8630,16 @@ type TransactionSet struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionSet) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.PreviousLedgerHash.EncodeTo(e)
-	if err != nil {
+	if err = s.PreviousLedgerHash.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Txs)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Txs))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Txs); i++ {
-		err = s.Txs[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Txs[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -8884,12 +8685,10 @@ type TransactionResultPair struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionResultPair) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.TransactionHash.EncodeTo(e)
-	if err != nil {
+	if err = s.TransactionHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Result.EncodeTo(e)
-	if err != nil {
+	if err = s.Result.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -8934,18 +8733,13 @@ type TransactionResultSet struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionResultSet) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s.Results)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Results))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Results); i++ {
-		err = s.Results[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Results[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -9014,16 +8808,17 @@ func NewTransactionHistoryEntryExt(v int32, value interface{}) (result Transacti
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TransactionHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionHistoryEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -9076,16 +8871,13 @@ type TransactionHistoryEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionHistoryEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerSeq.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerSeq.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TxSet.EncodeTo(e)
-	if err != nil {
+	if err = s.TxSet.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -9155,16 +8947,17 @@ func NewTransactionHistoryResultEntryExt(v int32, value interface{}) (result Tra
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionHistoryResultEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TransactionHistoryResultEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionHistoryResultEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -9217,16 +9010,13 @@ type TransactionHistoryResultEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionHistoryResultEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerSeq.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerSeq.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TxResultSet.EncodeTo(e)
-	if err != nil {
+	if err = s.TxResultSet.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -9296,16 +9086,17 @@ func NewLedgerHeaderHistoryEntryExt(v int32, value interface{}) (result LedgerHe
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerHeaderHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u LedgerHeaderHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerHeaderHistoryEntryExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -9358,16 +9149,13 @@ type LedgerHeaderHistoryEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerHeaderHistoryEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Hash.EncodeTo(e)
-	if err != nil {
+	if err = s.Hash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Header.EncodeTo(e)
-	if err != nil {
+	if err = s.Header.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -9414,22 +9202,16 @@ type LedgerScpMessages struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerScpMessages) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerSeq.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerSeq.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Messages)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Messages))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Messages); i++ {
-		err = s.Messages[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Messages[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -9475,21 +9257,15 @@ type ScpHistoryEntryV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScpHistoryEntryV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s.QuorumSets)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.QuorumSets))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.QuorumSets); i++ {
-		err = s.QuorumSets[i].EncodeTo(e)
-		if err != nil {
+		if err = s.QuorumSets[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.LedgerMessages.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerMessages.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -9590,19 +9366,19 @@ func (u ScpHistoryEntry) GetV0() (result ScpHistoryEntryV0, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ScpHistoryEntry) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u ScpHistoryEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union ScpHistoryEntry", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -9670,13 +9446,12 @@ func (e LedgerEntryChangeType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerEntryChangeType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LedgerEntryChangeType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := ledgerEntryChangeTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LedgerEntryChangeType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -9885,34 +9660,34 @@ func (u LedgerEntryChange) GetState() (result LedgerEntry, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerEntryChange) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u LedgerEntryChange) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LedgerEntryChangeType(s.Type) {
+	switch LedgerEntryChangeType(u.Type) {
 	case LedgerEntryChangeTypeLedgerEntryCreated:
-		err = (*s.Created).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Created).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryChangeTypeLedgerEntryUpdated:
-		err = (*s.Updated).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Updated).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryChangeTypeLedgerEntryRemoved:
-		err = (*s.Removed).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Removed).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case LedgerEntryChangeTypeLedgerEntryState:
-		err = (*s.State).EncodeTo(e)
-		if err != nil {
+		if err = (*u.State).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (LedgerEntryChangeType) switch value '%d' is not valid for union LedgerEntryChange", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -9949,18 +9724,13 @@ type LedgerEntryChanges []LedgerEntryChange
 // EncodeTo encodes this value using the Encoder.
 func (s LedgerEntryChanges) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s); i++ {
-		err = s[i].EncodeTo(e)
-		if err != nil {
+		if err = s[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -10004,8 +9774,7 @@ type OperationMeta struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *OperationMeta) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Changes.EncodeTo(e)
-	if err != nil {
+	if err = s.Changes.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -10052,22 +9821,16 @@ type TransactionMetaV1 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionMetaV1) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.TxChanges.EncodeTo(e)
-	if err != nil {
+	if err = s.TxChanges.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Operations)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Operations))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Operations); i++ {
-		err = s.Operations[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Operations[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -10117,25 +9880,18 @@ type TransactionMetaV2 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionMetaV2) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.TxChangesBefore.EncodeTo(e)
-	if err != nil {
+	if err = s.TxChangesBefore.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Operations)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Operations))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Operations); i++ {
-		err = s.Operations[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Operations[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.TxChangesAfter.EncodeTo(e)
-	if err != nil {
+	if err = s.TxChangesAfter.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -10310,38 +10066,34 @@ func (u TransactionMeta) GetV2() (result TransactionMetaV2, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionMeta) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TransactionMeta) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
-		_, err = e.EncodeUint(uint32(len((*s.Operations))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Operations)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Operations)); i++ {
-			err = (*s.Operations)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Operations)); i++ {
+			if err = (*u.Operations)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case 1:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case 2:
-		err = (*s.V2).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V2).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionMeta", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -10387,16 +10139,13 @@ type TransactionResultMeta struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionResultMeta) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Result.EncodeTo(e)
-	if err != nil {
+	if err = s.Result.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.FeeProcessing.EncodeTo(e)
-	if err != nil {
+	if err = s.FeeProcessing.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TxApplyProcessing.EncodeTo(e)
-	if err != nil {
+	if err = s.TxApplyProcessing.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -10443,12 +10192,10 @@ type UpgradeEntryMeta struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *UpgradeEntryMeta) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Upgrade.EncodeTo(e)
-	if err != nil {
+	if err = s.Upgrade.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Changes.EncodeTo(e)
-	if err != nil {
+	if err = s.Changes.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -10510,52 +10257,35 @@ type LedgerCloseMetaV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerCloseMetaV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerHeader.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerHeader.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TxSet.EncodeTo(e)
-	if err != nil {
+	if err = s.TxSet.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.TxProcessing)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.TxProcessing))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.TxProcessing); i++ {
-		err = s.TxProcessing[i].EncodeTo(e)
-		if err != nil {
+		if err = s.TxProcessing[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.UpgradesProcessing)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.UpgradesProcessing))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.UpgradesProcessing); i++ {
-		err = s.UpgradesProcessing[i].EncodeTo(e)
-		if err != nil {
+		if err = s.UpgradesProcessing[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.ScpInfo)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.ScpInfo))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.ScpInfo); i++ {
-		err = s.ScpInfo[i].EncodeTo(e)
-		if err != nil {
+		if err = s.ScpInfo[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -10655,19 +10385,19 @@ func (u LedgerCloseMeta) GetV0() (result LedgerCloseMetaV0, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LedgerCloseMeta) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u LedgerCloseMeta) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union LedgerCloseMeta", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -10738,13 +10468,12 @@ func (e ErrorCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ErrorCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ErrorCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := errorCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ErrorCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -10788,12 +10517,10 @@ type Error struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Error) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Code.EncodeTo(e)
-	if err != nil {
+	if err = s.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeString(string(s.Msg))
-	if err != nil {
+	if _, err = e.EncodeString(string(s.Msg)); err != nil {
 		return err
 	}
 	return nil
@@ -10842,16 +10569,13 @@ type AuthCert struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AuthCert) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Pubkey.EncodeTo(e)
-	if err != nil {
+	if err = s.Pubkey.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Expiration.EncodeTo(e)
-	if err != nil {
+	if err = s.Expiration.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Sig.EncodeTo(e)
-	if err != nil {
+	if err = s.Sig.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -10912,40 +10636,31 @@ type Hello struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Hello) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LedgerVersion.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerVersion.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OverlayVersion.EncodeTo(e)
-	if err != nil {
+	if err = s.OverlayVersion.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OverlayMinVersion.EncodeTo(e)
-	if err != nil {
+	if err = s.OverlayMinVersion.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NetworkId.EncodeTo(e)
-	if err != nil {
+	if err = s.NetworkId.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeString(string(s.VersionStr))
-	if err != nil {
+	if _, err = e.EncodeString(string(s.VersionStr)); err != nil {
 		return err
 	}
-	_, err = e.EncodeInt(int32(s.ListeningPort))
-	if err != nil {
+	if _, err = e.EncodeInt(int32(s.ListeningPort)); err != nil {
 		return err
 	}
-	err = s.PeerId.EncodeTo(e)
-	if err != nil {
+	if err = s.PeerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Cert.EncodeTo(e)
-	if err != nil {
+	if err = s.Cert.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Nonce.EncodeTo(e)
-	if err != nil {
+	if err = s.Nonce.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -10992,8 +10707,7 @@ type Auth struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Auth) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeInt(int32(s.Unused))
-	if err != nil {
+	if _, err = e.EncodeInt(int32(s.Unused)); err != nil {
 		return err
 	}
 	return nil
@@ -11058,13 +10772,12 @@ func (e IpAddrType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s IpAddrType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e IpAddrType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := ipAddrTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid IpAddrType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -11199,24 +10912,24 @@ func (u PeerAddressIp) GetIpv6() (result [16]byte, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PeerAddressIp) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u PeerAddressIp) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch IpAddrType(s.Type) {
+	switch IpAddrType(u.Type) {
 	case IpAddrTypeIPv4:
-		_, err = e.EncodeFixedOpaque((*s.Ipv4)[:])
-		if err != nil {
+		if _, err = e.EncodeFixedOpaque((*u.Ipv4)[:]); err != nil {
 			return err
 		}
+		return nil
 	case IpAddrTypeIPv6:
-		_, err = e.EncodeFixedOpaque((*s.Ipv6)[:])
-		if err != nil {
+		if _, err = e.EncodeFixedOpaque((*u.Ipv6)[:]); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (IpAddrType) switch value '%d' is not valid for union PeerAddressIp", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -11269,16 +10982,13 @@ type PeerAddress struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PeerAddress) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Ip.EncodeTo(e)
-	if err != nil {
+	if err = s.Ip.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Port.EncodeTo(e)
-	if err != nil {
+	if err = s.Port.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.NumFailures.EncodeTo(e)
-	if err != nil {
+	if err = s.NumFailures.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11390,13 +11100,12 @@ func (e MessageType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s MessageType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e MessageType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := messageTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid MessageType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -11440,12 +11149,10 @@ type DontHave struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *DontHave) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Type.EncodeTo(e)
-	if err != nil {
+	if err = s.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.ReqHash.EncodeTo(e)
-	if err != nil {
+	if err = s.ReqHash.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11507,13 +11214,12 @@ func (e SurveyMessageCommandType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SurveyMessageCommandType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e SurveyMessageCommandType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := surveyMessageCommandTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid SurveyMessageCommandType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -11563,24 +11269,19 @@ type SurveyRequestMessage struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SurveyRequestMessage) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SurveyorPeerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SurveyorPeerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SurveyedPeerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SurveyedPeerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.LedgerNum.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerNum.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.EncryptionKey.EncodeTo(e)
-	if err != nil {
+	if err = s.EncryptionKey.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.CommandType.EncodeTo(e)
-	if err != nil {
+	if err = s.CommandType.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11627,12 +11328,10 @@ type SignedSurveyRequestMessage struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SignedSurveyRequestMessage) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.RequestSignature.EncodeTo(e)
-	if err != nil {
+	if err = s.RequestSignature.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Request.EncodeTo(e)
-	if err != nil {
+	if err = s.Request.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11677,8 +11376,7 @@ func (e EncryptedBody) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s EncryptedBody) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -11731,24 +11429,19 @@ type SurveyResponseMessage struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SurveyResponseMessage) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SurveyorPeerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SurveyorPeerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SurveyedPeerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SurveyedPeerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.LedgerNum.EncodeTo(e)
-	if err != nil {
+	if err = s.LedgerNum.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.CommandType.EncodeTo(e)
-	if err != nil {
+	if err = s.CommandType.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.EncryptedBody.EncodeTo(e)
-	if err != nil {
+	if err = s.EncryptedBody.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11795,12 +11488,10 @@ type SignedSurveyResponseMessage struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SignedSurveyResponseMessage) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.ResponseSignature.EncodeTo(e)
-	if err != nil {
+	if err = s.ResponseSignature.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Response.EncodeTo(e)
-	if err != nil {
+	if err = s.Response.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11875,64 +11566,49 @@ type PeerStats struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PeerStats) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Id.EncodeTo(e)
-	if err != nil {
+	if err = s.Id.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeString(string(s.VersionStr))
-	if err != nil {
+	if _, err = e.EncodeString(string(s.VersionStr)); err != nil {
 		return err
 	}
-	err = s.MessagesRead.EncodeTo(e)
-	if err != nil {
+	if err = s.MessagesRead.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MessagesWritten.EncodeTo(e)
-	if err != nil {
+	if err = s.MessagesWritten.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.BytesRead.EncodeTo(e)
-	if err != nil {
+	if err = s.BytesRead.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.BytesWritten.EncodeTo(e)
-	if err != nil {
+	if err = s.BytesWritten.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SecondsConnected.EncodeTo(e)
-	if err != nil {
+	if err = s.SecondsConnected.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.UniqueFloodBytesRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.UniqueFloodBytesRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DuplicateFloodBytesRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.DuplicateFloodBytesRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.UniqueFetchBytesRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.UniqueFetchBytesRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DuplicateFetchBytesRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.DuplicateFetchBytesRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.UniqueFloodMessageRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.UniqueFloodMessageRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DuplicateFloodMessageRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.DuplicateFloodMessageRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.UniqueFetchMessageRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.UniqueFetchMessageRecv.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DuplicateFetchMessageRecv.EncodeTo(e)
-	if err != nil {
+	if err = s.DuplicateFetchMessageRecv.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -11977,18 +11653,13 @@ func (e PeerStatList) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s PeerStatList) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s); i++ {
-		err = s[i].EncodeTo(e)
-		if err != nil {
+		if err = s[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -12039,20 +11710,16 @@ type TopologyResponseBody struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TopologyResponseBody) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.InboundPeers.EncodeTo(e)
-	if err != nil {
+	if err = s.InboundPeers.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OutboundPeers.EncodeTo(e)
-	if err != nil {
+	if err = s.OutboundPeers.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TotalInboundPeerCount.EncodeTo(e)
-	if err != nil {
+	if err = s.TotalInboundPeerCount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TotalOutboundPeerCount.EncodeTo(e)
-	if err != nil {
+	if err = s.TotalOutboundPeerCount.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -12153,19 +11820,19 @@ func (u SurveyResponseBody) GetTopologyResponseBody() (result TopologyResponseBo
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SurveyResponseBody) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u SurveyResponseBody) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch SurveyMessageCommandType(s.Type) {
+	switch SurveyMessageCommandType(u.Type) {
 	case SurveyMessageCommandTypeSurveyTopology:
-		err = (*s.TopologyResponseBody).EncodeTo(e)
-		if err != nil {
+		if err = (*u.TopologyResponseBody).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (SurveyMessageCommandType) switch value '%d' is not valid for union SurveyResponseBody", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -12756,95 +12423,92 @@ func (u StellarMessage) GetGetScpLedgerSeq() (result Uint32, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s StellarMessage) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch MessageType(s.Type) {
+	switch MessageType(u.Type) {
 	case MessageTypeErrorMsg:
-		err = (*s.Error).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Error).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeHello:
-		err = (*s.Hello).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Hello).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeAuth:
-		err = (*s.Auth).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Auth).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeDontHave:
-		err = (*s.DontHave).EncodeTo(e)
-		if err != nil {
+		if err = (*u.DontHave).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeGetPeers:
 		// Void
+		return nil
 	case MessageTypePeers:
-		_, err = e.EncodeUint(uint32(len((*s.Peers))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Peers)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Peers)); i++ {
-			err = (*s.Peers)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Peers)); i++ {
+			if err = (*u.Peers)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case MessageTypeGetTxSet:
-		err = (*s.TxSetHash).EncodeTo(e)
-		if err != nil {
+		if err = (*u.TxSetHash).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeTxSet:
-		err = (*s.TxSet).EncodeTo(e)
-		if err != nil {
+		if err = (*u.TxSet).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeTransaction:
-		err = (*s.Transaction).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Transaction).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeSurveyRequest:
-		err = (*s.SignedSurveyRequestMessage).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SignedSurveyRequestMessage).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeSurveyResponse:
-		err = (*s.SignedSurveyResponseMessage).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SignedSurveyResponseMessage).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeGetScpQuorumset:
-		err = (*s.QSetHash).EncodeTo(e)
-		if err != nil {
+		if err = (*u.QSetHash).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeScpQuorumset:
-		err = (*s.QSet).EncodeTo(e)
-		if err != nil {
+		if err = (*u.QSet).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeScpMessage:
-		err = (*s.Envelope).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Envelope).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MessageTypeGetScpState:
-		err = (*s.GetScpLedgerSeq).EncodeTo(e)
-		if err != nil {
+		if err = (*u.GetScpLedgerSeq).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (MessageType) switch value '%d' is not valid for union StellarMessage", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -12890,16 +12554,13 @@ type AuthenticatedMessageV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AuthenticatedMessageV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Sequence.EncodeTo(e)
-	if err != nil {
+	if err = s.Sequence.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Message.EncodeTo(e)
-	if err != nil {
+	if err = s.Message.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Mac.EncodeTo(e)
-	if err != nil {
+	if err = s.Mac.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -13005,19 +12666,19 @@ func (u AuthenticatedMessage) GetV0() (result AuthenticatedMessageV0, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AuthenticatedMessage) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u AuthenticatedMessage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.V.EncodeTo(e); err != nil {
 		return err
 	}
-	switch Uint32(s.V) {
+	switch Uint32(u.V) {
 	case 0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (Uint32) switch value '%d' is not valid for union AuthenticatedMessage", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -13115,19 +12776,19 @@ func (u LiquidityPoolParameters) GetConstantProduct() (result LiquidityPoolConst
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolParameters) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u LiquidityPoolParameters) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LiquidityPoolType(s.Type) {
+	switch LiquidityPoolType(u.Type) {
 	case LiquidityPoolTypeLiquidityPoolConstantProduct:
-		err = (*s.ConstantProduct).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ConstantProduct).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (LiquidityPoolType) switch value '%d' is not valid for union LiquidityPoolParameters", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -13171,12 +12832,10 @@ type MuxedAccountMed25519 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *MuxedAccountMed25519) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Id.EncodeTo(e)
-	if err != nil {
+	if err = s.Id.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ed25519.EncodeTo(e)
-	if err != nil {
+	if err = s.Ed25519.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -13318,24 +12977,24 @@ func (u MuxedAccount) GetMed25519() (result MuxedAccountMed25519, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s MuxedAccount) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u MuxedAccount) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch CryptoKeyType(s.Type) {
+	switch CryptoKeyType(u.Type) {
 	case CryptoKeyTypeKeyTypeEd25519:
-		err = (*s.Ed25519).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Ed25519).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case CryptoKeyTypeKeyTypeMuxedEd25519:
-		err = (*s.Med25519).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Med25519).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (CryptoKeyType) switch value '%d' is not valid for union MuxedAccount", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -13379,12 +13038,10 @@ type DecoratedSignature struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *DecoratedSignature) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Hint.EncodeTo(e)
-	if err != nil {
+	if err = s.Hint.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Signature.EncodeTo(e)
-	if err != nil {
+	if err = s.Signature.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -13515,13 +13172,12 @@ func (e OperationType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OperationType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e OperationType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := operationTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid OperationType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -13565,12 +13221,10 @@ type CreateAccountOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *CreateAccountOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.StartingBalance.EncodeTo(e)
-	if err != nil {
+	if err = s.StartingBalance.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -13619,16 +13273,13 @@ type PaymentOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PaymentOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -13687,38 +13338,28 @@ type PathPaymentStrictReceiveOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PathPaymentStrictReceiveOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SendAsset.EncodeTo(e)
-	if err != nil {
+	if err = s.SendAsset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SendMax.EncodeTo(e)
-	if err != nil {
+	if err = s.SendMax.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DestAsset.EncodeTo(e)
-	if err != nil {
+	if err = s.DestAsset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DestAmount.EncodeTo(e)
-	if err != nil {
+	if err = s.DestAmount.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Path)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Path))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Path); i++ {
-		err = s.Path[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Path[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -13776,38 +13417,28 @@ type PathPaymentStrictSendOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PathPaymentStrictSendOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SendAsset.EncodeTo(e)
-	if err != nil {
+	if err = s.SendAsset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SendAmount.EncodeTo(e)
-	if err != nil {
+	if err = s.SendAmount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DestAsset.EncodeTo(e)
-	if err != nil {
+	if err = s.DestAsset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.DestMin.EncodeTo(e)
-	if err != nil {
+	if err = s.DestMin.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Path)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Path))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Path); i++ {
-		err = s.Path[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Path[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -13861,24 +13492,19 @@ type ManageSellOfferOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ManageSellOfferOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Selling.EncodeTo(e)
-	if err != nil {
+	if err = s.Selling.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Buying.EncodeTo(e)
-	if err != nil {
+	if err = s.Buying.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Price.EncodeTo(e)
-	if err != nil {
+	if err = s.Price.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OfferId.EncodeTo(e)
-	if err != nil {
+	if err = s.OfferId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -13934,24 +13560,19 @@ type ManageBuyOfferOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ManageBuyOfferOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Selling.EncodeTo(e)
-	if err != nil {
+	if err = s.Selling.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Buying.EncodeTo(e)
-	if err != nil {
+	if err = s.Buying.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.BuyAmount.EncodeTo(e)
-	if err != nil {
+	if err = s.BuyAmount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Price.EncodeTo(e)
-	if err != nil {
+	if err = s.Price.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OfferId.EncodeTo(e)
-	if err != nil {
+	if err = s.OfferId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14002,20 +13623,16 @@ type CreatePassiveSellOfferOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *CreatePassiveSellOfferOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Selling.EncodeTo(e)
-	if err != nil {
+	if err = s.Selling.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Buying.EncodeTo(e)
-	if err != nil {
+	if err = s.Buying.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Price.EncodeTo(e)
-	if err != nil {
+	if err = s.Price.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14083,95 +13700,77 @@ type SetOptionsOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SetOptionsOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeBool(s.InflationDest != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.InflationDest != nil); err != nil {
 		return err
 	}
 	if s.InflationDest != nil {
-		err = (*s.InflationDest).EncodeTo(e)
+		if err = (*s.InflationDest).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.ClearFlags != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.ClearFlags != nil); err != nil {
 		return err
 	}
 	if s.ClearFlags != nil {
-		err = (*s.ClearFlags).EncodeTo(e)
+		if err = (*s.ClearFlags).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.SetFlags != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.SetFlags != nil); err != nil {
 		return err
 	}
 	if s.SetFlags != nil {
-		err = (*s.SetFlags).EncodeTo(e)
+		if err = (*s.SetFlags).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.MasterWeight != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.MasterWeight != nil); err != nil {
 		return err
 	}
 	if s.MasterWeight != nil {
-		err = (*s.MasterWeight).EncodeTo(e)
+		if err = (*s.MasterWeight).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.LowThreshold != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.LowThreshold != nil); err != nil {
 		return err
 	}
 	if s.LowThreshold != nil {
-		err = (*s.LowThreshold).EncodeTo(e)
+		if err = (*s.LowThreshold).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.MedThreshold != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.MedThreshold != nil); err != nil {
 		return err
 	}
 	if s.MedThreshold != nil {
-		err = (*s.MedThreshold).EncodeTo(e)
+		if err = (*s.MedThreshold).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.HighThreshold != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.HighThreshold != nil); err != nil {
 		return err
 	}
 	if s.HighThreshold != nil {
-		err = (*s.HighThreshold).EncodeTo(e)
+		if err = (*s.HighThreshold).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.HomeDomain != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.HomeDomain != nil); err != nil {
 		return err
 	}
 	if s.HomeDomain != nil {
-		err = (*s.HomeDomain).EncodeTo(e)
+		if err = (*s.HomeDomain).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeBool(s.Signer != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.Signer != nil); err != nil {
 		return err
 	}
 	if s.Signer != nil {
-		err = (*s.Signer).EncodeTo(e)
-	}
-	if err != nil {
-		return err
+		if err = (*s.Signer).EncodeTo(e); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -14356,31 +13955,32 @@ func (u ChangeTrustAsset) GetLiquidityPool() (result LiquidityPoolParameters, ok
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ChangeTrustAsset) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u ChangeTrustAsset) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch AssetType(s.Type) {
+	switch AssetType(u.Type) {
 	case AssetTypeAssetTypeNative:
 		// Void
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum4:
-		err = (*s.AlphaNum4).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AlphaNum4).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum12:
-		err = (*s.AlphaNum12).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AlphaNum12).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case AssetTypeAssetTypePoolShare:
-		err = (*s.LiquidityPool).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPool).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (AssetType) switch value '%d' is not valid for union ChangeTrustAsset", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -14426,12 +14026,10 @@ type ChangeTrustOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ChangeTrustOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Line.EncodeTo(e)
-	if err != nil {
+	if err = s.Line.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Limit.EncodeTo(e)
-	if err != nil {
+	if err = s.Limit.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14482,16 +14080,13 @@ type AllowTrustOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *AllowTrustOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Trustor.EncodeTo(e)
-	if err != nil {
+	if err = s.Trustor.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Authorize.EncodeTo(e)
-	if err != nil {
+	if err = s.Authorize.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14538,19 +14133,16 @@ type ManageDataOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ManageDataOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.DataName.EncodeTo(e)
-	if err != nil {
+	if err = s.DataName.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeBool(s.DataValue != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.DataValue != nil); err != nil {
 		return err
 	}
 	if s.DataValue != nil {
-		err = (*s.DataValue).EncodeTo(e)
-	}
-	if err != nil {
-		return err
+		if err = (*s.DataValue).EncodeTo(e); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -14594,8 +14186,7 @@ type BumpSequenceOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *BumpSequenceOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.BumpTo.EncodeTo(e)
-	if err != nil {
+	if err = s.BumpTo.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14644,26 +14235,19 @@ type CreateClaimableBalanceOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *CreateClaimableBalanceOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Claimants)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Claimants))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Claimants); i++ {
-		err = s.Claimants[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Claimants[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -14707,8 +14291,7 @@ type ClaimClaimableBalanceOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimClaimableBalanceOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.BalanceId.EncodeTo(e)
-	if err != nil {
+	if err = s.BalanceId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14753,8 +14336,7 @@ type BeginSponsoringFutureReservesOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *BeginSponsoringFutureReservesOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SponsoredId.EncodeTo(e)
-	if err != nil {
+	if err = s.SponsoredId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -14819,13 +14401,12 @@ func (e RevokeSponsorshipType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s RevokeSponsorshipType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e RevokeSponsorshipType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := revokeSponsorshipTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid RevokeSponsorshipType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -14869,12 +14450,10 @@ type RevokeSponsorshipOpSigner struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *RevokeSponsorshipOpSigner) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.AccountId.EncodeTo(e)
-	if err != nil {
+	if err = s.AccountId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SignerKey.EncodeTo(e)
-	if err != nil {
+	if err = s.SignerKey.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -15016,24 +14595,24 @@ func (u RevokeSponsorshipOp) GetSigner() (result RevokeSponsorshipOpSigner, ok b
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s RevokeSponsorshipOp) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u RevokeSponsorshipOp) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch RevokeSponsorshipType(s.Type) {
+	switch RevokeSponsorshipType(u.Type) {
 	case RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-		err = (*s.LedgerKey).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LedgerKey).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case RevokeSponsorshipTypeRevokeSponsorshipSigner:
-		err = (*s.Signer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Signer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (RevokeSponsorshipType) switch value '%d' is not valid for union RevokeSponsorshipOp", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -15079,16 +14658,13 @@ type ClawbackOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClawbackOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.From.EncodeTo(e)
-	if err != nil {
+	if err = s.From.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -15133,8 +14709,7 @@ type ClawbackClaimableBalanceOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClawbackClaimableBalanceOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.BalanceId.EncodeTo(e)
-	if err != nil {
+	if err = s.BalanceId.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -15186,20 +14761,16 @@ type SetTrustLineFlagsOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SetTrustLineFlagsOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Trustor.EncodeTo(e)
-	if err != nil {
+	if err = s.Trustor.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.ClearFlags.EncodeTo(e)
-	if err != nil {
+	if err = s.ClearFlags.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SetFlags.EncodeTo(e)
-	if err != nil {
+	if err = s.SetFlags.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -15258,24 +14829,19 @@ type LiquidityPoolDepositOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LiquidityPoolDepositOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LiquidityPoolId.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MaxAmountA.EncodeTo(e)
-	if err != nil {
+	if err = s.MaxAmountA.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MaxAmountB.EncodeTo(e)
-	if err != nil {
+	if err = s.MaxAmountB.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MinPrice.EncodeTo(e)
-	if err != nil {
+	if err = s.MinPrice.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MaxPrice.EncodeTo(e)
-	if err != nil {
+	if err = s.MaxPrice.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -15326,20 +14892,16 @@ type LiquidityPoolWithdrawOp struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *LiquidityPoolWithdrawOp) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LiquidityPoolId.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MinAmountA.EncodeTo(e)
-	if err != nil {
+	if err = s.MinAmountA.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MinAmountB.EncodeTo(e)
-	if err != nil {
+	if err = s.MinAmountB.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -16229,128 +15791,130 @@ func (u OperationBody) GetLiquidityPoolWithdrawOp() (result LiquidityPoolWithdra
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OperationBody) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u OperationBody) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch OperationType(s.Type) {
+	switch OperationType(u.Type) {
 	case OperationTypeCreateAccount:
-		err = (*s.CreateAccountOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.CreateAccountOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypePayment:
-		err = (*s.PaymentOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PaymentOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypePathPaymentStrictReceive:
-		err = (*s.PathPaymentStrictReceiveOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PathPaymentStrictReceiveOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeManageSellOffer:
-		err = (*s.ManageSellOfferOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ManageSellOfferOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeCreatePassiveSellOffer:
-		err = (*s.CreatePassiveSellOfferOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.CreatePassiveSellOfferOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeSetOptions:
-		err = (*s.SetOptionsOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SetOptionsOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeChangeTrust:
-		err = (*s.ChangeTrustOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ChangeTrustOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeAllowTrust:
-		err = (*s.AllowTrustOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AllowTrustOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeAccountMerge:
-		err = (*s.Destination).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Destination).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeInflation:
 		// Void
+		return nil
 	case OperationTypeManageData:
-		err = (*s.ManageDataOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ManageDataOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeBumpSequence:
-		err = (*s.BumpSequenceOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.BumpSequenceOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeManageBuyOffer:
-		err = (*s.ManageBuyOfferOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ManageBuyOfferOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypePathPaymentStrictSend:
-		err = (*s.PathPaymentStrictSendOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PathPaymentStrictSendOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeCreateClaimableBalance:
-		err = (*s.CreateClaimableBalanceOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.CreateClaimableBalanceOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeClaimClaimableBalance:
-		err = (*s.ClaimClaimableBalanceOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClaimClaimableBalanceOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeBeginSponsoringFutureReserves:
-		err = (*s.BeginSponsoringFutureReservesOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.BeginSponsoringFutureReservesOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeEndSponsoringFutureReserves:
 		// Void
+		return nil
 	case OperationTypeRevokeSponsorship:
-		err = (*s.RevokeSponsorshipOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.RevokeSponsorshipOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeClawback:
-		err = (*s.ClawbackOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClawbackOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeClawbackClaimableBalance:
-		err = (*s.ClawbackClaimableBalanceOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClawbackClaimableBalanceOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeSetTrustLineFlags:
-		err = (*s.SetTrustLineFlagsOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SetTrustLineFlagsOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeLiquidityPoolDeposit:
-		err = (*s.LiquidityPoolDepositOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPoolDepositOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeLiquidityPoolWithdraw:
-		err = (*s.LiquidityPoolWithdrawOp).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPoolWithdrawOp).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (OperationType) switch value '%d' is not valid for union OperationBody", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -16449,18 +16013,15 @@ type Operation struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Operation) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeBool(s.SourceAccount != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.SourceAccount != nil); err != nil {
 		return err
 	}
 	if s.SourceAccount != nil {
-		err = (*s.SourceAccount).EncodeTo(e)
+		if err = (*s.SourceAccount).EncodeTo(e); err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Body.EncodeTo(e)
-	if err != nil {
+	if err = s.Body.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -16509,16 +16070,13 @@ type HashIdPreimageOperationId struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *HashIdPreimageOperationId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SourceAccount.EncodeTo(e)
-	if err != nil {
+	if err = s.SourceAccount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SeqNum.EncodeTo(e)
-	if err != nil {
+	if err = s.SeqNum.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OpNum.EncodeTo(e)
-	if err != nil {
+	if err = s.OpNum.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -16571,24 +16129,19 @@ type HashIdPreimageRevokeId struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *HashIdPreimageRevokeId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SourceAccount.EncodeTo(e)
-	if err != nil {
+	if err = s.SourceAccount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SeqNum.EncodeTo(e)
-	if err != nil {
+	if err = s.SeqNum.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OpNum.EncodeTo(e)
-	if err != nil {
+	if err = s.OpNum.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.LiquidityPoolId.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -16738,24 +16291,24 @@ func (u HashIdPreimage) GetRevokeId() (result HashIdPreimageRevokeId, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch EnvelopeType(s.Type) {
+	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeOpId:
-		err = (*s.OperationId).EncodeTo(e)
-		if err != nil {
+		if err = (*u.OperationId).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case EnvelopeTypeEnvelopeTypePoolRevokeOpId:
-		err = (*s.RevokeId).EncodeTo(e)
-		if err != nil {
+		if err = (*u.RevokeId).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (EnvelopeType) switch value '%d' is not valid for union HashIdPreimage", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -16826,13 +16379,12 @@ func (e MemoType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s MemoType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e MemoType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := memoTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid MemoType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -17047,36 +16599,37 @@ func (u Memo) GetRetHash() (result Hash, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s Memo) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u Memo) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch MemoType(s.Type) {
+	switch MemoType(u.Type) {
 	case MemoTypeMemoNone:
 		// Void
+		return nil
 	case MemoTypeMemoText:
-		_, err = e.EncodeString(string((*s.Text)))
-		if err != nil {
+		if _, err = e.EncodeString(string((*u.Text))); err != nil {
 			return err
 		}
+		return nil
 	case MemoTypeMemoId:
-		err = (*s.Id).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Id).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MemoTypeMemoHash:
-		err = (*s.Hash).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Hash).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case MemoTypeMemoReturn:
-		err = (*s.RetHash).EncodeTo(e)
-		if err != nil {
+		if err = (*u.RetHash).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (MemoType) switch value '%d' is not valid for union Memo", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -17120,12 +16673,10 @@ type TimeBounds struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TimeBounds) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.MinTime.EncodeTo(e)
-	if err != nil {
+	if err = s.MinTime.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.MaxTime.EncodeTo(e)
-	if err != nil {
+	if err = s.MaxTime.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -17201,16 +16752,17 @@ func NewTransactionV0Ext(v int32, value interface{}) (result TransactionV0Ext, e
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionV0Ext) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TransactionV0Ext) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionV0Ext", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -17269,47 +16821,35 @@ type TransactionV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SourceAccountEd25519.EncodeTo(e)
-	if err != nil {
+	if err = s.SourceAccountEd25519.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Fee.EncodeTo(e)
-	if err != nil {
+	if err = s.Fee.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SeqNum.EncodeTo(e)
-	if err != nil {
+	if err = s.SeqNum.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeBool(s.TimeBounds != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.TimeBounds != nil); err != nil {
 		return err
 	}
 	if s.TimeBounds != nil {
-		err = (*s.TimeBounds).EncodeTo(e)
-	}
-	if err != nil {
-		return err
-	}
-	err = s.Memo.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.Operations)))
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(s.Operations); i++ {
-		err = s.Operations[i].EncodeTo(e)
-		if err != nil {
+		if err = (*s.TimeBounds).EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
+	if err = s.Memo.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Operations))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Operations); i++ {
+		if err = s.Operations[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -17358,22 +16898,16 @@ type TransactionV0Envelope struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionV0Envelope) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Tx.EncodeTo(e)
-	if err != nil {
+	if err = s.Tx.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Signatures)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Signatures))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Signatures); i++ {
-		err = s.Signatures[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Signatures[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -17442,16 +16976,17 @@ func NewTransactionExt(v int32, value interface{}) (result TransactionExt, err e
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TransactionExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -17521,47 +17056,35 @@ type Transaction struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Transaction) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SourceAccount.EncodeTo(e)
-	if err != nil {
+	if err = s.SourceAccount.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Fee.EncodeTo(e)
-	if err != nil {
+	if err = s.Fee.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.SeqNum.EncodeTo(e)
-	if err != nil {
+	if err = s.SeqNum.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeBool(s.TimeBounds != nil)
-	if err != nil {
+	if _, err = e.EncodeBool(s.TimeBounds != nil); err != nil {
 		return err
 	}
 	if s.TimeBounds != nil {
-		err = (*s.TimeBounds).EncodeTo(e)
-	}
-	if err != nil {
-		return err
-	}
-	err = s.Memo.EncodeTo(e)
-	if err != nil {
-		return err
-	}
-	_, err = e.EncodeUint(uint32(len(s.Operations)))
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(s.Operations); i++ {
-		err = s.Operations[i].EncodeTo(e)
-		if err != nil {
+		if err = (*s.TimeBounds).EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
+	if err = s.Memo.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Operations))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Operations); i++ {
+		if err = s.Operations[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -17610,22 +17133,16 @@ type TransactionV1Envelope struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionV1Envelope) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Tx.EncodeTo(e)
-	if err != nil {
+	if err = s.Tx.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Signatures)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Signatures))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Signatures); i++ {
-		err = s.Signatures[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Signatures[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -17725,19 +17242,19 @@ func (u FeeBumpTransactionInnerTx) GetV1() (result TransactionV1Envelope, ok boo
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s FeeBumpTransactionInnerTx) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u FeeBumpTransactionInnerTx) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch EnvelopeType(s.Type) {
+	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeTx:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (EnvelopeType) switch value '%d' is not valid for union FeeBumpTransactionInnerTx", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -17804,16 +17321,17 @@ func NewFeeBumpTransactionExt(v int32, value interface{}) (result FeeBumpTransac
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s FeeBumpTransactionExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u FeeBumpTransactionExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union FeeBumpTransactionExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -17871,20 +17389,16 @@ type FeeBumpTransaction struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *FeeBumpTransaction) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.FeeSource.EncodeTo(e)
-	if err != nil {
+	if err = s.FeeSource.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Fee.EncodeTo(e)
-	if err != nil {
+	if err = s.Fee.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.InnerTx.EncodeTo(e)
-	if err != nil {
+	if err = s.InnerTx.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -17933,22 +17447,16 @@ type FeeBumpTransactionEnvelope struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *FeeBumpTransactionEnvelope) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Tx.EncodeTo(e)
-	if err != nil {
+	if err = s.Tx.EncodeTo(e); err != nil {
 		return err
 	}
-	_, err = e.EncodeUint(uint32(len(s.Signatures)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Signatures))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Signatures); i++ {
-		err = s.Signatures[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Signatures[i].EncodeTo(e); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -18122,29 +17630,29 @@ func (u TransactionEnvelope) GetFeeBump() (result FeeBumpTransactionEnvelope, ok
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionEnvelope) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u TransactionEnvelope) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch EnvelopeType(s.Type) {
+	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeTxV0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case EnvelopeTypeEnvelopeTypeTx:
-		err = (*s.V1).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		err = (*s.FeeBump).EncodeTo(e)
-		if err != nil {
+		if err = (*u.FeeBump).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (EnvelopeType) switch value '%d' is not valid for union TransactionEnvelope", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -18280,24 +17788,24 @@ func (u TransactionSignaturePayloadTaggedTransaction) GetFeeBump() (result FeeBu
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionSignaturePayloadTaggedTransaction) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u TransactionSignaturePayloadTaggedTransaction) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch EnvelopeType(s.Type) {
+	switch EnvelopeType(u.Type) {
 	case EnvelopeTypeEnvelopeTypeTx:
-		err = (*s.Tx).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Tx).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		err = (*s.FeeBump).EncodeTo(e)
-		if err != nil {
+		if err = (*u.FeeBump).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (EnvelopeType) switch value '%d' is not valid for union TransactionSignaturePayloadTaggedTransaction", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -18349,12 +17857,10 @@ type TransactionSignaturePayload struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionSignaturePayload) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.NetworkId.EncodeTo(e)
-	if err != nil {
+	if err = s.NetworkId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.TaggedTransaction.EncodeTo(e)
-	if err != nil {
+	if err = s.TaggedTransaction.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -18422,13 +17928,12 @@ func (e ClaimAtomType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimAtomType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClaimAtomType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := claimAtomTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClaimAtomType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -18485,28 +17990,22 @@ type ClaimOfferAtomV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimOfferAtomV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SellerEd25519.EncodeTo(e)
-	if err != nil {
+	if err = s.SellerEd25519.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OfferId.EncodeTo(e)
-	if err != nil {
+	if err = s.OfferId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetSold.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetSold.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AmountSold.EncodeTo(e)
-	if err != nil {
+	if err = s.AmountSold.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetBought.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetBought.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AmountBought.EncodeTo(e)
-	if err != nil {
+	if err = s.AmountBought.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -18566,28 +18065,22 @@ type ClaimOfferAtom struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimOfferAtom) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.SellerId.EncodeTo(e)
-	if err != nil {
+	if err = s.SellerId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.OfferId.EncodeTo(e)
-	if err != nil {
+	if err = s.OfferId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetSold.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetSold.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AmountSold.EncodeTo(e)
-	if err != nil {
+	if err = s.AmountSold.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetBought.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetBought.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AmountBought.EncodeTo(e)
-	if err != nil {
+	if err = s.AmountBought.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -18644,24 +18137,19 @@ type ClaimLiquidityAtom struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ClaimLiquidityAtom) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.LiquidityPoolId.EncodeTo(e)
-	if err != nil {
+	if err = s.LiquidityPoolId.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetSold.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetSold.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AmountSold.EncodeTo(e)
-	if err != nil {
+	if err = s.AmountSold.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AssetBought.EncodeTo(e)
-	if err != nil {
+	if err = s.AssetBought.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.AmountBought.EncodeTo(e)
-	if err != nil {
+	if err = s.AmountBought.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -18836,29 +18324,29 @@ func (u ClaimAtom) GetLiquidityPool() (result ClaimLiquidityAtom, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimAtom) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u ClaimAtom) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClaimAtomType(s.Type) {
+	switch ClaimAtomType(u.Type) {
 	case ClaimAtomTypeClaimAtomTypeV0:
-		err = (*s.V0).EncodeTo(e)
-		if err != nil {
+		if err = (*u.V0).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ClaimAtomTypeClaimAtomTypeOrderBook:
-		err = (*s.OrderBook).EncodeTo(e)
-		if err != nil {
+		if err = (*u.OrderBook).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ClaimAtomTypeClaimAtomTypeLiquidityPool:
-		err = (*s.LiquidityPool).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPool).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (ClaimAtomType) switch value '%d' is not valid for union ClaimAtom", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -18933,13 +18421,12 @@ func (e CreateAccountResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s CreateAccountResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e CreateAccountResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := createAccountResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid CreateAccountResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19011,18 +18498,19 @@ func NewCreateAccountResult(code CreateAccountResultCode, value interface{}) (re
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s CreateAccountResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u CreateAccountResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch CreateAccountResultCode(s.Code) {
+	switch CreateAccountResultCode(u.Code) {
 	case CreateAccountResultCodeCreateAccountSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19111,13 +18599,12 @@ func (e PaymentResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PaymentResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e PaymentResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := paymentResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid PaymentResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19189,18 +18676,19 @@ func NewPaymentResult(code PaymentResultCode, value interface{}) (result Payment
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PaymentResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u PaymentResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch PaymentResultCode(s.Code) {
+	switch PaymentResultCode(u.Code) {
 	case PaymentResultCodePaymentSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19307,13 +18795,12 @@ func (e PathPaymentStrictReceiveResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PathPaymentStrictReceiveResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e PathPaymentStrictReceiveResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := pathPaymentStrictReceiveResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid PathPaymentStrictReceiveResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19359,16 +18846,13 @@ type SimplePaymentResult struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *SimplePaymentResult) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Asset.EncodeTo(e)
-	if err != nil {
+	if err = s.Asset.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -19415,21 +18899,15 @@ type PathPaymentStrictReceiveResultSuccess struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PathPaymentStrictReceiveResultSuccess) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s.Offers)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Offers))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Offers); i++ {
-		err = s.Offers[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Offers[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Last.EncodeTo(e)
-	if err != nil {
+	if err = s.Last.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -19577,26 +19055,26 @@ func (u PathPaymentStrictReceiveResult) GetNoIssuer() (result Asset, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PathPaymentStrictReceiveResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u PathPaymentStrictReceiveResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch PathPaymentStrictReceiveResultCode(s.Code) {
+	switch PathPaymentStrictReceiveResultCode(u.Code) {
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSuccess:
-		err = (*s.Success).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Success).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoIssuer:
-		err = (*s.NoIssuer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NoIssuer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19702,13 +19180,12 @@ func (e PathPaymentStrictSendResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PathPaymentStrictSendResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e PathPaymentStrictSendResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := pathPaymentStrictSendResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid PathPaymentStrictSendResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -19752,21 +19229,15 @@ type PathPaymentStrictSendResultSuccess struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *PathPaymentStrictSendResultSuccess) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s.Offers)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.Offers))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.Offers); i++ {
-		err = s.Offers[i].EncodeTo(e)
-		if err != nil {
+		if err = s.Offers[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Last.EncodeTo(e)
-	if err != nil {
+	if err = s.Last.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -19913,26 +19384,26 @@ func (u PathPaymentStrictSendResult) GetNoIssuer() (result Asset, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PathPaymentStrictSendResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u PathPaymentStrictSendResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch PathPaymentStrictSendResultCode(s.Code) {
+	switch PathPaymentStrictSendResultCode(u.Code) {
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendSuccess:
-		err = (*s.Success).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Success).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoIssuer:
-		err = (*s.NoIssuer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.NoIssuer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20037,13 +19508,12 @@ func (e ManageSellOfferResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageSellOfferResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ManageSellOfferResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := manageSellOfferResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ManageSellOfferResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20108,13 +19578,12 @@ func (e ManageOfferEffect) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageOfferEffect) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ManageOfferEffect) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := manageOfferEffectMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ManageOfferEffect enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20227,26 +19696,26 @@ func (u ManageOfferSuccessResultOffer) GetOffer() (result OfferEntry, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageOfferSuccessResultOffer) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Effect))
-	if err != nil {
+func (u ManageOfferSuccessResultOffer) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Effect.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ManageOfferEffect(s.Effect) {
+	switch ManageOfferEffect(u.Effect) {
 	case ManageOfferEffectManageOfferCreated:
-		err = (*s.Offer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Offer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case ManageOfferEffectManageOfferUpdated:
-		err = (*s.Offer).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Offer).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20300,21 +19769,15 @@ type ManageOfferSuccessResult struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ManageOfferSuccessResult) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(len(s.OffersClaimed)))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.OffersClaimed))); err != nil {
 		return err
 	}
 	for i := 0; i < len(s.OffersClaimed); i++ {
-		err = s.OffersClaimed[i].EncodeTo(e)
-		if err != nil {
+		if err = s.OffersClaimed[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
-	if err != nil {
-		return err
-	}
-	err = s.Offer.EncodeTo(e)
-	if err != nil {
+	if err = s.Offer.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -20420,21 +19883,21 @@ func (u ManageSellOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageSellOfferResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ManageSellOfferResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ManageSellOfferResultCode(s.Code) {
+	switch ManageSellOfferResultCode(u.Code) {
 	case ManageSellOfferResultCodeManageSellOfferSuccess:
-		err = (*s.Success).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Success).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20536,13 +19999,12 @@ func (e ManageBuyOfferResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageBuyOfferResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ManageBuyOfferResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := manageBuyOfferResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ManageBuyOfferResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20645,21 +20107,21 @@ func (u ManageBuyOfferResult) GetSuccess() (result ManageOfferSuccessResult, ok 
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageBuyOfferResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ManageBuyOfferResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ManageBuyOfferResultCode(s.Code) {
+	switch ManageBuyOfferResultCode(u.Code) {
 	case ManageBuyOfferResultCodeManageBuyOfferSuccess:
-		err = (*s.Success).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Success).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20751,13 +20213,12 @@ func (e SetOptionsResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SetOptionsResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e SetOptionsResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := setOptionsResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid SetOptionsResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20829,18 +20290,19 @@ func NewSetOptionsResult(code SetOptionsResultCode, value interface{}) (result S
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SetOptionsResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u SetOptionsResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch SetOptionsResultCode(s.Code) {
+	switch SetOptionsResultCode(u.Code) {
 	case SetOptionsResultCodeSetOptionsSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -20927,13 +20389,12 @@ func (e ChangeTrustResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ChangeTrustResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ChangeTrustResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := changeTrustResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ChangeTrustResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21005,18 +20466,19 @@ func NewChangeTrustResult(code ChangeTrustResultCode, value interface{}) (result
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ChangeTrustResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ChangeTrustResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ChangeTrustResultCode(s.Code) {
+	switch ChangeTrustResultCode(u.Code) {
 	case ChangeTrustResultCodeChangeTrustSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21097,13 +20559,12 @@ func (e AllowTrustResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AllowTrustResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e AllowTrustResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := allowTrustResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid AllowTrustResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21175,18 +20636,19 @@ func NewAllowTrustResult(code AllowTrustResultCode, value interface{}) (result A
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AllowTrustResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u AllowTrustResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch AllowTrustResultCode(s.Code) {
+	switch AllowTrustResultCode(u.Code) {
 	case AllowTrustResultCodeAllowTrustSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21269,13 +20731,12 @@ func (e AccountMergeResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AccountMergeResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e AccountMergeResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := accountMergeResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid AccountMergeResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21378,21 +20839,21 @@ func (u AccountMergeResult) GetSourceAccountBalance() (result Int64, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s AccountMergeResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u AccountMergeResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch AccountMergeResultCode(s.Code) {
+	switch AccountMergeResultCode(u.Code) {
 	case AccountMergeResultCodeAccountMergeSuccess:
-		err = (*s.SourceAccountBalance).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SourceAccountBalance).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21456,13 +20917,12 @@ func (e InflationResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s InflationResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e InflationResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := inflationResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid InflationResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21506,12 +20966,10 @@ type InflationPayout struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *InflationPayout) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.Destination.EncodeTo(e)
-	if err != nil {
+	if err = s.Destination.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Amount.EncodeTo(e)
-	if err != nil {
+	if err = s.Amount.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -21617,30 +21075,26 @@ func (u InflationResult) GetPayouts() (result []InflationPayout, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s InflationResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u InflationResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch InflationResultCode(s.Code) {
+	switch InflationResultCode(u.Code) {
 	case InflationResultCodeInflationSuccess:
-		_, err = e.EncodeUint(uint32(len((*s.Payouts))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Payouts)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Payouts)); i++ {
-			err = (*s.Payouts)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Payouts)); i++ {
+			if err = (*u.Payouts)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21715,13 +21169,12 @@ func (e ManageDataResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageDataResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ManageDataResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := manageDataResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ManageDataResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21793,18 +21246,19 @@ func NewManageDataResult(code ManageDataResultCode, value interface{}) (result M
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ManageDataResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ManageDataResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ManageDataResultCode(s.Code) {
+	switch ManageDataResultCode(u.Code) {
 	case ManageDataResultCodeManageDataSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21868,13 +21322,12 @@ func (e BumpSequenceResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BumpSequenceResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e BumpSequenceResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := bumpSequenceResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BumpSequenceResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -21946,18 +21399,19 @@ func NewBumpSequenceResult(code BumpSequenceResultCode, value interface{}) (resu
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BumpSequenceResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u BumpSequenceResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch BumpSequenceResultCode(s.Code) {
+	switch BumpSequenceResultCode(u.Code) {
 	case BumpSequenceResultCodeBumpSequenceSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22031,13 +21485,12 @@ func (e CreateClaimableBalanceResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s CreateClaimableBalanceResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e CreateClaimableBalanceResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := createClaimableBalanceResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid CreateClaimableBalanceResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22141,21 +21594,21 @@ func (u CreateClaimableBalanceResult) GetBalanceId() (result ClaimableBalanceId,
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s CreateClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u CreateClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch CreateClaimableBalanceResultCode(s.Code) {
+	switch CreateClaimableBalanceResultCode(u.Code) {
 	case CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess:
-		err = (*s.BalanceId).EncodeTo(e)
-		if err != nil {
+		if err = (*u.BalanceId).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22230,13 +21683,12 @@ func (e ClaimClaimableBalanceResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimClaimableBalanceResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClaimClaimableBalanceResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := claimClaimableBalanceResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClaimClaimableBalanceResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22308,18 +21760,19 @@ func NewClaimClaimableBalanceResult(code ClaimClaimableBalanceResultCode, value 
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClaimClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ClaimClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClaimClaimableBalanceResultCode(s.Code) {
+	switch ClaimClaimableBalanceResultCode(u.Code) {
 	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22390,13 +21843,12 @@ func (e BeginSponsoringFutureReservesResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BeginSponsoringFutureReservesResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e BeginSponsoringFutureReservesResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := beginSponsoringFutureReservesResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BeginSponsoringFutureReservesResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22469,18 +21921,19 @@ func NewBeginSponsoringFutureReservesResult(code BeginSponsoringFutureReservesRe
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s BeginSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u BeginSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch BeginSponsoringFutureReservesResultCode(s.Code) {
+	switch BeginSponsoringFutureReservesResultCode(u.Code) {
 	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22545,13 +21998,12 @@ func (e EndSponsoringFutureReservesResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s EndSponsoringFutureReservesResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e EndSponsoringFutureReservesResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := endSponsoringFutureReservesResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid EndSponsoringFutureReservesResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22624,18 +22076,19 @@ func NewEndSponsoringFutureReservesResult(code EndSponsoringFutureReservesResult
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s EndSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u EndSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch EndSponsoringFutureReservesResultCode(s.Code) {
+	switch EndSponsoringFutureReservesResultCode(u.Code) {
 	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22712,13 +22165,12 @@ func (e RevokeSponsorshipResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s RevokeSponsorshipResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e RevokeSponsorshipResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := revokeSponsorshipResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid RevokeSponsorshipResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22790,18 +22242,19 @@ func NewRevokeSponsorshipResult(code RevokeSponsorshipResultCode, value interfac
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s RevokeSponsorshipResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u RevokeSponsorshipResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch RevokeSponsorshipResultCode(s.Code) {
+	switch RevokeSponsorshipResultCode(u.Code) {
 	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22875,13 +22328,12 @@ func (e ClawbackResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClawbackResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClawbackResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := clawbackResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClawbackResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -22953,18 +22405,19 @@ func NewClawbackResult(code ClawbackResultCode, value interface{}) (result Clawb
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClawbackResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ClawbackResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClawbackResultCode(s.Code) {
+	switch ClawbackResultCode(u.Code) {
 	case ClawbackResultCodeClawbackSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23035,13 +22488,12 @@ func (e ClawbackClaimableBalanceResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClawbackClaimableBalanceResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e ClawbackClaimableBalanceResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := clawbackClaimableBalanceResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ClawbackClaimableBalanceResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23114,18 +22566,19 @@ func NewClawbackClaimableBalanceResult(code ClawbackClaimableBalanceResultCode, 
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s ClawbackClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u ClawbackClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ClawbackClaimableBalanceResultCode(s.Code) {
+	switch ClawbackClaimableBalanceResultCode(u.Code) {
 	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23203,13 +22656,12 @@ func (e SetTrustLineFlagsResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SetTrustLineFlagsResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e SetTrustLineFlagsResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := setTrustLineFlagsResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid SetTrustLineFlagsResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23281,18 +22733,19 @@ func NewSetTrustLineFlagsResult(code SetTrustLineFlagsResultCode, value interfac
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SetTrustLineFlagsResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u SetTrustLineFlagsResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch SetTrustLineFlagsResultCode(s.Code) {
+	switch SetTrustLineFlagsResultCode(u.Code) {
 	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23379,13 +22832,12 @@ func (e LiquidityPoolDepositResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolDepositResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LiquidityPoolDepositResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := liquidityPoolDepositResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LiquidityPoolDepositResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23458,18 +22910,19 @@ func NewLiquidityPoolDepositResult(code LiquidityPoolDepositResultCode, value in
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolDepositResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u LiquidityPoolDepositResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LiquidityPoolDepositResultCode(s.Code) {
+	switch LiquidityPoolDepositResultCode(u.Code) {
 	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23549,13 +23002,12 @@ func (e LiquidityPoolWithdrawResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolWithdrawResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e LiquidityPoolWithdrawResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := liquidityPoolWithdrawResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid LiquidityPoolWithdrawResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23628,18 +23080,19 @@ func NewLiquidityPoolWithdrawResult(code LiquidityPoolWithdrawResultCode, value 
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s LiquidityPoolWithdrawResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u LiquidityPoolWithdrawResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch LiquidityPoolWithdrawResultCode(s.Code) {
+	switch LiquidityPoolWithdrawResultCode(u.Code) {
 	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
 		// Void
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -23717,13 +23170,12 @@ func (e OperationResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OperationResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e OperationResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := operationResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid OperationResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -24672,134 +24124,134 @@ func (u OperationResultTr) GetLiquidityPoolWithdrawResult() (result LiquidityPoo
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OperationResultTr) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u OperationResultTr) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch OperationType(s.Type) {
+	switch OperationType(u.Type) {
 	case OperationTypeCreateAccount:
-		err = (*s.CreateAccountResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.CreateAccountResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypePayment:
-		err = (*s.PaymentResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PaymentResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypePathPaymentStrictReceive:
-		err = (*s.PathPaymentStrictReceiveResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PathPaymentStrictReceiveResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeManageSellOffer:
-		err = (*s.ManageSellOfferResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ManageSellOfferResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeCreatePassiveSellOffer:
-		err = (*s.CreatePassiveSellOfferResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.CreatePassiveSellOfferResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeSetOptions:
-		err = (*s.SetOptionsResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SetOptionsResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeChangeTrust:
-		err = (*s.ChangeTrustResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ChangeTrustResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeAllowTrust:
-		err = (*s.AllowTrustResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AllowTrustResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeAccountMerge:
-		err = (*s.AccountMergeResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.AccountMergeResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeInflation:
-		err = (*s.InflationResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.InflationResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeManageData:
-		err = (*s.ManageDataResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ManageDataResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeBumpSequence:
-		err = (*s.BumpSeqResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.BumpSeqResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeManageBuyOffer:
-		err = (*s.ManageBuyOfferResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ManageBuyOfferResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypePathPaymentStrictSend:
-		err = (*s.PathPaymentStrictSendResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PathPaymentStrictSendResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeCreateClaimableBalance:
-		err = (*s.CreateClaimableBalanceResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.CreateClaimableBalanceResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeClaimClaimableBalance:
-		err = (*s.ClaimClaimableBalanceResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClaimClaimableBalanceResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeBeginSponsoringFutureReserves:
-		err = (*s.BeginSponsoringFutureReservesResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.BeginSponsoringFutureReservesResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeEndSponsoringFutureReserves:
-		err = (*s.EndSponsoringFutureReservesResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.EndSponsoringFutureReservesResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeRevokeSponsorship:
-		err = (*s.RevokeSponsorshipResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.RevokeSponsorshipResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeClawback:
-		err = (*s.ClawbackResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClawbackResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeClawbackClaimableBalance:
-		err = (*s.ClawbackClaimableBalanceResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.ClawbackClaimableBalanceResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeSetTrustLineFlags:
-		err = (*s.SetTrustLineFlagsResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.SetTrustLineFlagsResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeLiquidityPoolDeposit:
-		err = (*s.LiquidityPoolDepositResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPoolDepositResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case OperationTypeLiquidityPoolWithdraw:
-		err = (*s.LiquidityPoolWithdrawResult).EncodeTo(e)
-		if err != nil {
+		if err = (*u.LiquidityPoolWithdrawResult).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (OperationType) switch value '%d' is not valid for union OperationResultTr", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -24953,21 +24405,21 @@ func (u OperationResult) GetTr() (result OperationResultTr, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s OperationResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u OperationResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch OperationResultCode(s.Code) {
+	switch OperationResultCode(u.Code) {
 	case OperationResultCodeOpInner:
-		err = (*s.Tr).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Tr).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25075,13 +24527,12 @@ func (e TransactionResultCode) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionResultCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e TransactionResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := transactionResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid TransactionResultCode enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25252,66 +24703,70 @@ func (u InnerTransactionResultResult) GetResults() (result []OperationResult, ok
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s InnerTransactionResultResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u InnerTransactionResultResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch TransactionResultCode(s.Code) {
+	switch TransactionResultCode(u.Code) {
 	case TransactionResultCodeTxSuccess:
-		_, err = e.EncodeUint(uint32(len((*s.Results))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Results)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Results)); i++ {
-			err = (*s.Results)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Results)); i++ {
+			if err = (*u.Results)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case TransactionResultCodeTxFailed:
-		_, err = e.EncodeUint(uint32(len((*s.Results))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Results)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Results)); i++ {
-			err = (*s.Results)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Results)); i++ {
+			if err = (*u.Results)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case TransactionResultCodeTxTooEarly:
 		// Void
+		return nil
 	case TransactionResultCodeTxTooLate:
 		// Void
+		return nil
 	case TransactionResultCodeTxMissingOperation:
 		// Void
+		return nil
 	case TransactionResultCodeTxBadSeq:
 		// Void
+		return nil
 	case TransactionResultCodeTxBadAuth:
 		// Void
+		return nil
 	case TransactionResultCodeTxInsufficientBalance:
 		// Void
+		return nil
 	case TransactionResultCodeTxNoAccount:
 		// Void
+		return nil
 	case TransactionResultCodeTxInsufficientFee:
 		// Void
+		return nil
 	case TransactionResultCodeTxBadAuthExtra:
 		// Void
+		return nil
 	case TransactionResultCodeTxInternalError:
 		// Void
+		return nil
 	case TransactionResultCodeTxNotSupported:
 		// Void
+		return nil
 	case TransactionResultCodeTxBadSponsorship:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("Code (TransactionResultCode) switch value '%d' is not valid for union InnerTransactionResultResult", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25378,16 +24833,17 @@ func NewInnerTransactionResultExt(v int32, value interface{}) (result InnerTrans
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s InnerTransactionResultExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u InnerTransactionResultExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union InnerTransactionResultExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25463,16 +24919,13 @@ type InnerTransactionResult struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *InnerTransactionResult) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.FeeCharged.EncodeTo(e)
-	if err != nil {
+	if err = s.FeeCharged.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Result.EncodeTo(e)
-	if err != nil {
+	if err = s.Result.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -25519,12 +24972,10 @@ type InnerTransactionResultPair struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *InnerTransactionResultPair) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.TransactionHash.EncodeTo(e)
-	if err != nil {
+	if err = s.TransactionHash.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Result.EncodeTo(e)
-	if err != nil {
+	if err = s.Result.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -25687,54 +25138,46 @@ func (u TransactionResultResult) GetResults() (result []OperationResult, ok bool
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionResultResult) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Code))
-	if err != nil {
+func (u TransactionResultResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch TransactionResultCode(s.Code) {
+	switch TransactionResultCode(u.Code) {
 	case TransactionResultCodeTxFeeBumpInnerSuccess:
-		err = (*s.InnerResultPair).EncodeTo(e)
-		if err != nil {
+		if err = (*u.InnerResultPair).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case TransactionResultCodeTxFeeBumpInnerFailed:
-		err = (*s.InnerResultPair).EncodeTo(e)
-		if err != nil {
+		if err = (*u.InnerResultPair).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case TransactionResultCodeTxSuccess:
-		_, err = e.EncodeUint(uint32(len((*s.Results))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Results)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Results)); i++ {
-			err = (*s.Results)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Results)); i++ {
+			if err = (*u.Results)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	case TransactionResultCodeTxFailed:
-		_, err = e.EncodeUint(uint32(len((*s.Results))))
-		if err != nil {
+		if _, err = e.EncodeUint(uint32(len((*u.Results)))); err != nil {
 			return err
 		}
-		for i := 0; i < len((*s.Results)); i++ {
-			err = (*s.Results)[i].EncodeTo(e)
-			if err != nil {
+		for i := 0; i < len((*u.Results)); i++ {
+			if err = (*u.Results)[i].EncodeTo(e); err != nil {
 				return err
 			}
 		}
-		if err != nil {
-			return err
-		}
+		return nil
 	default:
 		// Void
+		return nil
 	}
-	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25801,16 +25244,17 @@ func NewTransactionResultExt(v int32, value interface{}) (result TransactionResu
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s TransactionResultExt) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.V))
-	if err != nil {
+func (u TransactionResultExt) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
 		return err
 	}
-	switch int32(s.V) {
+	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
 	}
-	return err
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionResultExt", u.V)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25875,16 +25319,13 @@ type TransactionResult struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *TransactionResult) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = s.FeeCharged.EncodeTo(e)
-	if err != nil {
+	if err = s.FeeCharged.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Result.EncodeTo(e)
-	if err != nil {
+	if err = s.Result.EncodeTo(e); err != nil {
 		return err
 	}
-	err = s.Ext.EncodeTo(e)
-	if err != nil {
+	if err = s.Ext.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -25929,8 +25370,7 @@ func (e Hash) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s *Hash) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -25975,8 +25415,7 @@ func (e Uint256) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s *Uint256) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -26016,8 +25455,7 @@ type Uint32 uint32
 // EncodeTo encodes this value using the Encoder.
 func (s Uint32) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUint(uint32(s))
-	if err != nil {
+	if _, err = e.EncodeUint(uint32(s)); err != nil {
 		return err
 	}
 	return nil
@@ -26057,8 +25495,7 @@ type Int32 int32
 // EncodeTo encodes this value using the Encoder.
 func (s Int32) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
+	if _, err = e.EncodeInt(int32(s)); err != nil {
 		return err
 	}
 	return nil
@@ -26098,8 +25535,7 @@ type Uint64 uint64
 // EncodeTo encodes this value using the Encoder.
 func (s Uint64) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeUhyper(uint64(s))
-	if err != nil {
+	if _, err = e.EncodeUhyper(uint64(s)); err != nil {
 		return err
 	}
 	return nil
@@ -26139,8 +25575,7 @@ type Int64 int64
 // EncodeTo encodes this value using the Encoder.
 func (s Int64) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeHyper(int64(s))
-	if err != nil {
+	if _, err = e.EncodeHyper(int64(s)); err != nil {
 		return err
 	}
 	return nil
@@ -26213,13 +25648,12 @@ func (e CryptoKeyType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s CryptoKeyType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e CryptoKeyType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := cryptoKeyTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid CryptoKeyType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26278,13 +25712,12 @@ func (e PublicKeyType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PublicKeyType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e PublicKeyType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := publicKeyTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid PublicKeyType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26349,13 +25782,12 @@ func (e SignerKeyType) String() string {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SignerKeyType) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	_, err = e.EncodeInt(int32(s))
-	if err != nil {
-		return err
+func (e SignerKeyType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := signerKeyTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid SignerKeyType enum value", e)
 	}
-	return nil
+	_, err := enc.EncodeInt(int32(e))
+	return err
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26453,19 +25885,19 @@ func (u PublicKey) GetEd25519() (result Uint256, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s PublicKey) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u PublicKey) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch PublicKeyType(s.Type) {
+	switch PublicKeyType(u.Type) {
 	case PublicKeyTypePublicKeyTypeEd25519:
-		err = (*s.Ed25519).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Ed25519).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (PublicKeyType) switch value '%d' is not valid for union PublicKey", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26639,29 +26071,29 @@ func (u SignerKey) GetHashX() (result Uint256, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s SignerKey) EncodeTo(e *xdr.Encoder) error {
-	_, err := e.EncodeInt(int32(s.Type))
-	if err != nil {
+func (u SignerKey) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch SignerKeyType(s.Type) {
+	switch SignerKeyType(u.Type) {
 	case SignerKeyTypeSignerKeyTypeEd25519:
-		err = (*s.Ed25519).EncodeTo(e)
-		if err != nil {
+		if err = (*u.Ed25519).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case SignerKeyTypeSignerKeyTypePreAuthTx:
-		err = (*s.PreAuthTx).EncodeTo(e)
-		if err != nil {
+		if err = (*u.PreAuthTx).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	case SignerKeyTypeSignerKeyTypeHashX:
-		err = (*s.HashX).EncodeTo(e)
-		if err != nil {
+		if err = (*u.HashX).EncodeTo(e); err != nil {
 			return err
 		}
+		return nil
 	}
-	return err
+	return fmt.Errorf("Type (SignerKeyType) switch value '%d' is not valid for union SignerKey", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26703,8 +26135,7 @@ func (e Signature) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s Signature) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -26749,8 +26180,7 @@ func (e SignatureHint) XDRMaxSize() int {
 // EncodeTo encodes this value using the Encoder.
 func (s *SignatureHint) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s[:]); err != nil {
 		return err
 	}
 	return nil
@@ -26821,8 +26251,7 @@ func (u NodeId) GetEd25519() (result Uint256, ok bool) {
 // EncodeTo encodes this value using the Encoder.
 func (s NodeId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	err = PublicKey(s).EncodeTo(e)
-	if err != nil {
+	if err = PublicKey(s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -26867,8 +26296,7 @@ type Curve25519Secret struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Curve25519Secret) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s.Key[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s.Key[:]); err != nil {
 		return err
 	}
 	return nil
@@ -26913,8 +26341,7 @@ type Curve25519Public struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *Curve25519Public) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s.Key[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s.Key[:]); err != nil {
 		return err
 	}
 	return nil
@@ -26959,8 +26386,7 @@ type HmacSha256Key struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *HmacSha256Key) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s.Key[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s.Key[:]); err != nil {
 		return err
 	}
 	return nil
@@ -27005,8 +26431,7 @@ type HmacSha256Mac struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *HmacSha256Mac) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	_, err = e.EncodeFixedOpaque(s.Mac[:])
-	if err != nil {
+	if _, err = e.EncodeFixedOpaque(s.Mac[:]); err != nil {
 		return err
 	}
 	return nil
