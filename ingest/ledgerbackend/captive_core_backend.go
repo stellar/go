@@ -558,7 +558,10 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 		return err
 	}
 	if !ok || result.err != nil {
-		if exited, err := c.stellarCoreRunner.getProcessExitError(); exited {
+		if result.err != nil {
+			// Case 3 - Some error was encountered while consuming the ledger stream emitted by captive core.
+			return result.err
+		} else if exited, err := c.stellarCoreRunner.getProcessExitError(); exited {
 			// Case 2 - The stellar core process exited unexpectedly
 			if err == nil {
 				return errors.Errorf("stellar core exited unexpectedly")
@@ -570,9 +573,6 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 			// if and only if the process exits or the context is cancelled.
 			// However, we add this check for the sake of completeness
 			return errors.Errorf("meta pipe closed unexpectedly")
-		} else {
-			// Case 3 - Some error was encountered while consuming the ledger stream emitted by captive core.
-			return result.err
 		}
 	}
 	return nil

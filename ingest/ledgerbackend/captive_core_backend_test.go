@@ -871,7 +871,6 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	ctx, cancel := context.WithCancel(ctx)
 	mockRunner.On("context").Return(ctx)
-	mockRunner.On("getProcessExitError").Return(false, nil)
 	mockRunner.On("close").Return(nil).Run(func(args mock.Arguments) {
 		cancel()
 	}).Once()
@@ -1071,7 +1070,7 @@ func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
 		{
 			"stellar core exited unexpectedly without error",
 			context.Background(),
-			[]metaResult{{LedgerCloseMeta: &ledger64}, {err: fmt.Errorf("transient error")}},
+			[]metaResult{{LedgerCloseMeta: &ledger64}},
 			true,
 			nil,
 			"stellar core exited unexpectedly",
@@ -1079,7 +1078,7 @@ func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
 		{
 			"stellar core exited unexpectedly with an error",
 			context.Background(),
-			[]metaResult{{LedgerCloseMeta: &ledger64}, {err: fmt.Errorf("transient error")}},
+			[]metaResult{{LedgerCloseMeta: &ledger64}},
 			true,
 			fmt.Errorf("signal kill"),
 			"stellar core exited unexpectedly: signal kill",
