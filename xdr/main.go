@@ -167,6 +167,16 @@ func (e *EncodingBuffer) UnsafeMarshalHex(encodable XDREncodable) ([]byte, error
 	return e.otherEncodersBuf, nil
 }
 
+func (e *EncodingBuffer) MarshalBinary(encodable XDREncodable) ([]byte, error) {
+	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]byte, len(xdrEncoded))
+	copy(ret, xdrEncoded)
+	return ret, nil
+}
+
 func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
 	b, err := e.UnsafeMarshalBase64(encodable)
 	if err != nil {
