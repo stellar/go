@@ -36,9 +36,7 @@ type StateVerifierTestSuite struct {
 
 func (s *StateVerifierTestSuite) SetupTest() {
 	s.mockStateReader = &ingest.MockChangeReader{}
-	s.verifier = &StateVerifier{
-		StateReader: s.mockStateReader,
-	}
+	s.verifier = NewStateVerifier(s.mockStateReader, nil)
 }
 
 func (s *StateVerifierTestSuite) TearDownTest() {
@@ -103,7 +101,7 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 
 	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
-	s.verifier.TransformFunction =
+	s.verifier.transformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
 			// Leave Account ID only for accounts, ignore the rest
 			switch entry.Data.Type {
@@ -190,7 +188,7 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 			Post: &accountEntry,
 		}, nil).Once()
 
-	s.verifier.TransformFunction =
+	s.verifier.transformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
 			return false, xdr.LedgerEntry{}
 		}
@@ -199,8 +197,8 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 1)
 
-	// Check the behaviour of TransformFunction to code path to test.
-	s.verifier.TransformFunction =
+	// Check the behaviour of transformFunction to code path to test.
+	s.verifier.transformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
 			return true, xdr.LedgerEntry{}
 		}
@@ -208,7 +206,7 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 	entryBase64, err := xdr.MarshalBase64(accountEntry)
 	s.Assert().NoError(err)
 	errorMsg := fmt.Sprintf(
-		"Entry ignored in GetEntries but not ignored in Write: %s. Possibly TransformFunction is buggy.",
+		"Entry ignored in GetEntries but not ignored in Write: %s. Possibly transformFunction is buggy.",
 		entryBase64,
 	)
 	err = s.verifier.Write(accountEntry)

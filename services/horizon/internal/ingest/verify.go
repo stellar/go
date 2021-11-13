@@ -152,9 +152,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 	defer stateReader.Close()
 
-	verifier := &verify.StateVerifier{
-		StateReader: stateReader,
-	}
+	verifier := verify.NewStateVerifier(stateReader, nil)
 
 	assetStats := processors.AssetStatSet{}
 	total := int64(0)
