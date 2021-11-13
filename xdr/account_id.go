@@ -72,20 +72,25 @@ func (aid *AccountId) LedgerKey() (ret LedgerKey) {
 //
 // Warning, do not use UnmarshalBinary() on data encoded using this method!
 func (aid AccountId) MarshalBinaryCompress() ([]byte, error) {
-	m := []byte{byte(aid.Type)}
+	e := NewEncodingBuffer()
+	if err := e.accountIdCompressEncodeTo(aid); err != nil {
+		return nil, err
+	}
+	return e.xdrEncoderBuf.Bytes(), nil
+}
 
+func (e *EncodingBuffer) accountIdCompressEncodeTo(aid AccountId) error {
+	if err := e.xdrEncoderBuf.WriteByte(byte(aid.Type)); err != nil {
+		return err
+	}
 	switch aid.Type {
 	case PublicKeyTypePublicKeyTypeEd25519:
-		pk, err := aid.Ed25519.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, pk...)
+		// TODO: Encoding directly adds a padding (due to invoking EncodeFixedOpaque())
+		//       shouldn't we just write the bytes?
+		return aid.Ed25519.EncodeTo(e.encoder)
 	default:
 		panic("Unknown type")
 	}
-
-	return m, nil
 }
 
 func MustAddress(address string) AccountId {

@@ -276,34 +276,48 @@ func (a Asset) StringCanonical() string {
 //
 // Warning, do not use UnmarshalBinary() on data encoded using this method!
 func (a Asset) MarshalBinaryCompress() ([]byte, error) {
-	m := []byte{byte(a.Type)}
+	e := NewEncodingBuffer()
+	if err := e.assetCompressEncodeTo(a); err != nil {
+		return nil, err
+	}
+	return e.xdrEncoderBuf.Bytes(), nil
+}
 
-	var err error
-	var code []byte
-	var issuer []byte
+func trimRightZeros(b []byte) []byte {
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] != 0 {
+			return b[:i+1]
+		}
+	}
+	return b
+}
+
+func (e *EncodingBuffer) assetCompressEncodeTo(a Asset) error {
+	if err := e.xdrEncoderBuf.WriteByte(byte(a.Type)); err != nil {
+		return err
+	}
 
 	switch a.Type {
 	case AssetTypeAssetTypeNative:
-		return m, nil
+		return nil
 	case AssetTypeAssetTypeCreditAlphanum4:
-		code = []byte(strings.TrimRight(string(a.AlphaNum4.AssetCode[:]), "\x00"))
-		issuer, err = a.AlphaNum4.Issuer.MarshalBinary()
-		if err != nil {
-			return nil, err
+		code := trimRightZeros(a.AlphaNum4.AssetCode[:])
+		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
+			return err
 		}
+		return e.accountIdCompressEncodeTo(a.AlphaNum4.Issuer)
 	case AssetTypeAssetTypeCreditAlphanum12:
-		code = []byte(strings.TrimRight(string(a.AlphaNum12.AssetCode[:]), "\x00"))
-		issuer, err = a.AlphaNum12.Issuer.MarshalBinary()
-		if err != nil {
-			panic(err)
+		code := trimRightZeros(a.AlphaNum12.AssetCode[:])
+		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
+			return err
 		}
+		// TODO: this was panicking before, check with the team
+		return e.accountIdCompressEncodeTo(a.AlphaNum12.Issuer)
 	default:
 		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
 	}
 
-	m = append(m, code...)
-	m = append(m, issuer...)
-	return m, nil
+	return nil
 }
 
 // Equals returns true if `other` is equivalent to `a`

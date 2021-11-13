@@ -50,16 +50,25 @@ func (a TrustLineAsset) MustExtract(typ interface{}, code interface{}, issuer in
 //
 // Warning, do not use UnmarshalBinary() on data encoded using this method!
 func (a TrustLineAsset) MarshalBinaryCompress() ([]byte, error) {
+	e := NewEncodingBuffer()
+	if err := e.assetTrustlineCompressEncodeTo(a); err != nil {
+		return nil, err
+	}
+	return e.xdrEncoderBuf.Bytes(), nil
+}
+
+func (e *EncodingBuffer) assetTrustlineCompressEncodeTo(a TrustLineAsset) error {
 	switch a.Type {
 	case AssetTypeAssetTypeNative,
 		AssetTypeAssetTypeCreditAlphanum4,
 		AssetTypeAssetTypeCreditAlphanum12:
-		return a.ToAsset().MarshalBinaryCompress()
+		return e.assetCompressEncodeTo(a.ToAsset())
 	case AssetTypeAssetTypePoolShare:
-		m := []byte{byte(a.Type)}
-		poolId := [32]byte(*a.LiquidityPoolId)
-		m = append(m, poolId[:]...)
-		return m, nil
+		if err := e.xdrEncoderBuf.WriteByte(byte(a.Type)); err != nil {
+			return err
+		}
+		_, err := e.xdrEncoderBuf.Write((*a.LiquidityPoolId)[:])
+		return err
 	default:
 		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
 	}

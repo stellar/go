@@ -106,9 +106,9 @@ func MarshalHex(v interface{}) (string, error) {
 // EncodingBuffer reuses internal buffers between invocations to minimize allocations.
 // It intentionally only allows EncodeTo method arguments, to guarantee high performance encoding.
 type EncodingBuffer struct {
-	encoder          *xdr.Encoder
-	xdrEncoderBuf    bytes.Buffer
-	otherEncodersBuf []byte
+	encoder       *xdr.Encoder
+	xdrEncoderBuf bytes.Buffer
+	scratchBuf    []byte
 }
 
 func growSlice(old []byte, newSize int) []byte {
@@ -150,9 +150,9 @@ func (e *EncodingBuffer) UnsafeMarshalBase64(encodable XDREncodable) ([]byte, er
 		return nil, err
 	}
 	neededLen := base64.StdEncoding.EncodedLen(len(xdrEncoded))
-	e.otherEncodersBuf = growSlice(e.otherEncodersBuf, neededLen)
-	base64.StdEncoding.Encode(e.otherEncodersBuf, xdrEncoded)
-	return e.otherEncodersBuf, nil
+	e.scratchBuf = growSlice(e.scratchBuf, neededLen)
+	base64.StdEncoding.Encode(e.scratchBuf, xdrEncoded)
+	return e.scratchBuf, nil
 }
 
 // UnsafeMarshalHex is the hex version of UnsafeMarshalBinary
@@ -162,9 +162,9 @@ func (e *EncodingBuffer) UnsafeMarshalHex(encodable XDREncodable) ([]byte, error
 		return nil, err
 	}
 	neededLen := hex.EncodedLen(len(xdrEncoded))
-	e.otherEncodersBuf = growSlice(e.otherEncodersBuf, neededLen)
-	hex.Encode(e.otherEncodersBuf, xdrEncoded)
-	return e.otherEncodersBuf, nil
+	e.scratchBuf = growSlice(e.scratchBuf, neededLen)
+	hex.Encode(e.scratchBuf, xdrEncoded)
+	return e.scratchBuf, nil
 }
 
 func (e *EncodingBuffer) MarshalBinary(encodable XDREncodable) ([]byte, error) {
@@ -175,6 +175,15 @@ func (e *EncodingBuffer) MarshalBinary(encodable XDREncodable) ([]byte, error) {
 	ret := make([]byte, len(xdrEncoded))
 	copy(ret, xdrEncoded)
 	return ret, nil
+}
+
+func (e *EncodingBuffer) LedgerKeyUnsafeMarshalBinaryCompress(key LedgerKey) ([]byte, error) {
+	e.xdrEncoderBuf.Reset()
+	err := e.ledgerKeyCompressEncodeTo(key)
+	if err != nil {
+		return nil, err
+	}
+	return e.xdrEncoderBuf.Bytes(), nil
 }
 
 func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
