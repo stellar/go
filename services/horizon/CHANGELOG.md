@@ -8,7 +8,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changes
 
 * Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve requests ([4046](https://github.com/stellar/go/pull/4046))
-* Add an endpoint that allows querying for which liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
+* Add an endpoint `/liquidity_pools?account={account_id}` which returns the liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
 * Add a new horizon command `horizon db fill-gaps` which fills any gaps in history in the horizon db. The command takes optional start and end ledger parameters. If the start and end ledger is provided then horizon will only fill the gaps found within the given ledger range [4060](https://github.com/stellar/go/pull/4060)
 * Improve performance of `/liquidity_pools/{liquidity_pool_id}/effects` endpoint by optimizing the db query to fetch effects for a liquidity pool [4065](https://github.com/stellar/go/pull/4065)
 * Include the captive core binary in the `stellar/horizon` Docker image [4019](https://github.com/stellar/go/pull/4019)
