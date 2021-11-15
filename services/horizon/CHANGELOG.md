@@ -15,6 +15,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Remove `--captive-core-reuse-storage-dir` horizon flag [4048](https://github.com/stellar/go/pull/4048)
 * Improve performance of XDR encoding which should also improve ingestion speeds [4063](https://github.com/stellar/go/pull/4063), [4056](https://github.com/stellar/go/pull/4056), [3957](https://github.com/stellar/go/pull/3957)
 * Improve detection of when the Stellar Core binary has been modified [4050](https://github.com/stellar/go/pull/4050)
+* `horizon_ingest_state_verify_ledger_entries` metric was changed to gauge [4054](https://github.com/stellar/go/pull/4054)
 
 ## v2.10.0
 
