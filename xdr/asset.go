@@ -268,32 +268,17 @@ func (a Asset) StringCanonical() string {
 	return fmt.Sprintf("%s:%s", c, i)
 }
 
-// MarshalBinaryCompress marshals Asset to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
-// that XDR is padding data to 4 bytes in union discriminants etc.
-// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
-// memory so this function decrease memory requirements.
-//
-// Warning, do not use UnmarshalBinary() on data encoded using this method!
-func (a Asset) MarshalBinaryCompress() ([]byte, error) {
-	e := NewEncodingBuffer()
-	if err := e.assetCompressEncodeTo(a); err != nil {
-		return nil, err
-	}
-	return e.xdrEncoderBuf.Bytes(), nil
-}
-
 func trimRightZeros(b []byte) []byte {
 	if len(b) == 0 {
 		return b
 	}
-	i := len(b) - 1
-	for ; i >= 0; i-- {
-		if b[i] != 0 {
+	i := len(b)
+	for ; i > 0; i-- {
+		if b[i-1] != 0 {
 			break
 		}
 	}
-	return b[:i+1]
+	return b[:i]
 }
 
 func (e *EncodingBuffer) assetCompressEncodeTo(a Asset) error {
@@ -315,13 +300,10 @@ func (e *EncodingBuffer) assetCompressEncodeTo(a Asset) error {
 		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
 			return err
 		}
-		// TODO: this was panicking before, check with the team
 		return e.accountIdCompressEncodeTo(a.AlphaNum12.Issuer)
 	default:
 		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
 	}
-
-	return nil
 }
 
 // Equals returns true if `other` is equivalent to `a`

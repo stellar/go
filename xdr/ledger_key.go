@@ -119,25 +119,6 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 	return nil
 }
 
-// MarshalBinaryCompress marshals LedgerKey to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
-// that XDR is padding data to 4 bytes in union discriminants etc.
-// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
-// memory so this function decrease memory requirements.
-//
-// Warning, do not use UnmarshalBinary() on data encoded using this method!
-//
-// Optimizations:
-// - Writes a single byte for union discriminants vs 4 bytes.
-// - Removes type and code padding for Asset.
-func (key LedgerKey) MarshalBinaryCompress() ([]byte, error) {
-	e := NewEncodingBuffer()
-	if err := e.ledgerKeyCompressEncodeTo(key); err != nil {
-		return nil, err
-	}
-	return e.xdrEncoderBuf.Bytes(), nil
-}
-
 func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 	if err := e.xdrEncoderBuf.WriteByte(byte(key.Type)); err != nil {
 		return err
@@ -152,23 +133,21 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		}
 		return e.assetTrustlineCompressEncodeTo(key.TrustLine.Asset)
 	case LedgerEntryTypeOffer:
-		if err := e.accountIdCompressEncodeTo(key.Offer.SellerId); err != nil {
-			return err
-		}
+		// We intentionally don't encode the SellerID since the OfferID is enough
+		// (it's unique to the network)
 		return key.Offer.OfferId.EncodeTo(e.encoder)
 	case LedgerEntryTypeData:
 		if err := e.accountIdCompressEncodeTo(key.Data.AccountId); err != nil {
 			return err
 		}
-		dataName := trimRightZeros(e.scratchBuf)
+		dataName := trimRightZeros([]byte(key.Data.DataName))
 		_, err := e.xdrEncoderBuf.Write(dataName)
 		return err
 	case LedgerEntryTypeClaimableBalance:
-		return key.ClaimableBalance.BalanceId.EncodeTo(e.encoder)
+		return e.claimableBalanceCompressEncodeTo(key.ClaimableBalance.BalanceId)
 	case LedgerEntryTypeLiquidityPool:
-		// TODO: why are we encoding the full pool id (with padding)
-		//       here, in TrustLineAsset we just write the bytes directly?
-		return key.LiquidityPool.LiquidityPoolId.EncodeTo(e.encoder)
+		_, err := e.xdrEncoderBuf.Write(key.LiquidityPool.LiquidityPoolId[:])
+		return err
 	default:
 		panic("Unknown type")
 	}

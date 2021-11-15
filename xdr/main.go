@@ -177,6 +177,18 @@ func (e *EncodingBuffer) MarshalBinary(encodable XDREncodable) ([]byte, error) {
 	return ret, nil
 }
 
+// LedgerKeyUnsafeMarshalBinaryCompress marshals LedgerKey to []byte but unlike
+// MarshalBinary() it removes all unnecessary bytes, exploting the fact
+// that XDR is padding data to 4 bytes in union discriminants etc.
+// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
+// memory so this function decrease memory requirements.
+//
+// Warning, do not use UnmarshalBinary() on data encoded using this method!
+//
+// Optimizations:
+// - Writes a single byte for union discriminants vs 4 bytes.
+// - Removes type and code padding for Asset.
+// - Removes padding for AccountIds
 func (e *EncodingBuffer) LedgerKeyUnsafeMarshalBinaryCompress(key LedgerKey) ([]byte, error) {
 	e.xdrEncoderBuf.Reset()
 	err := e.ledgerKeyCompressEncodeTo(key)
