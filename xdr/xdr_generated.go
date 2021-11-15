@@ -1270,9 +1270,9 @@ var _ xdrType = (*DataValue)(nil)
 type PoolId Hash
 
 // EncodeTo encodes this value using the Encoder.
-func (s PoolId) EncodeTo(e *xdr.Encoder) error {
+func (s *PoolId) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = (*Hash)(&s).EncodeTo(e); err != nil {
+	if err = (*Hash)(s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
