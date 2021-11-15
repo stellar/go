@@ -1,4 +1,4 @@
-package xdr_test
+package xdr
 
 import (
 	"testing"
@@ -7,8 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	. "github.com/stellar/go/xdr"
 )
 
 var _ = Describe("xdr.Asset#Extract()", func() {
@@ -111,6 +109,22 @@ func TestStringCanonical(t *testing.T) {
 
 	asset = MustNewCreditAsset("USD", "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	require.Equal(t, "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", asset.StringCanonical())
+}
+
+func TestTrimRightZeros(t *testing.T) {
+	require.Equal(t, []byte(nil), trimRightZeros(nil))
+	require.Equal(t, []byte{}, trimRightZeros([]byte{}))
+	require.Equal(t, []byte{}, trimRightZeros([]byte{0x0}))
+	require.Equal(t, []byte{}, trimRightZeros([]byte{0x0, 0x0}))
+	require.Equal(t, []byte{0x1}, trimRightZeros([]byte{0x1}))
+	require.Equal(t, []byte{0x1}, trimRightZeros([]byte{0x1, 0x0}))
+	require.Equal(t, []byte{0x1}, trimRightZeros([]byte{0x1, 0x0, 0x0}))
+	require.Equal(t, []byte{0x1}, trimRightZeros([]byte{0x1, 0x0, 0x0, 0x0}))
+	require.Equal(t, []byte{0x1, 0x2}, trimRightZeros([]byte{0x1, 0x2}))
+	require.Equal(t, []byte{0x1, 0x2}, trimRightZeros([]byte{0x1, 0x2, 0x0}))
+	require.Equal(t, []byte{0x1, 0x2}, trimRightZeros([]byte{0x1, 0x2, 0x0, 0x0}))
+	require.Equal(t, []byte{0x0, 0x2}, trimRightZeros([]byte{0x0, 0x2, 0x0, 0x0}))
+	require.Equal(t, []byte{0x0, 0x2, 0x0, 0x1}, trimRightZeros([]byte{0x0, 0x2, 0x0, 0x1, 0x0}))
 }
 
 var _ = Describe("xdr.Asset#Equals()", func() {

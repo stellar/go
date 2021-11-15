@@ -284,12 +284,16 @@ func (a Asset) MarshalBinaryCompress() ([]byte, error) {
 }
 
 func trimRightZeros(b []byte) []byte {
-	for i := len(b) - 1; i >= 0; i-- {
+	if len(b) == 0 {
+		return b
+	}
+	i := len(b) - 1
+	for ; i >= 0; i-- {
 		if b[i] != 0 {
-			return b[:i+1]
+			break
 		}
 	}
-	return b
+	return b[:i+1]
 }
 
 func (e *EncodingBuffer) assetCompressEncodeTo(a Asset) error {
