@@ -3,14 +3,19 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## v2.11.0
 
 ### Changes
 
-* Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve ([4046](https://github.com/stellar/go/pull/4046))
-* Add an endpoint that allows querying for which liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
+* Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve requests ([4046](https://github.com/stellar/go/pull/4046))
+* Add an endpoint `/liquidity_pools?account={account_id}` which returns the liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
 * Add a new horizon command `horizon db fill-gaps` which fills any gaps in history in the horizon db. The command takes optional start and end ledger parameters. If the start and end ledger is provided then horizon will only fill the gaps found within the given ledger range [4060](https://github.com/stellar/go/pull/4060)
 * Improve performance of `/liquidity_pools/{liquidity_pool_id}/effects` endpoint by optimizing the db query to fetch effects for a liquidity pool [4065](https://github.com/stellar/go/pull/4065)
+* Include the captive core binary in the `stellar/horizon` Docker image [4019](https://github.com/stellar/go/pull/4019)
+* Remove `--captive-core-reuse-storage-dir` horizon flag [4048](https://github.com/stellar/go/pull/4048)
+* Improve performance of XDR encoding which should also improve ingestion speeds [4063](https://github.com/stellar/go/pull/4063), [4056](https://github.com/stellar/go/pull/4056), [3957](https://github.com/stellar/go/pull/3957)
+* Improve detection of when the Stellar Core binary has been modified [4050](https://github.com/stellar/go/pull/4050)
+* `horizon_ingest_state_verify_ledger_entries` metric was changed to gauge [4054](https://github.com/stellar/go/pull/4054)
 
 ## v2.10.0
 
