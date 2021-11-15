@@ -43,7 +43,7 @@ func BenchmarkXDRUnmarshalWithReflection(b *testing.B) {
 	)
 	for i := 0; i < b.N; i++ {
 		r.Reset(input)
-		_, _ = xdr.Unmarshal(&r, &te)
+		_, _ = xdr3.Unmarshal(&r, &te)
 	}
 }
 
