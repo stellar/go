@@ -42,16 +42,40 @@ func (a TrustLineAsset) MustExtract(typ interface{}, code interface{}, issuer in
 	}
 }
 
+func trimRightZeros(b []byte) []byte {
+	if len(b) == 0 {
+		return b
+	}
+	i := len(b)
+	for ; i > 0; i-- {
+		if b[i-1] != 0 {
+			break
+		}
+	}
+	return b[:i]
+}
+
 func (e *EncodingBuffer) assetTrustlineCompressEncodeTo(a TrustLineAsset) error {
+	if err := e.xdrEncoderBuf.WriteByte(byte(a.Type)); err != nil {
+		return err
+	}
+
 	switch a.Type {
-	case AssetTypeAssetTypeNative,
-		AssetTypeAssetTypeCreditAlphanum4,
-		AssetTypeAssetTypeCreditAlphanum12:
-		return e.assetCompressEncodeTo(a.ToAsset())
-	case AssetTypeAssetTypePoolShare:
-		if err := e.xdrEncoderBuf.WriteByte(byte(a.Type)); err != nil {
+	case AssetTypeAssetTypeNative:
+		return nil
+	case AssetTypeAssetTypeCreditAlphanum4:
+		code := trimRightZeros(a.AlphaNum4.AssetCode[:])
+		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
 			return err
 		}
+		return e.accountIdCompressEncodeTo(a.AlphaNum4.Issuer)
+	case AssetTypeAssetTypeCreditAlphanum12:
+		code := trimRightZeros(a.AlphaNum12.AssetCode[:])
+		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
+			return err
+		}
+		return e.accountIdCompressEncodeTo(a.AlphaNum12.Issuer)
+	case AssetTypeAssetTypePoolShare:
 		_, err := e.xdrEncoderBuf.Write(a.LiquidityPoolId[:])
 		return err
 	default:

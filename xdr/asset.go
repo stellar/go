@@ -268,44 +268,6 @@ func (a Asset) StringCanonical() string {
 	return fmt.Sprintf("%s:%s", c, i)
 }
 
-func trimRightZeros(b []byte) []byte {
-	if len(b) == 0 {
-		return b
-	}
-	i := len(b)
-	for ; i > 0; i-- {
-		if b[i-1] != 0 {
-			break
-		}
-	}
-	return b[:i]
-}
-
-func (e *EncodingBuffer) assetCompressEncodeTo(a Asset) error {
-	if err := e.xdrEncoderBuf.WriteByte(byte(a.Type)); err != nil {
-		return err
-	}
-
-	switch a.Type {
-	case AssetTypeAssetTypeNative:
-		return nil
-	case AssetTypeAssetTypeCreditAlphanum4:
-		code := trimRightZeros(a.AlphaNum4.AssetCode[:])
-		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
-			return err
-		}
-		return e.accountIdCompressEncodeTo(a.AlphaNum4.Issuer)
-	case AssetTypeAssetTypeCreditAlphanum12:
-		code := trimRightZeros(a.AlphaNum12.AssetCode[:])
-		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
-			return err
-		}
-		return e.accountIdCompressEncodeTo(a.AlphaNum12.Issuer)
-	default:
-		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
-	}
-}
-
 // Equals returns true if `other` is equivalent to `a`
 func (a Asset) Equals(other Asset) bool {
 	if a.Type != other.Type {
