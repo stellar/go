@@ -103,6 +103,13 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState
 	}
 	return result, nil
 }
+
+// RegisterMetrics registers the prometheus metrics
+func (s *Server) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(s.Metrics.RequestDurationSummary)
+	registry.MustRegister(s.Metrics.ReplicaLagErrorsCounter)
+}
+
 func (s *Server) Serve() error {
 	if s.internalServer != nil {
 		go func() {

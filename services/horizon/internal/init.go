@@ -255,36 +255,16 @@ func initIngestMetrics(app *App) {
 	}
 
 	app.ingestingGauge.Inc()
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().MaxSupportedProtocolVersion)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LocalLatestLedger)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionTradeAggregationDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateInvalidGauge)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerStatsCounter)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDurationSummary)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveStellarCoreSynced)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveCoreSupportedProtocolVersion)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerFetchDurationSummary)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyLedgerEntriesCount)
+	app.ingester.RegisterMetrics(app.prometheusRegistry)
 }
 
 func initTxSubMetrics(app *App) {
 	app.submitter.Init()
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.SubmissionDuration)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.BufferedSubmissionsGauge)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.OpenSubmissionsGauge)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.FailedSubmissionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.SuccessfulSubmissionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.V0TransactionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.V1TransactionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.FeeBumpTransactionsCounter)
+	app.submitter.RegisterMetrics(app.prometheusRegistry)
 }
 
 func initWebMetrics(app *App) {
-	app.prometheusRegistry.MustRegister(app.webServer.Metrics.RequestDurationSummary)
-	app.prometheusRegistry.MustRegister(app.webServer.Metrics.ReplicaLagErrorsCounter)
+	app.webServer.RegisterMetrics(app.prometheusRegistry)
 }
 
 func initSubmissionSystem(app *App) {
