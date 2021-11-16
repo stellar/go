@@ -8,6 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Uint32Ptr(val uint32) *xdr.Uint32 {
+	pval := xdr.Uint32(val)
+	return &pval
+}
+
 func TestAssetGoStringerNative(t *testing.T) {
 	asset, err := xdr.NewAsset(xdr.AssetTypeAssetTypeNative, nil)
 	assert.NoError(t, err)
@@ -107,12 +112,12 @@ func TestOperationBodyGoStringerSetOptions(t *testing.T) {
 		Type: xdr.OperationTypeSetOptions,
 		SetOptionsOp: &xdr.SetOptionsOp{
 			InflationDest: xdr.MustAddressPtr("GC7ERFCD7QLDFRSEPLYB3GYSWX6GYMCHLDL45N4S5Q2N5EJDOMOJ63V4"),
-			ClearFlags:    xdr.Uint32Ptr(0),
-			SetFlags:      xdr.Uint32Ptr(1),
-			MasterWeight:  xdr.Uint32Ptr(2),
-			LowThreshold:  xdr.Uint32Ptr(3),
-			MedThreshold:  xdr.Uint32Ptr(4),
-			HighThreshold: xdr.Uint32Ptr(5),
+			ClearFlags:    Uint32Ptr(0),
+			SetFlags:      Uint32Ptr(1),
+			MasterWeight:  Uint32Ptr(2),
+			LowThreshold:  Uint32Ptr(3),
+			MedThreshold:  Uint32Ptr(4),
+			HighThreshold: Uint32Ptr(5),
 			HomeDomain:    xdr.String32Ptr("stellar.org"),
 			Signer: &xdr.Signer{
 				Key:    xdr.MustSigner("GC7ERFCD7QLDFRSEPLYB3GYSWX6GYMCHLDL45N4S5Q2N5EJDOMOJ63V4"),

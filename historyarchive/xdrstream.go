@@ -28,6 +28,7 @@ type XdrStream struct {
 
 	validateHash bool
 	expectedHash [sha256.Size]byte
+	xdrDecoder   *xdr.BytesDecoder
 }
 
 type countReader struct {
@@ -52,7 +53,6 @@ func NewXdrStream(in io.ReadCloser) *XdrStream {
 	// compared with `expectedHash` using SetExpectedHash and Close.
 	sha256Hash := sha256.New()
 	teeReader := io.TeeReader(in, sha256Hash)
-
 	return &XdrStream{
 		rdr: newCountReader(
 			struct {
@@ -61,6 +61,7 @@ func NewXdrStream(in io.ReadCloser) *XdrStream {
 			}{bufio.NewReader(teeReader), in},
 		),
 		sha256Hash: sha256Hash,
+		xdrDecoder: xdr.NewBytesDecoder(),
 	}
 }
 
@@ -147,7 +148,7 @@ func (x *XdrStream) closeReaders() error {
 	return err
 }
 
-func (x *XdrStream) ReadOne(in interface{}) error {
+func (x *XdrStream) ReadOne(in xdr.DecoderFrom) error {
 	var nbytes uint32
 	err := binary.Read(x.rdr, binary.BigEndian, &nbytes)
 	if err != nil {
@@ -175,7 +176,7 @@ func (x *XdrStream) ReadOne(in interface{}) error {
 		return errors.New("Read wrong number of bytes from XDR")
 	}
 
-	readi, err := xdr.Unmarshal(&x.buf, in)
+	readi, err := x.xdrDecoder.DecodeBytes(in, x.buf.Bytes())
 	if err != nil {
 		x.rdr.Close()
 		return err

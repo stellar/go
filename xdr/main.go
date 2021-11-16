@@ -25,11 +25,6 @@ var _ = LedgerKey{}
 
 var OperationTypeToStringMap = operationTypeMap
 
-func Uint32Ptr(val uint32) *Uint32 {
-	pval := Uint32(val)
-	return &pval
-}
-
 func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)
@@ -83,6 +78,32 @@ func SafeUnmarshal(data []byte, dest interface{}) error {
 	return nil
 }
 
+type DecoderFrom interface {
+	decoderFrom
+}
+
+// BytesDecoder efficiently manages a byte reader and an
+// xdr decoder so that they don't need to be allocated in
+// every decoding call.
+type BytesDecoder struct {
+	decoder *xdr.Decoder
+	reader  *bytes.Reader
+}
+
+func NewBytesDecoder() *BytesDecoder {
+	reader := bytes.NewReader(nil)
+	decoder := xdr.NewDecoder(reader)
+	return &BytesDecoder{
+		decoder: decoder,
+		reader:  reader,
+	}
+}
+
+func (d *BytesDecoder) DecodeBytes(v DecoderFrom, b []byte) (int, error) {
+	d.reader.Reset(b)
+	return v.DecodeFrom(d.decoder)
+}
+
 func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
 	var raw bytes.Buffer
 
@@ -121,7 +142,7 @@ func growSlice(old []byte, newSize int) []byte {
 	return make([]byte, newSize, 2*newSize)
 }
 
-type XDREncodable interface {
+type EncoderTo interface {
 	EncodeTo(e *xdr.Encoder) error
 }
 
@@ -135,7 +156,7 @@ func NewEncodingBuffer() *EncodingBuffer {
 // a slice pointing to the internal buffer. Handled with care this improveds
 // performance since copying is not required.
 // Subsequent calls to marshalling methods will overwrite the returned buffer.
-func (e *EncodingBuffer) UnsafeMarshalBinary(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalBinary(encodable EncoderTo) ([]byte, error) {
 	e.xdrEncoderBuf.Reset()
 	if err := encodable.EncodeTo(e.encoder); err != nil {
 		return nil, err
@@ -144,7 +165,7 @@ func (e *EncodingBuffer) UnsafeMarshalBinary(encodable XDREncodable) ([]byte, er
 }
 
 // UnsafeMarshalBase64 is the base64 version of UnsafeMarshalBinary
-func (e *EncodingBuffer) UnsafeMarshalBase64(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalBase64(encodable EncoderTo) ([]byte, error) {
 	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
@@ -156,7 +177,7 @@ func (e *EncodingBuffer) UnsafeMarshalBase64(encodable XDREncodable) ([]byte, er
 }
 
 // UnsafeMarshalHex is the hex version of UnsafeMarshalBinary
-func (e *EncodingBuffer) UnsafeMarshalHex(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalHex(encodable EncoderTo) ([]byte, error) {
 	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
@@ -167,7 +188,7 @@ func (e *EncodingBuffer) UnsafeMarshalHex(encodable XDREncodable) ([]byte, error
 	return e.scratchBuf, nil
 }
 
-func (e *EncodingBuffer) MarshalBinary(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) MarshalBinary(encodable EncoderTo) ([]byte, error) {
 	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
@@ -198,7 +219,7 @@ func (e *EncodingBuffer) LedgerKeyUnsafeMarshalBinaryCompress(key LedgerKey) ([]
 	return e.xdrEncoderBuf.Bytes(), nil
 }
 
-func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
+func (e *EncodingBuffer) MarshalBase64(encodable EncoderTo) (string, error) {
 	b, err := e.UnsafeMarshalBase64(encodable)
 	if err != nil {
 		return "", err
@@ -206,7 +227,7 @@ func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
 	return string(b), nil
 }
 
-func (e *EncodingBuffer) MarshalHex(encodable XDREncodable) (string, error) {
+func (e *EncodingBuffer) MarshalHex(encodable EncoderTo) (string, error) {
 	b, err := e.UnsafeMarshalHex(encodable)
 	if err != nil {
 		return "", err
