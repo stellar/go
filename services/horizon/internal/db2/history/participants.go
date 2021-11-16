@@ -44,5 +44,6 @@ func (i *transactionParticipantsBatchInsertBuilder) Add(ctx context.Context, tra
 
 // Exec flushes all pending transaction participants to the db
 func (i *transactionParticipantsBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "transactionParticipantsBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }

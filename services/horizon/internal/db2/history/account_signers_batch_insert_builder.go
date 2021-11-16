@@ -2,6 +2,8 @@ package history
 
 import (
 	"context"
+
+	"github.com/stellar/go/support/db"
 )
 
 func (i *accountSignersBatchInsertBuilder) Add(ctx context.Context, signer AccountSigner) error {
@@ -14,5 +16,6 @@ func (i *accountSignersBatchInsertBuilder) Add(ctx context.Context, signer Accou
 }
 
 func (i *accountSignersBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "accountSignersBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }

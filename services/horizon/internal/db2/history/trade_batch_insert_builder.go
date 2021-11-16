@@ -63,6 +63,7 @@ func (q *Q) NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 
 // Exec flushes all outstanding trades to the database
 func (i *tradeBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "tradeBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }
 

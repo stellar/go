@@ -45,5 +45,6 @@ func (i *operationParticipantBatchInsertBuilder) Add(
 }
 
 func (i *operationParticipantBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "operationParticipantBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }

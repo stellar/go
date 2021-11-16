@@ -58,5 +58,6 @@ func (i *effectBatchInsertBuilder) Add(
 }
 
 func (i *effectBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "effectBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }

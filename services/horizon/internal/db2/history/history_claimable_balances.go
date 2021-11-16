@@ -119,6 +119,7 @@ func (i *operationClaimableBalanceBatchInsertBuilder) Add(ctx context.Context, o
 
 // Exec flushes all pending operation claimable balances to the db
 func (i *operationClaimableBalanceBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "operationClaimableBalanceBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }
 
@@ -150,5 +151,6 @@ func (i *transactionClaimableBalanceBatchInsertBuilder) Add(ctx context.Context,
 
 // Exec flushes all pending transaction claimable balances to the db
 func (i *transactionClaimableBalanceBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "transactionClaimableBalanceBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }

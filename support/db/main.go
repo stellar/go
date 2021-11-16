@@ -143,7 +143,7 @@ type Table struct {
 	// Name is the name of the table
 	Name string
 
-	Session *Session
+	Session SessionInterface
 }
 
 func pingDB(db *sqlx.DB) error {

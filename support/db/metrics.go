@@ -379,6 +379,13 @@ func (s *SessionWithMetrics) GetRaw(ctx context.Context, dest interface{}, query
 	return s.Get(ctx, dest, squirrel.Expr(query, args...))
 }
 
+func (s *SessionWithMetrics) GetTable(name string) *Table {
+	return &Table{
+		Name:    name,
+		Session: s,
+	}
+}
+
 func (s *SessionWithMetrics) Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
 	queryType := string(getQueryType(ctx, query))
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {

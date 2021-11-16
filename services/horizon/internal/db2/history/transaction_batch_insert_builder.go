@@ -57,6 +57,7 @@ func (i *transactionBatchInsertBuilder) Add(ctx context.Context, transaction ing
 }
 
 func (i *transactionBatchInsertBuilder) Exec(ctx context.Context) error {
+	ctx = context.WithValue(ctx, &db.RouteContextKey, "transactionBatchInsertBuilder")
 	return i.builder.Exec(ctx)
 }
 
