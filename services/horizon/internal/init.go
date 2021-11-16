@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"runtime"
-	"time"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -164,70 +163,9 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.ingestingGauge)
 
-	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return float64(ls.HistoryLatest)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.historyLatestLedgerCounter)
+	app.ledgerState.RegisterMetrics(app.prometheusRegistry)
 
-	app.historyLatestLedgerClosedAgoGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "history", Name: "latest_ledger_closed_ago_seconds",
-			Help: "seconds since the close of the last ingested ledger",
-		},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return time.Since(ls.HistoryLatestClosedAt).Seconds()
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.historyLatestLedgerClosedAgoGauge)
-
-	app.historyElderLedgerCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return float64(ls.HistoryElder)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.historyElderLedgerCounter)
-
-	app.coreLatestLedgerCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger"},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return float64(ls.CoreLatest)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.coreLatestLedgerCounter)
-
-	app.coreSynced = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "stellar_core", Name: "synced",
-			Help: "determines if Stellar-Core defined by --stellar-core-url is synced with the network",
-		},
-		func() float64 {
-			if app.coreState.Get().Synced {
-				return 1
-			} else {
-				return 0
-			}
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.coreSynced)
-
-	app.coreSupportedProtocolVersion = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "stellar_core", Name: "supported_protocol_version",
-			Help: "determines the supported version of the protocol by Stellar-Core defined by --stellar-core-url",
-		},
-		func() float64 {
-			return float64(app.coreState.Get().CoreSupportedProtocolVersion)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.coreSupportedProtocolVersion)
+	app.coreState.RegisterMetrics(app.prometheusRegistry)
 
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
