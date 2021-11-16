@@ -3,12 +3,12 @@ package xdr_test
 import (
 	"testing"
 
+	. "github.com/stellar/go/xdr"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	. "github.com/stellar/go/xdr"
 )
 
 var _ = Describe("xdr.Asset#Extract()", func() {

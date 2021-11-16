@@ -42,24 +42,42 @@ func (a TrustLineAsset) MustExtract(typ interface{}, code interface{}, issuer in
 	}
 }
 
-// MarshalBinaryCompress marshals TrustLineAsset to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
-// that XDR is padding data to 4 bytes in union discriminants etc.
-// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
-// memory so this function decrease memory requirements.
-//
-// Warning, do not use UnmarshalBinary() on data encoded using this method!
-func (a TrustLineAsset) MarshalBinaryCompress() ([]byte, error) {
+func trimRightZeros(b []byte) []byte {
+	if len(b) == 0 {
+		return b
+	}
+	i := len(b)
+	for ; i > 0; i-- {
+		if b[i-1] != 0 {
+			break
+		}
+	}
+	return b[:i]
+}
+
+func (e *EncodingBuffer) assetTrustlineCompressEncodeTo(a TrustLineAsset) error {
+	if err := e.xdrEncoderBuf.WriteByte(byte(a.Type)); err != nil {
+		return err
+	}
+
 	switch a.Type {
-	case AssetTypeAssetTypeNative,
-		AssetTypeAssetTypeCreditAlphanum4,
-		AssetTypeAssetTypeCreditAlphanum12:
-		return a.ToAsset().MarshalBinaryCompress()
+	case AssetTypeAssetTypeNative:
+		return nil
+	case AssetTypeAssetTypeCreditAlphanum4:
+		code := trimRightZeros(a.AlphaNum4.AssetCode[:])
+		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
+			return err
+		}
+		return e.accountIdCompressEncodeTo(a.AlphaNum4.Issuer)
+	case AssetTypeAssetTypeCreditAlphanum12:
+		code := trimRightZeros(a.AlphaNum12.AssetCode[:])
+		if _, err := e.xdrEncoderBuf.Write(code); err != nil {
+			return err
+		}
+		return e.accountIdCompressEncodeTo(a.AlphaNum12.Issuer)
 	case AssetTypeAssetTypePoolShare:
-		m := []byte{byte(a.Type)}
-		poolId := [32]byte(*a.LiquidityPoolId)
-		m = append(m, poolId[:]...)
-		return m, nil
+		_, err := e.xdrEncoderBuf.Write(a.LiquidityPoolId[:])
+		return err
 	default:
 		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
 	}

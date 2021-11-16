@@ -132,3 +132,57 @@ func BenchmarkXDRUnsafeMarshalBase64WithEncodingBuffer(b *testing.B) {
 		_, _ = e.UnsafeMarshalBase64(xdrInput)
 	}
 }
+
+var ledgerKeys = []xdr.LedgerKey{
+	{
+		Type: xdr.LedgerEntryTypeAccount,
+		Account: &xdr.LedgerKeyAccount{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeTrustline,
+		TrustLine: &xdr.LedgerKeyTrustLine{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("EUR", "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB").ToTrustLineAsset(),
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeOffer,
+		Offer: &xdr.LedgerKeyOffer{
+			SellerId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			OfferId:  xdr.Int64(3),
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeData,
+		Data: &xdr.LedgerKeyData{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			DataName:  "foobar",
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeClaimableBalance,
+		ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+			BalanceId: xdr.ClaimableBalanceId{
+				Type: 0,
+				V0:   &xdr.Hash{0xca, 0xfe, 0xba, 0xbe},
+			},
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		LiquidityPool: &xdr.LedgerKeyLiquidityPool{
+			LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe},
+		},
+	},
+}
+
+func BenchmarkXDRMarshalCompress(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		for _, lk := range ledgerKeys {
+			_, _ = e.LedgerKeyUnsafeMarshalBinaryCompress(lk)
+		}
+	}
+}
