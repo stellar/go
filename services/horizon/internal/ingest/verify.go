@@ -152,9 +152,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 	defer stateReader.Close()
 
-	verifier := &verify.StateVerifier{
-		StateReader: stateReader,
-	}
+	verifier := verify.NewStateVerifier(stateReader, nil)
 
 	assetStats := processors.AssetStatSet{}
 	total := int64(0)
@@ -648,8 +646,9 @@ func addClaimableBalanceToStateVerifier(
 	}
 
 	var idStrings []string
+	e := xdr.NewEncodingBuffer()
 	for _, id := range ids {
-		idString, err := xdr.MarshalHex(id)
+		idString, err := e.MarshalHex(id)
 		if err != nil {
 			return err
 		}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/protocols/horizon/effects"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
@@ -57,7 +58,11 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	var result []Effect
-	err = q.Effects().ForLiquidityPool(liquidityPoolID).Select(tt.Ctx, &result)
+	err = q.Effects().ForLiquidityPool(tt.Ctx, db2.PageQuery{
+		Cursor: "0-0",
+		Order:  "asc",
+		Limit:  10,
+	}, liquidityPoolID).Select(tt.Ctx, &result)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Len(result, 1)

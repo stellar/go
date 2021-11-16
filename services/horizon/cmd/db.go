@@ -292,7 +292,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		for i, arg := range args {
 			if seq, err := strconv.ParseUint(arg, 10, 32); err != nil {
 				cmd.Usage()
-				return fmt.Errorf(`Invalid sequence number "%s"`, arg)
+				return fmt.Errorf(`invalid sequence number "%s"`, arg)
 			} else {
 				argsUInt32[i] = uint32(seq)
 			}
@@ -302,26 +302,73 @@ var dbReingestRangeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		err = runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
-		if err != nil {
-			if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
-				return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
-It is not possible to run the reingest command on this range in parallel with
-Horizon's ingestion system.
-Either reduce the range so that it doesn't overlap with Horizon's ingestion system,
-or, use the force flag to ensure that Horizon's ingestion system is blocked until
-the reingest command completes.`)
-			}
-
-			return err
-		}
-
-		hlog.Info("Range run successfully!")
-		return nil
+		return runDBReingestRange(
+			[]history.LedgerRange{{StartSequence: argsUInt32[0], EndSequence: argsUInt32[1]}},
+			reingestForce,
+			parallelWorkers,
+			*config,
+		)
 	},
 }
 
-func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
+var dbFillGapsCmd = &cobra.Command{
+	Use:   "fill-gaps [Start sequence number] [End sequence number]",
+	Short: "Ingests any gaps found in the horizon db",
+	Long:  "Ingests any gaps found in the horizon db. The command takes an optional start and end parameters which restrict the range of ledgers ingested.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		for _, co := range reingestRangeCmdOpts {
+			if err := co.RequireE(); err != nil {
+				return err
+			}
+			co.SetValue()
+		}
+
+		if len(args) != 0 && len(args) != 2 {
+			hlog.Errorf("Expected either 0 arguments or 2 but found %v arguments", len(args))
+			return ErrUsage{cmd}
+		}
+
+		var start, end uint64
+		var withRange bool
+		if len(args) == 2 {
+			var err error
+			start, err = strconv.ParseUint(args[0], 10, 32)
+			if err != nil {
+				cmd.Usage()
+				return fmt.Errorf(`invalid sequence number "%s"`, args[0])
+			}
+			end, err = strconv.ParseUint(args[1], 10, 32)
+			if err != nil {
+				cmd.Usage()
+				return fmt.Errorf(`invalid sequence number "%s"`, args[1])
+			}
+			withRange = true
+		}
+
+		err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		if err != nil {
+			return err
+		}
+		var gaps []history.LedgerRange
+		if withRange {
+			gaps, err = runDBDetectGapsInRange(*config, uint32(start), uint32(end))
+			if err != nil {
+				return err
+			}
+			hlog.Infof("found gaps %v within range [%v, %v]", gaps, start, end)
+		} else {
+			gaps, err = runDBDetectGaps(*config)
+			if err != nil {
+				return err
+			}
+			hlog.Infof("found gaps %v", gaps)
+		}
+
+		return runDBReingestRange(gaps, reingestForce, parallelWorkers, *config)
+	},
+}
+
+func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
 	if reingestForce && parallelWorkers > 1 {
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
@@ -364,8 +411,7 @@ func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 		}
 
 		return system.ReingestRange(
-			from,
-			to,
+			ledgerRanges,
 			parallelJobSize,
 		)
 	}
@@ -375,11 +421,21 @@ func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 		return systemErr
 	}
 
-	return system.ReingestRange(
-		from,
-		to,
-		reingestForce,
-	)
+	err = system.ReingestRange(ledgerRanges, reingestForce)
+	if err != nil {
+		if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
+			return fmt.Errorf(`The range you have provided overlaps with Horizon's most recently ingested ledger.
+It is not possible to run the reingest command on this range in parallel with
+Horizon's ingestion system.
+Either reduce the range so that it doesn't overlap with Horizon's ingestion system,
+or, use the force flag to ensure that Horizon's ingestion system is blocked until
+the reingest command completes.`)
+		}
+
+		return err
+	}
+	hlog.Info("Range run successfully!")
+	return nil
 }
 
 var dbDetectGapsCmd = &cobra.Command{
@@ -411,7 +467,7 @@ var dbDetectGapsCmd = &cobra.Command{
 	},
 }
 
-func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
+func runDBDetectGaps(config horizon.Config) ([]history.LedgerRange, error) {
 	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
@@ -420,15 +476,29 @@ func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
 	return q.GetLedgerGaps(context.Background())
 }
 
+func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history.LedgerRange, error) {
+	horizonSession, err := db.Open("postgres", config.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	q := &history.Q{horizonSession}
+	return q.GetLedgerGapsInRange(context.Background(), start, end)
+}
+
 func init() {
 	for _, co := range reingestRangeCmdOpts {
 		err := co.Init(dbReingestRangeCmd)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+		err = co.Init(dbFillGapsCmd)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 	}
 
 	viper.BindPFlags(dbReingestRangeCmd.PersistentFlags())
+	viper.BindPFlags(dbFillGapsCmd.PersistentFlags())
 
 	RootCmd.AddCommand(dbCmd)
 	dbCmd.AddCommand(
@@ -437,6 +507,7 @@ func init() {
 		dbReapCmd,
 		dbReingestCmd,
 		dbDetectGapsCmd,
+		dbFillGapsCmd,
 	)
 	dbMigrateCmd.AddCommand(
 		dbMigrateDownCmd,

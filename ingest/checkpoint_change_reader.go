@@ -35,6 +35,8 @@ type CheckpointChangeReader struct {
 	totalRead      int64
 	totalSize      int64
 
+	encodingBuffer *xdr.EncodingBuffer
+
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
 	sleep                           func(time.Duration)
@@ -109,16 +111,17 @@ func NewCheckpointChangeReader(
 	}
 
 	return &CheckpointChangeReader{
-		ctx:        ctx,
-		has:        &has,
-		archive:    archive,
-		tempStore:  tempStore,
-		sequence:   sequence,
-		readChan:   make(chan readResult, msrBufferSize),
-		streamOnce: sync.Once{},
-		closeOnce:  sync.Once{},
-		done:       make(chan bool),
-		sleep:      time.Sleep,
+		ctx:            ctx,
+		has:            &has,
+		archive:        archive,
+		tempStore:      tempStore,
+		sequence:       sequence,
+		readChan:       make(chan readResult, msrBufferSize),
+		streamOnce:     sync.Once{},
+		closeOnce:      sync.Once{},
+		done:           make(chan bool),
+		encodingBuffer: xdr.NewEncodingBuffer(),
+		sleep:          time.Sleep,
 	}, nil
 }
 
@@ -367,7 +370,8 @@ LoopBucketEntry:
 				}
 
 				// We're using compressed keys here
-				keyBytes, e := key.MarshalBinaryCompress()
+				// safe, since we are converting to string right away
+				keyBytes, e := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
 				if e != nil {
 					r.readChan <- r.error(
 						errors.Wrapf(e, "Error marshaling XDR record %d of hash '%s'", n, hash.String()),
@@ -421,7 +425,8 @@ LoopBucketEntry:
 		}
 
 		// We're using compressed keys here
-		keyBytes, e := key.MarshalBinaryCompress()
+		// Safe, since we are converting to string right away
+		keyBytes, e := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
 		if e != nil {
 			r.readChan <- r.error(
 				errors.Wrapf(

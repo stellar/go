@@ -64,28 +64,17 @@ func (aid *AccountId) LedgerKey() (ret LedgerKey) {
 	return
 }
 
-// MarshalBinaryCompress marshals AccountId to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
-// that XDR is padding data to 4 bytes in union discriminants etc.
-// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
-// memory so this function decrease memory requirements.
-//
-// Warning, do not use UnmarshalBinary() on data encoded using this method!
-func (aid AccountId) MarshalBinaryCompress() ([]byte, error) {
-	m := []byte{byte(aid.Type)}
-
+func (e *EncodingBuffer) accountIdCompressEncodeTo(aid AccountId) error {
+	if err := e.xdrEncoderBuf.WriteByte(byte(aid.Type)); err != nil {
+		return err
+	}
 	switch aid.Type {
 	case PublicKeyTypePublicKeyTypeEd25519:
-		pk, err := aid.Ed25519.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, pk...)
+		_, err := e.xdrEncoderBuf.Write(aid.Ed25519[:])
+		return err
 	default:
 		panic("Unknown type")
 	}
-
-	return m, nil
 }
 
 func MustAddress(address string) AccountId {

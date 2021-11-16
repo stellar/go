@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"testing"
 
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/require"
 	goxdr "github.com/xdrpp/goxdr/xdr"
 )
 
@@ -21,69 +21,168 @@ var input = func() []byte {
 	return decoded
 }()
 
-func BenchmarkXDRUnmarshal(b *testing.B) {
-	b.StopTimer()
-	te := xdr.TransactionEnvelope{}
+var xdrInput = func() xdr.TransactionEnvelope {
+	var te xdr.TransactionEnvelope
+	if err := te.UnmarshalBinary(input); err != nil {
+		panic(err)
+	}
+	return te
+}()
 
-	// Make sure the input is valid.
-	err := te.UnmarshalBinary(input)
-	require.NoError(b, err)
-	b.StartTimer()
-	// Benchmark.
+var gxdrInput = func() gxdr.TransactionEnvelope {
+	var te gxdr.TransactionEnvelope
+	// note goxdr will panic if there's a marshaling error.
+	te.XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(input)}, "")
+	return te
+}()
+
+func BenchmarkXDRUnmarshalWithReflection(b *testing.B) {
+	var (
+		r  bytes.Reader
+		te xdr.TransactionEnvelope
+	)
+	for i := 0; i < b.N; i++ {
+		r.Reset(input)
+		_, _ = xdr3.Unmarshal(&r, &te)
+	}
+}
+
+func BenchmarkXDRUnmarshal(b *testing.B) {
+	var te xdr.TransactionEnvelope
 	for i := 0; i < b.N; i++ {
 		_ = te.UnmarshalBinary(input)
 	}
 }
 
 func BenchmarkGXDRUnmarshal(b *testing.B) {
-	b.StopTimer()
-	te := gxdr.TransactionEnvelope{}
-
-	// Make sure the input is valid, note goxdr will panic if there's a
-	// marshaling error.
-	te.XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(input)}, "")
-	b.StartTimer()
-
-	// Benchmark.
-	r := bytes.NewReader(input)
+	var (
+		te gxdr.TransactionEnvelope
+		r  bytes.Reader
+	)
 	for i := 0; i < b.N; i++ {
 		r.Reset(input)
-		te.XdrMarshal(&goxdr.XdrIn{In: r}, "")
+		te.XdrMarshal(&goxdr.XdrIn{In: &r}, "")
+	}
+}
+
+func BenchmarkXDRMarshalWithReflection(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = xdr3.Marshal(&bytes.Buffer{}, xdrInput)
 	}
 }
 
 func BenchmarkXDRMarshal(b *testing.B) {
-	b.StopTimer()
-	te := xdr.TransactionEnvelope{}
-
-	// Make sure the input is valid.
-	err := te.UnmarshalBinary(input)
-	require.NoError(b, err)
-	output, err := te.MarshalBinary()
-	require.NoError(b, err)
-	require.Equal(b, input, output)
-	b.StartTimer()
-
-	// Benchmark.
 	for i := 0; i < b.N; i++ {
-		_, _ = te.MarshalBinary()
+		_, _ = xdrInput.MarshalBinary()
+	}
+}
+
+func BenchmarkXDRMarshalWithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.UnsafeMarshalBinary(xdrInput)
 	}
 }
 
 func BenchmarkGXDRMarshal(b *testing.B) {
-	b.StopTimer()
-	te := gxdr.TransactionEnvelope{}
-
-	// Make sure the input is valid, note goxdr will panic if there's a
-	// marshaling error.
-	te.XdrMarshal(&goxdr.XdrIn{In: bytes.NewReader(input)}, "")
-	output := bytes.Buffer{}
-	te.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
-
-	b.StartTimer()
+	var output bytes.Buffer
 	// Benchmark.
 	for i := 0; i < b.N; i++ {
 		output.Reset()
-		te.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
+		gxdrInput.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
+	}
+}
+
+func BenchmarkXDRMarshalHex(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = xdr.MarshalHex(xdrInput)
+	}
+}
+
+func BenchmarkXDRMarshalHexWithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.MarshalHex(xdrInput)
+	}
+}
+
+func BenchmarkXDRUnsafeMarshalHexWithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.UnsafeMarshalHex(xdrInput)
+	}
+}
+
+func BenchmarkXDRMarshalBase64(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = xdr.MarshalBase64(xdrInput)
+	}
+}
+
+func BenchmarkXDRMarshalBase64WithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.MarshalBase64(xdrInput)
+	}
+}
+
+func BenchmarkXDRUnsafeMarshalBase64WithEncodingBuffer(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		_, _ = e.UnsafeMarshalBase64(xdrInput)
+	}
+}
+
+var ledgerKeys = []xdr.LedgerKey{
+	{
+		Type: xdr.LedgerEntryTypeAccount,
+		Account: &xdr.LedgerKeyAccount{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeTrustline,
+		TrustLine: &xdr.LedgerKeyTrustLine{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("EUR", "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB").ToTrustLineAsset(),
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeOffer,
+		Offer: &xdr.LedgerKeyOffer{
+			SellerId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			OfferId:  xdr.Int64(3),
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeData,
+		Data: &xdr.LedgerKeyData{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			DataName:  "foobar",
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeClaimableBalance,
+		ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+			BalanceId: xdr.ClaimableBalanceId{
+				Type: 0,
+				V0:   &xdr.Hash{0xca, 0xfe, 0xba, 0xbe},
+			},
+		},
+	},
+	{
+		Type: xdr.LedgerEntryTypeLiquidityPool,
+		LiquidityPool: &xdr.LedgerKeyLiquidityPool{
+			LiquidityPoolId: xdr.PoolId{0xca, 0xfe, 0xba, 0xbe},
+		},
+	},
+}
+
+func BenchmarkXDRMarshalCompress(b *testing.B) {
+	e := xdr.NewEncodingBuffer()
+	for i := 0; i < b.N; i++ {
+		for _, lk := range ledgerKeys {
+			_, _ = e.LedgerKeyUnsafeMarshalBinaryCompress(lk)
+		}
 	}
 }
