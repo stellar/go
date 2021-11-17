@@ -17,6 +17,8 @@ services:
     build:
       # set build context to the root directory of the go monorepo
       context: ../../../
+      args: 
+         STELLAR_CORE_VERSION: ${STELLAR_CORE_VERSION:-}
       dockerfile: services/horizon/docker/Dockerfile.dev
     restart: on-failure
     ports:
