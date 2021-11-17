@@ -9,7 +9,7 @@ RUN go install github.com/stellar/go/exp/services/captivecore
 
 FROM ubuntu:20.04
 ARG STELLAR_CORE_VERSION 
-ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-17.1.0-584.fbc0325.focal}
+ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-18.1.1-779.ef0f44b44.focal}
 ENV STELLAR_CORE_BINARY_PATH /usr/bin/stellar-core
 
 ENV DEBIAN_FRONTEND=noninteractive
