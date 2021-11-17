@@ -46,6 +46,7 @@
 // migrations/49_add_brin_index_trade_aggregations.sql (206B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/50_liquidity_pools.sql (3.876kB)
+// migrations/51_remove_ht_unused_indexes.sql (301B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
 // migrations/7_modify_trades_table.sql (2.303kB)
@@ -1040,6 +1041,26 @@ func migrations50_liquidity_poolsSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations51_remove_ht_unused_indexesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xce\x4d\x6a\xc3\x30\x10\x05\xe0\xbd\x4e\xf1\x96\x35\xad\x4e\xe0\x55\xa9\x45\x6b\x30\x72\xf1\x0f\xed\xce\xc8\xf2\x24\xd1\x22\x52\xa2\x1f\x82\x6f\x1f\x08\x26\x31\xf1\x26\xbb\x61\x66\xde\xc7\xe3\x1c\xef\x47\xb3\xf7\x2a\x12\xfa\x13\x63\x9c\x23\xd9\x14\x68\x82\xb1\x93\xd1\x14\x58\xd1\xd4\xbf\x28\x65\x21\xfe\x31\xce\x83\xd2\xda\x25\x1b\xf3\xa7\xf5\x8e\xe8\x71\xba\x29\x77\xb5\x70\x17\xcb\xbe\x1a\xf1\xd9\x89\x0d\x83\x5a\xe2\x60\x42\x74\x7e\x1e\xa2\x57\x36\x28\x1d\x8d\xb3\x01\x7d\x5b\xca\x6f\x8c\xd1\x13\xe1\x6d\x79\xfe\xc0\x32\x0c\x81\xce\x89\xac\xa6\x2c\xdf\xc0\xab\x22\xaf\xe1\xab\x40\x86\xbf\x1f\xd1\x08\xac\x8d\xb2\x85\xac\x3b\xc8\xbe\xaa\x72\x76\x0d\x00\x00\xff\xff\xeb\xea\xf1\x6a\x2d\x01\x00\x00")
+
+func migrations51_remove_ht_unused_indexesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations51_remove_ht_unused_indexesSql,
+		"migrations/51_remove_ht_unused_indexes.sql",
+	)
+}
+
+func migrations51_remove_ht_unused_indexesSql() (*asset, error) {
+	bytes, err := migrations51_remove_ht_unused_indexesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/51_remove_ht_unused_indexes.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x22, 0xf0, 0x9a, 0xf7, 0x3a, 0xb0, 0xf0, 0x65, 0x46, 0x6, 0xf, 0x48, 0x94, 0x15, 0xe2, 0x2e, 0x54, 0x37, 0x42, 0xfe, 0xbe, 0x72, 0x52, 0xc9, 0x8e, 0xc8, 0xfc, 0x83, 0x1, 0x10, 0x8d, 0x87}}
+	return a, nil
+}
+
 var _migrations5_create_trades_tableSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x94\x94\x51\x6f\xaa\x40\x10\x85\xdf\xf9\x15\x13\x9f\x30\x17\x93\x7b\x6f\x5a\x5f\x4c\x9a\x58\x25\xad\xa9\xc1\xd6\x4a\xd2\x37\xb2\xb0\x23\x6c\xa2\x2c\x99\x1d\xda\xf0\xef\x1b\x68\x69\x10\x57\xad\xaf\x9c\x39\x67\x38\xbb\x5f\x76\x34\x82\x3f\x7b\x95\x92\x60\x84\xb0\x70\x66\x6b\x7f\xba\xf1\x61\x33\xbd\x5f\xfa\x90\x29\xc3\x9a\xaa\x88\x49\x48\x34\xe0\x3a\x00\xf0\xf3\x51\x17\x48\x82\x95\xce\x23\x25\x21\x56\xa9\xca\x19\x82\xd5\x06\x82\x70\xb9\xf4\x9a\xc9\x81\x26\x89\x34\x00\x95\x33\xa6\x48\x1d\xb5\x91\xf5\x76\x8b\x64\x35\x37\xb2\xc1\xdd\xee\x84\x5e\xcb\x71\x59\x9d\x75\xeb\x9d\x8c\x84\x31\xc8\x11\x57\x05\x42\x92\x09\x12\x09\x23\xc1\xbb\xa0\x4a\xe5\xa9\x3b\xbe\x19\xf6\x22\x3b\x1e\x65\x4c\x89\x64\x71\xdd\x8e\xcf\xb8\x12\x2d\x6d\x9b\xfe\xfd\xb7\x7b\xf6\xba\xcc\xb9\xff\xff\x30\x7b\xf4\x67\x4f\xe0\x76\x47\xee\xe0\xef\xf0\xbb\x57\xac\xcb\x34\xe3\x6b\x9b\x1d\xb8\xae\xe8\x76\xe0\xfb\x75\xbb\xd6\x75\xb6\xdf\xe1\x50\xdd\xd0\x19\x4e\x9c\x96\xbf\x30\x58\xbc\x84\x3e\x2c\x82\xb9\xff\x06\x19\x93\x8c\x0a\x25\x61\x15\xf4\x91\x0c\x5f\x17\xc1\x03\xc4\x4c\x88\xe0\xda\xc8\xf4\x5a\x0a\x3b\xe1\x9d\xd4\xb8\x8a\x1a\x0c\x2f\x45\xb7\xac\xda\x52\xea\x90\xfa\xb6\x2e\x65\xf4\x90\xf4\xfa\xe4\x78\xc7\x00\x9e\x5a\xf7\x75\x78\x97\x16\x1e\xb1\xe2\x1d\x5f\xa8\x67\x63\xa3\x5e\xdb\x7d\x17\xe6\xfa\x23\x77\xe6\xeb\xd5\xb3\xfd\x5d\x48\x84\x49\x84\xc4\x89\xf3\x19\x00\x00\xff\xff\x79\x87\x24\x6b\x4c\x04\x00\x00")
 
 func migrations5_create_trades_tableSqlBytes() ([]byte, error) {
@@ -1297,6 +1318,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/49_add_brin_index_trade_aggregations.sql":                migrations49_add_brin_index_trade_aggregationsSql,
 	"migrations/4_add_protocol_version.sql":                              migrations4_add_protocol_versionSql,
 	"migrations/50_liquidity_pools.sql":                                  migrations50_liquidity_poolsSql,
+	"migrations/51_remove_ht_unused_indexes.sql":                         migrations51_remove_ht_unused_indexesSql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
 	"migrations/7_modify_trades_table.sql":                               migrations7_modify_trades_tableSql,
@@ -1393,6 +1415,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"49_add_brin_index_trade_aggregations.sql":                &bintree{migrations49_add_brin_index_trade_aggregationsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                              &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"50_liquidity_pools.sql":                                  &bintree{migrations50_liquidity_poolsSql, map[string]*bintree{}},
+		"51_remove_ht_unused_indexes.sql":                         &bintree{migrations51_remove_ht_unused_indexesSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
 		"7_modify_trades_table.sql":                               &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
