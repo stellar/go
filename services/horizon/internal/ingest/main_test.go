@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -483,6 +484,10 @@ func (m *mockSystem) Run() {
 func (m *mockSystem) Metrics() Metrics {
 	args := m.Called()
 	return args.Get(0).(Metrics)
+}
+
+func (m *mockSystem) RegisterMetrics(registry *prometheus.Registry) {
+	m.Called(registry)
 }
 
 func (m *mockSystem) StressTest(numTransactions, changesPerTransaction int) error {

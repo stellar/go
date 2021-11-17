@@ -77,6 +77,18 @@ type System struct {
 	}
 }
 
+// RegisterMetrics registers the prometheus metrics
+func (sys *System) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(sys.Metrics.SubmissionDuration)
+	registry.MustRegister(sys.Metrics.BufferedSubmissionsGauge)
+	registry.MustRegister(sys.Metrics.OpenSubmissionsGauge)
+	registry.MustRegister(sys.Metrics.FailedSubmissionsCounter)
+	registry.MustRegister(sys.Metrics.SuccessfulSubmissionsCounter)
+	registry.MustRegister(sys.Metrics.V0TransactionsCounter)
+	registry.MustRegister(sys.Metrics.V1TransactionsCounter)
+	registry.MustRegister(sys.Metrics.FeeBumpTransactionsCounter)
+}
+
 // Submit submits the provided base64 encoded transaction envelope to the
 // network using this submission system.
 func (sys *System) Submit(

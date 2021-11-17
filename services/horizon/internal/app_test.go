@@ -46,10 +46,10 @@ func TestMetrics(t *testing.T) {
 	w := adminRouterRH.Get("/metrics")
 	ht.Assert.Equal(200, w.Code)
 
-	hl := ht.App.historyLatestLedgerCounter
-	hlc := ht.App.historyLatestLedgerClosedAgoGauge
-	he := ht.App.historyElderLedgerCounter
-	cl := ht.App.coreLatestLedgerCounter
+	hl := ht.App.ledgerState.Metrics.HistoryLatestLedgerCounter
+	hlc := ht.App.ledgerState.Metrics.HistoryLatestLedgerClosedAgoGauge
+	he := ht.App.ledgerState.Metrics.HistoryElderLedgerCounter
+	cl := ht.App.ledgerState.Metrics.CoreLatestLedgerCounter
 
 	ht.Require.EqualValues(3, getMetricValue(hl).GetCounter().GetValue())
 	ht.Require.Less(float64(1000), getMetricValue(hlc).GetGauge().GetValue())
