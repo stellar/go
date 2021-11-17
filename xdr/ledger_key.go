@@ -3,7 +3,6 @@ package xdr
 import (
 	"encoding/base64"
 	"fmt"
-	"strings"
 )
 
 // LedgerKey implements the `Keyer` interface
@@ -107,7 +106,7 @@ func (key *LedgerKey) SetClaimableBalance(balanceID ClaimableBalanceId) error {
 	return nil
 }
 
-// SetL LquidityPool mutates `key` such that it represents the identity of a
+// SetLiquidityPool mutates `key` such that it represents the identity of a
 // liquidity pool.
 func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 	data := LedgerKeyLiquidityPool{poolID}
@@ -120,74 +119,39 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 	return nil
 }
 
-// MarshalBinaryCompress marshals LedgerKey to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
-// that XDR is padding data to 4 bytes in union discriminants etc.
-// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
-// memory so this function decrease memory requirements.
-//
-// Warning, do not use UnmarshalBinary() on data encoded using this method!
-//
-// Optimizations:
-// - Writes a single byte for union discriminants vs 4 bytes.
-// - Removes type and code padding for Asset.
-func (key LedgerKey) MarshalBinaryCompress() ([]byte, error) {
-	m := []byte{byte(key.Type)}
+func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
+	if err := e.xdrEncoderBuf.WriteByte(byte(key.Type)); err != nil {
+		return err
+	}
 
 	switch key.Type {
 	case LedgerEntryTypeAccount:
-		account, err := key.Account.AccountId.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, account...)
+		return e.accountIdCompressEncodeTo(key.Account.AccountId)
 	case LedgerEntryTypeTrustline:
-		account, err := key.TrustLine.AccountId.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
+		if err := e.accountIdCompressEncodeTo(key.TrustLine.AccountId); err != nil {
+			return err
 		}
-		m = append(m, account...)
-		asset, err := key.TrustLine.Asset.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, asset...)
+		return e.assetTrustlineCompressEncodeTo(key.TrustLine.Asset)
 	case LedgerEntryTypeOffer:
-		seller, err := key.Offer.SellerId.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, seller...)
-		offer, err := key.Offer.OfferId.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, offer...)
+		// We intentionally don't encode the SellerID since the OfferID is enough
+		// (it's unique to the network)
+		return key.Offer.OfferId.EncodeTo(e.encoder)
 	case LedgerEntryTypeData:
-		account, err := key.Data.AccountId.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
+		if err := e.accountIdCompressEncodeTo(key.Data.AccountId); err != nil {
+			return err
 		}
-		m = append(m, account...)
-		dataName := []byte(strings.TrimRight(string(key.Data.DataName), "\x00"))
-		m = append(m, dataName...)
+		dataName := trimRightZeros([]byte(key.Data.DataName))
+		_, err := e.xdrEncoderBuf.Write(dataName)
+		return err
 	case LedgerEntryTypeClaimableBalance:
-		cBalance, err := key.ClaimableBalance.BalanceId.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, cBalance...)
+		return e.claimableBalanceCompressEncodeTo(key.ClaimableBalance.BalanceId)
 	case LedgerEntryTypeLiquidityPool:
-		cBalance, err := key.LiquidityPool.LiquidityPoolId.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		m = append(m, cBalance...)
+		_, err := e.xdrEncoderBuf.Write(key.LiquidityPool.LiquidityPoolId[:])
+		return err
 	default:
 		panic("Unknown type")
 	}
 
-	return m, nil
 }
 
 // MarshalBinaryBase64 marshals XDR into a binary form and then encodes it

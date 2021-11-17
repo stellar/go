@@ -9,10 +9,11 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"hash"
 	"io"
 	"sort"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/xdr"
 )
@@ -138,7 +139,7 @@ func (arch *Archive) VerifyCategoryCheckpoint(cat string, chk uint32) error {
 	}
 	defer rdr.Close()
 
-	var tmp interface{}
+	var tmp xdr.DecoderFrom
 	var step func() error
 	var reset func()
 
@@ -177,7 +178,7 @@ func (arch *Archive) VerifyCategoryCheckpoint(cat string, chk uint32) error {
 
 	for {
 		reset()
-		if err = rdr.ReadOne(&tmp); err != nil {
+		if err = rdr.ReadOne(tmp); err != nil {
 			if err == io.EOF {
 				break
 			} else {
