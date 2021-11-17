@@ -91,12 +91,11 @@ PROTOCOL_VERSION=18                              // the Stellar Protocol version
 CORE_IMAGE=stellar/stellar-core:18               // the docker hub image:tag 
 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal  // the apt deb package version from apt.stellar.org
 
-Examples:
+Example:
 
 Runs Stellar Protocol and Core version for the currently active Stellar Core version which should be the same version that the Horizon code is at, in this example it is 18, for any mode of testnet,standalone,pubnet
 ```PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]```
 
-If you omit these variables, by default, it will attempt to run with prior Stellar Protocol and Core version 17. This will only work in standalone mode, cannot run an older version of Stellar Core than what the current Horizon source is at because the ingest code expects at least that version in ledger encoding.
-```./start.sh standalone```
+
 
 
