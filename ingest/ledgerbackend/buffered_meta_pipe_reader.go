@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -63,16 +64,19 @@ type metaResult struct {
 // until xdr.LedgerCloseMeta objects channel is empty. This prevents memory
 // exhaustion when network closes a series a large ledgers.
 type bufferedLedgerMetaReader struct {
-	r *bufio.Reader
-	c chan metaResult
+	r       *bufio.Reader
+	c       chan metaResult
+	decoder *xdr3.Decoder
 }
 
 // newBufferedLedgerMetaReader creates a new meta reader that will shutdown
 // when stellar-core terminates.
 func newBufferedLedgerMetaReader(reader io.Reader) *bufferedLedgerMetaReader {
+	r := bufio.NewReaderSize(reader, metaPipeBufferSize)
 	return &bufferedLedgerMetaReader{
-		c: make(chan metaResult, ledgerReadAheadBufferSize),
-		r: bufio.NewReaderSize(reader, metaPipeBufferSize),
+		c:       make(chan metaResult, ledgerReadAheadBufferSize),
+		r:       r,
+		decoder: xdr3.NewDecoder(r),
 	}
 }
 
@@ -82,7 +86,7 @@ func newBufferedLedgerMetaReader(reader io.Reader) *bufferedLedgerMetaReader {
 //   * The next ledger available in the buffer exceeds the meta pipe buffer size.
 //     In such case the method will block until LedgerCloseMeta buffer is empty.
 func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, error) {
-	frameLength, err := xdr.ReadFrameLength(b.r)
+	frameLength, err := xdr.ReadFrameLength(b.decoder)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading frame length")
 	}
@@ -93,7 +97,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 	}
 
 	var xlcm xdr.LedgerCloseMeta
-	_, err = xdr.Unmarshal(b.r, &xlcm)
+	_, err = xlcm.DecodeFrom(b.decoder)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshalling framed LedgerCloseMeta")
 	}
