@@ -35,6 +35,19 @@ type transactionBatchInsertBuilder struct {
 	builder        db.BatchInsertBuilder
 }
 
+func txHashPrefix(hash string) (int64, error) {
+	if len(hash) < 16 {
+		return 0, errors.New("invalid hash")
+	}
+
+	hexHashPrefix, err := strconv.ParseUint(hash[0:16], 16, 64)
+	if err != nil {
+		return 0, errors.Wrap(err, "error calculating hashHexHash")
+	}
+
+	return int64(hexHashPrefix), nil // overflow expected
+}
+
 // NewTransactionBatchInsertBuilder constructs a new TransactionBatchInsertBuilder instance
 func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder {
 	return &transactionBatchInsertBuilder{
@@ -204,31 +217,32 @@ func memo(transaction ingest.LedgerTransaction) null.String {
 
 type TransactionWithoutLedger struct {
 	TotalOrderID
-	TransactionHash      string         `db:"transaction_hash"`
-	LedgerSequence       int32          `db:"ledger_sequence"`
-	ApplicationOrder     int32          `db:"application_order"`
-	Account              string         `db:"account"`
-	AccountMuxed         null.String    `db:"account_muxed"`
-	AccountSequence      string         `db:"account_sequence"`
-	MaxFee               int64          `db:"max_fee"`
-	FeeCharged           int64          `db:"fee_charged"`
-	OperationCount       int32          `db:"operation_count"`
-	TxEnvelope           string         `db:"tx_envelope"`
-	TxResult             string         `db:"tx_result"`
-	TxMeta               string         `db:"tx_meta"`
-	TxFeeMeta            string         `db:"tx_fee_meta"`
-	Signatures           pq.StringArray `db:"signatures"`
-	MemoType             string         `db:"memo_type"`
-	Memo                 null.String    `db:"memo"`
-	TimeBounds           TimeBounds     `db:"time_bounds"`
-	CreatedAt            time.Time      `db:"created_at"`
-	UpdatedAt            time.Time      `db:"updated_at"`
-	Successful           bool           `db:"successful"`
-	FeeAccount           null.String    `db:"fee_account"`
-	FeeAccountMuxed      null.String    `db:"fee_account_muxed"`
-	InnerTransactionHash null.String    `db:"inner_transaction_hash"`
-	NewMaxFee            null.Int       `db:"new_max_fee"`
-	InnerSignatures      pq.StringArray `db:"inner_signatures"`
+	TransactionHash       string         `db:"transaction_hash"`
+	TransactionHashPrefix int64          `db:"transaction_hash_prefix"`
+	LedgerSequence        int32          `db:"ledger_sequence"`
+	ApplicationOrder      int32          `db:"application_order"`
+	Account               string         `db:"account"`
+	AccountMuxed          null.String    `db:"account_muxed"`
+	AccountSequence       string         `db:"account_sequence"`
+	MaxFee                int64          `db:"max_fee"`
+	FeeCharged            int64          `db:"fee_charged"`
+	OperationCount        int32          `db:"operation_count"`
+	TxEnvelope            string         `db:"tx_envelope"`
+	TxResult              string         `db:"tx_result"`
+	TxMeta                string         `db:"tx_meta"`
+	TxFeeMeta             string         `db:"tx_fee_meta"`
+	Signatures            pq.StringArray `db:"signatures"`
+	MemoType              string         `db:"memo_type"`
+	Memo                  null.String    `db:"memo"`
+	TimeBounds            TimeBounds     `db:"time_bounds"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	Successful            bool           `db:"successful"`
+	FeeAccount            null.String    `db:"fee_account"`
+	FeeAccountMuxed       null.String    `db:"fee_account_muxed"`
+	InnerTransactionHash  null.String    `db:"inner_transaction_hash"`
+	NewMaxFee             null.Int       `db:"new_max_fee"`
+	InnerSignatures       pq.StringArray `db:"inner_signatures"`
 }
 
 func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
@@ -249,6 +263,13 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 		return TransactionWithoutLedger{}, err
 	}
 
+	hexHash := hex.EncodeToString(transaction.Result.TransactionHash[:])
+
+	hexHashPrefix, err := txHashPrefix(hexHash)
+	if err != nil {
+		return TransactionWithoutLedger{}, errors.Wrap(err, "error calculating hashHexHash")
+	}
+
 	source := transaction.Envelope.SourceAccount()
 	account := source.ToAccountId()
 	var accountMuxed null.String
@@ -256,25 +277,26 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 		accountMuxed = null.StringFrom(source.Address())
 	}
 	t := TransactionWithoutLedger{
-		TransactionHash:  hex.EncodeToString(transaction.Result.TransactionHash[:]),
-		LedgerSequence:   int32(sequence),
-		ApplicationOrder: int32(transaction.Index),
-		Account:          account.Address(),
-		AccountMuxed:     accountMuxed,
-		AccountSequence:  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
-		MaxFee:           int64(transaction.Envelope.Fee()),
-		FeeCharged:       int64(transaction.Result.Result.FeeCharged),
-		OperationCount:   int32(len(transaction.Envelope.Operations())),
-		TxEnvelope:       envelopeBase64,
-		TxResult:         resultBase64,
-		TxMeta:           metaBase64,
-		TxFeeMeta:        feeMetaBase64,
-		TimeBounds:       formatTimeBounds(transaction),
-		MemoType:         memoType(transaction),
-		Memo:             memo(transaction),
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
-		Successful:       transaction.Result.Successful(),
+		TransactionHash:       hexHash,
+		TransactionHashPrefix: hexHashPrefix,
+		LedgerSequence:        int32(sequence),
+		ApplicationOrder:      int32(transaction.Index),
+		Account:               account.Address(),
+		AccountMuxed:          accountMuxed,
+		AccountSequence:       strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		MaxFee:                int64(transaction.Envelope.Fee()),
+		FeeCharged:            int64(transaction.Result.Result.FeeCharged),
+		OperationCount:        int32(len(transaction.Envelope.Operations())),
+		TxEnvelope:            envelopeBase64,
+		TxResult:              resultBase64,
+		TxMeta:                metaBase64,
+		TxFeeMeta:             feeMetaBase64,
+		TimeBounds:            formatTimeBounds(transaction),
+		MemoType:              memoType(transaction),
+		Memo:                  memo(transaction),
+		CreatedAt:             time.Now().UTC(),
+		UpdatedAt:             time.Now().UTC(),
+		Successful:            transaction.Result.Successful(),
 	}
 	t.TotalOrderID.ID = toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64()
 

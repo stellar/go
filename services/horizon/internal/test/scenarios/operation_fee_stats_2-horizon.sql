@@ -442,7 +442,8 @@ CREATE TABLE history_transactions (
     time_bounds int8range,
     successful boolean,
     fee_charged integer,
-    new_max_fee integer
+    new_max_fee integer,
+    transaction_hash_prefix bigint
 );
 
 

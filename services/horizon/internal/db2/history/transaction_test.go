@@ -7,6 +7,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/ingest"
@@ -27,8 +28,12 @@ func TestTransactionQueries(t *testing.T) {
 	err := q.TransactionByHash(tt.Ctx, &tx, real)
 	tt.Assert.NoError(err)
 
-	fake := "not_real"
-	err = q.TransactionByHash(tt.Ctx, &tx, fake)
+	invalid := "not_real"
+	err = q.TransactionByHash(tt.Ctx, &tx, invalid)
+	tt.Assert.EqualError(errors.Cause(err), "invalid hash")
+
+	notFound := "b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020"
+	err = q.TransactionByHash(tt.Ctx, &tx, notFound)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
 
