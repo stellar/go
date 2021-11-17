@@ -8,6 +8,8 @@ package ledger
 import (
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Status represents a snapshot of both horizon's and stellar-core's view of the
@@ -33,6 +35,13 @@ type HorizonStatus struct {
 type State struct {
 	sync.RWMutex
 	current Status
+
+	Metrics struct {
+		HistoryLatestLedgerCounter        prometheus.CounterFunc
+		HistoryLatestLedgerClosedAgoGauge prometheus.GaugeFunc
+		HistoryElderLedgerCounter         prometheus.CounterFunc
+		CoreLatestLedgerCounter           prometheus.CounterFunc
+	}
 }
 
 // CurrentStatus returns the cached snapshot of ledger state
@@ -62,4 +71,45 @@ func (c *State) SetHorizonStatus(next HorizonStatus) {
 	c.Lock()
 	defer c.Unlock()
 	c.current.HorizonStatus = next
+}
+
+func (c *State) RegisterMetrics(registry *prometheus.Registry) {
+	c.Metrics.HistoryLatestLedgerCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
+		func() float64 {
+			ls := c.CurrentStatus()
+			return float64(ls.HistoryLatest)
+		},
+	)
+	registry.MustRegister(c.Metrics.HistoryLatestLedgerCounter)
+
+	c.Metrics.HistoryLatestLedgerClosedAgoGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "history", Name: "latest_ledger_closed_ago_seconds",
+			Help: "seconds since the close of the last ingested ledger",
+		},
+		func() float64 {
+			ls := c.CurrentStatus()
+			return time.Since(ls.HistoryLatestClosedAt).Seconds()
+		},
+	)
+	registry.MustRegister(c.Metrics.HistoryLatestLedgerClosedAgoGauge)
+
+	c.Metrics.HistoryElderLedgerCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},
+		func() float64 {
+			ls := c.CurrentStatus()
+			return float64(ls.HistoryElder)
+		},
+	)
+	registry.MustRegister(c.Metrics.HistoryElderLedgerCounter)
+
+	c.Metrics.CoreLatestLedgerCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger"},
+		func() float64 {
+			ls := c.CurrentStatus()
+			return float64(ls.CoreLatest)
+		},
+	)
+	registry.MustRegister(c.Metrics.CoreLatestLedgerCounter)
 }

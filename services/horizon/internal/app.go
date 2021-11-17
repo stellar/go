@@ -51,15 +51,9 @@ type App struct {
 	ledgerState     *ledger.State
 
 	// metrics
-	prometheusRegistry                *prometheus.Registry
-	buildInfoGauge                    *prometheus.GaugeVec
-	ingestingGauge                    prometheus.Gauge
-	historyLatestLedgerCounter        prometheus.CounterFunc
-	historyLatestLedgerClosedAgoGauge prometheus.GaugeFunc
-	historyElderLedgerCounter         prometheus.CounterFunc
-	coreLatestLedgerCounter           prometheus.CounterFunc
-	coreSynced                        prometheus.GaugeFunc
-	coreSupportedProtocolVersion      prometheus.GaugeFunc
+	prometheusRegistry *prometheus.Registry
+	buildInfoGauge     *prometheus.GaugeVec
+	ingestingGauge     prometheus.Gauge
 }
 
 func (a *App) GetCoreState() corestate.State {

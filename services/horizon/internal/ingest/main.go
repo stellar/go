@@ -155,6 +155,7 @@ type Metrics struct {
 
 type System interface {
 	Run()
+	RegisterMetrics(*prometheus.Registry)
 	Metrics() Metrics
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
@@ -423,6 +424,23 @@ func (s *system) initMetrics() {
 
 func (s *system) Metrics() Metrics {
 	return s.metrics
+}
+
+// RegisterMetrics registers the prometheus metrics
+func (s *system) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(s.metrics.MaxSupportedProtocolVersion)
+	registry.MustRegister(s.metrics.LocalLatestLedger)
+	registry.MustRegister(s.metrics.LedgerIngestionDuration)
+	registry.MustRegister(s.metrics.LedgerIngestionTradeAggregationDuration)
+	registry.MustRegister(s.metrics.StateVerifyDuration)
+	registry.MustRegister(s.metrics.StateInvalidGauge)
+	registry.MustRegister(s.metrics.LedgerStatsCounter)
+	registry.MustRegister(s.metrics.ProcessorsRunDuration)
+	registry.MustRegister(s.metrics.ProcessorsRunDurationSummary)
+	registry.MustRegister(s.metrics.CaptiveStellarCoreSynced)
+	registry.MustRegister(s.metrics.CaptiveCoreSupportedProtocolVersion)
+	registry.MustRegister(s.metrics.LedgerFetchDurationSummary)
+	registry.MustRegister(s.metrics.StateVerifyLedgerEntriesCount)
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
