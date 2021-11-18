@@ -605,8 +605,9 @@ func (t Transaction) PagingToken() string {
 // TransactionResultCodes represent a summary of result codes returned from
 // a single xdr TransactionResult
 type TransactionResultCodes struct {
-	TransactionCode string   `json:"transaction"`
-	OperationCodes  []string `json:"operations,omitempty"`
+	TransactionCode      string   `json:"transaction"`
+	InnerTransactionCode string   `json:"inner_transaction,omitempty"`
+	OperationCodes       []string `json:"operations,omitempty"`
 }
 
 // KeyTypeFromAddress converts the version byte of the provided strkey encoded
