@@ -1,8 +1,8 @@
 -- +migrate Up
 
 -- unused indices
-DROP INDEX by_account;
-DROP INDEX by_fee_account;
+DROP INDEX by_account IF EXISTS;
+DROP INDEX by_fee_account IF EXISTS;
 
 
 -- +migrate Down
