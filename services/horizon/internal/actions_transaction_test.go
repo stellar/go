@@ -413,7 +413,7 @@ func TestPostFailedFeeBumpTransaction(t *testing.T) {
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(400, w.Code)
 	ht.Assert.Contains(string(w.Body.Bytes()), "tx_fee_bump_inner_failed")
-	ht.Assert.NotContains(string(w.Body.Bytes()), "tx_bad_auth")
+	ht.Assert.Contains(string(w.Body.Bytes()), "tx_bad_auth")
 
 	innerTxEnvelope, err := xdr.MarshalBase64(fixture.Envelope.FeeBump.Tx.InnerTx.V1)
 	ht.Assert.NoError(err)
