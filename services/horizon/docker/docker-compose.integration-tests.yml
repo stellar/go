@@ -26,6 +26,7 @@ services:
       - "11626:11626"
       # add extra port for history archive server
       - "1570:1570"
+    entrypoint: /usr/bin/env
     command: /start standalone
     volumes:
       - ./stellar-core-integration-tests.cfg:/stellar-core.cfg
