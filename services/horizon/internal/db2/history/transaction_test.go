@@ -28,6 +28,13 @@ func TestTransactionQueries(t *testing.T) {
 	err := q.TransactionByHash(tt.Ctx, &tx, real)
 	tt.Assert.NoError(err)
 
+	_, err = q.ExecRaw(tt.Ctx, "UPDATE history_transactions SET transaction_hash_prefix = NULL")
+	tt.Assert.NoError(err)
+
+	// Check if exist even without `transaction_hash_prefix`
+	err = q.TransactionByHash(tt.Ctx, &tx, real)
+	tt.Assert.NoError(err)
+
 	invalid := "not_real"
 	err = q.TransactionByHash(tt.Ctx, &tx, invalid)
 	tt.Assert.EqualError(errors.Cause(err), "invalid hash")

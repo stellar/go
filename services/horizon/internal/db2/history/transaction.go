@@ -22,7 +22,13 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 	// Filter by hashPrefix first - optimization to avoid index on transaction_hash
 	// which is super slow to update on inserts.
 	byHash := selectTransaction.
-		Where("ht.transaction_hash_prefix = ? and ht.transaction_hash = ?", hashPrefix, hash)
+		Where(
+			"(ht.transaction_hash_prefix IS NOT NULL and ht.transaction_hash_prefix = ? and ht.transaction_hash = ?) OR "+
+				"(ht.transaction_hash_prefix IS NULL and ht.transaction_hash = ?)",
+			hashPrefix,
+			hash,
+			hash,
+		)
 	byInnerHash := selectTransaction.
 		Where("ht.inner_transaction_hash = ?", hash)
 
