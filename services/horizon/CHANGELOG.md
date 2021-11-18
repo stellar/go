@@ -7,6 +7,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changes
 * Return inner and outer result codes for fee bump transactions ([4081](https://github.com/stellar/go/pull/4081))
+* Enable Docker compose tools to work with new stellar core 18 artifacts ([4084](https://github.com/stellar/go/pull/4084))
 
 ## v2.11.0
 
