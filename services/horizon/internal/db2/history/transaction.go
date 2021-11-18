@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
 
@@ -19,14 +20,12 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 		return errors.Wrap(err, "error calculating hashHexHash")
 	}
 
-	// Filter by hashPrefix first - optimization to avoid index on transaction_hash
-	// which is super slow to update on inserts.
+	// First: Filter by hashPrefix - optimization to avoid index on transaction_hash
+	// which is super slow to update on inserts and has been removed.
 	byHash := selectTransaction.
 		Where(
-			"(ht.transaction_hash_prefix IS NOT NULL and ht.transaction_hash_prefix = ? and ht.transaction_hash = ?) OR "+
-				"(ht.transaction_hash_prefix IS NULL and ht.transaction_hash = ?)",
+			"(ht.transaction_hash_prefix = ? and ht.transaction_hash = ?)",
 			hashPrefix,
-			hash,
 			hash,
 		)
 	byInnerHash := selectTransaction.
@@ -38,7 +37,22 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 	}
 	union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
 
-	return q.Get(ctx, dest, union)
+	err = q.Get(ctx, dest, union)
+	if err == nil {
+		return nil
+	}
+	if err != sql.ErrNoRows {
+		return err
+	}
+
+	// Second: The query below will be extremely slow for DBs that are not
+	// reingested with transaction_hash_prefix field.
+	byHash = selectTransaction.
+		Where(
+			"(ht.transaction_hash_prefix IS NULL and ht.transaction_hash = ?)",
+			hash,
+		)
+	return q.Get(ctx, dest, byHash)
 }
 
 // TransactionsByHashesSinceLedger fetches transactions from the `history_transactions`
