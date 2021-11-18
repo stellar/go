@@ -40,6 +40,10 @@ func txHashPrefix(hash string) (int64, error) {
 		return 0, errors.New("invalid hash")
 	}
 
+	// The hash prefix is stored in Postgres as bigint which does not support
+	// unsigned integers. We use ParseUint instead of ParseInt because ParseInt
+	// returns overflow errors on sign byte. Instead we parse it into uint64
+	// and then cast it to int64 making it to overflow.
 	hexHashPrefix, err := strconv.ParseUint(hash[0:16], 16, 64)
 	if err != nil {
 		return 0, errors.Wrap(err, "error calculating hashHexHash")

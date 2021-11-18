@@ -645,9 +645,6 @@ var _bindata = map[string]func() (*asset, error){
 	"paths_strict_send-horizon.sql":     paths_strict_sendHorizonSql,
 }
 
-// AssetDebug is true if the assets were built with the debug flag enabled.
-const AssetDebug = false
-
 // AssetDir returns the file names below a certain
 // directory embedded in the file by go-bindata.
 // For example if you run go-bindata on data/... and data contains the
@@ -689,28 +686,28 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"account_merge-core.sql": {account_mergeCoreSql, map[string]*bintree{}},
-	"account_merge-horizon.sql": {account_mergeHorizonSql, map[string]*bintree{}},
-	"base-core.sql": {baseCoreSql, map[string]*bintree{}},
-	"base-horizon.sql": {baseHorizonSql, map[string]*bintree{}},
-	"failed_transactions-core.sql": {failed_transactionsCoreSql, map[string]*bintree{}},
-	"failed_transactions-horizon.sql": {failed_transactionsHorizonSql, map[string]*bintree{}},
-	"ingest_asset_stats-core.sql": {ingest_asset_statsCoreSql, map[string]*bintree{}},
-	"ingest_asset_stats-horizon.sql": {ingest_asset_statsHorizonSql, map[string]*bintree{}},
-	"kahuna-core.sql": {kahunaCoreSql, map[string]*bintree{}},
-	"kahuna-horizon.sql": {kahunaHorizonSql, map[string]*bintree{}},
-	"offer_ids-core.sql": {offer_idsCoreSql, map[string]*bintree{}},
-	"offer_ids-horizon.sql": {offer_idsHorizonSql, map[string]*bintree{}},
-	"operation_fee_stats_1-core.sql": {operation_fee_stats_1CoreSql, map[string]*bintree{}},
+	"account_merge-core.sql":            {account_mergeCoreSql, map[string]*bintree{}},
+	"account_merge-horizon.sql":         {account_mergeHorizonSql, map[string]*bintree{}},
+	"base-core.sql":                     {baseCoreSql, map[string]*bintree{}},
+	"base-horizon.sql":                  {baseHorizonSql, map[string]*bintree{}},
+	"failed_transactions-core.sql":      {failed_transactionsCoreSql, map[string]*bintree{}},
+	"failed_transactions-horizon.sql":   {failed_transactionsHorizonSql, map[string]*bintree{}},
+	"ingest_asset_stats-core.sql":       {ingest_asset_statsCoreSql, map[string]*bintree{}},
+	"ingest_asset_stats-horizon.sql":    {ingest_asset_statsHorizonSql, map[string]*bintree{}},
+	"kahuna-core.sql":                   {kahunaCoreSql, map[string]*bintree{}},
+	"kahuna-horizon.sql":                {kahunaHorizonSql, map[string]*bintree{}},
+	"offer_ids-core.sql":                {offer_idsCoreSql, map[string]*bintree{}},
+	"offer_ids-horizon.sql":             {offer_idsHorizonSql, map[string]*bintree{}},
+	"operation_fee_stats_1-core.sql":    {operation_fee_stats_1CoreSql, map[string]*bintree{}},
 	"operation_fee_stats_1-horizon.sql": {operation_fee_stats_1HorizonSql, map[string]*bintree{}},
-	"operation_fee_stats_2-core.sql": {operation_fee_stats_2CoreSql, map[string]*bintree{}},
+	"operation_fee_stats_2-core.sql":    {operation_fee_stats_2CoreSql, map[string]*bintree{}},
 	"operation_fee_stats_2-horizon.sql": {operation_fee_stats_2HorizonSql, map[string]*bintree{}},
-	"operation_fee_stats_3-core.sql": {operation_fee_stats_3CoreSql, map[string]*bintree{}},
+	"operation_fee_stats_3-core.sql":    {operation_fee_stats_3CoreSql, map[string]*bintree{}},
 	"operation_fee_stats_3-horizon.sql": {operation_fee_stats_3HorizonSql, map[string]*bintree{}},
-	"pathed_payment-core.sql": {pathed_paymentCoreSql, map[string]*bintree{}},
-	"pathed_payment-horizon.sql": {pathed_paymentHorizonSql, map[string]*bintree{}},
-	"paths_strict_send-core.sql": {paths_strict_sendCoreSql, map[string]*bintree{}},
-	"paths_strict_send-horizon.sql": {paths_strict_sendHorizonSql, map[string]*bintree{}},
+	"pathed_payment-core.sql":           {pathed_paymentCoreSql, map[string]*bintree{}},
+	"pathed_payment-horizon.sql":        {pathed_paymentHorizonSql, map[string]*bintree{}},
+	"paths_strict_send-core.sql":        {paths_strict_sendCoreSql, map[string]*bintree{}},
+	"paths_strict_send-horizon.sql":     {paths_strict_sendHorizonSql, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory.
