@@ -95,7 +95,3 @@ Example:
 
 Runs Stellar Protocol and Core version 18, for any mode of testnet,standalone,pubnet
 ```PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]```
-
-
-
-
