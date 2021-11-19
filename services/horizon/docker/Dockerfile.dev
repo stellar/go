@@ -8,8 +8,8 @@ RUN go install github.com/stellar/go/services/horizon
 RUN go install github.com/stellar/go/exp/services/captivecore
 
 FROM ubuntu:20.04
-
-ENV STELLAR_CORE_VERSION 17.1.0-584.fbc0325.focal
+ARG STELLAR_CORE_VERSION 
+ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
 ENV STELLAR_CORE_BINARY_PATH /usr/bin/stellar-core
 
 ENV DEBIAN_FRONTEND=noninteractive
