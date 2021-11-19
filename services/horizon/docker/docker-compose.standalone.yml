@@ -13,7 +13,7 @@ services:
       - "core-db-data:/var/lib/postgresql/data"
 
   core:
-    image: ${CORE_IMAGE:-stellar/stellar-core:v17.1.0}
+    image: ${CORE_IMAGE:-stellar/stellar-core:18}
     depends_on:
       - core-postgres
       - core-upgrade
@@ -23,6 +23,7 @@ services:
       - "11626:11626"
       # add extra port for history archive server
       - "1570:1570"
+    entrypoint: /usr/bin/env
     command: /start standalone
     volumes:
       - ./stellar-core-standalone.cfg:/stellar-core.cfg
@@ -42,7 +43,7 @@ services:
   core-upgrade:
     restart: on-failure
     image: curlimages/curl:7.69.1
-    command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=${PROTOCOL_VERSION:-17}"]
+    command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=${PROTOCOL_VERSION:-18}"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
