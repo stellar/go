@@ -22,7 +22,7 @@ type DB struct {
 	Dialect string
 	DSN     string
 	dbName  string
-	t       *testing.T
+	t       testing.TB
 	closer  func()
 	closed  bool
 }
@@ -101,7 +101,7 @@ func (db *DB) Version() (major int) {
 	return major
 }
 
-func execStatement(t *testing.T, pguser, query string) {
+func execStatement(t testing.TB, pguser, query string) {
 	db, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s@localhost/?sslmode=disable", pguser))
 	require.NoError(t, err)
 	_, err = db.Exec(query)
@@ -113,7 +113,7 @@ func execStatement(t *testing.T, pguser, query string) {
 // of the running process.  It assumes that you have postgres running on the
 // default port, have the command line postgres tools installed, and that the
 // current user has access to the server.  It panics on the event of a failure.
-func Postgres(t *testing.T) *DB {
+func Postgres(t testing.TB) *DB {
 	var result DB
 	result.dbName = randomName()
 	result.Dialect = "postgres"
