@@ -35,7 +35,9 @@ func BenchmarkBatchInsertBuilder(b *testing.B) {
 		Table:        sess.GetTable("people"),
 		MaxBatchSize: maxBatchSize,
 	}
-	b.StartTimer()
+
+	// Do not count the test initialization
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < maxBatchSize; j++ {
 			err := insertBuilder.RowStruct(ctx, hungerRow{
@@ -47,6 +49,7 @@ func BenchmarkBatchInsertBuilder(b *testing.B) {
 	}
 	err := insertBuilder.Exec(ctx)
 
+	// Do not count the test ending
 	b.StopTimer()
 	assert.NoError(b, err)
 	var count []int
