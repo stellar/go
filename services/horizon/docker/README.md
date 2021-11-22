@@ -85,4 +85,13 @@ When you switch between different networks you will need to clear the Stellar Co
 
 ## Using a specific version of Stellar Core
 
-By default the Docker Compose file is configured to use the latest version of Stellar Core. To use a specific version, you can edit [docker-compose.yml](./docker-compose.yml) and set the appropriate [tag](https://hub.docker.com/r/stellar/stellar-core/tags) on the Stellar Core docker image
+By default the Docker Compose file is configured to use version 18 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations. 
+
+PROTOCOL_VERSION=18                              // the Stellar Protocol version number
+CORE_IMAGE=stellar/stellar-core:18               // the docker hub image:tag 
+STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal  // the apt deb package version from apt.stellar.org
+
+Example:
+
+Runs Stellar Protocol and Core version 18, for any mode of testnet,standalone,pubnet
+```PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]```
