@@ -24,7 +24,9 @@ func main() {
 		0,
 		"checkpoint ledger sequence to ingest, if omitted will use latest checkpoint ledger.",
 	)
-	output := flag.String("output", "offers.dump", "output file which will be populated with offerss")
+	offersOutput := flag.String("offers-output", "offers.dump", "output file which will be populated with offerss")
+	poolsOutput := flag.String("pools-output", "pools.dump", "output file which will be populated with pools")
+
 	flag.Parse()
 
 	archive, err := archive(*testnet)
@@ -55,13 +57,17 @@ func main() {
 		log.WithField("err", err).Fatal("cannot construct change reader")
 	}
 	defer changeReader.Close()
-	var file *os.File
-	file, err = os.Create(*output)
-	if err != nil {
+	var offersFile, poolsFile *os.File
+
+	if offersFile, err = os.Create(*offersOutput); err != nil {
 		log.WithField("err", err).Fatal("could not create offers file")
+	}
+	if poolsFile, err = os.Create(*poolsOutput); err != nil {
+		log.WithField("err", err).Fatal("could not create pools file")
 	}
 
 	var offerXDRs []string
+	var poolXDRs []string
 
 	for {
 		var change ingest.Change
@@ -73,19 +79,29 @@ func main() {
 			log.WithField("err", err).Fatal("could not read change")
 		}
 
-		if change.Type != xdr.LedgerEntryTypeOffer {
-			continue
+		switch change.Type {
+		case xdr.LedgerEntryTypeOffer:
+			var serialized string
+			serialized, err = xdr.MarshalBase64(change.Post.Data.MustOffer())
+			if err != nil {
+				log.WithField("err", err).Fatal("could not marshall offer")
+			}
+			offerXDRs = append(offerXDRs, serialized)
+		case xdr.LedgerEntryTypeLiquidityPool:
+			var serialized string
+			serialized, err = xdr.MarshalBase64(change.Post.Data.MustLiquidityPool())
+			if err != nil {
+				log.WithField("err", err).Fatal("could not marshall liquidity pool")
+			}
+			poolXDRs = append(poolXDRs, serialized)
 		}
-		var serialized string
-		serialized, err = xdr.MarshalBase64(change.Post.Data.MustOffer())
-		if err != nil {
-			log.WithField("err", err).Fatal("could not marshall offer")
-		}
-		offerXDRs = append(offerXDRs, serialized)
 	}
 
-	if _, err = io.Copy(file, bytes.NewBufferString(strings.Join(offerXDRs, "\n"))); err != nil {
-		log.WithField("err", err).Fatal("could not write dump file")
+	if _, err = io.Copy(offersFile, bytes.NewBufferString(strings.Join(offerXDRs, "\n"))); err != nil {
+		log.WithField("err", err).Fatal("could not write offer dump file")
+	}
+	if _, err = io.Copy(poolsFile, bytes.NewBufferString(strings.Join(poolXDRs, "\n"))); err != nil {
+		log.WithField("err", err).Fatal("could not write pool dump file")
 	}
 }
 
