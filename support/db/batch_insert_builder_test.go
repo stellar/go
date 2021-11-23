@@ -22,7 +22,6 @@ type invalidHungerRow struct {
 }
 
 func BenchmarkBatchInsertBuilder(b *testing.B) {
-	b.StopTimer()
 	// In order to show SQL queries
 	// log.SetLevel(logrus.DebugLevel)
 	db := dbtest.Postgres(b).Load(testSchema)
