@@ -41,6 +41,7 @@ func BenchmarkXDRUnmarshalWithReflection(b *testing.B) {
 		r  bytes.Reader
 		te xdr.TransactionEnvelope
 	)
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		r.Reset(input)
 		_, _ = xdr3.Unmarshal(&r, &te)
@@ -49,6 +50,7 @@ func BenchmarkXDRUnmarshalWithReflection(b *testing.B) {
 
 func BenchmarkXDRUnmarshal(b *testing.B) {
 	var te xdr.TransactionEnvelope
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_ = te.UnmarshalBinary(input)
 	}
@@ -59,6 +61,7 @@ func BenchmarkGXDRUnmarshal(b *testing.B) {
 		te gxdr.TransactionEnvelope
 		r  bytes.Reader
 	)
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		r.Reset(input)
 		te.XdrMarshal(&goxdr.XdrIn{In: &r}, "")
@@ -66,18 +69,21 @@ func BenchmarkGXDRUnmarshal(b *testing.B) {
 }
 
 func BenchmarkXDRMarshalWithReflection(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, _ = xdr3.Marshal(&bytes.Buffer{}, xdrInput)
 	}
 }
 
 func BenchmarkXDRMarshal(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, _ = xdrInput.MarshalBinary()
 	}
 }
 
 func BenchmarkXDRMarshalWithEncodingBuffer(b *testing.B) {
+	b.ReportAllocs()
 	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.UnsafeMarshalBinary(xdrInput)
@@ -86,7 +92,7 @@ func BenchmarkXDRMarshalWithEncodingBuffer(b *testing.B) {
 
 func BenchmarkGXDRMarshal(b *testing.B) {
 	var output bytes.Buffer
-	// Benchmark.
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		output.Reset()
 		gxdrInput.XdrMarshal(&goxdr.XdrOut{Out: &output}, "")
@@ -94,12 +100,14 @@ func BenchmarkGXDRMarshal(b *testing.B) {
 }
 
 func BenchmarkXDRMarshalHex(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, _ = xdr.MarshalHex(xdrInput)
 	}
 }
 
 func BenchmarkXDRMarshalHexWithEncodingBuffer(b *testing.B) {
+	b.ReportAllocs()
 	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.MarshalHex(xdrInput)
@@ -107,6 +115,7 @@ func BenchmarkXDRMarshalHexWithEncodingBuffer(b *testing.B) {
 }
 
 func BenchmarkXDRUnsafeMarshalHexWithEncodingBuffer(b *testing.B) {
+	b.ReportAllocs()
 	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.UnsafeMarshalHex(xdrInput)
@@ -114,12 +123,14 @@ func BenchmarkXDRUnsafeMarshalHexWithEncodingBuffer(b *testing.B) {
 }
 
 func BenchmarkXDRMarshalBase64(b *testing.B) {
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_, _ = xdr.MarshalBase64(xdrInput)
 	}
 }
 
 func BenchmarkXDRMarshalBase64WithEncodingBuffer(b *testing.B) {
+	b.ReportAllocs()
 	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.MarshalBase64(xdrInput)
@@ -127,6 +138,7 @@ func BenchmarkXDRMarshalBase64WithEncodingBuffer(b *testing.B) {
 }
 
 func BenchmarkXDRUnsafeMarshalBase64WithEncodingBuffer(b *testing.B) {
+	b.ReportAllocs()
 	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		_, _ = e.UnsafeMarshalBase64(xdrInput)
@@ -179,6 +191,7 @@ var ledgerKeys = []xdr.LedgerKey{
 }
 
 func BenchmarkXDRMarshalCompress(b *testing.B) {
+	b.ReportAllocs()
 	e := xdr.NewEncodingBuffer()
 	for i := 0; i < b.N; i++ {
 		for _, lk := range ledgerKeys {
