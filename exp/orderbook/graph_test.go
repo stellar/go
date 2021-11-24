@@ -210,24 +210,24 @@ func assertPathEquals(t *testing.T, a, b []Path) {
 
 	for i := 0; i < len(a); i++ {
 		assert.Equalf(t, a[i].SourceAmount, b[i].SourceAmount,
-			"expected src amounts to be same got %v %v", a, b)
+			"expected src amounts to be same got %v %v", a[i], b[i])
 
 		assert.Equalf(t, a[i].DestinationAmount, b[i].DestinationAmount,
-			"expected dest amounts to be same got %v %v", a, b)
+			"expected dest amounts to be same got %v %v", a[i], b[i])
 
 		assert.Truef(t, a[i].DestinationAsset.Equals(b[i].DestinationAsset),
-			"expected dest assets to be same got %v %v", a, b)
+			"expected dest assets to be same got %v %v", a[i], b[i])
 
 		assert.Truef(t, a[i].SourceAsset.Equals(b[i].SourceAsset),
-			"expected source assets to be same got %v %v", a, b)
+			"expected source assets to be same got %v %v", a[i], b[i])
 
 		assert.Equalf(t, len(a[i].InteriorNodes), len(b[i].InteriorNodes),
-			"expected interior nodes have same length got %v %v", a, b)
+			"expected interior nodes have same length got %v %v", a[i], b[i])
 
 		for j := 0; j > len(a[i].InteriorNodes); j++ {
 			assert.Truef(t,
 				a[i].InteriorNodes[j].Equals(b[i].InteriorNodes[j]),
-				"expected interior nodes to be same got %v %v", a, b)
+				"expected interior nodes to be same got %v %v", a[i], b[i])
 		}
 	}
 }
@@ -1404,18 +1404,20 @@ func TestFindPaths(t *testing.T) {
 
 	expectedPaths := []Path{
 		{
-			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
+			// arbitrage usd then trade to xlm
+			SourceAmount: 2,
+			SourceAsset:  usdAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+				usdAsset,
+			},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
 		{
-			SourceAmount: 7,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-			},
+			SourceAmount:      5,
+			SourceAsset:       usdAsset,
+			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
@@ -1478,18 +1480,20 @@ func TestFindPaths(t *testing.T) {
 
 	expectedPaths = []Path{
 		{
-			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
+			// arbitrage usd then trade to xlm
+			SourceAmount: 2,
+			SourceAsset:  usdAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+				usdAsset,
+			},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
 		{
-			SourceAmount: 7,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-			},
+			SourceAmount:      5,
+			SourceAsset:       usdAsset,
+			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
@@ -1541,18 +1545,20 @@ func TestFindPaths(t *testing.T) {
 
 	expectedPaths = []Path{
 		{
-			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
+			// arbitrage usd then trade to xlm
+			SourceAmount: 2,
+			SourceAsset:  usdAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+				usdAsset,
+			},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
 		{
-			SourceAmount: 7,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-			},
+			SourceAmount:      5,
+			SourceAsset:       usdAsset,
+			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
@@ -1678,20 +1684,22 @@ func TestFindPathsStartingAt(t *testing.T) {
 
 	expectedPaths := []Path{
 		{
+			// arbitrage usd then trade to xlm
+			SourceAmount: 5,
+			SourceAsset:  usdAsset,
+			InteriorNodes: []xdr.Asset{
+				eurAsset,
+				usdAsset,
+			},
+			DestinationAsset:  nativeAsset,
+			DestinationAmount: 60,
+		},
+		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
-		},
-		{
-			SourceAmount: 5,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-			},
-			DestinationAsset:  nativeAsset,
-			DestinationAmount: 15,
 		},
 	}
 
@@ -2108,12 +2116,6 @@ func TestInterleavedFixedPaths(t *testing.T) {
 			DestinationAsset:  chfAsset,
 			DestinationAmount: 13,
 			InteriorNodes:     []xdr.Asset{usdAsset},
-		}, {
-			SourceAsset:       nativeAsset,
-			SourceAmount:      1234,
-			DestinationAsset:  chfAsset,
-			DestinationAmount: 5,
-			InteriorNodes:     []xdr.Asset{eurAsset, usdAsset},
 		},
 	}
 

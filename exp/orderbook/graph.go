@@ -317,13 +317,10 @@ func (graph *OrderBookGraph) FindPaths(
 		includePools:           includePools,
 	}
 	graph.lock.RLock()
-	err := dfs(
+	err := search(
 		ctx,
 		searchState,
 		maxPathLength,
-		[]xdr.Asset{},
-		[]string{},
-		len(sourceAssets),
 		destinationAssetString,
 		destinationAsset,
 		destinationAmount,
@@ -374,13 +371,10 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		includePools:      includePools,
 	}
 	graph.lock.RLock()
-	err := dfs(
+	err := search(
 		ctx,
 		searchState,
 		maxPathLength,
-		[]xdr.Asset{},
-		[]string{},
-		len(destinationAssets),
 		sourceAsset.String(),
 		sourceAsset,
 		amountToSpend,
