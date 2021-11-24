@@ -9,8 +9,8 @@ import (
 // Well-known and reused problems below:
 var (
 
-    // ClientDisconnected, represented by a non-standard HTTP status code of 499, which was introduced by
-    // nginix.org(https://www.nginx.com/resources/wiki/extending/api/http/) as a way to capture this state.  Use it as a shortcut
+	// ClientDisconnected, represented by a non-standard HTTP status code of 499, which was introduced by
+	// nginix.org(https://www.nginx.com/resources/wiki/extending/api/http/) as a way to capture this state.  Use it as a shortcut
 	// in your actions.
 	ClientDisconnected = problem.P{
 		Type:   "client_disconnected",

@@ -291,9 +291,6 @@ func TestTransactionActions_Post(t *testing.T) {
 	ht.Assert.Equal(200, w.Code)
 }
 
-
-
-
 func TestTransactionActions_Post_ClientDisconnect(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -334,18 +331,17 @@ func TestTransactionActions_Post_ClientDisconnect(t *testing.T) {
 	form := url.Values{"tx": []string{txStr}}
 
 	// existing transaction
-	
-    w := ht.Post("/transactions", form, 
-		func (req *http.Request) (*http.Request){
-		   ctx, cancel := context.WithCancel(req.Context())
-           req = req.WithContext(ctx)
-           cancel()
-           return req
+
+	w := ht.Post("/transactions", form,
+		func(req *http.Request) *http.Request {
+			ctx, cancel := context.WithCancel(req.Context())
+			req = req.WithContext(ctx)
+			cancel()
+			return req
 		})
 
 	ht.Assert.Equal(499, w.Code)
 }
-
 
 func TestTransactionActions_PostSuccessful(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
