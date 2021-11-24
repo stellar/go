@@ -45,15 +45,30 @@ type Venues struct {
 }
 
 type searchState interface {
+	// considerPools returns true if we will consider liquidity pools in our path
+	// finding search.
 	considerPools() bool
 
-	isTerminalNode(
+	// isTerminalNode returns true if the current asset is a terminal node in our
+	// path finding search.
+	isTerminalNode(asset string) bool
+
+	// includePath returns true if the current path which ends at the given asset
+	// and produces the given amount satisfies our search criteria.
+	includePath(
 		currentAsset string,
 		currentAssetAmount xdr.Int64,
 	) bool
 
+	// betterPathAmount returns true if alternativeAmount is better than currentAmount
+	// Given two paths (current path and alternative path) which lead to the same asset
+	// but possibly have different amounts of that asset, betterPathAmount will return
+	// true if the alternative path is better than the current path.
+	betterPathAmount(currentAmount, alternativeAmount xdr.Int64) bool
+
+	// appendToPaths appends the current path to our result list.
 	appendToPaths(
-		updatedVisitedList []xdr.Asset,
+		path []xdr.Asset,
 		currentAsset string,
 		currentAssetAmount xdr.Int64,
 	)
@@ -65,12 +80,16 @@ type searchState interface {
 	// pair).
 	venues(currentAsset string) edgeSet
 
+	// consumeOffers will consume the given set of offers to trade our
+	// current asset for a different asset.
 	consumeOffers(
 		currentAssetAmount xdr.Int64,
 		currentBestAmount xdr.Int64,
 		offers []xdr.OfferEntry,
 	) (xdr.Asset, xdr.Int64, error)
 
+	// consumePool will consume the given liquidity pool to trade our
+	// current asset for a different asset.
 	consumePool(
 		pool xdr.LiquidityPoolEntry,
 		currentAsset xdr.Asset,
@@ -78,69 +97,123 @@ type searchState interface {
 	) (xdr.Int64, error)
 }
 
-func dfs(
+type pathNode struct {
+	assetString string
+	asset       xdr.Asset
+	prev        *pathNode
+}
+
+func (p *pathNode) contains(src, dst string) bool {
+	for cur := p; cur != nil && cur.prev != nil; cur = cur.prev {
+		if cur.assetString == dst && cur.prev.assetString == src {
+			return true
+		}
+	}
+	return false
+}
+
+func reversePath(path []xdr.Asset) {
+	for i := len(path)/2 - 1; i >= 0; i-- {
+		opp := len(path) - 1 - i
+		path[i], path[opp] = path[opp], path[i]
+	}
+}
+
+func (e *pathNode) path() []xdr.Asset {
+	var result []xdr.Asset
+	for cur := e; cur != nil; cur = cur.prev {
+		result = append(result, cur.asset)
+	}
+
+	reversePath(result)
+	return result
+}
+
+func search(
 	ctx context.Context,
 	state searchState,
 	maxPathLength int,
-	visitedAssets []xdr.Asset,
-	visitedAssetStrings []string,
-	remainingTerminalNodes int,
-	currentAssetString string,
-	currentAsset xdr.Asset,
-	currentAssetAmount xdr.Int64,
+	sourceAssetString string,
+	sourceAsset xdr.Asset,
+	sourceAssetAmount xdr.Int64,
 ) error {
-	// exit early if the context was cancelled
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+	bestAmount := map[string]xdr.Int64{sourceAssetString: sourceAssetAmount}
+	updateAmount := map[string]xdr.Int64{sourceAssetString: sourceAssetAmount}
+	bestPath := map[string]*pathNode{sourceAssetString: {
+		assetString: sourceAssetString,
+		asset:       sourceAsset,
+		prev:        nil,
+	}}
 
-	updatedVisitedAssets := append(visitedAssets, currentAsset)
-	updatedVisitedStrings := append(visitedAssetStrings, currentAssetString)
+	for i := 0; i < maxPathLength; i++ {
+		updatePath := map[string]*pathNode{}
 
-	if state.isTerminalNode(currentAssetString, currentAssetAmount) {
-		state.appendToPaths(
-			updatedVisitedAssets,
-			currentAssetString,
-			currentAssetAmount,
-		)
-		remainingTerminalNodes--
-	}
+		for currentAssetString, currentAmount := range bestAmount {
+			pathToCurrentAsset := bestPath[currentAssetString]
+			currentAsset := pathToCurrentAsset.asset
+			edges := state.venues(currentAssetString)
+			for j := 0; j < len(edges); j++ {
+				// Exit early if the context was cancelled.
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				nextAssetString, venues := edges[j].key, edges[j].value
 
-	// abort search if we've visited all destination nodes or if we've exceeded
-	// maxPathLength
-	if remainingTerminalNodes == 0 || len(updatedVisitedStrings) > maxPathLength {
-		return nil
-	}
+				// If we're on our last step ignore any edges which don't lead to
+				// our desired destination. This optimization will save us from
+				// doing wasted computation.
+				if i == maxPathLength-1 && !state.isTerminalNode(nextAssetString) {
+					continue
+				}
 
-	edges := state.venues(currentAssetString)
-	for i := 0; i < len(edges); i++ {
-		nextAssetString, venues := edges[i].key, edges[i].value
-		if contains(visitedAssetStrings, nextAssetString) {
-			continue
+				// Make sure we don't use an edge more than once.
+				if pathToCurrentAsset.contains(currentAssetString, nextAssetString) {
+					continue
+				}
+
+				nextAsset, nextAssetAmount, err := processVenues(state, currentAsset, currentAmount, venues)
+				if err != nil {
+					return err
+				}
+				if nextAssetAmount <= 0 {
+					continue
+				}
+
+				if bestNextAssetAmount, ok := updateAmount[nextAssetString]; !ok || state.betterPathAmount(bestNextAssetAmount, nextAssetAmount) {
+					updateAmount[nextAssetString] = nextAssetAmount
+
+					if pathToNext, ok := updatePath[nextAssetString]; ok {
+						pathToNext.prev = pathToCurrentAsset
+					} else {
+						updatePath[nextAssetString] = &pathNode{
+							assetString: nextAssetString,
+							asset:       nextAsset,
+							prev:        pathToCurrentAsset,
+						}
+					}
+
+					// We could avoid this step until the last iteration, but we would
+					// like to include multiple paths in the response to give the user
+					// other options in case the best path is already consumed.
+					if state.includePath(nextAssetString, nextAssetAmount) {
+						state.appendToPaths(
+							append(bestPath[currentAssetString].path(), nextAsset),
+							nextAssetString,
+							nextAssetAmount,
+						)
+					}
+				}
+			}
 		}
 
-		nextAsset, nextAssetAmount, err := processVenues(state,
-			currentAsset, currentAssetAmount, venues)
-		if err != nil {
-			return err
-		}
-
-		if nextAssetAmount <= 0 { // avoid unnecessary extra recursion
-			continue
-		}
-
-		if err := dfs(
-			ctx,
-			state,
-			maxPathLength,
-			updatedVisitedAssets,
-			updatedVisitedStrings,
-			remainingTerminalNodes,
-			nextAssetString,
-			nextAsset,
-			nextAssetAmount,
-		); err != nil {
-			return err
+		// Only update bestPath and bestAmount if we have more iterations left in
+		// the algorithm. This optimization will save us from doing wasted
+		// computation.
+		if i < maxPathLength-1 {
+			for assetString, betterPath := range updatePath {
+				bestPath[assetString] = betterPath
+				bestAmount[assetString] = updateAmount[assetString]
+			}
 		}
 	}
 
@@ -167,36 +240,38 @@ type sellingGraphSearchState struct {
 	includePools           bool
 }
 
-func (state *sellingGraphSearchState) isTerminalNode(
-	currentAsset string,
-	currentAssetAmount xdr.Int64,
-) bool {
+func (state *sellingGraphSearchState) isTerminalNode(currentAsset string) bool {
+	_, ok := state.targetAssets[currentAsset]
+	return ok
+}
+
+func (state *sellingGraphSearchState) includePath(currentAsset string, currentAssetAmount xdr.Int64) bool {
 	targetAssetBalance, ok := state.targetAssets[currentAsset]
 	return ok && (!state.validateSourceBalance || targetAssetBalance >= currentAssetAmount)
 }
 
+func (state *sellingGraphSearchState) betterPathAmount(currentAmount, alternativeAmount xdr.Int64) bool {
+	return alternativeAmount < currentAmount
+}
+
 func (state *sellingGraphSearchState) appendToPaths(
-	updatedVisitedList []xdr.Asset,
-	currentAsset string,
+	path []xdr.Asset,
+	currentAssetString string,
 	currentAssetAmount xdr.Int64,
 ) {
-	var interiorNodes []xdr.Asset
-	length := len(updatedVisitedList)
-	if length > 2 {
-		// reverse updatedVisitedList, skipping the first and last elements
-		interiorNodes = make([]xdr.Asset, 0, length-2)
-		for i := length - 2; i >= 1; i-- {
-			interiorNodes = append(interiorNodes, updatedVisitedList[i])
-		}
+	currentAsset := path[len(path)-1]
+	if len(path) > 2 {
+		path = path[1 : len(path)-1]
+		reversePath(path)
 	} else {
-		interiorNodes = []xdr.Asset{}
+		path = []xdr.Asset{}
 	}
 
 	state.paths = append(state.paths, Path{
-		sourceAssetString: currentAsset,
+		sourceAssetString: currentAssetString,
 		SourceAmount:      currentAssetAmount,
-		SourceAsset:       updatedVisitedList[length-1],
-		InteriorNodes:     interiorNodes,
+		SourceAsset:       currentAsset,
+		InteriorNodes:     path,
 		DestinationAsset:  state.destinationAsset,
 		DestinationAmount: state.destinationAssetAmount,
 	})
@@ -253,34 +328,37 @@ type buyingGraphSearchState struct {
 	includePools      bool
 }
 
-func (state *buyingGraphSearchState) isTerminalNode(
-	currentAsset string,
-	currentAssetAmount xdr.Int64,
-) bool {
+func (state *buyingGraphSearchState) isTerminalNode(currentAsset string) bool {
 	return state.targetAssets[currentAsset]
 }
 
+func (state *buyingGraphSearchState) includePath(currentAsset string, currentAssetAmount xdr.Int64) bool {
+	return state.targetAssets[currentAsset]
+}
+
+func (state *buyingGraphSearchState) betterPathAmount(currentAmount, alternativeAmount xdr.Int64) bool {
+	return alternativeAmount > currentAmount
+}
+
 func (state *buyingGraphSearchState) appendToPaths(
-	updatedVisitedList []xdr.Asset,
-	currentAsset string,
+	path []xdr.Asset,
+	currentAssetString string,
 	currentAssetAmount xdr.Int64,
 ) {
-	var interiorNodes []xdr.Asset
-	if len(updatedVisitedList) > 2 {
-		// skip the first and last elements
-		interiorNodes = make([]xdr.Asset, len(updatedVisitedList)-2)
-		copy(interiorNodes, updatedVisitedList[1:len(updatedVisitedList)-1])
+	currentAsset := path[len(path)-1]
+	if len(path) > 2 {
+		path = path[1 : len(path)-1]
 	} else {
-		interiorNodes = []xdr.Asset{}
+		path = []xdr.Asset{}
 	}
 
 	state.paths = append(state.paths, Path{
 		SourceAmount:           state.sourceAssetAmount,
 		SourceAsset:            state.sourceAsset,
-		InteriorNodes:          interiorNodes,
-		DestinationAsset:       updatedVisitedList[len(updatedVisitedList)-1],
+		InteriorNodes:          path,
+		DestinationAsset:       currentAsset,
 		DestinationAmount:      currentAssetAmount,
-		destinationAssetString: currentAsset,
+		destinationAssetString: currentAssetString,
 	})
 }
 
