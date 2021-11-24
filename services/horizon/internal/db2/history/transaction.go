@@ -12,6 +12,20 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// TransactionsWithoutPrefixExist returns true if there is at least one
+// transaction in history_transactions table without transaction_hash_prefix
+// field set.
+func (q *Q) TransactionsWithoutPrefixExist(ctx context.Context) (bool, error) {
+	var id int64
+	err := q.GetRaw(ctx, &id, "SELECT id FROM history_transactions WHERE transaction_hash_prefix IS NULL LIMIT 1")
+	if err != nil && err != sql.ErrNoRows {
+		return false, errors.Wrap(err, "error calculating number of nulls in transaction_hash_prefix")
+	}
+
+	// No err means at least one tx with no prefix set exists
+	return err == nil, nil
+}
+
 // TransactionByHash is a query that loads a single row from the
 // `history_transactions` table based upon the provided hash.
 func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
@@ -19,14 +33,13 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 	// let's use the index on `transaction_hash_prefix` because index on
 	// `transaction_hash` could be removed by Horizon admins for performance
 	// reasons (faster ingestion).
-	var id int64
-	outerErr := q.GetRaw(ctx, &id, "SELECT id FROM history_transactions WHERE transaction_hash_prefix IS NULL LIMIT 1")
+	txWithoutPrefixExist, outerErr := q.TransactionsWithoutPrefixExist(ctx)
 	if outerErr != nil && outerErr != sql.ErrNoRows {
 		return errors.Wrap(outerErr, "error calculating number of nulls in transaction_hash_prefix")
 	}
 
-	if outerErr == sql.ErrNoRows {
-		// No rows found -> all transations have prefix field set
+	if !txWithoutPrefixExist {
+		// All transations have prefix field set -> use new index
 		hashPrefix, err := txHashPrefix(hash)
 		if err != nil {
 			return errors.Wrap(err, "error calculating hashHexHash")

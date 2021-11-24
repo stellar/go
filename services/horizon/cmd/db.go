@@ -485,6 +485,47 @@ func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history
 	return q.GetLedgerGapsInRange(context.Background(), start, end)
 }
 
+var dbOptimizeSchemaCmd = &cobra.Command{
+	Use:   "optimize-schema",
+	Short: "checks for possible performance improvements and execute schema migrations",
+	Long: "Some schema migrations that improve performance can be extremely slow, depending on number of rows in tables. " +
+		"This command detects if it's possible to run such migrations fast and runs them.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+			return err
+		}
+
+		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		q := &history.Q{horizonSession}
+
+		// Should we finally set default to info in support/log?
+		hlog.DefaultLogger.SetLevel(hlog.InfoLevel)
+
+		hlog.Info("Checking if by_hash index can be removed...")
+
+		txWithoutPrefixExist, err := q.TransactionsWithoutPrefixExist(context.Background())
+		if err != nil {
+			hlog.Fatalf("unable to check transaction prefixes: %s", err)
+		}
+
+		if !txWithoutPrefixExist {
+			_, err = q.ExecRaw(context.Background(), "DROP INDEX IF EXISTS by_hash;")
+			if err != nil {
+				hlog.Fatalf("unable to drop by_hash index: %s", err)
+			}
+
+			hlog.Info("by_hash index removed.")
+		} else {
+			hlog.Warn("by_hash index cannot be removed.")
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	for _, co := range reingestRangeCmdOpts {
 		err := co.Init(dbReingestRangeCmd)
@@ -508,6 +549,7 @@ func init() {
 		dbReingestCmd,
 		dbDetectGapsCmd,
 		dbFillGapsCmd,
+		dbOptimizeSchemaCmd,
 	)
 	dbMigrateCmd.AddCommand(
 		dbMigrateDownCmd,

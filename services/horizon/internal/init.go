@@ -68,6 +68,18 @@ func mustInitHorizonDB(app *App) {
 			app.prometheusRegistry,
 		)}
 	}
+
+	if app.config.Ingest {
+		// Check for possible manual performance optimizations
+		txWithoutPrefixExist, err := app.historyQ.TransactionsWithoutPrefixExist(app.ctx)
+		if err != nil {
+			log.Fatalf("unable to check transaction prefixes: %s", err)
+		}
+
+		if !txWithoutPrefixExist {
+			log.Info("Possible performance improvement (remove by_hash index). Run `horizon db optimize-schema`")
+		}
+	}
 }
 
 func initIngester(app *App) {
