@@ -15,44 +15,43 @@ import (
 // TransactionByHash is a query that loads a single row from the
 // `history_transactions` table based upon the provided hash.
 func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
-	hashPrefix, err := txHashPrefix(hash)
-	if err != nil {
-		return errors.Wrap(err, "error calculating hashHexHash")
+	// Check if all rows in `history_transactions` have prefix field set. If so
+	// let's use the index on `transaction_hash_prefix` because index on
+	// `transaction_hash` could be removed by Horizon admins for performance
+	// reasons (faster ingestion).
+	var id int64
+	outerErr := q.GetRaw(ctx, &id, "SELECT id FROM history_transactions WHERE transaction_hash_prefix IS NULL LIMIT 1")
+	if outerErr != nil && outerErr != sql.ErrNoRows {
+		return errors.Wrap(outerErr, "error calculating number of nulls in transaction_hash_prefix")
 	}
 
-	// First: Filter by hashPrefix - optimization to avoid index on transaction_hash
-	// which is super slow to update on inserts and has been removed.
-	byHash := selectTransaction.
-		Where(
-			"(ht.transaction_hash_prefix = ? and ht.transaction_hash = ?)",
-			hashPrefix,
-			hash,
-		)
-	byInnerHash := selectTransaction.
-		Where("ht.inner_transaction_hash = ?", hash)
+	if outerErr == sql.ErrNoRows {
+		// No rows found -> all transations have prefix field set
+		hashPrefix, err := txHashPrefix(hash)
+		if err != nil {
+			return errors.Wrap(err, "error calculating hashHexHash")
+		}
 
-	byInnerHashString, args, err := byInnerHash.ToSql()
-	if err != nil {
-		return errors.Wrap(err, "could not get string for inner hash sql query")
-	}
-	union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
+		byHash := selectTransaction.
+			Where(
+				"(ht.transaction_hash_prefix = ? and ht.transaction_hash = ?)",
+				hashPrefix,
+				hash,
+			)
+		byInnerHash := selectTransaction.
+			Where("ht.inner_transaction_hash = ?", hash)
 
-	err = q.Get(ctx, dest, union)
-	if err == nil {
-		return nil
-	}
-	if err != sql.ErrNoRows {
-		return err
-	}
+		byInnerHashString, args, err := byInnerHash.ToSql()
+		if err != nil {
+			return errors.Wrap(err, "could not get string for inner hash sql query")
+		}
+		union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
 
-	// Second: The query below will be extremely slow for DBs that are not
-	// reingested with transaction_hash_prefix field.
-	byHash = selectTransaction.
-		Where(
-			"(ht.transaction_hash_prefix IS NULL and ht.transaction_hash = ?)",
-			hash,
-		)
-	return q.Get(ctx, dest, byHash)
+		return q.Get(ctx, dest, union)
+	} else {
+		byHash := selectTransaction.Where("ht.transaction_hash = ?", hash)
+		return q.Get(ctx, dest, byHash)
+	}
 }
 
 // TransactionsByHashesSinceLedger fetches transactions from the `history_transactions`
