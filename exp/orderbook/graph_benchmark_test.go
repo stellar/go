@@ -219,11 +219,18 @@ func BenchmarkTestData(b *testing.B) {
 }
 
 func BenchmarkSingleLiquidityPoolExchange(b *testing.B) {
+	graph := NewOrderBookGraph()
+	pool := graph.poolFromEntry(eurUsdLiquidityPool)
+	asset := graph.getOrCreateAssetID(usdAsset)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
 	b.Run("deposit", func(b *testing.B) {
-		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, math.MaxInt64/2)
+		makeTrade(pool, asset, tradeTypeDeposit, math.MaxInt64/2)
 	})
 	b.Run("exchange", func(b *testing.B) {
-		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, math.MaxInt64/2)
+		makeTrade(pool, asset, tradeTypeExpectation, math.MaxInt64/2)
 	})
 }
 
@@ -232,23 +239,29 @@ func BenchmarkSingleLiquidityPoolExchange(b *testing.B) {
 
 func BenchmarkLiquidityPoolDeposits(b *testing.B) {
 	amounts := createRandomAmounts(b.N)
+	graph := NewOrderBookGraph()
+	pool := graph.poolFromEntry(eurUsdLiquidityPool)
+	asset := graph.getOrCreateAssetID(usdAsset)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for _, amount := range amounts {
-		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, amount)
+		makeTrade(pool, asset, tradeTypeDeposit, amount)
 	}
 }
 
 func BenchmarkLiquidityPoolExpectations(b *testing.B) {
 	amounts := createRandomAmounts(b.N)
+	graph := NewOrderBookGraph()
+	pool := graph.poolFromEntry(eurUsdLiquidityPool)
+	asset := graph.getOrCreateAssetID(usdAsset)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for _, amount := range amounts {
-		makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeExpectation, amount)
+		makeTrade(pool, asset, tradeTypeExpectation, amount)
 	}
 }
 

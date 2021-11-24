@@ -43,8 +43,8 @@ var (
 // Warning: If you pass an asset that is NOT one of the pool reserves, the
 // behavior of this function is undefined (for performance).
 func makeTrade(
-	pool xdr.LiquidityPoolEntry,
-	asset xdr.Asset,
+	pool liquidityPool,
+	asset int32,
 	tradeType int,
 	amount xdr.Int64,
 ) (xdr.Int64, error) {
@@ -59,7 +59,7 @@ func makeTrade(
 
 	// determine which asset `amount` corresponds to
 	X, Y := details.ReserveA, details.ReserveB
-	if !details.Params.AssetA.Equals(asset) {
+	if pool.assetA != asset {
 		X, Y = Y, X
 	}
 
@@ -161,10 +161,9 @@ func calculatePoolExpectation(
 // getOtherAsset returns the other asset in the liquidity pool. Note that
 // doesn't check to make sure the passed in `asset` is actually part of the
 // pool; behavior in that case is undefined.
-func getOtherAsset(asset xdr.Asset, pool xdr.LiquidityPoolEntry) xdr.Asset {
-	cp := pool.Body.MustConstantProduct()
-	if cp.Params.AssetA.Equals(asset) {
-		return cp.Params.AssetB
+func getOtherAsset(asset int32, pool liquidityPool) int32 {
+	if pool.assetA == asset {
+		return pool.assetB
 	}
-	return cp.Params.AssetA
+	return pool.assetA
 }
