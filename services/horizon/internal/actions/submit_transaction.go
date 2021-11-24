@@ -78,7 +78,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 	}
 
 	if result.Err == txsub.ErrCanceled {
-		return nil, &hProblem.Timeout
+		return nil, &hProblem.ClientDisconnected
 	}
 
 	switch err := result.Err.(type) {
@@ -153,6 +153,6 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 	case result := <-submission:
 		return handler.response(r, info, result)
 	case <-r.Context().Done():
-		return nil, &hProblem.Timeout
+		return nil, &hProblem.ClientDisconnected
 	}
 }

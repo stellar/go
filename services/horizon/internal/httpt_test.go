@@ -68,7 +68,7 @@ func StartHTTPTestWithoutScenario(t *testing.T) *HTTPT {
 // Get delegates to the test's request helper
 func (ht *HTTPT) Get(
 	path string,
-	fn ...func(*http.Request),
+	fn ...func(*http.Request)(*http.Request),
 ) *httptest.ResponseRecorder {
 	return ht.RH.Get(path, fn...)
 }
@@ -77,7 +77,7 @@ func (ht *HTTPT) Get(
 func (ht *HTTPT) GetWithParams(
 	path string,
 	queryParams url.Values,
-	fn ...func(*http.Request),
+	fn ...func(*http.Request)(*http.Request),
 ) *httptest.ResponseRecorder {
 	return ht.RH.Get(path+"?"+queryParams.Encode(), fn...)
 }
@@ -93,7 +93,7 @@ func (ht *HTTPT) Finish() {
 func (ht *HTTPT) Post(
 	path string,
 	form url.Values,
-	mods ...func(*http.Request),
+	mods ...func(*http.Request)(*http.Request),
 ) *httptest.ResponseRecorder {
 	return ht.RH.Post(path, form, mods...)
 }

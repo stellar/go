@@ -10,20 +10,22 @@ import (
 )
 
 type RequestHelper interface {
-	Get(string, ...func(*http.Request)) *httptest.ResponseRecorder
-	Post(string, url.Values, ...func(*http.Request)) *httptest.ResponseRecorder
+	Get(string, ...func(*http.Request)(*http.Request)) *httptest.ResponseRecorder
+	Post(string, url.Values, ...func(*http.Request)(*http.Request)) *httptest.ResponseRecorder
 }
 
 type requestHelper struct {
 	router *chi.Mux
 }
 
-func RequestHelperRaw(r *http.Request) {
+func RequestHelperRaw(r *http.Request) (*http.Request) {
 	r.Header.Set("Accept", "application/octet-stream")
+	return r
 }
 
-func RequestHelperStreaming(r *http.Request) {
+func RequestHelperStreaming(r *http.Request) (*http.Request){
 	r.Header.Set("Accept", "text/event-stream")
+	return r
 }
 
 func NewRequestHelper(router *chi.Mux) RequestHelper {
@@ -32,7 +34,7 @@ func NewRequestHelper(router *chi.Mux) RequestHelper {
 
 func (rh *requestHelper) Get(
 	path string,
-	mods ...func(*http.Request),
+	mods ...func(*http.Request)(*http.Request),
 ) *httptest.ResponseRecorder {
 
 	req, _ := http.NewRequest("GET", path, nil)
@@ -42,7 +44,7 @@ func (rh *requestHelper) Get(
 func (rh *requestHelper) Post(
 	path string,
 	form url.Values,
-	mods ...func(*http.Request),
+	mods ...func(*http.Request)(*http.Request),
 ) *httptest.ResponseRecorder {
 
 	body := strings.NewReader(form.Encode())
@@ -53,13 +55,13 @@ func (rh *requestHelper) Post(
 
 func (rh *requestHelper) Execute(
 	req *http.Request,
-	requestModFns []func(*http.Request),
+	requestModFns []func(*http.Request)(*http.Request),
 ) *httptest.ResponseRecorder {
 
 	req.RemoteAddr = "127.0.0.1"
 	req.Host = "localhost"
 	for _, fn := range requestModFns {
-		fn(req)
+		req = fn(req)
 	}
 
 	w := httptest.NewRecorder()
