@@ -37,7 +37,6 @@ type SystemTestSuite struct {
 }
 
 func (suite *SystemTestSuite) SetupTest() {
-	print("Setup TESTTTTTTTTTTTT")
 	suite.ctx = test.Context()
 	suite.submitter = &MockSubmitter{}
 	suite.db = &mockDBQ{}

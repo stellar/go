@@ -27,17 +27,15 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func requestHelperRemoteAddr(ip string) func(r *http.Request) *http.Request {
-	return func(r *http.Request) *http.Request {
+func requestHelperRemoteAddr(ip string) func(r *http.Request) {
+	return func(r *http.Request) {
 		r.RemoteAddr = ip
-		return r
 	}
 }
 
-func requestHelperXFF(xff string) func(r *http.Request) *http.Request {
-	return func(r *http.Request) *http.Request {
+func requestHelperXFF(xff string) func(r *http.Request) {
+	return func(r *http.Request) {
 		r.Header.Set("X-Forwarded-For", xff)
-		return r
 	}
 }
 
