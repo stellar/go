@@ -149,7 +149,9 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 }
 
 func (suite *SystemTestSuite) TestTimeoutDuringSequnceLoop() {
-	suite.ctx, _ = context.WithTimeout(suite.ctx, time.Duration(0))
+	var cancel context.CancelFunc
+	suite.ctx, cancel = context.WithTimeout(suite.ctx, time.Duration(0))
+	defer cancel()
 
 	suite.submitter.R = suite.badSeq
 	suite.db.On("BeginTx", &sql.TxOptions{

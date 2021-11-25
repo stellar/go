@@ -111,7 +111,8 @@ func TestTimeoutSubmission(t *testing.T) {
 
 	require.NoError(t, err)
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	ctx, _ := context.WithTimeout(request.Context(), time.Duration(0))
+	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(0))
+	defer cancel()
 	request = request.WithContext(ctx)
 
 	w := httptest.NewRecorder()
