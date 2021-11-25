@@ -327,6 +327,7 @@ func TestClientDisconnect(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	ctx, cancel := context.WithCancel(request.Context())
+	defer cancel()
 	request = request.WithContext(ctx)
 	// cancel invocation simulates client disconnect in the context
 	cancel()
