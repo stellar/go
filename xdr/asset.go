@@ -251,7 +251,20 @@ func (a Asset) String() string {
 		return t
 	}
 
-	return fmt.Sprintf("%s/%s/%s", t, c, i)
+	return t + "/" + c + "/" + i
+}
+
+// StringWithEncoder works like String() but uses an strkey.Encoder
+func (a Asset) StringWithEncoder(encoder *strkey.Encoder) string {
+	var t, c, i string
+
+	a.MustExtractWithEncoder(&t, &c, &i, encoder)
+
+	if a.Type == AssetTypeAssetTypeNative {
+		return t
+	}
+
+	return t + "/" + c + "/" + i
 }
 
 // StringCanonical returns a display friendly form of the asset following its
@@ -295,6 +308,12 @@ func (a Asset) Equals(other Asset) bool {
 // code and issuer to `code` and `issuer` respectively if they are of type
 // *string and the asset is non-native
 func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) error {
+	encoder := strkey.NewEncoder()
+	return a.ExtractWithEncoder(typ, code, issuer, encoder)
+}
+
+// ExtractWithEncoder works like Extract but uses an strkey.Encoder
+func (a Asset) ExtractWithEncoder(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.Encoder) error {
 	switch typ := typ.(type) {
 	case *AssetType:
 		*typ = a.Type
@@ -310,10 +329,10 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 			switch a.Type {
 			case AssetTypeAssetTypeCreditAlphanum4:
 				an := a.MustAlphaNum4()
-				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+				*code = string(trimRightZeros(an.AssetCode[:]))
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
-				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+				*code = string(trimRightZeros(an.AssetCode[:]))
 			}
 		default:
 			return errors.New("can't extract code")
@@ -327,11 +346,11 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 			case AssetTypeAssetTypeCreditAlphanum4:
 				an := a.MustAlphaNum4()
 				raw := an.Issuer.MustEd25519()
-				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
+				*issuer = encoder.MustEncode(strkey.VersionByteAccountID, raw[:])
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
 				raw := an.Issuer.MustEd25519()
-				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
+				*issuer = encoder.MustEncode(strkey.VersionByteAccountID, raw[:])
 			}
 		default:
 			return errors.New("can't extract issuer")
@@ -339,6 +358,15 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 	}
 
 	return nil
+}
+
+// MustExtractWithEncoder behaves as ExtractWithEncoder, but panics if an error occurs.
+func (a Asset) MustExtractWithEncoder(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.Encoder) {
+	err := a.ExtractWithEncoder(typ, code, issuer, encoder)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 // MustExtract behaves as Extract, but panics if an error occurs.

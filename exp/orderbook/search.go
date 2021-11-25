@@ -106,7 +106,9 @@ func reversePath(path []int32) {
 }
 
 func (e *pathNode) path() []int32 {
-	var result []int32
+	// Initialize slice capacity to minimize allocations
+	// TODO: choose value wisely
+	result := make([]int32, 0, 8)
 	for cur := e; cur != nil; cur = cur.prev {
 		result = append(result, cur.asset)
 	}
@@ -265,9 +267,9 @@ func (state *sellingGraphSearchState) betterPathAmount(currentAmount, alternativ
 }
 
 func assetIDsToAssetStrings(graph *OrderBookGraph, path []int32) []string {
-	var result []string
-	for _, asset := range path {
-		result = append(result, graph.idToAssetString[asset])
+	result := make([]string, len(path))
+	for i := 0; i < len(path); i++ {
+		result[i] = graph.idToAssetString[path[i]]
 	}
 	return result
 }

@@ -56,7 +56,7 @@ func DecodeAny(src string) (VersionByte, []byte, error) {
 	}
 
 	// ensure checksum is valid
-	if err := crc16.Validate(vp, checksum); err != nil {
+	if err := crc16.Validate(vp, binary.LittleEndian.Uint16(checksum)); err != nil {
 		return 0, nil, err
 	}
 
@@ -94,7 +94,7 @@ func Decode(expected VersionByte, src string) ([]byte, error) {
 	}
 
 	// ensure checksum is valid
-	if err := crc16.Validate(vp, checksum); err != nil {
+	if err := crc16.Validate(vp, binary.LittleEndian.Uint16(checksum)); err != nil {
 		return nil, err
 	}
 
@@ -111,33 +111,76 @@ func MustDecode(expected VersionByte, src string) []byte {
 	return d
 }
 
-// Encode encodes the provided data to a StrKey, using the provided version
-// byte.
-func Encode(version VersionByte, src []byte) (string, error) {
+type Encoder struct {
+	encoding   *base32.Encoding
+	buf        *bytes.Buffer
+	scratchBuf []byte
+}
+
+func NewEncoder() *Encoder {
+	encoding := base32.StdEncoding.WithPadding(base32.NoPadding)
+	// Initialize buffer storage in order to avoid allocations
+	initialCap := 64
+	return &Encoder{
+		encoding:   encoding,
+		buf:        bytes.NewBuffer(make([]byte, 0, initialCap)),
+		scratchBuf: make([]byte, encoding.EncodedLen(initialCap)),
+	}
+}
+
+func growSlice(old []byte, newSize int) []byte {
+	oldCap := cap(old)
+	if newSize <= oldCap {
+		return old[:newSize]
+	}
+	// the array doesn't fit, lets return a new one with double the capacity
+	// to avoid further resizing
+	return make([]byte, newSize, 2*newSize)
+}
+
+func (e *Encoder) Encode(version VersionByte, src []byte) (string, error) {
 	if err := checkValidVersionByte(version); err != nil {
 		return "", err
 	}
 
-	var raw bytes.Buffer
+	e.buf.Reset()
 
 	// write version byte
-	if err := binary.Write(&raw, binary.LittleEndian, version); err != nil {
+	if err := e.buf.WriteByte(byte(version)); err != nil {
 		return "", err
 	}
 
 	// write payload
-	if _, err := raw.Write(src); err != nil {
+	if _, err := e.buf.Write(src); err != nil {
 		return "", err
 	}
 
 	// calculate and write checksum
-	checksum := crc16.Checksum(raw.Bytes())
-	if _, err := raw.Write(checksum); err != nil {
+	checksum := crc16.Checksum(e.buf.Bytes())
+	var crc [2]byte
+	binary.LittleEndian.PutUint16(crc[:], checksum)
+	if _, err := e.buf.Write(crc[:]); err != nil {
 		return "", err
 	}
 
-	result := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(raw.Bytes())
-	return result, nil
+	e.scratchBuf = growSlice(e.scratchBuf, e.encoding.EncodedLen(len(e.buf.Bytes())))
+	e.encoding.Encode(e.scratchBuf, e.buf.Bytes())
+	return string(e.scratchBuf), nil
+}
+
+func (e *Encoder) MustEncode(version VersionByte, src []byte) string {
+	res, err := e.Encode(version, src)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+// Encode encodes the provided data to a StrKey, using the provided version
+// byte.
+func Encode(version VersionByte, src []byte) (string, error) {
+	encoder := NewEncoder()
+	return encoder.Encode(version, src)
 }
 
 // MustEncode is like Encode, but panics on error
