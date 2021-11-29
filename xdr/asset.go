@@ -254,11 +254,11 @@ func (a Asset) String() string {
 	return t + "/" + c + "/" + i
 }
 
-// StringWithEncoder works like String() but uses an strkey.Encoder
-func (a Asset) StringWithEncoder(encoder *strkey.Encoder) string {
+// StringWithEncoder works like String() but uses an strkey.EncodingBuffer
+func (a Asset) StringWithEncoder(encoder *strkey.EncodingBuffer) string {
 	var t, c, i string
 
-	a.MustExtractWithEncoder(&t, &c, &i, encoder)
+	a.MustExtractWithBuffer(&t, &c, &i, encoder)
 
 	if a.Type == AssetTypeAssetTypeNative {
 		return t
@@ -308,12 +308,12 @@ func (a Asset) Equals(other Asset) bool {
 // code and issuer to `code` and `issuer` respectively if they are of type
 // *string and the asset is non-native
 func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) error {
-	encoder := strkey.NewEncoder()
-	return a.ExtractWithEncoder(typ, code, issuer, encoder)
+	encoder := strkey.NewEncodingBuffer()
+	return a.ExtractWithBuffer(typ, code, issuer, encoder)
 }
 
-// ExtractWithEncoder works like Extract but uses an strkey.Encoder
-func (a Asset) ExtractWithEncoder(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.Encoder) error {
+// ExtractWithBuffer works like Extract but uses an strkey.EncodingBuffer
+func (a Asset) ExtractWithBuffer(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.EncodingBuffer) error {
 	switch typ := typ.(type) {
 	case *AssetType:
 		*typ = a.Type
@@ -360,9 +360,9 @@ func (a Asset) ExtractWithEncoder(typ interface{}, code interface{}, issuer inte
 	return nil
 }
 
-// MustExtractWithEncoder behaves as ExtractWithEncoder, but panics if an error occurs.
-func (a Asset) MustExtractWithEncoder(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.Encoder) {
-	err := a.ExtractWithEncoder(typ, code, issuer, encoder)
+// MustExtractWithBuffer behaves as ExtractWithBuffer, but panics if an error occurs.
+func (a Asset) MustExtractWithBuffer(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.EncodingBuffer) {
+	err := a.ExtractWithBuffer(typ, code, issuer, encoder)
 
 	if err != nil {
 		panic(err)

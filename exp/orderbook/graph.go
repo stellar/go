@@ -86,7 +86,7 @@ type OrderBookGraph struct {
 	// the orderbook graph is accurate up to lastLedger
 	lastLedger uint32
 
-	strkeyEncoder *strkey.Encoder
+	strkeyBuffer *strkey.EncodingBuffer
 }
 
 var _ OBGraph = (*OrderBookGraph)(nil)
@@ -94,7 +94,7 @@ var _ OBGraph = (*OrderBookGraph)(nil)
 // NewOrderBookGraph constructs an empty OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
 	graph := &OrderBookGraph{}
-	graph.strkeyEncoder = strkey.NewEncoder()
+	graph.strkeyBuffer = strkey.NewEncodingBuffer()
 	graph.Clear()
 	return graph
 }
@@ -209,7 +209,7 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 }
 
 func (graph *OrderBookGraph) getOrCreateAssetID(asset xdr.Asset) int32 {
-	assetString := asset.StringWithEncoder(graph.strkeyEncoder)
+	assetString := asset.StringWithEncoder(graph.strkeyBuffer)
 	id, ok := graph.assetStringToID[assetString]
 	if ok {
 		return id
@@ -371,10 +371,10 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
-	destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyEncoder)
+	destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyBuffer)
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
-		sourceAssetString := sourceAsset.StringWithEncoder(graph.strkeyEncoder)
+		sourceAssetString := sourceAsset.StringWithEncoder(graph.strkeyBuffer)
 		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
 	}
 
@@ -446,7 +446,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 ) ([]Path, uint32, error) {
 	target := map[int32]bool{}
 	for _, destinationAsset := range destinationAssets {
-		destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyEncoder)
+		destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyBuffer)
 		target[graph.assetStringToID[destinationAssetString]] = true
 	}
 
@@ -455,7 +455,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	pathsWithCapacity := make([]Path, 0, 64)
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
-		sourceAssetString: sourceAsset.StringWithEncoder(graph.strkeyEncoder),
+		sourceAssetString: sourceAsset.StringWithEncoder(graph.strkeyBuffer),
 		sourceAssetAmount: amountToSpend,
 		targetAssets:      target,
 		paths:             pathsWithCapacity,
@@ -466,7 +466,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[sourceAsset.StringWithEncoder(graph.strkeyEncoder)],
+		graph.assetStringToID[sourceAsset.StringWithEncoder(graph.strkeyBuffer)],
 		amountToSpend,
 	)
 	lastLedger := graph.lastLedger

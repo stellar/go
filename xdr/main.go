@@ -125,6 +125,7 @@ func MarshalHex(v interface{}) (string, error) {
 }
 
 // EncodingBuffer reuses internal buffers between invocations to minimize allocations.
+// For that reason, it is not thread-safe.
 // It intentionally only allows EncodeTo method arguments, to guarantee high performance encoding.
 type EncodingBuffer struct {
 	encoder       *xdr.Encoder

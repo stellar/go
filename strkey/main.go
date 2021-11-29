@@ -111,17 +111,19 @@ func MustDecode(expected VersionByte, src string) []byte {
 	return d
 }
 
-type Encoder struct {
+// EncodingBuffer reuses internal buffers between invocations to minimize allocations.
+// For that reason, it is not thread-safe.
+type EncodingBuffer struct {
 	encoding   *base32.Encoding
 	buf        *bytes.Buffer
 	scratchBuf []byte
 }
 
-func NewEncoder() *Encoder {
+func NewEncodingBuffer() *EncodingBuffer {
 	encoding := base32.StdEncoding.WithPadding(base32.NoPadding)
 	// Initialize buffer storage in order to avoid allocations
 	initialCap := 64
-	return &Encoder{
+	return &EncodingBuffer{
 		encoding:   encoding,
 		buf:        bytes.NewBuffer(make([]byte, 0, initialCap)),
 		scratchBuf: make([]byte, encoding.EncodedLen(initialCap)),
@@ -138,7 +140,7 @@ func growSlice(old []byte, newSize int) []byte {
 	return make([]byte, newSize, 2*newSize)
 }
 
-func (e *Encoder) Encode(version VersionByte, src []byte) (string, error) {
+func (e *EncodingBuffer) Encode(version VersionByte, src []byte) (string, error) {
 	if err := checkValidVersionByte(version); err != nil {
 		return "", err
 	}
@@ -168,7 +170,7 @@ func (e *Encoder) Encode(version VersionByte, src []byte) (string, error) {
 	return string(e.scratchBuf), nil
 }
 
-func (e *Encoder) MustEncode(version VersionByte, src []byte) string {
+func (e *EncodingBuffer) MustEncode(version VersionByte, src []byte) string {
 	res, err := e.Encode(version, src)
 	if err != nil {
 		panic(err)
@@ -179,7 +181,7 @@ func (e *Encoder) MustEncode(version VersionByte, src []byte) string {
 // Encode encodes the provided data to a StrKey, using the provided version
 // byte.
 func Encode(version VersionByte, src []byte) (string, error) {
-	encoder := NewEncoder()
+	encoder := NewEncodingBuffer()
 	return encoder.Encode(version, src)
 }
 
