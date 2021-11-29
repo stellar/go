@@ -371,12 +371,15 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+
+	graph.lock.Lock() // for graph.strkeyBuffer
 	destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyBuffer)
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
 		sourceAssetString := sourceAsset.StringWithEncoder(graph.strkeyBuffer)
 		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
 	}
+	graph.lock.Unlock()
 
 	searchState := &sellingGraphSearchState{
 		graph:                  graph,
@@ -445,14 +448,18 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	includePools bool,
 ) ([]Path, uint32, error) {
 	target := map[int32]bool{}
+
+	graph.lock.Lock() // for graph.strkeyBuffer
+	sourceAssetString := sourceAsset.StringWithEncoder(graph.strkeyBuffer)
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyBuffer)
 		target[graph.assetStringToID[destinationAssetString]] = true
 	}
+	graph.lock.Unlock()
 
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
-		sourceAssetString: sourceAsset.StringWithEncoder(graph.strkeyBuffer),
+		sourceAssetString: sourceAssetString,
 		sourceAssetAmount: amountToSpend,
 		targetAssets:      target,
 		paths:             []Path{},
@@ -463,7 +470,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[sourceAsset.StringWithEncoder(graph.strkeyBuffer)],
+		graph.assetStringToID[sourceAssetString],
 		amountToSpend,
 	)
 	lastLedger := graph.lastLedger
