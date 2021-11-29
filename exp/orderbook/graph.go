@@ -450,15 +450,12 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		target[graph.assetStringToID[destinationAssetString]] = true
 	}
 
-	// Initialize the capacity of paths to minimize allocations
-	// TODO: choose value wisely
-	pathsWithCapacity := make([]Path, 0, 64)
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
 		sourceAssetString: sourceAsset.StringWithEncoder(graph.strkeyBuffer),
 		sourceAssetAmount: amountToSpend,
 		targetAssets:      target,
-		paths:             pathsWithCapacity,
+		paths:             []Path{},
 		includePools:      includePools,
 	}
 	graph.lock.RLock()

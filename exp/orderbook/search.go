@@ -106,8 +106,8 @@ func reversePath(path []int32) {
 }
 
 func (e *pathNode) path() []int32 {
-	// Initialize slice capacity to minimize allocations
-	// TODO: choose value wisely
+	// Initialize slice capacity to minimize allocations.
+	// 8 is the maximum path supported by stellar.
 	result := make([]int32, 0, 8)
 	for cur := e; cur != nil; cur = cur.prev {
 		result = append(result, cur.asset)
