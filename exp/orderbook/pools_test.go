@@ -178,9 +178,9 @@ func TestLiquidityPoolMath(t *testing.T) {
 		// Check with reserveB < disbursed
 		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, 0, 1, 0, false, 2147698418, -1)
 
-		// TODO: These cause failures. Is it acceptable to make calls with poolFeeBips > 10000 ?
-		// assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, -1, 10000)
-		// assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 2147698418, -1)
+		// Check with poolFeeBips > 10000
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, -1, 10000)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 2147698418, -1)
 	})
 }
 
