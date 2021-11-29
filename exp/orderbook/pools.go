@@ -21,6 +21,7 @@ import (
 const (
 	tradeTypeDeposit     = iota // deposit into pool, what's the payout?
 	tradeTypeExpectation = iota // expect payout, what to deposit?
+	maxBips              = 10000
 )
 
 var (
@@ -28,6 +29,7 @@ var (
 	errBadPoolType   = errors.New("Unsupported liquidity pool: must be ConstantProduct")
 	errBadTradeType  = errors.New("Unknown pool exchange type requested")
 	errBadAmount     = errors.New("Exchange amount must be positive")
+	maxBips128       = uint128.From64(maxBips)
 )
 
 // makeTrade simulates execution of an exchange with a liquidity pool.
@@ -96,16 +98,16 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 	F, x := uint128.From64(uint64(feeBips)), uint128.From64(uint64(received))
 
 	// would this deposit overflow the reserve?
-	if received > math.MaxInt64-reserveA {
+	// is feeBips within range?
+	if received > math.MaxInt64-reserveA || feeBips > maxBips {
 		return 0, false
 	}
 
 	// We do all of the math in bips, so it's all upscaled by this value.
-	maxBips := uint128.From64(10000)
-	f := maxBips.Sub(F) // upscaled 1 - F
+	f := maxBips128.Sub(F) // upscaled 1 - F
 
 	// right half: X + (1 - F)x
-	denom := X.Mul(maxBips).Add(x.Mul(f))
+	denom := X.Mul(maxBips128).Add(x.Mul(f))
 	if denom.IsZero() { // avoid div-by-zero panic
 		return 0, false
 	}
@@ -132,20 +134,20 @@ func calculatePoolExpectation(
 	F, y := uint128.From64(uint64(feeBips)), uint128.From64(uint64(disbursed))
 
 	// sanity check: disbursing shouldn't underflow the reserve
-	if disbursed >= reserveB {
+	// and bips should be within the expected range
+	if disbursed >= reserveB || feeBips > maxBips {
 		return 0, false
 	}
 
 	// We do all of the math in bips, so it's all upscaled by this value.
-	maxBips := uint128.From64(10000)
-	f := maxBips.Sub(F) // upscaled 1 - F
+	f := maxBips128.Sub(F) // upscaled 1 - F
 
 	denom := Y.Sub(y).Mul(f) // right half: (Y - y)(1 - F)
 	if denom.IsZero() {      // avoid div-by-zero panic
 		return 0, false
 	}
 
-	numer := X.Mul(y).Mul(maxBips) // left half: Xy
+	numer := X.Mul(y).Mul(maxBips128) // left half: Xy
 
 	result, rem := numer.QuoRem(denom)
 
