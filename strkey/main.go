@@ -39,6 +39,10 @@ const (
 // maxPayloadSize is the maximum length of the payload for all versions.
 const maxPayloadSize = 43
 
+// encoding is the encoding to use when encoding and decoding the strkey to and
+// from strings.
+var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
+
 // DecodeAny decodes the provided StrKey into a raw value, checking the checksum
 // and if the version byte is one of allowed values.
 func DecodeAny(src string) (VersionByte, []byte, error) {
@@ -141,10 +145,9 @@ func Encode(version VersionByte, src []byte) (string, error) {
 	binary.LittleEndian.PutUint16(buf[1+len(src):], crc)
 
 	// base32 encode
-	enc := base32.StdEncoding.WithPadding(base32.NoPadding)
 	encArr := [(maxSize*8 + 4) / 5]byte{} // 8n+4 is the calc for no padding
-	encBuf := encArr[:enc.EncodedLen(size)]
-	enc.Encode(encBuf, buf)
+	encBuf := encArr[:encoding.EncodedLen(size)]
+	encoding.Encode(encBuf, buf)
 
 	return string(encBuf), nil
 }
