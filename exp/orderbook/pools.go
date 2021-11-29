@@ -106,7 +106,7 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 
 	// right half: X + (1 - F)x
 	denom := X.Mul(maxBips).Add(x.Mul(f))
-	if denom.Cmp64(0) == 0 { // avoid div-by-zero panic
+	if denom.IsZero() { // avoid div-by-zero panic
 		return 0, false
 	}
 
@@ -141,7 +141,7 @@ func calculatePoolExpectation(
 	f := maxBips.Sub(F) // upscaled 1 - F
 
 	denom := Y.Sub(y).Mul(f) // right half: (Y - y)(1 - F)
-	if denom.Cmp64(0) == 0 { // avoid div-by-zero panic
+	if denom.IsZero() {      // avoid div-by-zero panic
 		return 0, false
 	}
 
