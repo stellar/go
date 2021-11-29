@@ -128,6 +128,8 @@ func search(
 	bestPath := make([]*pathNode, totalAssets)
 	updatePath := make([]*pathNode, totalAssets)
 	updatedAssets := make([]int32, 0, totalAssets)
+	// Used to minimize allocations
+	slab := make([]pathNode, 0, totalAssets)
 	bestAmount[sourceAsset] = sourceAssetAmount
 	updateAmount[sourceAsset] = sourceAssetAmount
 	bestPath[sourceAsset] = &pathNode{
@@ -177,11 +179,15 @@ func search(
 					updateAmount[nextAsset] = nextAssetAmount
 
 					if newEntry {
-						updatePath[nextAsset] = &pathNode{
+						updatedAssets = append(updatedAssets, nextAsset)
+						// By piggybacking on slice appending (which uses exponential allocation)
+						// we avoid allocating each node individually, which is much slower and
+						// puts more pressure on the garbage collector.
+						slab = append(slab, pathNode{
 							asset: nextAsset,
 							prev:  pathToCurrentAsset,
-						}
-						updatedAssets = append(updatedAssets, nextAsset)
+						})
+						updatePath[nextAsset] = &slab[len(slab)-1]
 					} else {
 						updatePath[nextAsset].prev = pathToCurrentAsset
 					}
