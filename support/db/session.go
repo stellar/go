@@ -233,10 +233,10 @@ func (s *Session) NoRows(err error) bool {
 func (s *Session) replaceWithKnownError(err error, ctx context.Context) error {
 	switch {
 	case ctx.Err() == context.Canceled:
-	    return ErrCancelled
+		return ErrCancelled
 	case ctx.Err() == context.DeadlineExceeded:
 		// if libpq waits too long to obtain conn from pool, can get ctx timeout before server trip
-	    return ErrTimeout    
+		return ErrTimeout
 	case strings.Contains(err.Error(), "pq: canceling statement due to user request"):
 		return ErrTimeout
 	case strings.Contains(err.Error(), "pq: canceling statement due to conflict with recovery"):

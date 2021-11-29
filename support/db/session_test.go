@@ -10,12 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-func TestServerTimeout (t *testing.T) {
-    db := dbtest.Postgres(t).Load(testSchema)
+func TestServerTimeout(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
 
-    var cancel context.CancelFunc
+	var cancel context.CancelFunc
 	ctx := context.Background()
 	ctx, cancel = context.WithTimeout(ctx, time.Duration(1))
 	assert := assert.New(t)
@@ -29,11 +28,11 @@ func TestServerTimeout (t *testing.T) {
 	assert.ErrorIs(err, ErrTimeout, "long running db server operation past context timeout, should return timeout")
 }
 
-func TestUserCancel (t *testing.T) {
-    db := dbtest.Postgres(t).Load(testSchema)
+func TestUserCancel(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
 
-    var cancel context.CancelFunc
+	var cancel context.CancelFunc
 	ctx := context.Background()
 	ctx, cancel = context.WithCancel(ctx)
 	assert := assert.New(t)
@@ -47,7 +46,7 @@ func TestUserCancel (t *testing.T) {
 	err := sess.GetRaw(ctx, &count, "SELECT pg_sleep(2), COUNT(*) FROM people")
 	assert.ErrorIs(err, ErrCancelled, "any ongoing db server operation should return error immediately after user cancel")
 }
-    
+
 func TestSession(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
