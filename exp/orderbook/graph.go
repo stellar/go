@@ -49,9 +49,19 @@ type OBGraph interface {
 // OrderBookGraph is an in-memory graph representation of all the offers in the
 // Stellar ledger.
 type OrderBookGraph struct {
-	assetStringToID map[string]int32
+	// idToAssetString maps an int32 asset id to its string representation.
+	// Every asset on the OrderBookGraph has an int32 id which indexes into idToAssetString.
+	// The asset integer ids are largely contiguous. When an asset is completely removed
+	// from the OrderBookGraph the integer id for that asset will be assigned to the next
+	// asset which is added to the OrderBookGraph.
 	idToAssetString []string
-	vacantIDs       []int32
+	// assetStringToID maps an asset string to its int32 id.
+	assetStringToID map[string]int32
+	// vacantIDs is a list of int32 asset ids which can be mapped to new assets.
+	// When a new asset is added to the OrderBookGraph we first check if there are
+	// any available vacantIDs, if so, we will assign the new asset to one of the vacantIDs.
+	// Otherwise, we will add a new entry to idToAssetString for the new asset.
+	vacantIDs []int32
 
 	// venuesForBuyingAsset maps an asset to all of its buying opportunities,
 	// which may be offers (sorted by price) or a liquidity pools.
@@ -200,12 +210,17 @@ func (graph *OrderBookGraph) getOrCreateAssetID(asset xdr.Asset) int32 {
 	if ok {
 		return id
 	}
+	// before creating a new int32 asset id we will try to use
+	// a vacant id so that we can plug any empty cells in the
+	// idToAssetString array.
 	if len(graph.vacantIDs) > 0 {
 		id = graph.vacantIDs[len(graph.vacantIDs)-1]
 		graph.vacantIDs = graph.vacantIDs[:len(graph.vacantIDs)-1]
 		graph.idToAssetString[id] = assetString
 	} else {
+		// idToAssetString never decreases in length unless we call graph.Clear()
 		id = int32(len(graph.idToAssetString))
+		// we assign id to asset
 		graph.idToAssetString = append(graph.idToAssetString, assetString)
 		graph.venuesForBuyingAsset = append(graph.venuesForBuyingAsset, nil)
 		graph.venuesForSellingAsset = append(graph.venuesForSellingAsset, nil)
@@ -221,6 +236,10 @@ func (graph *OrderBookGraph) maybeDeleteAsset(asset int32) {
 
 	if buyingEdgesEmpty && sellingEdgesEmpty {
 		delete(graph.assetStringToID, graph.idToAssetString[asset])
+		// When removing an asset we do not resize the idToAssetString array.
+		// Instead, we allow the cell occupied by the id to be empty.
+		// The next time we will add an asset to the graph we will allocate the
+		// id to the new asset.
 		graph.idToAssetString[asset] = ""
 		graph.vacantIDs = append(graph.vacantIDs, asset)
 	}
