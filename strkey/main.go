@@ -127,10 +127,6 @@ func Encode(version VersionByte, src []byte) (string, error) {
 		return "", fmt.Errorf("data exceeds maximum payload size for strkey")
 	}
 
-	// calculate crc16
-	crc := crc16.Checksum([]byte{byte(version)})
-	crc = crc16.Update(crc, src)
-
 	// pack
 	//  1 byte version
 	//  payload bytes
@@ -141,6 +137,7 @@ func Encode(version VersionByte, src []byte) (string, error) {
 	buf := arr[:size]
 	buf[0] = byte(version)
 	copy(buf[1:], src)
+	crc := crc16.Checksum(buf[:1+len(src)])
 	binary.LittleEndian.PutUint16(buf[1+len(src):], crc)
 
 	// base32 encode

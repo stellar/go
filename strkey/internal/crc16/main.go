@@ -91,11 +91,7 @@ var crc16tab = [256]uint16{
 
 // Checksum returns the 2-byte checksum for the provided data
 func Checksum(data []byte) uint16 {
-	return Update(0, data)
-}
-
-// Update returns the 2-byte checksum for the provided data, using the given crc as a starting point.
-func Update(crc uint16, data []byte) uint16 {
+	var crc uint16
 	for _, b := range data {
 		crc = ((crc << 8) & 0xffff) ^ crc16tab[((crc>>8)^uint16(b))&0x00FF]
 	}
