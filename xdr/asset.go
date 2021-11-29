@@ -254,8 +254,8 @@ func (a Asset) String() string {
 	return t + "/" + c + "/" + i
 }
 
-// StringWithEncoder works like String() but uses an strkey.EncodingBuffer
-func (a Asset) StringWithEncoder(encoder *strkey.EncodingBuffer) string {
+// StringWithBuffer works like String() but uses an strkey.EncodingBuffer
+func (a Asset) StringWithBuffer(encoder *strkey.EncodingBuffer) string {
 	var t, c, i string
 
 	a.MustExtractWithBuffer(&t, &c, &i, encoder)

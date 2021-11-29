@@ -209,7 +209,7 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 }
 
 func (graph *OrderBookGraph) getOrCreateAssetID(asset xdr.Asset) int32 {
-	assetString := asset.StringWithEncoder(graph.strkeyBuffer)
+	assetString := asset.StringWithBuffer(graph.strkeyBuffer)
 	id, ok := graph.assetStringToID[assetString]
 	if ok {
 		return id
@@ -373,10 +373,10 @@ func (graph *OrderBookGraph) FindPaths(
 ) ([]Path, uint32, error) {
 
 	graph.lock.Lock() // for graph.strkeyBuffer
-	destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyBuffer)
+	destinationAssetString := destinationAsset.StringWithBuffer(graph.strkeyBuffer)
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
-		sourceAssetString := sourceAsset.StringWithEncoder(graph.strkeyBuffer)
+		sourceAssetString := sourceAsset.StringWithBuffer(graph.strkeyBuffer)
 		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
 	}
 	graph.lock.Unlock()
@@ -450,9 +450,9 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	target := map[int32]bool{}
 
 	graph.lock.Lock() // for graph.strkeyBuffer
-	sourceAssetString := sourceAsset.StringWithEncoder(graph.strkeyBuffer)
+	sourceAssetString := sourceAsset.StringWithBuffer(graph.strkeyBuffer)
 	for _, destinationAsset := range destinationAssets {
-		destinationAssetString := destinationAsset.StringWithEncoder(graph.strkeyBuffer)
+		destinationAssetString := destinationAsset.StringWithBuffer(graph.strkeyBuffer)
 		target[graph.assetStringToID[destinationAssetString]] = true
 	}
 	graph.lock.Unlock()
