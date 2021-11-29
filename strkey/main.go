@@ -1,7 +1,6 @@
 package strkey
 
 import (
-	"bytes"
 	"encoding/base32"
 	"encoding/binary"
 
@@ -118,28 +117,23 @@ func Encode(version VersionByte, src []byte) (string, error) {
 		return "", err
 	}
 
-	var raw bytes.Buffer
+	// calculate crc16
+	crc := crc16.Checksum([]byte{byte(version)})
+	crc = crc16.Update(crc, src)
 
-	// write version byte
-	if err := binary.Write(&raw, binary.LittleEndian, version); err != nil {
-		return "", err
-	}
+	// pack
+	//  1 byte version
+	//  len(src) bytes
+	//  2 byte crc16
+	buf := make([]byte, 1+len(src)+2)
+	buf[0] = byte(version)
+	copy(buf[1:], src)
+	binary.LittleEndian.PutUint16(buf[1+len(src):], crc)
 
-	// write payload
-	if _, err := raw.Write(src); err != nil {
-		return "", err
-	}
+	// base32 encode
+	str := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(buf)
 
-	// calculate and write checksum
-	checksum := crc16.Checksum(raw.Bytes())
-	var crc [2]byte
-	binary.LittleEndian.PutUint16(crc[:], checksum)
-	if _, err := raw.Write(crc[:]); err != nil {
-		return "", err
-	}
-
-	result := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(raw.Bytes())
-	return result, nil
+	return str, nil
 }
 
 // MustEncode is like Encode, but panics on error
