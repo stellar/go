@@ -3,6 +3,7 @@ package strkey
 import (
 	"encoding/base32"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/stellar/go/strkey/internal/crc16"
 	"github.com/stellar/go/support/errors"
@@ -34,6 +35,9 @@ const (
 	//signer keys.
 	VersionByteHashX = 23 << 3 // Base32-encodes to 'X...'
 )
+
+// maxPayloadSize is the maximum length of the payload for all versions.
+const maxPayloadSize = 43
 
 // DecodeAny decodes the provided StrKey into a raw value, checking the checksum
 // and if the version byte is one of allowed values.
@@ -117,23 +121,35 @@ func Encode(version VersionByte, src []byte) (string, error) {
 		return "", err
 	}
 
+	// check src does not exceed maximum payload size
+	// TODO: perform this check per version since each version has different maximum lengths
+	if len(src) > maxPayloadSize {
+		return "", fmt.Errorf("data exceeds maximum payload size for strkey")
+	}
+
 	// calculate crc16
 	crc := crc16.Checksum([]byte{byte(version)})
 	crc = crc16.Update(crc, src)
 
 	// pack
 	//  1 byte version
-	//  len(src) bytes
+	//  payload bytes
 	//  2 byte crc16
-	buf := make([]byte, 1+len(src)+2)
+	const maxSize = 1 + maxPayloadSize + 2
+	size := 1 + len(src) + 2
+	arr := [maxSize]byte{}
+	buf := arr[:size]
 	buf[0] = byte(version)
 	copy(buf[1:], src)
 	binary.LittleEndian.PutUint16(buf[1+len(src):], crc)
 
 	// base32 encode
-	str := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(buf)
+	enc := base32.StdEncoding.WithPadding(base32.NoPadding)
+	encArr := [(maxSize*8 + 4) / 5]byte{} // 8n+4 is the calc for no padding
+	encBuf := encArr[:enc.EncodedLen(size)]
+	enc.Encode(encBuf, buf)
 
-	return str, nil
+	return string(encBuf), nil
 }
 
 // MustEncode is like Encode, but panics on error
