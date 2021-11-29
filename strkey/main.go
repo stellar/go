@@ -56,7 +56,7 @@ func DecodeAny(src string) (VersionByte, []byte, error) {
 	}
 
 	// ensure checksum is valid
-	if err := crc16.Validate(vp, checksum); err != nil {
+	if err := crc16.Validate(vp, binary.LittleEndian.Uint16(checksum)); err != nil {
 		return 0, nil, err
 	}
 
@@ -94,7 +94,7 @@ func Decode(expected VersionByte, src string) ([]byte, error) {
 	}
 
 	// ensure checksum is valid
-	if err := crc16.Validate(vp, checksum); err != nil {
+	if err := crc16.Validate(vp, binary.LittleEndian.Uint16(checksum)); err != nil {
 		return nil, err
 	}
 
@@ -132,7 +132,9 @@ func Encode(version VersionByte, src []byte) (string, error) {
 
 	// calculate and write checksum
 	checksum := crc16.Checksum(raw.Bytes())
-	if _, err := raw.Write(checksum); err != nil {
+	var crc [2]byte
+	binary.LittleEndian.PutUint16(crc[:], checksum)
+	if _, err := raw.Write(crc[:]); err != nil {
 		return "", err
 	}
 
