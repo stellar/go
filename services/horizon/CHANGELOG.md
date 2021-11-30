@@ -7,6 +7,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changes
 * Return inner and outer result codes for fee bump transactions ([4081](https://github.com/stellar/go/pull/4081))
+* Generate Http Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count`
+  metric key with status=499 label. ([4098](horizon_http_requests_duration_seconds_count))
 
 ## v2.11.0
 
