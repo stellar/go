@@ -9,17 +9,32 @@ import (
 )
 
 func TestLiquidityPoolExchanges(t *testing.T) {
+	graph := NewOrderBookGraph()
+	for _, poolEntry := range []xdr.LiquidityPoolEntry{
+		eurUsdLiquidityPool,
+		eurYenLiquidityPool,
+		nativeUsdPool,
+		usdChfLiquidityPool,
+	} {
+		params := poolEntry.Body.MustConstantProduct().Params
+		graph.getOrCreateAssetID(params.AssetA)
+		graph.getOrCreateAssetID(params.AssetB)
+	}
 	t.Run("happy path", func(t *testing.T) {
-		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeDeposit, 500)
+		for _, assetXDR := range []xdr.Asset{usdAsset, eurAsset} {
+			pool := graph.poolFromEntry(eurUsdLiquidityPool)
+			asset := graph.getOrCreateAssetID(assetXDR)
+			payout, err := makeTrade(pool, asset, tradeTypeDeposit, 500)
 			assert.NoError(t, err)
 			assert.EqualValues(t, 332, int64(payout))
 			// reserves would now be: 668 of A, 1500 of B
 			// note pool object is unchanged so looping is safe
 		}
 
-		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeExpectation, 332)
+		for _, assetXDR := range []xdr.Asset{usdAsset, eurAsset} {
+			pool := graph.poolFromEntry(eurUsdLiquidityPool)
+			asset := graph.getOrCreateAssetID(assetXDR)
+			payout, err := makeTrade(pool, asset, tradeTypeExpectation, 332)
 			assert.NoError(t, err)
 			assert.EqualValues(t, 499, int64(payout))
 		}
@@ -43,13 +58,14 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 		}
 
 		for _, test := range testTable {
-			needed, err := makeTrade(test.pool, test.dstAsset,
-				tradeTypeExpectation, test.expectedPayout)
+			pool := graph.poolFromEntry(test.pool)
+			asset := graph.getOrCreateAssetID(test.dstAsset)
+			needed, err := makeTrade(pool, asset, tradeTypeExpectation, test.expectedPayout)
 
 			assert.NoError(t, err)
 			assert.EqualValuesf(t, test.expectedInput, needed,
 				"expected exchange of %d %s -> %d %s, got %d",
-				test.expectedInput, getCode(getOtherAsset(test.dstAsset, test.pool)),
+				test.expectedInput, graph.idToAssetString[getOtherAsset(asset, pool)],
 				test.expectedPayout, getCode(test.dstAsset),
 				needed)
 		}
@@ -58,7 +74,10 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 	t.Run("fail on bad exchange amounts", func(t *testing.T) {
 		badValues := []xdr.Int64{math.MaxInt64, math.MaxInt64 - 99, 0, -100}
 		for _, badValue := range badValues {
-			_, err := makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, badValue)
+			pool := graph.poolFromEntry(eurUsdLiquidityPool)
+			asset := graph.getOrCreateAssetID(usdAsset)
+
+			_, err := makeTrade(pool, asset, tradeTypeDeposit, badValue)
 			assert.Error(t, err)
 		}
 	})

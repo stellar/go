@@ -9,54 +9,41 @@ import (
 
 // Path represents a payment path from a source asset to some destination asset
 type Path struct {
-	SourceAsset       xdr.Asset
+	SourceAsset       string
 	SourceAmount      xdr.Int64
-	DestinationAsset  xdr.Asset
+	DestinationAsset  string
 	DestinationAmount xdr.Int64
 
-	// sourceAssetString and destinationAssetString are included as an
-	// optimization to improve the performance of sorting paths by avoiding
-	// serializing assets to strings repeatedly
-	sourceAssetString      string
-	destinationAssetString string
-
-	InteriorNodes []xdr.Asset
+	InteriorNodes []string
 }
 
-// SourceAssetString returns the string representation of the path's source asset
-func (p *Path) SourceAssetString() string {
-	if p.sourceAssetString == "" {
-		p.sourceAssetString = p.SourceAsset.String()
-	}
-	return p.sourceAssetString
-}
-
-// DestinationAssetString returns the string representation of the path's destination asset
-func (p *Path) DestinationAssetString() string {
-	if p.destinationAssetString == "" {
-		p.destinationAssetString = p.DestinationAsset.String()
-	}
-	return p.destinationAssetString
+type liquidityPool struct {
+	xdr.LiquidityPoolEntry
+	assetA int32
+	assetB int32
 }
 
 type Venues struct {
 	offers []xdr.OfferEntry
-	pool   xdr.LiquidityPoolEntry // can be empty, check body pointer
+	pool   liquidityPool // can be empty, check body pointer
 }
 
 type searchState interface {
+	// totalAssets returns the total number of assets in the search space.
+	totalAssets() int32
+
 	// considerPools returns true if we will consider liquidity pools in our path
 	// finding search.
 	considerPools() bool
 
 	// isTerminalNode returns true if the current asset is a terminal node in our
 	// path finding search.
-	isTerminalNode(asset string) bool
+	isTerminalNode(asset int32) bool
 
 	// includePath returns true if the current path which ends at the given asset
 	// and produces the given amount satisfies our search criteria.
 	includePath(
-		currentAsset string,
+		currentAsset int32,
 		currentAssetAmount xdr.Int64,
 	) bool
 
@@ -68,8 +55,8 @@ type searchState interface {
 
 	// appendToPaths appends the current path to our result list.
 	appendToPaths(
-		path []xdr.Asset,
-		currentAsset string,
+		path []int32,
+		currentAsset int32,
 		currentAssetAmount xdr.Int64,
 	)
 
@@ -78,7 +65,7 @@ type searchState interface {
 	// The result is grouped by the next asset hop, mapping to a sorted list of
 	// offers (by price) and a liquidity pool (if one exists for that trading
 	// pair).
-	venues(currentAsset string) edgeSet
+	venues(currentAsset int32) edgeSet
 
 	// consumeOffers will consume the given set of offers to trade our
 	// current asset for a different asset.
@@ -86,41 +73,40 @@ type searchState interface {
 		currentAssetAmount xdr.Int64,
 		currentBestAmount xdr.Int64,
 		offers []xdr.OfferEntry,
-	) (xdr.Asset, xdr.Int64, error)
+	) (xdr.Int64, error)
 
 	// consumePool will consume the given liquidity pool to trade our
 	// current asset for a different asset.
 	consumePool(
-		pool xdr.LiquidityPoolEntry,
-		currentAsset xdr.Asset,
+		pool liquidityPool,
+		currentAsset int32,
 		currentAssetAmount xdr.Int64,
 	) (xdr.Int64, error)
 }
 
 type pathNode struct {
-	assetString string
-	asset       xdr.Asset
-	prev        *pathNode
+	asset int32
+	prev  *pathNode
 }
 
-func (p *pathNode) contains(src, dst string) bool {
+func (p *pathNode) contains(src, dst int32) bool {
 	for cur := p; cur != nil && cur.prev != nil; cur = cur.prev {
-		if cur.assetString == dst && cur.prev.assetString == src {
+		if cur.asset == dst && cur.prev.asset == src {
 			return true
 		}
 	}
 	return false
 }
 
-func reversePath(path []xdr.Asset) {
+func reversePath(path []int32) {
 	for i := len(path)/2 - 1; i >= 0; i-- {
 		opp := len(path) - 1 - i
 		path[i], path[opp] = path[opp], path[i]
 	}
 }
 
-func (e *pathNode) path() []xdr.Asset {
-	var result []xdr.Asset
+func (e *pathNode) path() []int32 {
+	var result []int32
 	for cur := e; cur != nil; cur = cur.prev {
 		result = append(result, cur.asset)
 	}
@@ -133,45 +119,52 @@ func search(
 	ctx context.Context,
 	state searchState,
 	maxPathLength int,
-	sourceAssetString string,
-	sourceAsset xdr.Asset,
+	sourceAsset int32,
 	sourceAssetAmount xdr.Int64,
 ) error {
-	bestAmount := map[string]xdr.Int64{sourceAssetString: sourceAssetAmount}
-	updateAmount := map[string]xdr.Int64{sourceAssetString: sourceAssetAmount}
-	bestPath := map[string]*pathNode{sourceAssetString: {
-		assetString: sourceAssetString,
-		asset:       sourceAsset,
-		prev:        nil,
-	}}
+	totalAssets := state.totalAssets()
+	bestAmount := make([]xdr.Int64, totalAssets)
+	updateAmount := make([]xdr.Int64, totalAssets)
+	bestPath := make([]*pathNode, totalAssets)
+	updatePath := make([]*pathNode, totalAssets)
+	updatedAssets := make([]int32, 0, totalAssets)
+	bestAmount[sourceAsset] = sourceAssetAmount
+	updateAmount[sourceAsset] = sourceAssetAmount
+	bestPath[sourceAsset] = &pathNode{
+		asset: sourceAsset,
+		prev:  nil,
+	}
 
 	for i := 0; i < maxPathLength; i++ {
-		updatePath := map[string]*pathNode{}
+		updatedAssets = updatedAssets[:0]
 
-		for currentAssetString, currentAmount := range bestAmount {
-			pathToCurrentAsset := bestPath[currentAssetString]
-			currentAsset := pathToCurrentAsset.asset
-			edges := state.venues(currentAssetString)
+		for currentAsset := int32(0); currentAsset < totalAssets; currentAsset++ {
+			currentAmount := bestAmount[currentAsset]
+			if currentAmount == 0 {
+				continue
+			}
+			pathToCurrentAsset := bestPath[currentAsset]
+			edges := state.venues(currentAsset)
 			for j := 0; j < len(edges); j++ {
 				// Exit early if the context was cancelled.
 				if err := ctx.Err(); err != nil {
 					return err
 				}
-				nextAssetString, venues := edges[j].key, edges[j].value
+				nextAsset, venues := edges[j].key, edges[j].value
 
 				// If we're on our last step ignore any edges which don't lead to
 				// our desired destination. This optimization will save us from
 				// doing wasted computation.
-				if i == maxPathLength-1 && !state.isTerminalNode(nextAssetString) {
+				if i == maxPathLength-1 && !state.isTerminalNode(nextAsset) {
 					continue
 				}
 
 				// Make sure we don't use an edge more than once.
-				if pathToCurrentAsset.contains(currentAssetString, nextAssetString) {
+				if pathToCurrentAsset.contains(currentAsset, nextAsset) {
 					continue
 				}
 
-				nextAsset, nextAssetAmount, err := processVenues(state, currentAsset, currentAmount, venues)
+				nextAssetAmount, err := processVenues(state, currentAsset, currentAmount, venues)
 				if err != nil {
 					return err
 				}
@@ -179,26 +172,27 @@ func search(
 					continue
 				}
 
-				if bestNextAssetAmount, ok := updateAmount[nextAssetString]; !ok || state.betterPathAmount(bestNextAssetAmount, nextAssetAmount) {
-					updateAmount[nextAssetString] = nextAssetAmount
+				if state.betterPathAmount(updateAmount[nextAsset], nextAssetAmount) {
+					newEntry := updateAmount[nextAsset] == bestAmount[nextAsset]
+					updateAmount[nextAsset] = nextAssetAmount
 
-					if pathToNext, ok := updatePath[nextAssetString]; ok {
-						pathToNext.prev = pathToCurrentAsset
-					} else {
-						updatePath[nextAssetString] = &pathNode{
-							assetString: nextAssetString,
-							asset:       nextAsset,
-							prev:        pathToCurrentAsset,
+					if newEntry {
+						updatePath[nextAsset] = &pathNode{
+							asset: nextAsset,
+							prev:  pathToCurrentAsset,
 						}
+						updatedAssets = append(updatedAssets, nextAsset)
+					} else {
+						updatePath[nextAsset].prev = pathToCurrentAsset
 					}
 
 					// We could avoid this step until the last iteration, but we would
 					// like to include multiple paths in the response to give the user
 					// other options in case the best path is already consumed.
-					if state.includePath(nextAssetString, nextAssetAmount) {
+					if state.includePath(nextAsset, nextAssetAmount) {
 						state.appendToPaths(
-							append(bestPath[currentAssetString].path(), nextAsset),
-							nextAssetString,
+							append(bestPath[currentAsset].path(), nextAsset),
+							nextAsset,
 							nextAssetAmount,
 						)
 					}
@@ -210,9 +204,9 @@ func search(
 		// the algorithm. This optimization will save us from doing wasted
 		// computation.
 		if i < maxPathLength-1 {
-			for assetString, betterPath := range updatePath {
-				bestPath[assetString] = betterPath
-				bestAmount[assetString] = updateAmount[assetString]
+			for _, asset := range updatedAssets {
+				bestPath[asset] = updatePath[asset]
+				bestAmount[asset] = updateAmount[asset]
 			}
 		}
 	}
@@ -231,53 +225,69 @@ func search(
 //    `targetAssets`
 type sellingGraphSearchState struct {
 	graph                  *OrderBookGraph
-	destinationAsset       xdr.Asset
+	destinationAssetString string
 	destinationAssetAmount xdr.Int64
 	ignoreOffersFrom       *xdr.AccountId
-	targetAssets           map[string]xdr.Int64
+	targetAssets           map[int32]xdr.Int64
 	validateSourceBalance  bool
 	paths                  []Path
 	includePools           bool
 }
 
-func (state *sellingGraphSearchState) isTerminalNode(currentAsset string) bool {
+func (state *sellingGraphSearchState) totalAssets() int32 {
+	return int32(len(state.graph.idToAssetString))
+}
+
+func (state *sellingGraphSearchState) isTerminalNode(currentAsset int32) bool {
 	_, ok := state.targetAssets[currentAsset]
 	return ok
 }
 
-func (state *sellingGraphSearchState) includePath(currentAsset string, currentAssetAmount xdr.Int64) bool {
+func (state *sellingGraphSearchState) includePath(currentAsset int32, currentAssetAmount xdr.Int64) bool {
 	targetAssetBalance, ok := state.targetAssets[currentAsset]
 	return ok && (!state.validateSourceBalance || targetAssetBalance >= currentAssetAmount)
 }
 
 func (state *sellingGraphSearchState) betterPathAmount(currentAmount, alternativeAmount xdr.Int64) bool {
+	if currentAmount == 0 {
+		return true
+	}
+	if alternativeAmount == 0 {
+		return false
+	}
 	return alternativeAmount < currentAmount
 }
 
+func assetIDsToAssetStrings(graph *OrderBookGraph, path []int32) []string {
+	var result []string
+	for _, asset := range path {
+		result = append(result, graph.idToAssetString[asset])
+	}
+	return result
+}
+
 func (state *sellingGraphSearchState) appendToPaths(
-	path []xdr.Asset,
-	currentAssetString string,
+	path []int32,
+	currentAsset int32,
 	currentAssetAmount xdr.Int64,
 ) {
-	currentAsset := path[len(path)-1]
 	if len(path) > 2 {
 		path = path[1 : len(path)-1]
 		reversePath(path)
 	} else {
-		path = []xdr.Asset{}
+		path = []int32{}
 	}
 
 	state.paths = append(state.paths, Path{
-		sourceAssetString: currentAssetString,
 		SourceAmount:      currentAssetAmount,
-		SourceAsset:       currentAsset,
-		InteriorNodes:     path,
-		DestinationAsset:  state.destinationAsset,
+		SourceAsset:       state.graph.idToAssetString[currentAsset],
+		InteriorNodes:     assetIDsToAssetStrings(state.graph, path),
+		DestinationAsset:  state.destinationAssetString,
 		DestinationAmount: state.destinationAssetAmount,
 	})
 }
 
-func (state *sellingGraphSearchState) venues(currentAsset string) edgeSet {
+func (state *sellingGraphSearchState) venues(currentAsset int32) edgeSet {
 	return state.graph.venuesForSellingAsset[currentAsset]
 }
 
@@ -285,16 +295,11 @@ func (state *sellingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
 	currentBestAmount xdr.Int64,
 	offers []xdr.OfferEntry,
-) (xdr.Asset, xdr.Int64, error) {
+) (xdr.Int64, error) {
 	nextAmount, err := consumeOffersForSellingAsset(
 		offers, state.ignoreOffersFrom, currentAssetAmount, currentBestAmount)
 
-	var nextAsset xdr.Asset
-	if len(offers) > 0 {
-		nextAsset = offers[0].Buying
-	}
-
-	return nextAsset, positiveMin(currentBestAmount, nextAmount), err
+	return positiveMin(currentBestAmount, nextAmount), err
 }
 
 func (state *sellingGraphSearchState) considerPools() bool {
@@ -302,8 +307,8 @@ func (state *sellingGraphSearchState) considerPools() bool {
 }
 
 func (state *sellingGraphSearchState) consumePool(
-	pool xdr.LiquidityPoolEntry,
-	currentAsset xdr.Asset,
+	pool liquidityPool,
+	currentAsset int32,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
 	// How many of the previous hop do we need to get this amount?
@@ -321,18 +326,22 @@ func (state *sellingGraphSearchState) consumePool(
 //  - each payment path must begin with `sourceAsset`
 type buyingGraphSearchState struct {
 	graph             *OrderBookGraph
-	sourceAsset       xdr.Asset
+	sourceAssetString string
 	sourceAssetAmount xdr.Int64
-	targetAssets      map[string]bool
+	targetAssets      map[int32]bool
 	paths             []Path
 	includePools      bool
 }
 
-func (state *buyingGraphSearchState) isTerminalNode(currentAsset string) bool {
+func (state *buyingGraphSearchState) totalAssets() int32 {
+	return int32(len(state.graph.idToAssetString))
+}
+
+func (state *buyingGraphSearchState) isTerminalNode(currentAsset int32) bool {
 	return state.targetAssets[currentAsset]
 }
 
-func (state *buyingGraphSearchState) includePath(currentAsset string, currentAssetAmount xdr.Int64) bool {
+func (state *buyingGraphSearchState) includePath(currentAsset int32, currentAssetAmount xdr.Int64) bool {
 	return state.targetAssets[currentAsset]
 }
 
@@ -341,28 +350,26 @@ func (state *buyingGraphSearchState) betterPathAmount(currentAmount, alternative
 }
 
 func (state *buyingGraphSearchState) appendToPaths(
-	path []xdr.Asset,
-	currentAssetString string,
+	path []int32,
+	currentAsset int32,
 	currentAssetAmount xdr.Int64,
 ) {
-	currentAsset := path[len(path)-1]
 	if len(path) > 2 {
 		path = path[1 : len(path)-1]
 	} else {
-		path = []xdr.Asset{}
+		path = []int32{}
 	}
 
 	state.paths = append(state.paths, Path{
-		SourceAmount:           state.sourceAssetAmount,
-		SourceAsset:            state.sourceAsset,
-		InteriorNodes:          path,
-		DestinationAsset:       currentAsset,
-		DestinationAmount:      currentAssetAmount,
-		destinationAssetString: currentAssetString,
+		SourceAmount:      state.sourceAssetAmount,
+		SourceAsset:       state.sourceAssetString,
+		InteriorNodes:     assetIDsToAssetStrings(state.graph, path),
+		DestinationAsset:  state.graph.idToAssetString[currentAsset],
+		DestinationAmount: currentAssetAmount,
 	})
 }
 
-func (state *buyingGraphSearchState) venues(currentAsset string) edgeSet {
+func (state *buyingGraphSearchState) venues(currentAsset int32) edgeSet {
 	return state.graph.venuesForBuyingAsset[currentAsset]
 }
 
@@ -370,15 +377,10 @@ func (state *buyingGraphSearchState) consumeOffers(
 	currentAssetAmount xdr.Int64,
 	currentBestAmount xdr.Int64,
 	offers []xdr.OfferEntry,
-) (xdr.Asset, xdr.Int64, error) {
+) (xdr.Int64, error) {
 	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
 
-	var nextAsset xdr.Asset
-	if len(offers) > 0 {
-		nextAsset = offers[0].Selling
-	}
-
-	return nextAsset, max(nextAmount, currentBestAmount), err
+	return max(nextAmount, currentBestAmount), err
 }
 
 func (state *buyingGraphSearchState) considerPools() bool {
@@ -386,8 +388,8 @@ func (state *buyingGraphSearchState) considerPools() bool {
 }
 
 func (state *buyingGraphSearchState) consumePool(
-	pool xdr.LiquidityPoolEntry,
-	currentAsset xdr.Asset,
+	pool liquidityPool,
+	currentAsset int32,
 	currentAssetAmount xdr.Int64,
 ) (xdr.Int64, error) {
 	return makeTrade(pool, currentAsset, tradeTypeDeposit, currentAssetAmount)
@@ -519,14 +521,12 @@ func consumeOffersForBuyingAsset(
 
 func processVenues(
 	state searchState,
-	currentAsset xdr.Asset,
+	currentAsset int32,
 	currentAssetAmount xdr.Int64,
 	venues Venues,
-) (xdr.Asset, xdr.Int64, error) {
-	var nextAsset xdr.Asset
-
+) (xdr.Int64, error) {
 	if currentAssetAmount == 0 {
-		return nextAsset, 0, errAssetAmountIsZero
+		return 0, errAssetAmountIsZero
 	}
 
 	// We evaluate the pool venue (if any) before offers, because pool exchange
@@ -535,26 +535,23 @@ func processVenues(
 	if pool := venues.pool; state.considerPools() && pool.Body.ConstantProduct != nil {
 		amount, err := state.consumePool(pool, currentAsset, currentAssetAmount)
 		if err == nil {
-			nextAsset = getOtherAsset(currentAsset, pool)
 			poolAmount = amount
 		}
 		// It's only a true error if the offers fail later, too
 	}
 
 	if poolAmount == 0 && len(venues.offers) == 0 {
-		return nextAsset, -1, nil // not really an error
+		return -1, nil // not really an error
 	}
 
 	// This will return the pool amount if the LP performs better.
-	offerAsset, nextAssetAmount, err := state.consumeOffers(
+	nextAssetAmount, err := state.consumeOffers(
 		currentAssetAmount, poolAmount, venues.offers)
 
 	// Only error out the offers if the LP trade didn't happen.
 	if err != nil && poolAmount == 0 {
-		return nextAsset, 0, err
-	} else if err == nil {
-		nextAsset = offerAsset
+		return 0, err
 	}
 
-	return nextAsset, nextAssetAmount, nil
+	return nextAssetAmount, nil
 }
