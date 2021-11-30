@@ -25,6 +25,7 @@ func TestCommonProblems(t *testing.T) {
 	}{
 		{"NotFound", problem.NotFound, 404},
 		{"RateLimitExceeded", RateLimitExceeded, 429},
+		{"ClientDisconneted", ClientDisconnected, 499},
 	}
 
 	for _, tc := range testCases {

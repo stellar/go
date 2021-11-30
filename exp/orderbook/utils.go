@@ -5,9 +5,9 @@ import (
 )
 
 // getPoolAssets retrieves string representations of a pool's reserves
-func getPoolAssets(pool xdr.LiquidityPoolEntry) (string, string) {
+func getPoolAssets(pool xdr.LiquidityPoolEntry) (xdr.Asset, xdr.Asset) {
 	params := pool.Body.MustConstantProduct().Params
-	return params.AssetA.String(), params.AssetB.String()
+	return params.AssetA, params.AssetB
 }
 
 func max(a, b xdr.Int64) xdr.Int64 {

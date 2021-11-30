@@ -2,18 +2,36 @@ package resourceadapter
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/paths"
 )
 
+func extractAsset(asset string, t, c, i *string) error {
+	if asset == "native" {
+		*t = asset
+		return nil
+	}
+	parts := strings.Split(asset, "/")
+	if len(parts) != 3 {
+		return fmt.Errorf("expected length to be 3 but got %v", parts)
+	}
+	*t = parts[0]
+	*c = parts[1]
+	*i = parts[2]
+	return nil
+}
+
 // PopulatePath converts the paths.Path into a Path
 func PopulatePath(ctx context.Context, dest *horizon.Path, p paths.Path) (err error) {
 	dest.DestinationAmount = amount.String(p.DestinationAmount)
 	dest.SourceAmount = amount.String(p.SourceAmount)
 
-	err = p.Source.Extract(
+	err = extractAsset(
+		p.Source,
 		&dest.SourceAssetType,
 		&dest.SourceAssetCode,
 		&dest.SourceAssetIssuer)
@@ -21,7 +39,8 @@ func PopulatePath(ctx context.Context, dest *horizon.Path, p paths.Path) (err er
 		return
 	}
 
-	err = p.Destination.Extract(
+	err = extractAsset(
+		p.Destination,
 		&dest.DestinationAssetType,
 		&dest.DestinationAssetCode,
 		&dest.DestinationAssetIssuer)
@@ -31,7 +50,8 @@ func PopulatePath(ctx context.Context, dest *horizon.Path, p paths.Path) (err er
 
 	dest.Path = make([]horizon.Asset, len(p.Path))
 	for i, a := range p.Path {
-		err = a.Extract(
+		err = extractAsset(
+			a,
 			&dest.Path[i].Type,
 			&dest.Path[i].Code,
 			&dest.Path[i].Issuer)
