@@ -89,9 +89,9 @@ type pathNode struct {
 	prev  *pathNode
 }
 
-func (p *pathNode) contains(src, dst int32) bool {
-	for cur := p; cur != nil && cur.prev != nil; cur = cur.prev {
-		if cur.asset == dst && cur.prev.asset == src {
+func (p *pathNode) contains(node int32) bool {
+	for cur := p; cur != nil; cur = cur.prev {
+		if cur.asset == node {
 			return true
 		}
 	}
@@ -159,8 +159,8 @@ func search(
 					continue
 				}
 
-				// Make sure we don't use an edge more than once.
-				if pathToCurrentAsset.contains(currentAsset, nextAsset) {
+				// Make sure we don't visit a node more than once.
+				if pathToCurrentAsset.contains(nextAsset) {
 					continue
 				}
 
