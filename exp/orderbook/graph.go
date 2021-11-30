@@ -28,9 +28,9 @@ const (
 // trading pair represents two assets that can be exchanged if an order is fulfilled
 type tradingPair struct {
 	// buyingAsset corresponds to offer.Buying.String() from an xdr.OfferEntry
-	buyingAsset string
+	buyingAsset int32
 	// sellingAsset corresponds to offer.Selling.String() from an xdr.OfferEntry
-	sellingAsset string
+	sellingAsset int32
 }
 
 // OBGraph is an interface for orderbook graphs
@@ -49,12 +49,26 @@ type OBGraph interface {
 // OrderBookGraph is an in-memory graph representation of all the offers in the
 // Stellar ledger.
 type OrderBookGraph struct {
+	// idToAssetString maps an int32 asset id to its string representation.
+	// Every asset on the OrderBookGraph has an int32 id which indexes into idToAssetString.
+	// The asset integer ids are largely contiguous. When an asset is completely removed
+	// from the OrderBookGraph the integer id for that asset will be assigned to the next
+	// asset which is added to the OrderBookGraph.
+	idToAssetString []string
+	// assetStringToID maps an asset string to its int32 id.
+	assetStringToID map[string]int32
+	// vacantIDs is a list of int32 asset ids which can be mapped to new assets.
+	// When a new asset is added to the OrderBookGraph we first check if there are
+	// any available vacantIDs, if so, we will assign the new asset to one of the vacantIDs.
+	// Otherwise, we will add a new entry to idToAssetString for the new asset.
+	vacantIDs []int32
+
 	// venuesForBuyingAsset maps an asset to all of its buying opportunities,
 	// which may be offers (sorted by price) or a liquidity pools.
-	venuesForBuyingAsset map[string]edgeSet
-	// venuesForBuyingAsset maps an asset to all of its *selling* opportunities,
+	venuesForBuyingAsset []edgeSet
+	// venuesForSellingAsset maps an asset to all of its *selling* opportunities,
 	// which may be offers (sorted by price) or a liquidity pools.
-	venuesForSellingAsset map[string]edgeSet
+	venuesForSellingAsset []edgeSet
 	// liquidityPools associates a particular asset pair (in "asset order", see
 	// xdr.Asset.LessThan) with a liquidity pool.
 	liquidityPools map[tradingPair]xdr.LiquidityPoolEntry
@@ -169,8 +183,11 @@ func (graph *OrderBookGraph) Clear() {
 	graph.lock.Lock()
 	defer graph.lock.Unlock()
 
-	graph.venuesForBuyingAsset = map[string]edgeSet{}
-	graph.venuesForSellingAsset = map[string]edgeSet{}
+	graph.assetStringToID = map[string]int32{}
+	graph.idToAssetString = []string{}
+	graph.vacantIDs = []int32{}
+	graph.venuesForSellingAsset = []edgeSet{}
+	graph.venuesForBuyingAsset = []edgeSet{}
 	graph.tradingPairForOffer = map[xdr.Int64]tradingPair{}
 	graph.liquidityPools = map[tradingPair]xdr.LiquidityPoolEntry{}
 	graph.batchedUpdates = graph.batch()
@@ -187,6 +204,47 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 	}
 }
 
+func (graph *OrderBookGraph) getOrCreateAssetID(asset xdr.Asset) int32 {
+	assetString := asset.String()
+	id, ok := graph.assetStringToID[assetString]
+	if ok {
+		return id
+	}
+	// before creating a new int32 asset id we will try to use
+	// a vacant id so that we can plug any empty cells in the
+	// idToAssetString array.
+	if len(graph.vacantIDs) > 0 {
+		id = graph.vacantIDs[len(graph.vacantIDs)-1]
+		graph.vacantIDs = graph.vacantIDs[:len(graph.vacantIDs)-1]
+		graph.idToAssetString[id] = assetString
+	} else {
+		// idToAssetString never decreases in length unless we call graph.Clear()
+		id = int32(len(graph.idToAssetString))
+		// we assign id to asset
+		graph.idToAssetString = append(graph.idToAssetString, assetString)
+		graph.venuesForBuyingAsset = append(graph.venuesForBuyingAsset, nil)
+		graph.venuesForSellingAsset = append(graph.venuesForSellingAsset, nil)
+	}
+
+	graph.assetStringToID[assetString] = id
+	return id
+}
+
+func (graph *OrderBookGraph) maybeDeleteAsset(asset int32) {
+	buyingEdgesEmpty := len(graph.venuesForBuyingAsset[asset]) == 0
+	sellingEdgesEmpty := len(graph.venuesForSellingAsset[asset]) == 0
+
+	if buyingEdgesEmpty && sellingEdgesEmpty {
+		delete(graph.assetStringToID, graph.idToAssetString[asset])
+		// When removing an asset we do not resize the idToAssetString array.
+		// Instead, we allow the cell occupied by the id to be empty.
+		// The next time we will add an asset to the graph we will allocate the
+		// id to the new asset.
+		graph.idToAssetString[asset] = ""
+		graph.vacantIDs = append(graph.vacantIDs, asset)
+	}
+}
+
 // addOffer inserts a given offer into the order book graph
 func (graph *OrderBookGraph) addOffer(offer xdr.OfferEntry) error {
 	// If necessary, replace any existing offer with a new one.
@@ -196,7 +254,8 @@ func (graph *OrderBookGraph) addOffer(offer xdr.OfferEntry) error {
 		}
 	}
 
-	buying, selling := offer.Buying.String(), offer.Selling.String()
+	buying := graph.getOrCreateAssetID(offer.Buying)
+	selling := graph.getOrCreateAssetID(offer.Selling)
 
 	graph.tradingPairForOffer[offer.OfferId] = tradingPair{
 		buyingAsset: buying, sellingAsset: selling,
@@ -208,19 +267,32 @@ func (graph *OrderBookGraph) addOffer(offer xdr.OfferEntry) error {
 	return nil
 }
 
+func (graph *OrderBookGraph) poolFromEntry(poolXDR xdr.LiquidityPoolEntry) liquidityPool {
+	aXDR, bXDR := getPoolAssets(poolXDR)
+	assetA, assetB := graph.getOrCreateAssetID(aXDR), graph.getOrCreateAssetID(bXDR)
+	return liquidityPool{
+		LiquidityPoolEntry: poolXDR,
+		assetA:             assetA,
+		assetB:             assetB,
+	}
+}
+
 // addPool sets the given pool as the venue for the given trading pair.
-func (graph *OrderBookGraph) addPool(pool xdr.LiquidityPoolEntry) {
+func (graph *OrderBookGraph) addPool(poolEntry xdr.LiquidityPoolEntry) {
 	// Liquidity pools have no concept of a "buying" or "selling" asset,
 	// so we create venues in both directions.
-	x, y := getPoolAssets(pool)
-	graph.liquidityPools[tradingPair{x, y}] = pool
+	pool := graph.poolFromEntry(poolEntry)
+	graph.liquidityPools[tradingPair{
+		buyingAsset:  pool.assetA,
+		sellingAsset: pool.assetB,
+	}] = pool.LiquidityPoolEntry
 
-	for _, table := range []map[string]edgeSet{
+	for _, table := range [][]edgeSet{
 		graph.venuesForBuyingAsset,
 		graph.venuesForSellingAsset,
 	} {
-		table[x] = table[x].addPool(y, pool)
-		table[y] = table[y].addPool(x, pool)
+		table[pool.assetA] = table[pool.assetA].addPool(pool.assetB, pool)
+		table[pool.assetB] = table[pool.assetB].addPool(pool.assetA, pool)
 	}
 }
 
@@ -230,43 +302,37 @@ func (graph *OrderBookGraph) removeOffer(offerID xdr.Int64) error {
 	if !ok {
 		return errOfferNotPresent
 	}
-
 	delete(graph.tradingPairForOffer, offerID)
 
-	if set, ok := graph.venuesForSellingAsset[pair.sellingAsset]; !ok {
+	if set, ok := graph.venuesForSellingAsset[pair.sellingAsset].removeOffer(pair.buyingAsset, offerID); !ok {
 		return errOfferNotPresent
-	} else if set, ok = set.removeOffer(pair.buyingAsset, offerID); !ok {
-		return errOfferNotPresent
-	} else if len(set) == 0 {
-		delete(graph.venuesForSellingAsset, pair.sellingAsset)
 	} else {
 		graph.venuesForSellingAsset[pair.sellingAsset] = set
 	}
 
-	if set, ok := graph.venuesForBuyingAsset[pair.buyingAsset]; !ok {
+	if set, ok := graph.venuesForBuyingAsset[pair.buyingAsset].removeOffer(pair.sellingAsset, offerID); !ok {
 		return errOfferNotPresent
-	} else if set, ok = set.removeOffer(pair.sellingAsset, offerID); !ok {
-		return errOfferNotPresent
-	} else if len(set) == 0 {
-		delete(graph.venuesForBuyingAsset, pair.buyingAsset)
 	} else {
 		graph.venuesForBuyingAsset[pair.buyingAsset] = set
 	}
 
+	graph.maybeDeleteAsset(pair.buyingAsset)
+	graph.maybeDeleteAsset(pair.sellingAsset)
 	return nil
 }
 
 // removePool unsets the pool matching the given asset pair, if it exists.
-func (graph *OrderBookGraph) removePool(pool xdr.LiquidityPoolEntry) {
-	x, y := getPoolAssets(pool)
+func (graph *OrderBookGraph) removePool(poolXDR xdr.LiquidityPoolEntry) {
+	aXDR, bXDR := getPoolAssets(poolXDR)
+	assetA, assetB := graph.getOrCreateAssetID(aXDR), graph.getOrCreateAssetID(bXDR)
 
-	for _, asset := range []string{x, y} {
-		otherAsset := x
-		if asset == x {
-			otherAsset = y
+	for _, asset := range []int32{assetA, assetB} {
+		otherAsset := assetB
+		if asset == assetB {
+			otherAsset = assetA
 		}
 
-		for _, table := range []map[string]edgeSet{
+		for _, table := range [][]edgeSet{
 			graph.venuesForBuyingAsset,
 			graph.venuesForSellingAsset,
 		} {
@@ -274,7 +340,9 @@ func (graph *OrderBookGraph) removePool(pool xdr.LiquidityPoolEntry) {
 		}
 	}
 
-	delete(graph.liquidityPools, tradingPair{x, y})
+	delete(graph.liquidityPools, tradingPair{assetA, assetB})
+	graph.maybeDeleteAsset(assetA)
+	graph.maybeDeleteAsset(assetB)
 }
 
 // IsEmpty returns true if the orderbook graph is not populated
@@ -282,7 +350,7 @@ func (graph *OrderBookGraph) IsEmpty() bool {
 	graph.lock.RLock()
 	defer graph.lock.RUnlock()
 
-	return len(graph.venuesForSellingAsset) == 0
+	return len(graph.liquidityPools) == 0 && len(graph.tradingPairForOffer) == 0
 }
 
 // FindPaths returns a list of payment paths originating from a source account
@@ -300,15 +368,15 @@ func (graph *OrderBookGraph) FindPaths(
 	includePools bool,
 ) ([]Path, uint32, error) {
 	destinationAssetString := destinationAsset.String()
-	sourceAssetsMap := make(map[string]xdr.Int64, len(sourceAssets))
+	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
 		sourceAssetString := sourceAsset.String()
-		sourceAssetsMap[sourceAssetString] = sourceAssetBalances[i]
+		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
 	}
 
 	searchState := &sellingGraphSearchState{
 		graph:                  graph,
-		destinationAsset:       destinationAsset,
+		destinationAssetString: destinationAssetString,
 		destinationAssetAmount: destinationAmount,
 		ignoreOffersFrom:       sourceAccountID,
 		targetAssets:           sourceAssetsMap,
@@ -321,8 +389,7 @@ func (graph *OrderBookGraph) FindPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		destinationAssetString,
-		destinationAsset,
+		graph.assetStringToID[destinationAssetString],
 		destinationAmount,
 	)
 	lastLedger := graph.lastLedger
@@ -356,15 +423,15 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
-	target := map[string]bool{}
+	target := map[int32]bool{}
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
-		target[destinationAssetString] = true
+		target[graph.assetStringToID[destinationAssetString]] = true
 	}
 
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
-		sourceAsset:       sourceAsset,
+		sourceAssetString: sourceAsset.String(),
 		sourceAssetAmount: amountToSpend,
 		targetAssets:      target,
 		paths:             []Path{},
@@ -375,8 +442,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		sourceAsset.String(),
-		sourceAsset,
+		graph.assetStringToID[sourceAsset.String()],
 		amountToSpend,
 	)
 	lastLedger := graph.lastLedger
@@ -402,13 +468,13 @@ func (graph *OrderBookGraph) FindFixedPaths(
 // if there are multiple paths which spend the same `SourceAmount` then shorter payment paths
 // will be prioritized
 func compareSourceAsset(allPaths []Path, i, j int) bool {
-	if allPaths[i].SourceAsset.Equals(allPaths[j].SourceAsset) {
+	if allPaths[i].SourceAsset == allPaths[j].SourceAsset {
 		if allPaths[i].SourceAmount == allPaths[j].SourceAmount {
 			return len(allPaths[i].InteriorNodes) < len(allPaths[j].InteriorNodes)
 		}
 		return allPaths[i].SourceAmount < allPaths[j].SourceAmount
 	}
-	return allPaths[i].SourceAssetString() < allPaths[j].SourceAssetString()
+	return allPaths[i].SourceAsset < allPaths[j].SourceAsset
 }
 
 // compareDestinationAsset will group payment paths by `DestinationAsset`. Paths
@@ -416,21 +482,21 @@ func compareSourceAsset(allPaths []Path, i, j int) bool {
 // sorting. If there are multiple paths which deliver the same
 // `DestinationAmount`, then shorter payment paths will be prioritized.
 func compareDestinationAsset(allPaths []Path, i, j int) bool {
-	if allPaths[i].DestinationAsset.Equals(allPaths[j].DestinationAsset) {
+	if allPaths[i].DestinationAsset == allPaths[j].DestinationAsset {
 		if allPaths[i].DestinationAmount == allPaths[j].DestinationAmount {
 			return len(allPaths[i].InteriorNodes) < len(allPaths[j].InteriorNodes)
 		}
 		return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
 	}
-	return allPaths[i].DestinationAssetString() < allPaths[j].DestinationAssetString()
+	return allPaths[i].DestinationAsset < allPaths[j].DestinationAsset
 }
 
 func sourceAssetEquals(p, otherPath Path) bool {
-	return p.SourceAsset.Equals(otherPath.SourceAsset)
+	return p.SourceAsset == otherPath.SourceAsset
 }
 
 func destinationAssetEquals(p, otherPath Path) bool {
-	return p.DestinationAsset.Equals(otherPath.DestinationAsset)
+	return p.DestinationAsset == otherPath.DestinationAsset
 }
 
 // sortAndFilterPaths sorts the given list of paths using `comparePaths`

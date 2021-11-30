@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding"
-	"fmt"
 	"math"
 	"sort"
 	"testing"
@@ -157,48 +156,83 @@ func assertOfferListEquals(t *testing.T, a, b []xdr.OfferEntry) {
 
 // assertGraphEquals ensures two graphs are identical
 func assertGraphEquals(t *testing.T, a, b *OrderBookGraph) {
-	assert.Equalf(t, len(a.venuesForBuyingAsset), len(b.venuesForBuyingAsset),
-		"expected same # of buying venues but got %v %v",
-		a.venuesForBuyingAsset, b.venuesForBuyingAsset)
-
-	assert.Equalf(t, len(a.venuesForSellingAsset), len(b.venuesForSellingAsset),
-		"expected same # of selling venues but got %v %v",
-		a.venuesForSellingAsset, b.venuesForSellingAsset)
+	assert.Equalf(t, len(a.assetStringToID), len(b.assetStringToID),
+		"expected same # of asset string to id entries but got %v %v",
+		a.assetStringToID, b.assetStringToID)
 
 	assert.Equalf(t, len(a.tradingPairForOffer), len(b.tradingPairForOffer),
 		"expected same # of trading pairs but got %v %v", a, b)
 
-	for sellingAsset, edgeSet := range a.venuesForSellingAsset {
-		otherEdgeSet := b.venuesForSellingAsset[sellingAsset]
+	assert.Equalf(t, len(a.liquidityPools), len(b.liquidityPools),
+		"expected same # of liquidity pools but got %v %v", a, b)
 
-		assert.Equalf(t, len(edgeSet), len(otherEdgeSet),
-			"expected edge set for %v to have same length but got %v %v",
-			sellingAsset, edgeSet, otherEdgeSet)
-
-		for _, edge := range edgeSet {
-			venues := edge.value
-			otherVenues := findByAsset(otherEdgeSet, edge.key)
-
-			assert.Equalf(t, venues.pool, otherVenues.pool,
-				"expected pools for %v to be equal")
-
-			assert.Equalf(t, len(venues.offers), len(otherVenues.offers),
-				"expected offers for %v to have same length but got %v %v",
-				edge.key, venues.offers, otherVenues.offers,
-			)
-
-			assertOfferListEquals(t, venues.offers, otherVenues.offers)
+	for assetString, _ := range a.assetStringToID {
+		asset := a.assetStringToID[assetString]
+		otherAsset, ok := b.assetStringToID[assetString]
+		if !ok {
+			t.Fatalf("asset %v is not present in assetStringToID", assetString)
 		}
+		es := a.venuesForSellingAsset[asset]
+		other := b.venuesForSellingAsset[otherAsset]
+
+		assertEdgeSetEquals(t, a, b, es, other, assetString)
+
+		es = a.venuesForBuyingAsset[asset]
+		other = b.venuesForBuyingAsset[otherAsset]
+
+		assert.Equalf(t, len(es), len(other),
+			"expected edge set for %v to have same length but got %v %v",
+			assetString, es, other)
+
+		assertEdgeSetEquals(t, a, b, es, other, assetString)
 	}
 
 	for offerID, pair := range a.tradingPairForOffer {
 		otherPair := b.tradingPairForOffer[offerID]
 
-		assert.Equalf(t, pair.buyingAsset, otherPair.buyingAsset,
+		assert.Equalf(
+			t,
+			a.idToAssetString[pair.buyingAsset],
+			b.idToAssetString[otherPair.buyingAsset],
 			"expected trading pair to match but got %v %v", pair, otherPair)
 
-		assert.Equalf(t, pair.sellingAsset, otherPair.sellingAsset,
+		assert.Equalf(
+			t,
+			a.idToAssetString[pair.sellingAsset],
+			b.idToAssetString[otherPair.sellingAsset],
 			"expected trading pair to match but got %v %v", pair, otherPair)
+	}
+
+	for pair, pool := range a.liquidityPools {
+		otherPair := tradingPair{
+			buyingAsset:  b.assetStringToID[a.idToAssetString[pair.buyingAsset]],
+			sellingAsset: b.assetStringToID[a.idToAssetString[pair.sellingAsset]],
+		}
+		otherPool := b.liquidityPools[otherPair]
+		assert.Equalf(t, pool, otherPool, "expected pool to match but got %v %v", pool, otherPool)
+	}
+}
+
+func assertEdgeSetEquals(
+	t *testing.T, a *OrderBookGraph, b *OrderBookGraph,
+	es edgeSet, other edgeSet, assetString string) {
+	assert.Equalf(t, len(es), len(other),
+		"expected edge set for %v to have same length but got %v %v",
+		assetString, es, other)
+
+	for _, edge := range es {
+		venues := edge.value
+		otherVenues := findByAsset(b, other, a.idToAssetString[edge.key])
+
+		assert.Equalf(t, venues.pool.LiquidityPoolEntry, otherVenues.pool.LiquidityPoolEntry,
+			"expected pools for %v to be equal")
+
+		assert.Equalf(t, len(venues.offers), len(otherVenues.offers),
+			"expected offers for %v to have same length but got %v %v",
+			edge.key, venues.offers, otherVenues.offers,
+		)
+
+		assertOfferListEquals(t, venues.offers, otherVenues.offers)
 	}
 }
 
@@ -215,24 +249,28 @@ func assertPathEquals(t *testing.T, a, b []Path) {
 		assert.Equalf(t, a[i].DestinationAmount, b[i].DestinationAmount,
 			"expected dest amounts to be same got %v %v", a[i], b[i])
 
-		assert.Truef(t, a[i].DestinationAsset.Equals(b[i].DestinationAsset),
+		assert.Equalf(t, a[i].DestinationAsset, b[i].DestinationAsset,
 			"expected dest assets to be same got %v %v", a[i], b[i])
 
-		assert.Truef(t, a[i].SourceAsset.Equals(b[i].SourceAsset),
+		assert.Equalf(t, a[i].SourceAsset, b[i].SourceAsset,
 			"expected source assets to be same got %v %v", a[i], b[i])
 
 		assert.Equalf(t, len(a[i].InteriorNodes), len(b[i].InteriorNodes),
 			"expected interior nodes have same length got %v %v", a[i], b[i])
 
 		for j := 0; j > len(a[i].InteriorNodes); j++ {
-			assert.Truef(t,
-				a[i].InteriorNodes[j].Equals(b[i].InteriorNodes[j]),
+			assert.Equalf(t,
+				a[i].InteriorNodes[j], b[i].InteriorNodes[j],
 				"expected interior nodes to be same got %v %v", a[i], b[i])
 		}
 	}
 }
 
-func findByAsset(edges edgeSet, asset string) Venues {
+func findByAsset(g *OrderBookGraph, edges edgeSet, assetString string) Venues {
+	asset, ok := g.assetStringToID[assetString]
+	if !ok {
+		return Venues{}
+	}
 	i := edges.find(asset)
 	if i >= 0 {
 		return edges[i].value
@@ -242,27 +280,28 @@ func findByAsset(edges edgeSet, asset string) Venues {
 
 func TestAddEdgeSet(t *testing.T) {
 	set := edgeSet{}
+	g := NewOrderBookGraph()
 
-	set = set.addOffer(dollarOffer.Buying.String(), dollarOffer)
-	set = set.addOffer(eurOffer.Buying.String(), eurOffer)
-	set = set.addOffer(twoEurOffer.Buying.String(), twoEurOffer)
-	set = set.addOffer(threeEurOffer.Buying.String(), threeEurOffer)
-	set = set.addOffer(quarterOffer.Buying.String(), quarterOffer)
-	set = set.addOffer(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
-	set = set.addPool(usdAsset.String(), eurUsdLiquidityPool)
-	set = set.addPool(eurAsset.String(), eurUsdLiquidityPool)
+	set = set.addOffer(g.getOrCreateAssetID(dollarOffer.Buying), dollarOffer)
+	set = set.addOffer(g.getOrCreateAssetID(eurOffer.Buying), eurOffer)
+	set = set.addOffer(g.getOrCreateAssetID(twoEurOffer.Buying), twoEurOffer)
+	set = set.addOffer(g.getOrCreateAssetID(threeEurOffer.Buying), threeEurOffer)
+	set = set.addOffer(g.getOrCreateAssetID(quarterOffer.Buying), quarterOffer)
+	set = set.addOffer(g.getOrCreateAssetID(fiftyCentsOffer.Buying), fiftyCentsOffer)
+	set = set.addPool(g.getOrCreateAssetID(usdAsset), g.poolFromEntry(eurUsdLiquidityPool))
+	set = set.addPool(g.getOrCreateAssetID(eurAsset), g.poolFromEntry(eurUsdLiquidityPool))
 
 	assert.Lenf(t, set, 2, "expected set to have 2 entries but got %v", set)
-	assert.Equal(t, findByAsset(set, usdAsset.String()).pool, eurUsdLiquidityPool)
-	assert.Equal(t, findByAsset(set, eurAsset.String()).pool, eurUsdLiquidityPool)
+	assert.Equal(t, findByAsset(g, set, usdAsset.String()).pool.LiquidityPoolEntry, eurUsdLiquidityPool)
+	assert.Equal(t, findByAsset(g, set, eurAsset.String()).pool.LiquidityPoolEntry, eurUsdLiquidityPool)
 
-	assertOfferListEquals(t, findByAsset(set, usdAsset.String()).offers, []xdr.OfferEntry{
+	assertOfferListEquals(t, findByAsset(g, set, usdAsset.String()).offers, []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 		dollarOffer,
 	})
 
-	assertOfferListEquals(t, findByAsset(set, eurAsset.String()).offers, []xdr.OfferEntry{
+	assertOfferListEquals(t, findByAsset(g, set, eurAsset.String()).offers, []xdr.OfferEntry{
 		eurOffer,
 		twoEurOffer,
 		threeEurOffer,
@@ -271,38 +310,39 @@ func TestAddEdgeSet(t *testing.T) {
 
 func TestRemoveEdgeSet(t *testing.T) {
 	set := edgeSet{}
+	g := NewOrderBookGraph()
 
 	var found bool
-	set, found = set.removeOffer(usdAsset.String(), dollarOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(usdAsset), dollarOffer.OfferId)
 	assert.Falsef(t, found, "expected set to not contain asset but is %v", set)
 
-	set = set.addOffer(dollarOffer.Buying.String(), dollarOffer)
-	set = set.addOffer(eurOffer.Buying.String(), eurOffer)
-	set = set.addOffer(twoEurOffer.Buying.String(), twoEurOffer)
-	set = set.addOffer(threeEurOffer.Buying.String(), threeEurOffer)
-	set = set.addOffer(quarterOffer.Buying.String(), quarterOffer)
-	set = set.addOffer(fiftyCentsOffer.Buying.String(), fiftyCentsOffer)
-	set = set.addPool(usdAsset.String(), eurUsdLiquidityPool)
+	set = set.addOffer(g.getOrCreateAssetID(dollarOffer.Buying), dollarOffer)
+	set = set.addOffer(g.getOrCreateAssetID(eurOffer.Buying), eurOffer)
+	set = set.addOffer(g.getOrCreateAssetID(twoEurOffer.Buying), twoEurOffer)
+	set = set.addOffer(g.getOrCreateAssetID(threeEurOffer.Buying), threeEurOffer)
+	set = set.addOffer(g.getOrCreateAssetID(quarterOffer.Buying), quarterOffer)
+	set = set.addOffer(g.getOrCreateAssetID(fiftyCentsOffer.Buying), fiftyCentsOffer)
+	set = set.addPool(g.getOrCreateAssetID(usdAsset), g.poolFromEntry(eurUsdLiquidityPool))
 
-	set = set.removePool(usdAsset.String())
-	assert.Nil(t, findByAsset(set, usdAsset.String()).pool.Body.ConstantProduct)
+	set = set.removePool(g.getOrCreateAssetID(usdAsset))
+	assert.Nil(t, findByAsset(g, set, usdAsset.String()).pool.Body.ConstantProduct)
 
-	set, found = set.removeOffer(usdAsset.String(), dollarOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(usdAsset), dollarOffer.OfferId)
 	assert.Truef(t, found, "expected set to contain dollar offer but is %v", set)
-	set, found = set.removeOffer(usdAsset.String(), dollarOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(usdAsset), dollarOffer.OfferId)
 	assert.Falsef(t, found, "expected set to not contain dollar offer after deletion but is %v", set)
-	set, found = set.removeOffer(eurAsset.String(), threeEurOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(eurAsset), threeEurOffer.OfferId)
 	assert.Truef(t, found, "expected set to contain three euro offer but is %v", set)
-	set, found = set.removeOffer(eurAsset.String(), eurOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(eurAsset), eurOffer.OfferId)
 	assert.Truef(t, found, "expected set to contain euro offer but is %v", set)
-	set, found = set.removeOffer(eurAsset.String(), twoEurOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(eurAsset), twoEurOffer.OfferId)
 	assert.Truef(t, found, "expected set to contain two euro offer but is %v", set)
-	set, found = set.removeOffer(eurAsset.String(), eurOffer.OfferId)
+	set, found = set.removeOffer(g.getOrCreateAssetID(eurAsset), eurOffer.OfferId)
 	assert.Falsef(t, found, "expected set to not contain euro offer after deletion but is %v", set)
 
 	assert.Lenf(t, set, 1, "%v", set)
 
-	assertOfferListEquals(t, findByAsset(set, usdAsset.String()).offers, []xdr.OfferEntry{
+	assertOfferListEquals(t, findByAsset(g, set, usdAsset.String()).offers, []xdr.OfferEntry{
 		quarterOffer,
 		fiftyCentsOffer,
 	})
@@ -404,63 +444,77 @@ func TestAddOffersOrderBook(t *testing.T) {
 		t.FailNow()
 	}
 
+	assetStringToID := map[string]int32{}
+	idToAssetString := []string{}
+	for i, asset := range []xdr.Asset{
+		nativeAsset,
+		usdAsset,
+		eurAsset,
+	} {
+		assetStringToID[asset.String()] = int32(i)
+		idToAssetString = append(idToAssetString, asset.String())
+	}
+
 	expectedGraph := &OrderBookGraph{
-		venuesForSellingAsset: map[string]edgeSet{
-			nativeAsset.String(): {
+		assetStringToID: assetStringToID,
+		idToAssetString: idToAssetString,
+		venuesForSellingAsset: []edgeSet{
+			{
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
 				},
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 				},
 			},
-			usdAsset.String(): {
+			{
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(eurUsdOffer, otherEurUsdOffer),
 				},
 			},
-			eurAsset.String(): {
+			{
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(usdEurOffer),
 				},
 			},
 		},
-		venuesForBuyingAsset: map[string]edgeSet{
-			usdAsset.String(): {
+		venuesForBuyingAsset: []edgeSet{
+			{},
+			{
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(usdEurOffer),
 				},
 				{
-					nativeAsset.String(),
+					assetStringToID[nativeAsset.String()],
 					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
 				},
 			},
-			eurAsset.String(): {
+			{
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(eurUsdOffer, otherEurUsdOffer),
 				},
 				{
-					nativeAsset.String(),
+					assetStringToID[nativeAsset.String()],
 					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId:     makeTradingPair(usdAsset, nativeAsset),
-			fiftyCentsOffer.OfferId:  makeTradingPair(usdAsset, nativeAsset),
-			dollarOffer.OfferId:      makeTradingPair(usdAsset, nativeAsset),
-			eurOffer.OfferId:         makeTradingPair(eurAsset, nativeAsset),
-			twoEurOffer.OfferId:      makeTradingPair(eurAsset, nativeAsset),
-			threeEurOffer.OfferId:    makeTradingPair(eurAsset, nativeAsset),
-			eurUsdOffer.OfferId:      makeTradingPair(eurAsset, usdAsset),
-			otherEurUsdOffer.OfferId: makeTradingPair(eurAsset, usdAsset),
-			usdEurOffer.OfferId:      makeTradingPair(usdAsset, eurAsset),
+			quarterOffer.OfferId:     makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			fiftyCentsOffer.OfferId:  makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			dollarOffer.OfferId:      makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			eurOffer.OfferId:         makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			twoEurOffer.OfferId:      makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			threeEurOffer.OfferId:    makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			eurUsdOffer.OfferId:      makeTradingPair(assetStringToID, eurAsset, usdAsset),
+			otherEurUsdOffer.OfferId: makeTradingPair(assetStringToID, eurAsset, usdAsset),
+			usdEurOffer.OfferId:      makeTradingPair(assetStringToID, usdAsset, eurAsset),
 		},
 	}
 
@@ -633,63 +687,76 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
 	}
 
+	assetStringToID := map[string]int32{}
+	idToAssetString := []string{}
+	for i, asset := range []xdr.Asset{
+		nativeAsset,
+		usdAsset,
+		eurAsset,
+	} {
+		assetStringToID[asset.String()] = int32(i)
+		idToAssetString = append(idToAssetString, asset.String())
+	}
 	expectedGraph := &OrderBookGraph{
-		venuesForSellingAsset: map[string]edgeSet{
-			nativeAsset.String(): {
+		idToAssetString: idToAssetString,
+		assetStringToID: assetStringToID,
+		venuesForSellingAsset: []edgeSet{
+			{
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
 				},
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 				},
 			},
-			usdAsset.String(): {
+			{
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(otherEurUsdOffer, eurUsdOffer),
 				},
 			},
-			eurAsset.String(): {
+			{
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(usdEurOffer),
 				},
 			},
 		},
-		venuesForBuyingAsset: map[string]edgeSet{
-			usdAsset.String(): {
+		venuesForBuyingAsset: []edgeSet{
+			{},
+			{
 				{
-					nativeAsset.String(),
+					assetStringToID[nativeAsset.String()],
 					makeVenues(quarterOffer, fiftyCentsOffer, dollarOffer),
 				},
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(usdEurOffer),
 				},
 			},
-			eurAsset.String(): {
+			{
 				{
-					nativeAsset.String(),
+					assetStringToID[nativeAsset.String()],
 					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 				},
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(otherEurUsdOffer, eurUsdOffer),
 				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId:     makeTradingPair(usdAsset, nativeAsset),
-			fiftyCentsOffer.OfferId:  makeTradingPair(usdAsset, nativeAsset),
-			dollarOffer.OfferId:      makeTradingPair(usdAsset, nativeAsset),
-			eurOffer.OfferId:         makeTradingPair(eurAsset, nativeAsset),
-			twoEurOffer.OfferId:      makeTradingPair(eurAsset, nativeAsset),
-			threeEurOffer.OfferId:    makeTradingPair(eurAsset, nativeAsset),
-			eurUsdOffer.OfferId:      makeTradingPair(eurAsset, usdAsset),
-			otherEurUsdOffer.OfferId: makeTradingPair(eurAsset, usdAsset),
-			usdEurOffer.OfferId:      makeTradingPair(usdAsset, eurAsset),
+			quarterOffer.OfferId:     makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			fiftyCentsOffer.OfferId:  makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			dollarOffer.OfferId:      makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			eurOffer.OfferId:         makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			twoEurOffer.OfferId:      makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			threeEurOffer.OfferId:    makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			eurUsdOffer.OfferId:      makeTradingPair(assetStringToID, eurAsset, usdAsset),
+			otherEurUsdOffer.OfferId: makeTradingPair(assetStringToID, eurAsset, usdAsset),
+			usdEurOffer.OfferId:      makeTradingPair(assetStringToID, usdAsset, eurAsset),
 		},
 	}
 
@@ -791,50 +858,64 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		t.FailNow()
 	}
 
+	assetStringToID := map[string]int32{}
+	idToAssetString := []string{}
+	for i, asset := range []xdr.Asset{
+		nativeAsset,
+		usdAsset,
+		eurAsset,
+	} {
+		assetStringToID[asset.String()] = int32(i)
+		idToAssetString = append(idToAssetString, asset.String())
+	}
 	expectedGraph := &OrderBookGraph{
-		venuesForSellingAsset: map[string]edgeSet{
-			nativeAsset.String(): {
+		idToAssetString: idToAssetString,
+		assetStringToID: assetStringToID,
+		venuesForSellingAsset: []edgeSet{
+			{
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(quarterOffer, fiftyCentsOffer),
 				},
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 				},
 			},
-			usdAsset.String(): {
+			{
 				{
-					eurAsset.String(),
+					assetStringToID[eurAsset.String()],
 					makeVenues(eurUsdOffer),
 				},
 			},
+			{},
 		},
-		venuesForBuyingAsset: map[string]edgeSet{
-			usdAsset.String(): {
+		venuesForBuyingAsset: []edgeSet{
+			{},
+			{
 				{
-					nativeAsset.String(),
+					assetStringToID[nativeAsset.String()],
 					makeVenues(quarterOffer, fiftyCentsOffer),
 				},
 			},
-			eurAsset.String(): {
+			{
 				{
-					nativeAsset.String(),
+					assetStringToID[nativeAsset.String()],
 					makeVenues(eurOffer, twoEurOffer, threeEurOffer),
 				},
 				{
-					usdAsset.String(),
+					assetStringToID[usdAsset.String()],
 					makeVenues(eurUsdOffer),
 				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId:    makeTradingPair(usdAsset, nativeAsset),
-			fiftyCentsOffer.OfferId: makeTradingPair(usdAsset, nativeAsset),
-			eurOffer.OfferId:        makeTradingPair(eurAsset, nativeAsset),
-			twoEurOffer.OfferId:     makeTradingPair(eurAsset, nativeAsset),
-			threeEurOffer.OfferId:   makeTradingPair(eurAsset, nativeAsset),
-			eurUsdOffer.OfferId:     makeTradingPair(eurAsset, usdAsset),
+			quarterOffer.OfferId:    makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			fiftyCentsOffer.OfferId: makeTradingPair(assetStringToID, usdAsset, nativeAsset),
+			eurOffer.OfferId:        makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			twoEurOffer.OfferId:     makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			threeEurOffer.OfferId:   makeTradingPair(assetStringToID, eurAsset, nativeAsset),
+			eurUsdOffer.OfferId:     makeTradingPair(assetStringToID, eurAsset, usdAsset),
 		},
 	}
 
@@ -1084,52 +1165,46 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 	allPaths := []Path{
 		{
 			SourceAmount:      3,
-			SourceAsset:       eurAsset,
-			sourceAssetString: eurAsset.String(),
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       eurAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      4,
-			SourceAsset:       eurAsset,
-			sourceAssetString: eurAsset.String(),
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       eurAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      1,
-			SourceAsset:       usdAsset,
-			sourceAssetString: usdAsset.String(),
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       usdAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      2,
-			SourceAsset:       eurAsset,
-			sourceAssetString: eurAsset.String(),
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       eurAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
-			SourceAmount:      2,
-			SourceAsset:       eurAsset,
-			sourceAssetString: eurAsset.String(),
-			InteriorNodes: []xdr.Asset{
-				nativeAsset,
+			SourceAmount: 2,
+			SourceAsset:  eurAsset.String(),
+			InteriorNodes: []string{
+				nativeAsset.String(),
 			},
-			DestinationAsset:  yenAsset,
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      10,
-			SourceAsset:       nativeAsset,
-			sourceAssetString: nativeAsset.String(),
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       nativeAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 	}
@@ -1143,39 +1218,39 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 	expectedPaths := []Path{
 		{
 			SourceAmount:      2,
-			SourceAsset:       eurAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       eurAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount: 2,
-			SourceAsset:  eurAsset,
-			InteriorNodes: []xdr.Asset{
-				nativeAsset,
+			SourceAsset:  eurAsset.String(),
+			InteriorNodes: []string{
+				nativeAsset.String(),
 			},
-			DestinationAsset:  yenAsset,
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      3,
-			SourceAsset:       eurAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       eurAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      1,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       usdAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 		{
 			SourceAmount:      10,
-			SourceAsset:       nativeAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  yenAsset,
+			SourceAsset:       nativeAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 1000,
 		},
 	}
@@ -1186,55 +1261,48 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 	allPaths := []Path{
 		{
-			SourceAmount:           1000,
-			SourceAsset:            yenAsset,
-			InteriorNodes:          []xdr.Asset{},
-			DestinationAsset:       eurAsset,
-			destinationAssetString: eurAsset.String(),
-			DestinationAmount:      3,
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  eurAsset.String(),
+			DestinationAmount: 3,
 		},
 		{
-			SourceAmount:           1000,
-			SourceAsset:            yenAsset,
-			InteriorNodes:          []xdr.Asset{},
-			DestinationAsset:       eurAsset,
-			destinationAssetString: eurAsset.String(),
-			DestinationAmount:      4,
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  eurAsset.String(),
+			DestinationAmount: 4,
 		},
 		{
-			SourceAmount:           1000,
-			SourceAsset:            yenAsset,
-			InteriorNodes:          []xdr.Asset{},
-			DestinationAsset:       usdAsset,
-			destinationAssetString: usdAsset.String(),
-			DestinationAmount:      1,
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  usdAsset.String(),
+			DestinationAmount: 1,
 		},
 		{
-			SourceAmount:           1000,
-			SourceAsset:            yenAsset,
-			sourceAssetString:      eurAsset.String(),
-			InteriorNodes:          []xdr.Asset{},
-			DestinationAsset:       eurAsset,
-			destinationAssetString: eurAsset.String(),
-			DestinationAmount:      2,
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  eurAsset.String(),
+			DestinationAmount: 2,
 		},
 		{
 			SourceAmount: 1000,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				nativeAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				nativeAsset.String(),
 			},
-			DestinationAsset:       eurAsset,
-			destinationAssetString: eurAsset.String(),
-			DestinationAmount:      2,
+			DestinationAsset:  eurAsset.String(),
+			DestinationAmount: 2,
 		},
 		{
-			SourceAmount:           1000,
-			SourceAsset:            yenAsset,
-			InteriorNodes:          []xdr.Asset{},
-			DestinationAsset:       nativeAsset,
-			destinationAssetString: nativeAsset.String(),
-			DestinationAmount:      10,
+			SourceAmount:      1000,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  nativeAsset.String(),
+			DestinationAmount: 10,
 		},
 	}
 	sortedAndFiltered, err := sortAndFilterPaths(
@@ -1247,37 +1315,37 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 	expectedPaths := []Path{
 		{
 			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  eurAsset,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  eurAsset.String(),
 			DestinationAmount: 4,
 		},
 		{
 			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  eurAsset,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  eurAsset.String(),
 			DestinationAmount: 3,
 		},
 		{
 			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  eurAsset,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  eurAsset.String(),
 			DestinationAmount: 2,
 		},
 		{
 			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  usdAsset,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  usdAsset.String(),
 			DestinationAmount: 1,
 		},
 		{
 			SourceAmount:      1000,
-			SourceAsset:       yenAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  nativeAsset,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 10,
 		},
 	}
@@ -1406,29 +1474,29 @@ func TestFindPaths(t *testing.T) {
 		{
 			// arbitrage usd then trade to xlm
 			SourceAmount: 2,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				usdAsset,
+			SourceAsset:  usdAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				usdAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  nativeAsset,
+			SourceAsset:       usdAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				chfAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				chfAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1482,40 +1550,40 @@ func TestFindPaths(t *testing.T) {
 		{
 			// arbitrage usd then trade to xlm
 			SourceAmount: 2,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				usdAsset,
+			SourceAsset:  usdAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				usdAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  nativeAsset,
+			SourceAsset:       usdAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount: 2,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				usdAsset,
-				eurAsset,
-				chfAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				usdAsset.String(),
+				eurAsset.String(),
+				chfAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				chfAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				chfAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1547,40 +1615,40 @@ func TestFindPaths(t *testing.T) {
 		{
 			// arbitrage usd then trade to xlm
 			SourceAmount: 2,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				usdAsset,
+			SourceAsset:  usdAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				usdAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  nativeAsset,
+			SourceAsset:       usdAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount: 2,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				usdAsset,
-				eurAsset,
-				chfAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				usdAsset.String(),
+				eurAsset.String(),
+				chfAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				chfAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				chfAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1686,19 +1754,19 @@ func TestFindPathsStartingAt(t *testing.T) {
 		{
 			// arbitrage usd then trade to xlm
 			SourceAmount: 5,
-			SourceAsset:  usdAsset,
-			InteriorNodes: []xdr.Asset{
-				eurAsset,
-				usdAsset,
+			SourceAsset:  usdAsset.String(),
+			InteriorNodes: []string{
+				eurAsset.String(),
+				usdAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 60,
 		},
 		{
 			SourceAmount:      5,
-			SourceAsset:       usdAsset,
-			InteriorNodes:     []xdr.Asset{},
-			DestinationAsset:  nativeAsset,
+			SourceAsset:       usdAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1744,12 +1812,12 @@ func TestFindPathsStartingAt(t *testing.T) {
 	expectedPaths = []Path{
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				chfAsset.String(),
+				eurAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1775,23 +1843,23 @@ func TestFindPathsStartingAt(t *testing.T) {
 	expectedPaths = []Path{
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
-				usdAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				chfAsset.String(),
+				eurAsset.String(),
+				usdAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 80,
 		},
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				chfAsset.String(),
+				eurAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1817,33 +1885,33 @@ func TestFindPathsStartingAt(t *testing.T) {
 	expectedPaths = []Path{
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				chfAsset.String(),
+				eurAsset.String(),
 			},
-			DestinationAsset:  usdAsset,
+			DestinationAsset:  usdAsset.String(),
 			DestinationAmount: 20,
 		},
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
-				usdAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				chfAsset.String(),
+				eurAsset.String(),
+				usdAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 80,
 		},
 		{
 			SourceAmount: 5,
-			SourceAsset:  yenAsset,
-			InteriorNodes: []xdr.Asset{
-				chfAsset,
-				eurAsset,
+			SourceAsset:  yenAsset.String(),
+			InteriorNodes: []string{
+				chfAsset.String(),
+				eurAsset.String(),
 			},
-			DestinationAsset:  nativeAsset,
+			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
 	}
@@ -1881,11 +1949,11 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		// exchange 112 Euros. To get 112 EUR, we need to exchange 127 USD.
 		expectedPaths := []Path{
 			{
-				SourceAsset:       usdAsset,
+				SourceAsset:       usdAsset.String(),
 				SourceAmount:      127,
-				DestinationAsset:  yenAsset,
+				DestinationAsset:  yenAsset.String(),
 				DestinationAmount: 100,
-				InteriorNodes:     []xdr.Asset{eurAsset},
+				InteriorNodes:     []string{eurAsset.String()},
 			},
 		}
 
@@ -1939,11 +2007,11 @@ func TestPathThroughLiquidityPools(t *testing.T) {
 		)
 
 		expectedPaths := []Path{{
-			SourceAsset:       chfAsset,
+			SourceAsset:       chfAsset.String(),
 			SourceAmount:      73,
-			DestinationAsset:  yenAsset,
+			DestinationAsset:  yenAsset.String(),
 			DestinationAmount: 100,
-			InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
+			InteriorNodes:     []string{usdAsset.String(), eurAsset.String()},
 		}}
 
 		assert.NoError(t, err)
@@ -2015,17 +2083,17 @@ func TestInterleavedPaths(t *testing.T) {
 	// If we only go through pools, it's less-so:
 	//   90 CHF for 152 USD for 100 XLM
 	expectedPaths := []Path{{
-		SourceAsset:       chfAsset,
+		SourceAsset:       chfAsset.String(),
 		SourceAmount:      64,
-		DestinationAsset:  nativeAsset,
+		DestinationAsset:  nativeAsset.String(),
 		DestinationAmount: 100,
-		InteriorNodes:     []xdr.Asset{usdAsset, eurAsset},
+		InteriorNodes:     []string{usdAsset.String(), eurAsset.String()},
 	}, {
-		SourceAsset:       chfAsset,
+		SourceAsset:       chfAsset.String(),
 		SourceAmount:      90,
-		DestinationAsset:  nativeAsset,
+		DestinationAsset:  nativeAsset.String(),
 		DestinationAmount: 100,
-		InteriorNodes:     []xdr.Asset{usdAsset},
+		InteriorNodes:     []string{usdAsset.String()},
 	}}
 
 	assert.NoError(t, err)
@@ -2040,11 +2108,11 @@ func TestInterleavedPaths(t *testing.T) {
 	)
 
 	expectedPaths = []Path{{
-		SourceAsset:       chfAsset,
+		SourceAsset:       chfAsset.String(),
 		SourceAmount:      96,
-		DestinationAsset:  nativeAsset,
+		DestinationAsset:  nativeAsset.String(),
 		DestinationAmount: 101,
-		InteriorNodes:     []xdr.Asset{usdAsset},
+		InteriorNodes:     []string{usdAsset.String()},
 	}}
 
 	assert.NoError(t, err)
@@ -2111,11 +2179,11 @@ func TestInterleavedFixedPaths(t *testing.T) {
 
 	expectedPaths := []Path{
 		{
-			SourceAsset:       nativeAsset,
+			SourceAsset:       nativeAsset.String(),
 			SourceAmount:      1234,
-			DestinationAsset:  chfAsset,
+			DestinationAsset:  chfAsset.String(),
 			DestinationAmount: 13,
-			InteriorNodes:     []xdr.Asset{usdAsset},
+			InteriorNodes:     []string{usdAsset.String()},
 		},
 	}
 
@@ -2192,23 +2260,15 @@ func TestRepro(t *testing.T) {
 	// can't, because BTC/YBX pool is too small
 }
 
-func printPath(path Path) {
-	fmt.Printf(" - %d %s -> ", path.SourceAmount, getCode(path.SourceAsset))
-
-	for _, hop := range path.InteriorNodes {
-		fmt.Printf("%s -> ", getCode(hop))
-	}
-
-	fmt.Printf("%d %s\n",
-		path.DestinationAmount, getCode(path.DestinationAsset))
-}
-
 func makeVenues(offers ...xdr.OfferEntry) Venues {
 	return Venues{offers: offers}
 }
 
-func makeTradingPair(buying, selling xdr.Asset) tradingPair {
-	return tradingPair{buyingAsset: buying.String(), sellingAsset: selling.String()}
+func makeTradingPair(assetStringToID map[string]int32, buying, selling xdr.Asset) tradingPair {
+	return tradingPair{
+		buyingAsset:  assetStringToID[buying.String()],
+		sellingAsset: assetStringToID[selling.String()],
+	}
 }
 
 func makePool(A, B xdr.Asset, a, b xdr.Int64) xdr.LiquidityPoolEntry {

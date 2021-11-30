@@ -6,17 +6,17 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// edgeSet maintains a mapping of strings (asset keys) to a set of venues, which
+// edgeSet maintains a mapping of assets to a set of venues, which
 // is composed of a sorted lists of offers and, optionally, a liquidity pool.
 // The offers are sorted by ascending price (in terms of the buying asset).
 type edgeSet []edge
 
 type edge struct {
-	key   string
+	key   int32
 	value Venues
 }
 
-func (e edgeSet) find(key string) int {
+func (e edgeSet) find(key int32) int {
 	for i := 0; i < len(e); i++ {
 		if e[i].key == key {
 			return i
@@ -26,7 +26,7 @@ func (e edgeSet) find(key string) int {
 }
 
 // addOffer will insert the given offer into the edge set
-func (e edgeSet) addOffer(key string, offer xdr.OfferEntry) edgeSet {
+func (e edgeSet) addOffer(key int32, offer xdr.OfferEntry) edgeSet {
 	// The list of offers in a venue is sorted by cheapest to most expensive
 	// price to convert buyingAsset to sellingAsset
 	i := e.find(key)
@@ -51,7 +51,7 @@ func (e edgeSet) addOffer(key string, offer xdr.OfferEntry) edgeSet {
 }
 
 // addPool makes `pool` a viable venue at `key`.
-func (e edgeSet) addPool(key string, pool xdr.LiquidityPoolEntry) edgeSet {
+func (e edgeSet) addPool(key int32, pool liquidityPool) edgeSet {
 	i := e.find(key)
 	if i < 0 {
 		return append(e, edge{key: key, value: Venues{pool: pool}})
@@ -62,7 +62,7 @@ func (e edgeSet) addPool(key string, pool xdr.LiquidityPoolEntry) edgeSet {
 
 // removeOffer will delete the given offer from the edge set, returning whether
 // or not the given offer was actually found.
-func (e edgeSet) removeOffer(key string, offerID xdr.Int64) (edgeSet, bool) {
+func (e edgeSet) removeOffer(key int32, offerID xdr.Int64) (edgeSet, bool) {
 	i := e.find(key)
 	if i < 0 {
 		return e, false
@@ -94,7 +94,7 @@ func (e edgeSet) removeOffer(key string, offerID xdr.Int64) (edgeSet, bool) {
 	return e, true
 }
 
-func (e edgeSet) removePool(key string) edgeSet {
+func (e edgeSet) removePool(key int32) edgeSet {
 	i := e.find(key)
 	if i < 0 {
 		return e
