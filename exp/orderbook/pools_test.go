@@ -166,22 +166,6 @@ func TestLiquidityPoolMath(t *testing.T) {
 		// ceil(10000 / 0.997) = 10031 we need to receive 10000.
 		assertPoolExchange(t, recv, 10000, -1, 20000, 10000, 30, true, 10031, -1)
 	})
-
-	t.Run("Potential Internal Overflow", func(t *testing.T) {
-
-		// Test for internal uint128 underflow/overflow in calculatePoolPayout() and  calculatePoolExpectation() by providing
-		// input values which cause the maximum internal calculations
-
-		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, -1, 10000)
-		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 0, false, 2147698418, -1)
-
-		// Check with reserveB < disbursed
-		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, 0, 1, 0, false, 2147698418, -1)
-
-		// Check with poolFeeBips > 10000
-		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, -1, 10000)
-		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 2147698418, -1)
-	})
 }
 
 // assertPoolExchange validates that pool inputs match their expected outputs.
