@@ -126,30 +126,31 @@ func Encode(version VersionByte, src []byte) (string, error) {
 	}
 
 	// check src does not exceed maximum payload size
-	// TODO: perform this check per version since each version has different maximum lengths
 	if len(src) > maxPayloadSize {
 		return "", fmt.Errorf("data exceeds maximum payload size for strkey")
 	}
 
 	// pack
 	//  1 byte version
-	//  payload bytes
+	//  src bytes
 	//  2 byte crc16
 	const maxSize = 1 + maxPayloadSize + 2
+	rawArr := [maxSize]byte{}
 	size := 1 + len(src) + 2
-	arr := [maxSize]byte{}
-	buf := arr[:size]
-	buf[0] = byte(version)
-	copy(buf[1:], src)
-	crc := crc16.Checksum(buf[:1+len(src)])
-	binary.LittleEndian.PutUint16(buf[1+len(src):], crc)
+	raw := rawArr[:size]
+	raw[0] = byte(version)
+	copy(raw[1:], src)
+	crc := crc16.Checksum(raw[:1+len(src)])
+	binary.LittleEndian.PutUint16(raw[1+len(src):], crc)
 
 	// base32 encode
-	encArr := [(maxSize*8 + 4) / 5]byte{} // 8n+4 is the calc for no padding
-	encBuf := encArr[:encoding.EncodedLen(size)]
-	encoding.Encode(encBuf, buf)
+	const encMaxSize = (maxSize*8 + 4) / 5 // 8n+4 is the EncodedLen for no padding
+	encArr := [encMaxSize]byte{}
+	encSize := encoding.EncodedLen(size)
+	enc := encArr[:encSize]
+	encoding.Encode(enc, raw)
 
-	return string(encBuf), nil
+	return string(enc), nil
 }
 
 // MustEncode is like Encode, but panics on error
