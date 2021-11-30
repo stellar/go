@@ -31,6 +31,9 @@ const (
 )
 
 var (
+	// ErrTimeout is an error returned by Session methods when request has
+	// taken longer than context's deadline max duration
+	ErrTimeout = errors.New("canceling statement due to lack of response within timeout period")
 	// ErrCancelled is an error returned by Session methods when request has
 	// been cancelled (ex. context cancelled).
 	ErrCancelled = errors.New("canceling statement due to user request")
