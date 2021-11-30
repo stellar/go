@@ -2,8 +2,7 @@ package orderbook
 
 import (
 	"math"
-
-	"lukechampine.com/uint128"
+	"math/big"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -21,7 +20,6 @@ import (
 const (
 	tradeTypeDeposit     = iota // deposit into pool, what's the payout?
 	tradeTypeExpectation = iota // expect payout, what to deposit?
-	maxBips              = 10000
 )
 
 var (
@@ -29,7 +27,6 @@ var (
 	errBadPoolType   = errors.New("Unsupported liquidity pool: must be ConstantProduct")
 	errBadTradeType  = errors.New("Unknown pool exchange type requested")
 	errBadAmount     = errors.New("Exchange amount must be positive")
-	maxBips128       = uint128.From64(maxBips)
 )
 
 // makeTrade simulates execution of an exchange with a liquidity pool.
@@ -94,31 +91,32 @@ func makeTrade(
 //
 // It returns false if the calculation overflows.
 func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, bool) {
-	X, Y := uint128.From64(uint64(reserveA)), uint128.From64(uint64(reserveB))
-	F, x := uint128.From64(uint64(feeBips)), uint128.From64(uint64(received))
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, x := big.NewInt(int64(feeBips)), big.NewInt(int64(received))
 
 	// would this deposit overflow the reserve?
-	// is feeBips within range?
-	if received > math.MaxInt64-reserveA || feeBips > maxBips {
+	if received > math.MaxInt64-reserveA {
 		return 0, false
 	}
 
 	// We do all of the math in bips, so it's all upscaled by this value.
-	f := maxBips128.Sub(F) // upscaled 1 - F
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
 
 	// right half: X + (1 - F)x
-	denom := X.Mul(maxBips128).Add(x.Mul(f))
-	if denom.IsZero() { // avoid div-by-zero panic
+	denom := X.Mul(X, maxBips).Add(X, new(big.Int).Mul(x, f))
+	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
 		return 0, false
 	}
 
 	// left half, a: (1 - F) Yx
-	numer := Y.Mul(x).Mul(f)
+	numer := Y.Mul(Y, x).Mul(Y, f)
 
 	// divide & check overflow
-	result := numer.Div(denom)
+	result := numer.Div(numer, denom)
 
-	return xdr.Int64(result.Lo), result.Hi == 0 && result.Lo <= math.MaxInt64
+	i := xdr.Int64(result.Int64())
+	return i, result.IsInt64() && i > 0
 }
 
 // calculatePoolExpectation determines how much of `reserveA` you would need to
@@ -130,33 +128,34 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 func calculatePoolExpectation(
 	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32,
 ) (xdr.Int64, bool) {
-	X, Y := uint128.From64(uint64(reserveA)), uint128.From64(uint64(reserveB))
-	F, y := uint128.From64(uint64(feeBips)), uint128.From64(uint64(disbursed))
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, y := big.NewInt(int64(feeBips)), big.NewInt(int64(disbursed))
 
 	// sanity check: disbursing shouldn't underflow the reserve
-	// and bips should be within the expected range
-	if disbursed >= reserveB || feeBips > maxBips {
+	if disbursed >= reserveB {
 		return 0, false
 	}
 
 	// We do all of the math in bips, so it's all upscaled by this value.
-	f := maxBips128.Sub(F) // upscaled 1 - F
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
 
-	denom := Y.Sub(y).Mul(f) // right half: (Y - y)(1 - F)
-	if denom.IsZero() {      // avoid div-by-zero panic
+	denom := Y.Sub(Y, y).Mul(Y, f)     // right half: (Y - y)(1 - F)
+	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
 		return 0, false
 	}
 
-	numer := X.Mul(y).Mul(maxBips128) // left half: Xy
+	numer := X.Mul(X, y).Mul(X, maxBips) // left half: Xy
 
-	result, rem := numer.QuoRem(denom)
+	result, rem := new(big.Int), new(big.Int)
+	result.DivMod(numer, denom, rem)
 
 	// hacky way to ceil(): if there's a remainder, add 1
-	if rem.Cmp64(0) > 0 {
-		result = result.Add64(1)
+	if rem.Cmp(big.NewInt(0)) > 0 {
+		result.Add(result, big.NewInt(1))
 	}
 
-	return xdr.Int64(result.Lo), result.Hi == 0 && result.Lo <= math.MaxInt64
+	return xdr.Int64(result.Int64()), result.IsInt64()
 }
 
 // getOtherAsset returns the other asset in the liquidity pool. Note that
