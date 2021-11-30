@@ -16,8 +16,8 @@ func extractAsset(asset string, t, c, i *string) error {
 		return nil
 	}
 	parts := strings.Split(asset, "/")
-	if len(parts) == 3 {
-		return fmt.Errorf("expected length to be 4 but got %v", parts)
+	if len(parts) != 3 {
+		return fmt.Errorf("expected length to be 3 but got %v", parts)
 	}
 	*t = parts[0]
 	*c = parts[1]
