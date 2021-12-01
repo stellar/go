@@ -172,15 +172,18 @@ func TestLiquidityPoolMath(t *testing.T) {
 		// Test for internal uint128 underflow/overflow in calculatePoolPayout() and  calculatePoolExpectation() by providing
 		// input values which cause the maximum internal calculations
 
-		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, -1, 10000)
-		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 0, false, 2147698418, -1)
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, 0, 0)
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, 0, 0)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 0, false, 0, 0)
 
 		// Check with reserveB < disbursed
-		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, 0, 1, 0, false, 2147698418, -1)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, 0, 1, 0, false, 0, 0)
 
 		// Check with poolFeeBips > 10000
-		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, -1, 10000)
-		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 2147698418, -1)
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, 0, 0)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 0, 0)
+
+		assertPoolExchange(t, send, 92017260901926686, 9157376027422527, 4000000000000000000, 30, 1, false, 0, 0)
 	})
 }
 
