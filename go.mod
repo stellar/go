@@ -25,6 +25,7 @@ require (
 	github.com/gorilla/schema v1.1.0
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
+	github.com/holiman/uint256 v1.2.0
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -83,5 +84,4 @@ require (
 	gopkg.in/gorp.v1 v1.7.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.4.1
 	gopkg.in/tylerb/graceful.v1 v1.2.13
-	lukechampine.com/uint128 v1.1.1
 )

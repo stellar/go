@@ -2,10 +2,8 @@ package orderbook
 
 import (
 	"math"
-	"math/bits"
 
-	"lukechampine.com/uint128"
-
+	"github.com/holiman/uint256"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -22,7 +20,6 @@ import (
 const (
 	tradeTypeDeposit     = iota // deposit into pool, what's the payout?
 	tradeTypeExpectation = iota // expect payout, what to deposit?
-	maxBips              = 10000
 )
 
 var (
@@ -30,8 +27,6 @@ var (
 	errBadPoolType   = errors.New("Unsupported liquidity pool: must be ConstantProduct")
 	errBadTradeType  = errors.New("Unknown pool exchange type requested")
 	errBadAmount     = errors.New("Exchange amount must be positive")
-	one128           = uint128.Uint128{1, 0}
-	maxBips128       = uint128.From64(maxBips)
 )
 
 // makeTrade simulates execution of an exchange with a liquidity pool.
@@ -89,22 +84,6 @@ func makeTrade(
 	return result, nil
 }
 
-func mulWithOverflowCheck(u, v uint128.Uint128) (uint128.Uint128, bool) {
-	hi, lo := bits.Mul64(u.Lo, v.Lo)
-	p0, p1 := bits.Mul64(u.Hi, v.Lo)
-	p2, p3 := bits.Mul64(u.Lo, v.Hi)
-	hi, c0 := bits.Add64(hi, p1, 0)
-	hi, c1 := bits.Add64(hi, p3, c0)
-	overflew := (u.Hi != 0 && v.Hi != 0) || p0 != 0 || p2 != 0 || c1 != 0
-	return uint128.Uint128{lo, hi}, !overflew
-}
-
-func addWithOverflowCheck(u, v uint128.Uint128) (uint128.Uint128, bool) {
-	lo, carry := bits.Add64(u.Lo, v.Lo, 0)
-	hi, carry := bits.Add64(u.Hi, v.Hi, carry)
-	return uint128.Uint128{lo, hi}, carry == 0
-}
-
 // calculatePoolPayout calculates the amount of `reserveB` disbursed from the
 // pool for a `received` amount of `reserveA` . From CAP-38:
 //
@@ -112,52 +91,32 @@ func addWithOverflowCheck(u, v uint128.Uint128) (uint128.Uint128, bool) {
 //
 // It returns false if the calculation overflows.
 func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, bool) {
-	X, Y := uint128.From64(uint64(reserveA)), uint128.From64(uint64(reserveB))
-	F, x := uint128.From64(uint64(feeBips)), uint128.From64(uint64(received))
+	X, Y := uint256.NewInt(uint64(reserveA)), uint256.NewInt(uint64(reserveB))
+	F, x := uint256.NewInt(uint64(feeBips)), uint256.NewInt(uint64(received))
 
 	// would this deposit overflow the reserve?
-	// is feeBips within range?
 	if received > math.MaxInt64-reserveA {
 		return 0, false
 	}
 
 	// We do all of the math in bips, so it's all upscaled by this value.
-	if feeBips > maxBips {
-		return 0, false
-	}
-	f := maxBips128.Sub(F) // upscaled 1 - F
+	maxBips := uint256.NewInt(10000)
+	f := new(uint256.Int).Sub(maxBips, F) // upscaled 1 - F
 
 	// right half: X + (1 - F)x
-	denom, ok := mulWithOverflowCheck(X, maxBips128)
-	if !ok {
-		return 0, false
-	}
-	xMulf, ok := mulWithOverflowCheck(x, f)
-	if !ok {
-		return 0, false
-	}
-	denom, ok = addWithOverflowCheck(denom, xMulf)
-	if !ok {
-		return 0, false
-	}
-	if denom.IsZero() { // avoid div-by-zero panic
+	denom := X.Mul(X, maxBips).Add(X, new(uint256.Int).Mul(x, f))
+	if denom.Cmp(uint256.NewInt(0)) == 0 { // avoid div-by-zero panic
 		return 0, false
 	}
 
 	// left half, a: (1 - F) Yx
-	numer, ok := mulWithOverflowCheck(Y, x)
-	if !ok {
-		return 0, false
-	}
-	numer, ok = mulWithOverflowCheck(numer, f)
-	if !ok {
-		return 0, false
-	}
+	numer := Y.Mul(Y, x).Mul(Y, f)
 
 	// divide & check overflow
-	result := numer.Div(denom)
+	result := numer.Div(numer, denom)
 
-	return xdr.Int64(result.Lo), result.Hi == 0 && result.Lo <= math.MaxInt64
+	val := xdr.Int64(result.Uint64())
+	return val, result.IsUint64() && val >= 0
 }
 
 // calculatePoolExpectation determines how much of `reserveA` you would need to
@@ -169,52 +128,36 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 func calculatePoolExpectation(
 	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32,
 ) (xdr.Int64, bool) {
-	X, Y := uint128.From64(uint64(reserveA)), uint128.From64(uint64(reserveB))
-	F, y := uint128.From64(uint64(feeBips)), uint128.From64(uint64(disbursed))
+	X, Y := uint256.NewInt(uint64(reserveA)), uint256.NewInt(uint64(reserveB))
+	F, y := uint256.NewInt(uint64(feeBips)), uint256.NewInt(uint64(disbursed))
 
-	// We do all of the math in bips, so it's all upscaled by this value.
-	if feeBips > maxBips {
-		return 0, false
-	}
-	f := maxBips128.Sub(F) // upscaled 1 - F
-
-	// right half: (Y - y)(1 - F)
 	// sanity check: disbursing shouldn't underflow the reserve
 	if disbursed >= reserveB {
 		return 0, false
 	}
-	denom := Y.Sub(y)
-	var ok bool
-	denom, ok = mulWithOverflowCheck(denom, f)
-	if !ok {
+
+	// We do all of the math in bips, so it's all upscaled by this value.
+	maxBips := uint256.NewInt(10000)
+	f := new(uint256.Int).Sub(maxBips, F) // upscaled 1 - F
+
+	denom := Y.Sub(Y, y).Mul(Y, f)         // right half: (Y - y)(1 - F)
+	if denom.Cmp(uint256.NewInt(0)) == 0 { // avoid div-by-zero panic
 		return 0, false
 	}
 
-	if denom.IsZero() { // avoid div-by-zero panic
-		return 0, false
-	}
+	numer := X.Mul(X, y).Mul(X, maxBips) // left half: Xy
 
-	// left half: Xy
-	numer, ok := mulWithOverflowCheck(X, y)
-	if !ok {
-		return 0, false
-	}
-	numer, ok = mulWithOverflowCheck(numer, maxBips128)
-	if !ok {
-		return 0, false
-	}
-
-	result, rem := numer.QuoRem(denom)
+	result, rem := new(uint256.Int), new(uint256.Int)
+	result.Div(numer, denom)
+	rem.Mod(numer, denom)
 
 	// hacky way to ceil(): if there's a remainder, add 1
-	if rem.Cmp64(0) > 0 {
-		result, ok = addWithOverflowCheck(result, one128)
-		if !ok {
-			return 0, false
-		}
+	if rem.Cmp(uint256.NewInt(0)) > 0 {
+		result.AddUint64(result, 1)
 	}
 
-	return xdr.Int64(result.Lo), result.Hi == 0 && result.Lo <= math.MaxInt64
+	val := xdr.Int64(result.Uint64())
+	return val, result.IsUint64() && val >= 0
 }
 
 // getOtherAsset returns the other asset in the liquidity pool. Note that
