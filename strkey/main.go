@@ -43,7 +43,7 @@ const maxPayloadSize = 40
 const maxRawSize = 1 + maxPayloadSize + 2
 
 // maxEncodedSize is the maximum length of a strkey when base32 encoded.
-const maxEncodedSize = (maxRawSize*8 + 4) / 5 // 8n+4 is the EncodedLen for no padding
+const maxEncodedSize = (maxRawSize*8 + 4) / 5 // (8n+4)/5 is the EncodedLen for no padding
 
 // encoding is the encoding to use when encoding and decoding the strkey to and
 // from strings.
