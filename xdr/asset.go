@@ -254,19 +254,6 @@ func (a Asset) String() string {
 	return t + "/" + c + "/" + i
 }
 
-// StringWithBuffer works like String() but uses an strkey.EncodingBuffer
-func (a Asset) StringWithBuffer(encoder *strkey.EncodingBuffer) string {
-	var t, c, i string
-
-	a.MustExtractWithBuffer(&t, &c, &i, encoder)
-
-	if a.Type == AssetTypeAssetTypeNative {
-		return t
-	}
-
-	return t + "/" + c + "/" + i
-}
-
 // StringCanonical returns a display friendly form of the asset following its
 // canonical representation
 func (a Asset) StringCanonical() string {
@@ -308,12 +295,6 @@ func (a Asset) Equals(other Asset) bool {
 // code and issuer to `code` and `issuer` respectively if they are of type
 // *string and the asset is non-native
 func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) error {
-	encoder := strkey.NewEncodingBuffer()
-	return a.ExtractWithBuffer(typ, code, issuer, encoder)
-}
-
-// ExtractWithBuffer works like Extract but uses an strkey.EncodingBuffer
-func (a Asset) ExtractWithBuffer(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.EncodingBuffer) error {
 	switch typ := typ.(type) {
 	case *AssetType:
 		*typ = a.Type
@@ -346,11 +327,11 @@ func (a Asset) ExtractWithBuffer(typ interface{}, code interface{}, issuer inter
 			case AssetTypeAssetTypeCreditAlphanum4:
 				an := a.MustAlphaNum4()
 				raw := an.Issuer.MustEd25519()
-				*issuer = encoder.MustEncode(strkey.VersionByteAccountID, raw[:])
+				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
 				raw := an.Issuer.MustEd25519()
-				*issuer = encoder.MustEncode(strkey.VersionByteAccountID, raw[:])
+				*issuer = strkey.MustEncode(strkey.VersionByteAccountID, raw[:])
 			}
 		default:
 			return errors.New("can't extract issuer")
@@ -358,15 +339,6 @@ func (a Asset) ExtractWithBuffer(typ interface{}, code interface{}, issuer inter
 	}
 
 	return nil
-}
-
-// MustExtractWithBuffer behaves as ExtractWithBuffer, but panics if an error occurs.
-func (a Asset) MustExtractWithBuffer(typ interface{}, code interface{}, issuer interface{}, encoder *strkey.EncodingBuffer) {
-	err := a.ExtractWithBuffer(typ, code, issuer, encoder)
-
-	if err != nil {
-		panic(err)
-	}
 }
 
 // MustExtract behaves as Extract, but panics if an error occurs.

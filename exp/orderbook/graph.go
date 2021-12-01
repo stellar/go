@@ -5,7 +5,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -85,8 +84,6 @@ type OrderBookGraph struct {
 	lock           sync.RWMutex
 	// the orderbook graph is accurate up to lastLedger
 	lastLedger uint32
-
-	strkeyBuffer *strkey.EncodingBuffer
 }
 
 var _ OBGraph = (*OrderBookGraph)(nil)
@@ -94,7 +91,6 @@ var _ OBGraph = (*OrderBookGraph)(nil)
 // NewOrderBookGraph constructs an empty OrderBookGraph
 func NewOrderBookGraph() *OrderBookGraph {
 	graph := &OrderBookGraph{}
-	graph.strkeyBuffer = strkey.NewEncodingBuffer()
 	graph.Clear()
 	return graph
 }
@@ -209,7 +205,7 @@ func (graph *OrderBookGraph) batch() *orderBookBatchedUpdates {
 }
 
 func (graph *OrderBookGraph) getOrCreateAssetID(asset xdr.Asset) int32 {
-	assetString := asset.StringWithBuffer(graph.strkeyBuffer)
+	assetString := asset.String()
 	id, ok := graph.assetStringToID[assetString]
 	if ok {
 		return id
@@ -372,14 +368,12 @@ func (graph *OrderBookGraph) FindPaths(
 	includePools bool,
 ) ([]Path, uint32, error) {
 
-	graph.lock.Lock() // for graph.strkeyBuffer
-	destinationAssetString := destinationAsset.StringWithBuffer(graph.strkeyBuffer)
+	destinationAssetString := destinationAsset.String()
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
-		sourceAssetString := sourceAsset.StringWithBuffer(graph.strkeyBuffer)
+		sourceAssetString := sourceAsset.String()
 		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
 	}
-	graph.lock.Unlock()
 
 	searchState := &sellingGraphSearchState{
 		graph:                  graph,
@@ -449,14 +443,12 @@ func (graph *OrderBookGraph) FindFixedPaths(
 ) ([]Path, uint32, error) {
 	target := map[int32]bool{}
 
-	graph.lock.Lock() // for graph.strkeyBuffer
-	sourceAssetString := sourceAsset.StringWithBuffer(graph.strkeyBuffer)
 	for _, destinationAsset := range destinationAssets {
-		destinationAssetString := destinationAsset.StringWithBuffer(graph.strkeyBuffer)
+		destinationAssetString := destinationAsset.String()
 		target[graph.assetStringToID[destinationAssetString]] = true
 	}
-	graph.lock.Unlock()
 
+	sourceAssetString := sourceAsset.String()
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
 		sourceAssetString: sourceAssetString,
