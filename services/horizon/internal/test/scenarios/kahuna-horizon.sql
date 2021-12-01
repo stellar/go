@@ -111,6 +111,8 @@ DROP TABLE IF EXISTS public.asset_stats;
 DROP TABLE IF EXISTS public.accounts_signers;
 DROP TABLE IF EXISTS public.accounts_data;
 DROP TABLE IF EXISTS public.accounts;
+DROP TABLE IF EXISTS public.history_operation_liquidity_pools;
+DROP TABLE IF EXISTS public.history_transaction_liquidity_pools;
 DROP AGGREGATE IF EXISTS public.min_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.max_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.last(anyelement);
@@ -675,7 +677,6 @@ CREATE TABLE trust_lines (
     last_modified_ledger integer NOT NULL
 );
 
-
 --
 -- Name: history_assets id; Type: DEFAULT; Schema: public; Owner: -
 --
@@ -765,6 +766,10 @@ INSERT INTO gorp_migrations VALUES ('41_add_sponsor_to_state_tables.sql', '2019-
 INSERT INTO gorp_migrations VALUES ('45_add_claimable_balances_history.sql', '2019-11-30 14:19:49.163718+01');
 INSERT INTO gorp_migrations VALUES ('46_add_muxed_accounts.sql', '2019-12-30 14:19:49.163718+01');
 INSERT INTO gorp_migrations VALUES ('47_precompute_trade_aggregations.sql', '2019-12-30 14:19:49.163719+01');
+INSERT INTO gorp_migrations VALUES ('48_rebuild_trade_aggregations.sql', '2021-12-02 01:33:33.428419+00');
+INSERT INTO gorp_migrations VALUES ('49_add_brin_index_trade_aggregations.sql', '2021-12-02 01:33:33.43274+00');
+INSERT INTO gorp_migrations VALUES ('50_liquidity_pools.sql', '2021-12-02 01:33:33.471893+00');
+INSERT INTO gorp_migrations VALUES ('51_remove_ht_unused_indexes.sql', '2021-12-02 01:33:33.47903+00');
 
 
 --
@@ -2036,6 +2041,76 @@ ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_acc
 ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
 ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
 
+
+-- 49
+CREATE INDEX IF NOT EXISTS htrd_agg_timestamp_brin ON history_trades_60000 USING brin(timestamp);
+
+-- 50
+CREATE TABLE liquidity_pools (
+    id text NOT NULL, -- hex-encoded PoolID
+    type smallint NOT NULL,
+    fee integer NOT NULL,
+    trustline_count bigint NOT NULL CHECK (trustline_count > 0),
+    share_count bigint NOT NULL DEFAULT 0 CHECK(share_count >= 0),
+    asset_reserves jsonb NOT NULL,
+    last_modified_ledger integer NOT NULL,
+    deleted boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX liquidity_pools_by_asset_reserves ON liquidity_pools USING gin(asset_reserves jsonb_path_ops);
+CREATE INDEX live_liquidity_pools ON liquidity_pools USING BTREE (deleted, last_modified_ledger);
+
+CREATE SEQUENCE history_liquidity_pools_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE history_liquidity_pools (
+    id bigint NOT NULL DEFAULT nextval('history_liquidity_pools_id_seq'::regclass),
+    liquidity_pool_id text NOT NULL
+);
+
+CREATE UNIQUE INDEX index_history_liquidity_pools_on_id ON history_liquidity_pools USING btree (id);
+CREATE UNIQUE INDEX index_history_liquidity_pools_on_liquidity_pool_id ON history_liquidity_pools USING btree (liquidity_pool_id);
+
+CREATE TABLE history_operation_liquidity_pools (
+    history_operation_id bigint NOT NULL,
+    history_liquidity_pool_id bigint NOT NULL
+);
+
+CREATE UNIQUE INDEX index_history_operation_liquidity_pools_on_ids ON history_operation_liquidity_pools USING btree (history_operation_id , history_liquidity_pool_id);
+CREATE INDEX index_history_operation_liquidity_pools_on_operation_id ON history_operation_liquidity_pools USING btree (history_operation_id);
+
+CREATE TABLE history_transaction_liquidity_pools (
+    history_transaction_id bigint NOT NULL,
+    history_liquidity_pool_id bigint NOT NULL
+);
+
+CREATE UNIQUE INDEX index_history_transaction_liquidity_pools_on_ids ON history_transaction_liquidity_pools USING btree (history_transaction_id , history_liquidity_pool_id);
+CREATE INDEX index_history_transaction_liquidity_pools_on_transaction_id ON history_transaction_liquidity_pools USING btree (history_transaction_id);
+
+ALTER TABLE trust_lines ADD liquidity_pool_id text;
+CREATE INDEX trust_lines_by_liquidity_pool_id ON trust_lines USING BTREE(liquidity_pool_id);
+
+DROP INDEX htrd_by_offer;
+DROP INDEX htrd_counter_lookup;
+
+ALTER TABLE history_trades DROP offer_id,
+                           ALTER base_account_id DROP NOT NULL,
+                           ALTER counter_account_id DROP NOT NULL,
+                           ADD base_liquidity_pool_id bigint,
+                           ADD counter_liquidity_pool_id bigint,
+                           ADD liquidity_pool_fee int;
+
+CREATE INDEX htrd_by_base_liquidity_pool_id ON history_trades USING BTREE(base_liquidity_pool_id);
+CREATE INDEX htrd_by_counter_liquidity_pool_id ON history_trades USING BTREE(counter_liquidity_pool_id);
+
+-- 51
+DROP INDEX IF EXISTS by_account;
+DROP INDEX IF EXISTS by_fee_account;
 
 --
 -- PostgreSQL database dump complete

@@ -810,11 +810,13 @@ func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 		"history_ledgers":                        "id",
 		"history_operation_claimable_balances":   "history_operation_id",
 		"history_operation_participants":         "history_operation_id",
+		"history_operation_liquidity_pools":      "history_operation_id",
 		"history_operations":                     "id",
 		"history_trades":                         "history_operation_id",
 		"history_trades_60000":                   "open_ledger_toid",
 		"history_transaction_claimable_balances": "history_transaction_id",
 		"history_transaction_participants":       "history_transaction_id",
+		"history_transaction_liquidity_pools":    "history_transaction_id",
 		"history_transactions":                   "id",
 	} {
 		err := q.DeleteRange(ctx, start, end, table, column)
