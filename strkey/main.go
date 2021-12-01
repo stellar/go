@@ -1,9 +1,9 @@
 package strkey
 
 import (
-	"bytes"
 	"encoding/base32"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/stellar/go/strkey/internal/crc16"
 	"github.com/stellar/go/support/errors"
@@ -36,6 +36,18 @@ const (
 	VersionByteHashX = 23 << 3 // Base32-encodes to 'X...'
 )
 
+// maxPayloadSize is the maximum length of the payload for all versions.
+const maxPayloadSize = 40
+
+// maxRawSize is the maximum length of a strkey in its raw form not encoded.
+const maxRawSize = 1 + maxPayloadSize + 2
+
+// maxEncodedSize is the maximum length of a strkey when base32 encoded.
+const maxEncodedSize = (maxRawSize*8 + 4) / 5 // (8n+4)/5 is the EncodedLen for no padding
+
+// encoding to use when encoding and decoding a strkey to and from strings.
+var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
+
 // DecodeAny decodes the provided StrKey into a raw value, checking the checksum
 // and if the version byte is one of allowed values.
 func DecodeAny(src string) (VersionByte, []byte, error) {
@@ -56,7 +68,7 @@ func DecodeAny(src string) (VersionByte, []byte, error) {
 	}
 
 	// ensure checksum is valid
-	if err := crc16.Validate(vp, checksum); err != nil {
+	if err := crc16.Validate(vp, binary.LittleEndian.Uint16(checksum)); err != nil {
 		return 0, nil, err
 	}
 
@@ -94,7 +106,7 @@ func Decode(expected VersionByte, src string) ([]byte, error) {
 	}
 
 	// ensure checksum is valid
-	if err := crc16.Validate(vp, checksum); err != nil {
+	if err := crc16.Validate(vp, binary.LittleEndian.Uint16(checksum)); err != nil {
 		return nil, err
 	}
 
@@ -118,26 +130,32 @@ func Encode(version VersionByte, src []byte) (string, error) {
 		return "", err
 	}
 
-	var raw bytes.Buffer
+	payloadSize := len(src)
 
-	// write version byte
-	if err := binary.Write(&raw, binary.LittleEndian, version); err != nil {
-		return "", err
+	// check src does not exceed maximum payload size
+	if payloadSize > maxPayloadSize {
+		return "", fmt.Errorf("data exceeds maximum payload size for strkey")
 	}
 
-	// write payload
-	if _, err := raw.Write(src); err != nil {
-		return "", err
-	}
+	// pack
+	//  1 byte version
+	//  src bytes
+	//  2 byte crc16
+	rawArr := [maxRawSize]byte{}
+	rawSize := 1 + payloadSize + 2
+	raw := rawArr[:rawSize]
+	raw[0] = byte(version)
+	copy(raw[1:], src)
+	crc := crc16.Checksum(raw[:1+payloadSize])
+	binary.LittleEndian.PutUint16(raw[1+payloadSize:], crc)
 
-	// calculate and write checksum
-	checksum := crc16.Checksum(raw.Bytes())
-	if _, err := raw.Write(checksum); err != nil {
-		return "", err
-	}
+	// base32 encode
+	encArr := [maxEncodedSize]byte{}
+	encSize := encoding.EncodedLen(rawSize)
+	enc := encArr[:encSize]
+	encoding.Encode(enc, raw)
 
-	result := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(raw.Bytes())
-	return result, nil
+	return string(enc), nil
 }
 
 // MustEncode is like Encode, but panics on error
