@@ -45,7 +45,7 @@ const maxRawSize = 1 + maxPayloadSize + 2
 // maxEncodedSize is the maximum length of a strkey when base32 encoded.
 const maxEncodedSize = (maxRawSize*8 + 4) / 5 // (8n+4)/5 is the EncodedLen for no padding
 
-// encoding to use when encoding and decoding the strkey to and from strings.
+// encoding to use when encoding and decoding a strkey to and from strings.
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 
 // DecodeAny decodes the provided StrKey into a raw value, checking the checksum
