@@ -37,7 +37,7 @@ const (
 )
 
 // maxPayloadSize is the maximum length of the payload for all versions.
-const maxPayloadSize = 43
+const maxPayloadSize = 40
 
 // encoding is the encoding to use when encoding and decoding the strkey to and
 // from strings.
