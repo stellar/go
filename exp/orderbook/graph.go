@@ -367,6 +367,7 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+
 	destinationAssetString := destinationAsset.String()
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
@@ -406,6 +407,23 @@ func (graph *OrderBookGraph) FindPaths(
 	return paths, lastLedger, err
 }
 
+type sortablePaths struct {
+	paths []Path
+	less  func(paths []Path, i, j int) bool
+}
+
+func (s sortablePaths) Swap(i, j int) {
+	s.paths[i], s.paths[j] = s.paths[j], s.paths[i]
+}
+
+func (s sortablePaths) Less(i, j int) bool {
+	return s.less(s.paths, i, j)
+}
+
+func (s sortablePaths) Len() int {
+	return len(s.paths)
+}
+
 // FindFixedPaths returns a list of payment paths where the source and
 // destination assets are fixed.
 //
@@ -424,14 +442,16 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	includePools bool,
 ) ([]Path, uint32, error) {
 	target := map[int32]bool{}
+
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
 		target[graph.assetStringToID[destinationAssetString]] = true
 	}
 
+	sourceAssetString := sourceAsset.String()
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
-		sourceAssetString: sourceAsset.String(),
+		sourceAssetString: sourceAssetString,
 		sourceAssetAmount: amountToSpend,
 		targetAssets:      target,
 		paths:             []Path{},
@@ -442,7 +462,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[sourceAsset.String()],
+		graph.assetStringToID[sourceAssetString],
 		amountToSpend,
 	)
 	lastLedger := graph.lastLedger
@@ -451,9 +471,11 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
 	}
 
-	sort.Slice(searchState.paths, func(i, j int) bool {
-		return searchState.paths[i].DestinationAmount > searchState.paths[j].DestinationAmount
-	})
+	sPaths := sortablePaths{
+		paths: searchState.paths,
+		less:  compareDestinationAmount,
+	}
+	sort.Sort(sPaths)
 
 	paths, err := sortAndFilterPaths(
 		searchState.paths,
@@ -491,6 +513,10 @@ func compareDestinationAsset(allPaths []Path, i, j int) bool {
 	return allPaths[i].DestinationAsset < allPaths[j].DestinationAsset
 }
 
+func compareDestinationAmount(allPaths []Path, i, j int) bool {
+	return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
+}
+
 func sourceAssetEquals(p, otherPath Path) bool {
 	return p.SourceAsset == otherPath.SourceAsset
 }
@@ -520,11 +546,13 @@ func sortAndFilterPaths(
 		return nil, errors.New("invalid sort by type")
 	}
 
-	sort.Slice(allPaths, func(i, j int) bool {
-		return comparePaths(allPaths, i, j)
-	})
+	sPaths := sortablePaths{
+		paths: allPaths,
+		less:  comparePaths,
+	}
+	sort.Sort(sPaths)
 
-	filtered := []Path{}
+	filtered := make([]Path, 0, len(allPaths))
 	countForAsset := 0
 	for _, entry := range allPaths {
 		if len(filtered) == 0 || !assetsEqual(filtered[len(filtered)-1], entry) {

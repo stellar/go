@@ -124,7 +124,8 @@ func BenchmarkVibrantPath(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	// https://horizon.stellar.org/paths/strict-send?source_asset_type=credit_alphanum4&source_asset_code=USDC&source_asset_issuer=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN&source_amount=10&destination_assets=ARST%3AGCSAZVWXZKWS4XS223M5F54H2B6XPIIXZZGP7KEAIU6YSL5HDRGCI3DG
-
+	// Uncomment in order to get a detailed heap allocations profile
+	// runtime.MemProfileRate = 1
 	for i := 0; i < b.N; i++ {
 		_, _, err := graph.FindFixedPaths(
 			context.Background(),

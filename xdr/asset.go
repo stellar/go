@@ -251,7 +251,7 @@ func (a Asset) String() string {
 		return t
 	}
 
-	return fmt.Sprintf("%s/%s/%s", t, c, i)
+	return t + "/" + c + "/" + i
 }
 
 // StringCanonical returns a display friendly form of the asset following its
@@ -310,10 +310,10 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 			switch a.Type {
 			case AssetTypeAssetTypeCreditAlphanum4:
 				an := a.MustAlphaNum4()
-				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+				*code = string(trimRightZeros(an.AssetCode[:]))
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
-				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+				*code = string(trimRightZeros(an.AssetCode[:]))
 			}
 		default:
 			return errors.New("can't extract code")
