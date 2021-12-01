@@ -39,6 +39,12 @@ const (
 // maxPayloadSize is the maximum length of the payload for all versions.
 const maxPayloadSize = 40
 
+// maxRawSize is the maximum length of a strkey in its raw form not encoded.
+const maxRawSize = 1 + maxPayloadSize + 2
+
+// maxEncodedSize is the maximum length of a strkey when base32 encoded.
+const maxEncodedSize = (maxRawSize*8 + 4) / 5 // 8n+4 is the EncodedLen for no padding
+
 // encoding is the encoding to use when encoding and decoding the strkey to and
 // from strings.
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
@@ -125,8 +131,10 @@ func Encode(version VersionByte, src []byte) (string, error) {
 		return "", err
 	}
 
+	payloadSize := len(src)
+
 	// check src does not exceed maximum payload size
-	if len(src) > maxPayloadSize {
+	if payloadSize > maxPayloadSize {
 		return "", fmt.Errorf("data exceeds maximum payload size for strkey")
 	}
 
@@ -134,19 +142,17 @@ func Encode(version VersionByte, src []byte) (string, error) {
 	//  1 byte version
 	//  src bytes
 	//  2 byte crc16
-	const maxSize = 1 + maxPayloadSize + 2
-	rawArr := [maxSize]byte{}
-	size := 1 + len(src) + 2
-	raw := rawArr[:size]
+	rawArr := [maxRawSize]byte{}
+	rawSize := 1 + payloadSize + 2
+	raw := rawArr[:rawSize]
 	raw[0] = byte(version)
 	copy(raw[1:], src)
-	crc := crc16.Checksum(raw[:1+len(src)])
-	binary.LittleEndian.PutUint16(raw[1+len(src):], crc)
+	crc := crc16.Checksum(raw[:1+payloadSize])
+	binary.LittleEndian.PutUint16(raw[1+payloadSize:], crc)
 
 	// base32 encode
-	const encMaxSize = (maxSize*8 + 4) / 5 // 8n+4 is the EncodedLen for no padding
-	encArr := [encMaxSize]byte{}
-	encSize := encoding.EncodedLen(size)
+	encArr := [maxEncodedSize]byte{}
+	encSize := encoding.EncodedLen(rawSize)
 	enc := encArr[:encSize]
 	encoding.Encode(enc, raw)
 
