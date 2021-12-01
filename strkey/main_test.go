@@ -6,6 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMaxEncodedSize(t *testing.T) {
+	assert.Equal(t, encoding.EncodedLen(maxRawSize), maxEncodedSize)
+}
+
 func TestVersion(t *testing.T) {
 	cases := []struct {
 		Name                string
