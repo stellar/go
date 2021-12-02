@@ -3,12 +3,16 @@ package integration
 import (
 	"context"
 	"fmt"
-	horizon "github.com/stellar/go/services/horizon/internal"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/xdr"
 
 	"github.com/stretchr/testify/assert"
 
@@ -21,22 +25,123 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reachedLedger int32) {
-	itest = integration.NewTest(t, protocol15Config)
+func generateLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (lastLedger int32) {
+
 	master := itest.Master()
+	keys, accounts := itest.CreateAccounts(2, "1000")
+	shareKeys, shareAccount := keys[0], accounts[0]
+	tradeKeys, tradeAccount := keys[1], accounts[1]
+
+	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: txnbuild.CreditAsset{
+					Code:   "USD",
+					Issuer: master.Address(),
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.LiquidityPoolShareChangeTrustAsset{
+				LiquidityPoolParameters: txnbuild.LiquidityPoolParameters{
+					AssetA: txnbuild.NativeAsset{},
+					AssetB: txnbuild.CreditAsset{
+						Code:   "USD",
+						Issuer: master.Address(),
+					},
+					Fee: 30,
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.Payment{
+			SourceAccount: master.Address(),
+			Destination:   shareAccount.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			Amount: "1000",
+		},
+	)
+
+	poolID, err := xdr.NewPoolId(
+		xdr.MustNewNativeAsset(),
+		xdr.MustNewCreditAsset("USD", master.Address()),
+		30,
+	)
+	tt.NoError(err)
+	poolIDHexString := xdr.Hash(poolID).HexString()
+
+	itest.MustSubmitOperations(shareAccount, shareKeys,
+		&txnbuild.LiquidityPoolDeposit{
+			LiquidityPoolID: [32]byte(poolID),
+			MaxAmountA:      "400",
+			MaxAmountB:      "777",
+			MinPrice:        "0.5",
+			MaxPrice:        "2",
+		},
+	)
+
+	itest.MustSubmitOperations(tradeAccount, tradeKeys,
+		&txnbuild.ChangeTrust{
+			Line: txnbuild.ChangeTrustAssetWrapper{
+				Asset: txnbuild.CreditAsset{
+					Code:   "USD",
+					Issuer: master.Address(),
+				},
+			},
+			Limit: txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.PathPaymentStrictReceive{
+			SendAsset: txnbuild.NativeAsset{},
+			DestAsset: txnbuild.CreditAsset{
+				Code:   "USD",
+				Issuer: master.Address(),
+			},
+			SendMax:     "1000",
+			DestAmount:  "2",
+			Destination: tradeKeys.Address(),
+		},
+	)
+
+	pool, err := itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
+		LiquidityPoolID: poolIDHexString,
+	})
+	tt.NoError(err)
+
+	txResp := itest.MustSubmitOperations(shareAccount, shareKeys,
+		&txnbuild.LiquidityPoolWithdraw{
+			LiquidityPoolID: [32]byte(poolID),
+			Amount:          pool.TotalShares,
+			MinAmountA:      "10",
+			MinAmountB:      "20",
+		},
+	)
+
+	return txResp.Ledger
+}
+
+func generatePaymentOps(itest *integration.Test, tt *assert.Assertions) (lastLedger int32) {
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+		&txnbuild.Payment{
+			Destination: itest.Master().Address(),
+			Amount:      "10",
+			Asset:       txnbuild.NativeAsset{},
+		},
+	)
+
+	return txResp.Ledger
+}
+
+func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reachedLedger int32) {
+	config := integration.Config{ProtocolVersion: 18}
+	itest = integration.NewTest(t, config)
 	tt := assert.New(t)
 
-	// Initialize the database with some ledgers including some transactions we submit
-	op := txnbuild.Payment{
-		Destination: master.Address(),
-		Amount:      "10",
-		Asset:       txnbuild.NativeAsset{},
-	}
-	// TODO: should we enforce certain number of ledgers to be ingested?
-	for i := 0; i < 8; i++ {
-		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
-		reachedLedger = txResp.Ledger
-	}
+	generatePaymentOps(itest, tt)
+	reachedLedger = generateLiquidityPoolOps(itest, tt)
 
 	root, err := itest.Client().Root()
 	tt.NoError(err)
@@ -59,6 +164,7 @@ func TestReingestDB(t *testing.T) {
 	horizonConfig.DatabaseURL = freshHorizonPostgresURL
 	// Initialize the DB schema
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
+	tt.NoError(err)
 	defer dbConn.Close()
 	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
 	tt.NoError(err)
@@ -103,8 +209,8 @@ func TestReingestDB(t *testing.T) {
 		fmt.Sprintf("%d", toLedger),
 	))
 
-	// Reingest into the DB
 	tt.NoError(horizoncmd.RootCmd.Execute())
+	tt.NoError(horizoncmd.RootCmd.Execute(), "Repeat the same reingest range against db, should not have errors.")
 }
 
 func command(horizonConfig horizon.Config, args ...string) []string {
