@@ -105,7 +105,7 @@ func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int
 
 	// right half: X + (1 - F)x
 	denom := X.Mul(X, maxBips).Add(X, new(uint256.Int).Mul(x, f))
-	if denom.Cmp(uint256.NewInt(0)) == 0 { // avoid div-by-zero panic
+	if denom.IsZero() { // avoid div-by-zero panic
 		return 0, false
 	}
 
@@ -140,8 +140,8 @@ func calculatePoolExpectation(
 	maxBips := uint256.NewInt(10000)
 	f := new(uint256.Int).Sub(maxBips, F) // upscaled 1 - F
 
-	denom := Y.Sub(Y, y).Mul(Y, f)         // right half: (Y - y)(1 - F)
-	if denom.Cmp(uint256.NewInt(0)) == 0 { // avoid div-by-zero panic
+	denom := Y.Sub(Y, y).Mul(Y, f) // right half: (Y - y)(1 - F)
+	if denom.IsZero() {            // avoid div-by-zero panic
 		return 0, false
 	}
 
@@ -152,7 +152,7 @@ func calculatePoolExpectation(
 	rem.Mod(numer, denom)
 
 	// hacky way to ceil(): if there's a remainder, add 1
-	if rem.Cmp(uint256.NewInt(0)) > 0 {
+	if !rem.IsZero() {
 		result.AddUint64(result, 1)
 	}
 
