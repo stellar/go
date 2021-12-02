@@ -2,6 +2,8 @@ package orderbook
 
 import (
 	"math"
+	"math/big"
+	"math/rand"
 	"testing"
 
 	"github.com/stellar/go/xdr"
@@ -166,6 +168,25 @@ func TestLiquidityPoolMath(t *testing.T) {
 		// ceil(10000 / 0.997) = 10031 we need to receive 10000.
 		assertPoolExchange(t, recv, 10000, -1, 20000, 10000, 30, true, 10031, -1)
 	})
+
+	t.Run("Potential Internal Overflow", func(t *testing.T) {
+
+		// Test for internal uint128 underflow/overflow in calculatePoolPayout() and  calculatePoolExpectation() by providing
+		// input values which cause the maximum internal calculations
+
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, 0, 0)
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, 0, 0)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 0, false, 0, 0)
+
+		// Check with reserveB < disbursed
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, 0, 1, 0, false, 0, 0)
+
+		// Check with poolFeeBips > 10000
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, 0, 0)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 0, 0)
+
+		assertPoolExchange(t, send, 92017260901926686, 9157376027422527, 4000000000000000000, 30, 1, false, 0, 0)
+	})
 }
 
 // assertPoolExchange validates that pool inputs match their expected outputs.
@@ -198,4 +219,106 @@ func assertPoolExchange(t *testing.T,
 		assert.EqualValues(t, expectedDisbursed, fromPool, "wrong payout")
 		assert.EqualValues(t, expectedDeposited, toPool, "wrong expectation")
 	}
+}
+
+func TestCalculatePoolExpectations(t *testing.T) {
+	for i := 0; i < 1000000; i++ {
+		reserveA := xdr.Int64(rand.Int63())
+		reserveB := xdr.Int64(rand.Int63())
+		disbursed := xdr.Int64(rand.Int63())
+
+		result, ok := calculatePoolExpectationBig(reserveA, reserveB, disbursed, 30)
+		result1, ok1 := calculatePoolExpectation(reserveA, reserveB, disbursed, 30)
+		if assert.Equal(t, ok, ok1) {
+			assert.Equal(t, result, result1)
+		}
+	}
+}
+
+func TestCalculatePoolPayout(t *testing.T) {
+	for i := 0; i < 1000000; i++ {
+		reserveA := xdr.Int64(rand.Int63())
+		reserveB := xdr.Int64(rand.Int63())
+		received := xdr.Int64(rand.Int63())
+
+		result, ok := calculatePoolPayoutBig(reserveA, reserveB, received, 30)
+		result1, ok1 := calculatePoolPayout(reserveA, reserveB, received, 30)
+		if assert.Equal(t, ok, ok1) {
+			assert.Equal(t, result, result1)
+		}
+	}
+}
+
+// calculatePoolPayout calculates the amount of `reserveB` disbursed from the
+// pool for a `received` amount of `reserveA` . From CAP-38:
+//
+//      y = floor[(1 - F) Yx / (X + x - Fx)]
+//
+// It returns false if the calculation overflows.
+func calculatePoolPayoutBig(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, bool) {
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, x := big.NewInt(int64(feeBips)), big.NewInt(int64(received))
+
+	// would this deposit overflow the reserve?
+	if received > math.MaxInt64-reserveA {
+		return 0, false
+	}
+
+	// We do all of the math in bips, so it's all upscaled by this value.
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
+
+	// right half: X + (1 - F)x
+	denom := X.Mul(X, maxBips).Add(X, new(big.Int).Mul(x, f))
+	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
+		return 0, false
+	}
+
+	// left half, a: (1 - F) Yx
+	numer := Y.Mul(Y, x).Mul(Y, f)
+
+	// divide & check overflow
+	result := numer.Div(numer, denom)
+
+	i := xdr.Int64(result.Int64())
+	return i, result.IsInt64() && i >= 0
+}
+
+// calculatePoolExpectation determines how much of `reserveA` you would need to
+// put into a pool to get the `disbursed` amount of `reserveB`.
+//
+//      x = ceil[Xy / ((Y - y)(1 - F))]
+//
+// It returns false if the calculation overflows.
+func calculatePoolExpectationBig(
+	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32,
+) (xdr.Int64, bool) {
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, y := big.NewInt(int64(feeBips)), big.NewInt(int64(disbursed))
+
+	// sanity check: disbursing shouldn't underflow the reserve
+	if disbursed >= reserveB {
+		return 0, false
+	}
+
+	// We do all of the math in bips, so it's all upscaled by this value.
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
+
+	denom := Y.Sub(Y, y).Mul(Y, f)     // right half: (Y - y)(1 - F)
+	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
+		return 0, false
+	}
+
+	numer := X.Mul(X, y).Mul(X, maxBips) // left half: Xy
+
+	result, rem := new(big.Int), new(big.Int)
+	result.DivMod(numer, denom, rem)
+
+	// hacky way to ceil(): if there's a remainder, add 1
+	if rem.Cmp(big.NewInt(0)) > 0 {
+		result.Add(result, big.NewInt(1))
+	}
+
+	return xdr.Int64(result.Int64()), result.IsInt64()
 }
