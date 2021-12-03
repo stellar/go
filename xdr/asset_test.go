@@ -474,3 +474,33 @@ func TestAssetLessThan(t *testing.T) {
 		assert.False(t, assetIssuerB.LessThan(assetIssuerB))
 	})
 }
+
+func BenchmarkAssetString(b *testing.B) {
+	n := MustNewNativeAsset()
+	a, err := NewCreditAsset(
+		"ARST",
+		"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+	)
+	require.NoError(b, err)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = n.String()
+		_ = a.String()
+	}
+}
+
+func BenchmarkAssetStringCanonical(b *testing.B) {
+	n := MustNewNativeAsset()
+	a, err := NewCreditAsset(
+		"ARST",
+		"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+	)
+	require.NoError(b, err)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = n.StringCanonical()
+		_ = a.StringCanonical()
+	}
+}
