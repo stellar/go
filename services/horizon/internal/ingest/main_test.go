@@ -439,6 +439,7 @@ func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMe
 	processorsRunDurations,
 	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
+	processors.TradeStats,
 	error,
 ) {
 	args := m.Called(ledger)
@@ -446,18 +447,21 @@ func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMe
 		args.Get(1).(processorsRunDurations),
 		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(3).(processorsRunDurations),
-		args.Error(4)
+		args.Get(4).(processors.TradeStats),
+		args.Error(5)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
+	processors.TradeStats,
 	error,
 ) {
 	args := m.Called(ledger)
 	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(1).(processorsRunDurations),
-		args.Error(2)
+		args.Get(2).(processors.TradeStats),
+		args.Error(3)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)

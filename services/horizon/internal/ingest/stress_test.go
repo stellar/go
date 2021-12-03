@@ -100,6 +100,7 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		errors.New("my error"),
 	).Once()
 
@@ -115,6 +116,7 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerIngestReturnsError() {
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(1)).Return(errors.New("my error")).Once()
@@ -131,6 +133,7 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(1)).Return(nil).Once()
@@ -148,6 +151,7 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(1)).Return(nil).Once()

@@ -210,6 +210,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 			processorsRunDurations{},
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 		s.historyQ.On("UpdateLastLedgerIngest", s.ctx, i).Return(nil).Once()
@@ -269,6 +270,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			processorsRunDurations{},
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 		s.historyQ.On("UpdateLastLedgerIngest", s.ctx, i).Return(nil).Once()

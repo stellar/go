@@ -460,7 +460,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		"commit":   true,
 	}).Info("Processing ledger")
 
-	changeStats, changeDurations, transactionStats, transactionDurations, err :=
+	changeStats, changeDurations, transactionStats, transactionDurations, tradeStats, err :=
 		s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
@@ -493,6 +493,8 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	transactionStatsMap := transactionStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "ledger", transactionStatsMap)
+	tradeStatsMap := tradeStats.Map()
+	r.addLedgerStatsMetricFromMap(s, "trades", tradeStatsMap)
 	r.addProcessorDurationsMetricFromMap(s, transactionDurations)
 
 	localLog := log.WithFields(logpkg.F{
@@ -627,13 +629,14 @@ func runTransactionProcessorsOnLedger(s *system, ledger xdr.LedgerCloseMeta) err
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	ledgerTransactionStats, _, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
+	ledgerTransactionStats, _, tradeStats, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger.LedgerSequence()))
 	}
 
 	log.
 		WithFields(ledgerTransactionStats.Map()).
+		WithFields(tradeStats.Map()).
 		WithFields(logpkg.F{
 			"sequence": ledger.LedgerSequence(),
 			"duration": time.Since(startTime).Seconds(),
@@ -924,7 +927,8 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 
 		var changeStats ingest.StatsChangeProcessorResults
 		var ledgerTransactionStats processors.StatsLedgerTransactionProcessorResults
-		changeStats, _, ledgerTransactionStats, _, err =
+		var tradeStats processors.TradeStats
+		changeStats, _, ledgerTransactionStats, _, tradeStats, err =
 			s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
@@ -938,6 +942,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		log.
 			WithFields(changeStats.Map()).
 			WithFields(ledgerTransactionStats.Map()).
+			WithFields(tradeStats.Map()).
 			WithFields(logpkg.F{
 				"sequence": sequence,
 				"duration": time.Since(startTime).Seconds(),
@@ -1002,7 +1007,7 @@ func (stressTestState) run(s *system) (transition, error) {
 		return stop(), errors.Wrap(err, "error getting ledger")
 	}
 
-	changeStats, _, ledgerTransactionStats, _, err := s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
+	changeStats, _, ledgerTransactionStats, _, tradeStats, err := s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 	if err != nil {
 		err = errors.Wrap(err, "Error running processors on ledger")
 		return stop(), err
@@ -1016,6 +1021,7 @@ func (stressTestState) run(s *system) (transition, error) {
 	log.
 		WithFields(changeStats.Map()).
 		WithFields(ledgerTransactionStats.Map()).
+		WithFields(tradeStats.Map()).
 		WithFields(logpkg.F{
 			"currentHeapSizeMB": curHeap,
 			"systemHeapSizeMB":  sysHeap,
