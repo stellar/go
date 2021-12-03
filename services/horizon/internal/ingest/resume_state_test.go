@@ -274,6 +274,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 			processorsRunDurations{},
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
@@ -350,6 +351,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 			processorsRunDurations{},
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
