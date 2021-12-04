@@ -423,7 +423,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
-	target := map[int32]bool{}
+	target := make(map[int32]bool, len(destinationAssets))
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
 		target[graph.assetStringToID[destinationAssetString]] = true
