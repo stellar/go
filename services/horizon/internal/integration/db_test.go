@@ -169,6 +169,19 @@ func TestReingestDB(t *testing.T) {
 	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
 	tt.NoError(err)
 
+	t.Run("validate parallel range", func(t *testing.T) {
+		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
+			"db",
+			"reingest",
+			"range",
+			"--parallel-workers=2",
+			"10",
+			"2",
+		))
+
+		assert.EqualError(t, horizoncmd.RootCmd.Execute(), "Invalid range: {10 2} from > to")
+	})
+
 	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
 	// recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
@@ -205,6 +218,7 @@ func TestReingestDB(t *testing.T) {
 	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db",
 		"reingest",
 		"range",
+		"--parallel-workers=1",
 		"1",
 		fmt.Sprintf("%d", toLedger),
 	))
@@ -263,6 +277,18 @@ func TestFillGaps(t *testing.T) {
 	})
 	tt.NoError(err)
 
+	t.Run("validate parallel range", func(t *testing.T) {
+		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
+			"db",
+			"fill-gaps",
+			"--parallel-workers=2",
+			"10",
+			"2",
+		))
+
+		assert.EqualError(t, horizoncmd.RootCmd.Execute(), "Invalid range: {10 2} from > to")
+	})
+
 	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
 	var latestCheckpoint uint32
 	publishedFirstCheckpoint := func() bool {
@@ -292,7 +318,7 @@ func TestFillGaps(t *testing.T) {
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps"))
+	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps", "--parallel-workers=1"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
 
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
