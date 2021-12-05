@@ -208,8 +208,7 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 	return false, nil
 }
 
-func (o *OrderBookStream) verifyAllOffers(ctx context.Context) (bool, error) {
-	offers := o.graph.Offers()
+func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.OfferEntry) (bool, error) {
 	ingestionOffers, err := o.historyQ.GetAllOffers(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "Error from GetAllOffers")
@@ -253,8 +252,7 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context) (bool, error) {
-	liquidityPools := o.graph.LiquidityPools()
+func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidityPools []xdr.LiquidityPoolEntry) (bool, error) {
 	ingestionLiquidityPools, err := o.historyQ.GetAllLiquidityPools(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "Error from GetAllLiquidityPools")
@@ -330,14 +328,25 @@ func (o *OrderBookStream) Update(ctx context.Context) error {
 		time.Since(o.lastVerification) >= verificationFrequency+jitter
 
 	if requiresVerification {
-		offersOk, err := o.verifyAllOffers(ctx)
+		offers, pools, err := o.graph.Verify()
+		if err != nil {
+			log.WithError(err).
+				Error("Orderbook graph is not internally consistent")
+			o.lastVerification = time.Now()
+			// set last ledger to 0 so that we reset on next update
+			o.lastLedger = 0
+			return nil
+		}
+
+		offersOk, err := o.verifyAllOffers(ctx, offers)
 		if err != nil {
 			if !isCancelledError(err) {
 				log.WithError(err).Info("Could not verify offers")
 				return nil
 			}
 		}
-		liquidityPoolsOK, err := o.verifyAllLiquidityPools(ctx)
+
+		liquidityPoolsOK, err := o.verifyAllLiquidityPools(ctx, pools)
 		if err != nil {
 			if !isCancelledError(err) {
 				log.WithError(err).Info("Could not verify liquidity pools")
