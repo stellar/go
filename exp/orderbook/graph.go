@@ -469,12 +469,6 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
 	}
 
-	sPaths := sortablePaths{
-		paths: searchState.paths,
-		less:  compareDestinationAmount,
-	}
-	sort.Sort(sPaths)
-
 	paths, err := sortAndFilterPaths(
 		searchState.paths,
 		maxAssetsPerPath,
@@ -509,10 +503,6 @@ func compareDestinationAsset(allPaths []Path, i, j int) bool {
 		return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
 	}
 	return allPaths[i].DestinationAsset < allPaths[j].DestinationAsset
-}
-
-func compareDestinationAmount(allPaths []Path, i, j int) bool {
-	return allPaths[i].DestinationAmount > allPaths[j].DestinationAmount
 }
 
 func sourceAssetEquals(p, otherPath Path) bool {
