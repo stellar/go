@@ -367,7 +367,7 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
-
+	graph.lock.RLock()
 	destinationAssetString := destinationAsset.String()
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
@@ -385,7 +385,6 @@ func (graph *OrderBookGraph) FindPaths(
 		paths:                  []Path{},
 		includePools:           includePools,
 	}
-	graph.lock.RLock()
 	err := search(
 		ctx,
 		searchState,
@@ -441,8 +440,8 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+	graph.lock.RLock()
 	target := map[int32]bool{}
-
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
 		target[graph.assetStringToID[destinationAssetString]] = true
@@ -457,7 +456,6 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		paths:             []Path{},
 		includePools:      includePools,
 	}
-	graph.lock.RLock()
 	err := search(
 		ctx,
 		searchState,
