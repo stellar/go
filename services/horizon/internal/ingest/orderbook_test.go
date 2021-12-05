@@ -641,7 +641,7 @@ func (t *VerifyOffersStreamTestSuite) TestGetAllOffersError() {
 		Return([]history.Offer{}, fmt.Errorf("offers error")).
 		Once()
 
-	offersOk, err := t.stream.verifyAllOffers(t.ctx)
+	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().EqualError(err, "Error from GetAllOffers: offers error")
 	t.Assert().False(offersOk)
 }
@@ -650,7 +650,7 @@ func (t *VerifyOffersStreamTestSuite) TestEmptyDBOffers() {
 	var offers []history.Offer
 	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
-	offersOk, err := t.stream.verifyAllOffers(t.ctx)
+	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
 	t.Assert().False(offersOk)
 }
@@ -673,7 +673,7 @@ func (t *VerifyOffersStreamTestSuite) TestLengthMismatch() {
 	}
 	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
-	offersOk, err := t.stream.verifyAllOffers(t.ctx)
+	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
 	t.Assert().False(offersOk)
 }
@@ -710,7 +710,7 @@ func (t *VerifyOffersStreamTestSuite) TestContentMismatch() {
 	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
 	t.stream.lastLedger = 300
-	offersOk, err := t.stream.verifyAllOffers(t.ctx)
+	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
 	t.Assert().False(offersOk)
 }
@@ -746,7 +746,7 @@ func (t *VerifyOffersStreamTestSuite) TestSuccess() {
 	}
 	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
-	offersOk, err := t.stream.verifyAllOffers(t.ctx)
+	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
 	t.Assert().True(offersOk)
 }
@@ -817,7 +817,7 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestGetAllLiquidityPoolsError() {
 		Return([]history.LiquidityPool{}, fmt.Errorf("liquidity pools error")).
 		Once()
 
-	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx)
+	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
 	t.Assert().EqualError(err, "Error from GetAllLiquidityPools: liquidity pools error")
 	t.Assert().False(liquidityPoolsOk)
 }
@@ -827,7 +827,7 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestEmptyDBOffers() {
 		Return([]history.LiquidityPool{}, nil).
 		Once()
 
-	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx)
+	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
 	t.Assert().NoError(err)
 	t.Assert().False(liquidityPoolsOk)
 }
@@ -859,7 +859,7 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestLengthMismatch() {
 		Return(liquidityPools, nil).
 		Once()
 
-	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx)
+	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
 	t.Assert().NoError(err)
 	t.Assert().False(liquidityPoolsOk)
 }
@@ -909,7 +909,7 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestContentMismatch() {
 		Return(liquidityPools, nil).
 		Once()
 
-	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx)
+	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
 	t.Assert().NoError(err)
 	t.Assert().False(liquidityPoolsOk)
 }
@@ -959,7 +959,7 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestSuccess() {
 		Return(liquidityPools, nil).
 		Once()
 
-	offersOk, err := t.stream.verifyAllLiquidityPools(t.ctx)
+	offersOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
 	t.Assert().NoError(err)
 	t.Assert().True(offersOk)
 }

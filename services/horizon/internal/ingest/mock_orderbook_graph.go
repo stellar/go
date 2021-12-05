@@ -53,3 +53,8 @@ func (m *mockOrderBookGraph) RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) or
 func (m *mockOrderBookGraph) Clear() {
 	m.Called()
 }
+
+func (m *mockOrderBookGraph) Verify() ([]xdr.OfferEntry, []xdr.LiquidityPoolEntry, error) {
+	args := m.Called()
+	return args.Get(0).([]xdr.OfferEntry), args.Get(1).([]xdr.LiquidityPoolEntry), args.Error(2)
+}
