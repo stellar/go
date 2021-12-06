@@ -22,6 +22,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Prevent duplicate errors related to liquidity pool tables during repeated reingestion of same range ([4114](https://github.com/stellar/go/pull/4114))
 
+* In the 2.11.0 release there was a bug introduced which made the `horizon db reingest range` command ignore optional parameters like `--parallel-workers`. This bug is now fixed so all optional command line flags are parsed correctly ([4127](https://github.com/stellar/go/pull/4127))
+
 ## v2.11.0
 
 ### Changes
