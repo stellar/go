@@ -177,9 +177,8 @@ func (sys *System) Submit(
 			sys.finish(ctx, hash, response, Result{Err: sr.Err})
 			return
 		}
-
-		if sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())) {
-			sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
+		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
+			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}
 
@@ -194,7 +193,7 @@ func (sys *System) Submit(
 		}
 
 	case <-ctx.Done():
-		sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
+		sys.finish(ctx, hash, response, Result{Err: sys.deriveTxSubError(ctx)})
 	}
 
 	return
@@ -202,7 +201,7 @@ func (sys *System) Submit(
 
 // waitUntilAccountSequence blocks until either the context times out or the sequence number of the
 // given source account is greater than or equal to `seq`
-func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) bool {
+func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) error {
 	timer := time.NewTimer(sys.accountSeqPollInterval)
 	defer timer.Stop()
 
@@ -222,17 +221,24 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 					Warn("missing sequence number for account")
 			}
 			if num >= seq {
-				return false
+				return nil
 			}
 		}
 
 		select {
 		case <-ctx.Done():
-			return true
+			return sys.deriveTxSubError(ctx)
 		case <-timer.C:
 			timer.Reset(sys.accountSeqPollInterval)
 		}
 	}
+}
+
+func (sys *System) deriveTxSubError(ctx context.Context) error {
+	if ctx.Err() == context.Canceled {
+		return ErrCanceled
+	}
+	return ErrTimeout
 }
 
 // Submit submits the provided base64 encoded transaction envelope to the

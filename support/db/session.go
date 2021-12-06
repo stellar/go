@@ -23,7 +23,7 @@ func (s *Session) Begin() error {
 
 	tx, err := s.DB.BeginTxx(context.Background(), nil)
 	if err != nil {
-		if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+		if knownErr := s.replaceWithKnownError(err, context.Background()); knownErr != nil {
 			return knownErr
 		}
 
@@ -44,7 +44,7 @@ func (s *Session) BeginTx(opts *sql.TxOptions) error {
 
 	tx, err := s.DB.BeginTxx(context.Background(), opts)
 	if err != nil {
-		if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+		if knownErr := s.replaceWithKnownError(err, context.Background()); knownErr != nil {
 			return knownErr
 		}
 
@@ -142,7 +142,7 @@ func (s *Session) GetRaw(ctx context.Context, dest interface{}, query string, ar
 		return nil
 	}
 
-	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+	if knownErr := s.replaceWithKnownError(err, ctx); knownErr != nil {
 		return knownErr
 	}
 
@@ -211,7 +211,7 @@ func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}
 		return result, nil
 	}
 
-	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+	if knownErr := s.replaceWithKnownError(err, ctx); knownErr != nil {
 		return nil, knownErr
 	}
 
@@ -230,10 +230,15 @@ func (s *Session) NoRows(err error) bool {
 
 // replaceWithKnownError tries to replace Postgres error with package error.
 // Returns a new error if the err is known.
-func (s *Session) replaceWithKnownError(err error) error {
+func (s *Session) replaceWithKnownError(err error, ctx context.Context) error {
 	switch {
-	case strings.Contains(err.Error(), "pq: canceling statement due to user request"):
+	case ctx.Err() == context.Canceled:
 		return ErrCancelled
+	case ctx.Err() == context.DeadlineExceeded:
+		// if libpq waits too long to obtain conn from pool, can get ctx timeout before server trip
+		return ErrTimeout
+	case strings.Contains(err.Error(), "pq: canceling statement due to user request"):
+		return ErrTimeout
 	case strings.Contains(err.Error(), "pq: canceling statement due to conflict with recovery"):
 		return ErrConflictWithRecovery
 	case strings.Contains(err.Error(), "driver: bad connection"):
@@ -267,7 +272,7 @@ func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{
 		return result, nil
 	}
 
-	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+	if knownErr := s.replaceWithKnownError(err, ctx); knownErr != nil {
 		return nil, knownErr
 	}
 
@@ -341,7 +346,7 @@ func (s *Session) SelectRaw(
 		return nil
 	}
 
-	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+	if knownErr := s.replaceWithKnownError(err, ctx); knownErr != nil {
 		return knownErr
 	}
 
