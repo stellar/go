@@ -205,7 +205,12 @@ func (graph *OrderBookGraph) Verify() ([]xdr.OfferEntry, []xdr.LiquidityPoolEntr
 		if len(sellingAssetString) == 0 && len(edges) > 0 {
 			return nil, nil, fmt.Errorf("found vacant id %v with non empty edges %v", sellingAsset, edges)
 		}
-		if id := graph.assetStringToID[sellingAssetString]; id != int32(sellingAsset) {
+		if id, ok := graph.assetStringToID[sellingAssetString]; !ok {
+			return nil, nil, fmt.Errorf(
+				"asset string %v is not in graph.assetStringToID",
+				sellingAssetString,
+			)
+		} else if id != int32(sellingAsset) {
 			return nil, nil, fmt.Errorf(
 				"asset string %v maps to %v , expected %v",
 				sellingAssetString,
@@ -693,9 +698,17 @@ func (graph *OrderBookGraph) FindPaths(
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
 		sourceAssetString := sourceAsset.String()
-		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
+		sourceAssetID, ok := graph.assetStringToID[sourceAssetString]
+		if !ok {
+			continue
+		}
+		sourceAssetsMap[sourceAssetID] = sourceAssetBalances[i]
 	}
-
+	destinationAssetID, ok := graph.assetStringToID[destinationAssetString]
+	if !ok || len(sourceAssetsMap) == 0 {
+		graph.lock.RUnlock()
+		return []Path{}, graph.lastLedger, nil
+	}
 	searchState := &sellingGraphSearchState{
 		graph:                  graph,
 		destinationAssetString: destinationAssetString,
@@ -710,7 +723,7 @@ func (graph *OrderBookGraph) FindPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[destinationAssetString],
+		destinationAssetID,
 		destinationAmount,
 	)
 	lastLedger := graph.lastLedger
@@ -765,10 +778,19 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	target := map[int32]bool{}
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
-		target[graph.assetStringToID[destinationAssetString]] = true
+		destinationAssetID, ok := graph.assetStringToID[destinationAssetString]
+		if !ok {
+			continue
+		}
+		target[destinationAssetID] = true
 	}
 
 	sourceAssetString := sourceAsset.String()
+	sourceAssetID, ok := graph.assetStringToID[sourceAssetString]
+	if !ok || len(target) == 0 {
+		graph.lock.RUnlock()
+		return []Path{}, graph.lastLedger, nil
+	}
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
 		sourceAssetString: sourceAssetString,
@@ -781,7 +803,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[sourceAssetString],
+		sourceAssetID,
 		amountToSpend,
 	)
 	lastLedger := graph.lastLedger
