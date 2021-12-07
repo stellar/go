@@ -89,9 +89,9 @@ type pathNode struct {
 	prev  *pathNode
 }
 
-func (p *pathNode) contains(src, dst int32) bool {
-	for cur := p; cur != nil && cur.prev != nil; cur = cur.prev {
-		if cur.asset == dst && cur.prev.asset == src {
+func (p *pathNode) contains(node int32) bool {
+	for cur := p; cur != nil; cur = cur.prev {
+		if cur.asset == node {
 			return true
 		}
 	}
@@ -106,7 +106,9 @@ func reversePath(path []int32) {
 }
 
 func (e *pathNode) path() []int32 {
-	var result []int32
+	// Initialize slice capacity to minimize allocations.
+	// 8 is the maximum path supported by stellar.
+	result := make([]int32, 0, 8)
 	for cur := e; cur != nil; cur = cur.prev {
 		result = append(result, cur.asset)
 	}
@@ -128,6 +130,8 @@ func search(
 	bestPath := make([]*pathNode, totalAssets)
 	updatePath := make([]*pathNode, totalAssets)
 	updatedAssets := make([]int32, 0, totalAssets)
+	// Used to minimize allocations
+	slab := make([]pathNode, 0, totalAssets)
 	bestAmount[sourceAsset] = sourceAssetAmount
 	updateAmount[sourceAsset] = sourceAssetAmount
 	bestPath[sourceAsset] = &pathNode{
@@ -159,8 +163,8 @@ func search(
 					continue
 				}
 
-				// Make sure we don't use an edge more than once.
-				if pathToCurrentAsset.contains(currentAsset, nextAsset) {
+				// Make sure we don't visit a node more than once.
+				if pathToCurrentAsset.contains(nextAsset) {
 					continue
 				}
 
@@ -177,11 +181,15 @@ func search(
 					updateAmount[nextAsset] = nextAssetAmount
 
 					if newEntry {
-						updatePath[nextAsset] = &pathNode{
+						updatedAssets = append(updatedAssets, nextAsset)
+						// By piggybacking on slice appending (which uses exponential allocation)
+						// we avoid allocating each node individually, which is much slower and
+						// puts more pressure on the garbage collector.
+						slab = append(slab, pathNode{
 							asset: nextAsset,
 							prev:  pathToCurrentAsset,
-						}
-						updatedAssets = append(updatedAssets, nextAsset)
+						})
+						updatePath[nextAsset] = &slab[len(slab)-1]
 					} else {
 						updatePath[nextAsset].prev = pathToCurrentAsset
 					}
@@ -259,9 +267,9 @@ func (state *sellingGraphSearchState) betterPathAmount(currentAmount, alternativ
 }
 
 func assetIDsToAssetStrings(graph *OrderBookGraph, path []int32) []string {
-	var result []string
-	for _, asset := range path {
-		result = append(result, graph.idToAssetString[asset])
+	result := make([]string, len(path))
+	for i := 0; i < len(path); i++ {
+		result[i] = graph.idToAssetString[path[i]]
 	}
 	return result
 }

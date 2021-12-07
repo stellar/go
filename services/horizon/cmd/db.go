@@ -228,60 +228,64 @@ var (
 	retries             uint
 	retryBackoffSeconds uint
 )
-var reingestRangeCmdOpts = []*support.ConfigOption{
-	{
-		Name:        "force",
-		ConfigKey:   &reingestForce,
-		OptType:     types.Bool,
-		Required:    false,
-		FlagDefault: false,
-		Usage: "[optional] if this flag is set, horizon will be blocked " +
-			"from ingesting until the reingestion command completes (incompatible with --parallel-workers > 1)",
-	},
-	{
-		Name:        "parallel-workers",
-		ConfigKey:   &parallelWorkers,
-		OptType:     types.Uint,
-		Required:    false,
-		FlagDefault: uint(1),
-		Usage:       "[optional] if this flag is set to > 1, horizon will parallelize reingestion using the supplied number of workers",
-	},
-	{
-		Name:        "parallel-job-size",
-		ConfigKey:   &parallelJobSize,
-		OptType:     types.Uint32,
-		Required:    false,
-		FlagDefault: uint32(100000),
-		Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
-	},
-	{
-		Name:        "retries",
-		ConfigKey:   &retries,
-		OptType:     types.Uint,
-		Required:    false,
-		FlagDefault: uint(0),
-		Usage:       "[optional] number of reingest retries",
-	},
-	{
-		Name:        "retry-backoff-seconds",
-		ConfigKey:   &retryBackoffSeconds,
-		OptType:     types.Uint,
-		Required:    false,
-		FlagDefault: uint(5),
-		Usage:       "[optional] backoff seconds between reingest retries",
-	},
+
+func ingestRangeCmdOpts() support.ConfigOptions {
+	return support.ConfigOptions{
+		{
+			Name:        "force",
+			ConfigKey:   &reingestForce,
+			OptType:     types.Bool,
+			Required:    false,
+			FlagDefault: false,
+			Usage: "[optional] if this flag is set, horizon will be blocked " +
+				"from ingesting until the reingestion command completes (incompatible with --parallel-workers > 1)",
+		},
+		{
+			Name:        "parallel-workers",
+			ConfigKey:   &parallelWorkers,
+			OptType:     types.Uint,
+			Required:    false,
+			FlagDefault: uint(1),
+			Usage:       "[optional] if this flag is set to > 1, horizon will parallelize reingestion using the supplied number of workers",
+		},
+		{
+			Name:        "parallel-job-size",
+			ConfigKey:   &parallelJobSize,
+			OptType:     types.Uint32,
+			Required:    false,
+			FlagDefault: uint32(100000),
+			Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
+		},
+		{
+			Name:        "retries",
+			ConfigKey:   &retries,
+			OptType:     types.Uint,
+			Required:    false,
+			FlagDefault: uint(0),
+			Usage:       "[optional] number of reingest retries",
+		},
+		{
+			Name:        "retry-backoff-seconds",
+			ConfigKey:   &retryBackoffSeconds,
+			OptType:     types.Uint,
+			Required:    false,
+			FlagDefault: uint(5),
+			Usage:       "[optional] backoff seconds between reingest retries",
+		},
+	}
 }
 
+var dbReingestRangeCmdOpts = ingestRangeCmdOpts()
 var dbReingestRangeCmd = &cobra.Command{
 	Use:   "range [Start sequence number] [End sequence number]",
 	Short: "reingests ledgers within a range",
 	Long:  "reingests ledgers between X and Y sequence number (closed intervals)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for _, co := range reingestRangeCmdOpts {
-			if err := co.RequireE(); err != nil {
-				return err
-			}
-			co.SetValue()
+		if err := dbReingestRangeCmdOpts.RequireE(); err != nil {
+			return err
+		}
+		if err := dbReingestRangeCmdOpts.SetValues(); err != nil {
+			return err
 		}
 
 		if len(args) != 2 {
@@ -311,16 +315,17 @@ var dbReingestRangeCmd = &cobra.Command{
 	},
 }
 
+var dbFillGapsCmdOpts = ingestRangeCmdOpts()
 var dbFillGapsCmd = &cobra.Command{
 	Use:   "fill-gaps [Start sequence number] [End sequence number]",
 	Short: "Ingests any gaps found in the horizon db",
 	Long:  "Ingests any gaps found in the horizon db. The command takes an optional start and end parameters which restrict the range of ledgers ingested.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for _, co := range reingestRangeCmdOpts {
-			if err := co.RequireE(); err != nil {
-				return err
-			}
-			co.SetValue()
+		if err := dbFillGapsCmdOpts.RequireE(); err != nil {
+			return err
+		}
+		if err := dbFillGapsCmdOpts.SetValues(); err != nil {
+			return err
 		}
 
 		if len(args) != 0 && len(args) != 2 {
@@ -486,15 +491,11 @@ func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history
 }
 
 func init() {
-	for _, co := range reingestRangeCmdOpts {
-		err := co.Init(dbReingestRangeCmd)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		err = co.Init(dbFillGapsCmd)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+	if err := dbReingestRangeCmdOpts.Init(dbReingestRangeCmd); err != nil {
+		log.Fatal(err.Error())
+	}
+	if err := dbFillGapsCmdOpts.Init(dbFillGapsCmd); err != nil {
+		log.Fatal(err.Error())
 	}
 
 	viper.BindPFlags(dbReingestRangeCmd.PersistentFlags())

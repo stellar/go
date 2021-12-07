@@ -5,10 +5,27 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### Changes
-* Return inner and outer result codes for fee bump transactions ([4081](https://github.com/stellar/go/pull/4081))
 * Generate Http Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count`
   metric key with status=499 label. ([4098](horizon_http_requests_duration_seconds_count))
+
+## v2.12.0
+
+### Features
+* Result codes for fee-bump transactions will now also include the inner result codes ([4081](https://github.com/stellar/go/pull/4081))
+
+### Performance improvements
+* XDR encoding/decoding pipelines have been optimized ([4069](https://github.com/stellar/go/pull/4069), [4068](https://github.com/stellar/go/pull/4068), [4073](https://github.com/stellar/go/pull/4073), [4064](https://github.com/stellar/go/pull/4064), [4071](https://github.com/stellar/go/pull/4071), [4075](https://github.com/stellar/go/pull/4075), [4077](https://github.com/stellar/go/pull/4077))
+
+* Path-finding on the `/paths` endpoint has been sped up significantly ([4091](https://github.com/stellar/go/pull/4091), [4096](https://github.com/stellar/go/pull/4096), [4102](https://github.com/stellar/go/pull/4102)), [4105](https://github.com/stellar/go/pull/4105), [4113](https://github.com/stellar/go/pull/4113)
+
+* Unused database indices have been removed ([4085](https://github.com/stellar/go/pull/4085), [4089](https://github.com/stellar/go/pull/4089))
+
+### Fixes
+* Improves error parsing from Captive Core ([4066](https://github.com/stellar/go/pull/4066))
+
+* Prevent duplicate errors related to liquidity pool tables during repeated reingestion of same range ([4114](https://github.com/stellar/go/pull/4114))
+
+* In the 2.11.0 release there was a bug introduced which made the `horizon db reingest range` command ignore optional parameters like `--parallel-workers`. This bug is now fixed so all optional command line flags are parsed correctly ([4127](https://github.com/stellar/go/pull/4127))
 
 ## v2.11.0
 

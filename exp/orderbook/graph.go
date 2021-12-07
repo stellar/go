@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -43,6 +44,7 @@ type OBGraph interface {
 	LiquidityPools() []xdr.LiquidityPoolEntry
 	RemoveOffer(xdr.Int64) OBGraph
 	RemoveLiquidityPool(pool xdr.LiquidityPoolEntry) OBGraph
+	Verify() ([]xdr.OfferEntry, []xdr.LiquidityPoolEntry, error)
 	Clear()
 }
 
@@ -162,6 +164,330 @@ func (graph *OrderBookGraph) Offers() []xdr.OfferEntry {
 	}
 
 	return offers
+}
+
+// Verify checks the internal consistency of the OrderBookGraph data structures
+// and returns all the offers and pools contained in the graph.
+func (graph *OrderBookGraph) Verify() ([]xdr.OfferEntry, []xdr.LiquidityPoolEntry, error) {
+	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
+	var offers []xdr.OfferEntry
+	var pools []xdr.LiquidityPoolEntry
+	poolSet := map[xdr.PoolId]xdr.LiquidityPoolEntry{}
+	offerSet := map[xdr.Int64]xdr.OfferEntry{}
+	vacantSet := map[int32]bool{}
+
+	if len(graph.venuesForSellingAsset) != len(graph.venuesForBuyingAsset) {
+		return nil, nil, fmt.Errorf(
+			"len(graph.venuesForSellingAsset) %v does not match len(graph.venuesForBuyingAsset) %v",
+			len(graph.venuesForSellingAsset),
+			len(graph.venuesForBuyingAsset),
+		)
+	}
+
+	if len(graph.venuesForSellingAsset) != len(graph.idToAssetString) {
+		return nil, nil, fmt.Errorf(
+			"len(graph.venuesForSellingAsset) %v does not match len(graph.idToAssetString) %v",
+			len(graph.venuesForSellingAsset),
+			len(graph.idToAssetString),
+		)
+	}
+
+	for sellingAsset, edges := range graph.venuesForSellingAsset {
+		sellingAssetString := graph.idToAssetString[sellingAsset]
+		if len(sellingAssetString) == 0 {
+			vacantSet[int32(sellingAsset)] = true
+		}
+		if len(sellingAssetString) == 0 && len(edges) == 0 {
+			continue
+		}
+		if len(sellingAssetString) == 0 && len(edges) > 0 {
+			return nil, nil, fmt.Errorf("found vacant id %v with non empty edges %v", sellingAsset, edges)
+		}
+		if id, ok := graph.assetStringToID[sellingAssetString]; !ok {
+			return nil, nil, fmt.Errorf(
+				"asset string %v is not in graph.assetStringToID",
+				sellingAssetString,
+			)
+		} else if id != int32(sellingAsset) {
+			return nil, nil, fmt.Errorf(
+				"asset string %v maps to %v , expected %v",
+				sellingAssetString,
+				id,
+				sellingAsset,
+			)
+		}
+		for _, edge := range edges {
+			buyingAssetString := graph.idToAssetString[edge.key]
+			for i, offer := range edge.value.offers {
+				if _, ok := offerSet[offer.OfferId]; ok {
+					return nil, nil, fmt.Errorf("offer %v is present more than once", offer.OfferId)
+				}
+				pair := graph.tradingPairForOffer[offer.OfferId]
+				if pair.sellingAsset != int32(sellingAsset) {
+					return nil, nil, fmt.Errorf(
+						"trading pair %v for offer %v does not match selling asset id %v",
+						pair,
+						offer.OfferId,
+						sellingAsset,
+					)
+				}
+				if pair.buyingAsset != edge.key {
+					return nil, nil, fmt.Errorf(
+						"trading pair %v for offer %v does not match buying asset id %v",
+						pair,
+						offer.OfferId,
+						edge.key,
+					)
+				}
+				if i == 0 {
+					if offer.Buying.String() != buyingAssetString {
+						return nil, nil, fmt.Errorf(
+							"offer buying asset %v does not match expected %v",
+							offer,
+							buyingAssetString,
+						)
+					}
+					if offer.Selling.String() != sellingAssetString {
+						return nil, nil, fmt.Errorf(
+							"offer selling asset %v does not match expected %v",
+							offer,
+							sellingAssetString,
+						)
+					}
+				} else {
+					if !offer.Buying.Equals(edge.value.offers[i-1].Buying) {
+						return nil, nil, fmt.Errorf(
+							"offer buying asset %v does not match expected %v",
+							offer,
+							buyingAssetString,
+						)
+					}
+					if !offer.Selling.Equals(edge.value.offers[i-1].Selling) {
+						return nil, nil, fmt.Errorf(
+							"offer selling asset %v does not match expected %v",
+							offer,
+							sellingAssetString,
+						)
+					}
+				}
+				offerSet[offer.OfferId] = offer
+				offers = append(offers, offer)
+			}
+			if edge.value.pool.Body.ConstantProduct != nil {
+				if edge.value.pool.assetA == int32(sellingAsset) {
+					if edge.value.pool.assetB != edge.key {
+						return nil, nil, fmt.Errorf(
+							"pool assetB %v does not match edge %v",
+							edge.value.pool.assetB,
+							edge.key,
+						)
+					}
+				} else if edge.value.pool.assetB == int32(sellingAsset) {
+					if edge.value.pool.assetA != edge.key {
+						return nil, nil, fmt.Errorf(
+							"pool assetA %v does not match edge %v",
+							edge.value.pool.assetA,
+							edge.key,
+						)
+					}
+				} else {
+					return nil, nil, fmt.Errorf(
+						"pool assets %v does not match sellingAsset %v",
+						edge.value.pool,
+						sellingAsset,
+					)
+				}
+
+				pair := tradingPair{
+					buyingAsset:  edge.value.pool.assetA,
+					sellingAsset: edge.value.pool.assetB,
+				}
+				assertPoolsEqual(edge.value.pool.LiquidityPoolEntry, graph.liquidityPools[pair])
+				params := edge.value.pool.LiquidityPoolEntry.Body.ConstantProduct.Params
+				if assetA := params.AssetA.String(); graph.assetStringToID[assetA] != pair.buyingAsset {
+					return nil, nil, fmt.Errorf(
+						"pool asset A %v does not match asset id %v",
+						assetA,
+						pair.buyingAsset,
+					)
+				}
+				if assetB := params.AssetB.String(); graph.assetStringToID[assetB] != pair.sellingAsset {
+					return nil, nil, fmt.Errorf(
+						"pool asset B %v does not match asset id %v",
+						assetB,
+						pair.sellingAsset,
+					)
+				}
+				if _, ok := poolSet[edge.value.pool.LiquidityPoolId]; !ok {
+					poolSet[edge.value.pool.LiquidityPoolId] = edge.value.pool.LiquidityPoolEntry
+					pools = append(pools, edge.value.pool.LiquidityPoolEntry)
+				}
+			}
+		}
+	}
+
+	if len(offerSet) != len(graph.tradingPairForOffer) {
+		return nil, nil, fmt.Errorf(
+			"expected number of offers %v to match trading pairs for offer size %v",
+			len(offerSet),
+			len(graph.tradingPairForOffer),
+		)
+	}
+
+	for buyingAsset, edges := range graph.venuesForBuyingAsset {
+		buyingAssetString := graph.idToAssetString[buyingAsset]
+		if len(buyingAssetString) == 0 && len(edges) == 0 {
+			continue
+		}
+		if len(buyingAssetString) == 0 && len(edges) > 0 {
+			return nil, nil, fmt.Errorf("found vacant id %v with non empty edges %v", buyingAssetString, edges)
+		}
+		for _, edge := range edges {
+			sellingAssetString := graph.idToAssetString[edge.key]
+			for i, offer := range edge.value.offers {
+				o, ok := offerSet[offer.OfferId]
+				if !ok {
+					return nil, nil, fmt.Errorf("expected offer %v to be present", offer.OfferId)
+				}
+				if err := assertOffersEqual(o, offer); err != nil {
+					return nil, nil, err
+				}
+
+				if i == 0 {
+					if offer.Buying.String() != buyingAssetString {
+						return nil, nil, fmt.Errorf(
+							"offer buying asset %v does not match expected %v",
+							offer,
+							buyingAssetString,
+						)
+					}
+					if offer.Selling.String() != sellingAssetString {
+						return nil, nil, fmt.Errorf(
+							"offer selling asset %v does not match expected %v",
+							offer,
+							sellingAssetString,
+						)
+					}
+				} else {
+					if !offer.Buying.Equals(edge.value.offers[i-1].Buying) {
+						return nil, nil, fmt.Errorf(
+							"offer buying asset %v does not match expected %v",
+							offer,
+							buyingAssetString,
+						)
+					}
+					if !offer.Selling.Equals(edge.value.offers[i-1].Selling) {
+						return nil, nil, fmt.Errorf(
+							"offer selling asset %v does not match expected %v",
+							offer,
+							sellingAssetString,
+						)
+					}
+				}
+				delete(offerSet, offer.OfferId)
+			}
+			if edge.value.pool.Body.ConstantProduct != nil {
+				if edge.value.pool.assetA == int32(buyingAsset) {
+					if edge.value.pool.assetB != edge.key {
+						return nil, nil, fmt.Errorf(
+							"pool assetB %v does not match edge %v",
+							edge.value.pool.assetB,
+							edge.key,
+						)
+					}
+				} else if edge.value.pool.assetB == int32(buyingAsset) {
+					if edge.value.pool.assetA != edge.key {
+						return nil, nil, fmt.Errorf(
+							"pool assetA %v does not match edge %v",
+							edge.value.pool.assetA,
+							edge.key,
+						)
+					}
+				} else {
+					return nil, nil, fmt.Errorf(
+						"pool assets %v does not match sellingAsset %v",
+						edge.value.pool,
+						buyingAsset,
+					)
+				}
+
+				pair := tradingPair{
+					buyingAsset:  edge.value.pool.assetA,
+					sellingAsset: edge.value.pool.assetB,
+				}
+				assertPoolsEqual(edge.value.pool.LiquidityPoolEntry, graph.liquidityPools[pair])
+				params := edge.value.pool.LiquidityPoolEntry.Body.ConstantProduct.Params
+				if assetA := params.AssetA.String(); graph.assetStringToID[assetA] != pair.buyingAsset {
+					return nil, nil, fmt.Errorf("pool asset A %v does not match asset id %v", assetA, pair.buyingAsset)
+				}
+				if assetB := params.AssetB.String(); graph.assetStringToID[assetB] != pair.sellingAsset {
+					return nil, nil, fmt.Errorf("pool asset B %v does not match asset id %v", assetB, pair.sellingAsset)
+				}
+				if _, ok := poolSet[edge.value.pool.LiquidityPoolId]; !ok {
+					return nil, nil, fmt.Errorf("expected pool %v to be present", edge.value.pool.LiquidityPoolId)
+				}
+			}
+		}
+	}
+
+	if len(offerSet) != 0 {
+		return nil, nil, fmt.Errorf("expected all offers to be matched  %v", offerSet)
+	}
+
+	if len(graph.vacantIDs) != len(vacantSet) {
+		return nil, nil, fmt.Errorf("expected vacant ids %v to be match vacant set  %v", graph.vacantIDs, vacantSet)
+	}
+
+	for _, vacantID := range graph.vacantIDs {
+		if !vacantSet[vacantID] {
+			return nil, nil, fmt.Errorf("expected vacant ids %v to be match vacant set  %v", graph.vacantIDs, vacantSet)
+		}
+	}
+
+	return offers, pools, nil
+}
+
+func assertOffersEqual(o xdr.OfferEntry, offer xdr.OfferEntry) error {
+	if o.Price != offer.Price {
+		return fmt.Errorf("expected offer price %v to match %v", o, offer)
+	}
+	if o.Amount != offer.Amount {
+		return fmt.Errorf("expected offer amount %v to match %v", o, offer)
+	}
+	if !o.Buying.Equals(offer.Buying) {
+		return fmt.Errorf("expected offer buying asset %v to match %v", o, offer)
+	}
+	if !o.Selling.Equals(offer.Selling) {
+		return fmt.Errorf("expected offer selling asset %v to match %v", o, offer)
+	}
+	return nil
+}
+
+func assertPoolsEqual(p xdr.LiquidityPoolEntry, pool xdr.LiquidityPoolEntry) error {
+	if p.LiquidityPoolId != pool.LiquidityPoolId {
+		return fmt.Errorf("expected pool id %v to match %v", p, pool)
+	}
+	constantProductPool := p.Body.MustConstantProduct()
+	other := pool.Body.MustConstantProduct()
+	if !constantProductPool.Params.AssetA.Equals(other.Params.AssetA) {
+		return fmt.Errorf("expected pool asset a %v to match %v", p, pool)
+	}
+	if !constantProductPool.Params.AssetB.Equals(other.Params.AssetB) {
+		return fmt.Errorf("expected pool asset b %v to match %v", p, pool)
+	}
+	if constantProductPool.Params.Fee != other.Params.Fee {
+		return fmt.Errorf("expected pool fee %v to match %v", p, pool)
+	}
+	if constantProductPool.ReserveA != other.ReserveA {
+		return fmt.Errorf("expected pool reserveA %v to match %v", p, pool)
+	}
+	if constantProductPool.ReserveB != other.ReserveB {
+		return fmt.Errorf("expected pool reserveB %v to match %v", p, pool)
+	}
+
+	return nil
 }
 
 // LiquidityPools returns a list of unique liquidity pools contained in the
@@ -367,13 +693,22 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+	graph.lock.RLock()
 	destinationAssetString := destinationAsset.String()
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
 		sourceAssetString := sourceAsset.String()
-		sourceAssetsMap[graph.assetStringToID[sourceAssetString]] = sourceAssetBalances[i]
+		sourceAssetID, ok := graph.assetStringToID[sourceAssetString]
+		if !ok {
+			continue
+		}
+		sourceAssetsMap[sourceAssetID] = sourceAssetBalances[i]
 	}
-
+	destinationAssetID, ok := graph.assetStringToID[destinationAssetString]
+	if !ok || len(sourceAssetsMap) == 0 {
+		graph.lock.RUnlock()
+		return []Path{}, graph.lastLedger, nil
+	}
 	searchState := &sellingGraphSearchState{
 		graph:                  graph,
 		destinationAssetString: destinationAssetString,
@@ -384,12 +719,11 @@ func (graph *OrderBookGraph) FindPaths(
 		paths:                  []Path{},
 		includePools:           includePools,
 	}
-	graph.lock.RLock()
 	err := search(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[destinationAssetString],
+		destinationAssetID,
 		destinationAmount,
 	)
 	lastLedger := graph.lastLedger
@@ -404,6 +738,23 @@ func (graph *OrderBookGraph) FindPaths(
 		sortBySourceAsset,
 	)
 	return paths, lastLedger, err
+}
+
+type sortablePaths struct {
+	paths []Path
+	less  func(paths []Path, i, j int) bool
+}
+
+func (s sortablePaths) Swap(i, j int) {
+	s.paths[i], s.paths[j] = s.paths[j], s.paths[i]
+}
+
+func (s sortablePaths) Less(i, j int) bool {
+	return s.less(s.paths, i, j)
+}
+
+func (s sortablePaths) Len() int {
+	return len(s.paths)
 }
 
 // FindFixedPaths returns a list of payment paths where the source and
@@ -423,26 +774,36 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+	graph.lock.RLock()
 	target := make(map[int32]bool, len(destinationAssets))
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
-		target[graph.assetStringToID[destinationAssetString]] = true
+		destinationAssetID, ok := graph.assetStringToID[destinationAssetString]
+		if !ok {
+			continue
+		}
+		target[destinationAssetID] = true
 	}
 
+	sourceAssetString := sourceAsset.String()
+	sourceAssetID, ok := graph.assetStringToID[sourceAssetString]
+	if !ok || len(target) == 0 {
+		graph.lock.RUnlock()
+		return []Path{}, graph.lastLedger, nil
+	}
 	searchState := &buyingGraphSearchState{
 		graph:             graph,
-		sourceAssetString: sourceAsset.String(),
+		sourceAssetString: sourceAssetString,
 		sourceAssetAmount: amountToSpend,
 		targetAssets:      target,
 		paths:             []Path{},
 		includePools:      includePools,
 	}
-	graph.lock.RLock()
 	err := search(
 		ctx,
 		searchState,
 		maxPathLength,
-		graph.assetStringToID[sourceAsset.String()],
+		sourceAssetID,
 		amountToSpend,
 	)
 	lastLedger := graph.lastLedger
@@ -450,10 +811,6 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	if err != nil {
 		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
 	}
-
-	sort.Slice(searchState.paths, func(i, j int) bool {
-		return searchState.paths[i].DestinationAmount > searchState.paths[j].DestinationAmount
-	})
 
 	paths, err := sortAndFilterPaths(
 		searchState.paths,
@@ -520,11 +877,13 @@ func sortAndFilterPaths(
 		return nil, errors.New("invalid sort by type")
 	}
 
-	sort.Slice(allPaths, func(i, j int) bool {
-		return comparePaths(allPaths, i, j)
-	})
+	sPaths := sortablePaths{
+		paths: allPaths,
+		less:  comparePaths,
+	}
+	sort.Sort(sPaths)
 
-	filtered := []Path{}
+	filtered := make([]Path, 0, len(allPaths))
 	countForAsset := 0
 	for _, entry := range allPaths {
 		if len(filtered) == 0 || !assetsEqual(filtered[len(filtered)-1], entry) {

@@ -1472,17 +1472,6 @@ func TestFindPaths(t *testing.T) {
 
 	expectedPaths := []Path{
 		{
-			// arbitrage usd then trade to xlm
-			SourceAmount: 2,
-			SourceAsset:  usdAsset.String(),
-			InteriorNodes: []string{
-				eurAsset.String(),
-				usdAsset.String(),
-			},
-			DestinationAsset:  nativeAsset.String(),
-			DestinationAmount: 20,
-		},
-		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset.String(),
 			InteriorNodes:     []string{},
@@ -1548,17 +1537,6 @@ func TestFindPaths(t *testing.T) {
 
 	expectedPaths = []Path{
 		{
-			// arbitrage usd then trade to xlm
-			SourceAmount: 2,
-			SourceAsset:  usdAsset.String(),
-			InteriorNodes: []string{
-				eurAsset.String(),
-				usdAsset.String(),
-			},
-			DestinationAsset:  nativeAsset.String(),
-			DestinationAmount: 20,
-		},
-		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset.String(),
 			InteriorNodes:     []string{},
@@ -1613,17 +1591,6 @@ func TestFindPaths(t *testing.T) {
 
 	expectedPaths = []Path{
 		{
-			// arbitrage usd then trade to xlm
-			SourceAmount: 2,
-			SourceAsset:  usdAsset.String(),
-			InteriorNodes: []string{
-				eurAsset.String(),
-				usdAsset.String(),
-			},
-			DestinationAsset:  nativeAsset.String(),
-			DestinationAmount: 20,
-		},
-		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset.String(),
 			InteriorNodes:     []string{},
@@ -1656,6 +1623,52 @@ func TestFindPaths(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, lastLedger)
 	assertPathEquals(t, paths, expectedPaths)
+
+	t.Run("find paths starting from non-existent asset", func(t *testing.T) {
+		paths, lastLedger, err = graph.FindPaths(
+			context.TODO(),
+			4,
+			xdr.MustNewCreditAsset("DNE", yenAsset.GetIssuer()),
+			20,
+			&ignoreOffersFrom,
+			[]xdr.Asset{
+				yenAsset,
+				usdAsset,
+			},
+			[]xdr.Int64{
+				100000,
+				60000,
+			},
+			false,
+			5,
+			true,
+		)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 2, lastLedger)
+		assert.Len(t, paths, 0)
+	})
+
+	t.Run("find paths ending at non-existent assets", func(t *testing.T) {
+		paths, lastLedger, err = graph.FindPaths(
+			context.TODO(),
+			4,
+			usdAsset,
+			20,
+			&ignoreOffersFrom,
+			[]xdr.Asset{
+				xdr.MustNewCreditAsset("DNE", yenAsset.GetIssuer()),
+			},
+			[]xdr.Int64{
+				1000000000,
+			},
+			false,
+			5,
+			true,
+		)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 2, lastLedger)
+		assert.Len(t, paths, 0)
+	})
 }
 
 func TestFindPathsStartingAt(t *testing.T) {
@@ -1751,17 +1764,6 @@ func TestFindPathsStartingAt(t *testing.T) {
 	}
 
 	expectedPaths := []Path{
-		{
-			// arbitrage usd then trade to xlm
-			SourceAmount: 5,
-			SourceAsset:  usdAsset.String(),
-			InteriorNodes: []string{
-				eurAsset.String(),
-				usdAsset.String(),
-			},
-			DestinationAsset:  nativeAsset.String(),
-			DestinationAmount: 60,
-		},
 		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset.String(),
@@ -1916,6 +1918,38 @@ func TestFindPathsStartingAt(t *testing.T) {
 		},
 	}
 	assertPathEquals(t, paths, expectedPaths)
+
+	t.Run("find fixed paths starting from non-existent asset", func(t *testing.T) {
+		paths, lastLedger, err = graph.FindFixedPaths(
+			context.TODO(),
+			5,
+			xdr.MustNewCreditAsset("DNE", yenAsset.GetIssuer()),
+			5,
+			[]xdr.Asset{nativeAsset, usdAsset},
+			5,
+			true,
+		)
+
+		assert.NoError(t, err)
+		assert.EqualValues(t, 2, lastLedger)
+		assert.Len(t, paths, 0)
+	})
+
+	t.Run("find fixed paths ending at non-existent assets", func(t *testing.T) {
+		paths, lastLedger, err = graph.FindFixedPaths(
+			context.TODO(),
+			5,
+			usdAsset,
+			5,
+			[]xdr.Asset{xdr.MustNewCreditAsset("DNE", yenAsset.GetIssuer())},
+			5,
+			true,
+		)
+
+		assert.NoError(t, err)
+		assert.EqualValues(t, 2, lastLedger)
+		assert.Len(t, paths, 0)
+	})
 }
 
 func TestPathThroughLiquidityPools(t *testing.T) {
