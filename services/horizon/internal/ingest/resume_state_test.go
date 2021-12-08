@@ -10,9 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -270,10 +268,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 			s.Assert().Equal(uint32(101), meta.LedgerSequence())
 		}).
 		Return(
-			ingest.StatsChangeProcessorResults{},
-			processorsRunDurations{},
-			processors.StatsLedgerTransactionProcessorResults{},
-			processorsRunDurations{},
+			ledgerStats{},
 			nil,
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
@@ -346,10 +341,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 			s.Assert().Equal(uint32(101), meta.LedgerSequence())
 		}).
 		Return(
-			ingest.StatsChangeProcessorResults{},
-			processorsRunDurations{},
-			processors.StatsLedgerTransactionProcessorResults{},
-			processorsRunDurations{},
+			ledgerStats{},
 			nil,
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()

@@ -164,6 +164,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		errors.New("my error"),
 	).Once()
 
@@ -193,6 +194,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 	}
@@ -223,6 +225,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 
@@ -254,6 +257,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestCommitsWorkOnLedgerBackendFailure
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 
@@ -413,6 +417,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 		Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			errors.New("my error"),
 		).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -448,6 +453,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 
@@ -487,6 +493,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 
@@ -522,6 +529,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
+		processors.TradeStats{},
 		nil,
 	).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -569,6 +577,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
+			processors.TradeStats{},
 			nil,
 		).Once()
 	}

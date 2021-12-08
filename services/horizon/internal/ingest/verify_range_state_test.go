@@ -206,10 +206,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 		s.ledgerBackend.On("GetLedger", s.ctx, uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunAllProcessorsOnLedger", meta).Return(
-			ingest.StatsChangeProcessorResults{},
-			processorsRunDurations{},
-			processors.StatsLedgerTransactionProcessorResults{},
-			processorsRunDurations{},
+			ledgerStats{},
 			nil,
 		).Once()
 		s.historyQ.On("UpdateLastLedgerIngest", s.ctx, i).Return(nil).Once()
@@ -265,10 +262,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		s.ledgerBackend.On("GetLedger", s.ctx, uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunAllProcessorsOnLedger", meta).Return(
-			ingest.StatsChangeProcessorResults{},
-			processorsRunDurations{},
-			processors.StatsLedgerTransactionProcessorResults{},
-			processorsRunDurations{},
+			ledgerStats{},
 			nil,
 		).Once()
 		s.historyQ.On("UpdateLastLedgerIngest", s.ctx, i).Return(nil).Once()

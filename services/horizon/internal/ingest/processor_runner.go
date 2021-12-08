@@ -47,6 +47,14 @@ func (statsLedgerTransactionProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
+type ledgerStats struct {
+	changeStats          ingest.StatsChangeProcessorResults
+	changeDurations      processorsRunDurations
+	transactionStats     processors.StatsLedgerTransactionProcessorResults
+	transactionDurations processorsRunDurations
+	tradeStats           processors.TradeStats
+}
+
 type ProcessorRunnerInterface interface {
 	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
@@ -60,13 +68,11 @@ type ProcessorRunnerInterface interface {
 	RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
 		transactionDurations processorsRunDurations,
+		tradeStats processors.TradeStats,
 		err error,
 	)
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-		changeStats ingest.StatsChangeProcessorResults,
-		changeDurations processorsRunDurations,
-		transactionStats processors.StatsLedgerTransactionProcessorResults,
-		transactionDurations processorsRunDurations,
+		stats ledgerStats,
 		err error,
 	)
 }
@@ -120,19 +126,20 @@ func buildChangeProcessor(
 
 func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
+	tradeProcessor *processors.TradeProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
 ) *groupTransactionProcessors {
 	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
 		StatsLedgerTransactionProcessor: ledgerTransactionStats,
 	}
-
+	*tradeProcessor = *processors.NewTradeProcessor(s.historyQ, ledger)
 	sequence := uint32(ledger.Header.LedgerSeq)
 	return newGroupTransactionProcessors([]horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.historyQ, sequence),
-		processors.NewTradeProcessor(s.historyQ, ledger),
+		tradeProcessor,
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.historyQ, sequence),
 		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
@@ -264,10 +271,12 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
+	tradeStats processors.TradeStats,
 	err error,
 ) {
 	var (
 		ledgerTransactionStats processors.StatsLedgerTransactionProcessor
+		tradeProcessor         processors.TradeProcessor
 		transactionReader      *ingest.LedgerTransactionReader
 	)
 
@@ -282,7 +291,8 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
-	groupTransactionProcessors := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
+	groupTransactionProcessors := s.buildTransactionProcessor(
+		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
 	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
@@ -291,20 +301,18 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 
 	err = groupTransactionProcessors.Commit(s.ctx)
 	if err != nil {
-		err = errors.Wrap(err, "Error commiting changes from processor")
+		err = errors.Wrap(err, "Error committing changes from processor")
 		return
 	}
 
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
+	tradeStats = tradeProcessor.GetStats()
 	return
 }
 
 func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-	changeStats ingest.StatsChangeProcessorResults,
-	changeDurations processorsRunDurations,
-	transactionStats processors.StatsLedgerTransactionProcessorResults,
-	transactionDurations processorsRunDurations,
+	stats ledgerStats,
 	err error,
 ) {
 	changeStatsProcessor := ingest.StatsChangeProcessor{}
@@ -320,10 +328,10 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	changeStats = changeStatsProcessor.GetResults()
-	changeDurations = groupChangeProcessors.processorsRunDurations
+	stats.changeStats = changeStatsProcessor.GetResults()
+	stats.changeDurations = groupChangeProcessors.processorsRunDurations
 
-	transactionStats, transactionDurations, err =
+	stats.transactionStats, stats.transactionDurations, stats.tradeStats, err =
 		s.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return
