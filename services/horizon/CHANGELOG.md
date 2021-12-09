@@ -8,6 +8,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Generate Http Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count`
   metric key with status=499 label. ([4098](horizon_http_requests_duration_seconds_count))
 
+## v2.12.1
+
+### Fixes
+* Fixes a critical vulnerability in HTTP server of Golang <=1.17.4. An attacker can cause unbounded memory growth in a Go server accepting HTTP/2 requests.
+
 ## v2.12.0
 
 ### Features
