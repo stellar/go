@@ -89,6 +89,7 @@ type CaptiveStellarCore struct {
 	cachedMeta *xdr.LedgerCloseMeta
 
 	prepared           *Range  // non-nil if any range is prepared
+	closed             bool    // False until the core is closed
 	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
@@ -365,7 +366,7 @@ func (c *CaptiveStellarCore) startPreparingRange(ctx context.Context, ledgerRang
 }
 
 // PrepareRange prepares the given range (including from and to) to be loaded.
-// Captive stellar-core backend needs to initalize Stellar-Core state to be
+// Captive stellar-core backend needs to initialize Stellar-Core state to be
 // able to stream ledgers.
 // Stellar-Core mode depends on the provided ledgerRange:
 //   * For BoundedRange it will start Stellar-Core in catchup mode.
@@ -401,6 +402,12 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 		return false
 	}
 
+	if c.stellarCoreRunner == nil {
+		return false
+	}
+	if c.closed {
+		return false
+	}
 	lastLedger := uint32(0)
 	if c.lastLedger != nil {
 		lastLedger = *c.lastLedger
@@ -458,7 +465,18 @@ func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xd
 	}
 
 	if c.isClosed() {
-		return xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
+		return xdr.LedgerCloseMeta{}, errors.New("stellar-core is no longer usable")
+	}
+
+	if c.prepared == nil {
+		return xdr.LedgerCloseMeta{}, errors.New("session is not prepared, call PrepareRange first")
+	}
+
+	if c.stellarCoreRunner == nil {
+		return xdr.LedgerCloseMeta{}, errors.New("stellar-core cannot be nil, call PrepareRange first")
+	}
+	if c.closed {
+		return xdr.LedgerCloseMeta{}, errors.New("stellar-core has an error, call PrepareRange first")
 	}
 
 	if sequence < c.nextExpectedSequence() {
@@ -590,9 +608,18 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 	defer c.stellarCoreLock.RUnlock()
 
 	if c.isClosed() {
-		return 0, errors.New("stellar-core must be opened to return latest available sequence")
+		return 0, errors.New("stellar-core is no longer usable")
 	}
+	if c.prepared == nil {
+		return 0, errors.New("stellar-core must be prepared, call PrepareRange first")
+	}
+	if c.stellarCoreRunner == nil {
+		return 0, errors.New("stellar-core cannot be nil, call PrepareRange first")
+	}
+	if c.closed {
+		return 0, errors.New("stellar-core is closed, call PrepareRange first")
 
+	}
 	if c.lastLedger == nil {
 		return c.nextExpectedSequence() - 1 + uint32(len(c.stellarCoreRunner.getMetaPipe())), nil
 	}
@@ -600,16 +627,18 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 }
 
 func (c *CaptiveStellarCore) isClosed() bool {
-	return c.prepared == nil || c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil
+	return c.closed
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all
-// temporary files. Note, once a CaptiveStellarCore instance is closed it can can no longer be used and
+// temporary files. Note, once a CaptiveStellarCore instance is closed it can no longer be used and
 // all subsequent calls to PrepareRange(), GetLedger(), etc will fail.
 // Close is thread-safe and can be called from another go routine.
 func (c *CaptiveStellarCore) Close() error {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
+
+	c.closed = true
 
 	// after the CaptiveStellarCore context is canceled all subsequent calls to PrepareRange() will fail
 	c.cancel()
@@ -623,6 +652,5 @@ func (c *CaptiveStellarCore) Close() error {
 	if c.stellarCoreRunner != nil {
 		return c.stellarCoreRunner.close()
 	}
-
 	return nil
 }

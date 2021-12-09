@@ -775,7 +775,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	includePools bool,
 ) ([]Path, uint32, error) {
 	graph.lock.RLock()
-	target := map[int32]bool{}
+	target := make(map[int32]bool, len(destinationAssets))
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
 		destinationAssetID, ok := graph.assetStringToID[destinationAssetString]

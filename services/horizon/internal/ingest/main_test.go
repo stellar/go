@@ -435,29 +435,25 @@ func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
 }
 
 func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-	ingest.StatsChangeProcessorResults,
-	processorsRunDurations,
-	processors.StatsLedgerTransactionProcessorResults,
-	processorsRunDurations,
+	ledgerStats,
 	error,
 ) {
 	args := m.Called(ledger)
-	return args.Get(0).(ingest.StatsChangeProcessorResults),
-		args.Get(1).(processorsRunDurations),
-		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
-		args.Get(3).(processorsRunDurations),
-		args.Error(4)
+	return args.Get(0).(ledgerStats),
+		args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
+	processors.TradeStats,
 	error,
 ) {
 	args := m.Called(ledger)
 	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(1).(processorsRunDurations),
-		args.Error(2)
+		args.Get(2).(processors.TradeStats),
+		args.Error(3)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)

@@ -228,8 +228,9 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 	}
 
 	stats := &processors.StatsLedgerTransactionProcessor{}
+	trades := &processors.TradeProcessor{}
 	ledger := xdr.LedgerHeaderHistoryEntry{}
-	processor := runner.buildTransactionProcessor(stats, ledger)
+	processor := runner.buildTransactionProcessor(stats, trades, ledger)
 	assert.IsType(t, &groupTransactionProcessors{}, processor)
 
 	assert.IsType(t, &statsLedgerTransactionProcessor{}, processor.processors[0])
@@ -289,7 +290,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		historyQ: q,
 	}
 
-	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
+	_, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.NoError(t, err)
 }
 
@@ -337,6 +338,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		historyQ: q,
 	}
 
-	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
+	_, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 18. Please upgrade to the latest Horizon version.")
 }

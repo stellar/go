@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"encoding/hex"
 	"mime"
 	"net/http"
@@ -16,8 +17,16 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+type NetworkSubmitter interface {
+	Submit(
+		ctx context.Context,
+		rawTx string,
+		envelope xdr.TransactionEnvelope,
+		hash string) <-chan txsub.Result
+}
+
 type SubmitTransactionHandler struct {
-	Submitter         *txsub.System
+	Submitter         NetworkSubmitter
 	NetworkPassphrase string
 	CoreStateGetter
 }
@@ -78,7 +87,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 	}
 
 	if result.Err == txsub.ErrCanceled {
-		return nil, &hProblem.Timeout
+		return nil, &hProblem.ClientDisconnected
 	}
 
 	switch err := result.Err.(type) {
@@ -153,6 +162,9 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 	case result := <-submission:
 		return handler.response(r, info, result)
 	case <-r.Context().Done():
-		return nil, &hProblem.Timeout
+		if r.Context().Err() == context.Canceled {
+			return nil, hProblem.ClientDisconnected
+		}
+		return nil, hProblem.Timeout
 	}
 }
