@@ -1,4 +1,4 @@
-FROM golang:1.16.5 as build
+FROM golang:1.17 as build
 
 ADD . /src/ticker
 WORKDIR /src/ticker
