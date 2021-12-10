@@ -1579,10 +1579,12 @@ func TestFindPaths(t *testing.T) {
 		[]xdr.Asset{
 			yenAsset,
 			usdAsset,
+			nativeAsset,
 		},
 		[]xdr.Int64{
 			100000,
 			60000,
+			100000,
 		},
 		true,
 		5,
@@ -1615,6 +1617,15 @@ func TestFindPaths(t *testing.T) {
 				eurAsset.String(),
 				chfAsset.String(),
 			},
+			DestinationAsset:  nativeAsset.String(),
+			DestinationAmount: 20,
+		},
+		// include the empty path where xlm is transferred without any
+		// conversions
+		{
+			SourceAmount:      20,
+			SourceAsset:       nativeAsset.String(),
+			InteriorNodes:     []string{},
 			DestinationAsset:  nativeAsset.String(),
 			DestinationAmount: 20,
 		},
@@ -1873,7 +1884,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 		5,
 		yenAsset,
 		5,
-		[]xdr.Asset{nativeAsset, usdAsset},
+		[]xdr.Asset{nativeAsset, usdAsset, yenAsset},
 		5,
 		true,
 	)
@@ -1894,6 +1905,15 @@ func TestFindPathsStartingAt(t *testing.T) {
 			},
 			DestinationAsset:  usdAsset.String(),
 			DestinationAmount: 20,
+		},
+		// include the empty path where yen is transferred without any
+		// conversions
+		{
+			SourceAmount:      5,
+			SourceAsset:       yenAsset.String(),
+			InteriorNodes:     []string{},
+			DestinationAsset:  yenAsset.String(),
+			DestinationAmount: 5,
 		},
 		{
 			SourceAmount: 5,

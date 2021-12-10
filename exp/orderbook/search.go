@@ -138,6 +138,17 @@ func search(
 		asset: sourceAsset,
 		prev:  nil,
 	}
+	// Simple payments (e.g. payments where an asset is transferred from
+	// one account to another without any conversions into another asset)
+	// are also valid path payments. If the source asset is a valid
+	// destination asset we include the empty path in the response.
+	if state.includePath(sourceAsset, sourceAssetAmount) {
+		state.appendToPaths(
+			[]int32{sourceAsset},
+			sourceAsset,
+			sourceAssetAmount,
+		)
+	}
 
 	for i := 0; i < maxPathLength; i++ {
 		updatedAssets = updatedAssets[:0]
