@@ -5,7 +5,7 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 )
 
-//go:generate go-bindata -nometadata -ignore .+\.(go|swp)$ -pkg dbmigrate -o dbmigrate_generated.go ./migrations
+//go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -ignore .+\.(go|swp)$ -pkg dbmigrate -o dbmigrate_generated.go ./migrations
 
 var migrationSource = &migrate.AssetMigrationSource{
 	Asset:    Asset,

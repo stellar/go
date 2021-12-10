@@ -6,7 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-//go:generate go-bindata -nometadata -ignore (go|rb)$ -pkg scenarios .
+//go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -ignore (go|rb)$ -pkg scenarios .
 
 // Load executes the sql script at `path` on postgres database at `url`
 func Load(url string, path string) {
