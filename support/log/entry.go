@@ -165,4 +165,3 @@ func (e *Entry) Panic(args ...interface{}) {
 func (e *Entry) Print(args ...interface{}) {
 	e.entry.Print(args...)
 }
-

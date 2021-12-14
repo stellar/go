@@ -173,7 +173,7 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	var out bytes.Buffer
 	logger := logpkg.New()
 	logger.SetOutput(&out)
-	
+
 	oldLogger := log
 	log = logger
 	defer func() { log = oldLogger }()
@@ -197,7 +197,7 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	var out bytes.Buffer
 	logger := logpkg.New()
 	logger.SetOutput(&out)
-	
+
 	oldLogger := log
 	log = logger
 	defer func() { log = oldLogger }()

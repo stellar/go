@@ -86,4 +86,3 @@ func StellarCoreDatabase(t *testing.T) *sqlx.DB {
 func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
 }
-
