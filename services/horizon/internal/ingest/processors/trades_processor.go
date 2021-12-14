@@ -18,12 +18,26 @@ type TradeProcessor struct {
 	tradesQ history.QTrades
 	ledger  xdr.LedgerHeaderHistoryEntry
 	trades  []ingestTrade
+	stats   TradeStats
 }
 
 func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
 	return &TradeProcessor{
 		tradesQ: tradesQ,
 		ledger:  ledger,
+	}
+}
+
+type TradeStats struct {
+	count int64
+}
+
+func (p *TradeProcessor) GetStats() TradeStats {
+	return p.stats
+}
+func (stats *TradeStats) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"stats_count": stats.count,
 	}
 }
 
@@ -39,6 +53,7 @@ func (p *TradeProcessor) ProcessTransaction(ctx context.Context, transaction ing
 	}
 
 	p.trades = append(p.trades, trades...)
+	p.stats.count += int64(len(trades))
 	return nil
 }
 

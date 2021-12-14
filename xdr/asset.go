@@ -265,7 +265,7 @@ func (a Asset) StringCanonical() string {
 		return t
 	}
 
-	return fmt.Sprintf("%s:%s", c, i)
+	return c + ":" + i
 }
 
 // Equals returns true if `other` is equivalent to `a`

@@ -693,7 +693,36 @@ func (graph *OrderBookGraph) FindPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+	paths, lastLedger, err := graph.findPathsWithLock(
+		ctx, maxPathLength, destinationAsset, destinationAmount, sourceAccountID, sourceAssets, sourceAssetBalances,
+		validateSourceBalance, includePools,
+	)
+	if err != nil {
+		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
+	}
+
+	paths, err = sortAndFilterPaths(
+		paths,
+		maxAssetsPerPath,
+		sortBySourceAsset,
+	)
+	return paths, lastLedger, err
+}
+
+func (graph *OrderBookGraph) findPathsWithLock(
+	ctx context.Context,
+	maxPathLength int,
+	destinationAsset xdr.Asset,
+	destinationAmount xdr.Int64,
+	sourceAccountID *xdr.AccountId,
+	sourceAssets []xdr.Asset,
+	sourceAssetBalances []xdr.Int64,
+	validateSourceBalance bool,
+	includePools bool,
+) ([]Path, uint32, error) {
 	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
 	destinationAssetString := destinationAsset.String()
 	sourceAssetsMap := make(map[int32]xdr.Int64, len(sourceAssets))
 	for i, sourceAsset := range sourceAssets {
@@ -706,7 +735,6 @@ func (graph *OrderBookGraph) FindPaths(
 	}
 	destinationAssetID, ok := graph.assetStringToID[destinationAssetString]
 	if !ok || len(sourceAssetsMap) == 0 {
-		graph.lock.RUnlock()
 		return []Path{}, graph.lastLedger, nil
 	}
 	searchState := &sellingGraphSearchState{
@@ -726,18 +754,7 @@ func (graph *OrderBookGraph) FindPaths(
 		destinationAssetID,
 		destinationAmount,
 	)
-	lastLedger := graph.lastLedger
-	graph.lock.RUnlock()
-	if err != nil {
-		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
-	}
-
-	paths, err := sortAndFilterPaths(
-		searchState.paths,
-		maxAssetsPerPath,
-		sortBySourceAsset,
-	)
-	return paths, lastLedger, err
+	return searchState.paths, graph.lastLedger, err
 }
 
 type sortablePaths struct {
@@ -774,7 +791,32 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	maxAssetsPerPath int,
 	includePools bool,
 ) ([]Path, uint32, error) {
+	paths, lastLedger, err := graph.findFixedPathsWithLock(
+		ctx, maxPathLength, sourceAsset, amountToSpend, destinationAssets, includePools,
+	)
+	if err != nil {
+		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
+	}
+
+	paths, err = sortAndFilterPaths(
+		paths,
+		maxAssetsPerPath,
+		sortByDestinationAsset,
+	)
+	return paths, lastLedger, err
+}
+
+func (graph *OrderBookGraph) findFixedPathsWithLock(
+	ctx context.Context,
+	maxPathLength int,
+	sourceAsset xdr.Asset,
+	amountToSpend xdr.Int64,
+	destinationAssets []xdr.Asset,
+	includePools bool,
+) ([]Path, uint32, error) {
 	graph.lock.RLock()
+	defer graph.lock.RUnlock()
+
 	target := make(map[int32]bool, len(destinationAssets))
 	for _, destinationAsset := range destinationAssets {
 		destinationAssetString := destinationAsset.String()
@@ -788,7 +830,6 @@ func (graph *OrderBookGraph) FindFixedPaths(
 	sourceAssetString := sourceAsset.String()
 	sourceAssetID, ok := graph.assetStringToID[sourceAssetString]
 	if !ok || len(target) == 0 {
-		graph.lock.RUnlock()
 		return []Path{}, graph.lastLedger, nil
 	}
 	searchState := &buyingGraphSearchState{
@@ -806,18 +847,7 @@ func (graph *OrderBookGraph) FindFixedPaths(
 		sourceAssetID,
 		amountToSpend,
 	)
-	lastLedger := graph.lastLedger
-	graph.lock.RUnlock()
-	if err != nil {
-		return nil, lastLedger, errors.Wrap(err, "could not determine paths")
-	}
-
-	paths, err := sortAndFilterPaths(
-		searchState.paths,
-		maxAssetsPerPath,
-		sortByDestinationAsset,
-	)
-	return paths, lastLedger, err
+	return searchState.paths, graph.lastLedger, err
 }
 
 // compareSourceAsset will group payment paths by `SourceAsset`
