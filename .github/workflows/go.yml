@@ -19,6 +19,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
+        stable: ${{ !contains(matrix.go, 'beta') }}
     - run: ./gomod.sh
     - run: ./gofmt.sh
     - run: ./gogenerate.sh
@@ -37,6 +38,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
+        stable: ${{ !contains(matrix.go, 'beta') }}
     - run: go build ./...
 
   test:
@@ -83,4 +85,5 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
+        stable: ${{ !contains(matrix.go, 'beta') }}
     - run: go test -race -cover ./...
