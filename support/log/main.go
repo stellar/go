@@ -23,8 +23,6 @@ const (
 // Entry repre
 type Entry struct {
 	entry logrus.Entry
-
-	isTesting bool
 }
 
 // F wraps the logrus.Fields type for the convenience of typing less.
@@ -153,12 +151,6 @@ func Panicf(format string, args ...interface{}) {
 // Panic logs a message at the Panic severity.
 func Panic(args ...interface{}) {
 	DefaultLogger.Panic(args...)
-}
-
-// StartTest shifts the default logger into "test" mode.  See Entry's
-// documentation for the StartTest() method for more info.
-func StartTest(level logrus.Level) func() []logrus.Entry {
-	return DefaultLogger.StartTest(level)
 }
 
 type contextKey string

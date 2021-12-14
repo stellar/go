@@ -26,17 +26,7 @@ func (t *T) CoreSession() *db.Session {
 // Finish finishes the test, logging any accumulated horizon logs to the logs
 // output
 func (t *T) Finish() {
-	logEntries := RestoreLogger()
 	operationfeestats.ResetState()
-
-	for _, entry := range logEntries {
-		logString, err := entry.String()
-		if err != nil {
-			t.T.Logf("Error from entry.String: %v", err)
-		} else {
-			t.T.Log(logString)
-		}
-	}
 }
 
 // HorizonSession returns a db.Session instance pointing at the horizon test
