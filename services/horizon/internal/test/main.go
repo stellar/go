@@ -55,40 +55,15 @@ func DatabaseURL() string {
 	return tdb.HorizonURL()
 }
 
-// OverrideLogger calls StartTest on default logger. This is used
-// by the testing system so that we can collect output from logs during test
-// runs.  Panics if the logger is already overridden.
-func OverrideLogger() {
-	if endLogTest != nil {
-		panic("logger already overridden")
-	}
-
-	endLogTest = log.StartTest(log.DebugLevel)
-}
-
-// RestoreLogger restores the default horizon logger after it is overridden
-// using a call to `OverrideLogger`.  Panics if the default logger is not
-// presently overridden.
-func RestoreLogger() []logrus.Entry {
-	if endLogTest == nil {
-		panic("logger not overridden, cannot restore")
-	}
-
-	entries := endLogTest()
-	endLogTest = nil
-	return entries
-}
-
-// Start initializes a new test helper object and conceptually "starts" a new
-// test
+// Start initializes a new test helper object, a new instance of log,
+// and conceptually "starts" a new test
 func Start(t *testing.T) *T {
 	result := &T{}
-
 	result.T = t
+	logger := log.New() 
+	overrideLogger(logger)
 
-	OverrideLogger()
-
-	result.Ctx = log.Set(context.Background(), log.DefaultLogger)
+	result.Ctx = log.Set(context.Background(), logger)
 	result.HorizonDB = Database(t)
 	result.CoreDB = StellarCoreDatabase(t)
 	result.Assert = assert.New(t)
@@ -110,6 +85,29 @@ func StellarCoreDatabase(t *testing.T) *sqlx.DB {
 // DEPRECATED:  use `StellarCoreURL()` from test/db package
 func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
+}
+
+// RestoreLogger restores the default horizon logger after it is overridden
+// using a call to `OverrideLogger`.  Panics if the default logger is not
+// presently overridden.
+func restoreLogger() []logrus.Entry {
+	if endLogTest == nil {
+		panic("logger not overridden, cannot restore")
+	}
+
+	entries := endLogTest()
+	endLogTest = nil
+	return entries
+}
+
+// OverrideLogger calls StartTest on logger. This is used
+// by the testing system so that we can collect output from logs during test
+// runs.  Panics if the logger is already overridden.
+func overrideLogger(logger *log.Entry) {
+	if endLogTest != nil {
+		panic("logger already overridden")
+	}
+    endLogTest = logger.StartTest(log.DebugLevel)
 }
 
 var endLogTest func() []logrus.Entry = nil
