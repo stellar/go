@@ -60,7 +60,7 @@ func DatabaseURL() string {
 func Start(t *testing.T) *T {
 	result := &T{}
 	result.T = t
-	logger := log.New() 
+	logger := log.New()
 	overrideLogger(logger)
 
 	result.Ctx = log.Set(context.Background(), logger)
@@ -107,7 +107,7 @@ func overrideLogger(logger *log.Entry) {
 	if endLogTest != nil {
 		panic("logger already overridden")
 	}
-    endLogTest = logger.StartTest(log.DebugLevel)
+	endLogTest = logger.StartTest(log.DebugLevel)
 }
 
 var endLogTest func() []logrus.Entry = nil

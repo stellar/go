@@ -28,12 +28,12 @@ func setContentMD5Middleware(next stdhttp.Handler) stdhttp.Handler {
 }
 
 func TestHTTPMiddleware(t *testing.T) {
-    logger := log.New() 
-    done := logger.StartTest(log.InfoLevel)
+	logger := log.New()
+	done := logger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
-	mux.Use(SetLoggerMiddleware(logger)) 
+	mux.Use(SetLoggerMiddleware(logger))
 	mux.Use(LoggingMiddleware)
 
 	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -101,14 +101,14 @@ func TestHTTPMiddleware(t *testing.T) {
 }
 
 func TestHTTPMiddlewareWithOptions(t *testing.T) {
-	logger := log.New() 
-    done := logger.StartTest(log.InfoLevel)
+	logger := log.New()
+	done := logger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
 
 	mux.Use(setXFFMiddleware)
 	mux.Use(setContentMD5Middleware)
 	mux.Use(middleware.RequestID)
-	mux.Use(SetLoggerMiddleware(logger)) 
+	mux.Use(SetLoggerMiddleware(logger))
 	options := Options{ExtraHeaders: []string{"X-Forwarded-For", "Content-MD5"}}
 	mux.Use(LoggingMiddlewareWithOptions(options))
 
@@ -190,10 +190,10 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 }
 
 func TestHTTPMiddleware_stdlibServeMux(t *testing.T) {
-	logger := log.New() 
-    done := logger.StartTest(log.InfoLevel)
+	logger := log.New()
+	done := logger.StartTest(log.InfoLevel)
 
-    SetLoggerMiddleware(logger)
+	SetLoggerMiddleware(logger)
 
 	mux := stdhttp.ServeMux{}
 	mux.Handle(
