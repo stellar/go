@@ -3,7 +3,7 @@ set -e
 
 printf "Running staticcheck...\n"
 
-staticcheck='go run honnef.co/go/tools/cmd/staticcheck@2020.1.4'
+staticcheck='go run honnef.co/go/tools/cmd/staticcheck@2021.1.2'
 
 ls -d */ \
   | egrep -v '^vendor|^docs' \
