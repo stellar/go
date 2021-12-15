@@ -25,12 +25,13 @@ type StaticMockServer struct {
 
 // T provides a common set of functionality for each test in horizon
 type T struct {
-	T         *testing.T
-	Assert    *assert.Assertions
-	Require   *require.Assertions
-	Ctx       context.Context
-	HorizonDB *sqlx.DB
-	CoreDB    *sqlx.DB
+	T          *testing.T
+	Assert     *assert.Assertions
+	Require    *require.Assertions
+	Ctx        context.Context
+	HorizonDB  *sqlx.DB
+	CoreDB     *sqlx.DB
+	EndLogTest func() []logrus.Entry
 }
 
 // Context provides a context suitable for testing in tests that do not create
@@ -61,13 +62,13 @@ func Start(t *testing.T) *T {
 	result := &T{}
 	result.T = t
 	logger := log.New()
-	overrideLogger(logger)
 
 	result.Ctx = log.Set(context.Background(), logger)
 	result.HorizonDB = Database(t)
 	result.CoreDB = StellarCoreDatabase(t)
 	result.Assert = assert.New(t)
 	result.Require = require.New(t)
+	result.EndLogTest = logger.StartTest(log.DebugLevel)
 
 	return result
 }
@@ -87,27 +88,11 @@ func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
 }
 
-// RestoreLogger restores the default horizon logger after it is overridden
-// using a call to `OverrideLogger`.  Panics if the default logger is not
-// presently overridden.
-func restoreLogger() []logrus.Entry {
-	if endLogTest == nil {
-		panic("logger not overridden, cannot restore")
+// retrieves entries from test logger instance
+func testLogs(t *T) []logrus.Entry {
+	if t.EndLogTest == nil {
+		return []logrus.Entry{}
 	}
 
-	entries := endLogTest()
-	endLogTest = nil
-	return entries
+	return t.EndLogTest()
 }
-
-// OverrideLogger calls StartTest on logger. This is used
-// by the testing system so that we can collect output from logs during test
-// runs.  Panics if the logger is already overridden.
-func overrideLogger(logger *log.Entry) {
-	if endLogTest != nil {
-		panic("logger already overridden")
-	}
-	endLogTest = logger.StartTest(log.DebugLevel)
-}
-
-var endLogTest func() []logrus.Entry = nil

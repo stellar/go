@@ -26,7 +26,7 @@ func (t *T) CoreSession() *db.Session {
 // Finish finishes the test, logging any accumulated horizon logs to the logs
 // output
 func (t *T) Finish() {
-	logEntries := restoreLogger()
+	logEntries := testLogs(t)
 	operationfeestats.ResetState()
 
 	for _, entry := range logEntries {
