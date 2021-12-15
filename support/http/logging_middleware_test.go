@@ -28,12 +28,10 @@ func setContentMD5Middleware(next stdhttp.Handler) stdhttp.Handler {
 }
 
 func TestHTTPMiddleware(t *testing.T) {
-	logger := log.New()
-	done := logger.StartTest(log.InfoLevel)
+	done := log.DefaultLogger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
-	mux.Use(SetLoggerMiddleware(logger))
 	mux.Use(LoggingMiddleware)
 
 	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -101,14 +99,12 @@ func TestHTTPMiddleware(t *testing.T) {
 }
 
 func TestHTTPMiddlewareWithOptions(t *testing.T) {
-	logger := log.New()
-	done := logger.StartTest(log.InfoLevel)
+	done := log.DefaultLogger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
 
 	mux.Use(setXFFMiddleware)
 	mux.Use(setContentMD5Middleware)
 	mux.Use(middleware.RequestID)
-	mux.Use(SetLoggerMiddleware(logger))
 	options := Options{ExtraHeaders: []string{"X-Forwarded-For", "Content-MD5"}}
 	mux.Use(LoggingMiddlewareWithOptions(options))
 
@@ -190,29 +186,26 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 }
 
 func TestHTTPMiddleware_stdlibServeMux(t *testing.T) {
-	logger := log.New()
-	done := logger.StartTest(log.InfoLevel)
-
-	SetLoggerMiddleware(logger)
+	done := log.DefaultLogger.StartTest(log.InfoLevel)
 
 	mux := stdhttp.ServeMux{}
 	mux.Handle(
 		"/path/1234",
-		SetLoggerMiddleware(logger)(middleware.RequestID(
+		middleware.RequestID(
 			LoggingMiddleware(
 				stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-					logger.Ctx(r.Context()).Info("handler log line")
+					log.Ctx(r.Context()).Info("handler log line")
 				}),
 			),
-		)),
+		),
 	)
 	mux.Handle(
 		"/not_found",
-		SetLoggerMiddleware(logger)(middleware.RequestID(
+		middleware.RequestID(
 			LoggingMiddleware(
 				stdhttp.NotFoundHandler(),
 			),
-		)),
+		),
 	)
 
 	src := httptest.NewServer(t, &mux)
