@@ -87,12 +87,3 @@ func StellarCoreDatabase(t *testing.T) *sqlx.DB {
 func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
 }
-
-// retrieves entries from test logger instance
-func testLogs(t *T) []logrus.Entry {
-	if t.EndLogTest == nil {
-		return []logrus.Entry{}
-	}
-
-	return t.EndLogTest()
-}
