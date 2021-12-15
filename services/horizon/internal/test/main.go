@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	tdb "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
@@ -54,6 +55,30 @@ func DatabaseURL() string {
 	return tdb.HorizonURL()
 }
 
+// OverrideLogger calls StartTest on default logger. This is used
+// by the testing system so that we can collect output from logs during test
+// runs.  Panics if the logger is already overridden.
+func OverrideLogger() {
+	if endLogTest != nil {
+		panic("logger already overridden")
+	}
+
+	endLogTest = log.StartTest(log.DebugLevel)
+}
+
+// RestoreLogger restores the default horizon logger after it is overridden
+// using a call to `OverrideLogger`.  Panics if the default logger is not
+// presently overridden.
+func RestoreLogger() []logrus.Entry {
+	if endLogTest == nil {
+		panic("logger not overridden, cannot restore")
+	}
+
+	entries := endLogTest()
+	endLogTest = nil
+	return entries
+}
+
 // Start initializes a new test helper object and conceptually "starts" a new
 // test
 func Start(t *testing.T) *T {
@@ -61,7 +86,7 @@ func Start(t *testing.T) *T {
 
 	result.T = t
 
-	log.DefaultLogger.SetLevel(log.DebugLevel)
+	OverrideLogger()
 
 	result.Ctx = log.Set(context.Background(), log.DefaultLogger)
 	result.HorizonDB = Database(t)
@@ -86,3 +111,5 @@ func StellarCoreDatabase(t *testing.T) *sqlx.DB {
 func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
 }
+
+var endLogTest func() []logrus.Entry = nil

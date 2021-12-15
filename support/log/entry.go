@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	gerr "github.com/go-errors/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -164,4 +166,48 @@ func (e *Entry) Panic(args ...interface{}) {
 
 func (e *Entry) Print(args ...interface{}) {
 	e.entry.Print(args...)
+}
+
+// StartTest shifts this logger into "test" mode, ensuring that log lines will
+// be recorded (rather than outputted).  The returned function concludes the
+// test, switches the logger back into normal mode and returns a slice of all
+// raw logrus entries that were created during the test.
+func (e *Entry) StartTest(level logrus.Level) func() []logrus.Entry {
+	if e.isTesting {
+		panic("cannot start logger test: already testing")
+	}
+
+	e.isTesting = true
+
+	hook := &test.Hook{}
+	e.entry.Logger.AddHook(hook)
+
+	old := e.entry.Logger.Out
+	e.entry.Logger.Out = ioutil.Discard
+
+	oldLevel := e.entry.Logger.GetLevel()
+	e.entry.Logger.SetLevel(level)
+
+	return func() []logrus.Entry {
+		e.entry.Logger.SetLevel(oldLevel)
+		e.entry.Logger.SetOutput(old)
+		e.removeHook(hook)
+		e.isTesting = false
+		return hook.Entries
+	}
+}
+
+// removeHook removes a hook, in the most complicated way possible.
+func (e *Entry) removeHook(target logrus.Hook) {
+	for lvl, hooks := range e.entry.Logger.Hooks {
+		kept := []logrus.Hook{}
+
+		for _, hook := range hooks {
+			if hook != target {
+				kept = append(kept, hook)
+			}
+		}
+
+		e.entry.Logger.Hooks[lvl] = kept
+	}
 }

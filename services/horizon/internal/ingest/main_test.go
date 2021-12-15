@@ -173,6 +173,7 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	var out bytes.Buffer
 	logger := logpkg.New()
 	logger.SetOutput(&out)
+	done := logger.StartTest(logpkg.InfoLevel)
 
 	oldLogger := log
 	log = logger
@@ -184,6 +185,8 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, context.Canceled).Once()
 	system.maybeVerifyState(0)
 
+	logged := done()
+	assert.Len(t, logged, 0)
 	historyQ.AssertExpectations(t)
 }
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
@@ -197,6 +200,7 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	var out bytes.Buffer
 	logger := logpkg.New()
 	logger.SetOutput(&out)
+	done := logger.StartTest(logpkg.InfoLevel)
 
 	oldLogger := log
 	log = logger
@@ -213,6 +217,11 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ.On("BeginTx", mock.Anything).Return(context.Canceled).Once()
 	system.maybeVerifyState(63)
 	system.wg.Wait()
+
+	logged := done()
+
+	// it logs "State verification finished" twice, but no errors
+	assert.Len(t, logged, 0)
 
 	historyQ.AssertExpectations(t)
 }
