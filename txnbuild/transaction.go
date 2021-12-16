@@ -603,6 +603,40 @@ func (t GenericTransaction) FeeBump() (*FeeBumpTransaction, bool) {
 	return t.feeBump, t.feeBump != nil
 }
 
+// ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this
+// transaction. The envelope should not be modified because any changes applied
+// may affect the internals of the GenericTransaction.
+func (t *GenericTransaction) ToXDR() (xdr.TransactionEnvelope, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.envelope, nil
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.envelope, nil
+	}
+	err := fmt.Errorf("unable to get xdr of empty GenericTransaction")
+	return xdr.TransactionEnvelope{}, err
+}
+
+// Hash returns the network specific hash of this transaction
+// encoded as a byte array.
+func (t GenericTransaction) Hash(networkStr string) ([32]byte, error) {
+	envelope, err := t.ToXDR()
+	if err != nil {
+		return [32]byte{}, fmt.Errorf("hash GenericTransaction: %v", err)
+	}
+	return network.HashTransactionInEnvelope(envelope, networkStr)
+}
+
+// HashHex returns the network specific hash of this transaction
+// encoded as a hexadecimal string.
+func (t GenericTransaction) HashHex(network string) (string, error) {
+	h, err := t.Hash(network)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h[:]), nil
+}
+
 // MarshalText returns the base64 XDR representation of the transaction
 // envelope.
 func (t *GenericTransaction) MarshalText() ([]byte, error) {

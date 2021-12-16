@@ -4626,3 +4626,54 @@ func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fbgtx, fbgtx2)
 }
+
+func TestGenericTransaction_HashHex(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	gtx := tx.ToGenericTransaction()
+
+	expected := "1b3905ba8c3c0ecc68ae812f2d77f27c697195e8daf568740fc0f5662f65f759"
+	hashHex, err := tx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+	hashHex, err = gtx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: kp0.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+
+	gtx = fbtx.ToGenericTransaction()
+
+	expected = "9a194faa93e4b6efcd8da1c4b25797c666d596f3262d7db43b794b6f2db8d767"
+	hashHex, err = fbtx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+	hashHex, err = gtx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+}
