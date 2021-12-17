@@ -102,7 +102,7 @@ func (c claimPredicateJSON) toXDR() (ClaimPredicate, error) {
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeRelativeTime
 		result.RelBefore = &relBefore
 	case c.AbsBefore != nil:
-		absBefore := Int64(c.AbsBefore.Epoch())
+		absBefore := Int64(c.AbsBefore.UTC().Unix())
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime
 		result.AbsBefore = &absBefore
 	case c.Not != nil:
@@ -161,9 +161,10 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 		payload.Not = new(claimPredicateJSON)
 		*payload.Not, err = c.MustNotPredicate().toJSON()
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		payload.AbsBefore = Newiso8601Time(int64(c.MustAbsBefore()))
+		absBeforeEpoch := int64(c.MustAbsBefore())
+		payload.AbsBefore = Newiso8601Time(absBeforeEpoch)
 		payload.AbsBeforeEpoch = new(int64)
-		*payload.AbsBeforeEpoch = payload.AbsBefore.Epoch()
+		*payload.AbsBeforeEpoch = absBeforeEpoch
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		payload.RelBefore = new(int64)
 		*payload.RelBefore = int64(c.MustRelBefore())
