@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
@@ -26,7 +27,7 @@ func (t *T) CoreSession() *db.Session {
 // Finish finishes the test, logging any accumulated horizon logs to the logs
 // output
 func (t *T) Finish() {
-	logEntries := RestoreLogger()
+	logEntries := t.testLogs()
 	operationfeestats.ResetState()
 
 	for _, entry := range logEntries {
@@ -163,4 +164,13 @@ func (t *T) LoadLedgerStatus() ledger.Status {
 	}
 
 	return next
+}
+
+// retrieves entries from test logger instance
+func (t *T) testLogs() []logrus.Entry {
+	if t.EndLogTest == nil {
+		return []logrus.Entry{}
+	}
+
+	return t.EndLogTest()
 }

@@ -25,12 +25,13 @@ type StaticMockServer struct {
 
 // T provides a common set of functionality for each test in horizon
 type T struct {
-	T         *testing.T
-	Assert    *assert.Assertions
-	Require   *require.Assertions
-	Ctx       context.Context
-	HorizonDB *sqlx.DB
-	CoreDB    *sqlx.DB
+	T          *testing.T
+	Assert     *assert.Assertions
+	Require    *require.Assertions
+	Ctx        context.Context
+	HorizonDB  *sqlx.DB
+	CoreDB     *sqlx.DB
+	EndLogTest func() []logrus.Entry
 }
 
 // Context provides a context suitable for testing in tests that do not create
@@ -55,44 +56,19 @@ func DatabaseURL() string {
 	return tdb.HorizonURL()
 }
 
-// OverrideLogger calls StartTest on default logger. This is used
-// by the testing system so that we can collect output from logs during test
-// runs.  Panics if the logger is already overridden.
-func OverrideLogger() {
-	if endLogTest != nil {
-		panic("logger already overridden")
-	}
-
-	endLogTest = log.StartTest(log.DebugLevel)
-}
-
-// RestoreLogger restores the default horizon logger after it is overridden
-// using a call to `OverrideLogger`.  Panics if the default logger is not
-// presently overridden.
-func RestoreLogger() []logrus.Entry {
-	if endLogTest == nil {
-		panic("logger not overridden, cannot restore")
-	}
-
-	entries := endLogTest()
-	endLogTest = nil
-	return entries
-}
-
-// Start initializes a new test helper object and conceptually "starts" a new
-// test
+// Start initializes a new test helper object, a new instance of log,
+// and conceptually "starts" a new test
 func Start(t *testing.T) *T {
 	result := &T{}
-
 	result.T = t
+	logger := log.New()
 
-	OverrideLogger()
-
-	result.Ctx = log.Set(context.Background(), log.DefaultLogger)
+	result.Ctx = log.Set(context.Background(), logger)
 	result.HorizonDB = Database(t)
 	result.CoreDB = StellarCoreDatabase(t)
 	result.Assert = assert.New(t)
 	result.Require = require.New(t)
+	result.EndLogTest = logger.StartTest(log.DebugLevel)
 
 	return result
 }
@@ -111,5 +87,3 @@ func StellarCoreDatabase(t *testing.T) *sqlx.DB {
 func StellarCoreDatabaseURL() string {
 	return tdb.StellarCoreURL()
 }
-
-var endLogTest func() []logrus.Entry = nil

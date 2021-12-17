@@ -155,12 +155,6 @@ func Panic(args ...interface{}) {
 	DefaultLogger.Panic(args...)
 }
 
-// StartTest shifts the default logger into "test" mode.  See Entry's
-// documentation for the StartTest() method for more info.
-func StartTest(level logrus.Level) func() []logrus.Entry {
-	return DefaultLogger.StartTest(level)
-}
-
 type contextKey string
 
 var loggerContextKey = contextKey("logger")
