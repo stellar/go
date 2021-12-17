@@ -163,11 +163,10 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
 		absBeforeEpoch := int64(c.MustAbsBefore())
 		payload.AbsBefore = Newiso8601Time(absBeforeEpoch)
-		payload.AbsBeforeEpoch = new(int64)
-		*payload.AbsBeforeEpoch = absBeforeEpoch
+		payload.AbsBeforeEpoch = &absBeforeEpoch
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
-		payload.RelBefore = new(int64)
-		*payload.RelBefore = int64(c.MustRelBefore())
+		relBefore := int64(c.MustRelBefore())
+		payload.RelBefore = &relBefore
 	default:
 		err = fmt.Errorf("invalid predicate type: " + c.Type.String())
 	}
