@@ -5,7 +5,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([TBD](TBD))  
+* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([4148](https://github.com/stellar/go/pull/4148))  
 
 ## v2.12.1
 
