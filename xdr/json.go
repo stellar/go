@@ -60,13 +60,22 @@ func (t *iso8601Time) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (t iso8601Time) Epoch() int64 {
+	return t.UTC().Unix()
+}
+
+func Newiso8601Time(epoch int64) *iso8601Time {
+	return &iso8601Time{time.Unix(epoch, 0).UTC()}
+}
+
 type claimPredicateJSON struct {
-	And           *[]claimPredicateJSON `json:"and,omitempty"`
-	Or            *[]claimPredicateJSON `json:"or,omitempty"`
-	Not           *claimPredicateJSON   `json:"not,omitempty"`
-	Unconditional bool                  `json:"unconditional,omitempty"`
-	AbsBefore     *iso8601Time          `json:"abs_before,omitempty"`
-	RelBefore     *int64                `json:"rel_before,string,omitempty"`
+	And            *[]claimPredicateJSON `json:"and,omitempty"`
+	Or             *[]claimPredicateJSON `json:"or,omitempty"`
+	Not            *claimPredicateJSON   `json:"not,omitempty"`
+	Unconditional  bool                  `json:"unconditional,omitempty"`
+	AbsBefore      *iso8601Time          `json:"abs_before,omitempty"`
+	AbsBeforeEpoch *int64                `json:"abs_before_epoch,string,omitempty"`
+	RelBefore      *int64                `json:"rel_before,string,omitempty"`
 }
 
 func convertPredicatesToXDR(input []claimPredicateJSON) ([]ClaimPredicate, error) {
@@ -93,7 +102,7 @@ func (c claimPredicateJSON) toXDR() (ClaimPredicate, error) {
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeRelativeTime
 		result.RelBefore = &relBefore
 	case c.AbsBefore != nil:
-		absBefore := Int64((*c.AbsBefore).UTC().Unix())
+		absBefore := Int64(c.AbsBefore.Epoch())
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime
 		result.AbsBefore = &absBefore
 	case c.Not != nil:
@@ -152,8 +161,9 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 		payload.Not = new(claimPredicateJSON)
 		*payload.Not, err = c.MustNotPredicate().toJSON()
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		payload.AbsBefore = new(iso8601Time)
-		*payload.AbsBefore = iso8601Time{time.Unix(int64(c.MustAbsBefore()), 0).UTC()}
+		payload.AbsBefore = Newiso8601Time(int64(c.MustAbsBefore()))
+		payload.AbsBeforeEpoch = new(int64)
+		*payload.AbsBeforeEpoch = payload.AbsBefore.Epoch()
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		payload.RelBefore = new(int64)
 		*payload.RelBefore = int64(c.MustRelBefore())
