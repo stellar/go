@@ -5,9 +5,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Generate Http Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count`
-  metric key with status=499 label. ([4098](https://github.com/stellar/go/pull/4098))
-
 * Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([TBD](TBD))  
 
 ## v2.12.1
