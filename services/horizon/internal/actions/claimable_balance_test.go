@@ -533,7 +533,7 @@ func TestCursorAndOrderValidation(t *testing.T) {
 
 func TestClaimableBalancesQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/claimable_balances?{asset,claimant,sponsor}"
+	expected := "/claimable_balances{?asset,sponsor,claimant,cursor,limit,order}"
 	q := ClaimableBalancesQuery{}
 	tt.Equal(expected, q.URITemplate())
 }

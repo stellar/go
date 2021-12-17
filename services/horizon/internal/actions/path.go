@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
@@ -72,7 +71,7 @@ func (q StrictReceivePathsQuery) DestinationAsset() xdr.Asset {
 
 // URITemplate returns a rfc6570 URI template for the query struct
 func (q StrictReceivePathsQuery) URITemplate() string {
-	return "/paths/strict-receive{?" + strings.Join(getURIParams(&q, false), ",") + "}"
+	return getURITemplate(&q, "paths/strict-receive", false)
 }
 
 // Validate runs custom validations.
@@ -214,7 +213,7 @@ type FindFixedPathsQuery struct {
 
 // URITemplate returns a rfc6570 URI template for the query struct
 func (q FindFixedPathsQuery) URITemplate() string {
-	return "/paths/strict-send{?" + strings.Join(getURIParams(&q, false), ",") + "}"
+	return getURITemplate(&q, "paths/strict-send", false)
 }
 
 // Validate runs custom validations.
