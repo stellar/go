@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPopulateClaimableBalanceUnconditional(t *testing.T) {
+func TestPopulateClaimableBalance(t *testing.T) {
 	tt := assert.New(t)
 	ctx, _ := test.ContextWithLogBuffer()
 	resource := ClaimableBalance{}
