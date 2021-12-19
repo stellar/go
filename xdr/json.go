@@ -60,11 +60,7 @@ func (t *iso8601Time) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (t iso8601Time) Epoch() int64 {
-	return t.UTC().Unix()
-}
-
-func Newiso8601Time(epoch int64) *iso8601Time {
+func newiso8601Time(epoch int64) *iso8601Time {
 	return &iso8601Time{time.Unix(epoch, 0).UTC()}
 }
 
@@ -162,7 +158,7 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 		*payload.Not, err = c.MustNotPredicate().toJSON()
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
 		absBeforeEpoch := int64(c.MustAbsBefore())
-		payload.AbsBefore = Newiso8601Time(absBeforeEpoch)
+		payload.AbsBefore = newiso8601Time(absBeforeEpoch)
 		payload.AbsBeforeEpoch = &absBeforeEpoch
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		relBefore := int64(c.MustRelBefore())
