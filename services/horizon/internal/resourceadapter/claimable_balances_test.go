@@ -21,6 +21,12 @@ func TestPopulateClaimableBalance(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 2, 3},
 	}
+	unconditional := &xdr.ClaimPredicate{
+		Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+	}
+	relBefore := xdr.Int64(12)
+	absBefore := xdr.Int64(1598440539)
+
 	id, err := xdr.MarshalHex(&balanceID)
 	tt.NoError(err)
 	claimableBalance := history.ClaimableBalance{
@@ -32,7 +38,26 @@ func TestPopulateClaimableBalance(t *testing.T) {
 			{
 				Destination: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 				Predicate: xdr.ClaimPredicate{
-					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					Type: xdr.ClaimPredicateTypeClaimPredicateAnd,
+					AndPredicates: &[]xdr.ClaimPredicate{
+						{
+							Type: xdr.ClaimPredicateTypeClaimPredicateOr,
+							OrPredicates: &[]xdr.ClaimPredicate{
+								{
+									Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
+									RelBefore: &relBefore,
+								},
+								{
+									Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
+									AbsBefore: &absBefore,
+								},
+							},
+						},
+						{
+							Type:         xdr.ClaimPredicateTypeClaimPredicateNot,
+							NotPredicate: &unconditional,
+						},
+					},
 				},
 			},
 		},
@@ -74,5 +99,5 @@ func TestPopulateClaimableBalance(t *testing.T) {
 
 	predicate, err := json.Marshal(resource.Claimants[0].Predicate)
 	tt.NoError(err)
-	tt.JSONEq(`{"unconditional":true}`, string(predicate))
+	tt.JSONEq(`{"and":[{"or":[{"rel_before":"12"},{"abs_before":"2020-08-26T11:15:39Z","abs_before_epoch":"1598440539"}]},{"not":{"unconditional":true}}]}`, string(predicate))
 }
