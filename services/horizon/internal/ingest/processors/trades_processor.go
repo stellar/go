@@ -299,9 +299,11 @@ func (p *TradeProcessor) extractTrades(
 					return nil, err
 				}
 				row.LiquidityPoolFee = null.IntFrom(int64(fee))
+				row.Type = history.LiquidityPoolTradeType
 			} else {
 				row.BaseOfferID = null.IntFrom(int64(trade.OfferId()))
 				sellerAccount = trade.SellerId().Address()
+				row.Type = history.OrderbookTradeType
 			}
 
 			if buyOfferExists {

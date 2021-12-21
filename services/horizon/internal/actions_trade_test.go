@@ -315,10 +315,13 @@ func assertResponseTradeEqualsDBTrade(ht *HTTPT, row history.Trade, record horiz
 	ht.Assert.Equal(row.PriceN.Int64, record.Price.N)
 	ht.Assert.Equal(row.PriceD.Int64, record.Price.D)
 
-	if row.BaseLiquidityPoolID.Valid || row.CounterLiquidityPoolID.Valid {
-		ht.Assert.Equal(history.LiquidityPoolTrades, record.TradeType)
-	} else {
+	switch row.Type {
+	case history.OrderbookTradeType:
 		ht.Assert.Equal(history.OrderbookTrades, record.TradeType)
+	case history.LiquidityPoolTradeType:
+		ht.Assert.Equal(history.LiquidityPoolTrades, record.TradeType)
+	default:
+		ht.Assert.Fail("invalid trade type %v", row.Type)
 	}
 }
 
@@ -833,6 +836,8 @@ func IngestTestTrade(
 		PriceN:          int64(price.N),
 		PriceD:          int64(price.D),
 		LedgerCloseTime: timestamp.ToTime(),
+
+		Type: history.OrderbookTradeType,
 	})
 	err = batch.Exec(ctx)
 	if err != nil {

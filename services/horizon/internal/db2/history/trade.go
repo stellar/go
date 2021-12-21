@@ -171,9 +171,9 @@ func createTradesSQL(page db2.PageQuery, query historyTradesQuery) (string, []in
 
 	switch query.tradeType {
 	case OrderbookTrades:
-		sql = sql.Where(sq.Eq{"htrd.base_liquidity_pool_id": nil, "htrd.counter_liquidity_pool_id": nil})
+		sql = sql.Where(sq.Eq{"htrd.trade_type": OrderbookTradeType})
 	case LiquidityPoolTrades:
-		sql = sql.Where(sq.Eq{"htrd.base_offer_id": nil, "htrd.counter_offer_id": nil})
+		sql = sql.Where(sq.Eq{"htrd.trade_type": LiquidityPoolTradeType})
 	case AllTrades:
 	default:
 		return "", nil, errors.Errorf("Invalid trade type: %v", query.tradeType)
@@ -308,6 +308,7 @@ var selectTradeFields = sq.Select(
 	"htrd.base_is_seller",
 	"htrd.price_n",
 	"htrd.price_d",
+	"htrd.trade_type",
 )
 
 var selectReverseTradeFields = sq.Select(
@@ -332,6 +333,7 @@ var selectReverseTradeFields = sq.Select(
 	"NOT(htrd.base_is_seller) as base_is_seller",
 	"htrd.price_d as price_n",
 	"htrd.price_n as price_d",
+	"htrd.trade_type",
 )
 
 func getCanonicalAssetOrder(

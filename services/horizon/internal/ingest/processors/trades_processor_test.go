@@ -241,6 +241,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseIsSeller:       false,
 			PriceN:             int64(s.sellPrices[0].D),
 			PriceD:             int64(s.sellPrices[0].N),
+			Type:               history.OrderbookTradeType,
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 3).ToInt64(),
@@ -257,6 +258,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseOfferID:        null.IntFrom(int64(s.strictSendTrade.OfferId())),
 			PriceN:             int64(s.sellPrices[1].N),
 			PriceD:             int64(s.sellPrices[1].D),
+			Type:               history.OrderbookTradeType,
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 4).ToInt64(),
@@ -273,6 +275,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterOfferID:     null.IntFrom(int64(s.buyOfferTrade.OfferId())),
 			PriceN:             int64(s.sellPrices[2].D),
 			PriceD:             int64(s.sellPrices[2].N),
+			Type:               history.OrderbookTradeType,
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 5).ToInt64(),
@@ -289,6 +292,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseOfferID:        null.IntFrom(int64(s.sellOfferTrade.OfferId())),
 			PriceN:             int64(s.sellPrices[3].N),
 			PriceD:             int64(s.sellPrices[3].D),
+			Type:               history.OrderbookTradeType,
 		},
 		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 6).ToInt64(),
@@ -305,6 +309,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterOfferID:     null.IntFrom(int64(s.passiveSellOfferTrade.OfferId())),
 			PriceN:             int64(s.sellPrices[4].D),
 			PriceD:             int64(s.sellPrices[4].N),
+			Type:               history.OrderbookTradeType,
 		},
 
 		{
@@ -323,6 +328,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseOfferID:      null.IntFrom(int64(s.otherPassiveSellOfferTrade.OfferId())),
 			PriceN:           int64(s.sellPrices[5].N),
 			PriceD:           int64(s.sellPrices[5].D),
+			Type:             history.OrderbookTradeType,
 		},
 		{
 			HistoryOperationID:     toid.New(int32(ledger.Header.LedgerSeq), 1, 8).ToInt64(),
@@ -339,6 +345,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LiquidityPoolFee:       null.IntFrom(int64(xdr.LiquidityPoolFeeV18)),
 			PriceN:                 int64(s.sellPrices[6].D),
 			PriceD:                 int64(s.sellPrices[6].N),
+			Type:                   history.LiquidityPoolTradeType,
 		},
 		{
 			HistoryOperationID:  toid.New(int32(ledger.Header.LedgerSeq), 1, 9).ToInt64(),
@@ -355,6 +362,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			LiquidityPoolFee:    null.IntFrom(int64(xdr.LiquidityPoolFeeV18)),
 			PriceN:              int64(s.sellPrices[7].N),
 			PriceD:              int64(s.sellPrices[7].D),
+			Type:                history.LiquidityPoolTradeType,
 		},
 	}
 
