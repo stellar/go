@@ -18,20 +18,16 @@ import (
 )
 
 func (s *Stream) SentCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sent
+	return s.eventsSent
 }
 
 // IsDone is safe to call concurrently and is exported.
 func (s *Stream) IsDone() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.limit == 0 {
 		return s.done
 	}
 
-	return s.done || s.sent >= s.limit
+	return s.done || s.eventsSent >= s.limit
 }
 
 type StreamTestSuite struct {
@@ -72,7 +68,7 @@ func (suite *StreamTestSuite) TestStream_Send() {
 	// Now check that the data got written
 	assert.Contains(suite.T(), suite.w.Body.String(), "data: \"test message\"\n\n")
 	suite.stream.Done()
-	assert.Equal(suite.T(), 1, suite.stream.SentCount())
+	assert.Equal(suite.T(), 2, suite.stream.SentCount())
 }
 
 // Tests that Stream can send error events.
@@ -86,9 +82,8 @@ func (suite *StreamTestSuite) TestStream_Err() {
 	// Reset the stream to test the scenario where an event has been sent.
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
-	suite.stream.sent++
+	suite.stream.eventsSent++
 	suite.stream.Err(err)
-	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: Unexpected stream error\n\n")
 	assert.True(suite.T(), suite.stream.IsDone())
 }
@@ -100,9 +95,8 @@ func (suite *StreamTestSuite) TestStream_ErrRegisterError() {
 
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
-	suite.stream.sent++
+	suite.stream.eventsSent++
 	suite.stream.Err(context.DeadlineExceeded)
-	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: problem: timeout\n\n")
 	assert.True(suite.T(), suite.stream.IsDone())
 }
@@ -114,9 +108,8 @@ func (suite *StreamTestSuite) TestStream_ErrNoRows() {
 
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
-	suite.stream.sent++
+	suite.stream.eventsSent++
 	suite.stream.Err(sql.ErrNoRows)
-	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: problem: not_found\n\n")
 	assert.True(suite.T(), suite.stream.IsDone())
 }
@@ -138,10 +131,10 @@ func (suite *StreamTestSuite) TestStream_SentCount() {
 		message := "test message " + strconv.Itoa(i)
 		suite.stream.Send(Event{Data: message})
 	}
-	assert.Equal(suite.T(), 5, suite.stream.SentCount())
+	assert.Equal(suite.T(), 6, suite.stream.SentCount())
 	suite.stream.Err(errors.New("example error"))
 	// Make sure that errors don't contribute to the send count
-	assert.Equal(suite.T(), 5, suite.stream.SentCount())
+	assert.Equal(suite.T(), 6, suite.stream.SentCount())
 }
 
 // Runs the test suite.
