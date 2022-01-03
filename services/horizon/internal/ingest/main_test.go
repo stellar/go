@@ -323,7 +323,7 @@ func (m *mockDBQ) GetExpStateInvalid(ctx context.Context) (bool, error) {
 	return args.Get(0).(bool), args.Error(1)
 }
 
-func (m *mockDBQ) StreamAllOffers(ctx context.Context, callback func(*history.Offer) error) error {
+func (m *mockDBQ) StreamAllOffers(ctx context.Context, callback func(history.Offer) error) error {
 	a := m.Called(ctx, callback)
 	return a.Error(0)
 }

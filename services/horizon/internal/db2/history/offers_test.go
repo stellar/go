@@ -97,8 +97,8 @@ func TestQueryEmptyOffers(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	var offers []Offer
-	err := q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		offers = append(offers, *offer)
+	err := q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
 		return nil
 	})
 
@@ -133,8 +133,8 @@ func TestInsertOffers(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	var offers []Offer
-	err = q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		offers = append(offers, *offer)
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
 		return nil
 	})
 	tt.Assert.NoError(err)
@@ -164,8 +164,8 @@ func TestInsertOffers(t *testing.T) {
 	tt.Assert.Equal(2, afterCompactionCount)
 
 	var afterCompactionOffers []Offer
-	err = q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		afterCompactionOffers = append(afterCompactionOffers, *offer)
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		afterCompactionOffers = append(afterCompactionOffers, offer)
 		return nil
 	})
 	tt.Assert.NoError(err)
@@ -182,8 +182,8 @@ func TestUpdateOffer(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	var offers []Offer
-	err = q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		offers = append(offers, *offer)
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
 		return nil
 	})
 	tt.Assert.NoError(err)
@@ -210,8 +210,8 @@ func TestUpdateOffer(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	offers = nil
-	err = q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		offers = append(offers, *offer)
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
 		return nil
 	})
 	tt.Assert.NoError(err)
@@ -237,8 +237,8 @@ func TestRemoveOffer(t *testing.T) {
 	err := insertOffer(tt, q, eurOffer)
 	tt.Assert.NoError(err)
 	var offers []Offer
-	err = q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		offers = append(offers, *offer)
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
 		return nil
 	})
 	tt.Assert.NoError(err)
@@ -255,8 +255,8 @@ func TestRemoveOffer(t *testing.T) {
 	expectedUpdates[0].Deleted = true
 
 	offers = nil
-	err = q.StreamAllOffers(tt.Ctx, func(offer *Offer) error {
-		offers = append(offers, *offer)
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
 		return nil
 	})
 	tt.Assert.NoError(err)

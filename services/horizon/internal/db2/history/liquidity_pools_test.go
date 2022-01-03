@@ -112,8 +112,8 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 
 	pool := lps[0]
 	lps = nil
-	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool *LiquidityPool) error {
-		lps = append(lps, *liqudityPool)
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool LiquidityPool) error {
+		lps = append(lps, liqudityPool)
 		return nil
 	})
 	tt.Assert.NoError(err)
@@ -210,8 +210,8 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	tt.Assert.Len(lps, 0)
 
 	lps = nil
-	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool *LiquidityPool) error {
-		lps = append(lps, *liqudityPool)
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool LiquidityPool) error {
+		lps = append(lps, liqudityPool)
 		return nil
 	})
 

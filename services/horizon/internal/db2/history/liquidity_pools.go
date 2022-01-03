@@ -86,7 +86,7 @@ func (lpar *LiquidityPoolAssetReserve) UnmarshalJSON(data []byte) error {
 type QLiquidityPools interface {
 	UpsertLiquidityPools(ctx context.Context, lps []LiquidityPool) error
 	GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error)
-	StreamAllLiquidityPools(ctx context.Context, callback func(*LiquidityPool) error) error
+	StreamAllLiquidityPools(ctx context.Context, callback func(LiquidityPool) error) error
 	CountLiquidityPools(ctx context.Context) (int, error)
 	FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error)
 	GetUpdatedLiquidityPools(ctx context.Context, newerThanSequence uint32) ([]LiquidityPool, error)
@@ -187,7 +187,7 @@ func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([
 	return results, nil
 }
 
-func (q *Q) StreamAllLiquidityPools(ctx context.Context, callback func(*LiquidityPool) error) error {
+func (q *Q) StreamAllLiquidityPools(ctx context.Context, callback func(LiquidityPool) error) error {
 	var rows *sqlx.Rows
 	var err error
 
@@ -196,10 +196,10 @@ func (q *Q) StreamAllLiquidityPools(ctx context.Context, callback func(*Liquidit
 	}
 
 	defer rows.Close()
-	liquidityPool := &LiquidityPool{}
+	liquidityPool := LiquidityPool{}
 
 	for rows.Next() {
-		if err = rows.StructScan(liquidityPool); err != nil {
+		if err = rows.StructScan(&liquidityPool); err != nil {
 			return errors.Wrap(err, "could not scan row into liquidity pool struct")
 		}
 		if err = callback(liquidityPool); err != nil {

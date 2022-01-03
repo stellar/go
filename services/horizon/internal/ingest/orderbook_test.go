@@ -284,9 +284,9 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.Offer) error)
-			callback(&offer)
-			callback(&otherOffer)
+			callback := args.Get(1).(func(offer history.Offer) error)
+			callback(offer)
+			callback(otherOffer)
 		}).
 		Once()
 
@@ -326,9 +326,9 @@ func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
 	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.Offer) error)
+			callback := args.Get(1).(func(offer history.Offer) error)
 			for idx := range offers {
-				callback(&offers[idx])
+				callback(offers[idx])
 			}
 		}).
 		Once()
@@ -685,9 +685,9 @@ func (t *VerifyOffersStreamTestSuite) TestLengthMismatch() {
 	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.Offer) error)
+			callback := args.Get(1).(func(offer history.Offer) error)
 			for idx := range offers {
-				callback(&offers[idx])
+				callback(offers[idx])
 			}
 		}).
 		Once()
@@ -730,9 +730,9 @@ func (t *VerifyOffersStreamTestSuite) TestContentMismatch() {
 	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.Offer) error)
+			callback := args.Get(1).(func(offer history.Offer) error)
 			for idx := range offers {
-				callback(&offers[idx])
+				callback(offers[idx])
 			}
 		}).
 		Once()
@@ -775,9 +775,9 @@ func (t *VerifyOffersStreamTestSuite) TestSuccess() {
 	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.Offer) error)
+			callback := args.Get(1).(func(offer history.Offer) error)
 			for idx := range offers {
-				callback(&offers[idx])
+				callback(offers[idx])
 			}
 		}).
 		Once()
@@ -894,9 +894,9 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestLengthMismatch() {
 	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.LiquidityPool) error)
+			callback := args.Get(1).(func(offer history.LiquidityPool) error)
 			for idx := range liquidityPools {
-				callback(&liquidityPools[idx])
+				callback(liquidityPools[idx])
 			}
 		}).
 		Once()
@@ -950,9 +950,9 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestContentMismatch() {
 	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(offer *history.LiquidityPool) error)
+			callback := args.Get(1).(func(offer history.LiquidityPool) error)
 			for idx := range liquidityPools {
-				callback(&liquidityPools[idx])
+				callback(liquidityPools[idx])
 			}
 		}).
 		Once()
@@ -1006,9 +1006,9 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestSuccess() {
 	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(func(*history.LiquidityPool) error)
+			callback := args.Get(1).(func(history.LiquidityPool) error)
 			for idx := range liquidityPools {
-				callback(&liquidityPools[idx])
+				callback(liquidityPools[idx])
 			}
 		}).
 		Once()

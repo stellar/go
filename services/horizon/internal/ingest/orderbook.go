@@ -132,8 +132,8 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 
 		defer o.graph.Discard()
 
-		err := o.historyQ.StreamAllOffers(ctx, func(offer *history.Offer) error {
-			o.graph.AddOffers(offerToXDR(*offer))
+		err := o.historyQ.StreamAllOffers(ctx, func(offer history.Offer) error {
+			o.graph.AddOffers(offerToXDR(offer))
 			return nil
 		})
 
@@ -141,9 +141,9 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 			return true, errors.Wrap(err, "Error loading offers into orderbook")
 		}
 
-		err = o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool *history.LiquidityPool) error {
-			if liquidityPoolXDR, liquidityPoolErr := liquidityPoolToXDR(*liquidityPool); liquidityPoolErr != nil {
-				return errors.Wrapf(liquidityPoolErr, "Invalid liquidity pool row %v, unable to marshal to xdr", *liquidityPool)
+		err = o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool history.LiquidityPool) error {
+			if liquidityPoolXDR, liquidityPoolErr := liquidityPoolToXDR(liquidityPool); liquidityPoolErr != nil {
+				return errors.Wrapf(liquidityPoolErr, "Invalid liquidity pool row %v, unable to marshal to xdr", liquidityPool)
 			} else {
 				o.graph.AddLiquidityPools(liquidityPoolXDR)
 				return nil
@@ -209,8 +209,8 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 }
 
 func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.OfferEntry) (bool, error) {
-	var ingestionOffers []*history.Offer
-	err := o.historyQ.StreamAllOffers(ctx, func(offer *history.Offer) error {
+	var ingestionOffers []history.Offer
+	err := o.historyQ.StreamAllOffers(ctx, func(offer history.Offer) error {
 		ingestionOffers = append(ingestionOffers, offer)
 		return nil
 	})
@@ -231,7 +231,7 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.Offe
 
 		for i, offerRow := range ingestionOffers {
 			offerEntry := offers[i]
-			offerRowXDR := offerToXDR(*offerRow)
+			offerRowXDR := offerToXDR(offerRow)
 			offerEntryBase64, err := o.encodingBuffer.MarshalBase64(&offerEntry)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling offerEntry")
@@ -258,9 +258,9 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.Offe
 }
 
 func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidityPools []xdr.LiquidityPoolEntry) (bool, error) {
-	var ingestionLiquidityPools []*history.LiquidityPool
+	var ingestionLiquidityPools []history.LiquidityPool
 
-	err := o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool *history.LiquidityPool) error {
+	err := o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool history.LiquidityPool) error {
 		ingestionLiquidityPools = append(ingestionLiquidityPools, liquidityPool)
 		return nil
 	})
@@ -282,7 +282,7 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 
 		for i, liquidityPoolRow := range ingestionLiquidityPools {
 			liquidityPoolEntry := liquidityPools[i]
-			liquidityPoolRowXDR, err := liquidityPoolToXDR(*liquidityPoolRow)
+			liquidityPoolRowXDR, err := liquidityPoolToXDR(liquidityPoolRow)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from converting liquidity pool row to xdr")
 			}
