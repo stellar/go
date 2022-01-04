@@ -4,13 +4,14 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/stellar/go/support/errors"
 )
 
 // QOffers defines offer related queries.
 type QOffers interface {
-	GetAllOffers(ctx context.Context) ([]Offer, error)
+	StreamAllOffers(ctx context.Context, callback func(Offer) error) error
 	GetOffersByIDs(ctx context.Context, ids []int64) ([]Offer, error)
 	CountOffers(ctx context.Context) (int, error)
 	GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]Offer, error)
@@ -80,11 +81,30 @@ func (q *Q) GetOffers(ctx context.Context, query OffersQuery) ([]Offer, error) {
 	return offers, nil
 }
 
-// GetAllOffers loads all non deleted offers
-func (q *Q) GetAllOffers(ctx context.Context) ([]Offer, error) {
-	var offers []Offer
-	err := q.Select(ctx, &offers, selectOffers.Where("deleted = ?", false))
-	return offers, err
+// StreamAllOffers loads all non deleted offers
+func (q *Q) StreamAllOffers(ctx context.Context, callback func(Offer) error) error {
+	var rows *sqlx.Rows
+	var err error
+
+	if rows, err = q.Query(ctx, selectOffers.Where("deleted = ?", false)); err != nil {
+		return errors.Wrap(err, "could not run all offers select query")
+	}
+
+	defer rows.Close()
+	offer := Offer{}
+
+	for rows.Next() {
+		if err = rows.StructScan(&offer); err != nil {
+			return errors.Wrap(err, "could not scan row into offer struct")
+		}
+
+		if err = callback(offer); err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
+
 }
 
 // GetUpdatedOffers returns all offers created, updated, or deleted after the given ledger sequence.
