@@ -3,7 +3,6 @@ package sse
 import (
 	"context"
 	"net/http"
-	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/support/log"
@@ -19,13 +18,11 @@ var (
 )
 
 type Stream struct {
-	ctx      context.Context
-	initSync sync.Once  // Variable to ensure that Init only writes the preamble once.
-	mu       sync.Mutex // Mutex protects the following fields
-	w        http.ResponseWriter
-	done     bool
-	sent     int
-	limit    int
+	ctx        context.Context
+	w          http.ResponseWriter
+	done       bool
+	eventsSent int
+	limit      int
 }
 
 // NewStream creates a new stream against the provided response writer.
@@ -40,43 +37,37 @@ func NewStream(ctx context.Context, w http.ResponseWriter) *Stream {
 // hello message. This should be called before any method that writes to the client to ensure that the preamble
 // has been sent first.
 func (s *Stream) Init() {
-	s.initSync.Do(func() {
+	if s.eventsSent == 0 {
 		ok := WritePreamble(s.ctx, s.w)
-		if !ok {
+		if ok {
+			// The preamble includes sending a hello event
+			s.eventsSent++
+		} else {
 			s.done = true
 		}
-	})
+	}
 }
 
 func (s *Stream) Send(e Event) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.Init()
 	WriteEvent(s.ctx, s.w, e)
-	s.sent++
+	s.eventsSent++
 }
 
 func (s *Stream) SetLimit(limit int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.limit = limit
 }
 
 func (s *Stream) Done() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.Init()
 	WriteEvent(s.ctx, s.w, goodbyeEvent)
 	s.done = true
 }
 
 func (s *Stream) Err(err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// If we haven't sent an event, we should simply return the normal HTTP
 	// error because it means that we haven't sent the preamble.
-	if s.sent == 0 {
+	if s.eventsSent == 0 {
 		problem.Render(s.ctx, s.w, err)
 		return
 	}
