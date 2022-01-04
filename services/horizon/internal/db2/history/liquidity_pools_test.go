@@ -111,7 +111,11 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	tt.Assert.Len(lps, 1)
 
 	pool := lps[0]
-	lps, err = q.GetAllLiquidityPools(tt.Ctx)
+	lps = nil
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool LiquidityPool) error {
+		lps = append(lps, liqudityPool)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 1)
 	tt.Assert.Equal(pool, lps[0])
@@ -205,7 +209,12 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 0)
 
-	lps, err = q.GetAllLiquidityPools(tt.Ctx)
+	lps = nil
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool LiquidityPool) error {
+		lps = append(lps, liqudityPool)
+		return nil
+	})
+
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 0)
 

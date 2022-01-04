@@ -323,9 +323,9 @@ func (m *mockDBQ) GetExpStateInvalid(ctx context.Context) (bool, error) {
 	return args.Get(0).(bool), args.Error(1)
 }
 
-func (m *mockDBQ) GetAllOffers(ctx context.Context) ([]history.Offer, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]history.Offer), args.Error(1)
+func (m *mockDBQ) StreamAllOffers(ctx context.Context, callback func(history.Offer) error) error {
+	a := m.Called(ctx, callback)
+	return a.Error(0)
 }
 
 func (m *mockDBQ) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {

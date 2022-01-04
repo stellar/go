@@ -96,7 +96,12 @@ func TestQueryEmptyOffers(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	offers, err := q.GetAllOffers(tt.Ctx)
+	var offers []Offer
+	err := q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
+		return nil
+	})
+
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 0)
 
@@ -127,7 +132,11 @@ func TestInsertOffers(t *testing.T) {
 	err = insertOffer(tt, q, twoEurOffer)
 	tt.Assert.NoError(err)
 
-	offers, err := q.GetAllOffers(tt.Ctx)
+	var offers []Offer
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 2)
 
@@ -154,7 +163,11 @@ func TestInsertOffers(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(2, afterCompactionCount)
 
-	afterCompactionOffers, err := q.GetAllOffers(tt.Ctx)
+	var afterCompactionOffers []Offer
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		afterCompactionOffers = append(afterCompactionOffers, offer)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(afterCompactionOffers, 2)
 }
@@ -168,7 +181,11 @@ func TestUpdateOffer(t *testing.T) {
 	err := insertOffer(tt, q, eurOffer)
 	tt.Assert.NoError(err)
 
-	offers, err := q.GetAllOffers(tt.Ctx)
+	var offers []Offer
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 1)
 
@@ -192,7 +209,11 @@ func TestUpdateOffer(t *testing.T) {
 	err = q.UpsertOffers(tt.Ctx, []Offer{modifiedEurOffer})
 	tt.Assert.NoError(err)
 
-	offers, err = q.GetAllOffers(tt.Ctx)
+	offers = nil
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 1)
 
@@ -215,7 +236,11 @@ func TestRemoveOffer(t *testing.T) {
 
 	err := insertOffer(tt, q, eurOffer)
 	tt.Assert.NoError(err)
-	offers, err := q.GetAllOffers(tt.Ctx)
+	var offers []Offer
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 1)
 	tt.Assert.Equal(offers[0], eurOffer)
@@ -229,7 +254,11 @@ func TestRemoveOffer(t *testing.T) {
 	expectedUpdates[0].LastModifiedLedger = 1236
 	expectedUpdates[0].Deleted = true
 
-	offers, err = q.GetAllOffers(tt.Ctx)
+	offers = nil
+	err = q.StreamAllOffers(tt.Ctx, func(offer Offer) error {
+		offers = append(offers, offer)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(offers, 0)
 

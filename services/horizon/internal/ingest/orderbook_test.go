@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/xdr"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -238,7 +239,7 @@ func (t *UpdateOrderBookStreamTestSuite) TearDownTest() {
 	t.graph.AssertExpectations(t.T())
 }
 
-func (t *UpdateOrderBookStreamTestSuite) TestGetAllOffersError() {
+func (t *UpdateOrderBookStreamTestSuite) TestStreamAllOffersError() {
 	status := ingestionStatus{
 		HistoryConsistentWithState:        true,
 		StateInvalid:                      false,
@@ -248,13 +249,13 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetAllOffersError() {
 	}
 	t.graph.On("Clear").Return().Once()
 	t.graph.On("Discard").Return().Once()
-	t.historyQ.On("GetAllOffers", t.ctx).
-		Return([]history.Offer{}, fmt.Errorf("offers error")).
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(fmt.Errorf("offers error")).
 		Once()
 
 	t.stream.lastLedger = 300
 	_, err := t.stream.update(t.ctx, status)
-	t.Assert().EqualError(err, "Error from GetAllOffers: offers error")
+	t.Assert().EqualError(err, "Error loading offers into orderbook: offers error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 }
 
@@ -280,12 +281,17 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  20,
 	}}
-	t.historyQ.On("GetAllOffers", t.ctx).
-		Return([]history.Offer{offer, otherOffer}, nil).
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.Offer) error)
+			callback(offer)
+			callback(otherOffer)
+		}).
 		Once()
 
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return([]history.LiquidityPool{}, nil).
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(nil).
 		Once()
 
 	t.graph.On("AddOffers", offerEntry).Return().Once()
@@ -317,12 +323,18 @@ func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
 		OfferId:  20,
 	}}
 	offers := []history.Offer{offer, otherOffer}
-	t.historyQ.On("GetAllOffers", t.ctx).
-		Return(offers, nil).
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.Offer) error)
+			for idx := range offers {
+				callback(offers[idx])
+			}
+		}).
 		Once()
 
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return([]history.LiquidityPool{}, nil).
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(nil).
 		Once()
 
 	t.graph.On("AddOffers", offerEntry).Return().Once()
@@ -636,19 +648,18 @@ func (t *VerifyOffersStreamTestSuite) TearDownTest() {
 	t.graph.AssertExpectations(t.T())
 }
 
-func (t *VerifyOffersStreamTestSuite) TestGetAllOffersError() {
-	t.historyQ.On("GetAllOffers", t.ctx).
-		Return([]history.Offer{}, fmt.Errorf("offers error")).
+func (t *VerifyOffersStreamTestSuite) TestStreamAllOffersError() {
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(fmt.Errorf("offers error")).
 		Once()
 
 	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
-	t.Assert().EqualError(err, "Error from GetAllOffers: offers error")
+	t.Assert().EqualError(err, "Error loading all offers for orderbook verification: offers error")
 	t.Assert().False(offersOk)
 }
 
 func (t *VerifyOffersStreamTestSuite) TestEmptyDBOffers() {
-	var offers []history.Offer
-	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).Return(nil).Once()
 
 	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
@@ -671,7 +682,15 @@ func (t *VerifyOffersStreamTestSuite) TestLengthMismatch() {
 			LastModifiedLedger: 1,
 		},
 	}
-	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.Offer) error)
+			for idx := range offers {
+				callback(offers[idx])
+			}
+		}).
+		Once()
 
 	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
@@ -707,7 +726,16 @@ func (t *VerifyOffersStreamTestSuite) TestContentMismatch() {
 			LastModifiedLedger: 1,
 		},
 	}
-	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
+
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.Offer) error)
+			for idx := range offers {
+				callback(offers[idx])
+			}
+		}).
+		Once()
 
 	t.stream.lastLedger = 300
 	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
@@ -744,7 +772,15 @@ func (t *VerifyOffersStreamTestSuite) TestSuccess() {
 			LastModifiedLedger: 1,
 		},
 	}
-	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
+	t.historyQ.On("StreamAllOffers", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.Offer) error)
+			for idx := range offers {
+				callback(offers[idx])
+			}
+		}).
+		Once()
 
 	offersOk, err := t.stream.verifyAllOffers(t.ctx, t.graph.Offers())
 	t.Assert().NoError(err)
@@ -812,19 +848,19 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TearDownTest() {
 	t.graph.AssertExpectations(t.T())
 }
 
-func (t *VerifyLiquidityPoolsStreamTestSuite) TestGetAllLiquidityPoolsError() {
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return([]history.LiquidityPool{}, fmt.Errorf("liquidity pools error")).
+func (t *VerifyLiquidityPoolsStreamTestSuite) TestStreamAllLiquidityPoolsError() {
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(fmt.Errorf("liquidity pools error")).
 		Once()
 
 	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
-	t.Assert().EqualError(err, "Error from GetAllLiquidityPools: liquidity pools error")
+	t.Assert().EqualError(err, "Error loading all liquidity pools for orderbook verification: liquidity pools error")
 	t.Assert().False(liquidityPoolsOk)
 }
 
 func (t *VerifyLiquidityPoolsStreamTestSuite) TestEmptyDBOffers() {
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return([]history.LiquidityPool{}, nil).
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(nil).
 		Once()
 
 	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
@@ -855,8 +891,14 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestLengthMismatch() {
 		},
 	}
 
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return(liquidityPools, nil).
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.LiquidityPool) error)
+			for idx := range liquidityPools {
+				callback(liquidityPools[idx])
+			}
+		}).
 		Once()
 
 	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
@@ -905,8 +947,14 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestContentMismatch() {
 			Deleted:            false,
 		},
 	}
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return(liquidityPools, nil).
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(offer history.LiquidityPool) error)
+			for idx := range liquidityPools {
+				callback(liquidityPools[idx])
+			}
+		}).
 		Once()
 
 	liquidityPoolsOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())
@@ -955,8 +1003,14 @@ func (t *VerifyLiquidityPoolsStreamTestSuite) TestSuccess() {
 			Deleted:            false,
 		},
 	}
-	t.historyQ.MockQLiquidityPools.On("GetAllLiquidityPools", t.ctx).
-		Return(liquidityPools, nil).
+	t.historyQ.MockQLiquidityPools.On("StreamAllLiquidityPools", t.ctx, mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			callback := args.Get(1).(func(history.LiquidityPool) error)
+			for idx := range liquidityPools {
+				callback(liquidityPools[idx])
+			}
+		}).
 		Once()
 
 	offersOk, err := t.stream.verifyAllLiquidityPools(t.ctx, t.graph.LiquidityPools())

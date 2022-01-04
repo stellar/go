@@ -127,6 +127,8 @@ type SessionInterface interface {
 	GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) error
 	SelectRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	Query(ctx context.Context, query squirrel.Sqlizer) (*sqlx.Rows, error)
+	QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	GetTable(name string) *Table
 	Exec(ctx context.Context, query squirrel.Sqlizer) (sql.Result, error)
 	ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
