@@ -237,12 +237,9 @@ func (s AssetStatSet) AddLiquidityPool(change ingest.Change) error {
 		return ingest.NewStateError(errors.New("both pre and post liquidity pools cannot be nil"))
 	}
 
-	var lpType xdr.LiquidityPoolType
-	if pre != nil {
-		lpType = pre.Body.Type
-	}
-	if post != nil {
-		lpType = post.Body.Type
+	lpType, err := change.GetLiquidityPoolType()
+	if err != nil {
+		return ingest.NewStateError(err)
 	}
 
 	var assetA, assetB xdr.Asset
