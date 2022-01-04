@@ -16,7 +16,7 @@ import (
 
 func TestMuxedAccountDetails(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{ProtocolVersion: 17})
+	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
 	masterStr := master.Address()
 	masterAcID := xdr.MustAddress(masterStr)

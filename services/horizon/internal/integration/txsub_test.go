@@ -5,7 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ import (
 
 func TestTxsub(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{ProtocolVersion: ingest.MaxSupportedProtocolVersion})
+	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
 
 	// Sanity check: create 20 accounts and submit 2 txs from each of them as

@@ -13,7 +13,7 @@ import (
 )
 
 func TestMuxedOperations(t *testing.T) {
-	itest := integration.NewTest(t, integration.Config{ProtocolVersion: 17})
+	itest := integration.NewTest(t, integration.Config{})
 
 	sponsored := keypair.MustRandom()
 	// Is there an easier way?
