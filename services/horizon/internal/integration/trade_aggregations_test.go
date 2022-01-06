@@ -7,7 +7,6 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	strtime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
@@ -17,7 +16,7 @@ import (
 )
 
 func TestTradeAggregations(t *testing.T) {
-	itest := integration.NewTest(t, integration.Config{ProtocolVersion: ingest.MaxSupportedProtocolVersion})
+	itest := integration.NewTest(t, integration.Config{})
 	ctx := context.Background()
 	historyQ := itest.Horizon().HistoryQ()
 
@@ -76,6 +75,7 @@ func TestTradeAggregations(t *testing.T) {
 					CounterAssetID:     counterAssetId,
 					PriceN:             23456,
 					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 			},
 			resolution: 60_000,
@@ -115,6 +115,7 @@ func TestTradeAggregations(t *testing.T) {
 					CounterAssetID:     counterAssetId,
 					PriceN:             23456,
 					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 				{
 					HistoryOperationID: 0,
@@ -130,6 +131,7 @@ func TestTradeAggregations(t *testing.T) {
 					CounterAssetID:     counterAssetId,
 					PriceN:             13456,
 					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 			},
 			resolution: 60_000,
@@ -169,6 +171,7 @@ func TestTradeAggregations(t *testing.T) {
 					CounterAssetID:     counterAssetId,
 					PriceN:             23456,
 					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 				{
 					HistoryOperationID: 0,
@@ -184,6 +187,7 @@ func TestTradeAggregations(t *testing.T) {
 					CounterAssetID:     counterAssetId,
 					PriceN:             13456,
 					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 			},
 			resolution: 86_400_000,

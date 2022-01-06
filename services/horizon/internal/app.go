@@ -147,6 +147,7 @@ func (a *App) Serve() error {
 		wg.Done()
 	}()
 
+	log.Infof("Starting to serve requests")
 	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {
 		return err

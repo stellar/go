@@ -68,7 +68,7 @@ type LiquidityPoolsQuery struct {
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q LiquidityPoolsQuery) URITemplate() string {
-	return "/liquidity_pools?{?reserves,account}"
+	return getURITemplate(&q, "liquidity_pools", true)
 }
 
 // Validate validates and parses the query

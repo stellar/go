@@ -440,13 +440,17 @@ func getURIParams(query interface{}, paginated bool) []string {
 	params := getSchemaTags(reflect.ValueOf(query).Elem())
 	if paginated {
 		pagingParams := []string{
-			"cursor",
-			"limit",
-			"order",
+			ParamCursor,
+			ParamLimit,
+			ParamOrder,
 		}
 		params = append(params, pagingParams...)
 	}
 	return params
+}
+
+func getURITemplate(query interface{}, basePath string, paginated bool) string {
+	return "/" + basePath + "{?" + strings.Join(getURIParams(query, paginated), ",") + "}"
 }
 
 func getSchemaTags(v reflect.Value) []string {

@@ -11,9 +11,9 @@ type MockQOffers struct {
 	mock.Mock
 }
 
-func (m *MockQOffers) GetAllOffers(ctx context.Context) ([]Offer, error) {
-	a := m.Called(ctx)
-	return a.Get(0).([]Offer), a.Error(1)
+func (m *MockQOffers) StreamAllOffers(ctx context.Context, callback func(Offer) error) error {
+	a := m.Called(ctx, callback)
+	return a.Error(0)
 }
 
 func (m *MockQOffers) GetOffersByIDs(ctx context.Context, ids []int64) ([]Offer, error) {
