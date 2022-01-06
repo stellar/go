@@ -18,6 +18,7 @@ import (
 )
 
 func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry) db.SessionInterface {
+	log.Infof("Establishing database session at %s for %v", databaseURL, subservice)
 	session, err := db.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("cannot open %v DB: %v", subservice, err)
@@ -29,6 +30,8 @@ func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, max
 }
 
 func mustInitHorizonDB(app *App) {
+	log.Infof("Initializing database...")
+
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
 	if app.config.Ingest {
