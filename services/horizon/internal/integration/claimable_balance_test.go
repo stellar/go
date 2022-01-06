@@ -17,30 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var protocol15Config = integration.Config{ProtocolVersion: 15}
-
-func TestProtocol15Basics(t *testing.T) {
+func TestClaimableBalanceBasics(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol15Config)
+	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
-
-	t.Run("Sanity", func(t *testing.T) {
-		root, err := itest.Client().Root()
-		tt.NoError(err)
-		tt.LessOrEqual(int32(15), root.CoreSupportedProtocolVersion)
-		tt.Equal(int32(15), root.CurrentProtocolVersion)
-
-		// Submit a simple tx
-		op := txnbuild.Payment{
-			Destination: master.Address(),
-			Amount:      "10",
-			Asset:       txnbuild.NativeAsset{},
-		}
-
-		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
-		tt.Equal(master.Address(), txResp.Account)
-		tt.Equal("1", txResp.AccountSequence)
-	})
 
 	// Ensure predicting claimable balances works.
 	t.Run("BalanceIDs", func(t *testing.T) {
@@ -91,7 +71,7 @@ func TestProtocol15Basics(t *testing.T) {
 }
 
 func TestHappyClaimableBalances(t *testing.T) {
-	itest := integration.NewTest(t, protocol15Config)
+	itest := integration.NewTest(t, integration.Config{})
 	master, client := itest.Master(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
@@ -314,7 +294,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 
 // We want to ensure that users can't claim the same claimable balance twice.
 func TestDoubleClaim(t *testing.T) {
-	itest := integration.NewTest(t, protocol15Config)
+	itest := integration.NewTest(t, integration.Config{})
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -374,7 +354,7 @@ func TestDoubleClaim(t *testing.T) {
 }
 
 func TestClaimableBalancePredicates(t *testing.T) {
-	itest := integration.NewTest(t, protocol15Config)
+	itest := integration.NewTest(t, integration.Config{})
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.

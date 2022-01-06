@@ -704,6 +704,7 @@ type Trade struct {
 	BaseIsSeller           bool        `db:"base_is_seller"`
 	PriceN                 null.Int    `db:"price_n"`
 	PriceD                 null.Int    `db:"price_d"`
+	Type                   TradeType   `db:"trade_type"`
 }
 
 // Transaction is a row of data from the `history_transactions` table

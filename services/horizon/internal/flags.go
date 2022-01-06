@@ -509,6 +509,8 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 	if config.Ingest && !config.EnableCaptiveCoreIngestion && config.StellarCoreDatabaseURL == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
 	}
+
+	log.Infof("Initializing horizon...")
 	app, err := NewApp(*config)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize app: %s", err)
@@ -545,10 +547,12 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		// only on ingesting instances which are required to have write-access
 		// to the DB.
 		if config.ApplyMigrations {
+			stdLog.Println("Applying DB migrations...")
 			if err := applyMigrations(*config); err != nil {
 				return err
 			}
 		}
+		stdLog.Println("Checking DB migrations...")
 		if err := checkMigrations(*config); err != nil {
 			return err
 		}
@@ -560,6 +564,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		}
 
 		if config.EnableCaptiveCoreIngestion {
+			stdLog.Println("Preparing captive core...")
+
 			binaryPath := viper.GetString(StellarCoreBinaryPathName)
 
 			// If the user didn't specify a Stellar Core binary, we can check the

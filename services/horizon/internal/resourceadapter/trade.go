@@ -29,10 +29,8 @@ func PopulateTrade(
 	if row.BaseAccount.Valid {
 		dest.BaseAccount = row.BaseAccount.String
 	}
-	var isLiquidityPoolTrade bool
 	if row.BaseLiquidityPoolID.Valid {
 		dest.BaseLiquidityPoolID = row.BaseLiquidityPoolID.String
-		isLiquidityPoolTrade = true
 	}
 	dest.BaseAssetType = row.BaseAssetType
 	dest.BaseAssetCode = row.BaseAssetCode
@@ -47,7 +45,6 @@ func PopulateTrade(
 	}
 	if row.CounterLiquidityPoolID.Valid {
 		dest.CounterLiquidityPoolID = row.CounterLiquidityPoolID.String
-		isLiquidityPoolTrade = true
 	}
 	dest.CounterAssetType = row.CounterAssetType
 	dest.CounterAssetCode = row.CounterAssetCode
@@ -60,10 +57,11 @@ func PopulateTrade(
 		dest.LiquidityPoolFeeBP = uint32(row.LiquidityPoolFee.Int64)
 	}
 
-	if isLiquidityPoolTrade {
-		dest.TradeType = "liquidity_pool"
-	} else {
-		dest.TradeType = "orderbook"
+	switch row.Type {
+	case history.OrderbookTradeType:
+		dest.TradeType = history.OrderbookTrades
+	case history.LiquidityPoolTradeType:
+		dest.TradeType = history.LiquidityPoolTrades
 	}
 
 	if row.HasPrice() {

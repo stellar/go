@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stretchr/testify/assert"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -110,6 +111,11 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 func NewTest(t *testing.T, config Config) *Test {
 	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
 		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
+	}
+
+	// If not specific explicitly, set the protocol to the maximum supported version
+	if config.ProtocolVersion == 0 {
+		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
 	}
 
 	composePath := findDockerComposePath()
