@@ -19,6 +19,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/render"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/support/db"
@@ -97,7 +98,18 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	r.Use(c.Handler)
 
 	if rateLimitter != nil {
-		r.Use(rateLimitter.RateLimit)
+		r.Use(func(handler http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Exempt streaming requests from rate limits via the HTTP middleware
+				// because rate limiting for streaming requests are already implemented in
+				// StreamHandler.ServeStream().
+				if render.Negotiate(r) == render.MimeEventStream {
+					handler.ServeHTTP(w, r)
+					return
+				}
+				rateLimitter.RateLimit(handler).ServeHTTP(w, r)
+			})
+		})
 	}
 
 	if config.PrimaryDBSession != nil {

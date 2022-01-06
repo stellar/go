@@ -82,16 +82,25 @@ func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_LimitHeaders() {
 
 // Sets X-RateLimit-Remaining headers correctly.
 func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_RemainingHeaders() {
+	// test that SSE requests are ignored
+	for i := 0; i < 10; i++ {
+		w := suite.rh.Get("/", test.RequestHelperStreaming)
+		assert.Equal(suite.T(), "", w.Header().Get("X-RateLimit-Remaining"))
+		assert.NotEqual(suite.T(), http.StatusTooManyRequests, w.Code)
+	}
+
 	for i := 0; i < 10; i++ {
 		w := suite.rh.Get("/")
 		expected := 10 - (i + 1)
 		assert.Equal(suite.T(), strconv.Itoa(expected), w.Header().Get("X-RateLimit-Remaining"))
+		assert.NotEqual(suite.T(), http.StatusTooManyRequests, w.Code)
 	}
 
 	// confirm remaining stays at 0
 	for i := 0; i < 10; i++ {
 		w := suite.rh.Get("/")
 		assert.Equal(suite.T(), "0", w.Header().Get("X-RateLimit-Remaining"))
+		assert.Equal(suite.T(), http.StatusTooManyRequests, w.Code)
 	}
 }
 
