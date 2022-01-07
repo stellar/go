@@ -14,8 +14,8 @@ type LiquidityPoolDeposit struct {
 	LiquidityPoolID LiquidityPoolId
 	MaxAmountA      string
 	MaxAmountB      string
-	MinPrice        string
-	MaxPrice        string
+	MinPrice        xdr.Price
+	MaxPrice        xdr.Price
 }
 
 // NewLiquidityPoolDeposit creates a new LiquidityPoolDeposit operation,
@@ -26,7 +26,7 @@ func NewLiquidityPoolDeposit(
 	sourceAccount string,
 	a, b AssetAmount,
 	minPrice,
-	maxPrice string,
+	maxPrice xdr.Price,
 ) (LiquidityPoolDeposit, error) {
 	if b.Asset.LessThan(a.Asset) {
 		return LiquidityPoolDeposit{}, errors.New("AssetA must be <= AssetB")
@@ -64,22 +64,12 @@ func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MaxAmountB'")
 	}
 
-	var minPrice, maxPrice price
-	err = minPrice.parse(lpd.MinPrice)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MinPrice'")
-	}
-	err = maxPrice.parse(lpd.MaxPrice)
-	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'MaxPrice'")
-	}
-
 	xdrOp := xdr.LiquidityPoolDepositOp{
 		LiquidityPoolId: xdrLiquidityPoolId,
 		MaxAmountA:      xdrMaxAmountA,
 		MaxAmountB:      xdrMaxAmountB,
-		MinPrice:        minPrice.toXDR(),
-		MaxPrice:        maxPrice.toXDR(),
+		MinPrice:        lpd.MinPrice,
+		MaxPrice:        lpd.MaxPrice,
 	}
 
 	opType := xdr.OperationTypeLiquidityPoolDeposit
@@ -113,10 +103,10 @@ func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 	lpd.MaxAmountA = amount.String(result.MaxAmountA)
 	lpd.MaxAmountB = amount.String(result.MaxAmountB)
 	if result.MinPrice != (xdr.Price{}) {
-		lpd.MinPrice = priceFromXDR(result.MinPrice).string()
+		lpd.MinPrice = result.MinPrice
 	}
 	if result.MaxPrice != (xdr.Price{}) {
-		lpd.MaxPrice = priceFromXDR(result.MaxPrice).string()
+		lpd.MaxPrice = result.MaxPrice
 	}
 
 	return nil
@@ -135,12 +125,12 @@ func (lpd *LiquidityPoolDeposit) Validate(withMuxedAccounts bool) error {
 		return NewValidationError("MaxAmountB", err.Error())
 	}
 
-	err = validateAmount(lpd.MinPrice)
+	err = validatePrice(lpd.MinPrice)
 	if err != nil {
 		return NewValidationError("MinPrice", err.Error())
 	}
 
-	err = validateAmount(lpd.MaxPrice)
+	err = validatePrice(lpd.MaxPrice)
 	if err != nil {
 		return NewValidationError("MaxPrice", err.Error())
 	}

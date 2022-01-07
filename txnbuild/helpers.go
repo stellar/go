@@ -84,6 +84,19 @@ func validateAmount(n interface{}) error {
 	return nil
 }
 
+func validatePrice(p xdr.Price) error {
+	if p.N == 0 {
+		return errors.Errorf("price cannot be 0: %d/%d", p.N, p.D)
+	}
+	if p.D == 0 {
+		return errors.Errorf("price denominator cannot be 0: %d/%d", p.N, p.D)
+	}
+	if p.N < 0 || p.D < 0 {
+		return errors.Errorf("price cannot be negative: %d/%d", p.N, p.D)
+	}
+	return nil
+}
+
 // validateAssetCode checks if the provided asset is valid as an asset code.
 // It returns an error if the asset is invalid.
 // The asset must be non native (XLM) with a valid asset code.
@@ -141,7 +154,7 @@ func validateChangeTrustAsset(asset ChangeTrustAsset) error {
 // validatePassiveOffer checks if the fields of a CreatePassiveOffer struct are valid.
 // It checks that the buying and selling assets are valid stellar assets, and that amount and price are valid.
 // It returns an error if any field is invalid.
-func validatePassiveOffer(buying, selling Asset, offerAmount, price string) error {
+func validatePassiveOffer(buying, selling Asset, offerAmount string, price xdr.Price) error {
 	// Note: see discussion on how this can be improved:
 	// https://github.com/stellar/go/pull/1707#discussion_r321508440
 	err := validateStellarAsset(buying)
@@ -159,7 +172,7 @@ func validatePassiveOffer(buying, selling Asset, offerAmount, price string) erro
 		return NewValidationError("Amount", err.Error())
 	}
 
-	err = validateAmount(price)
+	err = validatePrice(price)
 	if err != nil {
 		return NewValidationError("Price", err.Error())
 	}
@@ -170,7 +183,7 @@ func validatePassiveOffer(buying, selling Asset, offerAmount, price string) erro
 // validateOffer checks if the fields of ManageBuyOffer or ManageSellOffer struct are valid.
 // It checks that the buying and selling assets are valid stellar assets, and that amount, price and offerID
 // are valid. It returns an error if any field is invalid.
-func validateOffer(buying, selling Asset, offerAmount, price string, offerID int64) error {
+func validateOffer(buying, selling Asset, offerAmount string, price xdr.Price, offerID int64) error {
 	err := validatePassiveOffer(buying, selling, offerAmount, price)
 	if err != nil {
 		return err
