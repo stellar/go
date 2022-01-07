@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/stellar/go/xdr"
@@ -29,7 +28,7 @@ func TestXdrStreamHash(t *testing.T) {
 			},
 		},
 	}
-	stream := createXdrStream(bucketEntry)
+	stream := CreateXdrStream(bucketEntry)
 
 	// Stream hash should be equal sha256 hash of concatenation of:
 	// - uint32 representing the number of bytes of a structure,
@@ -80,14 +79,14 @@ func TestXdrStreamDiscard(t *testing.T) {
 		},
 	}
 
-	fullStream := createXdrStream(firstEntry, secondEntry)
+	fullStream := CreateXdrStream(firstEntry, secondEntry)
 	b := &bytes.Buffer{}
 	require.NoError(t, xdr.MarshalFramed(b, firstEntry))
 	require.NoError(t, xdr.MarshalFramed(b, secondEntry))
 	expectedHash := sha256.Sum256(b.Bytes())
 	fullStream.SetExpectedHash(expectedHash)
 
-	discardStream := createXdrStream(firstEntry, secondEntry)
+	discardStream := CreateXdrStream(firstEntry, secondEntry)
 	discardStream.SetExpectedHash(expectedHash)
 
 	var readBucketEntry xdr.BucketEntry
@@ -116,16 +115,4 @@ func TestXdrStreamDiscard(t *testing.T) {
 
 	assert.NoError(t, discardStream.Close())
 	assert.NoError(t, fullStream.Close())
-}
-
-func createXdrStream(entries ...xdr.BucketEntry) *XdrStream {
-	b := &bytes.Buffer{}
-	for _, e := range entries {
-		err := xdr.MarshalFramed(b, e)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return NewXdrStream(ioutil.NopCloser(b))
 }
