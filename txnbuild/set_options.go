@@ -95,7 +95,7 @@ func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, so.SourceAccount)
+	SetOpSourceAccount(&op, so.SourceAccount)
 	return op, nil
 }
 

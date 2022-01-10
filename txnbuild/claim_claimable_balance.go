@@ -31,7 +31,7 @@ func (cb *ClaimClaimableBalance) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, cb.SourceAccount)
+	SetOpSourceAccount(&op, cb.SourceAccount)
 
 	return op, nil
 }

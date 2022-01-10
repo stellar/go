@@ -153,7 +153,7 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, r.SourceAccount)
+	SetOpSourceAccount(&op, r.SourceAccount)
 
 	return op, nil
 }

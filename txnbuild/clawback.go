@@ -54,7 +54,7 @@ func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR Operation")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, cb.SourceAccount)
+	SetOpSourceAccount(&op, cb.SourceAccount)
 	return op, nil
 }
 

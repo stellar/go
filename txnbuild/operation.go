@@ -14,18 +14,8 @@ type Operation interface {
 	GetSourceAccount() string
 }
 
-// SetOpSourceAccount sets the source account ID on an Operation.
-func SetOpSourceAccount(op *xdr.Operation, sourceAccount string) {
-	if sourceAccount == "" {
-		return
-	}
-	var opSourceAccountID xdr.MuxedAccount
-	opSourceAccountID.SetEd25519Address(sourceAccount)
-	op.SourceAccount = &opSourceAccountID
-}
-
 // SetOpSourceAccount sets the source account ID on an Operation, allowing M-strkeys (as defined in SEP23).
-func SetOpSourceMuxedAccount(op *xdr.Operation, sourceAccount string) {
+func SetOpSourceAccount(op *xdr.Operation, sourceAccount string) {
 	if sourceAccount == "" {
 		return
 	}

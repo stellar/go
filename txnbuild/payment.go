@@ -49,7 +49,7 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR Operation")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, p.SourceAccount)
+	SetOpSourceAccount(&op, p.SourceAccount)
 	return op, nil
 }
 

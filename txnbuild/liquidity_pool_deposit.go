@@ -88,7 +88,7 @@ func (lpd *LiquidityPoolDeposit) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, lpd.SourceAccount)
+	SetOpSourceAccount(&op, lpd.SourceAccount)
 	return op, nil
 }
 

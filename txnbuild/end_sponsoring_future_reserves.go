@@ -21,7 +21,7 @@ func (es *EndSponsoringFutureReserves) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, es.SourceAccount)
+	SetOpSourceAccount(&op, es.SourceAccount)
 
 	return op, nil
 }

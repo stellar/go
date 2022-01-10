@@ -57,7 +57,7 @@ func (stf *SetTrustLineFlags) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, stf.SourceAccount)
+	SetOpSourceAccount(&op, stf.SourceAccount)
 	return op, nil
 }
 

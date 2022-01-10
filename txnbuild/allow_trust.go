@@ -56,7 +56,7 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, at.SourceAccount)
+	SetOpSourceAccount(&op, at.SourceAccount)
 	return op, nil
 }
 

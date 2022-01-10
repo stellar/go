@@ -117,7 +117,7 @@ func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, mo.SourceAccount)
+	SetOpSourceAccount(&op, mo.SourceAccount)
 	return op, nil
 }
 

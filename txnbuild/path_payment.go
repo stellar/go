@@ -88,7 +88,7 @@ func (pp *PathPaymentStrictReceive) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, pp.SourceAccount)
+	SetOpSourceAccount(&op, pp.SourceAccount)
 	return op, nil
 }
 

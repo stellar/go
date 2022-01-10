@@ -31,7 +31,7 @@ func (md *ManageData) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, md.SourceAccount)
+	SetOpSourceAccount(&op, md.SourceAccount)
 	return op, nil
 }
 

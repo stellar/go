@@ -21,7 +21,7 @@ func (bs *BumpSequence) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, bs.SourceAccount)
+	SetOpSourceAccount(&op, bs.SourceAccount)
 	return op, nil
 }
 

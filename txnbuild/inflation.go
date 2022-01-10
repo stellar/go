@@ -19,7 +19,7 @@ func (inf *Inflation) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, inf.SourceAccount)
+	SetOpSourceAccount(&op, inf.SourceAccount)
 	return op, nil
 }
 

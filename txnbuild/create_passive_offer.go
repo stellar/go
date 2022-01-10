@@ -51,7 +51,7 @@ func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceMuxedAccount(&op, cpo.SourceAccount)
+	SetOpSourceAccount(&op, cpo.SourceAccount)
 
 	return op, nil
 }
