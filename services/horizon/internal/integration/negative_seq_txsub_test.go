@@ -57,7 +57,6 @@ func TestNegativeSequenceTxSubmission(t *testing.T) {
 		BaseFee:              txnbuild.MinBaseFee,
 		Timebounds:           txnbuild.NewInfiniteTimeout(),
 		IncrementSequenceNum: false,
-		EnableMuxedAccounts:  true,
 	}
 	tx, err := txnbuild.NewTransaction(txParams)
 	tt.NoError(err)

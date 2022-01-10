@@ -206,3 +206,15 @@ func (x *XdrStream) GzipBytesRead() int64 {
 func (x *XdrStream) Discard(n int64) (int64, error) {
 	return io.CopyN(ioutil.Discard, x.rdr, n)
 }
+
+func CreateXdrStream(entries ...xdr.BucketEntry) *XdrStream {
+	b := &bytes.Buffer{}
+	for _, e := range entries {
+		err := xdr.MarshalFramed(b, e)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return NewXdrStream(ioutil.NopCloser(b))
+}

@@ -151,13 +151,13 @@ func TestManageSellOfferPrice(t *testing.T) {
 		OfferID: 1,
 	}
 
-	xdrOp, err := mso.BuildXDR(false)
+	xdrOp, err := mso.BuildXDR()
 	assert.NoError(t, err)
 	expectedPrice := xdr.Price{N: 1, D: 1000000000}
 	assert.Equal(t, expectedPrice, xdrOp.Body.ManageSellOfferOp.Price)
 
 	parsed := ManageSellOffer{}
-	assert.NoError(t, parsed.FromXDR(xdrOp, false))
+	assert.NoError(t, parsed.FromXDR(xdrOp))
 	assert.Equal(t, mso.Price, parsed.Price)
 }
 

@@ -690,7 +690,6 @@ func (i *Test) CreateSignedTransaction(
 		BaseFee:              txnbuild.MinBaseFee,
 		Timebounds:           txnbuild.NewInfiniteTimeout(),
 		IncrementSequenceNum: true,
-		EnableMuxedAccounts:  true,
 	}
 
 	tx, err := txnbuild.NewTransaction(txParams)
