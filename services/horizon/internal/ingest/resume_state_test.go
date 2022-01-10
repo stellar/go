@@ -304,6 +304,13 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(101), nil).Once()
 
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(101),
+	).Return(errors.New("my error")).Once()
+
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 99}.run(s.system)
 	s.Assert().NoError(err)
 	s.Assert().Equal(

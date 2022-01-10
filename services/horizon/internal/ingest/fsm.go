@@ -416,6 +416,14 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithField("ingestLedger", ingestLedger).
 			WithField("lastIngestedLedger", lastIngestedLedger).
 			Info("bumping ingest ledger to next ledger after ingested ledger in db")
+
+		// Update cursor if there's more than one ingesting instance: either
+		// Captive-Core or DB ingestion connected to another Stellar-Core.
+		if err = s.updateCursor(lastIngestedLedger); err != nil {
+			// Don't return updateCursor error.
+			log.WithError(err).Warn("error updating stellar-core cursor")
+		}
+
 		return retryResume(resumeState{
 			latestSuccessfullyProcessedLedger: lastIngestedLedger,
 		}), nil
