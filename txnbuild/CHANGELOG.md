@@ -14,6 +14,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
   * Remove `options ...TransactionFromXDROption` parameter from `TransactionFromXDR()`
   * Rename `SetOpSourceMuxedAccount()` to (pre-existing) `SetOpSourceAccount()` which now accepts
     both `G` and `M` (muxed) account strkeys.
+* Use xdr.Price to represent prices in txnbuild instead of strings ([#4167](https://github.com/stellar/go/pull/4167)).
   
 ## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
 

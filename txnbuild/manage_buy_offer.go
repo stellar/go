@@ -12,8 +12,7 @@ type ManageBuyOffer struct {
 	Selling       Asset
 	Buying        Asset
 	Amount        string
-	Price         string
-	price         price
+	Price         xdr.Price
 	OfferID       int64
 	SourceAccount string
 }
@@ -35,16 +34,12 @@ func (mo *ManageBuyOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Amount'")
 	}
 
-	if err = mo.price.parse(mo.Price); err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
-	}
-
 	opType := xdr.OperationTypeManageBuyOffer
 	xdrOp := xdr.ManageBuyOfferOp{
 		Selling:   xdrSelling,
 		Buying:    xdrBuying,
 		BuyAmount: xdrAmount,
-		Price:     mo.price.toXDR(),
+		Price:     mo.Price,
 		OfferId:   xdr.Int64(mo.OfferID),
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -67,10 +62,7 @@ func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
 	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.BuyAmount)
-	if result.Price != (xdr.Price{}) {
-		mo.price.fromXDR(result.Price)
-		mo.Price = mo.price.string()
-	}
+	mo.Price = result.Price
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
 		return errors.Wrap(err, "error parsing buying_asset in manage_buy_offer operation")

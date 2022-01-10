@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/price"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,8 +23,8 @@ func TestNewLiquidityPoolDeposit(t *testing.T) {
 			"GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 			AssetAmount{assetA, "0.1000000"},
 			AssetAmount{assetB, "0.2000000"},
-			"0.3",
-			"0.4",
+			price.MustParse("0.3"),
+			price.MustParse("0.4"),
 		)
 		require.NoError(t, err)
 		assert.Equal(t, LiquidityPoolDeposit{
@@ -31,8 +32,8 @@ func TestNewLiquidityPoolDeposit(t *testing.T) {
 			LiquidityPoolID: poolId,
 			MaxAmountA:      "0.1000000",
 			MaxAmountB:      "0.2000000",
-			MinPrice:        "0.3",
-			MaxPrice:        "0.4",
+			MinPrice:        price.MustParse("0.3"),
+			MaxPrice:        price.MustParse("0.4"),
 		}, lpd)
 	})
 
@@ -41,8 +42,8 @@ func TestNewLiquidityPoolDeposit(t *testing.T) {
 			"GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 			AssetAmount{assetB, "0.1000000"},
 			AssetAmount{assetA, "0.2000000"},
-			"0.3",
-			"0.4",
+			price.MustParse("0.3"),
+			price.MustParse("0.4"),
 		)
 		require.EqualError(t, err, "AssetA must be <= AssetB")
 	})
@@ -62,8 +63,8 @@ func TestLiquidityPoolDepositRoundTrip(t *testing.T) {
 		LiquidityPoolID: poolId,
 		MaxAmountA:      "0.1000000",
 		MaxAmountB:      "0.2000000",
-		MinPrice:        "0.3",
-		MaxPrice:        "0.4",
+		MinPrice:        price.MustParse("0.3"),
+		MaxPrice:        price.MustParse("0.4"),
 	}
 
 	testOperationsMarshallingRoundtrip(t, []Operation{lpd}, false)
@@ -74,8 +75,8 @@ func TestLiquidityPoolDepositRoundTrip(t *testing.T) {
 		LiquidityPoolID: poolId,
 		MaxAmountA:      "0.1000000",
 		MaxAmountB:      "0.2000000",
-		MinPrice:        "0.3",
-		MaxPrice:        "0.4",
+		MinPrice:        price.MustParse("0.3"),
+		MaxPrice:        price.MustParse("0.4"),
 	}
 
 	testOperationsMarshallingRoundtrip(t, []Operation{lpd}, true)

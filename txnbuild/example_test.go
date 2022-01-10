@@ -2,6 +2,8 @@ package txnbuild
 
 import (
 	"fmt"
+	"github.com/stellar/go/price"
+	"github.com/stellar/go/xdr"
 	"time"
 
 	"github.com/stellar/go/keypair"
@@ -429,8 +431,7 @@ func ExampleManageSellOffer() {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"}
 	sellAmount := "100"
-	price := "0.01"
-	op, err := CreateOfferOp(selling, buying, sellAmount, price)
+	op, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"))
 	check(err)
 
 	tx, err := NewTransaction(
@@ -496,9 +497,8 @@ func ExampleManageSellOffer_updateOffer() {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"}
 	sellAmount := "50"
-	price := "0.02"
 	offerID := int64(2497628)
-	op, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	op, err := UpdateOfferOp(selling, buying, sellAmount, price.MustParse("0.02"), offerID)
 	check(err)
 
 	tx, err := NewTransaction(
@@ -533,7 +533,7 @@ func ExampleCreatePassiveSellOffer() {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP"},
 		Amount:  "10",
-		Price:   "1.0",
+		Price:   xdr.Price{1, 1},
 	}
 
 	tx, err := NewTransaction(
@@ -682,7 +682,7 @@ func ExampleManageBuyOffer() {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"},
 		Amount:  "100",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: 0,
 	}
 
@@ -1040,8 +1040,8 @@ func ExampleLiquidityPoolDeposit() {
 			LiquidityPoolID: poolId,
 			MaxAmountA:      "0.1000000",
 			MaxAmountB:      "0.1000000",
-			MinPrice:        "0.1000000",
-			MaxPrice:        "0.1000000",
+			MinPrice:        price.MustParse("0.1000000"),
+			MaxPrice:        price.MustParse("0.1000000"),
 		},
 	}
 

@@ -12,8 +12,7 @@ type CreatePassiveSellOffer struct {
 	Selling       Asset
 	Buying        Asset
 	Amount        string
-	Price         string
-	price         price
+	Price         xdr.Price
 	SourceAccount string
 }
 
@@ -34,15 +33,11 @@ func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Amount'")
 	}
 
-	if err = cpo.price.parse(cpo.Price); err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
-	}
-
 	xdrOp := xdr.CreatePassiveSellOfferOp{
 		Selling: xdrSelling,
 		Buying:  xdrBuying,
 		Amount:  xdrAmount,
-		Price:   cpo.price.toXDR(),
+		Price:   cpo.Price,
 	}
 
 	opType := xdr.OperationTypeCreatePassiveSellOffer
@@ -65,10 +60,7 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
 
 	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	cpo.Amount = amount.String(result.Amount)
-	if result.Price != (xdr.Price{}) {
-		cpo.price.fromXDR(result.Price)
-		cpo.Price = cpo.price.string()
-	}
+	cpo.Price = result.Price
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
 		return errors.Wrap(err, "error parsing buying_asset in create_passive_sell_offer operation")

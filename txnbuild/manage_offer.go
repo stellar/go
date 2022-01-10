@@ -9,7 +9,7 @@ import (
 // CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
 // setting the OfferID to "0". The sourceAccount is optional, and if not provided,
 // will be that of the surrounding transaction.
-func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ...string) (ManageSellOffer, error) {
+func CreateOfferOp(selling, buying Asset, amount string, price xdr.Price, sourceAccount ...string) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
 		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
@@ -29,7 +29,7 @@ func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ..
 // UpdateOfferOp returns a ManageSellOffer operation to update an offer.
 // The sourceAccount is optional, and if not provided, will be that of
 // the surrounding transaction.
-func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
+func UpdateOfferOp(selling, buying Asset, amount string, price xdr.Price, offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
 		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
@@ -61,7 +61,10 @@ func DeleteOfferOp(offerID int64, sourceAccount ...string) (ManageSellOffer, err
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{Code: "FAKE", Issuer: "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"},
 		Amount:  "0",
-		Price:   "1",
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
 		OfferID: offerID,
 	}
 	if len(sourceAccount) == 1 {
@@ -76,8 +79,7 @@ type ManageSellOffer struct {
 	Selling       Asset
 	Buying        Asset
 	Amount        string
-	Price         string
-	price         price
+	Price         xdr.Price
 	OfferID       int64
 	SourceAccount string
 }
@@ -99,16 +101,12 @@ func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Amount'")
 	}
 
-	if err = mo.price.parse(mo.Price); err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
-	}
-
 	opType := xdr.OperationTypeManageSellOffer
 	xdrOp := xdr.ManageSellOfferOp{
 		Selling: xdrSelling,
 		Buying:  xdrBuying,
 		Amount:  xdrAmount,
-		Price:   mo.price.toXDR(),
+		Price:   mo.Price,
 		OfferId: xdr.Int64(mo.OfferID),
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -131,10 +129,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.Amount)
-	if result.Price != (xdr.Price{}) {
-		mo.price.fromXDR(result.Price)
-		mo.Price = mo.price.string()
-	}
+	mo.Price = result.Price
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
 		return errors.Wrap(err, "error parsing buying_asset in manage_sell_offer operation")

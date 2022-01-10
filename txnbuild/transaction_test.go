@@ -3,6 +3,7 @@ package txnbuild
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"github.com/stellar/go/price"
 	"strings"
 	"testing"
 	"time"
@@ -722,8 +723,7 @@ func TestManageSellOfferNewOffer(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"))
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -776,9 +776,8 @@ func TestManageSellOfferUpdateOffer(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
-	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price.MustParse("0.02"), offerID)
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -807,7 +806,7 @@ func TestCreatePassiveSellOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "10",
-		Price:   "1.0",
+		Price:   xdr.Price{1, 1},
 	}
 
 	received, err := newSignedTransaction(
@@ -956,7 +955,7 @@ func TestManageBuyOfferNewOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "100",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: 0,
 	}
 
@@ -985,7 +984,7 @@ func TestManageBuyOfferDeleteOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp1.Address()},
 		Amount:  "0",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: int64(2921622),
 	}
 
@@ -1014,7 +1013,7 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp1.Address()},
 		Amount:  "50",
-		Price:   "0.02",
+		Price:   price.MustParse("0.02"),
 		OfferID: int64(2921622),
 	}
 

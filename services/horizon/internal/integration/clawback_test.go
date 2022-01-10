@@ -93,7 +93,7 @@ func TestHappyClawbackAccountSellingLiabilities(t *testing.T) {
 		Buying:        txnbuild.NativeAsset{},
 		Selling:       asset,
 		Amount:        "5",
-		Price:         "1",
+		Price:         xdr.Price{1, 1},
 		SourceAccount: fromAccount.GetAccountID(),
 	})
 	tt.True(submissionResp.Successful)
@@ -148,7 +148,7 @@ func TestSadClawbackAccountSufficientFundsSellingLiabilities(t *testing.T) {
 		Buying:        txnbuild.NativeAsset{},
 		Selling:       asset,
 		Amount:        "5",
-		Price:         "1",
+		Price:         xdr.Price{1, 1},
 		SourceAccount: fromAccount.GetAccountID(),
 	})
 

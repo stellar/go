@@ -38,6 +38,15 @@ func Parse(v string) (xdr.Price, error) {
 	return continuedFraction(v)
 }
 
+// MustParse is like Parse except that it panics on errors.
+func MustParse(v string) xdr.Price {
+	result, err := Parse(v)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
 // continuedFraction calculates and returns the best rational approximation of
 // the given real number.
 func continuedFraction(price string) (xdrPrice xdr.Price, err error) {

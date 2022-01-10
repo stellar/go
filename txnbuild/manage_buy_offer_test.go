@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
 	"testing"
 
@@ -16,7 +17,7 @@ func TestManageBuyOfferValidateSellingAsset(t *testing.T) {
 		Selling: CreditAsset{"", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "100",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: 0,
 	}
 
@@ -44,7 +45,7 @@ func TestManageBuyOfferValidateBuyingAsset(t *testing.T) {
 		Selling: CreditAsset{"ABC", kp0.Address()},
 		Buying:  CreditAsset{"XYZ", ""},
 		Amount:  "100",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: 0,
 	}
 
@@ -72,7 +73,7 @@ func TestManageBuyOfferValidateAmount(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: 0,
 	}
 
@@ -100,7 +101,7 @@ func TestManageBuyOfferValidatePrice(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "0",
-		Price:   "-0.01",
+		Price:   xdr.Price{-1, 100},
 		OfferID: 0,
 	}
 
@@ -114,7 +115,7 @@ func TestManageBuyOfferValidatePrice(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: Price, Error: amount can not be negative"
+		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: Price, Error: price cannot be negative: -1/100"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -128,7 +129,7 @@ func TestManageBuyOfferValidateOfferID(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "0",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: -1,
 	}
 
@@ -154,7 +155,7 @@ func TestManageBuyOfferPrice(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "1",
-		Price:   "0.000000001",
+		Price:   price.MustParse("0.000000001"),
 		OfferID: 1,
 	}
 
@@ -162,13 +163,10 @@ func TestManageBuyOfferPrice(t *testing.T) {
 	assert.NoError(t, err)
 	expectedPrice := xdr.Price{N: 1, D: 1000000000}
 	assert.Equal(t, expectedPrice, xdrOp.Body.ManageBuyOfferOp.Price)
-	assert.Equal(t, mbo.Price, mbo.price.string())
-	assert.Equal(t, expectedPrice, mbo.price.toXDR())
 
 	parsed := ManageBuyOffer{}
 	assert.NoError(t, parsed.FromXDR(xdrOp))
 	assert.Equal(t, mbo.Price, parsed.Price)
-	assert.Equal(t, mbo.price, parsed.price)
 }
 
 func TestManageBuyOfferRoundtrip(t *testing.T) {
@@ -177,7 +175,7 @@ func TestManageBuyOfferRoundtrip(t *testing.T) {
 		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
 		Buying:        NativeAsset{},
 		Amount:        "100.0000000",
-		Price:         "0.01",
+		Price:         price.MustParse("0.01"),
 		OfferID:       0,
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{&manageBuyOffer}, false)
@@ -188,7 +186,7 @@ func TestManageBuyOfferRoundtrip(t *testing.T) {
 		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
 		Buying:        NativeAsset{},
 		Amount:        "100.0000000",
-		Price:         "0.01",
+		Price:         price.MustParse("0.01"),
 		OfferID:       0,
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{&manageBuyOffer}, true)
