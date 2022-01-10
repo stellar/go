@@ -21,7 +21,7 @@ type AllowTrust struct {
 }
 
 // BuildXDR for AllowTrust returns a fully configured XDR Operation.
-func (at *AllowTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	var xdrOp xdr.AllowTrustOp
 
 	// Set XDR address associated with the trustline
@@ -56,11 +56,7 @@ func (at *AllowTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, at.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, at.SourceAccount)
-	}
+	SetOpSourceAccount(&op, at.SourceAccount)
 	return op, nil
 }
 
@@ -79,13 +75,13 @@ func assetCodeToCreditAsset(assetCode xdr.AssetCode) (CreditAsset, error) {
 }
 
 // FromXDR for AllowTrust initialises the txnbuild struct from the corresponding xdr Operation.
-func (at *AllowTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetAllowTrustOp()
 	if !ok {
 		return errors.New("error parsing allow_trust operation from xdr")
 	}
 
-	at.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	at.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	at.Trustor = result.Trustor.Address()
 	flag := xdr.TrustLineFlags(result.Authorize)
 	at.Authorize = flag.IsAuthorized()
@@ -101,7 +97,7 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 
 // Validate for AllowTrust validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (at *AllowTrust) Validate(withMuxedAccounts bool) error {
+func (at *AllowTrust) Validate() error {
 	err := validateStellarPublicKey(at.Trustor)
 	if err != nil {
 		return NewValidationError("Trustor", err.Error())

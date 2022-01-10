@@ -360,11 +360,10 @@ func TestFeeBumpMuxedAccounts(t *testing.T) {
 	sourceAccount := NewSimpleAccount(mx0.Address(), 1)
 	tx, err := NewTransaction(
 		TransactionParams{
-			SourceAccount:       &sourceAccount,
-			Operations:          []Operation{&Inflation{}},
-			BaseFee:             MinBaseFee,
-			Timebounds:          NewInfiniteTimeout(),
-			EnableMuxedAccounts: true,
+			SourceAccount: &sourceAccount,
+			Operations:    []Operation{&Inflation{}},
+			BaseFee:       MinBaseFee,
+			Timebounds:    NewInfiniteTimeout(),
 		},
 	)
 	assert.NoError(t, err)
@@ -381,25 +380,12 @@ func TestFeeBumpMuxedAccounts(t *testing.T) {
 	}
 	feeBumpTx, err := NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
-			FeeAccount:          mx1.Address(),
-			BaseFee:             2 * MinBaseFee,
-			Inner:               tx,
-			EnableMuxedAccounts: true,
+			FeeAccount: mx1.Address(),
+			BaseFee:    2 * MinBaseFee,
+			Inner:      tx,
 		},
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, mx0.Address(), feeBumpTx.InnerTransaction().sourceAccount.AccountID)
 	assert.Equal(t, mx1.Address(), feeBumpTx.FeeAccount())
-
-	// It fails when not enabling muxed accounts
-	_, err = NewFeeBumpTransaction(
-		FeeBumpTransactionParams{
-			FeeAccount:          mx1.Address(),
-			BaseFee:             2 * MinBaseFee,
-			Inner:               tx,
-			EnableMuxedAccounts: false,
-		},
-	)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid version byte")
 }

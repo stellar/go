@@ -6,7 +6,15 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-
+* Enable Muxed Accounts ([SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)) by default:
+  * Remove `TransactionParams.EnableMuxedAccounts`
+  * Remove `TransactionFromXDROptionEnableMuxedAccounts`
+  * Remove `FeeBumpTransactionParams.EnableMuxedAccounts`
+  * Remove parameter `withMuxedAccounts bool` from all methods/functions.
+  * Remove `options ...TransactionFromXDROption` parameter from `TransactionFromXDR()`
+  * Rename `SetOpSourceMuxedAccount()` to (pre-existing) `SetOpSourceAccount()` which now accepts
+    both `G` and `M` (muxed) account strkeys.
+  
 ## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
 
 **This release adds support for Protocol 18.**

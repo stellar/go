@@ -17,14 +17,10 @@ type Clawback struct {
 }
 
 // BuildXDR for Clawback returns a fully configured XDR Operation.
-func (cb *Clawback) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
 	var fromMuxedAccount xdr.MuxedAccount
-	var err error
-	if withMuxedAccounts {
-		err = fromMuxedAccount.SetAddress(cb.From)
-	} else {
-		err = fromMuxedAccount.SetEd25519Address(cb.From)
-	}
+	err := fromMuxedAccount.SetAddress(cb.From)
+
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set from address")
 	}
@@ -58,23 +54,19 @@ func (cb *Clawback) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR Operation")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, cb.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, cb.SourceAccount)
-	}
+	SetOpSourceAccount(&op, cb.SourceAccount)
 	return op, nil
 }
 
 // FromXDR for Clawback initialises the txnbuild struct from the corresponding xdr Operation.
-func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (cb *Clawback) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetClawbackOp()
 	if !ok {
 		return errors.New("error parsing clawback operation from xdr")
 	}
 
-	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
-	cb.From = accountFromXDR(&result.From, withMuxedAccounts)
+	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	cb.From = accountFromXDR(&result.From)
 	cb.Amount = amount.String(result.Amount)
 	asset, err := assetFromXDR(result.Asset)
 	if err != nil {
@@ -87,13 +79,10 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 
 // Validate for Clawback validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (cb *Clawback) Validate(withMuxedAccounts bool) error {
+func (cb *Clawback) Validate() error {
 	var err error
-	if withMuxedAccounts {
-		_, err = xdr.AddressToMuxedAccount(cb.From)
-	} else {
-		_, err = xdr.AddressToAccountId(cb.From)
-	}
+	_, err = xdr.AddressToMuxedAccount(cb.From)
+
 	if err != nil {
 		return NewValidationError("From", err.Error())
 	}

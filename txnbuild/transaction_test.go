@@ -222,7 +222,6 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
 			Timebounds:           NewInfiniteTimeout(),
-			EnableMuxedAccounts:  true,
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -231,39 +230,6 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 
 	expected := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
-}
-
-func TestPaymentFailsMuxedAccountsIfNotEnabled(t *testing.T) {
-	kp0 := newKeypair0()
-	accountID := xdr.MustAddress(kp0.Address())
-	mx := xdr.MuxedAccount{
-		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
-		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      0xcafebabe,
-			Ed25519: *accountID.Ed25519,
-		},
-	}
-	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
-
-	payment := Payment{
-		Destination: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
-		Amount:      "10",
-		Asset:       NativeAsset{},
-	}
-
-	_, err := newSignedTransaction(
-		TransactionParams{
-			SourceAccount:        &sourceAccount,
-			IncrementSequenceNum: true,
-			Operations:           []Operation{&payment},
-			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
-			EnableMuxedAccounts:  false,
-		},
-		network.TestNetworkPassphrase,
-		kp0,
-	)
-	assert.Error(t, err)
 }
 
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
@@ -1424,7 +1390,7 @@ func TestFromXDR(t *testing.T) {
 	txB64WithMuxedAccounts := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
 
 	// It provides M-addreses when enabling muxed accounts
-	tx3, err := TransactionFromXDR(txB64WithMuxedAccounts, TransactionFromXDROptionEnableMuxedAccounts)
+	tx3, err := TransactionFromXDR(txB64WithMuxedAccounts)
 	assert.NoError(t, err)
 	newTx3, ok := tx3.Transaction()
 	assert.True(t, ok)
@@ -1433,17 +1399,6 @@ func TestFromXDR(t *testing.T) {
 	assert.True(t, ok3)
 	assert.Equal(t, "MDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKAAAAAAMV7V2XYGQO", op3.SourceAccount)
 	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", op3.Destination)
-
-	// It does provide G-addreses when not enabling muxed accounts
-	tx3, err = TransactionFromXDR(txB64WithMuxedAccounts)
-	assert.NoError(t, err)
-	newTx3, ok = tx3.Transaction()
-	assert.True(t, ok)
-	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", newTx3.sourceAccount.AccountID)
-	op3, ok3 = newTx3.Operations()[0].(*Payment)
-	assert.True(t, ok3)
-	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", op3.SourceAccount)
-	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", op3.Destination)
 
 }
 
@@ -4469,7 +4424,6 @@ func TestClaimableBalanceIds(t *testing.T) {
 			BaseFee:              MinBaseFee,
 			Timebounds:           NewInfiniteTimeout(),
 			Operations:           []Operation{&claimableBalanceEntry},
-			EnableMuxedAccounts:  true,
 		},
 	)
 	assert.NoError(t, err)

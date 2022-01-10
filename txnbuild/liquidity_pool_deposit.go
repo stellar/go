@@ -48,7 +48,7 @@ func NewLiquidityPoolDeposit(
 }
 
 // BuildXDR for LiquidityPoolDeposit returns a fully configured XDR Operation.
-func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (lpd *LiquidityPoolDeposit) BuildXDR() (xdr.Operation, error) {
 	xdrLiquidityPoolId, err := lpd.LiquidityPoolID.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "couldn't build liquidity pool ID XDR")
@@ -88,16 +88,12 @@ func (lpd *LiquidityPoolDeposit) BuildXDR(withMuxedAccounts bool) (xdr.Operation
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, lpd.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, lpd.SourceAccount)
-	}
+	SetOpSourceAccount(&op, lpd.SourceAccount)
 	return op, nil
 }
 
 // FromXDR for LiquidityPoolDeposit initializes the txnbuild struct from the corresponding xdr Operation.
-func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetLiquidityPoolDepositOp()
 	if !ok {
 		return errors.New("error parsing liquidity_pool_deposit operation from xdr")
@@ -109,7 +105,7 @@ func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 	}
 	lpd.LiquidityPoolID = liquidityPoolID
 
-	lpd.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	lpd.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	lpd.MaxAmountA = amount.String(result.MaxAmountA)
 	lpd.MaxAmountB = amount.String(result.MaxAmountB)
 	if result.MinPrice != (xdr.Price{}) {
@@ -124,7 +120,7 @@ func (lpd *LiquidityPoolDeposit) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 
 // Validate for LiquidityPoolDeposit validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (lpd *LiquidityPoolDeposit) Validate(withMuxedAccounts bool) error {
+func (lpd *LiquidityPoolDeposit) Validate() error {
 	err := validateAmount(lpd.MaxAmountA)
 	if err != nil {
 		return NewValidationError("MaxAmountA", err.Error())

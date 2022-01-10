@@ -947,7 +947,6 @@ func TestSubmitTransactionRequestMuxedAccounts(t *testing.T) {
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimebounds(0, 10),
-			EnableMuxedAccounts:  true,
 		},
 	)
 	assert.NoError(t, err)

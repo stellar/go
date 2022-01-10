@@ -23,7 +23,7 @@ func TestAccountMergeValidate(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := "minimum valid length is 5"
+		expected := "invalid address length"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

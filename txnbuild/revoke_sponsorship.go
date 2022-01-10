@@ -55,7 +55,7 @@ type SignerID struct {
 	SignerAddress string
 }
 
-func (r *RevokeSponsorship) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 	xdrOp := xdr.RevokeSponsorshipOp{}
 	switch r.SponsorshipType {
 	case RevokeSponsorshipTypeAccount:
@@ -153,16 +153,13 @@ func (r *RevokeSponsorship) BuildXDR(withMuxedAccounts bool) (xdr.Operation, err
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, r.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, r.SourceAccount)
-	}
+	SetOpSourceAccount(&op, r.SourceAccount)
+
 	return op, nil
 }
 
-func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
-	r.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
+	r.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	op, ok := xdrOp.Body.GetRevokeSponsorshipOp()
 	if !ok {
 		return errors.New("error parsing revoke_sponsorhip operation from xdr")
@@ -226,7 +223,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool)
 	return nil
 }
 
-func (r *RevokeSponsorship) Validate(withMuxedAccounts bool) error {
+func (r *RevokeSponsorship) Validate() error {
 	switch r.SponsorshipType {
 	case RevokeSponsorshipTypeAccount:
 		if r.Account == nil {

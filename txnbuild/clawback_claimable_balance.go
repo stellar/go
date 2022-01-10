@@ -14,7 +14,7 @@ type ClawbackClaimableBalance struct {
 }
 
 // BuildXDR for ClawbackClaimableBalance returns a fully configured XDR Operation.
-func (cb *ClawbackClaimableBalance) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (cb *ClawbackClaimableBalance) BuildXDR() (xdr.Operation, error) {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {
@@ -30,22 +30,19 @@ func (cb *ClawbackClaimableBalance) BuildXDR(withMuxedAccounts bool) (xdr.Operat
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, cb.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, cb.SourceAccount)
-	}
+	SetOpSourceAccount(&op, cb.SourceAccount)
+
 	return op, nil
 }
 
 // FromXDR for ClawbackClaimableBalance initializes the txnbuild struct from the corresponding xdr Operation.
-func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetClawbackClaimableBalanceOp()
 	if !ok {
 		return errors.New("error parsing clawback_claimable_balance operation from xdr")
 	}
 
-	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	balanceID, err := xdr.MarshalHex(result.BalanceId)
 	if err != nil {
 		return errors.New("error parsing BalanceID in claim_claimable_balance operation from xdr")
@@ -57,7 +54,7 @@ func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccoun
 
 // Validate for ClawbackClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *ClawbackClaimableBalance) Validate(withMuxedAccounts bool) error {
+func (cb *ClawbackClaimableBalance) Validate() error {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {

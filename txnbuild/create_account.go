@@ -15,7 +15,7 @@ type CreateAccount struct {
 }
 
 // BuildXDR for CreateAccount returns a fully configured XDR Operation.
-func (ca *CreateAccount) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 	var xdrOp xdr.CreateAccountOp
 
 	err := xdrOp.Destination.SetAddress(ca.Destination)
@@ -34,22 +34,19 @@ func (ca *CreateAccount) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error)
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, ca.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, ca.SourceAccount)
-	}
+	SetOpSourceAccount(&op, ca.SourceAccount)
+
 	return op, nil
 }
 
 // FromXDR for CreateAccount initialises the txnbuild struct from the corresponding xdr Operation.
-func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetCreateAccountOp()
 	if !ok {
 		return errors.New("error parsing create_account operation from xdr")
 	}
 
-	ca.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	ca.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	ca.Destination = result.Destination.Address()
 	ca.Amount = amount.String(result.StartingBalance)
 
@@ -58,7 +55,7 @@ func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) er
 
 // Validate for CreateAccount validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (ca *CreateAccount) Validate(withMuxedAccounts bool) error {
+func (ca *CreateAccount) Validate() error {
 	err := validateStellarPublicKey(ca.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
