@@ -42,7 +42,7 @@ func (c *Client) checkMemoRequired(transaction *txnbuild.Transaction) error {
 	for i, op := range transaction.Operations() {
 		var destination string
 
-		if err := op.Validate(true); err != nil {
+		if err := op.Validate(); err != nil {
 			return err
 		}
 

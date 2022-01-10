@@ -8,9 +8,9 @@ import (
 
 // Operation represents the operation types of the Stellar network.
 type Operation interface {
-	BuildXDR(withMuxedAccounts bool) (xdr.Operation, error)
-	FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
-	Validate(withMuxedAccounts bool) error
+	BuildXDR() (xdr.Operation, error)
+	FromXDR(xdrOp xdr.Operation) error
+	Validate() error
 	GetSourceAccount() string
 }
 
@@ -35,7 +35,7 @@ func SetOpSourceMuxedAccount(op *xdr.Operation, sourceAccount string) {
 }
 
 // operationFromXDR returns a txnbuild Operation from its corresponding XDR operation
-func operationFromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) (Operation, error) {
+func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 	var newOp Operation
 	switch xdrOp.Body.Type {
 	case xdr.OperationTypeCreateAccount:
@@ -90,18 +90,13 @@ func operationFromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) (Operation, e
 		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}
 
-	err := newOp.FromXDR(xdrOp, withMuxedAccounts)
+	err := newOp.FromXDR(xdrOp)
 	return newOp, err
 }
 
-func accountFromXDR(account *xdr.MuxedAccount, withMuxedAccounts bool) string {
+func accountFromXDR(account *xdr.MuxedAccount) string {
 	if account != nil {
-		if withMuxedAccounts {
-			return account.Address()
-		} else {
-			aid := account.ToAccountId()
-			return aid.Address()
-		}
+		return account.Address()
 	}
 	return ""
 }
