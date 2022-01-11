@@ -323,6 +323,12 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	return t.clone(extendedSignatures), nil
 }
 
+// ClearSignatures returns a new Transaction instance which extends the current instance
+// with signatures removed.
+func (t *Transaction) ClearSignatures() (*Transaction, error) {
+	return t.clone(nil), nil
+}
+
 // AddSignatureDecorated returns a new Transaction instance which extends the current instance
 // with an additional decorated signature(s).
 func (t *Transaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*Transaction, error) {
@@ -517,6 +523,12 @@ func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, er
 	}
 
 	return t.clone(extendedSignatures), nil
+}
+
+// ClearSignatures returns a new Transaction instance which extends the current instance
+// with signatures removed.
+func (t *FeeBumpTransaction) ClearSignatures() (*FeeBumpTransaction, error) {
+	return t.clone(nil), nil
 }
 
 // AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
