@@ -25,7 +25,7 @@ type PathPaymentStrictReceive struct {
 }
 
 // BuildXDR for PathPaymentStrictReceive returns a fully configured XDR Operation.
-func (pp *PathPaymentStrictReceive) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (pp *PathPaymentStrictReceive) BuildXDR() (xdr.Operation, error) {
 	// Set XDR send asset
 	if pp.SendAsset == nil {
 		return xdr.Operation{}, errors.New("you must specify an asset to send for payment")
@@ -43,11 +43,7 @@ func (pp *PathPaymentStrictReceive) BuildXDR(withMuxedAccounts bool) (xdr.Operat
 
 	// Set XDR destination
 	var xdrDestination xdr.MuxedAccount
-	if withMuxedAccounts {
-		err = xdrDestination.SetAddress(pp.Destination)
-	} else {
-		err = xdrDestination.SetEd25519Address(pp.Destination)
-	}
+	err = xdrDestination.SetAddress(pp.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
@@ -92,28 +88,20 @@ func (pp *PathPaymentStrictReceive) BuildXDR(withMuxedAccounts bool) (xdr.Operat
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, pp.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, pp.SourceAccount)
-	}
+	SetOpSourceAccount(&op, pp.SourceAccount)
 	return op, nil
 }
 
 // FromXDR for PathPaymentStrictReceive initialises the txnbuild struct from the corresponding xdr Operation.
-func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetPathPaymentStrictReceiveOp()
 	if !ok {
 		return errors.New("error parsing path_payment operation from xdr")
 	}
 
-	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
-	if withMuxedAccounts {
-		pp.Destination = result.Destination.Address()
-	} else {
-		destAID := result.Destination.ToAccountId()
-		pp.Destination = destAID.Address()
-	}
+	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	pp.Destination = result.Destination.Address()
+
 	pp.DestAmount = amount.String(result.DestAmount)
 	pp.SendMax = amount.String(result.SendMax)
 
@@ -143,14 +131,8 @@ func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation, withMuxedAccoun
 
 // Validate for PathPaymentStrictReceive validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (pp *PathPaymentStrictReceive) Validate(withMuxedAccounts bool) error {
-	var err error
-	if withMuxedAccounts {
-		_, err = xdr.AddressToMuxedAccount(pp.Destination)
-	} else {
-		_, err = xdr.AddressToAccountId(pp.Destination)
-	}
-
+func (pp *PathPaymentStrictReceive) Validate() error {
+	_, err := xdr.AddressToMuxedAccount(pp.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}

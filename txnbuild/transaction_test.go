@@ -3,6 +3,7 @@ package txnbuild
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"github.com/stellar/go/price"
 	"strings"
 	"testing"
 	"time"
@@ -222,7 +223,6 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
 			Timebounds:           NewInfiniteTimeout(),
-			EnableMuxedAccounts:  true,
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -231,39 +231,6 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 
 	expected := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
-}
-
-func TestPaymentFailsMuxedAccountsIfNotEnabled(t *testing.T) {
-	kp0 := newKeypair0()
-	accountID := xdr.MustAddress(kp0.Address())
-	mx := xdr.MuxedAccount{
-		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
-		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      0xcafebabe,
-			Ed25519: *accountID.Ed25519,
-		},
-	}
-	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
-
-	payment := Payment{
-		Destination: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
-		Amount:      "10",
-		Asset:       NativeAsset{},
-	}
-
-	_, err := newSignedTransaction(
-		TransactionParams{
-			SourceAccount:        &sourceAccount,
-			IncrementSequenceNum: true,
-			Operations:           []Operation{&payment},
-			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
-			EnableMuxedAccounts:  false,
-		},
-		network.TestNetworkPassphrase,
-		kp0,
-	)
-	assert.Error(t, err)
 }
 
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
@@ -756,8 +723,7 @@ func TestManageSellOfferNewOffer(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"))
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -810,9 +776,8 @@ func TestManageSellOfferUpdateOffer(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
-	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price.MustParse("0.02"), offerID)
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -841,7 +806,7 @@ func TestCreatePassiveSellOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "10",
-		Price:   "1.0",
+		Price:   xdr.Price{1, 1},
 	}
 
 	received, err := newSignedTransaction(
@@ -990,7 +955,7 @@ func TestManageBuyOfferNewOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp0.Address()},
 		Amount:  "100",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: 0,
 	}
 
@@ -1019,7 +984,7 @@ func TestManageBuyOfferDeleteOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp1.Address()},
 		Amount:  "0",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: int64(2921622),
 	}
 
@@ -1048,7 +1013,7 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", kp1.Address()},
 		Amount:  "50",
-		Price:   "0.02",
+		Price:   price.MustParse("0.02"),
 		OfferID: int64(2921622),
 	}
 
@@ -1424,7 +1389,7 @@ func TestFromXDR(t *testing.T) {
 	txB64WithMuxedAccounts := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
 
 	// It provides M-addreses when enabling muxed accounts
-	tx3, err := TransactionFromXDR(txB64WithMuxedAccounts, TransactionFromXDROptionEnableMuxedAccounts)
+	tx3, err := TransactionFromXDR(txB64WithMuxedAccounts)
 	assert.NoError(t, err)
 	newTx3, ok := tx3.Transaction()
 	assert.True(t, ok)
@@ -1433,17 +1398,6 @@ func TestFromXDR(t *testing.T) {
 	assert.True(t, ok3)
 	assert.Equal(t, "MDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKAAAAAAMV7V2XYGQO", op3.SourceAccount)
 	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", op3.Destination)
-
-	// It does provide G-addreses when not enabling muxed accounts
-	tx3, err = TransactionFromXDR(txB64WithMuxedAccounts)
-	assert.NoError(t, err)
-	newTx3, ok = tx3.Transaction()
-	assert.True(t, ok)
-	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", newTx3.sourceAccount.AccountID)
-	op3, ok3 = newTx3.Operations()[0].(*Payment)
-	assert.True(t, ok3)
-	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", op3.SourceAccount)
-	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", op3.Destination)
 
 }
 
@@ -4469,7 +4423,6 @@ func TestClaimableBalanceIds(t *testing.T) {
 			BaseFee:              MinBaseFee,
 			Timebounds:           NewInfiniteTimeout(),
 			Operations:           []Operation{&claimableBalanceEntry},
-			EnableMuxedAccounts:  true,
 		},
 	)
 	assert.NoError(t, err)
@@ -4625,4 +4578,55 @@ func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 	err = fbgtx2.UnmarshalText(marshaled)
 	require.NoError(t, err)
 	assert.Equal(t, fbgtx, fbgtx2)
+}
+
+func TestGenericTransaction_HashHex(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	gtx := tx.ToGenericTransaction()
+
+	expected := "1b3905ba8c3c0ecc68ae812f2d77f27c697195e8daf568740fc0f5662f65f759"
+	hashHex, err := tx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+	hashHex, err = gtx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: kp0.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+
+	gtx = fbtx.ToGenericTransaction()
+
+	expected = "9a194faa93e4b6efcd8da1c4b25797c666d596f3262d7db43b794b6f2db8d767"
+	hashHex, err = fbtx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
+	hashHex, err = gtx.HashHex(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	assert.Equal(t, expected, hashHex)
 }

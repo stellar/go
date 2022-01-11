@@ -268,7 +268,7 @@ func TestValidatePassiveOfferInvalidAmount(t *testing.T) {
 	cpo := CreatePassiveSellOffer{
 		Buying:  buying,
 		Selling: selling,
-		Price:   "1",
+		Price:   xdr.Price{1, 1},
 		Amount:  "-1",
 	}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
@@ -284,12 +284,12 @@ func TestValidatePassiveOfferInvalidPrice(t *testing.T) {
 	cpo := CreatePassiveSellOffer{
 		Buying:  buying,
 		Selling: selling,
-		Price:   "-1",
+		Price:   xdr.Price{-1, 1},
 		Amount:  "10",
 	}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 	assert.Error(t, err)
-	expectedErrMsg := "Field: Price, Error: amount can not be negative"
+	expectedErrMsg := "Field: Price, Error: price cannot be negative: -1/1"
 	require.EqualError(t, err, expectedErrMsg, "valid price is required")
 }
 
@@ -299,7 +299,7 @@ func TestValidatePassiveOfferInvalidAsset(t *testing.T) {
 	cpo := CreatePassiveSellOffer{
 		Buying:  buying,
 		Selling: selling,
-		Price:   "1",
+		Price:   xdr.Price{1, 1},
 		Amount:  "10",
 	}
 	err := validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
@@ -313,7 +313,7 @@ func TestValidatePassiveOfferInvalidAsset(t *testing.T) {
 	cpo1 := CreatePassiveSellOffer{
 		Buying:  buying1,
 		Selling: selling1,
-		Price:   "1",
+		Price:   xdr.Price{1, 1},
 		Amount:  "10",
 	}
 	err = validatePassiveOffer(cpo1.Buying, cpo1.Selling, cpo1.Amount, cpo1.Price)
@@ -329,7 +329,7 @@ func TestValidateOfferManageBuyOffer(t *testing.T) {
 	mbo := ManageBuyOffer{
 		Buying:  buying,
 		Selling: selling,
-		Price:   "1",
+		Price:   xdr.Price{1, 1},
 		Amount:  "10",
 		OfferID: -1,
 	}
@@ -346,7 +346,7 @@ func TestValidateOfferManageSellOffer(t *testing.T) {
 	mso := ManageSellOffer{
 		Buying:  buying,
 		Selling: selling,
-		Price:   "1",
+		Price:   xdr.Price{1, 1},
 		Amount:  "10",
 		OfferID: -1,
 	}
