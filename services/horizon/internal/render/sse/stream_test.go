@@ -27,7 +27,9 @@ func (s *Stream) IsDone() bool {
 		return s.done
 	}
 
-	return s.done || s.eventsSent >= s.limit
+	// The hello event shouldn't be counted for limit calculations
+	eventsSentExcludingHello := s.eventsSent - 1
+	return s.done || eventsSentExcludingHello >= s.limit
 }
 
 type StreamTestSuite struct {
