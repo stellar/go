@@ -4,8 +4,9 @@ All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## Unreleased
+## [v9.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-01-10
 
+None
 
 ## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
 
