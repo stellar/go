@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## Unreleased
+## [9.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-01-10
 
-* Enable Muxed Accounts ([SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)) by default:
+* Enable Muxed Accounts ([SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)) by default ([#4169](https://github.com/stellar/go/pull/4169)):
   * Remove `TransactionParams.EnableMuxedAccounts`
   * Remove `TransactionFromXDROptionEnableMuxedAccounts`
   * Remove `FeeBumpTransactionParams.EnableMuxedAccounts`
