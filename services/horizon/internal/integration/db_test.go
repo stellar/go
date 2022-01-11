@@ -79,8 +79,8 @@ func generateLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (l
 			LiquidityPoolID: [32]byte(poolID),
 			MaxAmountA:      "400",
 			MaxAmountB:      "777",
-			MinPrice:        "0.5",
-			MaxPrice:        "2",
+			MinPrice:        xdr.Price{1, 2},
+			MaxPrice:        xdr.Price{2, 1},
 		},
 	)
 
