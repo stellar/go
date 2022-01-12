@@ -531,6 +531,17 @@ func (t *FeeBumpTransaction) ClearSignatures() (*FeeBumpTransaction, error) {
 	return t.clone(nil), nil
 }
 
+// AddSignatureDecorated returns a new FeeBumpTransaction instance which extends the current instance
+// with an additional decorated signature(s).
+func (t *FeeBumpTransaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*FeeBumpTransaction, error) {
+	extendedSignatures, err := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
+	if err != nil {
+		return nil, err
+	}
+
+	return t.clone(extendedSignatures), nil
+}
+
 // AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {

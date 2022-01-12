@@ -1638,6 +1638,51 @@ func TestAddSignatureDecorated(t *testing.T) {
 	}
 }
 
+func TestFeeBumpTransaction_AddSignatureDecorated(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	tx, err := NewTransaction(TransactionParams{
+		SourceAccount: &SimpleAccount{kp0.Address(), int64(9605939170639897)},
+		Operations: []Operation{&CreateAccount{
+			Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+			Amount:        "10",
+			SourceAccount: kp1.Address(),
+		}},
+		BaseFee:    MinBaseFee,
+		Timebounds: NewInfiniteTimeout(),
+	})
+	require.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0, kp1)
+	require.NoError(t, err)
+
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: kp0.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+
+	fbtxHash, err := fbtx.Hash(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+
+	sig, err := kp0.SignDecorated(fbtxHash[:])
+	require.NoError(t, err)
+	fbtxWithSig, err := fbtx.AddSignatureDecorated(sig)
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+	require.Len(t, fbtxWithSig.Signatures(), 1)
+
+	sig, err = kp1.SignDecorated(fbtxHash[:])
+	require.NoError(t, err)
+	fbtxWithTwoSigs, err := fbtxWithSig.AddSignatureDecorated(sig)
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+	require.Len(t, fbtxWithSig.Signatures(), 1)
+	require.Len(t, fbtxWithTwoSigs.Signatures(), 2)
+}
+
 func TestAddSignatureBase64(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
