@@ -38,8 +38,8 @@ func NewStream(ctx context.Context, w http.ResponseWriter) *Stream {
 // hello message. This should be called before any method that writes to the client to ensure that the preamble
 // has been sent first.
 func (s *Stream) Init() {
-	s.initialized = true
-	if s.eventsSent == 0 {
+	if !s.initialized {
+		s.initialized = true
 		ok := WritePreamble(s.ctx, s.w)
 		if !ok {
 			s.done = true
