@@ -3,13 +3,13 @@ package txnbuild
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"github.com/stellar/go/price"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/price"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -1638,6 +1638,51 @@ func TestAddSignatureDecorated(t *testing.T) {
 	}
 }
 
+func TestFeeBumpTransaction_AddSignatureDecorated(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	tx, err := NewTransaction(TransactionParams{
+		SourceAccount: &SimpleAccount{kp0.Address(), int64(9605939170639897)},
+		Operations: []Operation{&CreateAccount{
+			Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+			Amount:        "10",
+			SourceAccount: kp1.Address(),
+		}},
+		BaseFee:    MinBaseFee,
+		Timebounds: NewInfiniteTimeout(),
+	})
+	require.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0, kp1)
+	require.NoError(t, err)
+
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: kp0.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+
+	fbtxHash, err := fbtx.Hash(network.TestNetworkPassphrase)
+	require.NoError(t, err)
+
+	sig, err := kp0.SignDecorated(fbtxHash[:])
+	require.NoError(t, err)
+	fbtxWithSig, err := fbtx.AddSignatureDecorated(sig)
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+	require.Len(t, fbtxWithSig.Signatures(), 1)
+
+	sig, err = kp1.SignDecorated(fbtxHash[:])
+	require.NoError(t, err)
+	fbtxWithTwoSigs, err := fbtxWithSig.AddSignatureDecorated(sig)
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+	require.Len(t, fbtxWithSig.Signatures(), 1)
+	require.Len(t, fbtxWithTwoSigs.Signatures(), 2)
+}
+
 func TestAddSignatureBase64(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
@@ -1690,6 +1735,83 @@ func TestAddSignatureBase64(t *testing.T) {
 	actual, err := tx1.Base64()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual, "base64 xdr should match")
+}
+
+func TestTransaction_ClearSignatures(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: int64(9605939170639898)},
+			Operations: []Operation{&CreateAccount{
+				Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+				Amount:        "10",
+				SourceAccount: kp1.Address(),
+			}},
+			BaseFee:    MinBaseFee,
+			Timebounds: NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, tx.Signatures(), 0)
+
+	txWithSig, err := tx.Sign(network.TestNetworkPassphrase, kp0)
+	require.NoError(t, err)
+	require.Len(t, txWithSig.Signatures(), 1)
+
+	txSigCleared, err := txWithSig.ClearSignatures()
+	require.NoError(t, err)
+	require.Len(t, txSigCleared.Signatures(), 0)
+
+	expected, err := tx.Base64()
+	assert.NoError(t, err)
+	actual, err := txSigCleared.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestFeeBumpTransaction_ClearSignatures(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+
+	tx, err := NewTransaction(TransactionParams{
+		SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: int64(9605939170639898)},
+		Operations: []Operation{&CreateAccount{
+			Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+			Amount:        "10",
+			SourceAccount: kp1.Address(),
+		}},
+		BaseFee:    MinBaseFee,
+		Timebounds: NewInfiniteTimeout(),
+	})
+	require.NoError(t, err)
+	require.Len(t, tx.Signatures(), 0)
+	txWithSig, err := tx.Sign(network.TestNetworkPassphrase, kp0)
+	require.NoError(t, err)
+	require.Len(t, txWithSig.Signatures(), 1)
+
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      txWithSig,
+		FeeAccount: kp0.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+	require.Len(t, fbtx.Signatures(), 0)
+
+	fbtxWithSig, err := fbtx.Sign(network.TestNetworkPassphrase, kp0)
+	require.NoError(t, err)
+	require.Len(t, fbtxWithSig.Signatures(), 1)
+
+	fbtxSigCleared, err := fbtxWithSig.ClearSignatures()
+	require.NoError(t, err)
+	require.Len(t, fbtxSigCleared.Signatures(), 0)
+
+	expected, err := fbtx.Base64()
+	assert.NoError(t, err)
+	actual, err := fbtxSigCleared.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
 }
 
 func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
