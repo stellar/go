@@ -18,11 +18,12 @@ var (
 )
 
 type Stream struct {
-	ctx        context.Context
-	w          http.ResponseWriter
-	done       bool
-	eventsSent int
-	limit      int
+	ctx         context.Context
+	w           http.ResponseWriter
+	done        bool
+	eventsSent  int
+	limit       int
+	initialized bool
 }
 
 // NewStream creates a new stream against the provided response writer.
@@ -37,12 +38,10 @@ func NewStream(ctx context.Context, w http.ResponseWriter) *Stream {
 // hello message. This should be called before any method that writes to the client to ensure that the preamble
 // has been sent first.
 func (s *Stream) Init() {
-	if s.eventsSent == 0 {
+	if !s.initialized {
+		s.initialized = true
 		ok := WritePreamble(s.ctx, s.w)
-		if ok {
-			// The preamble includes sending a hello event
-			s.eventsSent++
-		} else {
+		if !ok {
 			s.done = true
 		}
 	}
@@ -65,9 +64,9 @@ func (s *Stream) Done() {
 }
 
 func (s *Stream) Err(err error) {
-	// If we haven't sent an event, we should simply return the normal HTTP
+	// We haven't initialized the stream, we should simply return the normal HTTP
 	// error because it means that we haven't sent the preamble.
-	if s.eventsSent == 0 {
+	if !s.initialized {
 		problem.Render(s.ctx, s.w, err)
 		return
 	}
