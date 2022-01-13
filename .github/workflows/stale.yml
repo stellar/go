@@ -1,6 +1,8 @@
-name: 'Stale Issues'
+
+name: 'Stale PRs'
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 18 * * *' # approx 9:30am daily
 
@@ -8,9 +10,8 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v3
+      - uses: actions/stale@v4
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
           debug-only: false
           days-before-stale: 30
           days-before-close: 30
