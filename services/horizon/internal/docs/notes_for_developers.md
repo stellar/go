@@ -4,6 +4,7 @@ This document contains additional information related to the development of Hori
 
 - [Initial set up](#setup)
 - [Regenerating generated code](#regen)
+- [Writing tests](#author_tests)
 - [Running tests](#tests)
 - [Logging](#logging)
 - [Adding migrations](#migrations)
@@ -44,17 +45,17 @@ payment :scott, :bartek,  [:native, 5]
 
 You can find more recipes in [`scc` examples](https://github.com/stellar/stellar_core_commander/tree/84d5ffb97202ecc3a0ed34a739c98e69536c0c2c/examples). 
 
-Scenarios are in [horizon test scenarios](https://github.com/stellar/go/tree/master/services/horizon/internal/test/scenarios). They are
-used by many different integration tests.
-
 ### Deprecated Scenario sql files
 
-1. Scenario .sql files are located in services/horizon/internal/test/scenarios and have been used in unit and integeration tests, however, they are deprecated and are not meant to be used or included in new development. They were manually maintained and have not been updated with more recent db schema changes and are not associated with db migrations. 
+Scenarios are in [horizon test scenarios](https://github.com/stellar/go/tree/master/services/horizon/internal/test/scenarios). They are used by many different integration tests, however, they are deprecated and are not meant to be used or included in new development. They were manually maintained and have not been updated with more recent db schema changes and are not associated with db migrations. 
 
+## <a name="author_tests"></a> Writing Tests
+
+When authoring tests, refer to [Testing Best Practices](../../TESTING_README.md) for context.
 
 ## <a name="tests"></a> Running Tests
 
-run the all the Go monorepo tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
+Run all the Go monorepo unit tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
 
 ```bash
 go test ./...
@@ -64,6 +65,17 @@ or run individual Horizon tests like so, providing the expected arguments:
 
 ```bash
 go test github.com/stellar/go/services/horizon/...
+```
+
+To run the integration tests, move to top folder of working copy of `go` repo to run all integration tests 
+or /services/horizon to run just Horizon integration tests:
+```
+HORIZON_INTEGRATION_TESTS=true go test -race -timeout 25m -v ./...
+```
+
+To run just one specific integration test, e.g. like `TestTxSub`:
+```
+HORIZON_INTEGRATION_TESTS=true go test -run TestTxsub -race -timeout 25m -v ./...
 ```
 
 ## <a name="logging"></a> Logging
