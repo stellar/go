@@ -225,7 +225,7 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 		URL:  a.config.StellarCoreURL,
 	}
 
-	coreInfo, err := coreClient.Info(a.ctx)
+	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
 		logErr(err, "failed to load the stellar-core info")
 		return
