@@ -5,14 +5,21 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Generate Http Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count`
-  metric key with status=499 label. ([4098](horizon_http_requests_duration_seconds_count))
-* Improve performance of `/trades?trade_type=liquidity_pool` requests. ([4149](https://github.com/stellar/go/pull/4149))
-* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([4148](https://github.com/stellar/go/pull/4148))  
+## v2.13.0
 
 ### DB Schema Migration
 
-* DB migrations add a column and index to the `history_trades` table. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+* DB migrations add a column and index to the `history_trades` table to improve performance of some queries. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+
+### Changes
+
+* Improve performance of `/trades?trade_type=liquidity_pool` requests. ([4149](https://github.com/stellar/go/pull/4149))
+* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([4148](https://github.com/stellar/go/pull/4148))
+* Path finding results contain empty paths again (removed in Horizon 2.9.0). ([4137](https://github.com/stellar/go/pull/4137))
+* Generate HTTP Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count` metric key with `status="499"` label. ([4098](https://github.com/stellar/go/pull/4098))
+* Fix incorrect counting of rate limited events in stream requests. ([4163](https://github.com/stellar/go/pull/4163))
+* Update cursor on every ledger when using old non Captive-Core ingestion backend. ([4150](https://github.com/stellar/go/pull/4150))
+* Fix the code responsible for updating Stellar-Core status that could stop the metrics updates on connectivity issues. ([4180](https://github.com/stellar/go/pull/4180))
 
 ## v2.12.1
 
