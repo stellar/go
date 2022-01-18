@@ -305,7 +305,6 @@ func (r *stellarCoreRunner) run() error {
 
 	r.cmd = r.createCmd(
 		"run",
-		"--in-memory",
 		"--metadata-output-stream", r.getPipeName(),
 	)
 
