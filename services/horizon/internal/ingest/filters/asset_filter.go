@@ -2,6 +2,7 @@ package filters
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/ingest"
 )
@@ -29,7 +30,27 @@ func NewAssetFilter(filterParams *AssetFilterParms) *AssetFilter {
 	return filter
 }
 
-func (p *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
+func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
 	//TODO implement the asset filter based on filter params and intropsectin ops for matching references to asset in tx
+
+	for _, asset := range f.filterParams.canonicalAssetList {
+		fmt.Printf("asset %v", asset)
+	}
+
+	for _, asset := range f.filterParams.assetIssuerList {
+		fmt.Printf("asset issuer %v", asset)
+	}
+
+	for _, asset := range f.filterParams.assetCodeList {
+		fmt.Printf("asset code %v", asset)
+	}
+
+	for _, operation := range f.filterParams.traverseOperationsList {
+		fmt.Printf("include operation %v", operation)
+	}
+
+	fmt.Printf("resolve pools %v", f.filterParams.resolveLiquidityPoolAsAsset)
+	fmt.Printf("include effects %v", f.filterParams.resolveLiquidityPoolAsAsset)
+
 	return true, nil
 }
