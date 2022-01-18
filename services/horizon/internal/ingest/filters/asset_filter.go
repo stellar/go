@@ -8,15 +8,26 @@ import (
 )
 
 type AssetFilterParms struct {
-	canonicalAssetList []string // list of fully qualified asset canonical id <issuer:code>
-	assetIssuerList    []string // list of just the account id as the asset issuer value,
+	// list of fully qualified asset canonical id <issuer:code>
+	canonicalAssetList []string
+
+	// list of just the account id as the asset issuer value,
 	// filter will match on any asset reference with same issuer
-	assetCodeList               []string // list of just asset codes, filter will match on any asset reference with same code
-	resolveLiquidityPoolAsAsset bool     // if a liquidity pool references a filtered asset, then include all operation
+	assetIssuerList []string
+
+	// list of just asset codes, filter will match on any asset reference with same code
+	assetCodeList []string
+
+	// if a liquidity pool references a filtered asset, then include all operation
 	// types within 'traverseOperationsList' that are related to the pool
-	traverseEffects        bool     // true means generate effects for any operations referencing a filtered asset
-	traverseOperationsList []string // list of 'Offers, Trades, Payments, TrustLine, Claimable Balance', include any
+	resolveLiquidityPoolAsAsset bool
+
+	// true means generate effects for any operations referencing a filtered asset
+	traverseEffects bool
+
+	// list of 'Offers, Trades, Payments, TrustLine, Claimable Balance', include any
 	// of these operation types when they reference a filtered asset
+	traverseOperationsList []string
 }
 
 type AssetFilter struct {
