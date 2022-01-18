@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"context"
-	"encoding/hex"
 	"os"
 	"sync"
 
@@ -248,20 +247,39 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	}
 
 	var runner stellarCoreRunnerInterface
-	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
-	} else {
-		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
-		// see https://golang.org/doc/faq#nil_error
-		c.stellarCoreRunner = runner
 	}
+	c.stellarCoreRunner = runner
 
-	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
+	runFrom, err := c.runFromParams(ctx, from)
 	if err != nil {
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
-	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
+	err = c.stellarCoreRunner.catchup(runFrom, runFrom-1)
+	if err != nil {
+		return errors.Wrap(err, "error running stellar-core")
+	}
+	for range c.stellarCoreRunner.getMetaPipe() {
+		// Drain the pipe
+	}
+	if err := c.stellarCoreRunner.close(); err != nil {
+		return errors.Wrap(err, "error running stellar-core")
+	}
+
+	if processExited, err := c.stellarCoreRunner.getProcessExitError(); err != nil {
+		return errors.Wrap(err, "error running stellar-core")
+	} else if !processExited {
+		return errors.New("error creating stellar-core runner")
+	}
+
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
+		return errors.Wrap(err, "error creating stellar-core runner")
+	}
+	c.stellarCoreRunner = runner
+
+	err = c.stellarCoreRunner.run()
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
@@ -279,14 +297,13 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 }
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
-func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (runFrom uint32, ledgerHash string, err error) {
+func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (runFrom uint32, err error) {
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-		return
+		return 0, errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
 	}
 
 	if from <= 63 {
@@ -298,26 +315,7 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ru
 		from = 3
 	}
 
-	runFrom = from - 1
-	if c.ledgerHashStore != nil {
-		var exists bool
-		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
-		if err != nil {
-			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
-			return
-		}
-		if exists {
-			return
-		}
-	}
-
-	ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
-	if err2 != nil {
-		err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
-		return
-	}
-	ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
-	return
+	return from - 1, nil
 }
 
 // nextExpectedSequence returns nextLedger (if currently set) or start of

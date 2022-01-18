@@ -23,7 +23,7 @@ import (
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
-	runFrom(from uint32, hash string) error
+	run() error
 	getMetaPipe() <-chan metaResult
 	context() context.Context
 	getProcessExitError() (bool, error)
@@ -289,8 +289,8 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	return nil
 }
 
-// runFrom executes the run command with a starting ledger on the captive core subprocess
-func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
+// run executes the run command with a starting ledger on the captive core subprocess
+func (r *stellarCoreRunner) run() error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -306,8 +306,6 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.cmd = r.createCmd(
 		"run",
 		"--in-memory",
-		"--start-at-ledger", fmt.Sprintf("%d", from),
-		"--start-at-hash", hash,
 		"--metadata-output-stream", r.getPipeName(),
 	)
 
