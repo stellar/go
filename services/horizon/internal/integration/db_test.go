@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -237,7 +236,6 @@ func command(horizonConfig horizon.Config, args ...string) []string {
 }
 
 func TestFillGaps(t *testing.T) {
-	os.Setenv("HORIZON_INTEGRATION_TESTS", "true")
 	itest, reachedLedger := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
 
