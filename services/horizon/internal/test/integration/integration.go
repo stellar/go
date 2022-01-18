@@ -262,10 +262,8 @@ func (i *Test) StartHorizon() error {
 	if horizonPostgresURL == "" {
 		postgres := dbtest.Postgres(i.t)
 		i.shutdownCalls = append(i.shutdownCalls, func() {
-			// FIXME: Unfortunately, Horizon leaves open sessions behind,
-			//        leading to a "database is being accessed by other users"
-			//        error when trying to drop it.
-			// postgres.Close()
+			i.StopHorizon()
+			postgres.Close()
 		})
 		horizonPostgresURL = postgres.DSN
 	}
@@ -471,6 +469,11 @@ func (i *Test) Horizon() *horizon.App {
 
 // StopHorizon shuts down the running Horizon process
 func (i *Test) StopHorizon() {
+	if i.app == nil {
+		// horizon has already been stopped
+		return
+	}
+
 	i.app.CloseDB()
 	i.app.Close()
 

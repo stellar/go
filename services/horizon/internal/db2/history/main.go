@@ -265,6 +265,7 @@ type IngestionQ interface {
 	BeginTx(*sql.TxOptions) error
 	Commit() error
 	CloneIngestionQ() IngestionQ
+	Close() error
 	Rollback() error
 	GetTx() *sqlx.Tx
 	GetIngestVersion(context.Context) (int, error)

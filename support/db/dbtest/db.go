@@ -132,6 +132,9 @@ func Postgres(t testing.TB) *DB {
 	result.DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable&timezone=UTC", pgUser, result.dbName)
 
 	result.closer = func() {
+		// pg_terminate_backend is a best effort, it does not gaurantee that it can close any lingering connections
+		// it sends a quit signal to each remaining connection in the db
+		execStatement(t, pgUser, "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '"+pq.QuoteIdentifier(result.dbName)+"';")
 		execStatement(t, pgUser, "DROP DATABASE "+pq.QuoteIdentifier(result.dbName))
 	}
 
