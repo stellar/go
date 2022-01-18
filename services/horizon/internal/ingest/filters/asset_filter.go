@@ -50,7 +50,7 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 	}
 
 	fmt.Printf("resolve pools %v", f.filterParams.resolveLiquidityPoolAsAsset)
-	fmt.Printf("include effects %v", f.filterParams.resolveLiquidityPoolAsAsset)
+	fmt.Printf("include effects %v", f.filterParams.traverseEffects)
 
 	return true, nil
 }
