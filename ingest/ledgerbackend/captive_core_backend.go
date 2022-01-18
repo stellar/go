@@ -260,11 +260,12 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	for range c.stellarCoreRunner.getMetaPipe() {
 		// Drain the pipe
 	}
-	if err := c.stellarCoreRunner.close(); err != nil {
+	if err = c.stellarCoreRunner.close(); err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
 
-	if processExited, err := c.stellarCoreRunner.getProcessExitError(); err != nil {
+	var processExited bool
+	if processExited, err = c.stellarCoreRunner.getProcessExitError(); err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	} else if !processExited {
 		return errors.New("error creating stellar-core runner")
