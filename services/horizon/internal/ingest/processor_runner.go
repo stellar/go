@@ -147,6 +147,11 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	})
 }
 
+func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
+	// TODO: include the filterers here
+	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{})
+}
+
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
 // protocol version of a ledger with the given sequence number.
 func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion uint32) error {
@@ -291,9 +296,10 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
+	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupTransactionProcessors := s.buildTransactionProcessor(
 		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
-	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionProcessors, transactionReader)
+	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionFilterers, groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
@@ -308,6 +314,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
 	tradeStats = tradeProcessor.GetStats()
+	// TODO: store filtering durations
 	return
 }
 
