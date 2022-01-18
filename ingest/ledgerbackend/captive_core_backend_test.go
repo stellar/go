@@ -1444,14 +1444,11 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 			CurrentLedger: uint32(255),
 		}, nil)
 
-	mockLedgerHashStore := &MockLedgerHashStore{}
-
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
 		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
-		ledgerHashStore:   mockLedgerHashStore,
 		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
@@ -1469,5 +1466,4 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 
 	mockRunner.AssertExpectations(t)
 	mockArchive.AssertExpectations(t)
-	mockLedgerHashStore.AssertExpectations(t)
 }

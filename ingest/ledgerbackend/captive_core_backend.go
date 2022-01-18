@@ -68,7 +68,6 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 type CaptiveStellarCore struct {
 	archive           historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
-	ledgerHashStore   TrustedLedgerHashStore
 
 	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
 	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
@@ -109,8 +108,6 @@ type CaptiveCoreConfig struct {
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
-	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
-	LedgerHashStore TrustedLedgerHashStore
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry
@@ -160,7 +157,6 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:           &archivePool,
-		ledgerHashStore:   config.LedgerHashStore,
 		cancel:            cancel,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -640,12 +636,6 @@ func (c *CaptiveStellarCore) Close() error {
 
 	// after the CaptiveStellarCore context is canceled all subsequent calls to PrepareRange() will fail
 	c.cancel()
-
-	// TODO: Sucks to ignore the error here, but no worse than it was before,
-	// so...
-	if c.ledgerHashStore != nil {
-		c.ledgerHashStore.Close()
-	}
 
 	if c.stellarCoreRunner != nil {
 		return c.stellarCoreRunner.close()

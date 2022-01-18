@@ -13,14 +13,13 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
-	"github.com/stellar/go/support/db"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 )
 
 func main() {
 	var port int
-	var networkPassphrase, binaryPath, configPath, dbURL string
+	var networkPassphrase, binaryPath, configPath string
 	var captiveCoreTomlParams ledgerbackend.CaptiveCoreTomlParams
 	var historyArchiveURLs []string
 	var checkpointFrequency uint32
@@ -91,14 +90,6 @@ func main() {
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
 		&config.ConfigOption{
-			Name:      "db-url",
-			EnvVar:    "DATABASE_URL",
-			ConfigKey: &dbURL,
-			OptType:   types.String,
-			Required:  false,
-			Usage:     "horizon postgres database to connect with",
-		},
-		&config.ConfigOption{
 			Name:           "stellar-captive-core-http-port",
 			ConfigKey:      &captiveCoreTomlParams.HTTPPort,
 			OptType:        types.Uint,
@@ -141,15 +132,6 @@ func main() {
 				Toml:                captiveCoreToml,
 			}
 
-			var dbConn *db.Session
-			if len(dbURL) > 0 {
-				dbConn, err = db.Open("postgres", dbURL)
-				if err != nil {
-					logger.WithError(err).Fatal("Could not create db connection instance")
-				}
-				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(dbConn)
-			}
-
 			core, err := ledgerbackend.NewCaptive(captiveConfig)
 			if err != nil {
 				logger.WithError(err).Fatal("Could not create captive core instance")
@@ -166,9 +148,6 @@ func main() {
 					// TODO: Check this aborts in-progress requests instead of letting
 					// them finish, to preserve existing behaviour.
 					api.Shutdown()
-					if dbConn != nil {
-						dbConn.Close()
-					}
 				},
 			})
 		},
