@@ -148,8 +148,9 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
-	// TODO: include the filterers here
-	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{})
+	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{
+		processors.NewAccountFilter(s.historyQ),
+	})
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the

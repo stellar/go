@@ -237,6 +237,7 @@ type AccountEntry struct {
 
 type IngestionQ interface {
 	QAccounts
+	QAccountFilterWhitelist
 	QAssetStats
 	QClaimableBalances
 	QHistoryClaimableBalances
