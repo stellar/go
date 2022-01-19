@@ -10,12 +10,15 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func TestEmpty(t *testing.T) {
+func TestWIP(t *testing.T) {
+	// TODO, make this test real
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterParams := &AssetFilterParms{}
-	filter := NewAssetFilter(filterParams)
+	filterParams := &AssetFilterParms{
+		CanonicalAssetList: []string{"USDC:XYZ1234567890"},
+	}
+	filter := NewAssetFilterFromParams(filterParams)
 
 	ledgerTx := ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
@@ -61,4 +64,14 @@ func TestEmpty(t *testing.T) {
 
 	tt.NoError(err)
 	tt.Equal(result, true)
+}
+
+func TestParamsFromFile(t *testing.T) {
+	tt := assert.New(t)
+
+	filter, err := NewAssetFilterFromParamsFile("../testdata/test_filter_params.json")
+
+	tt.NoError(err)
+	tt.Equal(filter.CurrentFilterParameters().ResolveLiquidityPoolAsAsset, true)
+	tt.Equal(filter.CurrentFilterParameters().CanonicalAssetList, []string{"BITC:ABC123456", "DOGT:DEF123456"})
 }
