@@ -1,0 +1,7 @@
+{
+    "CanonicalAssetList": [
+       "BITC:ABC123456",
+       "DOGT:DEF123456"
+    ],
+    "ResolveLiquidityPoolAsAsset": true
+}
