@@ -253,22 +253,25 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
-	err = c.stellarCoreRunner.catchup(runFrom, runFrom-1)
-	if err != nil {
-		return errors.Wrap(err, "error running stellar-core")
-	}
-	for range c.stellarCoreRunner.getMetaPipe() {
-		// Drain the pipe
-	}
-	if err = c.stellarCoreRunner.close(); err != nil {
-		return errors.Wrap(err, "error running stellar-core")
-	}
+	if runFrom > 1 {
+		// Can't catch up to the first ledger
+		err = c.stellarCoreRunner.catchup(runFrom-1, runFrom)
+		if err != nil {
+			return errors.Wrap(err, "error running stellar-core")
+		}
+		for range c.stellarCoreRunner.getMetaPipe() {
+			// Drain the pipe
+		}
+		if err = c.stellarCoreRunner.close(); err != nil {
+			return errors.Wrap(err, "error running stellar-core")
+		}
 
-	var processExited bool
-	if processExited, err = c.stellarCoreRunner.getProcessExitError(); err != nil {
-		return errors.Wrap(err, "error running stellar-core")
-	} else if !processExited {
-		return errors.New("error creating stellar-core runner")
+		var processExited bool
+		if processExited, err = c.stellarCoreRunner.getProcessExitError(); err != nil {
+			return errors.Wrap(err, "error running stellar-core")
+		} else if !processExited {
+			return errors.New("error creating stellar-core runner")
+		}
 	}
 
 	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
@@ -293,7 +296,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	return nil
 }
 
-// runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
+// runFromParams receives a ledger sequence and calculates the required values to start stellar-core catchup from
 func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (runFrom uint32, err error) {
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
@@ -312,7 +315,8 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ru
 		from = 3
 	}
 
-	return from - 1, nil
+	runFrom = from - 1
+	return
 }
 
 // nextExpectedSequence returns nextLedger (if currently set) or start of

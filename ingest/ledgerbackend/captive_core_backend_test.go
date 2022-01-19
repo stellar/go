@@ -431,7 +431,7 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 
 func TestCaptivePrepareRangeUnboundedRange_ErrCatchup(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("catchup", uint32(127), uint32(126)).Return(errors.New("transient error")).Once()
+	mockRunner.On("catchup", uint32(126), uint32(127)).Return(errors.New("transient error")).Once()
 	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -469,7 +469,7 @@ func TestCaptivePrepareRangeUnboundedRange_CatchupErrExit(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
-	mockRunner.On("catchup", uint32(127), uint32(126)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(126), uint32(127)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(true, errors.New("transient error")).Once()
@@ -510,7 +510,7 @@ func TestCaptivePrepareRangeUnboundedRange_CatchupHungExit(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
-	mockRunner.On("catchup", uint32(127), uint32(126)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(126), uint32(127)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(false, nil).Once()
@@ -551,7 +551,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
-	mockRunner.On("catchup", uint32(127), uint32(126)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(126), uint32(127)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
 	mockRunner.On("getProcessExitError").Return(true, nil).Once()
 	mockRunner.On("close").Return(nil).Once()
@@ -606,7 +606,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(64), uint32(63)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(63), uint32(64)).Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(true, nil).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("run").Return(nil).Once()
@@ -656,7 +656,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(63), uint32(62)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(62), uint32(63)).Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(true, nil).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("run").Return(nil).Once()
@@ -796,7 +796,7 @@ func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(65), uint32(64)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(64), uint32(65)).Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(true, nil).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("run").Return(nil).Once()
@@ -902,7 +902,7 @@ func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *t
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(64), uint32(63)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(63), uint32(64)).Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(true, nil).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("run").Return(nil)
@@ -1429,7 +1429,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	catchupChan := make(chan metaResult)
 	close(catchupChan)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(299), uint32(298)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(298), uint32(299)).Return(nil).Once()
 	mockRunner.On("getProcessExitError").Return(true, nil).Once()
 	mockRunner.On("close").Return(nil).Once()
 	mockRunner.On("run").Return(nil).Once()
