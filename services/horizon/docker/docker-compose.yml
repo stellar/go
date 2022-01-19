@@ -12,6 +12,7 @@ services:
       - "horizon-db-data:/var/lib/postgresql/data"
 
   horizon:
+    platform: linux/amd64
     depends_on:
       - horizon-postgres
     build:

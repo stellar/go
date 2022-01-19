@@ -323,6 +323,12 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	return t.clone(extendedSignatures), nil
 }
 
+// ClearSignatures returns a new Transaction instance which extends the current instance
+// with signatures removed.
+func (t *Transaction) ClearSignatures() (*Transaction, error) {
+	return t.clone(nil), nil
+}
+
 // AddSignatureDecorated returns a new Transaction instance which extends the current instance
 // with an additional decorated signature(s).
 func (t *Transaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*Transaction, error) {
@@ -512,6 +518,23 @@ func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (
 // See description here: https://developers.stellar.org/docs/glossary/multisig/#hashx
 func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
 	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
+	if err != nil {
+		return nil, err
+	}
+
+	return t.clone(extendedSignatures), nil
+}
+
+// ClearSignatures returns a new Transaction instance which extends the current instance
+// with signatures removed.
+func (t *FeeBumpTransaction) ClearSignatures() (*FeeBumpTransaction, error) {
+	return t.clone(nil), nil
+}
+
+// AddSignatureDecorated returns a new FeeBumpTransaction instance which extends the current instance
+// with an additional decorated signature(s).
+func (t *FeeBumpTransaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*FeeBumpTransaction, error) {
+	extendedSignatures, err := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
 	if err != nil {
 		return nil, err
 	}
