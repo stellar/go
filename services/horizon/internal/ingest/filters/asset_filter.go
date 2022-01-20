@@ -37,12 +37,13 @@ type AssetFilterParms struct {
 	// true means generate effects for any operations referencing a filtered asset
 	TraverseEffects bool
 
-	// true means the filter will be loaded and apply any params available during ingestion, false
+	// true means the filter will be executed during ingestion, false
 	// means the filter is disabled, it will have no effect.
 	Activated bool
 
 	// list of 'Offers, Trades, Payments, TrustLine, Claimable Balance', include any
-	// of these operation types when they reference a filtered asset
+	// of these operation types when they reference a filtered asset. If empty, means
+	// include all operations.
 	TraverseOperationsList []string
 }
 
