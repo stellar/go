@@ -13,8 +13,7 @@ const (
 
 type QAccountFilterWhitelist interface {
 	GetAccountFilterWhitelist(ctx context.Context) ([]string, error)
-	UpsertAccountFilterWhitelist(ctx context.Context, accountIDs []string) error
-	RemoveFromAccountFilterWhitelist(ctx context.Context, accountIDs []string) (int64, error)
+	SetAccountFilterWhitelist(ctx context.Context, accountIDs []string) error
 }
 
 // GetAccountFilterWhitelist loads all the entries from account_filter_whitelist
@@ -28,18 +27,23 @@ func (q *Q) GetAccountFilterWhitelist(ctx context.Context) ([]string, error) {
 }
 
 // UpsertAccountFilterWhitelist upserts a batch of data in the account_filter_whitelist table.
-func (q *Q) UpsertAccountFilterWhitelist(ctx context.Context, accountIDs []string) error {
-	var accountID []interface{}
-
-	for _, id := range accountIDs {
-		accountID = append(accountID, id)
+func (q *Q) SetAccountFilterWhitelist(ctx context.Context, accountIDs []string) error {
+	del := sq.Delete(accountFilterWhitelistTableName)
+	// 1. Delete everything on the table
+	if _, err := q.Exec(ctx, del); err != nil {
+		return err
 	}
 
-	upsertFields := []upsertField{
-		{accountFilterWhitelistColumnName, "character varying(56)", accountID},
+	if len(accountIDs) == 0 {
+		return nil
 	}
-
-	return q.upsertRows(ctx, accountFilterWhitelistTableName, accountFilterWhitelistColumnName, upsertFields)
+	// 2. Set the provided fields
+	insert := sq.Insert(accountFilterWhitelistTableName).Columns(accountFilterWhitelistColumnName)
+	for _, a := range accountIDs {
+		insert.Values(a)
+	}
+	_, err := q.Exec(ctx, insert)
+	return err
 }
 
 // RemoveFromAccountFilterWhitelist deletes rows from the account_filter_whitelist table.
