@@ -4645,6 +4645,50 @@ func TestFeeBumpTransaction_marshalUnmarshalText(t *testing.T) {
 	assert.EqualError(t, err, "transaction envelope unmarshaled into FeeBumpTransaction is not a fee bump transaction")
 }
 
+func TestNewGenericTransactionWithTransaction(t *testing.T) {
+	k := keypair.MustRandom()
+	txIn, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
+			IncrementSequenceNum: false,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
+		},
+	)
+	require.NoError(t, err)
+
+	gtx := NewGenericTransactionWithTransaction(txIn)
+	txOut, ok := gtx.Transaction()
+	require.True(t, ok)
+	require.Equal(t, txIn, txOut)
+}
+
+func TestNewGenericTransactionWithFeeBumpTransaction(t *testing.T) {
+	k := keypair.MustRandom()
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
+			IncrementSequenceNum: false,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
+		},
+	)
+	require.NoError(t, err)
+	fbtxIn, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: k.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+
+	gtx := NewGenericTransactionWithFeeBumpTransaction(fbtxIn)
+	fbtxOut, ok := gtx.FeeBump()
+	require.True(t, ok)
+	require.Equal(t, fbtxIn, fbtxOut)
+}
+
 func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 	k := keypair.MustRandom()
 
