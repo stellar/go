@@ -97,24 +97,60 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 	var allowedOperations []*xdr.Operation
 
 	for _, operation := range tx.Tx.Operations {
-		var allowed = true
+		var allowed = false
 		switch operation.Body.Type {
+		case xdr.OperationTypeChangeTrust:
+			if pool, ok := operation.Body.ChangeTrustOp.Line.GetLiquidityPool(); ok {
+				if f.assetMatchedFilter(&pool.ConstantProduct.AssetA) || f.assetMatchedFilter(&pool.ConstantProduct.AssetB) {
+				    allowed = true
+				}
+			} else {
+				asset := operation.Body.ChangeTrustOp.Line.ToAsset()
+				allowed = f.assetMatchedFilter(&asset) 
+			}
+		case xdr.OperationTypeClaimClaimableBalance:
+			// TODO, try to get asset for claimable balance id
+		case xdr.OperationTypeClawbackClaimableBalance:
+			// TODO, try to get asset for claimable balance id
+		case xdr.OperationTypeManageSellOffer:
+			if f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Selling) {
+				allowed = true
+			}		
+		case xdr.OperationTypeManageBuyOffer:
+			if f.assetMatchedFilter(&operation.Body.ManageBuyOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageBuyOfferOp.Selling) {
+				allowed = true
+			}	
+		case xdr.OperationTypeCreateClaimableBalance:
+			if f.assetMatchedFilter(&operation.Body.CreateClaimableBalanceOp.Asset) {
+				allowed = true
+			}
+		case xdr.OperationTypeCreatePassiveSellOffer:
+			if f.assetMatchedFilter(&operation.Body.CreatePassiveSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.CreatePassiveSellOfferOp.Selling) {
+				allowed = true
+			}		
+		case xdr.OperationTypeClawback:
+			if f.assetMatchedFilter(&operation.Body.ClawbackOp.Asset) {
+				allowed = true
+			}	
 		case xdr.OperationTypePayment:
-			if !f.assetMatchedFilter(&operation.Body.PaymentOp.Asset) {
-				allowed = false
+			if f.assetMatchedFilter(&operation.Body.PaymentOp.Asset) {
+				allowed = true
 			}
 		case xdr.OperationTypePathPaymentStrictReceive:
-			if !f.assetMatchedFilter(&operation.Body.PathPaymentStrictReceiveOp.DestAsset) && !f.assetMatchedFilter(&operation.Body.PathPaymentStrictReceiveOp.SendAsset) {
-				allowed = false
+			if f.assetMatchedFilter(&operation.Body.PathPaymentStrictReceiveOp.DestAsset) || f.assetMatchedFilter(&operation.Body.PathPaymentStrictReceiveOp.SendAsset) {
+				allowed = true
 			}
+		case xdr.OperationTypePathPaymentStrictSend:
+			if f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.DestAsset) || f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.SendAsset) {
+				allowed = true
+			}	
 		case xdr.OperationTypeLiquidityPoolDeposit:
-			if !f.includeLiquidityPool(operation.Body.LiquidityPoolDepositOp.LiquidityPoolId) {
-				allowed = false
+			if f.includeLiquidityPool(operation.Body.LiquidityPoolDepositOp.LiquidityPoolId) {
+				allowed = true
 			}
-
 		case xdr.OperationTypeLiquidityPoolWithdraw:
-			if !f.includeLiquidityPool(operation.Body.LiquidityPoolWithdrawOp.LiquidityPoolId) {
-				allowed = false
+			if f.includeLiquidityPool(operation.Body.LiquidityPoolWithdrawOp.LiquidityPoolId) {
+				allowed = true
 			}
 		}
 
@@ -123,7 +159,7 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		}
 	}
 
-	logger.Debugf("filter status %v for tx seq %v ", len(allowedOperations), transaction.Envelope.SeqNum())
+	logger.Debugf("filter status %v for tx seq %v ", len(allowedOperations) > 0, transaction.Envelope.SeqNum())
 	return len(allowedOperations) > 0, nil
 }
 
@@ -154,11 +190,10 @@ func (f *AssetFilter) includeLiquidityPool(poolId xdr.PoolId) bool {
 	if f.filterParams.ResolveLiquidityPoolAsAsset {
 		assets := f.resolveLiquidityPoolToAssetPair(poolId)
 		for _, asset := range assets {
-			if !f.assetMatchedFilter(asset) {
-				return false
+			if f.assetMatchedFilter(asset) {
+				return true
 			}
 		}
-		return true
 	}
 	return false
 }
