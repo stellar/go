@@ -4702,6 +4702,51 @@ func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 	assert.Equal(t, fbgtx, fbgtx2)
 }
 
+func TestGenericTransaction_marshalBinary(t *testing.T) {
+	k := keypair.MustRandom()
+
+	// GenericTransaction containing nothing.
+	gtx := &GenericTransaction{}
+	_, err := gtx.MarshalBinary()
+	assert.EqualError(t, err, "unable to marshal empty GenericTransaction")
+
+	// GenericTransaction containing a Transaction.
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
+			IncrementSequenceNum: false,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
+		},
+	)
+	require.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, k)
+	require.NoError(t, err)
+	txb, err := tx.MarshalBinary()
+	require.NoError(t, err)
+
+	gtx = tx.ToGenericTransaction()
+	marshaled, err := gtx.MarshalBinary()
+	require.NoError(t, err)
+	assert.Equal(t, txb, marshaled)
+
+	// GenericTransaction containing a FeeBumpTransaction.
+	fbtx, err := NewFeeBumpTransaction(FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: k.Address(),
+		BaseFee:    MinBaseFee,
+	})
+	require.NoError(t, err)
+	fbtxb, err := fbtx.MarshalBinary()
+	require.NoError(t, err)
+
+	fbgtx := fbtx.ToGenericTransaction()
+	marshaled, err = fbgtx.MarshalBinary()
+	require.NoError(t, err)
+	assert.Equal(t, fbtxb, marshaled)
+}
+
 func TestGenericTransaction_HashHex(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
