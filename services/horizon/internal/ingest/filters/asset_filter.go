@@ -102,11 +102,11 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		case xdr.OperationTypeChangeTrust:
 			if pool, ok := operation.Body.ChangeTrustOp.Line.GetLiquidityPool(); ok {
 				if f.assetMatchedFilter(&pool.ConstantProduct.AssetA) || f.assetMatchedFilter(&pool.ConstantProduct.AssetB) {
-				    allowed = true
+					allowed = true
 				}
 			} else {
 				asset := operation.Body.ChangeTrustOp.Line.ToAsset()
-				allowed = f.assetMatchedFilter(&asset) 
+				allowed = f.assetMatchedFilter(&asset)
 			}
 		case xdr.OperationTypeClaimClaimableBalance:
 			// TODO, try to get asset for claimable balance id
@@ -115,11 +115,11 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		case xdr.OperationTypeManageSellOffer:
 			if f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageSellOfferOp.Selling) {
 				allowed = true
-			}		
+			}
 		case xdr.OperationTypeManageBuyOffer:
 			if f.assetMatchedFilter(&operation.Body.ManageBuyOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.ManageBuyOfferOp.Selling) {
 				allowed = true
-			}	
+			}
 		case xdr.OperationTypeCreateClaimableBalance:
 			if f.assetMatchedFilter(&operation.Body.CreateClaimableBalanceOp.Asset) {
 				allowed = true
@@ -127,11 +127,11 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		case xdr.OperationTypeCreatePassiveSellOffer:
 			if f.assetMatchedFilter(&operation.Body.CreatePassiveSellOfferOp.Buying) || f.assetMatchedFilter(&operation.Body.CreatePassiveSellOfferOp.Selling) {
 				allowed = true
-			}		
+			}
 		case xdr.OperationTypeClawback:
 			if f.assetMatchedFilter(&operation.Body.ClawbackOp.Asset) {
 				allowed = true
-			}	
+			}
 		case xdr.OperationTypePayment:
 			if f.assetMatchedFilter(&operation.Body.PaymentOp.Asset) {
 				allowed = true
@@ -143,7 +143,7 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		case xdr.OperationTypePathPaymentStrictSend:
 			if f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.DestAsset) || f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.SendAsset) {
 				allowed = true
-			}	
+			}
 		case xdr.OperationTypeLiquidityPoolDeposit:
 			if f.includeLiquidityPool(operation.Body.LiquidityPoolDepositOp.LiquidityPoolId) {
 				allowed = true
