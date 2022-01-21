@@ -612,6 +612,18 @@ type GenericTransaction struct {
 	feeBump *FeeBumpTransaction
 }
 
+// NewGenericTransactionWithTransaction creates a GenericTransaction containing
+// a Transaction.
+func NewGenericTransactionWithTransaction(tx *Transaction) *GenericTransaction {
+	return &GenericTransaction{simple: tx}
+}
+
+// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
+// containing a FeeBumpTransaction.
+func NewGenericTransactionWithFeeBumpTransaction(feeBumpTx *FeeBumpTransaction) *GenericTransaction {
+	return &GenericTransaction{feeBump: feeBumpTx}
+}
+
 // Transaction unpacks the GenericTransaction instance into a Transaction.
 // The function also returns a boolean which is true if the GenericTransaction can be
 // unpacked into a Transaction.
