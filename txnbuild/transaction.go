@@ -663,6 +663,18 @@ func (t GenericTransaction) HashHex(network string) (string, error) {
 	return "", fmt.Errorf("unable to get hash of empty GenericTransaction")
 }
 
+// MarshalBinary returns the binary XDR representation of the transaction
+// envelope.
+func (t *GenericTransaction) MarshalBinary() ([]byte, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.MarshalBinary()
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.MarshalBinary()
+	}
+	return nil, errors.New("unable to marshal empty GenericTransaction")
+}
+
 // MarshalText returns the base64 XDR representation of the transaction
 // envelope.
 func (t *GenericTransaction) MarshalText() ([]byte, error) {
