@@ -402,12 +402,10 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 		return false
 	}
 
-	if c.stellarCoreRunner == nil {
+	if c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil {
 		return false
 	}
-	if c.closed {
-		return false
-	}
+
 	lastLedger := uint32(0)
 	if c.lastLedger != nil {
 		lastLedger = *c.lastLedger
