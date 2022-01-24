@@ -559,7 +559,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 		// config.HistoryArchiveURLs contains a single empty value when empty so using
 		// viper.GetString is easier.
-		if len(config.HistoryArchiveURLs) == 0 {
+		if len(config.HistoryArchiveURLs) == 1 && config.HistoryArchiveURLs[0] == "" {
 			return fmt.Errorf("--history-archive-urls must be set when --ingest is set")
 		}
 
