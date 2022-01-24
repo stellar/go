@@ -526,6 +526,7 @@ func (a *App) init() error {
 		CoreGetter:              a,
 		HorizonVersion:          a.horizonVersion,
 		FriendbotURL:            a.config.FriendbotURL,
+		IngestDisableStateVerification: a.config.IngestDisableStateVerification,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,

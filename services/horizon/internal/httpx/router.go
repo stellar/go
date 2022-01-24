@@ -47,6 +47,7 @@ type RouterConfig struct {
 	HorizonVersion          string
 	FriendbotURL            *url.URL
 	HealthCheck             http.Handler
+	IngestDisableStateVerification bool
 }
 
 type Router struct {
@@ -130,6 +131,7 @@ func (r *Router) addMiddleware(config *RouterConfig,
 func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRateLimiter, ledgerState *ledger.State) {
 	stateMiddleware := StateMiddleware{
 		HorizonSession: config.DBSession,
+		NoStateVerification: config.IngestDisableStateVerification,
 	}
 
 	r.Method(http.MethodGet, "/health", config.HealthCheck)
