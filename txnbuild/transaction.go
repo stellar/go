@@ -612,6 +612,18 @@ type GenericTransaction struct {
 	feeBump *FeeBumpTransaction
 }
 
+// NewGenericTransactionWithTransaction creates a GenericTransaction containing
+// a Transaction.
+func NewGenericTransactionWithTransaction(tx *Transaction) *GenericTransaction {
+	return &GenericTransaction{simple: tx}
+}
+
+// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
+// containing a FeeBumpTransaction.
+func NewGenericTransactionWithFeeBumpTransaction(feeBumpTx *FeeBumpTransaction) *GenericTransaction {
+	return &GenericTransaction{feeBump: feeBumpTx}
+}
+
 // Transaction unpacks the GenericTransaction instance into a Transaction.
 // The function also returns a boolean which is true if the GenericTransaction can be
 // unpacked into a Transaction.
@@ -661,6 +673,18 @@ func (t GenericTransaction) HashHex(network string) (string, error) {
 		return fbtx.HashHex(network)
 	}
 	return "", fmt.Errorf("unable to get hash of empty GenericTransaction")
+}
+
+// MarshalBinary returns the binary XDR representation of the transaction
+// envelope.
+func (t *GenericTransaction) MarshalBinary() ([]byte, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.MarshalBinary()
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.MarshalBinary()
+	}
+	return nil, errors.New("unable to marshal empty GenericTransaction")
 }
 
 // MarshalText returns the base64 XDR representation of the transaction
