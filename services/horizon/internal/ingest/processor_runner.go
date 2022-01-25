@@ -150,8 +150,9 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
 	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{
-		processors.NewAccountFilter(s.historyQ),
+		filters.NewAccountFilter(s.historyQ),
 		filters.NewAssetFilterFromParams(&filters.AssetFilterParms{
+			// TODO - move this hardcoded asset filter configuration into db persistence.
 			// this is example asset filter config by list of assets that were
 			// seen as recently most active in pubnet from a Hubble view.
 			Activated: true,
