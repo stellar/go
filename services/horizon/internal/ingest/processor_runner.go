@@ -152,6 +152,8 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{
 		processors.NewAccountFilter(s.historyQ),
 		filters.NewAssetFilterFromParams(&filters.AssetFilterParms{
+			// this is example asset filter config by list of assets that were
+			// seen as recently most active in pubnet from a Hubble view.
 			Activated: true,
 			CanonicalAssetList: []string{
 				"USD:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",

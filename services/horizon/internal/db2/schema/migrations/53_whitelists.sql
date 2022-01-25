@@ -1,9 +1,9 @@
 -- +migrate Up
 
-CREATE TABLE filter_config (
-    config jsonb NOT NULL
+CREATE TABLE account_filter_whitelist (
+    account_id character varying(56) NOT NULL UNIQUE
 );
 
 -- +migrate Down
 
-DROP TABLE filter_config cascade;
+DROP TABLE account_filter_whitelist cascade;

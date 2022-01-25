@@ -94,8 +94,6 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		return true, nil
 	}
 
-	var allowedOperations []*xdr.Operation
-
 	for _, operation := range tx.Tx.Operations {
 		var allowed = false
 		switch operation.Body.Type {
@@ -155,12 +153,12 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 		}
 
 		if allowed && f.operationMatchedFilterDepth(operation.Body.Type) {
-			allowedOperations = append(allowedOperations, &operation)
+			return true, nil
 		}
 	}
 
-	logger.Debugf("filter status %v for tx seq %v ", len(allowedOperations) > 0, transaction.Envelope.SeqNum())
-	return len(allowedOperations) > 0, nil
+	logger.Debugf("No match, dropped tx with seq %v ", transaction.Envelope.SeqNum())
+	return false, nil
 }
 
 func (f *AssetFilter) operationMatchedFilterDepth(operationType xdr.OperationType) bool {

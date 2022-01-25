@@ -5,20 +5,27 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 )
 
-func TestWIP(t *testing.T) {
+func TestFilterHasMatch(t *testing.T) {
 	// TODO, make this test real
 	tt := assert.New(t)
 	ctx := context.Background()
 
 	filterParams := &AssetFilterParms{
-		CanonicalAssetList: []string{"USDC:XYZ1234567890"},
+		Activated:          true,
+		CanonicalAssetList: []string{"USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 	}
 	filter := NewAssetFilterFromParams(filterParams)
+
+	var xdrAssetCode [12]byte
+	copy(xdrAssetCode[:], "USDC")
+	var xdrIssuer xdr.AccountId
+	require.NoError(t, xdrIssuer.SetAddress("GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
 
 	ledgerTx := ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
@@ -33,27 +40,20 @@ func TestWIP(t *testing.T) {
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
 					Operations: []xdr.Operation{
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeCreateAccount}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypePayment}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypePathPaymentStrictReceive}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeManageSellOffer}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeCreatePassiveSellOffer}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeSetOptions}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeChangeTrust}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeAllowTrust}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeAccountMerge}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeInflation}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeManageData}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeBumpSequence}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeManageBuyOffer}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypePathPaymentStrictSend}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeCreateClaimableBalance}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeClaimClaimableBalance}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeBeginSponsoringFutureReserves}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeEndSponsoringFutureReserves}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeRevokeSponsorship}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeClawback}},
-						{Body: xdr.OperationBody{Type: xdr.OperationTypeClawbackClaimableBalance}},
+						{Body: xdr.OperationBody{
+							Type: xdr.OperationTypePayment,
+							PaymentOp: &xdr.PaymentOp{
+								Destination: xdr.MustMuxedAddress("GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"),
+								Asset: xdr.Asset{
+									Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+									AlphaNum12: &xdr.AlphaNum12{
+										AssetCode: xdrAssetCode,
+										Issuer:    xdrIssuer,
+									},
+								},
+								Amount: 100,
+							},
+						}},
 					},
 				},
 			},
@@ -66,10 +66,65 @@ func TestWIP(t *testing.T) {
 	tt.Equal(result, true)
 }
 
+func TestFilterHasNoMatch(t *testing.T) {
+	// TODO, make this test real
+	tt := assert.New(t)
+	ctx := context.Background()
+
+	filterParams := &AssetFilterParms{
+		Activated:          true,
+		CanonicalAssetList: []string{"USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
+	}
+	filter := NewAssetFilterFromParams(filterParams)
+
+	var xdrAssetCode [12]byte
+	copy(xdrAssetCode[:], "USDC")
+	var xdrIssuer xdr.AccountId
+	require.NoError(t, xdrIssuer.SetAddress("GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+
+	ledgerTx := ingest.LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code: xdr.TransactionResultCodeTxSuccess,
+				},
+			},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Operations: []xdr.Operation{
+						{Body: xdr.OperationBody{
+							Type: xdr.OperationTypePayment,
+							PaymentOp: &xdr.PaymentOp{
+								Destination: xdr.MustMuxedAddress("GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"),
+								Asset: xdr.Asset{
+									Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+									AlphaNum12: &xdr.AlphaNum12{
+										AssetCode: xdrAssetCode,
+										Issuer:    xdrIssuer,
+									},
+								},
+								Amount: 100,
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := filter.FilterTransaction(ctx, ledgerTx)
+
+	tt.NoError(err)
+	tt.Equal(result, false)
+}
+
 func TestParamsFromFile(t *testing.T) {
 	tt := assert.New(t)
 
-	filter, err := NewAssetFilterFromParamsFile("../testdata/test_filter_params.json")
+	filter, err := NewAssetFilterFromParamsFile("../testdata/test_asset_filter_params.json")
 
 	tt.NoError(err)
 	tt.Equal(filter.CurrentFilterParameters().ResolveLiquidityPoolAsAsset, true)
