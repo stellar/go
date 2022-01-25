@@ -343,8 +343,8 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Internal.Route("/ingestion/filter", func(r chi.Router) {
 		r.Route("/accounts", func(r chi.Router) {
 			handler := actions.AccountFilterWhitelistHandler{}
-			r.Put("/", handler.Set)
-			r.Get("/", handler.Get)
+			r.With(historyMiddleware).Put("/", handler.Set)
+			r.With(historyMiddleware).Get("/", handler.Get)
 		})
 	})
 }

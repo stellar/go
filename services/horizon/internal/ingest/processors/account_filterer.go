@@ -26,6 +26,11 @@ func (a *AccountFilter) FilterTransaction(ctx context.Context, transaction inges
 		whitelistedAccountsSet[account] = struct{}{}
 	}
 
+	// Whitelisting is disabled if the whitelist is empty
+	if len(whitelistedAccountsSet) == 0 {
+		return true, nil
+	}
+
 	// TODO: what is the sequence used for?
 	participants, err := participantsForTransaction(0, transaction)
 	if err != nil {
