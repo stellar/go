@@ -48,6 +48,8 @@ func (q *Q) SetAccountFilterWhitelist(ctx context.Context, accountIDs []string) 
 
 // RemoveFromAccountFilterWhitelist deletes rows from the account_filter_whitelist table.
 // Returns the number of rows affected and error.
+// TODO - is this needed, currently not referenced, static check?
+/*
 func (q *Q) RemoveFromAccountFilterWhitelist(ctx context.Context, accountIDs []string) (int64, error) {
 	sql := sq.Delete(accountFilterWhitelistTableName).
 		Where(sq.Eq{accountFilterWhitelistColumnName: accountIDs})
@@ -58,3 +60,4 @@ func (q *Q) RemoveFromAccountFilterWhitelist(ctx context.Context, accountIDs []s
 
 	return result.RowsAffected()
 }
+*/
