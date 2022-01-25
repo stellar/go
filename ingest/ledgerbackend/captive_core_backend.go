@@ -253,9 +253,9 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
-	if runFrom > 1 {
+	if runFrom > 2 {
 		// Can't catch up to the first ledger
-		err = c.stellarCoreRunner.catchup(runFrom-1, runFrom)
+		err = c.stellarCoreRunner.catchup(runFrom-2, runFrom-1)
 		if err != nil {
 			return errors.Wrap(err, "error running stellar-core")
 		}
