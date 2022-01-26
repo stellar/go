@@ -260,6 +260,10 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 		return errors.New("runner already started")
 	}
 
+	if err := r.createCmd("new-db").Run(); err != nil {
+		return errors.Wrap(err, "error initializing core db")
+	}
+
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
 	r.cmd = r.createCmd(
 		"catchup", rangeArg,
@@ -301,6 +305,10 @@ func (r *stellarCoreRunner) run() error {
 
 	if r.started {
 		return errors.New("runner already started")
+	}
+
+	if err := r.createCmd("new-db").Run(); err != nil {
+		return errors.Wrap(err, "error initializing core db")
 	}
 
 	r.cmd = r.createCmd(
