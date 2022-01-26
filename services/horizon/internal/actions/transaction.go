@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -59,9 +60,23 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 	}
 
 	resourceAge := time.Since(record.LedgerCloseTime)
-	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/transactions/{tx_id}"}).Info("Resource age")
+	log.Ctx(r.Context()).WithFields(log.F{
+		"age_hours": resourceAge.Hours(),
+		"route":     "/transactions/{tx_id}",
+		"ip":        remoteAddrIP(r),
+	}).Info("Resource age")
 
 	return resource, nil
+}
+
+func remoteAddrIP(r *http.Request) string {
+	// To support IPv6
+	lastSemicolon := strings.LastIndex(r.RemoteAddr, ":")
+	if lastSemicolon == -1 {
+		return r.RemoteAddr
+	} else {
+		return r.RemoteAddr[0:lastSemicolon]
+	}
 }
 
 // TransactionsQuery query struct for transactions end-points

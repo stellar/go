@@ -245,7 +245,11 @@ func logResourceAgeFromCursor(ctx context.Context, r *http.Request) error {
 			resourceAge = time.Since(ledger.ClosedAt)
 		}
 
-		log.Ctx(ctx).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": route}).Info("Resource age")
+		log.Ctx(ctx).WithFields(log.F{
+			"age_hours": resourceAge.Hours(),
+			"route":     route,
+			"ip":        remoteAddrIP(r),
+		}).Info("Resource age")
 	}
 
 	return nil
@@ -424,7 +428,12 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			context.WithValue(ctx, &horizonContext.SessionContextKey, session),
 		))
 
-		log.Ctx(ctx).WithFields(log.F{"age_hours": 0}).Info("Resource age")
+		route := sanitizeMetricRoute(getRoutePattern(r))
+		log.Ctx(ctx).WithFields(log.F{
+			"age_hours": 0,
+			"route":     route,
+			"ip":        remoteAddrIP(r),
+		}).Info("Resource age")
 	}
 }
 

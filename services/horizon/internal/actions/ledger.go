@@ -87,7 +87,11 @@ func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request)
 	}
 
 	resourceAge := time.Since(ledger.ClosedAt)
-	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/ledgers/{ledger_id}/"}).Info("Resource age")
+	log.Ctx(r.Context()).WithFields(log.F{
+		"age_hours": resourceAge.Hours(),
+		"route":     "/ledgers/{ledger_id}/",
+		"ip":        remoteAddrIP(r),
+	}).Info("Resource age")
 
 	handler.ResponseAgeMetric.ObserveLedgerAge(r, int(qp.LedgerID))
 	var result horizon.Ledger

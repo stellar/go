@@ -180,7 +180,11 @@ func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Reque
 	}
 
 	resourceAge := time.Since(ledger.ClosedAt)
-	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/operations/{id}/"}).Info("Resource age")
+	log.Ctx(r.Context()).WithFields(log.F{
+		"age_hours": resourceAge.Hours(),
+		"route":     "/operations/{id}/",
+		"ip":        remoteAddrIP(r),
+	}).Info("Resource age")
 
 	handler.ResponseAgeMetric.ObserveLedgerAge(r, int(op.LedgerSequence()))
 	return resourceadapter.NewOperation(
