@@ -45,19 +45,3 @@ func (q *Q) SetAccountFilterWhitelist(ctx context.Context, accountIDs []string) 
 	_, err := q.Exec(ctx, insert)
 	return err
 }
-
-// RemoveFromAccountFilterWhitelist deletes rows from the account_filter_whitelist table.
-// Returns the number of rows affected and error.
-// TODO - is this needed, currently not referenced, static check?
-/*
-func (q *Q) RemoveFromAccountFilterWhitelist(ctx context.Context, accountIDs []string) (int64, error) {
-	sql := sq.Delete(accountFilterWhitelistTableName).
-		Where(sq.Eq{accountFilterWhitelistColumnName: accountIDs})
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
-}
-*/

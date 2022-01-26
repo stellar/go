@@ -155,7 +155,7 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 			// TODO - move this hardcoded asset filter configuration into db persistence.
 			// this is example asset filter config by list of assets that were
 			// seen as recently most active in pubnet from a Hubble view.
-			Activated: true,
+			Activated: false,
 			CanonicalAssetList: []string{
 				"USD:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
 				"NGNT:GAWODAROMJ33V5YDFY3NPYTHVYQG7MJXVJ2ND3AOGIHYRWINES6ACCPD",
