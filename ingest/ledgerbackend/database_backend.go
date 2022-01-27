@@ -132,22 +132,22 @@ func (dbb *DatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (xdr
 			// Check if there are ledgers after `sequence`. If so, it's likely
 			// the requested sequence was removed during maintenance so return
 			// error.
-			ledgerAfterExist, err := dbb.getLedgerAfterExist(ctx, sequence)
+			ledgerAfterExist, oldestSequenceAfter, err := dbb.getLedgerAfterExist(ctx, sequence)
 			if err != nil {
 				return xdr.LedgerCloseMeta{}, err
 			}
 
 			if ledgerAfterExist {
-				return xdr.LedgerCloseMeta{}, errors.Errorf("ledgers after %d exist, requested ledger already removed", sequence)
+				return xdr.LedgerCloseMeta{}, errors.Errorf("requested ledger already removed (oldest sequence after %d is %d)", sequence, oldestSequenceAfter)
 			}
 			time.Sleep(time.Second)
 		}
 	}
 }
 
-// getLedgerAfterExist returns true if there's a ledger in the Stellar-Core DB
-// with the sequence number higher than sequence.
-func (dbb *DatabaseBackend) getLedgerAfterExist(ctx context.Context, sequence uint32) (bool, error) {
+// getLedgerAfterExist returns true (and sequence number) if there's a ledger in
+// the Stellar-Core DB with the sequence number higher than sequence.
+func (dbb *DatabaseBackend) getLedgerAfterExist(ctx context.Context, sequence uint32) (bool, uint32, error) {
 	var fetchedSequence uint32
 	err := dbb.session.GetRaw(ctx, &fetchedSequence, ledgerSequenceAfterQuery, sequence)
 	// Return errors...
@@ -155,13 +155,13 @@ func (dbb *DatabaseBackend) getLedgerAfterExist(ctx context.Context, sequence ui
 		switch err {
 		case sql.ErrNoRows:
 			// Ledger was not found
-			return false, nil
+			return false, fetchedSequence, nil
 		default:
-			return false, errors.Wrapf(err, "Error getting ledger after %d", sequence)
+			return false, fetchedSequence, errors.Wrapf(err, "Error getting ledger after %d", sequence)
 		}
 	}
 
-	return true, nil
+	return true, fetchedSequence, nil
 }
 
 // getLedgerQuery returns the LedgerCloseMeta for the given ledger sequence number.
