@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	latestLedgerSeqQuery = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
-	txHistoryQuery       = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = ? "
-	ledgerHeaderQuery    = "select ledgerhash, data from ledgerheaders where ledgerseq = ? "
-	txFeeHistoryQuery    = "select txchanges, txindex from txfeehistory where ledgerseq = ? "
-	upgradeHistoryQuery  = "select ledgerseq, upgradeindex, upgrade, changes from upgradehistory where ledgerseq = ? order by upgradeindex asc"
-	orderBy              = "order by txindex asc"
-	dbDriver             = "postgres"
+	latestLedgerSeqQuery     = "select ledgerseq, closetime from ledgerheaders order by ledgerseq desc limit 1"
+	txHistoryQuery           = "select txbody, txresult, txmeta, txindex from txhistory where ledgerseq = ? "
+	ledgerHeaderQuery        = "select ledgerhash, data from ledgerheaders where ledgerseq = ? "
+	ledgerSequenceAfterQuery = "select ledgerseq from ledgerheaders where ledgerseq > ? "
+	txFeeHistoryQuery        = "select txchanges, txindex from txfeehistory where ledgerseq = ? "
+	upgradeHistoryQuery      = "select ledgerseq, upgradeindex, upgrade, changes from upgradehistory where ledgerseq = ? order by upgradeindex asc"
+	orderBy                  = "order by txindex asc"
+	dbDriver                 = "postgres"
 )
 
 // Ensure DatabaseBackend implements LedgerBackend
@@ -128,9 +129,39 @@ func (dbb *DatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (xdr
 		if exists {
 			return meta, nil
 		} else {
+			// Check if there are ledgers after `sequence`. If so, it's likely
+			// the requested sequence was removed during maintenance so return
+			// error.
+			ledgerAfterExist, oldestSequenceAfter, err := dbb.getLedgerAfterExist(ctx, sequence)
+			if err != nil {
+				return xdr.LedgerCloseMeta{}, err
+			}
+
+			if ledgerAfterExist {
+				return xdr.LedgerCloseMeta{}, errors.Errorf("requested ledger already removed (oldest sequence after %d is %d)", sequence, oldestSequenceAfter)
+			}
 			time.Sleep(time.Second)
 		}
 	}
+}
+
+// getLedgerAfterExist returns true (and sequence number) if there's a ledger in
+// the Stellar-Core DB with the sequence number higher than sequence.
+func (dbb *DatabaseBackend) getLedgerAfterExist(ctx context.Context, sequence uint32) (bool, uint32, error) {
+	var fetchedSequence uint32
+	err := dbb.session.GetRaw(ctx, &fetchedSequence, ledgerSequenceAfterQuery, sequence)
+	// Return errors...
+	if err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			// Ledger was not found
+			return false, fetchedSequence, nil
+		default:
+			return false, fetchedSequence, errors.Wrapf(err, "Error getting ledger after %d", sequence)
+		}
+	}
+
+	return true, fetchedSequence, nil
 }
 
 // getLedgerQuery returns the LedgerCloseMeta for the given ledger sequence number.
