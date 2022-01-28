@@ -23,7 +23,7 @@ import (
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
-	run() error
+	runFrom(from uint32) error
 	getMetaPipe() <-chan metaResult
 	context() context.Context
 	getProcessExitError() (bool, error)
@@ -293,8 +293,8 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	return nil
 }
 
-// run executes the run command with a starting ledger on the captive core subprocess
-func (r *stellarCoreRunner) run() error {
+// runFrom executes the run command with a starting ledger on the captive core subprocess
+func (r *stellarCoreRunner) runFrom(from uint32) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -309,6 +309,19 @@ func (r *stellarCoreRunner) run() error {
 
 	if err := r.createCmd("new-db").Run(); err != nil {
 		return errors.Wrap(err, "error initializing core db")
+	}
+
+	// Do a quick catch-up to set the LCL in core to be our expected starting
+	// point.
+	//
+	// TODO: If we're re-using the directory from a previous run, we need to do
+	// this differently, because the LCL in core might already be ahead of our
+	// `from` point.
+	if from > 2 {
+		// Can't catch up to the genesis ledger.
+		if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
+			return errors.Wrap(err, "error runing stellar-core catchup")
+		}
 	}
 
 	r.cmd = r.createCmd(

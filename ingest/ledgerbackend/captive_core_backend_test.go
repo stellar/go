@@ -32,8 +32,8 @@ func (m *stellarCoreRunnerMock) catchup(from, to uint32) error {
 	return a.Error(0)
 }
 
-func (m *stellarCoreRunnerMock) run() error {
-	a := m.Called()
+func (m *stellarCoreRunnerMock) runFrom(from uint32) error {
+	a := m.Called(from)
 	return a.Error(0)
 }
 
@@ -429,133 +429,9 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 	mockRunner.AssertExpectations(t)
 }
 
-func TestCaptivePrepareRangeUnboundedRange_ErrCatchup(t *testing.T) {
-	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("catchup", uint32(126), uint32(127)).Return(errors.New("transient error")).Once()
-	mockRunner.On("close").Return(nil).Once()
-
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetRootHAS").
-		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(127),
-		}, nil)
-
-	ctx := context.Background()
-	cancelCalled := false
-	captiveBackend := CaptiveStellarCore{
-		archive: mockArchive,
-		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-			return mockRunner, nil
-		},
-		checkpointManager: historyarchive.NewCheckpointManager(64),
-		cancel: context.CancelFunc(func() {
-			cancelCalled = true
-		}),
-	}
-
-	err := captiveBackend.PrepareRange(ctx, UnboundedRange(128))
-	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error running stellar-core: transient error")
-
-	// make sure we can Close without errors
-	assert.NoError(t, captiveBackend.Close())
-	assert.True(t, cancelCalled)
-
-	mockArchive.AssertExpectations(t)
-	mockRunner.AssertExpectations(t)
-}
-
-func TestCaptivePrepareRangeUnboundedRange_CatchupErrExit(t *testing.T) {
-	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("catchup", uint32(126), uint32(127)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, errors.New("transient error")).Once()
-	mockRunner.On("close").Return(nil).Once()
-
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetRootHAS").
-		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(127),
-		}, nil)
-
-	ctx := context.Background()
-	cancelCalled := false
-	captiveBackend := CaptiveStellarCore{
-		archive: mockArchive,
-		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-			return mockRunner, nil
-		},
-		checkpointManager: historyarchive.NewCheckpointManager(64),
-		cancel: context.CancelFunc(func() {
-			cancelCalled = true
-		}),
-	}
-
-	err := captiveBackend.PrepareRange(ctx, UnboundedRange(128))
-	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error running stellar-core: transient error")
-
-	// make sure we can Close without errors
-	assert.NoError(t, captiveBackend.Close())
-	assert.True(t, cancelCalled)
-
-	mockArchive.AssertExpectations(t)
-	mockRunner.AssertExpectations(t)
-}
-
-func TestCaptivePrepareRangeUnboundedRange_CatchupHungExit(t *testing.T) {
-	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("catchup", uint32(126), uint32(127)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(false, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetRootHAS").
-		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(127),
-		}, nil)
-
-	ctx := context.Background()
-	cancelCalled := false
-	captiveBackend := CaptiveStellarCore{
-		archive: mockArchive,
-		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-			return mockRunner, nil
-		},
-		checkpointManager: historyarchive.NewCheckpointManager(64),
-		cancel: context.CancelFunc(func() {
-			cancelCalled = true
-		}),
-	}
-
-	err := captiveBackend.PrepareRange(ctx, UnboundedRange(128))
-	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error creating stellar-core runner")
-
-	// make sure we can Close without errors
-	assert.NoError(t, captiveBackend.Close())
-	assert.True(t, cancelCalled)
-
-	mockArchive.AssertExpectations(t)
-	mockRunner.AssertExpectations(t)
-}
-
 func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("catchup", uint32(126), uint32(127)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("getProcessExitError").Return(true, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("run").Return(errors.New("transient error")).Once()
+	mockRunner.On("runFrom", uint32(127)).Return(errors.New("transient error")).Once()
 	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -603,13 +479,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(63), uint32(64)).Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("run").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(64)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -653,13 +523,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(62), uint32(63)).Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("run").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(63)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -793,13 +657,7 @@ func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(64), uint32(65)).Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("run").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(65)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -899,13 +757,7 @@ func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *t
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(63), uint32(64)).Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("run").Return(nil)
+	mockRunner.On("runFrom", uint32(64)).Return(nil)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil)
@@ -1426,13 +1278,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	catchupChan := make(chan metaResult)
-	close(catchupChan)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(catchupChan)).Once()
-	mockRunner.On("catchup", uint32(298), uint32(299)).Return(nil).Once()
-	mockRunner.On("getProcessExitError").Return(true, nil).Once()
-	mockRunner.On("close").Return(nil).Once()
-	mockRunner.On("run").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(299)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil).Once()

@@ -243,43 +243,20 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	}
 
 	var runner stellarCoreRunnerInterface
-	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline); err != nil {
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
+	} else {
+		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
+		// see https://golang.org/doc/faq#nil_error
+		c.stellarCoreRunner = runner
 	}
-	c.stellarCoreRunner = runner
 
 	runFrom, err := c.runFromParams(ctx, from)
 	if err != nil {
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
-	if runFrom > 2 {
-		// Can't catch up to the first ledger
-		err = c.stellarCoreRunner.catchup(runFrom-2, runFrom-1)
-		if err != nil {
-			return errors.Wrap(err, "error running stellar-core")
-		}
-		for range c.stellarCoreRunner.getMetaPipe() {
-			// Drain the pipe
-		}
-		if err = c.stellarCoreRunner.close(); err != nil {
-			return errors.Wrap(err, "error running stellar-core")
-		}
-
-		var processExited bool
-		if processExited, err = c.stellarCoreRunner.getProcessExitError(); err != nil {
-			return errors.Wrap(err, "error running stellar-core")
-		} else if !processExited {
-			return errors.New("error creating stellar-core runner")
-		}
-	}
-
-	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
-		return errors.Wrap(err, "error creating stellar-core runner")
-	}
-	c.stellarCoreRunner = runner
-
-	err = c.stellarCoreRunner.run()
+	err = c.stellarCoreRunner.runFrom(runFrom)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
