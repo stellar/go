@@ -316,7 +316,7 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 	s.Assert().Equal(
 		transition{
 			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
-			sleepDuration: defaultSleep,
+			sleepDuration: 0,
 		},
 		next,
 	)

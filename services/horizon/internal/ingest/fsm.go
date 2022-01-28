@@ -424,9 +424,8 @@ func (r resumeState) run(s *system) (transition, error) {
 			log.WithError(err).Warn("error updating stellar-core cursor")
 		}
 
-		return retryResume(resumeState{
-			latestSuccessfullyProcessedLedger: lastIngestedLedger,
-		}), nil
+		// resume immediately so Captive-Core catchup is not slowed down
+		return resumeImmediately(lastIngestedLedger), nil
 	}
 
 	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
