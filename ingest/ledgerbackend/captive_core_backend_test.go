@@ -1260,6 +1260,7 @@ func TestCaptiveIsPreparedCoreContextCancelled(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner.On("context").Return(ctx).Maybe()
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	rang := UnboundedRange(100)
 	captiveBackend := CaptiveStellarCore{
