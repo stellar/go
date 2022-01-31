@@ -139,6 +139,9 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		parentCtx = context.Background()
 	}
 
+	var cancel context.CancelFunc
+	config.Context, cancel = context.WithCancel(parentCtx)
+
 	archivePool, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
@@ -149,18 +152,17 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	)
 
 	if err != nil {
-		_, cancel := context.WithCancel(parentCtx)
 		cancel()
 		return nil, errors.Wrap(err, "Error connecting to ALL history archives.")
 	}
 
 	c := &CaptiveStellarCore{
 		archive:           &archivePool,
+		cancel:            cancel,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
 	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-		config.Context, c.cancel = context.WithCancel(parentCtx)
 		return newStellarCoreRunner(config, mode)
 	}
 	return c, nil
