@@ -138,6 +138,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	if parentCtx == nil {
 		parentCtx = context.Background()
 	}
+
 	var cancel context.CancelFunc
 	config.Context, cancel = context.WithCancel(parentCtx)
 
@@ -245,11 +246,8 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	var runner stellarCoreRunnerInterface
 	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
-	} else {
-		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
-		// see https://golang.org/doc/faq#nil_error
-		c.stellarCoreRunner = runner
 	}
+	c.stellarCoreRunner = runner
 
 	runFrom, err := c.runFromParams(ctx, from)
 	if err != nil {
@@ -381,9 +379,12 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 	if c.stellarCoreRunner == nil {
 		return false
 	}
-	if c.closed {
+
+	exited, _ := c.stellarCoreRunner.getProcessExitError()
+	if exited {
 		return false
 	}
+
 	lastLedger := uint32(0)
 	if c.lastLedger != nil {
 		lastLedger = *c.lastLedger
