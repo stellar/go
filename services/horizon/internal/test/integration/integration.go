@@ -358,19 +358,6 @@ func (i *Test) StartHorizon() error {
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
 	}
 
-	if !RunWithCaptiveCore {
-		// captive core backend ledger is executed with sqlite on db, not memory, which results in
-		// different meta stream from 'steallar-core run' , it does not replay meta close stream from genesis during 'run' after 'new-db'
-		// rather at start of 'run' core will fast forward internally the ClosedMeta stream to start emitting ledgers from
-		// its current LCL(last committed ledger, not necessarily the latest from network side).
-		// Consequently, Don't want tests that are running captive core to initially set horizon ingest state to genesis here,
-		// the fsm would then get stuck in state loop since core is only emitting meta close ledger seqs that are > than genesis
-		// sequence of '2' which horizon's fsm keeps requesting as next ledger.
-		if err = i.app.Ingestion().BuildGenesisState(); err != nil {
-			return errors.Wrap(err, "cannot build genesis state")
-		}
-	}
-
 	done := make(chan struct{})
 	go func() {
 		i.app.Serve()

@@ -407,7 +407,6 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 }
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
-	// TODO: Do we need to skip this if we are in --in-memory mode?
 	if !c.tree.Has("DATABASE") {
 		c.Database = defaultDatabase
 	}
@@ -447,8 +446,6 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 }
 
 func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
-	// TODO: Any way to validate database here?
-
 	if def := c.tree.Has("NETWORK_PASSPHRASE"); def && c.NetworkPassphrase != params.NetworkPassphrase {
 		return fmt.Errorf(
 			"NETWORK_PASSPHRASE in captive core config file: %s does not match Horizon network-passphrase flag: %s",
