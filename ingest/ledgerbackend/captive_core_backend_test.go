@@ -280,8 +280,9 @@ func TestCaptivePrepareRangeCloseNotFullyTerminated(t *testing.T) {
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Twice()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
-	mockRunner.On("getProcessExitError").Return(true, nil)
 	mockRunner.On("close").Return(nil)
+	mockRunner.On("getProcessExitError").Return(true, nil)
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -316,6 +317,7 @@ func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("close").Return(fmt.Errorf("transient error"))
 	mockRunner.On("getProcessExitError").Return(false, nil)
+	mockRunner.On("context").Return(ctx)
 
 	captiveBackend := CaptiveStellarCore{
 		nextLedger:        300,
@@ -597,12 +599,12 @@ func TestCaptiveGetLedger(t *testing.T) {
 
 	ledgerRange := BoundedRange(65, 66)
 	tt.False(captiveBackend.isPrepared(ledgerRange), "core is not prepared until explicitly prepared")
-	tt.False(captiveBackend.isClosed())
+	tt.False(captiveBackend.closed)
 	err = captiveBackend.PrepareRange(ctx, ledgerRange)
 	assert.NoError(t, err)
 
 	tt.True(captiveBackend.isPrepared(ledgerRange))
-	tt.False(captiveBackend.isClosed())
+	tt.False(captiveBackend.closed)
 
 	_, err = captiveBackend.GetLedger(ctx, 64)
 	tt.Error(err, "requested ledger 64 is behind the captive core stream (expected=66)")
@@ -628,12 +630,12 @@ func TestCaptiveGetLedger(t *testing.T) {
 	tt.NoError(err)
 
 	tt.False(captiveBackend.isPrepared(ledgerRange))
-	tt.False(captiveBackend.isClosed())
+	tt.False(captiveBackend.closed)
 	_, err = captiveBackend.GetLedger(ctx, 66)
 	tt.NoError(err)
 
 	// core is not closed unless it's explicitly closed
-	tt.False(captiveBackend.isClosed())
+	tt.False(captiveBackend.closed)
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
@@ -885,14 +887,14 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	tt.NoError(err)
 	tt.Equal(xdr.Uint32(65), meta.V0.LedgerHeader.Header.LedgerSeq)
 
-	tt.False(captiveBackend.isClosed())
+	tt.False(captiveBackend.closed)
 
 	// try reading from an empty buffer
 	_, err = captiveBackend.GetLedger(ctx, 66)
 	tt.EqualError(err, "unmarshalling error")
 
 	// not closed even if there is an error getting ledger
-	tt.False(captiveBackend.isClosed())
+	tt.False(captiveBackend.closed)
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
@@ -979,7 +981,7 @@ func TestCaptiveAfterClose(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, captiveBackend.Close())
-	assert.True(t, captiveBackend.isClosed())
+	assert.True(t, captiveBackend.closed)
 
 	_, err = captiveBackend.GetLedger(ctx, boundedRange.to)
 	assert.EqualError(t, err, "stellar-core is no longer usable")
@@ -1249,6 +1251,31 @@ func TestCaptiveIsPrepared(t *testing.T) {
 			assert.Equal(t, tc.result, result)
 		})
 	}
+}
+
+// TestCaptiveIsPreparedCoreContextCancelled checks if IsPrepared returns false
+// if the stellarCoreRunner.context() is cancelled. This can happen when
+// stellarCoreRunner was closed, ex. when binary file was updated.
+func TestCaptiveIsPreparedCoreContextCancelled(t *testing.T) {
+	mockRunner := &stellarCoreRunnerMock{}
+	ctx, cancel := context.WithCancel(context.Background())
+	mockRunner.On("context").Return(ctx).Maybe()
+	mockRunner.On("getProcessExitError").Return(false, nil)
+
+	rang := UnboundedRange(100)
+	captiveBackend := CaptiveStellarCore{
+		nextLedger:        100,
+		prepared:          &rang,
+		stellarCoreRunner: mockRunner,
+	}
+
+	result := captiveBackend.isPrepared(UnboundedRange(100))
+	assert.True(t, result)
+
+	cancel()
+
+	result = captiveBackend.isPrepared(UnboundedRange(100))
+	assert.False(t, result)
 }
 
 // TestCaptivePreviousLedgerCheck checks if previousLedgerHash is set in PrepareRange

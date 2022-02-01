@@ -372,11 +372,11 @@ func (c *CaptiveStellarCore) IsPrepared(ctx context.Context, ledgerRange Range) 
 }
 
 func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
-	if c.isClosed() {
+	if c.closed {
 		return false
 	}
 
-	if c.stellarCoreRunner == nil {
+	if c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil {
 		return false
 	}
 
@@ -441,7 +441,7 @@ func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xd
 		return *c.cachedMeta, nil
 	}
 
-	if c.isClosed() {
+	if c.closed {
 		return xdr.LedgerCloseMeta{}, errors.New("stellar-core is no longer usable")
 	}
 
@@ -584,7 +584,7 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 
-	if c.isClosed() {
+	if c.closed {
 		return 0, errors.New("stellar-core is no longer usable")
 	}
 	if c.prepared == nil {
@@ -601,10 +601,6 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 		return c.nextExpectedSequence() - 1 + uint32(len(c.stellarCoreRunner.getMetaPipe())), nil
 	}
 	return *c.lastLedger, nil
-}
-
-func (c *CaptiveStellarCore) isClosed() bool {
-	return c.closed
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all
