@@ -5,6 +5,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## v2.14.0
+
+* Restart Stellar-Core when it's context is cancelled. ([4192](https://github.com/stellar/go/pull/4192))
+* Resume ingestion immediately when catching up. ([4196](https://github.com/stellar/go/pull/4196))
+* Check if there are newer ledger when requested ledger does not exist. ([4198](https://github.com/stellar/go/pull/4198))
+* Properly check against the HA array being empty. ([4152](https://github.com/stellar/go/pull/4152))
+
 ## v2.13.0
 
 ### DB Schema Migration
