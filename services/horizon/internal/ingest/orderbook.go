@@ -271,6 +271,7 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 
 	mismatch := len(liquidityPools) != len(ingestionLiquidityPools)
 
+	var liquidityPoolEntryBase64, liquidityPoolRowBase64 string
 	if !mismatch {
 		sort.Slice(liquidityPools, func(i, j int) bool {
 			return processors.PoolIDToString(liquidityPools[i].LiquidityPoolId) <
@@ -281,16 +282,18 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 		})
 
 		for i, liquidityPoolRow := range ingestionLiquidityPools {
+			var liquidityPoolRowXDR xdr.LiquidityPoolEntry
+			var err error
 			liquidityPoolEntry := liquidityPools[i]
-			liquidityPoolRowXDR, err := liquidityPoolToXDR(liquidityPoolRow)
+			liquidityPoolRowXDR, err = liquidityPoolToXDR(liquidityPoolRow)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from converting liquidity pool row to xdr")
 			}
-			liquidityPoolEntryBase64, err := o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
+			liquidityPoolEntryBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling liquidityPoolEntry")
 			}
-			liquidityPoolRowBase64, err := o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
+			liquidityPoolRowBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling liquidityPoolRowXDR")
 			}
@@ -302,9 +305,9 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 	}
 
 	if mismatch {
-		log.WithField("stream_liquidity_pools", liquidityPools).
-			WithField("ingestion_liquidity_pools", ingestionLiquidityPools).
-			Error("liquidity pools derived from order book stream does not match liquidity pool from ingestion")
+		log.WithField("stream_liquidity_pool", liquidityPoolEntryBase64).
+			WithField("ingestion_liquidity_pool", liquidityPoolRowBase64).
+			Error("one or more liquidity pools derived from order book stream does not match liquidity pool from ingestion")
 		return false, nil
 	}
 	log.Info("liquidity pool stream verification succeeded")
