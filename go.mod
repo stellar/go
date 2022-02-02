@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	cloud.google.com/go/firestore v1.5.0 // indirect
+	cloud.google.com/go/storage v1.10.0 // indirect
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/squirrel v1.5.0
