@@ -314,12 +314,13 @@ func (r *stellarCoreRunner) runFrom(from uint32) error {
 	// Do a quick catch-up to set the LCL in core to be our expected starting
 	// point.
 	//
-	// TODO: If we're re-using the directory from a previous run, we need to do
-	// this differently, because the LCL in core might already be ahead of our
-	// `from` point.
 	if from > 2 {
 		// Can't catch up to the genesis ledger.
 		if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
+			return errors.Wrap(err, "error runing stellar-core catchup")
+		}
+	} else {
+		if err := r.createCmd("catchup", "2/0").Run(); err != nil {
 			return errors.Wrap(err, "error runing stellar-core catchup")
 		}
 	}
