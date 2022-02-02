@@ -306,7 +306,7 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 
 	if mismatch {
 		log.WithField("stream_liquidity_pool", liquidityPoolEntryBase64).
-			WithField("ingestion_liquidity_pools", liquidityPoolRowBase64).
+			WithField("ingestion_liquidity_pool", liquidityPoolRowBase64).
 			Error("one or more liquidity pools derived from order book stream does not match liquidity pool from ingestion")
 		return false, nil
 	}
