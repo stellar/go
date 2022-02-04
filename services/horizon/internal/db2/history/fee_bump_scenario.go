@@ -13,7 +13,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
