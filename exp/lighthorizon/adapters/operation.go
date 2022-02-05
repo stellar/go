@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -19,10 +16,7 @@ func PopulateOperation(
 	transactionResult *xdr.TransactionResult,
 	ledgerHeader *xdr.LedgerHeader,
 ) (operations.Operation, error) {
-	sourceAccount := transactionEnvelope.SourceAccount().ToAccountId().Address()
-	if op.SourceAccount != nil {
-		sourceAccount = op.SourceAccount.Address()
-	}
+	sourceAccount := sourceAccount(op, transactionEnvelope)
 
 	hash, err := network.HashTransactionInEnvelope(*transactionEnvelope, network.PublicNetworkPassphrase)
 	if err != nil {
@@ -34,39 +28,13 @@ func PopulateOperation(
 		SourceAccount:         sourceAccount,
 		LedgerCloseTime:       time.Unix(int64(ledgerHeader.ScpValue.CloseTime), 0).UTC(),
 		TransactionHash:       hex.EncodeToString(hash[:]),
+		TypeI:                 int32(op.Body.Type),
 	}
 	switch op.Body.Type {
 	case xdr.OperationTypeCreateAccount:
-		createAccount := op.Body.CreateAccountOp
-		baseOp.Type = "create_account"
-		return operations.CreateAccount{
-			Base:            baseOp,
-			StartingBalance: amount.String(createAccount.StartingBalance),
-			Funder:          sourceAccount,
-			Account:         createAccount.Destination.Address(),
-		}, nil
+		return populateCreateAccountOperation(op, transactionEnvelope, baseOp)
 	case xdr.OperationTypePayment:
-		payment := op.Body.PaymentOp
-		var (
-			assetType string
-			code      string
-			issuer    string
-		)
-		err := payment.Asset.Extract(&assetType, &code, &issuer)
-		if err != nil {
-			return nil, errors.Wrap(err, "xdr.Asset.Extract error")
-		}
-
-		return operations.Payment{
-			Base: baseOp,
-			To:   payment.Destination.Address(),
-			Asset: base.Asset{
-				Type:   assetType,
-				Code:   code,
-				Issuer: issuer,
-			},
-			Amount: amount.StringFromInt64(int64(payment.Amount)),
-		}, nil
+		return populatePaymentOperation(op, baseOp)
 	case xdr.OperationTypePathPaymentStrictReceive:
 		return operations.PathPaymentStrictSend{
 			Payment: operations.Payment{
@@ -80,17 +48,9 @@ func PopulateOperation(
 			},
 		}, nil
 	case xdr.OperationTypeManageBuyOffer:
-		return operations.ManageBuyOffer{
-			Offer: operations.Offer{
-				Base: baseOp,
-			},
-		}, nil
+		return populateManageBuyOfferOperation(op, baseOp)
 	case xdr.OperationTypeManageSellOffer:
-		return operations.ManageSellOffer{
-			Offer: operations.Offer{
-				Base: baseOp,
-			},
-		}, nil
+		return populateManageSellOfferOperation(op, baseOp)
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		return operations.CreatePassiveSellOffer{
 			Offer: operations.Offer{
@@ -168,4 +128,15 @@ func PopulateOperation(
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
+}
+
+func sourceAccount(
+	op *xdr.Operation,
+	transactionEnvelope *xdr.TransactionEnvelope,
+) string {
+	sourceAccount := transactionEnvelope.SourceAccount().ToAccountId().Address()
+	if op.SourceAccount != nil {
+		sourceAccount = op.SourceAccount.Address()
+	}
+	return sourceAccount
 }

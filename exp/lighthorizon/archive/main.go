@@ -1,16 +1,25 @@
 package archive
 
 import (
-	"errors"
 	"io"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
+
+// checkpointsToLookup defines a number of checkpoints to check when filling
+// a list of objects up to a requested limit. In the old ledgers in pubnet
+// many ledgers or even checkpoints were empty. This means that when building
+// a list of 200 operations ex. starting at first ledger, lighthorizon will
+// have to download many ledgers until it's able to fill the list completely.
+// This can be solved by keeping an index/list of empty ledgers.
+// TODO: make this configurable.
+const checkpointsToLookup = 1
 
 type Operation struct {
 	Operation           xdr.Operation
@@ -33,8 +42,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]Operation, error) 
 	ops := []Operation{}
 	appending := false
 
-	// TODO: make number of checkpoints configurable
-	ledgers, err := a.Archive.GetLedgers(ledgerSequence, ledgerSequence+64)
+	ledgers, err := a.Archive.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +51,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]Operation, error) 
 		log.Debugf("Checking ledger %d", ledgerSequence)
 		ledger, ok := ledgers[ledgerSequence]
 		if !ok {
-			return nil, errors.New("could not reach limit in 5 checkpoints (ledger not found)")
+			return nil, errors.Errorf("could not reach limit in %d checkpoints (ledger not found)", checkpointsToLookup)
 		}
 
 		resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))

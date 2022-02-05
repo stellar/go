@@ -28,7 +28,6 @@ func Operations(archiveWrapper archive.Wrapper) func(http.ResponseWriter, *http.
 		if query.Get("cursor") == "" {
 			cursor = toid.New(1, 1, 1).ToInt64()
 		} else {
-			var err error
 			cursor, err = strconv.ParseInt(query.Get("cursor"), 10, 64)
 			if err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
@@ -40,7 +39,6 @@ func Operations(archiveWrapper archive.Wrapper) func(http.ResponseWriter, *http.
 		if query.Get("limit") == "" {
 			limit = 10
 		} else {
-			var err error
 			limit, err = strconv.ParseInt(query.Get("limit"), 10, 64)
 			if err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
