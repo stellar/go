@@ -2,22 +2,18 @@ package adapters
 
 import (
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/xdr"
 )
 
-func populateCreateAccountOperation(
-	op *xdr.Operation,
-	transactionEnvelope *xdr.TransactionEnvelope,
-	baseOp operations.Base,
-) (operations.CreateAccount, error) {
-	createAccount := op.Body.CreateAccountOp
+func populateCreateAccountOperation(op *common.Operation, baseOp operations.Base) (operations.CreateAccount, error) {
+	createAccount := op.Get().Body.CreateAccountOp
 	baseOp.Type = "create_account"
 
 	return operations.CreateAccount{
 		Base:            baseOp,
 		StartingBalance: amount.String(createAccount.StartingBalance),
-		Funder:          sourceAccount(op, transactionEnvelope),
+		Funder:          op.SourceAccount(),
 		Account:         createAccount.Destination.Address(),
 	}, nil
 }

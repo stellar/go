@@ -3,6 +3,7 @@ package archive
 import (
 	"io"
 
+	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
@@ -21,25 +22,18 @@ import (
 // TODO: make this configurable.
 const checkpointsToLookup = 1
 
-type Operation struct {
-	Operation           xdr.Operation
-	TransactionEnvelope xdr.TransactionEnvelope
-	TransactionResult   xdr.TransactionResult
-	LedgerHeader        xdr.LedgerHeader
-}
-
 type Wrapper struct {
 	*historyarchive.Archive
 }
 
-func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]Operation, error) {
+func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
 
 	log.Debugf("Searching op %d", cursor)
 	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
 
-	ops := []Operation{}
+	ops := []common.Operation{}
 	appending := false
 
 	ledgers, err := a.Archive.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
@@ -82,7 +76,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]Operation, error) 
 				return nil, err
 			}
 
-			for operationOrder, op := range tx.Envelope.Operations() {
+			for operationOrder, _ := range tx.Envelope.Operations() {
 				currID := toid.New(int32(ledgerSequence), transactionOrder+1, int32(operationOrder+1)).ToInt64()
 
 				if currID >= cursor {
@@ -93,11 +87,11 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]Operation, error) 
 				}
 
 				if appending {
-					ops = append(ops, Operation{
-						Operation:           op,
-						TransactionEnvelope: tx.Envelope,
-						TransactionResult:   tx.Result.Result,
-						LedgerHeader:        ledger.Header.Header,
+					ops = append(ops, common.Operation{
+						TransactionEnvelope: &tx.Envelope,
+						TransactionResult:   &tx.Result.Result,
+						LedgerHeader:        &ledger.Header.Header,
+						Index:               int32(operationOrder),
 					})
 				}
 

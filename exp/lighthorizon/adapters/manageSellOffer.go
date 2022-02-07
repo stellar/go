@@ -2,17 +2,14 @@ package adapters
 
 import (
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
-func populateManageSellOfferOperation(
-	op *xdr.Operation,
-	baseOp operations.Base,
-) (operations.ManageSellOffer, error) {
-	manageSellOffer := op.Body.ManageSellOfferOp
+func populateManageSellOfferOperation(op *common.Operation, baseOp operations.Base) (operations.ManageSellOffer, error) {
+	manageSellOffer := op.Get().Body.ManageSellOfferOp
 	baseOp.Type = "manage_sell_offer"
 
 	var (

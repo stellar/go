@@ -1,46 +1,34 @@
 package adapters
 
 import (
-	"encoding/hex"
 	"fmt"
 	"time"
 
-	"github.com/stellar/go/network"
+	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/xdr"
 )
 
-func PopulateOperation(
-	op *xdr.Operation,
-	transactionEnvelope *xdr.TransactionEnvelope,
-	transactionResult *xdr.TransactionResult,
-	ledgerHeader *xdr.LedgerHeader,
-) (operations.Operation, error) {
-	sourceAccount := sourceAccount(op, transactionEnvelope)
-
-	hash, err := network.HashTransactionInEnvelope(*transactionEnvelope, network.PublicNetworkPassphrase)
+func PopulateOperation(op *common.Operation) (operations.Operation, error) {
+	hash, err := op.TransactionHash()
 	if err != nil {
 		return nil, err
 	}
 
 	baseOp := operations.Base{
-		TransactionSuccessful: transactionResult.Successful(),
-		SourceAccount:         sourceAccount,
-		LedgerCloseTime:       time.Unix(int64(ledgerHeader.ScpValue.CloseTime), 0).UTC(),
-		TransactionHash:       hex.EncodeToString(hash[:]),
-		TypeI:                 int32(op.Body.Type),
+		TransactionSuccessful: op.TransactionResult.Successful(),
+		SourceAccount:         op.SourceAccount(),
+		LedgerCloseTime:       time.Unix(int64(op.LedgerHeader.ScpValue.CloseTime), 0).UTC(),
+		TransactionHash:       hash,
+		TypeI:                 int32(op.Get().Body.Type),
 	}
-	switch op.Body.Type {
+	switch op.Get().Body.Type {
 	case xdr.OperationTypeCreateAccount:
-		return populateCreateAccountOperation(op, transactionEnvelope, baseOp)
+		return populateCreateAccountOperation(op, baseOp)
 	case xdr.OperationTypePayment:
 		return populatePaymentOperation(op, baseOp)
 	case xdr.OperationTypePathPaymentStrictReceive:
-		return operations.PathPaymentStrictSend{
-			Payment: operations.Payment{
-				Base: baseOp,
-			},
-		}, nil
+		return populatePathPaymentStrictReceiveOperation(op, baseOp)
 	case xdr.OperationTypePathPaymentStrictSend:
 		return operations.PathPaymentStrictSend{
 			Payment: operations.Payment{
@@ -126,17 +114,6 @@ func PopulateOperation(
 			Base: baseOp,
 		}, nil
 	default:
-		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+		return nil, fmt.Errorf("Unknown operation type: %s", op.Get().Body.Type)
 	}
-}
-
-func sourceAccount(
-	op *xdr.Operation,
-	transactionEnvelope *xdr.TransactionEnvelope,
-) string {
-	sourceAccount := transactionEnvelope.SourceAccount().ToAccountId().Address()
-	if op.SourceAccount != nil {
-		sourceAccount = op.SourceAccount.Address()
-	}
-	return sourceAccount
 }

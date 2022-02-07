@@ -2,17 +2,14 @@ package adapters
 
 import (
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
-func populatePaymentOperation(
-	op *xdr.Operation,
-	baseOp operations.Base,
-) (operations.Payment, error) {
-	payment := op.Body.PaymentOp
+func populatePaymentOperation(op *common.Operation, baseOp operations.Base) (operations.Payment, error) {
+	payment := op.Get().Body.PaymentOp
 	baseOp.Type = "payment"
 
 	var (

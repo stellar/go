@@ -57,12 +57,7 @@ func Operations(archiveWrapper archive.Wrapper) func(http.ResponseWriter, *http.
 		}
 
 		for _, op := range ops {
-			resp, err := adapters.PopulateOperation(
-				&op.Operation,
-				&op.TransactionEnvelope,
-				&op.TransactionResult,
-				&op.LedgerHeader,
-			)
+			resp, err := adapters.PopulateOperation(&op)
 			if err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
 				return
