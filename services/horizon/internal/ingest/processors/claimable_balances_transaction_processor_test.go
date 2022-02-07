@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
