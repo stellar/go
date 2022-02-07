@@ -11,7 +11,6 @@ import (
 
 func populateChangeTrustOperation(op *common.Operation, baseOp operations.Base) (operations.ChangeTrust, error) {
 	changeTrust := op.Get().Body.MustChangeTrustOp()
-	baseOp.Type = "change_trust"
 
 	var (
 		assetType string

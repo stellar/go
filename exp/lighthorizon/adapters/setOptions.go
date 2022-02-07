@@ -8,7 +8,6 @@ import (
 
 func populateSetOptionsOperation(op *common.Operation, baseOp operations.Base) (operations.SetOptions, error) {
 	setOptions := op.Get().Body.MustSetOptionsOp()
-	baseOp.Type = "set_options"
 
 	homeDomain := ""
 	if setOptions.HomeDomain != nil {

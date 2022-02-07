@@ -10,7 +10,6 @@ import (
 
 func populateCreatePassiveSellOfferOperation(op *common.Operation, baseOp operations.Base) (operations.CreatePassiveSellOffer, error) {
 	createPassiveSellOffer := op.Get().Body.MustCreatePassiveSellOfferOp()
-	baseOp.Type = "create_passive_sell_offer"
 
 	var (
 		buyingAssetType string

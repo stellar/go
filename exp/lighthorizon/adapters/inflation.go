@@ -6,8 +6,6 @@ import (
 )
 
 func populateInflationOperation(op *common.Operation, baseOp operations.Base) (operations.Inflation, error) {
-	baseOp.Type = "inflation"
-
 	return operations.Inflation{
 		Base: baseOp,
 	}, nil

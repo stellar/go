@@ -10,7 +10,6 @@ import (
 
 func populateAllowTrustOperation(op *common.Operation, baseOp operations.Base) (operations.AllowTrust, error) {
 	allowTrust := op.Get().Body.MustAllowTrustOp()
-	baseOp.Type = "allow_trust"
 
 	var (
 		assetType string

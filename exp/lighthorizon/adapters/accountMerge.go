@@ -7,7 +7,6 @@ import (
 
 func populateAccountMergeOperation(op *common.Operation, baseOp operations.Base) (operations.AccountMerge, error) {
 	destination := op.Get().Body.MustDestination()
-	baseOp.Type = "account_merge"
 
 	return operations.AccountMerge{
 		Base:    baseOp,

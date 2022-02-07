@@ -20,6 +20,7 @@ func PopulateOperation(op *common.Operation) (operations.Operation, error) {
 		SourceAccount:         op.SourceAccount().Address(),
 		LedgerCloseTime:       time.Unix(int64(op.LedgerHeader.ScpValue.CloseTime), 0).UTC(),
 		TransactionHash:       hash,
+		Type:                  operations.TypeNames[op.Get().Body.Type],
 		TypeI:                 int32(op.Get().Body.Type),
 	}
 	switch op.Get().Body.Type {

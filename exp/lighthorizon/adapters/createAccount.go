@@ -8,7 +8,6 @@ import (
 
 func populateCreateAccountOperation(op *common.Operation, baseOp operations.Base) (operations.CreateAccount, error) {
 	createAccount := op.Get().Body.MustCreateAccountOp()
-	baseOp.Type = "create_account"
 
 	return operations.CreateAccount{
 		Base:            baseOp,

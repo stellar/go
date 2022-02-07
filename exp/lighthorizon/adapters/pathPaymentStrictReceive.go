@@ -10,7 +10,6 @@ import (
 
 func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp operations.Base) (operations.PathPayment, error) {
 	payment := op.Get().Body.MustPathPaymentStrictReceiveOp()
-	baseOp.Type = "path_payment_strict_receive"
 
 	var (
 		sendAssetType string
