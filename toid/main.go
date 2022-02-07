@@ -7,7 +7,8 @@ import (
 
 //
 // ID represents the total order of Ledgers, Transactions and
-// Operations.
+// Operations. This is an implementation of SEP-35:
+// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0035.md
 //
 // Operations within the stellar network have a total order, expressed by three
 // pieces of information:  the ledger sequence the operation was validated in,
@@ -49,10 +50,6 @@ import (
 //
 //   Expressed in network byte order.
 //
-//
-// Note: API Clients should not be interpreting this value.  We will use it
-// as an opaque paging token that clients can parrot back to us after having read
-// it within a resource to page from the represented position in time.
 //
 // Note: This does not uniquely identify an object.  Given a ledger, it will
 // share its id with its first transaction and the first operation of that
