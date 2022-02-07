@@ -8,9 +8,9 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp operations.Base) (operations.PathPayment, error) {
-	payment := op.Get().Body.MustPathPaymentStrictReceiveOp()
-	baseOp.Type = "path_payment_strict_receive"
+func populatePathPaymentStrictSendOperation(op *common.Operation, baseOp operations.Base) (operations.PathPaymentStrictSend, error) {
+	payment := op.Get().Body.MustPathPaymentStrictSendOp()
+	baseOp.Type = "path_payment_strict_send"
 
 	var (
 		sendAssetType string
@@ -19,7 +19,7 @@ func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp oper
 	)
 	err := payment.SendAsset.Extract(&sendAssetType, &sendCode, &sendIssuer)
 	if err != nil {
-		return operations.PathPayment{}, errors.Wrap(err, "xdr.Asset.Extract error")
+		return operations.PathPaymentStrictSend{}, errors.Wrap(err, "xdr.Asset.Extract error")
 	}
 
 	var (
@@ -29,13 +29,13 @@ func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp oper
 	)
 	err = payment.DestAsset.Extract(&destAssetType, &destCode, &destIssuer)
 	if err != nil {
-		return operations.PathPayment{}, errors.Wrap(err, "xdr.Asset.Extract error")
+		return operations.PathPaymentStrictSend{}, errors.Wrap(err, "xdr.Asset.Extract error")
 	}
 
-	sourceAmount := amount.String(0)
+	destAmount := amount.String(0)
 	if op.TransactionResult.Successful() {
-		result := op.OperationResult().MustPathPaymentStrictReceiveResult()
-		sourceAmount = amount.String(result.SendAmount())
+		result := op.OperationResult().MustPathPaymentStrictSendResult()
+		destAmount = amount.String(result.DestAmount())
 	}
 
 	var path = make([]base.Asset, len(payment.Path))
@@ -47,7 +47,7 @@ func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp oper
 		)
 		err = payment.Path[i].Extract(&assetType, &code, &issuer)
 		if err != nil {
-			return operations.PathPayment{}, errors.Wrap(err, "xdr.Asset.Extract error")
+			return operations.PathPaymentStrictSend{}, errors.Wrap(err, "xdr.Asset.Extract error")
 		}
 
 		path[i] = base.Asset{
@@ -57,7 +57,7 @@ func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp oper
 		}
 	}
 
-	return operations.PathPayment{
+	return operations.PathPaymentStrictSend{
 		Payment: operations.Payment{
 			Base: baseOp,
 			From: op.SourceAccount().Address(),
@@ -67,11 +67,11 @@ func populatePathPaymentStrictReceiveOperation(op *common.Operation, baseOp oper
 				Code:   destCode,
 				Issuer: destIssuer,
 			},
-			Amount: amount.String(payment.DestAmount),
+			Amount: destAmount,
 		},
 		Path:              path,
-		SourceAmount:      sourceAmount,
-		SourceMax:         amount.String(payment.SendMax),
+		SourceAmount:      amount.String(payment.SendAmount),
+		DestinationMin:    amount.String(payment.DestMin),
 		SourceAssetType:   sendAssetType,
 		SourceAssetCode:   sendCode,
 		SourceAssetIssuer: sendIssuer,

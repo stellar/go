@@ -7,13 +7,13 @@ import (
 )
 
 func populateCreateAccountOperation(op *common.Operation, baseOp operations.Base) (operations.CreateAccount, error) {
-	createAccount := op.Get().Body.CreateAccountOp
+	createAccount := op.Get().Body.MustCreateAccountOp()
 	baseOp.Type = "create_account"
 
 	return operations.CreateAccount{
 		Base:            baseOp,
 		StartingBalance: amount.String(createAccount.StartingBalance),
-		Funder:          op.SourceAccount(),
+		Funder:          op.SourceAccount().Address(),
 		Account:         createAccount.Destination.Address(),
 	}, nil
 }

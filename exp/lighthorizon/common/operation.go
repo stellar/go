@@ -33,10 +33,10 @@ func (o *Operation) TransactionHash() (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
-func (o *Operation) SourceAccount() string {
-	sourceAccount := o.TransactionEnvelope.SourceAccount().ToAccountId().Address()
+func (o *Operation) SourceAccount() xdr.AccountId {
+	sourceAccount := o.TransactionEnvelope.SourceAccount().ToAccountId()
 	if o.Get().SourceAccount != nil {
-		sourceAccount = o.Get().SourceAccount.Address()
+		sourceAccount = o.Get().SourceAccount.ToAccountId()
 	}
 	return sourceAccount
 }

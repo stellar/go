@@ -9,7 +9,7 @@ import (
 )
 
 func populatePaymentOperation(op *common.Operation, baseOp operations.Base) (operations.Payment, error) {
-	payment := op.Get().Body.PaymentOp
+	payment := op.Get().Body.MustPaymentOp()
 	baseOp.Type = "payment"
 
 	var (

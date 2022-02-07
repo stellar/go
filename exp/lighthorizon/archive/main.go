@@ -76,7 +76,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 				return nil, err
 			}
 
-			for operationOrder, _ := range tx.Envelope.Operations() {
+			for operationOrder := range tx.Envelope.Operations() {
 				currID := toid.New(int32(ledgerSequence), transactionOrder+1, int32(operationOrder+1)).ToInt64()
 
 				if currID >= cursor {
@@ -105,36 +105,4 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 
 		ledgerSequence++
 	}
-}
-
-func (a *Wrapper) getTxReaderForSingleLedgerFromArchive(ledgerSequence uint32) (*ingest.LedgerTransactionReader, error) {
-	ledgers, err := a.Archive.GetLedgers(ledgerSequence, ledgerSequence)
-	if err != nil {
-		return nil, err
-	}
-
-	ledger, ok := ledgers[ledgerSequence]
-	if !ok {
-		return nil, errors.New("ledger not found")
-	}
-
-	resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))
-	for i, result := range ledger.TransactionResult.TxResultSet.Results {
-		resultMeta[i].Result = result
-	}
-
-	closeMeta := xdr.LedgerCloseMeta{
-		V0: &xdr.LedgerCloseMetaV0{
-			LedgerHeader: ledger.Header,
-			TxSet:        ledger.Transaction.TxSet,
-			TxProcessing: resultMeta,
-		},
-	}
-
-	reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, closeMeta)
-	if err != nil {
-		return nil, err
-	}
-
-	return reader, nil
 }

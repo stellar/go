@@ -17,7 +17,7 @@ func PopulateOperation(op *common.Operation) (operations.Operation, error) {
 
 	baseOp := operations.Base{
 		TransactionSuccessful: op.TransactionResult.Successful(),
-		SourceAccount:         op.SourceAccount(),
+		SourceAccount:         op.SourceAccount().Address(),
 		LedgerCloseTime:       time.Unix(int64(op.LedgerHeader.ScpValue.CloseTime), 0).UTC(),
 		TransactionHash:       hash,
 		TypeI:                 int32(op.Get().Body.Type),
@@ -30,41 +30,23 @@ func PopulateOperation(op *common.Operation) (operations.Operation, error) {
 	case xdr.OperationTypePathPaymentStrictReceive:
 		return populatePathPaymentStrictReceiveOperation(op, baseOp)
 	case xdr.OperationTypePathPaymentStrictSend:
-		return operations.PathPaymentStrictSend{
-			Payment: operations.Payment{
-				Base: baseOp,
-			},
-		}, nil
+		return populatePathPaymentStrictSendOperation(op, baseOp)
 	case xdr.OperationTypeManageBuyOffer:
 		return populateManageBuyOfferOperation(op, baseOp)
 	case xdr.OperationTypeManageSellOffer:
 		return populateManageSellOfferOperation(op, baseOp)
 	case xdr.OperationTypeCreatePassiveSellOffer:
-		return operations.CreatePassiveSellOffer{
-			Offer: operations.Offer{
-				Base: baseOp,
-			},
-		}, nil
+		return populateCreatePassiveSellOfferOperation(op, baseOp)
 	case xdr.OperationTypeSetOptions:
-		return operations.SetOptions{
-			Base: baseOp,
-		}, nil
+		return populateSetOptionsOperation(op, baseOp)
 	case xdr.OperationTypeChangeTrust:
-		return operations.ChangeTrust{
-			Base: baseOp,
-		}, nil
+		return populateChangeTrustOperation(op, baseOp)
 	case xdr.OperationTypeAllowTrust:
-		return operations.AllowTrust{
-			Base: baseOp,
-		}, nil
+		return populateAllowTrustOperation(op, baseOp)
 	case xdr.OperationTypeAccountMerge:
-		return operations.AccountMerge{
-			Base: baseOp,
-		}, nil
+		return populateAccountMergeOperation(op, baseOp)
 	case xdr.OperationTypeInflation:
-		return operations.Inflation{
-			Base: baseOp,
-		}, nil
+		return populateInflationOperation(op, baseOp)
 	case xdr.OperationTypeManageData:
 		return operations.ManageData{
 			Base: baseOp,

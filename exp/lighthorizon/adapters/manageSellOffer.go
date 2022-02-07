@@ -9,7 +9,7 @@ import (
 )
 
 func populateManageSellOfferOperation(op *common.Operation, baseOp operations.Base) (operations.ManageSellOffer, error) {
-	manageSellOffer := op.Get().Body.ManageSellOfferOp
+	manageSellOffer := op.Get().Body.MustManageSellOfferOp()
 	baseOp.Type = "manage_sell_offer"
 
 	var (
