@@ -24,7 +24,7 @@ func findInitatingSandwichSponsor(op *common.Operation) string {
 	}
 	sponsoree := op.SourceAccount()
 	operations := op.TransactionEnvelope.Operations()
-	for i := int(op.Index) - 1; i >= 0; i-- {
+	for i := int(op.OpIndex) - 1; i >= 0; i-- {
 		if beginOp, ok := operations[i].Body.GetBeginSponsoringFutureReservesOp(); ok &&
 			beginOp.SponsoredId.Address() == sponsoree.Address() {
 			if operations[i].SourceAccount != nil {

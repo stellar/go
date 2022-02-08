@@ -2,20 +2,26 @@ package adapters
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
 
-func PopulateOperation(op *common.Operation) (operations.Operation, error) {
+func PopulateOperation(r *http.Request, op *common.Operation) (operations.Operation, error) {
 	hash, err := op.TransactionHash()
 	if err != nil {
 		return nil, err
 	}
 
+	toid := strconv.FormatInt(op.TOID(), 10)
 	baseOp := operations.Base{
+		ID:                    toid,
+		PT:                    toid,
 		TransactionSuccessful: op.TransactionResult.Successful(),
 		SourceAccount:         op.SourceAccount().Address(),
 		LedgerCloseTime:       time.Unix(int64(op.LedgerHeader.ScpValue.CloseTime), 0).UTC(),
@@ -23,6 +29,15 @@ func PopulateOperation(op *common.Operation) (operations.Operation, error) {
 		Type:                  operations.TypeNames[op.Get().Body.Type],
 		TypeI:                 int32(op.Get().Body.Type),
 	}
+
+	lb := hal.LinkBuilder{Base: r.URL}
+	self := fmt.Sprintf("/operations/%s", toid)
+	baseOp.Links.Self = lb.Link(self)
+	baseOp.Links.Succeeds = lb.Linkf("/effects?order=desc&cursor=%s", baseOp.PT)
+	baseOp.Links.Precedes = lb.Linkf("/effects?order=asc&cursor=%s", baseOp.PT)
+	baseOp.Links.Transaction = lb.Linkf("/transactions/%s", hash)
+	baseOp.Links.Effects = lb.Link(self, "effects")
+
 	switch op.Get().Body.Type {
 	case xdr.OperationTypeCreateAccount:
 		return populateCreateAccountOperation(op, baseOp)
@@ -73,6 +88,6 @@ func PopulateOperation(op *common.Operation) (operations.Operation, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		return populateLiquidityPoolWithdrawOperation(op, baseOp)
 	default:
-		return nil, fmt.Errorf("Unknown operation type: %s", op.Get().Body.Type)
+		return nil, fmt.Errorf("unknown operation type: %s", op.Get().Body.Type)
 	}
 }

@@ -91,7 +91,8 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 						TransactionEnvelope: &tx.Envelope,
 						TransactionResult:   &tx.Result.Result,
 						LedgerHeader:        &ledger.Header.Header,
-						Index:               int32(operationOrder),
+						OpIndex:             int32(operationOrder),
+						TxIndex:             int32(transactionOrder),
 					})
 				}
 

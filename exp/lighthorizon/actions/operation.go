@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
 	"github.com/stellar/go/exp/lighthorizon/archive"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/toid"
 )
 
@@ -56,20 +57,36 @@ func Operations(archiveWrapper archive.Wrapper) func(http.ResponseWriter, *http.
 			return
 		}
 
+		// For _links rendering, imitate horizon.stellar.org links for horizon-cmp
+		r.URL.Scheme = "https"
+		r.URL.Host = "horizon.stellar.org"
+
+		page := hal.Page{
+			Cursor: query.Get("cursor"),
+			Order:  "asc",
+			Limit:  uint64(limit),
+		}
+		page.Init()
+
 		for _, op := range ops {
-			resp, err := adapters.PopulateOperation(&op)
+			response, err := adapters.PopulateOperation(r, &op)
 			if err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
 				return
 			}
 
-			encoder := json.NewEncoder(w)
-			encoder.SetIndent("", "    ")
-			err = encoder.Encode(resp)
-			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
-				return
-			}
+			page.Add(response)
+		}
+
+		page.FullURL = r.URL
+		page.PopulateLinks()
+
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		err = encoder.Encode(page)
+		if err != nil {
+			fmt.Fprintf(w, "Error: %v", err)
+			return
 		}
 	}
 }
