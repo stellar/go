@@ -49,53 +49,29 @@ func PopulateOperation(op *common.Operation) (operations.Operation, error) {
 	case xdr.OperationTypeInflation:
 		return populateInflationOperation(op, baseOp)
 	case xdr.OperationTypeManageData:
-		return operations.ManageData{
-			Base: baseOp,
-		}, nil
+		return populateManageDataOperation(op, baseOp)
 	case xdr.OperationTypeBumpSequence:
-		return operations.BumpSequence{
-			Base: baseOp,
-		}, nil
+		return populateBumpSequenceOperation(op, baseOp)
 	case xdr.OperationTypeCreateClaimableBalance:
-		return operations.CreateClaimableBalance{
-			Base: baseOp,
-		}, nil
+		return populateCreateClaimableBalanceOperation(op, baseOp)
 	case xdr.OperationTypeClaimClaimableBalance:
-		return operations.ClaimClaimableBalance{
-			Base: baseOp,
-		}, nil
+		return populateClaimClaimableBalanceOperation(op, baseOp)
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
-		return operations.BeginSponsoringFutureReserves{
-			Base: baseOp,
-		}, nil
+		return populateBeginSponsoringFutureReservesOperation(op, baseOp)
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		return operations.EndSponsoringFutureReserves{
-			Base: baseOp,
-		}, nil
+		return populateEndSponsoringFutureReservesOperation(op, baseOp)
 	case xdr.OperationTypeRevokeSponsorship:
-		return operations.RevokeSponsorship{
-			Base: baseOp,
-		}, nil
+		return populateRevokeSponsorshipOperation(op, baseOp)
 	case xdr.OperationTypeClawback:
-		return operations.Clawback{
-			Base: baseOp,
-		}, nil
+		return populateClawbackOperation(op, baseOp)
 	case xdr.OperationTypeClawbackClaimableBalance:
-		return operations.ClawbackClaimableBalance{
-			Base: baseOp,
-		}, nil
+		return populateClawbackClaimableBalanceOperation(op, baseOp)
 	case xdr.OperationTypeSetTrustLineFlags:
-		return operations.SetTrustLineFlags{
-			Base: baseOp,
-		}, nil
+		return populateSetTrustLineFlagsOperation(op, baseOp)
 	case xdr.OperationTypeLiquidityPoolDeposit:
-		return operations.LiquidityPoolDeposit{
-			Base: baseOp,
-		}, nil
+		return populateLiquidityPoolDepositOperation(op, baseOp)
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-		return operations.LiquidityPoolWithdraw{
-			Base: baseOp,
-		}, nil
+		return populateLiquidityPoolWithdrawOperation(op, baseOp)
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Get().Body.Type)
 	}
