@@ -24,6 +24,7 @@ func populatePaymentOperation(op *common.Operation, baseOp operations.Base) (ope
 	return operations.Payment{
 		Base: baseOp,
 		To:   payment.Destination.Address(),
+		From: op.SourceAccount().Address(),
 		Asset: base.Asset{
 			Type:   assetType,
 			Code:   code,

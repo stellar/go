@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
 	"github.com/stellar/go/exp/lighthorizon/archive"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/toid"
 )
@@ -58,8 +59,8 @@ func Operations(archiveWrapper archive.Wrapper) func(http.ResponseWriter, *http.
 		}
 
 		// For _links rendering, imitate horizon.stellar.org links for horizon-cmp
-		r.URL.Scheme = "https"
-		r.URL.Host = "horizon.stellar.org"
+		r.URL.Scheme = "http"
+		r.URL.Host = "localhost:8080"
 
 		page := hal.Page{
 			Cursor: query.Get("cursor"),
@@ -69,7 +70,8 @@ func Operations(archiveWrapper archive.Wrapper) func(http.ResponseWriter, *http.
 		page.Init()
 
 		for _, op := range ops {
-			response, err := adapters.PopulateOperation(r, &op)
+			var response operations.Operation
+			response, err = adapters.PopulateOperation(r, &op)
 			if err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
 				return
