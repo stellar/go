@@ -210,10 +210,6 @@ func makeFinalAsset(
 	t.LastChecked = now
 	t.AnchorAssetType = strings.ToLower(t.AnchorAssetType)
 
-	// TODO remove
-	// tSize := int(unsafe.Sizeof(*t))
-	// fmt.Println(tSize)
-
 	return
 }
 
