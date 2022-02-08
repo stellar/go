@@ -111,7 +111,7 @@ type OrderbookStats struct {
 }
 
 // ProcessAllAssets fetches assets from the Horizon public net. If limit = 0, will fetch all assets.
-func (c *ScraperConfig) ProcessAllAssets(limit int, parallelism int, assetQueue chan<- *FinalAsset) (numNonTrash int, numTrash int) {
+func (c *ScraperConfig) ProcessAllAssets(limit int, parallelism int, assetQueue chan<- FinalAsset) (numNonTrash int, numTrash int) {
 	dirtyAssets, err := c.retrieveAssets(limit)
 	if err != nil {
 		return

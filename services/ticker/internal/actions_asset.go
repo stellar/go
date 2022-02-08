@@ -22,10 +22,10 @@ func RefreshAssets(ctx context.Context, s *tickerdb.TickerSession, c *horizoncli
 	}
 	var wg sync.WaitGroup
 	parallelism := 20
-	assetQueue := make(chan *scraper.FinalAsset, parallelism)
+	assetQueue := make(chan scraper.FinalAsset, parallelism)
 
 	go sc.ProcessAllAssets(0, parallelism, assetQueue)
-	
+
 	wg.Add(1)
 	go func() {
 		count := 0
@@ -41,7 +41,7 @@ func RefreshAssets(ctx context.Context, s *tickerdb.TickerSession, c *horizoncli
 				continue
 			}
 
-			dbAsset := finalAssetToDBAsset(*finalAsset, issuerID)
+			dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
 			err = s.InsertOrUpdateAsset(ctx, &dbAsset, []string{"code", "issuer_account", "issuer_id"})
 			if err != nil {
 				l.Error("Error inserting asset:", dbAsset, err)
