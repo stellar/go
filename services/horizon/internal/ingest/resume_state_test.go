@@ -311,6 +311,9 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 		int32(101),
 	).Return(errors.New("my error")).Once()
 
+	// Skips state verification but ensures maybeVerifyState called
+	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(true, nil).Once()
+
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 99}.run(s.system)
 	s.Assert().NoError(err)
 	s.Assert().Equal(
