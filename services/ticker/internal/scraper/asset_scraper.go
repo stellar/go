@@ -240,7 +240,7 @@ func processAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) (*FinalAss
 // parallelProcessAssets filters the assets that don't match the shouldDiscardAsset criteria.
 // non-trash assets are sent to the assetQueue.
 // The TOML validation is performed in parallel to improve performance.
-func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int, assetQueue chan *FinalAsset) (numNonTrash int, numTrash int) {
+func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int, assetQueue chan<- *FinalAsset) (numNonTrash int, numTrash int) {
 	shouldValidateTOML := c.Client != horizonclient.DefaultTestNetClient // TOMLs shouldn't be validated on TestNet
 	var mutex = &sync.Mutex{}
 	var wg sync.WaitGroup
