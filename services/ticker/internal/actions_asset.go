@@ -25,8 +25,8 @@ func RefreshAssets(ctx context.Context, s *tickerdb.TickerSession, c *horizoncli
 	assetQueue := make(chan *scraper.FinalAsset, parallelism)
 
 	go sc.ProcessAllAssets(0, parallelism, assetQueue)
+	
 	wg.Add(1)
-
 	go func() {
 		count := 0
 		defer wg.Done()
