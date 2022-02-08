@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	horizonclient "github.com/stellar/go/clients/horizonclient"
@@ -19,29 +20,38 @@ func RefreshAssets(ctx context.Context, s *tickerdb.TickerSession, c *horizoncli
 		Client: c,
 		Logger: l,
 	}
-	finalAssetList, err := sc.FetchAllAssets(0, 10)
-	if err != nil {
-		return
-	}
+	var wg sync.WaitGroup
+	parallelism := 20
+	assetQueue := make(chan scraper.FinalAsset, parallelism)
 
-	for _, finalAsset := range finalAssetList {
-		dbIssuer := tomlIssuerToDBIssuer(finalAsset.IssuerDetails)
-		if dbIssuer.PublicKey == "" {
-			dbIssuer.PublicKey = finalAsset.Issuer
-		}
-		issuerID, err := s.InsertOrUpdateIssuer(ctx, &dbIssuer, []string{"public_key"})
-		if err != nil {
-			l.Error("Error inserting issuer:", dbIssuer, err)
-			continue
-		}
+	go sc.ProcessAllAssets(0, parallelism, assetQueue)
 
-		dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
-		err = s.InsertOrUpdateAsset(ctx, &dbAsset, []string{"code", "issuer_account", "issuer_id"})
-		if err != nil {
-			l.Error("Error inserting asset:", dbAsset, err)
-		}
-	}
+	wg.Add(1)
+	go func() {
+		count := 0
+		defer wg.Done()
+		for finalAsset := range assetQueue {
+			dbIssuer := tomlIssuerToDBIssuer(finalAsset.IssuerDetails)
+			if dbIssuer.PublicKey == "" {
+				dbIssuer.PublicKey = finalAsset.Issuer
+			}
+			issuerID, err := s.InsertOrUpdateIssuer(ctx, &dbIssuer, []string{"public_key"})
+			if err != nil {
+				l.Error("Error inserting issuer:", dbIssuer, err)
+				continue
+			}
 
+			dbAsset := finalAssetToDBAsset(finalAsset, issuerID)
+			err = s.InsertOrUpdateAsset(ctx, &dbAsset, []string{"code", "issuer_account", "issuer_id"})
+			if err != nil {
+				l.Error("Error inserting asset:", dbAsset, err)
+				continue
+			}
+			count += 1
+			l.Debugf("Assets added -- count: %d - issuer: %d, asset: %s", count, issuerID, dbAsset.Code)
+		}
+	}()
+	wg.Wait()
 	return
 }
 
