@@ -234,23 +234,23 @@ func processAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) (FinalAsse
 }
 
 // parallelProcessAssets filters the assets that don't match the shouldDiscardAsset criteria.
+// non-trash assets are sent to the assetQueue.
 // The TOML validation is performed in parallel to improve performance.
-func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int) (cleanAssets []FinalAsset, numTrash int) {
-	queue := make(chan FinalAsset, parallelism)
+func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, parallelism int, assetQueue chan<- FinalAsset) (numNonTrash int, numTrash int) {
 	shouldValidateTOML := c.Client != horizonclient.DefaultTestNetClient // TOMLs shouldn't be validated on TestNet
-
 	var mutex = &sync.Mutex{}
 	var wg sync.WaitGroup
 	numAssets := len(assets)
 	chunkSize := int(math.Ceil(float64(numAssets) / float64(parallelism)))
-	wg.Add(numAssets)
+	wg.Add(parallelism)
 
 	// The assets are divided into chunks of chunkSize, and each goroutine is responsible
 	// for cleaning up one chunk
 	for i := 0; i < parallelism; i++ {
 		go func(start int) {
-			end := start + chunkSize
+			defer wg.Done()
 
+			end := start + chunkSize
 			if end > numAssets {
 				end = numAssets
 			}
@@ -262,42 +262,22 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 						mutex.Lock()
 						numTrash++
 						mutex.Unlock()
-						// Invalid assets are also sent to the queue to preserve
-						// the WaitGroup count
-						queue <- FinalAsset{IsTrash: true}
 						continue
 					}
-					queue <- finalAsset
+					assetQueue <- finalAsset
 				} else {
 					mutex.Lock()
 					numTrash++
 					mutex.Unlock()
-					// Discarded assets are also sent to the queue to preserve
-					// the WaitGroup count
-					queue <- FinalAsset{IsTrash: true}
 				}
 			}
 		}(i * chunkSize)
 	}
 
-	// Whenever a new asset is sent to the channel, it is appended to the cleanAssets
-	// slice. This does not preserve the original order, but shouldn't be an issue
-	// in this case.
-	go func() {
-		count := 0
-		for t := range queue {
-			count++
-			if !t.IsTrash {
-				cleanAssets = append(cleanAssets, t)
-			}
-			c.Logger.Debug("Total assets processed:", count)
-			wg.Done()
-		}
-	}()
-
 	wg.Wait()
-	close(queue)
+	close(assetQueue)
 
+	numNonTrash = len(assets) - numTrash
 	return
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/toid"
 )
 
 func TestEffectsForLiquidityPool(t *testing.T) {
