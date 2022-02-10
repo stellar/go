@@ -474,7 +474,6 @@ func (i *Test) StopHorizon() {
 		return
 	}
 
-	i.app.CloseDB()
 	i.app.Close()
 
 	// Wait for Horizon to shut down completely.
