@@ -301,6 +301,18 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 		}
 	}
 
+	// Rollback REPEATABLE READ transaction so that a DB connection is released
+	// to be used by other http requests.
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not obtain historyQ from request")
+	}
+
+	err = historyQ.Rollback()
+	if err != nil {
+		return nil, errors.Wrap(err, "error in rollback")
+	}
+
 	sourceAsset := qp.SourceAsset()
 	amountToSpend := qp.Amount()
 
