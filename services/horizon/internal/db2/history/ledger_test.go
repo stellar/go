@@ -60,7 +60,11 @@ func TestInsertLedger(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	// TODO: Check the ledger doesn't exist in the db
+	var ledgerFromDB Ledger
+	var ledgerHeaderBase64 string
+	var err error
+	err = q.LedgerBySequence(tt.Ctx, &ledgerFromDB, 69859)
+	tt.Assert.Error(err)
 
 	expectedLedger := Ledger{
 		Sequence:                   69859,
@@ -111,7 +115,7 @@ func TestInsertLedger(t *testing.T) {
 			},
 		},
 	}
-	ledgerHeaderBase64, err := xdr.MarshalBase64(ledgerEntry.Header)
+	ledgerHeaderBase64, err = xdr.MarshalBase64(ledgerEntry.Header)
 	tt.Assert.NoError(err)
 	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
 
@@ -126,7 +130,6 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(rowsAffected, int64(1))
 
-	var ledgerFromDB Ledger
 	err = q.LedgerBySequence(tt.Ctx, &ledgerFromDB, 69859)
 	tt.Assert.NoError(err)
 
@@ -141,8 +144,6 @@ func TestInsertLedger(t *testing.T) {
 	expectedLedger.ClosedAt = ledgerFromDB.ClosedAt
 
 	tt.Assert.Equal(expectedLedger, ledgerFromDB)
-
-	// TODO: Check the ledger does exist in the db
 }
 
 func insertLedgerWithSequence(tt *test.T, q *Q, seq uint32) {
