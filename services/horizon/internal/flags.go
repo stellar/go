@@ -177,7 +177,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Required:    false,
-			Usage: `causes Horizon ingestion when enabled for captive core ingestion to instruct the 
+			Usage: `when enabled, Horizon ingestion will instruct the captive
 			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
 						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
 						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
