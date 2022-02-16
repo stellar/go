@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	defaultDatabase      = "sqlite3://stellar.db"
 	defaultHTTPPort      = 11626
 	defaultFailureSafety = -1
 
@@ -30,6 +29,8 @@ var validQuality = map[string]bool{
 	"MEDIUM":   true,
 	"LOW":      true,
 }
+
+var sqliteUrlRegEx = regexp.MustCompile(`^sqlite3://\S+`)
 
 // Validator represents a [[VALIDATORS]] entry in the captive core toml file.
 type Validator struct {
@@ -406,11 +407,21 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
-func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
-	if !c.tree.Has("DATABASE") {
-		c.Database = defaultDatabase
+func (c *CaptiveCoreToml) ExternalLedgerStorageToml(fullStoragePath string) (*CaptiveCoreToml, error) {
+	newToml, err := c.clone()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not clone toml")
 	}
 
+	if len(newToml.Database) == 0 {
+		newToml.Database = fmt.Sprintf("sqlite3://%v/stellar.db", fullStoragePath)
+	} else if !sqliteUrlRegEx.MatchString(newToml.Database) {
+		return nil, errors.Errorf("Invalid DATABASE parameter for captive core config, must be valid sqlite3 db url")
+	}
+	return newToml, nil
+}
+
+func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
 		c.NetworkPassphrase = params.NetworkPassphrase
 	}

@@ -104,15 +104,16 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:      config.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
-			CaptiveCoreBinaryPath:  config.CaptiveCoreBinaryPath,
-			RemoteCaptiveCoreURL:   config.RemoteCaptiveCoreURL,
-			CheckpointFrequency:    config.CheckpointFrequency,
-			CaptiveCoreToml:        config.CaptiveCoreToml,
-			CaptiveCoreStoragePath: config.CaptiveCoreStoragePath,
+			NetworkPassphrase:                         config.NetworkPassphrase,
+			HistorySession:                            horizonSession,
+			HistoryArchiveURL:                         config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:                         config.EnableCaptiveCoreIngestion,
+			CaptiveCoreBinaryPath:                     config.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseExternalStorageLedger: config.CaptiveCoreConfigUseExternalStorageLedger,
+			RemoteCaptiveCoreURL:                      config.RemoteCaptiveCoreURL,
+			CheckpointFrequency:                       config.CheckpointFrequency,
+			CaptiveCoreToml:                           config.CaptiveCoreToml,
+			CaptiveCoreStoragePath:                    config.CaptiveCoreStoragePath,
 		}
 
 		if !ingestConfig.EnableCaptiveCore {
@@ -206,6 +207,7 @@ var ingestStressTestCmd = &cobra.Command{
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
+			ingestConfig.CaptiveCoreConfigUseExternalStorageLedger = config.CaptiveCoreConfigUseExternalStorageLedger
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
@@ -295,6 +297,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
+			ingestConfig.CaptiveCoreConfigUseExternalStorageLedger = config.CaptiveCoreConfigUseExternalStorageLedger
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)

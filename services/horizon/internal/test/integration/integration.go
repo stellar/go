@@ -41,7 +41,8 @@ const (
 )
 
 var (
-	RunWithCaptiveCore = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCore              = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCoreRemoteStorage = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_REMOTE_STORAGE") != ""
 )
 
 type Config struct {
@@ -68,8 +69,9 @@ type Config struct {
 }
 
 type CaptiveConfig struct {
-	binaryPath string
-	configPath string
+	binaryPath       string
+	configPath       string
+	useRemoteStorage bool
 }
 
 type Test struct {
@@ -153,6 +155,9 @@ func (i *Test) configureCaptiveCore() {
 		composePath := findDockerComposePath()
 		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+		if RunWithCaptiveCoreRemoteStorage {
+			i.coreConfig.useRemoteStorage = true
+		}
 	}
 
 	if value := i.getParameter(
@@ -294,6 +299,7 @@ func (i *Test) StartHorizon() error {
 	hostname := "localhost"
 	coreBinaryPath := i.coreConfig.binaryPath
 	captiveCoreConfigPath := i.coreConfig.configPath
+	captiveCoreUseRemoteStorage := strconv.FormatBool(i.coreConfig.useRemoteStorage)
 
 	defaultArgs := map[string]string{
 		"stellar-core-url": i.coreClient.URL,
@@ -303,17 +309,18 @@ func (i *Test) StartHorizon() error {
 			hostname,
 			stellarCorePostgresPort,
 		),
-		"stellar-core-binary-path":      coreBinaryPath,
-		"captive-core-config-path":      captiveCoreConfigPath,
-		"captive-core-http-port":        "21626",
-		"enable-captive-core-ingestion": strconv.FormatBool(len(coreBinaryPath) > 0),
-		"ingest":                        "true",
-		"history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
-		"db-url":                        horizonPostgresURL,
-		"network-passphrase":            i.passPhrase,
-		"apply-migrations":              "true",
-		"admin-port":                    strconv.Itoa(i.AdminPort()),
-		"port":                          "8000",
+		"stellar-core-binary-path":          coreBinaryPath,
+		"captive-core-config-path":          captiveCoreConfigPath,
+		"captive-core-http-port":            "21626",
+		"captive-core-use-external-storage": captiveCoreUseRemoteStorage,
+		"enable-captive-core-ingestion":     strconv.FormatBool(len(coreBinaryPath) > 0),
+		"ingest":                            "true",
+		"history-archive-urls":              fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
+		"db-url":                            horizonPostgresURL,
+		"network-passphrase":                i.passPhrase,
+		"apply-migrations":                  "true",
+		"admin-port":                        strconv.Itoa(i.AdminPort()),
+		"port":                              "8000",
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"checkpoint-frequency": "8",
 		"per-hour-rate-limit":  "0", // disable rate limiting

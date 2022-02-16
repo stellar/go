@@ -383,19 +383,20 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	}
 
 	ingestConfig := ingest.Config{
-		NetworkPassphrase:           config.NetworkPassphrase,
-		HistorySession:              horizonSession,
-		HistoryArchiveURL:           config.HistoryArchiveURLs[0],
-		CheckpointFrequency:         config.CheckpointFrequency,
-		MaxReingestRetries:          int(retries),
-		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
-		EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
-		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
-		RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
-		CaptiveCoreToml:             config.CaptiveCoreToml,
-		CaptiveCoreStoragePath:      config.CaptiveCoreStoragePath,
-		StellarCoreCursor:           config.CursorName,
-		StellarCoreURL:              config.StellarCoreURL,
+		NetworkPassphrase:                         config.NetworkPassphrase,
+		HistorySession:                            horizonSession,
+		HistoryArchiveURL:                         config.HistoryArchiveURLs[0],
+		CheckpointFrequency:                       config.CheckpointFrequency,
+		MaxReingestRetries:                        int(retries),
+		ReingestRetryBackoffSeconds:               int(retryBackoffSeconds),
+		EnableCaptiveCore:                         config.EnableCaptiveCoreIngestion,
+		CaptiveCoreBinaryPath:                     config.CaptiveCoreBinaryPath,
+		CaptiveCoreConfigUseExternalStorageLedger: config.CaptiveCoreConfigUseExternalStorageLedger,
+		RemoteCaptiveCoreURL:                      config.RemoteCaptiveCoreURL,
+		CaptiveCoreToml:                           config.CaptiveCoreToml,
+		CaptiveCoreStoragePath:                    config.CaptiveCoreStoragePath,
+		StellarCoreCursor:                         config.CursorName,
+		StellarCoreURL:                            config.StellarCoreURL,
 	}
 
 	if !ingestConfig.EnableCaptiveCore {
