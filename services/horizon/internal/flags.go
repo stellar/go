@@ -36,6 +36,8 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
+	// captive-core-use-external-storage is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	CaptiveCoreConfigUseExternalStorageLedger = "captive-core-use-external-storage"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
@@ -169,6 +171,18 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
+		},
+		&support.ConfigOption{
+			Name:        CaptiveCoreConfigUseExternalStorageLedger,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage: `when enabled, Horizon ingestion will instruct the captive
+			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
+						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
+						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
+						  or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
+			ConfigKey: &config.CaptiveCoreConfigUseExternalStorageLedger,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",

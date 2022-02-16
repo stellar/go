@@ -80,8 +80,9 @@ type Config struct {
 	HistorySession    db.SessionInterface
 	HistoryArchiveURL string
 
-	DisableStateVerification     bool
-	EnableExtendedLogLedgerStats bool
+	DisableStateVerification                  bool
+	EnableExtendedLogLedgerStats              bool
+	CaptiveCoreConfigUseExternalStorageLedger bool
 
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
@@ -222,14 +223,15 @@ func NewSystem(config Config) (System, error) {
 			logger := log.WithField("subservice", "stellar-core")
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
-					BinaryPath:          config.CaptiveCoreBinaryPath,
-					StoragePath:         config.CaptiveCoreStoragePath,
-					Toml:                config.CaptiveCoreToml,
-					NetworkPassphrase:   config.NetworkPassphrase,
-					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
-					CheckpointFrequency: config.CheckpointFrequency,
-					Log:                 logger,
-					Context:             ctx,
+					BinaryPath:               config.CaptiveCoreBinaryPath,
+					StoragePath:              config.CaptiveCoreStoragePath,
+					UseExternalStorageLedger: config.CaptiveCoreConfigUseExternalStorageLedger,
+					Toml:                     config.CaptiveCoreToml,
+					NetworkPassphrase:        config.NetworkPassphrase,
+					HistoryArchiveURLs:       []string{config.HistoryArchiveURL},
+					CheckpointFrequency:      config.CheckpointFrequency,
+					Log:                      logger,
+					Context:                  ctx,
 				},
 			)
 			if err != nil {

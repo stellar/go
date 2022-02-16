@@ -89,17 +89,18 @@ func initIngester(app *App) {
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
-		HistoryArchiveURL:            app.config.HistoryArchiveURLs[0],
-		CheckpointFrequency:          app.config.CheckpointFrequency,
-		StellarCoreURL:               app.config.StellarCoreURL,
-		StellarCoreCursor:            app.config.CursorName,
-		CaptiveCoreBinaryPath:        app.config.CaptiveCoreBinaryPath,
-		CaptiveCoreStoragePath:       app.config.CaptiveCoreStoragePath,
-		CaptiveCoreToml:              app.config.CaptiveCoreToml,
-		RemoteCaptiveCoreURL:         app.config.RemoteCaptiveCoreURL,
-		EnableCaptiveCore:            app.config.EnableCaptiveCoreIngestion,
-		DisableStateVerification:     app.config.IngestDisableStateVerification,
-		EnableExtendedLogLedgerStats: app.config.IngestEnableExtendedLogLedgerStats,
+		HistoryArchiveURL:                         app.config.HistoryArchiveURLs[0],
+		CheckpointFrequency:                       app.config.CheckpointFrequency,
+		StellarCoreURL:                            app.config.StellarCoreURL,
+		StellarCoreCursor:                         app.config.CursorName,
+		CaptiveCoreBinaryPath:                     app.config.CaptiveCoreBinaryPath,
+		CaptiveCoreStoragePath:                    app.config.CaptiveCoreStoragePath,
+		CaptiveCoreConfigUseExternalStorageLedger: app.config.CaptiveCoreConfigUseExternalStorageLedger,
+		CaptiveCoreToml:                           app.config.CaptiveCoreToml,
+		RemoteCaptiveCoreURL:                      app.config.RemoteCaptiveCoreURL,
+		EnableCaptiveCore:                         app.config.EnableCaptiveCoreIngestion,
+		DisableStateVerification:                  app.config.IngestDisableStateVerification,
+		EnableExtendedLogLedgerStats:              app.config.IngestEnableExtendedLogLedgerStats,
 	})
 
 	if err != nil {

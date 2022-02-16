@@ -23,7 +23,7 @@ import (
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
-	runFrom(from uint32) error
+	runFrom(from uint32, hash string) error
 	getMetaPipe() <-chan metaResult
 	context() context.Context
 	getProcessExitError() (bool, error)
@@ -65,8 +65,9 @@ type stellarCoreRunner struct {
 	processExited    bool
 	processExitError error
 
-	storagePath string
-	nonce       string
+	storagePath              string
+	useExternalStorageLedger bool
+	nonce                    string
 
 	log *log.Entry
 }
@@ -118,11 +119,12 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
-		executablePath: config.BinaryPath,
-		ctx:            ctx,
-		cancel:         cancel,
-		storagePath:    fullStoragePath,
-		mode:           mode,
+		executablePath:           config.BinaryPath,
+		ctx:                      ctx,
+		cancel:                   cancel,
+		storagePath:              fullStoragePath,
+		useExternalStorageLedger: config.UseExternalStorageLedger,
+		mode:                     mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -130,7 +132,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		log: config.Log,
 	}
 
-	if conf, err := writeConf(config.Toml, mode, runner.getConfFileName()); err != nil {
+	if conf, err := writeConf(config.Toml, mode, config, fullStoragePath, runner.getConfFileName()); err != nil {
 		return nil, errors.Wrap(err, "error writing configuration")
 	} else {
 		runner.log.Debugf("captive core config file contents:\n%s", conf)
@@ -139,8 +141,8 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	return runner, nil
 }
 
-func writeConf(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode, location string) (string, error) {
-	text, err := generateConfig(captiveCoreToml, mode)
+func writeConf(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode, config CaptiveCoreConfig, fullStoragePath string, location string) (string, error) {
+	text, err := generateConfig(captiveCoreToml, mode, config, fullStoragePath)
 	if err != nil {
 		return "", err
 	}
@@ -148,9 +150,9 @@ func writeConf(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode, loc
 	return string(text), ioutil.WriteFile(location, text, 0644)
 }
 
-func generateConfig(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode) ([]byte, error) {
+func generateConfig(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode, config CaptiveCoreConfig, fullStoragePath string) ([]byte, error) {
+	var err error
 	if mode == stellarCoreRunnerModeOffline {
-		var err error
 		captiveCoreToml, err = captiveCoreToml.CatchupToml()
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate catch up config")
@@ -159,6 +161,12 @@ func generateConfig(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode
 
 	if !captiveCoreToml.QuorumSetIsConfigured() {
 		return nil, errors.New("captive-core config file does not define any quorum set")
+	}
+
+	if config.UseExternalStorageLedger {
+		if captiveCoreToml, err = captiveCoreToml.ExternalLedgerStorageToml(fullStoragePath); err != nil {
+			return nil, errors.Wrap(err, "could not generate catch up config")
+		}
 	}
 
 	text, err := captiveCoreToml.Marshal()
@@ -260,14 +268,25 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 		return errors.New("runner already started")
 	}
 
-	if err := r.createCmd("new-db").Run(); err != nil {
-		return errors.Wrap(err, "error initializing core db")
+	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
+	inMemory := "--in-memory"
+
+	// horizon operator has specified to use external storage for captive core ledger state
+	// instruct captive core invocation to not use memory, and in that case
+	// cc will look at DATABASE property in cfg toml for the external storage source to use.
+	// when using external storage of ledgers, use new-db to first set the state of
+	// remote db storage to genesis to purge any prior state and reset.
+	if r.useExternalStorageLedger {
+		if err := r.createCmd("new-db").Run(); err != nil {
+			return errors.Wrap(err, "error initializing core db")
+		}
+		inMemory = ""
 	}
 
-	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
 	r.cmd = r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
+		inMemory,
 	)
 
 	var err error
@@ -294,7 +313,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 }
 
 // runFrom executes the run command with a starting ledger on the captive core subprocess
-func (r *stellarCoreRunner) runFrom(from uint32) error {
+func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -307,28 +326,37 @@ func (r *stellarCoreRunner) runFrom(from uint32) error {
 		return errors.New("runner already started")
 	}
 
-	if err := r.createCmd("new-db").Run(); err != nil {
-		return errors.Wrap(err, "error initializing core db")
-	}
-
-	// Do a quick catch-up to set the LCL in core to be our expected starting
-	// point.
-	//
-	if from > 2 {
-		// Can't catch up to the genesis ledger.
-		if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
-			return errors.Wrap(err, "error runing stellar-core catchup")
+	if r.useExternalStorageLedger {
+		if err := r.createCmd("new-db").Run(); err != nil {
+			return errors.Wrap(err, "error initializing core db")
 		}
+		// Do a quick catch-up to set the LCL in core to be our expected starting
+		// point.
+		//
+		if from > 2 {
+			// Can't catch up to the genesis ledger.
+			if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
+				return errors.Wrap(err, "error runing stellar-core catchup")
+			}
+		} else {
+			if err := r.createCmd("catchup", "2/0").Run(); err != nil {
+				return errors.Wrap(err, "error runing stellar-core catchup")
+			}
+		}
+		r.cmd = r.createCmd(
+			"run",
+			"--metadata-output-stream",
+			r.getPipeName(),
+		)
 	} else {
-		if err := r.createCmd("catchup", "2/0").Run(); err != nil {
-			return errors.Wrap(err, "error runing stellar-core catchup")
-		}
+		r.cmd = r.createCmd(
+			"run",
+			"--in-memory",
+			"--start-at-ledger", fmt.Sprintf("%d", from),
+			"--start-at-hash", hash,
+			"--metadata-output-stream", r.getPipeName(),
+		)
 	}
-
-	r.cmd = r.createCmd(
-		"run",
-		"--metadata-output-stream", r.getPipeName(),
-	)
 
 	var err error
 	r.pipe, err = r.start(r.cmd)
