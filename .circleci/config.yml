@@ -430,6 +430,9 @@ jobs:
       enable-captive-core:
         type: boolean
         default: false
+      enable-captive-core-remote-storage:
+        type: boolean
+        default: false  
     working_directory: ~/go/src/github.com/stellar/go
     machine:
       image: ubuntu-2004:202010-01
