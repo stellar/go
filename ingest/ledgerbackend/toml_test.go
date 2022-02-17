@@ -187,6 +187,15 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			expectedError:     "could not unmarshal captive core toml: these fields are not supported by captive core: [\"CATCHUP_RECENT\"]",
 		},
 		{
+			name:              "database field was invalid for captive core",
+			networkPassphrase: "Public Global Stellar Network ; September 2015",
+			appendPath:        filepath.Join("testdata", "invalid-captive-core-database-field.cfg"),
+			httpPort:          nil,
+			peerPort:          nil,
+			logPath:           nil,
+			expectedError:     `invalid captive core toml: invalid DATABASE parameter: postgres://mydb, for captive core config, must be valid sqlite3 db url`,
+		},
+		{
 			name:          "unexpected BUCKET_DIR_PATH",
 			appendPath:    filepath.Join("testdata", "appendix-with-bucket-dir-path.cfg"),
 			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances",
@@ -308,7 +317,7 @@ func TestGenerateConfig(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			configBytes, err := generateConfig(captiveCoreToml, testCase.mode, CaptiveCoreConfig{}, "")
+			configBytes, err := generateConfig(captiveCoreToml, testCase.mode, CaptiveCoreConfig{})
 			assert.NoError(t, err)
 
 			expectedByte, err := ioutil.ReadFile(testCase.expectedPath)
@@ -340,8 +349,8 @@ func TestExternalStorageConfigUsesDatabaseToml(t *testing.T) {
 	captiveCoreToml.Database = "sqlite3:///etc/defaults/stellar.db"
 
 	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline, CaptiveCoreConfig{
-		UseExternalStorageLedger: true,
-	}, "storagepath")
+		UseDB: true,
+	})
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
@@ -369,38 +378,11 @@ func TestExternalStorageConfigDefaultsToSqlite(t *testing.T) {
 	assert.NoError(t, err)
 
 	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline, CaptiveCoreConfig{
-		UseExternalStorageLedger: true,
-	}, "storagepath")
+		UseDB: true,
+	})
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
 	toml.unmarshal(configBytes, true)
-	assert.Equal(t, toml.Database, "sqlite3://storagepath/stellar.db")
-}
-
-func TestExternalStorageConfigRejectsNonSqliteDatabaseToml(t *testing.T) {
-	var err error
-	var captiveCoreToml *CaptiveCoreToml
-	httpPort := uint(8000)
-	peerPort := uint(8000)
-	logPath := "logPath"
-
-	params := CaptiveCoreTomlParams{
-		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
-		HistoryArchiveURLs: []string{"http://localhost:1170"},
-		HTTPPort:           &httpPort,
-		PeerPort:           &peerPort,
-		LogPath:            &logPath,
-		Strict:             false,
-	}
-
-	captiveCoreToml, err = NewCaptiveCoreToml(params)
-	assert.NoError(t, err)
-	captiveCoreToml.Database = "baddb://whatever/stellar.db"
-
-	_, err = generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline, CaptiveCoreConfig{
-		UseExternalStorageLedger: true,
-	}, "storagepath")
-
-	assert.Error(t, err)
+	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
 }

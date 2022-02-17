@@ -129,7 +129,7 @@ type CaptiveCoreConfig struct {
 	// for ledger states rather than in memory(RAM). The external db url is determined by the presence
 	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
 	// and the db file will be stored at location derived from StoragePath parameter.
-	UseExternalStorageLedger bool
+	UseDB bool
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -285,16 +285,12 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
 
-	var runFrom uint32
-	var ledgerHash string
-	var err error
-
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+		err := errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
 		return 0, "", err
 	}
 
@@ -307,10 +303,10 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		from = 3
 	}
 
-	runFrom = from - 1
+	runFrom := from - 1
 	if c.ledgerHashStore != nil {
 		var exists bool
-		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
+		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
 		if err != nil {
 			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
 			return 0, "", err
@@ -320,12 +316,11 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		}
 	}
 
-	ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
-	if err2 != nil {
-		err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
-		return 0, "", err
+	ledgerHeader, err := c.archive.GetLedgerHeader(from)
+	if err != nil {
+		return 0, "", errors.Wrapf(err, "error trying to read ledger header %d from HAS", from)
 	}
-	ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
+	ledgerHash := hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
 	return runFrom, ledgerHash, nil
 }
 

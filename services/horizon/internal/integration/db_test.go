@@ -240,8 +240,8 @@ func command(horizonConfig horizon.Config, args ...string) []string {
 		horizonConfig.CaptiveCoreBinaryPath,
 		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
-		"--captive-core-use-external-storage=" +
-			strconv.FormatBool(horizonConfig.CaptiveCoreConfigUseExternalStorageLedger),
+		"--captive-core-use-db=" +
+			strconv.FormatBool(horizonConfig.CaptiveCoreConfigUseDB),
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(horizonConfig.EnableCaptiveCoreIngestion),
 		"--network-passphrase",
 		horizonConfig.NetworkPassphrase,
