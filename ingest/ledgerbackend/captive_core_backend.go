@@ -285,23 +285,12 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
 
-<<<<<<< HEAD
-=======
-	var runFrom uint32
-	var ledgerHash string
-	var err error
-
->>>>>>> upstream/4038/captive-core-sqlite
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-<<<<<<< HEAD
 		err := errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-=======
-		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
->>>>>>> upstream/4038/captive-core-sqlite
 		return 0, "", err
 	}
 
