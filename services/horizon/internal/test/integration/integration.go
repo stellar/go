@@ -41,7 +41,8 @@ const (
 )
 
 var (
-	RunWithCaptiveCore = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
@@ -70,6 +71,7 @@ type Config struct {
 type CaptiveConfig struct {
 	binaryPath string
 	configPath string
+	useDB      bool
 }
 
 type Test struct {
@@ -153,6 +155,9 @@ func (i *Test) configureCaptiveCore() {
 		composePath := findDockerComposePath()
 		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+		if RunWithCaptiveCoreUseDB {
+			i.coreConfig.useDB = true
+		}
 	}
 
 	if value := i.getParameter(
@@ -294,6 +299,7 @@ func (i *Test) StartHorizon() error {
 	hostname := "localhost"
 	coreBinaryPath := i.coreConfig.binaryPath
 	captiveCoreConfigPath := i.coreConfig.configPath
+	captiveCoreUseDB := strconv.FormatBool(i.coreConfig.useDB)
 
 	defaultArgs := map[string]string{
 		"stellar-core-url": i.coreClient.URL,
@@ -306,6 +312,7 @@ func (i *Test) StartHorizon() error {
 		"stellar-core-binary-path":      coreBinaryPath,
 		"captive-core-config-path":      captiveCoreConfigPath,
 		"captive-core-http-port":        "21626",
+		"captive-core-use-db":           captiveCoreUseDB,
 		"enable-captive-core-ingestion": strconv.FormatBool(len(coreBinaryPath) > 0),
 		"ingest":                        "true",
 		"history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
@@ -356,10 +363,6 @@ func (i *Test) StartHorizon() error {
 	i.horizonConfig = *config
 	i.horizonClient = &sdk.Client{
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
-	}
-
-	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
-		return errors.Wrap(err, "cannot build genesis state")
 	}
 
 	done := make(chan struct{})

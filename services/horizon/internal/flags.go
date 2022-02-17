@@ -36,6 +36,8 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
+	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	CaptiveCoreConfigUseDB = "captive-core-use-db"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
@@ -169,6 +171,25 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
+		},
+		&support.ConfigOption{
+			Name:        CaptiveCoreConfigUseDB,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage: `when enabled, Horizon ingestion will instruct the captive
+			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
+						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
+						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
+						  or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetBool(opt.Name); val {
+					config.CaptiveCoreConfigUseDB = val
+					config.CaptiveCoreTomlParams.UseDB = val
+				}
+				return nil
+			},
+			ConfigKey: &config.CaptiveCoreConfigUseDB,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
@@ -660,6 +681,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		}
 		if config.StellarCoreDatabaseURL != "" {
 			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+		}
+		if config.CaptiveCoreConfigUseDB {
+			return fmt.Errorf("Invalid config: --%s has been set, but --ingest not set. ", CaptiveCoreConfigUseDB)
 		}
 	}
 

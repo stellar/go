@@ -430,6 +430,9 @@ jobs:
       enable-captive-core:
         type: boolean
         default: false
+      enable-captive-core-remote-storage:
+        type: boolean
+        default: false  
     working_directory: ~/go/src/github.com/stellar/go
     machine:
       image: ubuntu-2004:202010-01
@@ -452,6 +455,12 @@ jobs:
             - run:
                 name: Setting Captive Core env variables
                 command: echo "export HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true" >> $BASH_ENV
+      - when:
+          condition: <<parameters.enable-captive-core-remote-storage>>
+          steps:
+            - run:
+                name: Setting Captive Core Remote Storage env variable
+                command: echo "export HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB=true" >> $BASH_ENV          
       - run:
           name: Run Horizon integration tests <<#parameters.enable-captive-core>>(With captive core)<</parameters.enable-captive-core>>
           # Currently all integration tests are in a single directory.
@@ -480,6 +489,10 @@ workflows:
       - test_horizon_integration:
           name: test_horizon_integration_with_captive_core
           enable-captive-core: true
+      - test_horizon_integration:
+          name: test_horizon_integration_with_captive_core_remote_storage
+          enable-captive-core: true   
+          enable-captive-core-remote-storage: true  
       - test_verify_range_docker_image:
           filters:
               # we use test_verify_range_docker_image with publish in master

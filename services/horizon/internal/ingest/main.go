@@ -74,6 +74,7 @@ type Config struct {
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
+	CaptiveCoreConfigUseDB bool
 	RemoteCaptiveCoreURL   string
 	NetworkPassphrase      string
 
@@ -224,11 +225,11 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
+					UseDB:               config.CaptiveCoreConfigUseDB,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                 logger,
 					Context:             ctx,
 				},
