@@ -125,7 +125,7 @@ type CaptiveCoreConfig struct {
 	// it up entirely on shutdown.
 	StoragePath string
 
-	// UseExternalStorageLedger, when true, instructs the core invocation to use an external db url
+	// UseDB, when true, instructs the core invocation to use an external db url
 	// for ledger states rather than in memory(RAM). The external db url is determined by the presence
 	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
 	// and the db file will be stored at location derived from StoragePath parameter.

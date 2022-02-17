@@ -313,6 +313,8 @@ type CaptiveCoreTomlParams struct {
 	LogPath *string
 	// Strict is a flag which, if enabled, rejects Stellar Core toml fields which are not supported by captive core.
 	Strict bool
+	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
+	UseDB bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -407,7 +409,7 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 
-	if !c.tree.Has("DATABASE") {
+	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
 

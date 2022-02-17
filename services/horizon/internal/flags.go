@@ -182,6 +182,13 @@ func Flags() (*Config, support.ConfigOptions) {
 						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
 						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
 						  or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetBool(opt.Name); val {
+					config.CaptiveCoreConfigUseDB = val
+					config.CaptiveCoreTomlParams.UseDB = val
+				}
+				return nil
+			},
 			ConfigKey: &config.CaptiveCoreConfigUseDB,
 		},
 		&support.ConfigOption{
@@ -674,6 +681,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		}
 		if config.StellarCoreDatabaseURL != "" {
 			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+		}
+		if config.CaptiveCoreConfigUseDB {
+			return fmt.Errorf("Invalid config: --%s has been set, but --ingest not set. ", CaptiveCoreConfigUseDB)
 		}
 	}
 
