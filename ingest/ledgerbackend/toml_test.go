@@ -225,6 +225,7 @@ func TestGenerateConfig(t *testing.T) {
 		httpPort     *uint
 		peerPort     *uint
 		logPath      *string
+		useDB        bool
 	}{
 		{
 			name:         "offline config with no appendix",
@@ -234,6 +235,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			useDB:        true,
 		},
 		{
 			name:         "offline config with no peer port",
@@ -309,6 +311,7 @@ func TestGenerateConfig(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             false,
+				UseDB:              testCase.useDB,
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
@@ -317,7 +320,7 @@ func TestGenerateConfig(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			configBytes, err := generateConfig(captiveCoreToml, testCase.mode, CaptiveCoreConfig{})
+			configBytes, err := generateConfig(captiveCoreToml, testCase.mode)
 			assert.NoError(t, err)
 
 			expectedByte, err := ioutil.ReadFile(testCase.expectedPath)
@@ -348,9 +351,7 @@ func TestExternalStorageConfigUsesDatabaseToml(t *testing.T) {
 	assert.NoError(t, err)
 	captiveCoreToml.Database = "sqlite3:///etc/defaults/stellar.db"
 
-	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline, CaptiveCoreConfig{
-		UseDB: true,
-	})
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
@@ -358,7 +359,7 @@ func TestExternalStorageConfigUsesDatabaseToml(t *testing.T) {
 	assert.Equal(t, toml.Database, "sqlite3:///etc/defaults/stellar.db")
 }
 
-func TestExternalStorageConfigDefaultsToSqlite(t *testing.T) {
+func TestDBConfigDefaultsToSqlite(t *testing.T) {
 	var err error
 	var captiveCoreToml *CaptiveCoreToml
 	httpPort := uint(8000)
@@ -372,17 +373,44 @@ func TestExternalStorageConfigDefaultsToSqlite(t *testing.T) {
 		PeerPort:           &peerPort,
 		LogPath:            &logPath,
 		Strict:             false,
+		UseDB:              true,
 	}
 
 	captiveCoreToml, err = NewCaptiveCoreToml(params)
 	assert.NoError(t, err)
 
-	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline, CaptiveCoreConfig{
-		UseDB: true,
-	})
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
 	toml.unmarshal(configBytes, true)
 	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
+}
+
+func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
+	var err error
+	var captiveCoreToml *CaptiveCoreToml
+	httpPort := uint(8000)
+	peerPort := uint(8000)
+	logPath := "logPath"
+
+	// UseDB not set, which means it's false
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		HTTPPort:           &httpPort,
+		PeerPort:           &peerPort,
+		LogPath:            &logPath,
+		Strict:             false,
+	}
+
+	captiveCoreToml, err = NewCaptiveCoreToml(params)
+	assert.NoError(t, err)
+
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
+
+	assert.NoError(t, err)
+	toml := CaptiveCoreToml{}
+	toml.unmarshal(configBytes, true)
+	assert.Equal(t, toml.Database, "")
 }
