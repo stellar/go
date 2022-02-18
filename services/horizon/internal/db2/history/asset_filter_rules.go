@@ -7,22 +7,23 @@ import (
 )
 
 const (
-	accountFilterWhitelistTableName  = "account_filter_whitelist"
-	accountFilterWhitelistColumnName = "account_id"
+	assetFilterRulesTableName  = "asset_filter_rules"
+	assetFilterRulesColumnName = "rules"
 )
 
 type QAccountFilterWhitelist interface {
-	GetAccountFilterWhitelist(ctx context.Context) ([]string, error)
-	SetAccountFilterWhitelist(ctx context.Context, accountIDs []string) error
+	GetAssetFilterWhitelist(ctx context.Context) ([]string, error)
+	GetAssetFilterRules(ctx context.Context) (string, error)
+	SetAssetFilterRules(ctx context.Context, filterRules string) error
 }
 
-// GetAccountFilterWhitelist loads all the entries from account_filter_whitelist
-// TODO: the mere existence of this function assumes that the filter's size is small enough for fully querying it into memory
-//       We may need to reconsider this if it's not the case.
-func (q *Q) GetAccountFilterWhitelist(ctx context.Context) ([]string, error) {
-	var accountIDs []string
-	sql := sq.Select(accountFilterWhitelistColumnName).From(accountFilterWhitelistTableName)
-	err := q.Select(ctx, &accountIDs, sql)
+func (q *Q) GetAssetFilterWhitelist(ctx context.Context) ([]string, error) {
+	var rules string
+	sql := sq.Select(assetFilterRulesColumnName).From(assetFilterRulesTableName)
+	err := q.Select(ctx, &rules, sql)
+    
+
+
 	return accountIDs, err
 }
 
