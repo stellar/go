@@ -316,6 +316,7 @@ func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("close").Return(fmt.Errorf("transient error"))
+	mockRunner.On("getProcessExitError").Return(false, nil)
 	mockRunner.On("context").Return(ctx)
 
 	captiveBackend := CaptiveStellarCore{
@@ -490,6 +491,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	mockRunner.On("runFrom", uint32(64), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -497,6 +499,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		Return(historyarchive.HistoryArchiveState{
 			CurrentLedger: uint32(129),
 		}, nil)
+
 	mockArchive.
 		On("GetLedgerHeader", uint32(65)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
@@ -585,6 +588,7 @@ func TestCaptiveGetLedger(t *testing.T) {
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -1288,6 +1292,7 @@ func TestCaptiveRunFromParams(t *testing.T) {
 func TestCaptiveIsPrepared(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("context").Return(context.Background()).Maybe()
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	// c.prepared == nil
 	captiveBackend := CaptiveStellarCore{
@@ -1351,6 +1356,7 @@ func TestCaptiveIsPreparedCoreContextCancelled(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner.On("context").Return(ctx).Maybe()
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	rang := UnboundedRange(100)
 	captiveBackend := CaptiveStellarCore{
@@ -1447,5 +1453,4 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 
 	mockRunner.AssertExpectations(t)
 	mockArchive.AssertExpectations(t)
-	mockLedgerHashStore.AssertExpectations(t)
 }
