@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -144,6 +145,28 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewTransactionProcessor(s.historyQ, sequence),
 		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
 		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
+	})
+}
+
+func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
+	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{
+		filters.NewAccountFilter(s.historyQ),
+		filters.NewAssetFilterFromParams(&filters.AssetFilterParms{
+			// TODO - move this hardcoded asset filter configuration into db persistence.
+			// this is example asset filter config by list of assets that were
+			// seen as recently most active in pubnet from a Hubble view.
+			Activated: false,
+			CanonicalAssetList: []string{
+				"USD:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+				"NGNT:GAWODAROMJ33V5YDFY3NPYTHVYQG7MJXVJ2ND3AOGIHYRWINES6ACCPD",
+				"BRL:GDVKY2GU2DRXWTBEYJJWSFXIGBZV6AZNBVVSUHEPZI54LIS6BA7DVVSP",
+				"SMX:GCDN3VGXZZRCKPG2UEUNR54QDVJRAYINMHBXIT4ZQUFCEQSFN2ZZFSMX",
+				"ARST:GCSAZVWXZKWS4XS223M5F54H2B6XPIIXZZGP7KEAIU6YSL5HDRGCI3DG",
+				"EURT:GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S",
+				"TZA:GA2MSSZKJOU6RNL3EJKH3S5TB5CDYTFQFWRYFGUJVIN5I6AOIRTLUHTO",
+				"KES:GA2MSSZKJOU6RNL3EJKH3S5TB5CDYTFQFWRYFGUJVIN5I6AOIRTLUHTO",
+				"USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+			}}),
 	})
 }
 
@@ -291,9 +314,10 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
+	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupTransactionProcessors := s.buildTransactionProcessor(
 		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
-	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionProcessors, transactionReader)
+	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionFilterers, groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
@@ -308,6 +332,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
 	tradeStats = tradeProcessor.GetStats()
+	// TODO: store filtering durations
 	return
 }
 
