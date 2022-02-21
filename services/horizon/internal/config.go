@@ -96,4 +96,6 @@ type Config struct {
 	// balances like ELB or ALB. In such case http.Request.RemoteAddr will be
 	// replaced with the last IP in X-Forwarded-For header.
 	BehindAWSLoadBalancer bool
+	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
+	RoundingSlippageFilter int
 }

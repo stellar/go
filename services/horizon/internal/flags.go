@@ -512,6 +512,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
 		},
+		&support.ConfigOption{
+			Name:        "rounding-slippage-filter",
+			ConfigKey:   &config.RoundingSlippageFilter,
+			OptType:     types.Int,
+			FlagDefault: 1000,
+			Required:    false,
+			Usage:       "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
+		},
 	}
 
 	return config, flags

@@ -273,7 +273,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",
@@ -365,7 +365,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	).Return(errors.New("my error")).Once()
 
 	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
