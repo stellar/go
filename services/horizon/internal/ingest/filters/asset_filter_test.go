@@ -22,12 +22,12 @@ func TestFilterHasMatch(t *testing.T) {
 			            "USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
 					]	 
 				}`,
-		Enabled: true,
+		Enabled:      true,
 		LastModified: 1,
-		Name: history.FilterAssetFilterName,
+		Name:         history.FilterAssetFilterName,
 	}
 	filter, err := GetAssetFilter(filterConfig)
-    tt.NoError(err)   
+	tt.NoError(err)
 
 	var xdrAssetCode [12]byte
 	copy(xdrAssetCode[:], "USDC")
@@ -77,16 +77,16 @@ func TestFilterHasNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-    filterConfig := &history.FilterConfig{
-		Rules:  `{
+	filterConfig := &history.FilterConfig{
+		Rules: `{
 			        "canonical_asset_whitelist": [ 
 		                "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
 		            ]	 
 				 }`,
 
-		Enabled: true,
+		Enabled:      true,
 		LastModified: 1,
-		Name: history.FilterAssetFilterName,
+		Name:         history.FilterAssetFilterName,
 	}
 
 	filter, err := GetAssetFilter(filterConfig)
@@ -135,4 +135,3 @@ func TestFilterHasNoMatch(t *testing.T) {
 	tt.NoError(err)
 	tt.Equal(result, false)
 }
-

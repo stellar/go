@@ -19,40 +19,40 @@ func init() {
 	logger = log.WithFields(log.F{
 		"ingest filter": "asset",
 	})
-	singleton =  &AssetFilter{
-		canonicalAssetsLookup:    map[string]bool{},
-		lastModified:             0,
+	singleton = &AssetFilter{
+		canonicalAssetsLookup: map[string]bool{},
+		lastModified:          0,
 	}
 }
 
 type AssetFilterRules struct {
-	CanonicalWhitelist []string `json:"canonical_asset_whitelist"`    
+	CanonicalWhitelist []string `json:"canonical_asset_whitelist"`
 }
 
 type AssetFilter struct {
-	canonicalAssetsLookup    map[string]bool
-	lastModified             uint64
+	canonicalAssetsLookup map[string]bool
+	lastModified          uint64
 }
 
 func GetAssetFilter(filterConfig *history.FilterConfig) (*AssetFilter, error) {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > singleton.lastModified {
-        var assetFilterRules AssetFilterRules
-        if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err !=  nil {
+		var assetFilterRules AssetFilterRules
+		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
 		}
 		singleton = &AssetFilter{
-		    canonicalAssetsLookup:    listToMap(assetFilterRules.CanonicalWhitelist),
-		    lastModified:             filterConfig.LastModified,
-	    }
+			canonicalAssetsLookup: listToMap(assetFilterRules.CanonicalWhitelist),
+			lastModified:          filterConfig.LastModified,
+		}
 	}
-	
+
 	return singleton, nil
 }
 
 func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	
+
 	tx, v1Exists := transaction.Envelope.GetV1()
 	if !v1Exists {
 		return true, nil
@@ -107,19 +107,21 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 				allowed = true
 			}
 		}
-		return allowed, nil
+		
+		if allowed {
+			return true, nil
+		}
 	}
 
 	logger.Debugf("No match, dropped tx with seq %v ", transaction.Envelope.SeqNum())
 	return false, nil
 }
 
-
 func (f *AssetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
 	var matched = false
 	if _, found := f.canonicalAssetsLookup[asset.StringCanonical()]; found {
 		matched = true
-	} 
+	}
 	return matched
 }
 

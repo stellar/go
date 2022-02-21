@@ -90,10 +90,10 @@ type groupTransactionFilterers struct {
 	lastFilterConfigCheckUnixMS int64
 }
 
-func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer, lastFilterConfigCheckUnixMS int64 ) *groupTransactionFilterers {
+func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer, lastFilterConfigCheckUnixMS int64) *groupTransactionFilterers {
 	return &groupTransactionFilterers{
-		filterers:              filterers,
-		processorsRunDurations: make(map[string]time.Duration),
+		filterers:                   filterers,
+		processorsRunDurations:      make(map[string]time.Duration),
 		lastFilterConfigCheckUnixMS: lastFilterConfigCheckUnixMS,
 	}
 }

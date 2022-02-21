@@ -12,9 +12,9 @@ import (
 )
 
 type assetFilterResource struct {
-	Rules filters.AssetFilterRules `json:"rules"` 
-	Enabled bool                   `json:"enabled"`
-	Name string                    `json:"name"`
+	Rules   filters.AssetFilterRules `json:"rules"`
+	Enabled bool                     `json:"enabled"`
+	Name    string                   `json:"name"`
 }
 
 func (afr assetFilterResource) Validate() error {
@@ -47,8 +47,8 @@ func (handler AssetFilterRuleHandler) Get(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var assetFilterRules filters.AssetFilterRules
-	if err = json.Unmarshal([]byte(filter.Rules), assetFilterRules); err != nil {
+	var assetFilterRules = filters.AssetFilterRules{}
+	if err = json.Unmarshal([]byte(filter.Rules), &assetFilterRules); err != nil {
 		p := problem.ServerError
 		p.Extras = map[string]interface{}{
 			"reason": "invalid asset filter rule json in db",
@@ -58,7 +58,7 @@ func (handler AssetFilterRuleHandler) Get(w http.ResponseWriter, r *http.Request
 	}
 
 	assetFilterResource := &assetFilterResource{
-		Rules: assetFilterRules,
+		Rules:   assetFilterRules,
 		Enabled: filter.Enabled,
 		Name:    filter.Name,
 	}
@@ -86,20 +86,21 @@ func (handler AssetFilterRuleHandler) Set(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-    var filterConfig history.FilterConfig
+	var filterConfig history.FilterConfig
+	var assetFilterRules []byte
 	filterConfig.Enabled = assetFilterRequest.Enabled
 	filterConfig.Name = history.FilterAssetFilterName
-	if assetFilterRules, err := json.Marshal(assetFilterRequest.Rules); err != nil {
+
+	if assetFilterRules, err = json.Marshal(assetFilterRequest.Rules); err != nil {
 		p := problem.ServerError
 		p.Extras = map[string]interface{}{
 			"reason": "unable to serialize asset filter rules resource from json",
 		}
 		problem.Render(r.Context(), w, err)
 		return
-	} else {
-        filterConfig.Rules = string(assetFilterRules)
-	}
-
+	} 
+	filterConfig.Rules = string(assetFilterRules)
+	
 	if err = historyQ.SetFilterConfig(r.Context(), filterConfig); err != nil {
 		problem.Render(r.Context(), w, err)
 		return

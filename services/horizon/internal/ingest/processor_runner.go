@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 	logger "github.com/stellar/go/support/log"
+	"time"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -13,7 +13,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	
 )
 
 type ingestionSource int
@@ -82,16 +81,15 @@ type ProcessorRunnerInterface interface {
 }
 
 var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
-var ( 
+var (
 	// default empty filters, this will get populated on first processor invocation
 	groupFilterers *groupTransactionFilterers = newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{}, 0)
-	LOG *logger.Entry = log.WithFields(logger.F{
+	LOG            *logger.Entry              = log.WithFields(logger.F{
 		"processor": "filters",
 	})
-	// the filter config cache will be checked against latest from db at most once per each of this interval, 
+	// the filter config cache will be checked against latest from db at most once per each of this interval,
 	filterConfigCheckIntervalMS int64 = 10000
 )
-
 
 type ProcessorRunner struct {
 	config Config
@@ -164,35 +162,35 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
 
 	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().UnixMilli() < (groupFilterers.lastFilterConfigCheckUnixMS + filterConfigCheckIntervalMS){
-        return groupFilterers
+	if time.Now().UnixMilli() < (groupFilterers.lastFilterConfigCheckUnixMS + filterConfigCheckIntervalMS) {
+		return groupFilterers
 	}
 
 	LOG.Info("expired filter config cache, refresh from db")
 	filterConfigs, err := s.historyQ.GetAllFilters(s.ctx)
 	if err != nil {
-		LOG.Errorf("unable to query filter configs, %v",err)
+		LOG.Errorf("unable to query filter configs, %v", err)
 		// reset the cache time regardless, so next attempt is at next interval
 		groupFilterers.lastFilterConfigCheckUnixMS = time.Now().UnixMilli()
 		return groupFilterers
-	} 
+	}
 
 	newFilters := []processors.LedgerTransactionFilterer{}
 	for _, filterConfig := range filterConfigs {
 		if filterConfig.Enabled {
 			switch filterConfig.Name {
-		        case history.FilterAssetFilterName: 
-					assetFilter, err := filters.GetAssetFilter(&filterConfig)
-					if err != nil {
-						LOG.Errorf("unable to create asset filter %v",err)
-						continue
-					}
-					newFilters = append(newFilters, assetFilter)
+			case history.FilterAssetFilterName:
+				assetFilter, err := filters.GetAssetFilter(&filterConfig)
+				if err != nil {
+					LOG.Errorf("unable to create asset filter %v", err)
+					continue
+				}
+				newFilters = append(newFilters, assetFilter)
 			}
 		}
 	}
 	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().UnixMilli())
-    return groupFilterers 
+	return groupFilterers
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
