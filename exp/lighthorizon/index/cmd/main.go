@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
@@ -21,10 +23,23 @@ import (
 var (
 	mutex   sync.RWMutex
 	indexes = map[string]*index.CheckpointIndex{}
+
+	parallel  = uint32(20)
+	s3Session *session.Session
+
+	downloader *s3manager.Downloader
 )
 
 func main() {
 	log.SetLevel(log.InfoLevel)
+
+	var err error
+	s3Session, err = session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+	if err != nil {
+		panic(err)
+	}
+
+	downloader = s3manager.NewDownloader(s3Session)
 
 	historyArchive, err := historyarchive.Connect(
 		// "file:///Users/Bartek/archive",
@@ -45,10 +60,9 @@ func main() {
 	endCheckpoint := uint32((39685056) / 64)
 	all := endCheckpoint - startCheckpoint
 
-	parallel := uint32(20)
 	var wg sync.WaitGroup
 
-	ch := make(chan uint32, 10)
+	ch := make(chan uint32, parallel)
 
 	go func() {
 		for i := startCheckpoint; i <= endCheckpoint; i++ {
@@ -156,19 +170,30 @@ func main() {
 						(float64(nprocessed)/float64(all))*100,
 						time.Since(startTime),
 					)
+
+					// Clear indexes to save memory
+					mutex.Lock()
+					uploadIndexes()
+					indexes = map[string]*index.CheckpointIndex{}
+					mutex.Unlock()
 				}
 			}
 		}(i)
 	}
 
 	wg.Wait()
+	uploadIndexes()
+}
+
+func uploadIndexes() {
+	var wg sync.WaitGroup
 
 	type upload struct {
 		id    string
 		index *index.CheckpointIndex
 	}
 
-	uch := make(chan upload, 10)
+	uch := make(chan upload, parallel)
 
 	go func() {
 		for id, index := range indexes {
@@ -180,12 +205,7 @@ func main() {
 		close(uch)
 	}()
 
-	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
-	if err != nil {
-		panic(err)
-	}
-
-	uploader := s3manager.NewUploader(sess)
+	uploader := s3manager.NewUploader(s3Session)
 
 	written := uint64(0)
 	for i := uint32(0); i < parallel; i++ {
@@ -199,13 +219,15 @@ func main() {
 					return
 				}
 
-				_, err = uploader.Upload(&s3manager.UploadInput{
+				_, err := uploader.Upload(&s3manager.UploadInput{
 					Bucket: aws.String("horizon-index"),
 					Key:    aws.String(u.id),
 					Body:   u.index.Buffer(),
 				})
 				if err != nil {
 					log.Errorf("Unable to upload %s, %v", u.id, err)
+					uch <- u
+					continue
 				}
 
 				nwritten := atomic.AddUint64(&written, 1)
@@ -229,13 +251,36 @@ func addParticipantsToIndexes(checkpoint uint32, indexFormat string, participant
 	}
 }
 
-func getCreateIndex(name string) *index.CheckpointIndex {
+func getCreateIndex(id string) *index.CheckpointIndex {
 	mutex.Lock()
 	defer mutex.Unlock()
-	ind, ok := indexes[name]
+
+	ind, ok := indexes[id]
 	if !ok {
-		ind = &index.CheckpointIndex{}
-		indexes[name] = ind
+		// Check if index exists in S3
+		b := &aws.WriteAtBuffer{}
+		_, err := downloader.Download(b, &s3.GetObjectInput{
+			Bucket: aws.String("horizon-index"),
+			Key:    aws.String(id),
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				if aerr.Code() == s3.ErrCodeNoSuchKey {
+					ind = &index.CheckpointIndex{}
+				} else {
+					panic(err)
+				}
+			} else {
+				panic(err)
+			}
+		} else {
+			ind, err = index.NewCheckpointIndexFromBytes(b.Bytes())
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		indexes[id] = ind
 	}
 	return ind
 }

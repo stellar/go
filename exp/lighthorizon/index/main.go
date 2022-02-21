@@ -1,7 +1,9 @@
 package index
 
 import (
+	"bufio"
 	"bytes"
+	"io"
 	"strconv"
 	"sync"
 )
@@ -13,6 +15,41 @@ type CheckpointIndex struct {
 	bitmap          []byte
 	firstCheckpoint uint32
 	shift           uint32
+}
+
+func NewCheckpointIndexFromBytes(b []byte) (*CheckpointIndex, error) {
+	buf := bytes.NewBuffer(b)
+	r := bufio.NewReader(buf)
+	firstCheckpointString, err := r.ReadString(0x00)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove trailing 0x00 byte
+	firstCheckpointString = firstCheckpointString[:len(firstCheckpointString)-1]
+
+	firstCheckpoint, err := strconv.ParseUint(firstCheckpointString, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	bitmap, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var shift uint32
+	if firstCheckpoint%8 == 0 {
+		shift = 7
+	} else {
+		shift = uint32(firstCheckpoint)%8 - 1
+	}
+
+	return &CheckpointIndex{
+		bitmap:          bitmap,
+		shift:           shift,
+		firstCheckpoint: uint32(firstCheckpoint),
+	}, nil
 }
 
 func (i *CheckpointIndex) SetActive(checkpoint uint32) error {
@@ -88,7 +125,7 @@ func (i *CheckpointIndex) IsActive(checkpoint uint32) (bool, error) {
 
 func (i *CheckpointIndex) Buffer() *bytes.Buffer {
 	var b bytes.Buffer
-	b.WriteString(strconv.FormatInt(int64(i.firstCheckpoint), 10))
+	b.WriteString(strconv.FormatUint(uint64(i.firstCheckpoint), 10))
 	b.WriteByte(0)
 	b.Write(i.bitmap)
 	return &b
