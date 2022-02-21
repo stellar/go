@@ -213,7 +213,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200), 0).Return(nil).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().NoError(err)
@@ -269,7 +269,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(110)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(110), 0).Return(nil).Once()
 
 	clonedQ := &mockDBQ{}
 	s.historyQ.On("CloneIngestionQ").Return(clonedQ).Once()

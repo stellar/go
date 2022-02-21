@@ -88,7 +88,7 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 		LiquidityPool: &xdr.ClaimLiquidityAtom{
 			LiquidityPoolId: xdr.PoolId{1, 2, 3},
 			AssetSold:       xdr.MustNewCreditAsset("MAD", s.unmuxedSourceAccount.Address()),
-			AmountSold:      20,
+			AmountSold:      602,
 			AssetBought:     xdr.MustNewCreditAsset("GRE", s.unmuxedSourceAccount.Address()),
 			AmountBought:    300,
 		},
@@ -239,6 +239,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterAssetID:     s.assetToID[s.strictReceiveTrade.AssetSold().String()].ID,
 			CounterOfferID:     null.IntFrom(int64(s.strictReceiveTrade.OfferId())),
 			BaseIsSeller:       false,
+			BaseIsExact:        null.BoolFrom(false),
 			PriceN:             int64(s.sellPrices[0].D),
 			PriceD:             int64(s.sellPrices[0].N),
 			Type:               history.OrderbookTradeType,
@@ -255,6 +256,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseAccountID:      null.IntFrom(s.unmuxedAccountToID[s.strictSendTrade.SellerId().Address()]),
 			BaseAssetID:        s.assetToID[s.strictSendTrade.AssetSold().String()].ID,
 			BaseIsSeller:       true,
+			BaseIsExact:        null.BoolFrom(false),
 			BaseOfferID:        null.IntFrom(int64(s.strictSendTrade.OfferId())),
 			PriceN:             int64(s.sellPrices[1].N),
 			PriceD:             int64(s.sellPrices[1].D),
@@ -342,10 +344,12 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			CounterLiquidityPoolID: null.IntFrom(s.lpToID[s.strictReceiveTradeLP.MustLiquidityPool().LiquidityPoolId]),
 			CounterAssetID:         s.assetToID[s.strictReceiveTradeLP.AssetSold().String()].ID,
 			BaseIsSeller:           false,
+			BaseIsExact:            null.BoolFrom(false),
 			LiquidityPoolFee:       null.IntFrom(int64(xdr.LiquidityPoolFeeV18)),
 			PriceN:                 int64(s.sellPrices[6].D),
 			PriceD:                 int64(s.sellPrices[6].N),
 			Type:                   history.LiquidityPoolTradeType,
+			RoundingSlippage:       null.IntFrom(0),
 		},
 		{
 			HistoryOperationID:  toid.New(int32(ledger.Header.LedgerSeq), 1, 9).ToInt64(),
@@ -359,10 +363,12 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BaseLiquidityPoolID: null.IntFrom(s.lpToID[s.strictSendTradeLP.MustLiquidityPool().LiquidityPoolId]),
 			BaseAssetID:         s.assetToID[s.strictSendTradeLP.AssetSold().String()].ID,
 			BaseIsSeller:        true,
+			BaseIsExact:         null.BoolFrom(false),
 			LiquidityPoolFee:    null.IntFrom(int64(xdr.LiquidityPoolFeeV18)),
 			PriceN:              int64(s.sellPrices[7].N),
 			PriceD:              int64(s.sellPrices[7].D),
 			Type:                history.LiquidityPoolTradeType,
+			RoundingSlippage:    null.IntFrom(0),
 		},
 	}
 
@@ -653,12 +659,12 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 									Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 									ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
 										Params: xdr.LiquidityPoolConstantProductParameters{
-											AssetA: trade.AssetSold(),
+											AssetA: trade.AssetBought(),
 											AssetB: trade.AssetSold(),
 											Fee:    xdr.LiquidityPoolFeeV18,
 										},
-										ReserveA:                 100,
-										ReserveB:                 200,
+										ReserveA:                 400,
+										ReserveB:                 800,
 										TotalPoolShares:          40,
 										PoolSharesTrustLineCount: 50,
 									},
@@ -678,12 +684,12 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 									Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
 									ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
 										Params: xdr.LiquidityPoolConstantProductParameters{
-											AssetA: trade.AssetSold(),
+											AssetA: trade.AssetBought(),
 											AssetB: trade.AssetSold(),
 											Fee:    xdr.LiquidityPoolFeeV18,
 										},
-										ReserveA:                 100,
-										ReserveB:                 200,
+										ReserveA:                 400,
+										ReserveB:                 800,
 										TotalPoolShares:          40,
 										PoolSharesTrustLineCount: 50,
 									},
@@ -959,6 +965,177 @@ func TestTradeProcessor_ProcessTransaction_MuxedAccount(t *testing.T) {
 			Destination: muxed,
 			Asset:       xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
 			Amount:      100,
+		},
+	}
+}
+
+func TestTradeProcessor_RoundingSlippage_Big(t *testing.T) {
+	s := &TradeProcessorTestSuiteLedger{}
+	s.SetT(t)
+	s.SetupTest()
+	s.mockReadTradeTransactions(s.processor.ledger)
+
+	assetDeposited := xdr.MustNewCreditAsset("MAD", s.unmuxedSourceAccount.Address())
+	assetDisbursed := xdr.MustNewCreditAsset("GRE", s.unmuxedSourceAccount.Address())
+	poolId, err := xdr.NewPoolId(assetDisbursed, assetDeposited, xdr.LiquidityPoolFeeV18)
+	s.Assert().NoError(err)
+	trade := xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool,
+		LiquidityPool: &xdr.ClaimLiquidityAtom{
+			LiquidityPoolId: poolId,
+			AssetBought:     assetDeposited,
+			AmountBought:    1,
+			AssetSold:       assetDisbursed,
+			AmountSold:      1,
+		},
+	}
+	tx, err := createTransactionForTrade(trade, 3740000000, 162020000000)
+	s.Assert().NoError(err)
+	opIdx := 0
+	change, err := s.processor.liquidityPoolChange(tx, opIdx, trade)
+	s.Assert().NoError(err)
+
+	result, err := s.processor.roundingSlippage(tx, opIdx, trade, change)
+	s.Assert().NoError(err)
+	s.Assert().True(result.Valid)
+	s.Assert().Equal(null.IntFrom(4229), result)
+}
+
+func TestTradeProcessor_RoundingSlippage_Small(t *testing.T) {
+	s := &TradeProcessorTestSuiteLedger{}
+	s.SetT(t)
+	s.SetupTest()
+	s.mockReadTradeTransactions(s.processor.ledger)
+
+	assetDeposited := xdr.MustNewCreditAsset("MAD", s.unmuxedSourceAccount.Address())
+	assetDisbursed := xdr.MustNewCreditAsset("GRE", s.unmuxedSourceAccount.Address())
+	poolId, err := xdr.NewPoolId(assetDisbursed, assetDeposited, xdr.LiquidityPoolFeeV18)
+	s.Assert().NoError(err)
+	trade := xdr.ClaimAtom{
+		Type: xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool,
+		LiquidityPool: &xdr.ClaimLiquidityAtom{
+			LiquidityPoolId: poolId,
+			AssetBought:     assetDeposited,
+			AmountBought:    11,
+			AssetSold:       assetDisbursed,
+			AmountSold:      20,
+		},
+	}
+	tx, err := createTransactionForTrade(trade, 200, 400)
+	s.Assert().NoError(err)
+	opIdx := 0
+	change, err := s.processor.liquidityPoolChange(tx, opIdx, trade)
+	s.Assert().NoError(err)
+
+	result, err := s.processor.roundingSlippage(tx, opIdx, trade, change)
+	s.Assert().NoError(err)
+	s.Assert().True(result.Valid)
+	s.Assert().Equal(null.IntFrom(4), result)
+}
+
+// TODO: Use a builder or something here to simplify.
+func createTransactionForTrade(trade xdr.ClaimAtom, reserveA, reserveB int64) (ingest.LedgerTransaction, error) {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	destination := source
+
+	pool := makePool(trade.AssetBought(), trade.AssetSold(), reserveA, reserveB)
+
+	poolLedgerEntry := func(reserveA, reserveB xdr.Int64) *xdr.LedgerEntry {
+		return &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:          xdr.LedgerEntryTypeLiquidityPool,
+				LiquidityPool: &pool,
+			},
+		}
+	}
+
+	return ingest.LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			TransactionHash: xdr.Hash{},
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code:            xdr.TransactionResultCodeTxSuccess,
+					InnerResultPair: &xdr.InnerTransactionResultPair{},
+					Results:         &[]xdr.OperationResult{},
+				},
+			},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: source,
+					Operations: []xdr.Operation{
+						{
+							Body: xdr.OperationBody{
+								Type: xdr.OperationTypePathPaymentStrictReceive,
+								PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{
+									SendAsset:   trade.AssetBought(),
+									SendMax:     trade.AmountBought(),
+									Destination: destination,
+									DestAsset:   trade.AssetSold(),
+									DestAmount:  trade.AmountSold(),
+									Path: []xdr.Asset{
+										trade.AssetBought(),
+										trade.AssetSold(),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: xdr.LedgerEntryChanges{
+							{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+								State: poolLedgerEntry(
+									xdr.Int64(reserveA),
+									xdr.Int64(reserveB),
+								),
+							},
+							{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+								Updated: poolLedgerEntry(
+									xdr.Int64(reserveA)+trade.AmountBought(),
+									xdr.Int64(reserveB)-trade.AmountSold(),
+								),
+							},
+						},
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+func makePool(A, B xdr.Asset, a, b int64) xdr.LiquidityPoolEntry {
+	if !A.LessThan(B) {
+		B, A = A, B
+		b, a = a, b
+	}
+
+	poolId, _ := xdr.NewPoolId(A, B, xdr.LiquidityPoolFeeV18)
+	return xdr.LiquidityPoolEntry{
+		LiquidityPoolId: poolId,
+		Body: xdr.LiquidityPoolEntryBody{
+			Type: xdr.LiquidityPoolTypeLiquidityPoolConstantProduct,
+			ConstantProduct: &xdr.LiquidityPoolEntryConstantProduct{
+				Params: xdr.LiquidityPoolConstantProductParameters{
+					AssetA: A,
+					AssetB: B,
+					Fee:    xdr.LiquidityPoolFeeV18,
+				},
+				ReserveA:                 xdr.Int64(a),
+				ReserveB:                 xdr.Int64(b),
+				TotalPoolShares:          123,
+				PoolSharesTrustLineCount: 456,
+			},
 		},
 	}
 }

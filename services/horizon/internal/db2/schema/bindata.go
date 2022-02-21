@@ -48,7 +48,8 @@
 // migrations/50_liquidity_pools.sql (3.876kB)
 // migrations/51_remove_ht_unused_indexes.sql (321B)
 // migrations/52_add_trade_type_index.sql (424B)
-// migrations/53_whitelists.sql (176B)
+// migrations/53_add_trades_rounding_slippage.sql (274B)
+// migrations/54_filter_rules.sql (226B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
 // migrations/7_modify_trades_table.sql (2.303kB)
@@ -1083,23 +1084,43 @@ func migrations52_add_trade_type_indexSql() (*asset, error) {
 	return a, nil
 }
 
-var _migrations53_whitelistsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xcd\xb1\x0e\x82\x30\x10\x06\xe0\xfd\x9e\xe2\x1f\x21\x86\x51\x17\x26\x94\x0e\x26\x04\x94\xd0\x99\x5c\x4a\x85\x4b\xb0\x98\x72\x4a\x7c\x7b\x37\xe3\xe6\xfc\x0d\x5f\x96\x61\x77\x97\x31\xb2\x7a\xd8\x07\xd1\xa9\x35\x45\x67\xd0\x15\xc7\xca\x80\x9d\x5b\x9e\x41\xfb\x9b\xcc\xea\x63\xbf\x4d\xa2\x7e\x96\x55\x91\x10\x80\x2f\xcb\x00\x37\x71\x64\xa7\x3e\xe2\xc5\xf1\x2d\x61\x4c\xf6\x87\x14\x75\xd3\xa1\xb6\x55\x05\x5b\x9f\xaf\xd6\x50\x9a\x13\xfd\x86\xe5\xb2\x05\xa2\xb2\x6d\x2e\xff\x42\xc7\xab\xe3\xc1\xe7\xf4\x09\x00\x00\xff\xff\x45\xa4\x8c\x5c\xb0\x00\x00\x00")
+var _migrations53_add_trades_rounding_slippageSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\x8e\xc1\xaa\xc2\x30\x10\x45\xf7\xf9\x8a\xd9\x3f\xf2\x05\x5d\xe5\x91\xee\x0a\x4a\xa9\xeb\x30\x31\x43\x1c\xa8\x49\xc9\x4c\x51\xff\x5e\x28\x22\x88\x50\xf7\xf7\xdc\x73\xac\x85\xbf\x2b\xe7\x86\x4a\x70\x5a\x8c\xb1\x16\x5c\x4a\xc0\x12\xd2\x2a\x0a\x5a\x41\x1b\x26\x12\x50\x8c\x33\x19\x37\x4c\xfd\x08\x93\xfb\x1f\x7a\xb8\xb0\x68\x6d\x8f\xf0\x1a\x38\xef\xa1\xd5\xb5\x24\x2e\x39\xc8\xcc\xcb\x82\x99\x20\x72\xe6\xa2\xdd\x2f\x30\xa2\x50\x60\x09\x74\xc7\xb3\x42\xac\x75\x26\x2c\xdd\x96\xf3\xce\xf3\xf5\x56\xf6\x7e\xfc\x78\x38\x7e\x17\xec\xaa\x37\xe4\xc3\xdd\x99\x67\x00\x00\x00\xff\xff\x9b\x4e\x68\x91\x12\x01\x00\x00")
 
-func migrations53_whitelistsSqlBytes() ([]byte, error) {
+func migrations53_add_trades_rounding_slippageSqlBytes() ([]byte, error) {
 	return bindataRead(
-		_migrations53_whitelistsSql,
-		"migrations/53_whitelists.sql",
+		_migrations53_add_trades_rounding_slippageSql,
+		"migrations/53_add_trades_rounding_slippage.sql",
 	)
 }
 
-func migrations53_whitelistsSql() (*asset, error) {
-	bytes, err := migrations53_whitelistsSqlBytes()
+func migrations53_add_trades_rounding_slippageSql() (*asset, error) {
+	bytes, err := migrations53_add_trades_rounding_slippageSqlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/53_whitelists.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x76, 0x23, 0xb2, 0x40, 0xe2, 0xa2, 0x4a, 0x82, 0x59, 0xff, 0x37, 0x40, 0xc5, 0xe3, 0xf3, 0xc0, 0xcf, 0xe4, 0x8f, 0x3, 0xa4, 0xd3, 0x2f, 0x8, 0xb4, 0x87, 0x43, 0x86, 0x2b, 0x1a, 0xa, 0xd}}
+	info := bindataFileInfo{name: "migrations/53_add_trades_rounding_slippage.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xf0, 0xf0, 0xce, 0xdd, 0x5e, 0xe4, 0x89, 0x9c, 0x7, 0x4e, 0x83, 0xd4, 0xb2, 0x1c, 0x3b, 0x33, 0xa, 0x71, 0xa2, 0xe0, 0x22, 0x6f, 0x98, 0x17, 0x44, 0xc, 0xcb, 0x68, 0x55, 0xa6, 0xdf, 0xba}}
+	return a, nil
+}
+
+var _migrations54_filter_rulesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x7c\xce\xb1\x4e\x85\x30\x14\x87\xf1\xfd\x3c\xc5\x7f\xbc\xc4\xb0\x98\xe8\xc2\x84\xd2\xc1\x84\x80\x12\x3a\x93\x43\x39\x60\x4d\x69\x4d\x5b\x34\xbe\xbd\x09\x26\xea\x74\xf7\x5f\xf2\x7d\x65\x89\x9b\xdd\x6e\x91\xb3\x40\xbf\x13\x3d\x0e\xaa\x1e\x15\xc6\xfa\xa1\x55\xb0\x7e\x93\x94\xa7\xd5\xba\x2c\x71\x8a\x87\x93\x84\x0b\x01\x80\xe7\x5d\x60\x5e\x39\xb2\xc9\x12\xf1\xc1\xf1\xcb\xfa\xed\x72\x7b\x77\x5f\xa0\xeb\x47\x74\xba\x6d\xa1\xbb\xa7\x17\xad\x4e\x2f\x9e\x67\x27\x0b\xe6\x10\xdc\x1f\x58\x64\xe5\xc3\x65\xac\xec\x92\x9c\xee\xa7\xf1\x96\x82\x9f\x7f\x19\x15\x15\xd1\xff\xcf\x26\x7c\x7a\xa2\x66\xe8\x9f\xaf\x7c\x1a\x4e\x86\x17\xa9\xe8\x3b\x00\x00\xff\xff\x31\xe4\xd4\x32\xe2\x00\x00\x00")
+
+func migrations54_filter_rulesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations54_filter_rulesSql,
+		"migrations/54_filter_rules.sql",
+	)
+}
+
+func migrations54_filter_rulesSql() (*asset, error) {
+	bytes, err := migrations54_filter_rulesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/54_filter_rules.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x2b, 0x48, 0xda, 0x75, 0xe0, 0xc, 0xd5, 0xd5, 0x49, 0xbf, 0x50, 0xf6, 0x6c, 0x14, 0x7d, 0x87, 0xdd, 0xd4, 0x3, 0xb5, 0x7b, 0x5a, 0x9a, 0x7f, 0x27, 0xbc, 0xf3, 0xb7, 0x74, 0x41, 0x54, 0x98}}
 	return a, nil
 }
 
@@ -1362,7 +1383,8 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/50_liquidity_pools.sql":                                  migrations50_liquidity_poolsSql,
 	"migrations/51_remove_ht_unused_indexes.sql":                         migrations51_remove_ht_unused_indexesSql,
 	"migrations/52_add_trade_type_index.sql":                             migrations52_add_trade_type_indexSql,
-	"migrations/53_whitelists.sql":                                       migrations53_whitelistsSql,
+	"migrations/53_add_trades_rounding_slippage.sql":                     migrations53_add_trades_rounding_slippageSql,
+	"migrations/54_filter_rules.sql":                                     migrations54_filter_rulesSql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
 	"migrations/7_modify_trades_table.sql":                               migrations7_modify_trades_tableSql,
@@ -1461,7 +1483,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"50_liquidity_pools.sql":                                  &bintree{migrations50_liquidity_poolsSql, map[string]*bintree{}},
 		"51_remove_ht_unused_indexes.sql":                         &bintree{migrations51_remove_ht_unused_indexesSql, map[string]*bintree{}},
 		"52_add_trade_type_index.sql":                             &bintree{migrations52_add_trade_type_indexSql, map[string]*bintree{}},
-		"53_whitelists.sql":                                       &bintree{migrations53_whitelistsSql, map[string]*bintree{}},
+		"53_add_trades_rounding_slippage.sql":                     &bintree{migrations53_add_trades_rounding_slippageSql, map[string]*bintree{}},
+		"54_filter_rules.sql":                                     &bintree{migrations54_filter_rulesSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
 		"7_modify_trades_table.sql":                               &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
