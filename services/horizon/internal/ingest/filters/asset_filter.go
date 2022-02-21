@@ -3,8 +3,9 @@ package filters
 import (
 	"context"
 	"encoding/json"
-	"os"
 
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 
@@ -12,83 +13,46 @@ import (
 )
 
 var logger *log.Entry
+var singleton *AssetFilter
 
 func init() {
 	logger = log.WithFields(log.F{
 		"ingest filter": "asset",
 	})
+	singleton =  &AssetFilter{
+		canonicalAssetsLookup:    map[string]bool{},
+		lastModified:             0,
+	}
 }
 
-type AssetFilterParms struct {
-	// list of fully qualified asset canonical id <issuer:code>
-	CanonicalAssetList []string
-
-	// list of just the account id as the asset issuer value,
-	// filter will match on any asset reference with same issuer
-	AssetIssuerList []string
-
-	// list of just asset codes, filter will match on any asset reference with same code
-	AssetCodeList []string
-
-	// if a liquidity pool references a filtered asset, then include all operation
-	// types within 'traverseOperationsList' that are related to the pool
-	ResolveLiquidityPoolAsAsset bool
-
-	// true means generate effects for any operations referencing a filtered asset
-	TraverseEffects bool
-
-	// true means the filter will be executed during ingestion, false
-	// means the filter is disabled, it will have no effect.
-	Activated bool
-
-	// list of 'Offers, Trades, Payments, TrustLine, Claimable Balance', include any
-	// of these operation types when they reference a filtered asset. If empty, means
-	// include all operations.
-	TraverseOperationsList []string
+type AssetFilterRules struct {
+	CanonicalWhitelist []string `json:"canonical_asset_whitelist"`    
 }
 
 type AssetFilter struct {
-	filterParams             *AssetFilterParms
 	canonicalAssetsLookup    map[string]bool
-	assetIssuersLookup       map[string]bool
-	assetCodesLookup         map[string]bool
-	traverseOperationsLookup map[string]bool
+	lastModified             uint64
 }
 
-func NewAssetFilterFromParamsFile(filterParamsFilePath string) (*AssetFilter, error) {
-	data, err := os.ReadFile(filterParamsFilePath)
-	if err != nil {
-		return nil, err
+func GetAssetFilter(filterConfig *history.FilterConfig) (*AssetFilter, error) {
+	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
+	// is older than the incoming config version based on lastModified epoch timestamp
+	if filterConfig.LastModified > singleton.lastModified {
+        var assetFilterRules AssetFilterRules
+        if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err !=  nil {
+			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
+		}
+		singleton = &AssetFilter{
+		    canonicalAssetsLookup:    listToMap(assetFilterRules.CanonicalWhitelist),
+		    lastModified:             filterConfig.LastModified,
+	    }
 	}
-
-	filterParams := &AssetFilterParms{}
-	if err = json.Unmarshal(data, filterParams); err != nil {
-		return nil, err
-	}
-
-	return NewAssetFilterFromParams(filterParams), nil
-}
-
-func NewAssetFilterFromParams(filterParams *AssetFilterParms) *AssetFilter {
-	filter := &AssetFilter{
-		filterParams:             filterParams,
-		canonicalAssetsLookup:    listToMap(filterParams.CanonicalAssetList),
-		assetIssuersLookup:       listToMap(filterParams.AssetIssuerList),
-		assetCodesLookup:         listToMap(filterParams.AssetCodeList),
-		traverseOperationsLookup: listToMap(filterParams.TraverseOperationsList),
-	}
-	return filter
-}
-
-func (f *AssetFilter) CurrentFilterParameters() AssetFilterParms {
-	return *f.filterParams
+	
+	return singleton, nil
 }
 
 func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	if !f.filterParams.Activated {
-		return true, nil
-	}
-
+	
 	tx, v1Exists := transaction.Envelope.GetV1()
 	if !v1Exists {
 		return true, nil
@@ -142,63 +106,21 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 			if f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.DestAsset) || f.assetMatchedFilter(&operation.Body.PathPaymentStrictSendOp.SendAsset) {
 				allowed = true
 			}
-		case xdr.OperationTypeLiquidityPoolDeposit:
-			if f.includeLiquidityPool(operation.Body.LiquidityPoolDepositOp.LiquidityPoolId) {
-				allowed = true
-			}
-		case xdr.OperationTypeLiquidityPoolWithdraw:
-			if f.includeLiquidityPool(operation.Body.LiquidityPoolWithdrawOp.LiquidityPoolId) {
-				allowed = true
-			}
 		}
-
-		if allowed && f.operationMatchedFilterDepth(operation.Body.Type) {
-			return true, nil
-		}
+		return allowed, nil
 	}
 
 	logger.Debugf("No match, dropped tx with seq %v ", transaction.Envelope.SeqNum())
 	return false, nil
 }
 
-func (f *AssetFilter) operationMatchedFilterDepth(operationType xdr.OperationType) bool {
-	if len(f.traverseOperationsLookup) < 1 {
-		return true
-	}
-	_, found := f.traverseOperationsLookup[operationType.String()]
-	return found
-}
 
 func (f *AssetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
-
 	var matched = false
-
 	if _, found := f.canonicalAssetsLookup[asset.StringCanonical()]; found {
 		matched = true
-	} else if _, found := f.assetCodesLookup[asset.GetCode()]; found {
-		matched = true
-	} else if _, found := f.assetIssuersLookup[asset.GetIssuer()]; found {
-		matched = true
-	}
-
+	} 
 	return matched
-}
-
-func (f *AssetFilter) includeLiquidityPool(poolId xdr.PoolId) bool {
-	if f.filterParams.ResolveLiquidityPoolAsAsset {
-		assets := f.resolveLiquidityPoolToAssetPair(poolId)
-		for _, asset := range assets {
-			if f.assetMatchedFilter(asset) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (f *AssetFilter) resolveLiquidityPoolToAssetPair(poolId xdr.PoolId) []*xdr.Asset {
-	//TODO - implement the resolutiuon to asset pair
-	return []*xdr.Asset{}
 }
 
 func listToMap(list []string) map[string]bool {

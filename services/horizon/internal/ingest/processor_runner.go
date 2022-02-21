@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
+	logger "github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -11,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	
 )
 
 type ingestionSource int
@@ -79,6 +82,16 @@ type ProcessorRunnerInterface interface {
 }
 
 var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
+var ( 
+	// default empty filters, this will get populated on first processor invocation
+	groupFilterers *groupTransactionFilterers = newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{}, 0)
+	LOG *logger.Entry = log.WithFields(logger.F{
+		"processor": "filters",
+	})
+	// the filter config cache will be checked against latest from db at most once per each of this interval, 
+	filterConfigCheckIntervalMS int64 = 10000
+)
+
 
 type ProcessorRunner struct {
 	config Config
@@ -149,25 +162,37 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
-	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{
-		filters.NewAccountFilter(s.historyQ),
-		filters.NewAssetFilterFromParams(&filters.AssetFilterParms{
-			// TODO - move this hardcoded asset filter configuration into db persistence.
-			// this is example asset filter config by list of assets that were
-			// seen as recently most active in pubnet from a Hubble view.
-			Activated: false,
-			CanonicalAssetList: []string{
-				"USD:GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
-				"NGNT:GAWODAROMJ33V5YDFY3NPYTHVYQG7MJXVJ2ND3AOGIHYRWINES6ACCPD",
-				"BRL:GDVKY2GU2DRXWTBEYJJWSFXIGBZV6AZNBVVSUHEPZI54LIS6BA7DVVSP",
-				"SMX:GCDN3VGXZZRCKPG2UEUNR54QDVJRAYINMHBXIT4ZQUFCEQSFN2ZZFSMX",
-				"ARST:GCSAZVWXZKWS4XS223M5F54H2B6XPIIXZZGP7KEAIU6YSL5HDRGCI3DG",
-				"EURT:GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S",
-				"TZA:GA2MSSZKJOU6RNL3EJKH3S5TB5CDYTFQFWRYFGUJVIN5I6AOIRTLUHTO",
-				"KES:GA2MSSZKJOU6RNL3EJKH3S5TB5CDYTFQFWRYFGUJVIN5I6AOIRTLUHTO",
-				"USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-			}}),
-	})
+
+	// only attempt to refresh filter config cache state at configured interval limit
+	if time.Now().UnixMilli() < (groupFilterers.lastFilterConfigCheckUnixMS + filterConfigCheckIntervalMS){
+        return groupFilterers
+	}
+
+	LOG.Info("expired filter config cache, refresh from db")
+	filterConfigs, err := s.historyQ.GetAllFilters(s.ctx)
+	if err != nil {
+		LOG.Errorf("unable to query filter configs, %v",err)
+		// reset the cache time regardless, so next attempt is at next interval
+		groupFilterers.lastFilterConfigCheckUnixMS = time.Now().UnixMilli()
+		return groupFilterers
+	} 
+
+	newFilters := []processors.LedgerTransactionFilterer{}
+	for _, filterConfig := range filterConfigs {
+		if filterConfig.Enabled {
+			switch filterConfig.Name {
+		        case history.FilterAssetFilterName: 
+					assetFilter, err := filters.GetAssetFilter(&filterConfig)
+					if err != nil {
+						LOG.Errorf("unable to create asset filter %v",err)
+						continue
+					}
+					newFilters = append(newFilters, assetFilter)
+			}
+		}
+	}
+	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().UnixMilli())
+    return groupFilterers 
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the

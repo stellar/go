@@ -8,19 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 )
 
 func TestFilterHasMatch(t *testing.T) {
-	// TODO, make this test real
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterParams := &AssetFilterParms{
-		Activated:          true,
-		CanonicalAssetList: []string{"USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
+	filterConfig := &history.FilterConfig{
+		Rules: `{
+			        "canonical_asset_whitelist": [
+			            "USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
+					]	 
+				}`,
+		Enabled: true,
+		LastModified: 1,
+		Name: history.FilterAssetFilterName,
 	}
-	filter := NewAssetFilterFromParams(filterParams)
+	filter, err := GetAssetFilter(filterConfig)
+    tt.NoError(err)   
 
 	var xdrAssetCode [12]byte
 	copy(xdrAssetCode[:], "USDC")
@@ -67,15 +74,23 @@ func TestFilterHasMatch(t *testing.T) {
 }
 
 func TestFilterHasNoMatch(t *testing.T) {
-	// TODO, make this test real
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterParams := &AssetFilterParms{
-		Activated:          true,
-		CanonicalAssetList: []string{"USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
+    filterConfig := &history.FilterConfig{
+		Rules:  `{
+			        "canonical_asset_whitelist": [ 
+		                "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
+		            ]	 
+				 }`,
+
+		Enabled: true,
+		LastModified: 1,
+		Name: history.FilterAssetFilterName,
 	}
-	filter := NewAssetFilterFromParams(filterParams)
+
+	filter, err := GetAssetFilter(filterConfig)
+	tt.NoError(err)
 
 	var xdrAssetCode [12]byte
 	copy(xdrAssetCode[:], "USDC")
@@ -121,12 +136,3 @@ func TestFilterHasNoMatch(t *testing.T) {
 	tt.Equal(result, false)
 }
 
-func TestParamsFromFile(t *testing.T) {
-	tt := assert.New(t)
-
-	filter, err := NewAssetFilterFromParamsFile("../testdata/test_asset_filter_params.json")
-
-	tt.NoError(err)
-	tt.Equal(filter.CurrentFilterParameters().ResolveLiquidityPoolAsAsset, true)
-	tt.Equal(filter.CurrentFilterParameters().CanonicalAssetList, []string{"BITC:ABC123456", "DOGT:DEF123456"})
-}

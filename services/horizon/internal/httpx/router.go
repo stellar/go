@@ -340,9 +340,9 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Internal.Get("/metrics", promhttp.HandlerFor(config.PrometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
 	r.Internal.Get("/debug/pprof/heap", pprof.Index)
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
-	r.Internal.Route("/ingestion/filter", func(r chi.Router) {
-		r.Route("/accounts", func(r chi.Router) {
-			handler := actions.AccountFilterWhitelistHandler{}
+	r.Internal.Route("/ingestion/filter/rules", func(r chi.Router) {
+		r.Route("/asset", func(r chi.Router) {
+			handler := actions.AssetFilterRuleHandler{}
 			r.With(historyMiddleware).Put("/", handler.Set)
 			r.With(historyMiddleware).Get("/", handler.Get)
 		})
