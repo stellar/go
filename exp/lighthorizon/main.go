@@ -12,7 +12,7 @@ import (
 
 func main() {
 	historyArchive, err := historyarchive.Connect(
-		"https://history.stellar.org/prd/core-live/core_live_002",
+		"http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001",
 		historyarchive.ConnectOptions{
 			NetworkPassphrase: network.PublicNetworkPassphrase,
 			S3Region:          "us-west-1",

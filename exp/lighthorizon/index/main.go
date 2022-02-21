@@ -86,11 +86,15 @@ func (i *CheckpointIndex) IsActive(checkpoint uint32) (bool, error) {
 	return false, nil
 }
 
-// Flush flushes the index data to byte slice in index format.
-func (i *CheckpointIndex) Flush() []byte {
+func (i *CheckpointIndex) Buffer() *bytes.Buffer {
 	var b bytes.Buffer
 	b.WriteString(strconv.FormatInt(int64(i.firstCheckpoint), 10))
 	b.WriteByte(0)
 	b.Write(i.bitmap)
-	return b.Bytes()
+	return &b
+}
+
+// Flush flushes the index data to byte slice in index format.
+func (i *CheckpointIndex) Flush() []byte {
+	return i.Buffer().Bytes()
 }

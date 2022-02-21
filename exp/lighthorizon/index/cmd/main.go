@@ -3,24 +3,29 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
 var (
-	mutex     sync.RWMutex
-	indexes   = map[string]*index.CheckpointIndex{}
-	processed = uint64(0)
+	mutex   sync.RWMutex
+	indexes = map[string]*index.CheckpointIndex{}
 )
 
 func main() {
+	log.SetLevel(log.InfoLevel)
+
 	historyArchive, err := historyarchive.Connect(
 		// "file:///Users/Bartek/archive",
 		"s3://history.stellar.org/prd/core-live/core_live_001",
@@ -36,11 +41,11 @@ func main() {
 
 	startTime := time.Now()
 
-	startCheckpoint := uint32(0) //uint32((39684056) / 64)
-	endCheckpoint := uint32((100000) / 64)
+	startCheckpoint := uint32(0) //uint32((39680056) / 64)
+	endCheckpoint := uint32((39685056) / 64)
 	all := endCheckpoint - startCheckpoint
 
-	parallel := uint32(10)
+	parallel := uint32(20)
 	var wg sync.WaitGroup
 
 	ch := make(chan uint32, 10)
@@ -52,6 +57,7 @@ func main() {
 		close(ch)
 	}()
 
+	processed := uint64(0)
 	for i := uint32(0); i < parallel; i++ {
 		wg.Add(1)
 		go func(i uint32) {
@@ -62,28 +68,19 @@ func main() {
 					return
 				}
 
-				if processed%20 == 0 {
-					mutex.RLock()
-					fmt.Printf(
-						"Reading checkpoints... %d - %.2f%% - time elapsed: %s\n",
-						checkpoint,
-						(float64(processed)/float64(all))*100,
-						time.Since(startTime),
-					)
-					mutex.RUnlock()
-				}
-
 				startLedger := checkpoint * 64
 				if startLedger == 0 {
 					startLedger = 1
 				}
 				endLedger := checkpoint*64 - 1 + 64
 
-				fmt.Println("Processing checkpoint", checkpoint, "ledgers", startLedger, endLedger)
+				// fmt.Println("Processing checkpoint", checkpoint, "ledgers", startLedger, endLedger)
 
 				ledgers, err := historyArchive.GetLedgers(startLedger, endLedger)
 				if err != nil {
-					panic(err)
+					log.WithField("error", err).Error("error getting ledgers")
+					ch <- checkpoint
+					continue
 				}
 
 				for i := startLedger; i <= endLedger; i++ {
@@ -151,25 +148,75 @@ func main() {
 					}
 				}
 
-				mutex.Lock()
-				processed++
-				mutex.Unlock()
+				nprocessed := atomic.AddUint64(&processed, 1)
+
+				if nprocessed%100 == 0 {
+					log.Infof(
+						"Reading checkpoints... - %.2f%% - time elapsed: %s",
+						(float64(nprocessed)/float64(all))*100,
+						time.Since(startTime),
+					)
+				}
 			}
 		}(i)
 	}
 
 	wg.Wait()
 
-	written := float32(0)
-	for id, index := range indexes {
-		err := os.WriteFile(fmt.Sprintf("./index/%s", id), index.Flush(), 0666)
-		if err != nil {
-			panic(err)
-		}
-		written++
-
-		fmt.Printf("Writing indexes... %.2f%%\n", (written/float32(len(indexes)))*100)
+	type upload struct {
+		id    string
+		index *index.CheckpointIndex
 	}
+
+	uch := make(chan upload, 10)
+
+	go func() {
+		for id, index := range indexes {
+			uch <- upload{
+				id:    id,
+				index: index,
+			}
+		}
+		close(uch)
+	}()
+
+	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+	if err != nil {
+		panic(err)
+	}
+
+	uploader := s3manager.NewUploader(sess)
+
+	written := uint64(0)
+	for i := uint32(0); i < parallel; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				u, ok := <-uch
+				if !ok {
+					return
+				}
+
+				_, err = uploader.Upload(&s3manager.UploadInput{
+					Bucket: aws.String("horizon-index"),
+					Key:    aws.String(u.id),
+					Body:   u.index.Buffer(),
+				})
+				if err != nil {
+					log.Errorf("Unable to upload %s, %v", u.id, err)
+				}
+
+				nwritten := atomic.AddUint64(&written, 1)
+				if nwritten%1000 == 0 {
+					log.Infof("Writing indexes... %d/%d %.2f%%", nwritten, len(indexes), (float64(nwritten)/float64(len(indexes)))*100)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }
 
 func addParticipantsToIndexes(checkpoint uint32, indexFormat string, participants []string) {
