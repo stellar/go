@@ -14,6 +14,7 @@ const (
 	filterRulesEnabledColumnName      = "enabled"
 	filterRulesLastModifiedColumnName = "last_modified"
 	FilterAssetFilterName             = "asset"
+	FilterAccountFilterName           = "account"
 )
 
 type FilterConfig struct {

@@ -12,43 +12,41 @@ import (
 	"github.com/stellar/go/ingest"
 )
 
-var logger *log.Entry
-var singleton *AssetFilter
-
-func init() {
+var (
 	logger = log.WithFields(log.F{
 		"ingest filter": "asset",
 	})
-	singleton = &AssetFilter{
-		canonicalAssetsLookup: map[string]bool{},
-		lastModified:          0,
+	// TODO:(fons) I don't think we should be using a singleton
+	// (we should just create an instance which lives in the processor)
+	assetSingleton = &AssetFilter{
+		canonicalAssetsLookup: map[string]struct{}{},
 	}
-}
+)
 
 type AssetFilterRules struct {
 	CanonicalWhitelist []string `json:"canonical_asset_whitelist"`
 }
 
 type AssetFilter struct {
-	canonicalAssetsLookup map[string]bool
+	canonicalAssetsLookup map[string]struct{}
 	lastModified          int64
 }
 
 func GetAssetFilter(filterConfig *history.FilterConfig) (*AssetFilter, error) {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
-	if filterConfig.LastModified > singleton.lastModified {
+	if filterConfig.LastModified > assetSingleton.lastModified {
 		var assetFilterRules AssetFilterRules
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
 		}
-		singleton = &AssetFilter{
+		assetSingleton = &AssetFilter{
 			canonicalAssetsLookup: listToMap(assetFilterRules.CanonicalWhitelist),
 			lastModified:          filterConfig.LastModified,
 		}
 	}
 
-	return singleton, nil
+	return assetSingleton, nil
 }
 
 func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
@@ -125,10 +123,10 @@ func (f *AssetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
 	return matched
 }
 
-func listToMap(list []string) map[string]bool {
-	set := make(map[string]bool)
+func listToMap(list []string) map[string]struct{} {
+	set := make(map[string]struct{})
 	for i := 0; i < len(list); i++ {
-		set[list[i]] = true
+		set[list[i]] = struct{}{}
 	}
 	return set
 }

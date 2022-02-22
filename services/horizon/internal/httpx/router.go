@@ -348,6 +348,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 				r.With(historyMiddleware).Put("/", handler.Set)
 				r.With(historyMiddleware).Get("/", handler.Get)
 			})
+			r.Route("/account", func(r chi.Router) {
+				handler := actions.AccountFilterRuleHandler{}
+				r.With(historyMiddleware).Put("/", handler.Set)
+				r.With(historyMiddleware).Get("/", handler.Get)
+			})
 		})
 	}
 }

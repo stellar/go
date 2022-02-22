@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	logger "github.com/stellar/go/support/log"
 	"time"
+
+	logger "github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -83,8 +84,8 @@ type ProcessorRunnerInterface interface {
 var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
 var (
 	// default empty filters, this will get populated on first processor invocation
-	groupFilterers *groupTransactionFilterers = newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{}, 0)
-	LOG            *logger.Entry              = log.WithFields(logger.F{
+	groupFilterers = newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{}, 0)
+	LOG            = log.WithFields(logger.F{
 		"processor": "filters",
 	})
 	// the filter config cache will be checked against latest from db at most once per each of this interval,
@@ -163,6 +164,8 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	if !s.config.EnableIngestionFiltering {
 		return newGroupTransactionFilterers(nil, time.Now().Unix())
 	}
+	// TODO(fons): I think this caching mechanism should probably live in the filters package
+
 	// only attempt to refresh filter config cache state at configured interval limit
 	if time.Now().Unix() < (groupFilterers.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
 		return groupFilterers
@@ -188,7 +191,15 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 					continue
 				}
 				newFilters = append(newFilters, assetFilter)
+			case history.FilterAccountFilterName:
+				accountFilter, err := filters.GetAccountFilter(&filterConfig)
+				if err != nil {
+					LOG.Errorf("unable to create asset filter %v", err)
+					continue
+				}
+				newFilters = append(newFilters, accountFilter)
 			}
+
 		}
 	}
 	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().Unix())
