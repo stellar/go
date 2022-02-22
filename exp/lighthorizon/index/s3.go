@@ -13,6 +13,8 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+const BUCKET = "horizon-index"
+
 type S3IndexStore struct {
 	mutex      sync.RWMutex
 	indexes    map[string]*CheckpointIndex
@@ -70,7 +72,7 @@ func (s *S3IndexStore) Flush() error {
 				}
 
 				_, err := uploader.Upload(&s3manager.UploadInput{
-					Bucket: aws.String("horizon-index"),
+					Bucket: aws.String(BUCKET),
 					Key:    aws.String(u.id),
 					Body:   u.index.Buffer(),
 				})
@@ -107,23 +109,19 @@ func (s *S3IndexStore) AddParticipantsToIndexes(checkpoint uint32, indexFormat s
 }
 
 func (s *S3IndexStore) getCreateIndex(id string) (*CheckpointIndex, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	ind, ok := s.indexes[id]
 	if ok {
 		return ind, nil
 	}
 
-	// Upgrade to write-lock. Note this means we can only download one index at a
-	// time. So maybe this could be done per-id.
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	// Check if index exists in S3
+	log.Debugf("Downloading index: %v", id)
 	b := &aws.WriteAtBuffer{}
 	_, err := s.downloader.Download(b, &s3.GetObjectInput{
-		Bucket: aws.String("horizon-index"),
+		Bucket: aws.String(BUCKET),
 		Key:    aws.String(id),
 	})
 	if err != nil {
