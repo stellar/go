@@ -33,20 +33,21 @@ type RouterConfig struct {
 	TxSubmitter      *txsub.System
 	RateQuota        *throttled.RateQuota
 
-	BehindCloudflare        bool
-	BehindAWSLoadBalancer   bool
-	SSEUpdateFrequency      time.Duration
-	StaleThreshold          uint
-	ConnectionTimeout       time.Duration
-	NetworkPassphrase       string
-	MaxPathLength           uint
-	MaxAssetsPerPathRequest int
-	PathFinder              paths.Finder
-	PrometheusRegistry      *prometheus.Registry
-	CoreGetter              actions.CoreStateGetter
-	HorizonVersion          string
-	FriendbotURL            *url.URL
-	HealthCheck             http.Handler
+	BehindCloudflare         bool
+	BehindAWSLoadBalancer    bool
+	SSEUpdateFrequency       time.Duration
+	StaleThreshold           uint
+	ConnectionTimeout        time.Duration
+	NetworkPassphrase        string
+	MaxPathLength            uint
+	MaxAssetsPerPathRequest  int
+	PathFinder               paths.Finder
+	PrometheusRegistry       *prometheus.Registry
+	CoreGetter               actions.CoreStateGetter
+	HorizonVersion           string
+	FriendbotURL             *url.URL
+	HealthCheck              http.Handler
+	EnableIngestionFiltering bool
 }
 
 type Router struct {
@@ -340,11 +341,13 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Internal.Get("/metrics", promhttp.HandlerFor(config.PrometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
 	r.Internal.Get("/debug/pprof/heap", pprof.Index)
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
-	r.Internal.Route("/ingestion/filter/rules", func(r chi.Router) {
-		r.Route("/asset", func(r chi.Router) {
-			handler := actions.AssetFilterRuleHandler{}
-			r.With(historyMiddleware).Put("/", handler.Set)
-			r.With(historyMiddleware).Get("/", handler.Get)
+	if config.EnableIngestionFiltering {
+		r.Internal.Route("/ingestion/filter/rules", func(r chi.Router) {
+			r.Route("/asset", func(r chi.Router) {
+				handler := actions.AssetFilterRuleHandler{}
+				r.With(historyMiddleware).Put("/", handler.Set)
+				r.With(historyMiddleware).Get("/", handler.Get)
+			})
 		})
-	})
+	}
 }

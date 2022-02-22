@@ -160,7 +160,9 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
-
+	if !s.config.EnableIngestionFiltering {
+		return newGroupTransactionFilterers(nil, time.Now().Unix())
+	}
 	// only attempt to refresh filter config cache state at configured interval limit
 	if time.Now().Unix() < (groupFilterers.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
 		return groupFilterers

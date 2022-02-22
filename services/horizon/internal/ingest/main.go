@@ -91,6 +91,8 @@ type Config struct {
 	CheckpointFrequency uint32
 
 	RoundingSlippageFilter int
+
+	EnableIngestionFiltering bool
 }
 
 const (

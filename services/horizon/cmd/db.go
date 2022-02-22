@@ -398,6 +398,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		StellarCoreCursor:           config.CursorName,
 		StellarCoreURL:              config.StellarCoreURL,
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
+		EnableIngestionFiltering:    config.EnableIngestionFiltering,
 	}
 
 	if !ingestConfig.EnableCaptiveCore {
