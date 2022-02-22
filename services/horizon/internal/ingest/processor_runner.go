@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	logger "github.com/stellar/go/support/log"
+	"time"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -78,6 +81,15 @@ type ProcessorRunnerInterface interface {
 }
 
 var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
+var (
+	// default empty filters, this will get populated on first processor invocation
+	groupFilterers *groupTransactionFilterers = newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{}, 0)
+	LOG            *logger.Entry              = log.WithFields(logger.F{
+		"processor": "filters",
+	})
+	// the filter config cache will be checked against latest from db at most once per each of this interval,
+	filterConfigCheckIntervalSeconds int64 = 10
+)
 
 type ProcessorRunner struct {
 	config Config
@@ -145,6 +157,40 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
 		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
 	})
+}
+
+func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
+
+	// only attempt to refresh filter config cache state at configured interval limit
+	if time.Now().Unix() < (groupFilterers.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
+		return groupFilterers
+	}
+
+	LOG.Info("expired filter config cache, refresh from db")
+	filterConfigs, err := s.historyQ.GetAllFilters(s.ctx)
+	if err != nil {
+		LOG.Errorf("unable to query filter configs, %v", err)
+		// reset the cache time regardless, so next attempt is at next interval
+		groupFilterers.lastFilterConfigCheckUnixEpoch = time.Now().Unix()
+		return groupFilterers
+	}
+
+	newFilters := []processors.LedgerTransactionFilterer{}
+	for _, filterConfig := range filterConfigs {
+		if filterConfig.Enabled {
+			switch filterConfig.Name {
+			case history.FilterAssetFilterName:
+				assetFilter, err := filters.GetAssetFilter(&filterConfig)
+				if err != nil {
+					LOG.Errorf("unable to create asset filter %v", err)
+					continue
+				}
+				newFilters = append(newFilters, assetFilter)
+			}
+		}
+	}
+	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().Unix())
+	return groupFilterers
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
@@ -291,9 +337,10 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
+	groupTransactionFilterers := s.buildTransactionFilterer()
 	groupTransactionProcessors := s.buildTransactionProcessor(
 		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
-	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionProcessors, transactionReader)
+	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionFilterers, groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
@@ -308,6 +355,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
 	tradeStats = tradeProcessor.GetStats()
+	// TODO: store filtering durations
 	return
 }
 
