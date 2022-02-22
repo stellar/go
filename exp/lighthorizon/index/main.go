@@ -125,11 +125,57 @@ func (i *CheckpointIndex) Shift() uint32 {
 	return i.shift
 }
 
-func (i *CheckpointIndex) IsActive(checkpoint uint32) (bool, error) {
+// NextActive returns the next checkpoint (inclusive) where this index is active.
+func (i *CheckpointIndex) NextActive(checkpoint uint32) (uint32, error) {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
-	return false, nil
+	lastCheckpoint := i.firstCheckpoint + uint32(len(i.bitmap))*8 - i.shift - 1
+	if i.firstCheckpoint == 0 || lastCheckpoint < checkpoint {
+		// We're past the end.
+		// TODO: Should this be an error? or how should we signal NONE here?
+		return 0, io.EOF
+	}
+
+	if checkpoint < i.firstCheckpoint {
+		checkpoint = i.firstCheckpoint
+	}
+
+	// Must be within the range, find the first non-zero after our start
+	loc := (checkpoint - i.firstCheckpoint) / 8
+
+	// Is it in the same byte?
+	if shift, ok := maxBitAfter(i.bitmap[loc], (checkpoint-i.firstCheckpoint)%8); ok {
+		return i.firstCheckpoint + (loc * 8) + shift, nil
+	}
+
+	// Scan bytes after
+	loc++
+	for ; loc < uint32(len(i.bitmap)); loc++ {
+		// Find the offset of the set bit
+		if shift, ok := maxBitAfter(i.bitmap[loc], 0); ok {
+			return i.firstCheckpoint + (loc * 8) + shift, nil
+		}
+	}
+
+	// all bits after this were zero
+	// TODO: Should this be an error? or how should we signal NONE here?
+	return 0, io.EOF
+}
+
+func maxBitAfter(b byte, after uint32) (uint32, bool) {
+	if b == 0 {
+		// empty byte
+		return 0, false
+	}
+
+	for shift := uint32(after); shift < 8; shift++ {
+		mask := byte(0x80) >> shift
+		if mask&b != 0 {
+			return shift, true
+		}
+	}
+	return 0, false
 }
 
 func (i *CheckpointIndex) Buffer() *bytes.Buffer {

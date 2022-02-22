@@ -148,6 +148,10 @@ func (s *S3IndexStore) getCreateIndex(id string) (*CheckpointIndex, error) {
 	return ind, nil
 }
 
-func (s *S3IndexStore) NextActive(index string, afterCheckpoint uint32) (uint32, error) {
-	return 0, fmt.Errorf("TODO: Implement S3IndexStore.NextActive")
+func (s *S3IndexStore) NextActive(indexId string, afterCheckpoint uint32) (uint32, error) {
+	ind, err := s.getCreateIndex(indexId)
+	if err != nil {
+		return 0, err
+	}
+	return ind.NextActive(afterCheckpoint)
 }
