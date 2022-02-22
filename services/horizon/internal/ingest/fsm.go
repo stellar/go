@@ -10,9 +10,9 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -416,9 +416,18 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithField("ingestLedger", ingestLedger).
 			WithField("lastIngestedLedger", lastIngestedLedger).
 			Info("bumping ingest ledger to next ledger after ingested ledger in db")
-		return retryResume(resumeState{
-			latestSuccessfullyProcessedLedger: lastIngestedLedger,
-		}), nil
+
+		// Update cursor if there's more than one ingesting instance: either
+		// Captive-Core or DB ingestion connected to another Stellar-Core.
+		if err = s.updateCursor(lastIngestedLedger); err != nil {
+			// Don't return updateCursor error.
+			log.WithError(err).Warn("error updating stellar-core cursor")
+		}
+
+		s.maybeVerifyState(ingestLedger)
+
+		// resume immediately so Captive-Core catchup is not slowed down
+		return resumeImmediately(lastIngestedLedger), nil
 	}
 
 	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
@@ -466,7 +475,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	}
 
 	rebuildStart := time.Now()
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger)
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
 	}
@@ -797,7 +806,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 	}
 
-	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
+	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
 		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
 	}
@@ -950,7 +959,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			Info("Processed ledger")
 	}
 
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, v.fromLedger, v.toLedger)
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, v.fromLedger, v.toLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
 	}

@@ -50,7 +50,7 @@ func TestMuxedOperations(t *testing.T) {
 			Selling:       txnbuild.NativeAsset{},
 			Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
 			Amount:        "3",
-			Price:         "1",
+			Price:         xdr.Price{1, 1},
 		},
 		// This will generate a trade effect:
 		&txnbuild.ManageSellOffer{
@@ -58,7 +58,7 @@ func TestMuxedOperations(t *testing.T) {
 			Selling:       txnbuild.CreditAsset{"ABCD", master.Address()},
 			Buying:        txnbuild.NativeAsset{},
 			Amount:        "3",
-			Price:         "1",
+			Price:         xdr.Price{1, 1},
 		},
 		&txnbuild.ManageData{
 			SourceAccount: sponsoredMuxed.Address(),

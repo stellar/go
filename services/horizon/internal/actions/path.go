@@ -148,6 +148,18 @@ func (handler FindPathsHandler) GetResource(w HeaderWriter, r *http.Request) (in
 		}
 	}
 
+	// Rollback REPEATABLE READ transaction so that a DB connection is released
+	// to be used by other http requests.
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not obtain historyQ from request")
+	}
+
+	err = historyQ.Rollback()
+	if err != nil {
+		return nil, errors.Wrap(err, "error in rollback")
+	}
+
 	records := []paths.Path{}
 	if len(query.SourceAssets) > 0 {
 		var lastIngestedLedger uint32
@@ -299,6 +311,18 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// Rollback REPEATABLE READ transaction so that a DB connection is released
+	// to be used by other http requests.
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not obtain historyQ from request")
+	}
+
+	err = historyQ.Rollback()
+	if err != nil {
+		return nil, errors.Wrap(err, "error in rollback")
 	}
 
 	sourceAsset := qp.SourceAsset()

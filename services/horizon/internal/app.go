@@ -195,11 +195,6 @@ func (a *App) HistoryQ() *history.Q {
 	return a.historyQ
 }
 
-// Ingestion returns the ingestion system associated with this Horizon instance
-func (a *App) Ingestion() ingest.System {
-	return a.ingester
-}
-
 // HorizonSession returns a new session that loads data from the horizon
 // database.
 func (a *App) HorizonSession() db.SessionInterface {
@@ -225,7 +220,7 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 		URL:  a.config.StellarCoreURL,
 	}
 
-	coreInfo, err := coreClient.Info(a.ctx)
+	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
 		logErr(err, "failed to load the stellar-core info")
 		return

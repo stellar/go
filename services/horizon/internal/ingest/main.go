@@ -74,6 +74,7 @@ type Config struct {
 	CaptiveCoreBinaryPath  string
 	CaptiveCoreStoragePath string
 	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
+	CaptiveCoreConfigUseDB bool
 	RemoteCaptiveCoreURL   string
 	NetworkPassphrase      string
 
@@ -88,6 +89,8 @@ type Config struct {
 
 	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
 	CheckpointFrequency uint32
+
+	RoundingSlippageFilter int
 }
 
 const (
@@ -224,11 +227,11 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
+					UseDB:               config.CaptiveCoreConfigUseDB,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                 logger,
 					Context:             ctx,
 				},

@@ -5,14 +5,32 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Generate Http Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count`
-  metric key with status=499 label. ([4098](horizon_http_requests_duration_seconds_count))
-* Improve performance of `/trades?trade_type=liquidity_pool` requests. ([4149](https://github.com/stellar/go/pull/4149))
-* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([4148](https://github.com/stellar/go/pull/4148))  
+* New feature, enable captive core based ingestion to use remote db persistence rather than in-memory for ledger states. Essentially moves what would have been stored in RAM to the external db instead. Recent profiling on the two approaches shows an approximate space usgae of about 8GB for ledger states as of 02/2022 timeframe, but it will gradually continue to increase as more accounts/assets are added to network. Current horizon ingest behavior when configured for captive core usage will by default take this space from RAM, unless a new command line flag is specified `--captive-core-use-db=true`, which enables this space to be taken from the external db instead, and not RAM. The external db used is determined be setting `DATABASE` parameter in the captive core cfg/.toml file. If no value is set, then by default it uses sqlite and the db file is stored in `--captive-core-storage-path` - ([4092](https://github.com/stellar/go/pull/4092))
+* Exclude trades with high "rounding slippage" from `/trade_aggregations` endpoint. ([4178](https://github.com/stellar/go/pull/4178))
+  * Note, to apply this change retroactively to existing data you will need to reingest starting from protocol 18 (ledger `38115806`).
+
+## v2.14.0
+
+* Restart Stellar-Core when it's context is cancelled. ([4192](https://github.com/stellar/go/pull/4192))
+* Resume ingestion immediately when catching up. ([4196](https://github.com/stellar/go/pull/4196))
+* Check if there are newer ledger when requested ledger does not exist. ([4198](https://github.com/stellar/go/pull/4198))
+* Properly check against the HA array being empty. ([4152](https://github.com/stellar/go/pull/4152))
+
+## v2.13.0
 
 ### DB Schema Migration
 
-* DB migrations add a column and index to the `history_trades` table. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+* DB migrations add a column and index to the `history_trades` table to improve performance of some queries. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+
+### Changes
+
+* Improve performance of `/trades?trade_type=liquidity_pool` requests. ([4149](https://github.com/stellar/go/pull/4149))
+* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([4148](https://github.com/stellar/go/pull/4148))
+* Path finding results contain empty paths again (removed in Horizon 2.9.0). ([4137](https://github.com/stellar/go/pull/4137))
+* Generate HTTP Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count` metric key with `status="499"` label. ([4098](https://github.com/stellar/go/pull/4098))
+* Fix incorrect counting of rate limited events in stream requests. ([4163](https://github.com/stellar/go/pull/4163))
+* Update cursor on every ledger when using old non Captive-Core ingestion backend. ([4150](https://github.com/stellar/go/pull/4150))
+* Fix the code responsible for updating Stellar-Core status that could stop the metrics updates on connectivity issues. ([4180](https://github.com/stellar/go/pull/4180))
 
 ## v2.12.1
 

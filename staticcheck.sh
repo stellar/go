@@ -1,7 +1,10 @@
 #! /bin/bash
 set -e
 
-printf "Running staticcheck...\n"
+version='2020.1.4'
+staticcheck='go run honnef.co/go/tools/cmd/staticcheck@'"$version"
+
+printf "Running staticcheck $version...\n"
 
 staticcheck='go run honnef.co/go/tools/cmd/staticcheck@2021.1.2'
 

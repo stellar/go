@@ -18,7 +18,7 @@ import (
 )
 
 func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry) db.SessionInterface {
-	log.Infof("Establishing database session at %s for %v", databaseURL, subservice)
+	log.Infof("Establishing database session for %v", subservice)
 	session, err := db.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("cannot open %v DB: %v", subservice, err)
@@ -95,11 +95,13 @@ func initIngester(app *App) {
 		StellarCoreCursor:            app.config.CursorName,
 		CaptiveCoreBinaryPath:        app.config.CaptiveCoreBinaryPath,
 		CaptiveCoreStoragePath:       app.config.CaptiveCoreStoragePath,
+		CaptiveCoreConfigUseDB:       app.config.CaptiveCoreConfigUseDB,
 		CaptiveCoreToml:              app.config.CaptiveCoreToml,
 		RemoteCaptiveCoreURL:         app.config.RemoteCaptiveCoreURL,
 		EnableCaptiveCore:            app.config.EnableCaptiveCoreIngestion,
 		DisableStateVerification:     app.config.IngestDisableStateVerification,
 		EnableExtendedLogLedgerStats: app.config.IngestEnableExtendedLogLedgerStats,
+		RoundingSlippageFilter:       app.config.RoundingSlippageFilter,
 	})
 
 	if err != nil {

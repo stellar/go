@@ -10,8 +10,8 @@ import (
 
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/toid"
 )
 
 // UnmarshalDetails unmarshals the details of this effect into `dest`

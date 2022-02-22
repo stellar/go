@@ -88,8 +88,8 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 			LiquidityPoolID: [32]byte(poolID),
 			MaxAmountA:      "400",
 			MaxAmountB:      "777",
-			MinPrice:        "0.5",
-			MaxPrice:        "2",
+			MinPrice:        xdr.Price{1, 2},
+			MaxPrice:        xdr.Price{2, 1},
 		},
 	)
 
@@ -475,8 +475,8 @@ func TestLiquidityPoolRevoke(t *testing.T) {
 			LiquidityPoolID: [32]byte(poolID),
 			MaxAmountA:      "400",
 			MaxAmountB:      "777",
-			MinPrice:        "0.5",
-			MaxPrice:        "2",
+			MinPrice:        xdr.Price{1, 2},
+			MaxPrice:        xdr.Price{2, 1},
 		},
 		&txnbuild.SetTrustLineFlags{
 			SourceAccount: master.Address(),
@@ -667,8 +667,8 @@ func TestLiquidityPoolFailedDepositAndWithdraw(t *testing.T) {
 			LiquidityPoolID: nonExistentPoolID,
 			MaxAmountA:      "400",
 			MaxAmountB:      "777",
-			MinPrice:        "0.5",
-			MaxPrice:        "2",
+			MinPrice:        xdr.Price{1, 2},
+			MaxPrice:        xdr.Price{2, 1},
 		},
 	)
 	_, err = itest.Client().SubmitTransaction(tx)

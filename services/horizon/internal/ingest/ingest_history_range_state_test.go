@@ -12,8 +12,8 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -500,7 +500,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 		s.historyQ.On("Commit").Return(nil).Once()
 		s.historyQ.On("Rollback").Return(nil).Once()
 	}
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200), 0).Return(nil).Once()
 
 	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, false)
 	s.Assert().NoError(err)
@@ -533,7 +533,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 		nil,
 	).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(100)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(100), 0).Return(nil).Once()
 
 	// Recreate mock in this single test to remove previous assertion.
 	*s.ledgerBackend = mockLedgerBackend{}
@@ -584,7 +584,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200), 0).Return(nil).Once()
 
 	err := s.system.ReingestRange([]history.LedgerRange{{100, 200}}, true)
 	s.Assert().NoError(err)

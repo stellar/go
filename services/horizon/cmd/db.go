@@ -391,11 +391,13 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 		EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
 		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
+		CaptiveCoreConfigUseDB:      config.CaptiveCoreConfigUseDB,
 		RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
 		CaptiveCoreToml:             config.CaptiveCoreToml,
 		CaptiveCoreStoragePath:      config.CaptiveCoreStoragePath,
 		StellarCoreCursor:           config.CursorName,
 		StellarCoreURL:              config.StellarCoreURL,
+		RoundingSlippageFilter:      config.RoundingSlippageFilter,
 	}
 
 	if !ingestConfig.EnableCaptiveCore {

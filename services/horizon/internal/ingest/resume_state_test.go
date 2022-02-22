@@ -273,7 +273,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",
@@ -304,12 +304,22 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(101), nil).Once()
 
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(101),
+	).Return(errors.New("my error")).Once()
+
+	// Skips state verification but ensures maybeVerifyState called
+	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(true, nil).Once()
+
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 99}.run(s.system)
 	s.Assert().NoError(err)
 	s.Assert().Equal(
 		transition{
 			node:          resumeState{latestSuccessfullyProcessedLedger: 101},
-			sleepDuration: defaultSleep,
+			sleepDuration: 0,
 		},
 		next,
 	)
@@ -355,7 +365,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	).Return(errors.New("my error")).Once()
 
 	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(false, nil).Once()
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101), 0).Return(nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)

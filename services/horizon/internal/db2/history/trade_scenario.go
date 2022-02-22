@@ -8,7 +8,7 @@ import (
 	"github.com/guregu/null"
 
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -70,6 +70,7 @@ func createInsertTrades(
 		PriceN:              675,
 		PriceD:              981,
 		Type:                LiquidityPoolTradeType,
+		RoundingSlippage:    null.IntFrom(0),
 	}
 
 	fifth := InsertTrade{
@@ -87,6 +88,7 @@ func createInsertTrades(
 		PriceN:              43,
 		PriceD:              56,
 		Type:                LiquidityPoolTradeType,
+		RoundingSlippage:    null.IntFrom(0),
 	}
 
 	return []InsertTrade{

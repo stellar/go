@@ -124,6 +124,12 @@ type CaptiveCoreConfig struct {
 	// stored. We always append /captive-core to this directory, since we clean
 	// it up entirely on shutdown.
 	StoragePath string
+
+	// UseDB, when true, instructs the core invocation to use an external db url
+	// for ledger states rather than in memory(RAM). The external db url is determined by the presence
+	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
+	// and the db file will be stored at location derived from StoragePath parameter.
+	UseDB bool
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -142,6 +148,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	if parentCtx == nil {
 		parentCtx = context.Background()
 	}
+
 	var cancel context.CancelFunc
 	config.Context, cancel = context.WithCancel(parentCtx)
 
@@ -250,11 +257,8 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	var runner stellarCoreRunnerInterface
 	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
-	} else {
-		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
-		// see https://golang.org/doc/faq#nil_error
-		c.stellarCoreRunner = runner
 	}
+	c.stellarCoreRunner = runner
 
 	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
 	if err != nil {
@@ -279,14 +283,15 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 }
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
-func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (runFrom uint32, ledgerHash string, err error) {
+func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
+
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-		return
+		err := errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+		return 0, "", err
 	}
 
 	if from <= 63 {
@@ -298,26 +303,25 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ru
 		from = 3
 	}
 
-	runFrom = from - 1
+	runFrom := from - 1
 	if c.ledgerHashStore != nil {
 		var exists bool
-		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
+		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
 		if err != nil {
 			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
-			return
+			return 0, "", err
 		}
 		if exists {
-			return
+			return runFrom, ledgerHash, nil
 		}
 	}
 
-	ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
-	if err2 != nil {
-		err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
-		return
+	ledgerHeader, err := c.archive.GetLedgerHeader(from)
+	if err != nil {
+		return 0, "", errors.Wrapf(err, "error trying to read ledger header %d from HAS", from)
 	}
-	ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
-	return
+	ledgerHash := hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
+	return runFrom, ledgerHash, nil
 }
 
 // nextExpectedSequence returns nextLedger (if currently set) or start of
@@ -398,16 +402,18 @@ func (c *CaptiveStellarCore) IsPrepared(ctx context.Context, ledgerRange Range) 
 }
 
 func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
-	if c.isClosed() {
-		return false
-	}
-
-	if c.stellarCoreRunner == nil {
-		return false
-	}
 	if c.closed {
 		return false
 	}
+
+	if c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil {
+		return false
+	}
+
+	if exited, _ := c.stellarCoreRunner.getProcessExitError(); exited {
+		return false
+	}
+
 	lastLedger := uint32(0)
 	if c.lastLedger != nil {
 		lastLedger = *c.lastLedger
@@ -464,7 +470,7 @@ func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xd
 		return *c.cachedMeta, nil
 	}
 
-	if c.isClosed() {
+	if c.closed {
 		return xdr.LedgerCloseMeta{}, errors.New("stellar-core is no longer usable")
 	}
 
@@ -607,7 +613,7 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 
-	if c.isClosed() {
+	if c.closed {
 		return 0, errors.New("stellar-core is no longer usable")
 	}
 	if c.prepared == nil {
@@ -624,10 +630,6 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 		return c.nextExpectedSequence() - 1 + uint32(len(c.stellarCoreRunner.getMetaPipe())), nil
 	}
 	return *c.lastLedger, nil
-}
-
-func (c *CaptiveStellarCore) isClosed() bool {
-	return c.closed
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all

@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/price"
 	"testing"
 
 	"github.com/stellar/go/keypair"
@@ -165,7 +166,7 @@ func TestCreatePassiveSellOfferMultSigners(t *testing.T) {
 		Selling:       NativeAsset{},
 		Buying:        CreditAsset{"ABCD", kp0.Address()},
 		Amount:        "10",
-		Price:         "1.0",
+		Price:         xdr.Price{1, 1},
 		SourceAccount: kp1.Address(),
 	}
 
@@ -251,8 +252,7 @@ func TestManageOfferCreateMultSigners(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price, kp1.Address())
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"), kp1.Address())
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -308,9 +308,8 @@ func TestManageOfferUpdateMultSigners(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
-	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID, kp1.Address())
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price.MustParse("0.02"), offerID, kp1.Address())
 	check(err)
 
 	received, err := newSignedTransaction(

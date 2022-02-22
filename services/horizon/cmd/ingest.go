@@ -109,10 +109,12 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
 			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
 			CaptiveCoreBinaryPath:  config.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB: config.CaptiveCoreConfigUseDB,
 			RemoteCaptiveCoreURL:   config.RemoteCaptiveCoreURL,
 			CheckpointFrequency:    config.CheckpointFrequency,
 			CaptiveCoreToml:        config.CaptiveCoreToml,
 			CaptiveCoreStoragePath: config.CaptiveCoreStoragePath,
+			RoundingSlippageFilter: config.RoundingSlippageFilter,
 		}
 
 		if !ingestConfig.EnableCaptiveCore {
@@ -197,15 +199,17 @@ var ingestStressTestCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
-			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
+			NetworkPassphrase:      config.NetworkPassphrase,
+			HistorySession:         horizonSession,
+			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
+			RoundingSlippageFilter: config.RoundingSlippageFilter,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
+			ingestConfig.CaptiveCoreConfigUseDB = config.CaptiveCoreConfigUseDB
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
@@ -286,15 +290,17 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:   config.NetworkPassphrase,
-			HistorySession:      horizonSession,
-			HistoryArchiveURL:   config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:   config.EnableCaptiveCoreIngestion,
-			CheckpointFrequency: config.CheckpointFrequency,
+			NetworkPassphrase:      config.NetworkPassphrase,
+			HistorySession:         horizonSession,
+			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
+			CheckpointFrequency:    config.CheckpointFrequency,
+			RoundingSlippageFilter: config.RoundingSlippageFilter,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
+			ingestConfig.CaptiveCoreConfigUseDB = config.CaptiveCoreConfigUseDB
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)

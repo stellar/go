@@ -67,10 +67,10 @@ func makeTrade(
 	var result xdr.Int64
 	switch tradeType {
 	case tradeTypeDeposit:
-		result, ok = calculatePoolPayout(X, Y, amount, details.Params.Fee)
+		result, _, ok = CalculatePoolPayout(X, Y, amount, details.Params.Fee, false)
 
 	case tradeTypeExpectation:
-		result, ok = calculatePoolExpectation(X, Y, amount, details.Params.Fee)
+		result, _, ok = CalculatePoolExpectation(X, Y, amount, details.Params.Fee, false)
 
 	default:
 		return 0, errBadTradeType
@@ -84,65 +84,104 @@ func makeTrade(
 	return result, nil
 }
 
-// calculatePoolPayout calculates the amount of `reserveB` disbursed from the
+// CalculatePoolPayout calculates the amount of `reserveB` disbursed from the
 // pool for a `received` amount of `reserveA` . From CAP-38:
 //
 //      y = floor[(1 - F) Yx / (X + x - Fx)]
 //
 // It returns false if the calculation overflows.
-func calculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, bool) {
+func CalculatePoolPayout(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32, calculateRoundingSlippage bool) (xdr.Int64, xdr.Int64, bool) {
 	X, Y := uint256.NewInt(uint64(reserveA)), uint256.NewInt(uint64(reserveB))
 	F, x := uint256.NewInt(uint64(feeBips)), uint256.NewInt(uint64(received))
 
 	// would this deposit overflow the reserve?
 	if received > math.MaxInt64-reserveA {
-		return 0, false
+		return 0, 0, false
 	}
 
-	// We do all of the math in bips, so it's all upscaled by this value.
+	// We do all of the math with 4 extra decimal places of precision, so it's
+	// all upscaled by this value.
 	maxBips := uint256.NewInt(10000)
 	f := new(uint256.Int).Sub(maxBips, F) // upscaled 1 - F
 
 	// right half: X + (1 - F)x
 	denom := X.Mul(X, maxBips).Add(X, new(uint256.Int).Mul(x, f))
 	if denom.IsZero() { // avoid div-by-zero panic
-		return 0, false
+		return 0, 0, false
 	}
 
 	// left half, a: (1 - F) Yx
 	numer := Y.Mul(Y, x).Mul(Y, f)
 
 	// divide & check overflow
-	result := numer.Div(numer, denom)
+	result := new(uint256.Int)
+	result.Div(numer, denom)
+
+	var roundingSlippageBips xdr.Int64
+	ok := true
+	if calculateRoundingSlippage && !new(uint256.Int).Mod(numer, denom).IsZero() {
+		// Calculates the rounding slippage (S) in bips (Basis points)
+		//
+		// S is the % which the rounded result deviates from the unrounded.
+		// i.e. How much "error" did the rounding introduce?
+		//
+		//      unrounded = Xy / ((Y - y)(1 - F))
+		//      expectation = ceil[unrounded]
+		//      S = abs(expectation - unrounded) / unrounded
+		//
+		// For example, for:
+		//
+		//      X = 200    // 200 stroops of deposited asset in reserves
+		//      Y = 300    // 300 stroops of disbursed asset in reserves
+		//      y = 3      // disbursing 3 stroops
+		//      F = 0.003  // fee is 0.3%
+		//      unrounded = (200 * 3) / ((300 - 3)(1 - 0.003)) = 2.03
+		//      S = abs(ceil(2.03) - 2.03) / 2.03 = 47.78%
+		//      toBips(S) = 4778
+		//
+		S := new(uint256.Int)
+		unrounded, rounded := new(uint256.Int), new(uint256.Int)
+		// Upscale to centibips for extra precision
+		unrounded.Mul(numer, maxBips).Div(unrounded, denom)
+		rounded.Mul(result, maxBips)
+		S.Sub(unrounded, rounded)
+		S.Abs(S).Mul(S, maxBips)
+		S.Div(S, unrounded)
+		S.Div(S, uint256.NewInt(100)) // Downscale from centibips to bips
+		roundingSlippageBips = xdr.Int64(S.Uint64())
+		ok = ok && S.IsUint64() && roundingSlippageBips >= 0
+	}
 
 	val := xdr.Int64(result.Uint64())
-	return val, result.IsUint64() && val >= 0
+	ok = ok && result.IsUint64() && val >= 0
+	return val, roundingSlippageBips, ok
 }
 
-// calculatePoolExpectation determines how much of `reserveA` you would need to
+// CalculatePoolExpectation determines how much of `reserveA` you would need to
 // put into a pool to get the `disbursed` amount of `reserveB`.
 //
 //      x = ceil[Xy / ((Y - y)(1 - F))]
 //
 // It returns false if the calculation overflows.
-func calculatePoolExpectation(
-	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32,
-) (xdr.Int64, bool) {
+func CalculatePoolExpectation(
+	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32, calculateRoundingSlippage bool,
+) (xdr.Int64, xdr.Int64, bool) {
 	X, Y := uint256.NewInt(uint64(reserveA)), uint256.NewInt(uint64(reserveB))
 	F, y := uint256.NewInt(uint64(feeBips)), uint256.NewInt(uint64(disbursed))
 
 	// sanity check: disbursing shouldn't underflow the reserve
 	if disbursed >= reserveB {
-		return 0, false
+		return 0, 0, false
 	}
 
-	// We do all of the math in bips, so it's all upscaled by this value.
-	maxBips := uint256.NewInt(10000)
+	// We do all of the math with 4 extra decimal places of precision, so it's
+	// all upscaled by this value.
+	maxBips := uint256.NewInt(10_000)
 	f := new(uint256.Int).Sub(maxBips, F) // upscaled 1 - F
 
 	denom := Y.Sub(Y, y).Mul(Y, f) // right half: (Y - y)(1 - F)
 	if denom.IsZero() {            // avoid div-by-zero panic
-		return 0, false
+		return 0, 0, false
 	}
 
 	numer := X.Mul(X, y).Mul(X, maxBips) // left half: Xy
@@ -152,12 +191,48 @@ func calculatePoolExpectation(
 	rem.Mod(numer, denom)
 
 	// hacky way to ceil(): if there's a remainder, add 1
+	var roundingSlippageBips xdr.Int64
+	ok := true
 	if !rem.IsZero() {
 		result.AddUint64(result, 1)
+
+		if calculateRoundingSlippage {
+			// Calculates the rounding slippage (S) in bips (Basis points)
+			//
+			// S is the % which the rounded result deviates from the unrounded.
+			// i.e. How much "error" did the rounding introduce?
+			//
+			//      unrounded = Xy / ((Y - y)(1 - F))
+			//      expectation = ceil[unrounded]
+			//      S = abs(expectation - unrounded) / unrounded
+			//
+			// For example, for:
+			//
+			//      X = 200    // 200 stroops of deposited asset in reserves
+			//      Y = 300    // 300 stroops of disbursed asset in reserves
+			//      y = 3      // disbursing 3 stroops
+			//      F = 0.003  // fee is 0.3%
+			//      unrounded = (200 * 3) / ((300 - 3)(1 - 0.003)) = 2.03
+			//      S = abs(ceil(2.03) - 2.03) / 2.03 = 47.78%
+			//      toBips(S) = 4778
+			//
+			S := new(uint256.Int)
+			unrounded, rounded := new(uint256.Int), new(uint256.Int)
+			// Upscale to centibips for extra precision
+			unrounded.Mul(numer, maxBips).Div(unrounded, denom)
+			rounded.Mul(result, maxBips)
+			S.Sub(unrounded, rounded)
+			S.Abs(S).Mul(S, maxBips)
+			S.Div(S, unrounded)
+			S.Div(S, uint256.NewInt(100)) // Downscale from centibips to bips
+			roundingSlippageBips = xdr.Int64(S.Uint64())
+			ok = ok && S.IsUint64() && roundingSlippageBips >= 0
+		}
 	}
 
 	val := xdr.Int64(result.Uint64())
-	return val, result.IsUint64() && val >= 0
+	ok = ok && result.IsUint64() && val >= 0
+	return val, roundingSlippageBips, ok
 }
 
 // getOtherAsset returns the other asset in the liquidity pool. Note that

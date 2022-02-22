@@ -28,6 +28,7 @@ type Config struct {
 	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
 	CaptiveCoreStoragePath      string
 	CaptiveCoreReuseStoragePath bool
+	CaptiveCoreConfigUseDB      bool
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
@@ -95,4 +96,6 @@ type Config struct {
 	// balances like ELB or ALB. In such case http.Request.RemoteAddr will be
 	// replaced with the last IP in X-Forwarded-For header.
 	BehindAWSLoadBalancer bool
+	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
+	RoundingSlippageFilter int
 }
