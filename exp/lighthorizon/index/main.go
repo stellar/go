@@ -11,7 +11,7 @@ import (
 const CheckpointIndexVersion = 1
 
 type CheckpointIndex struct {
-	mutex           sync.Mutex
+	mutex           sync.RWMutex
 	bitmap          []byte
 	firstCheckpoint uint32
 	shift           uint32
@@ -112,18 +112,30 @@ func (i *CheckpointIndex) SetActive(checkpoint uint32) error {
 }
 
 func (i *CheckpointIndex) Bytes() []byte {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
+
 	return i.bitmap
 }
 
 func (i *CheckpointIndex) Shift() uint32 {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
+
 	return i.shift
 }
 
 func (i *CheckpointIndex) IsActive(checkpoint uint32) (bool, error) {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
+
 	return false, nil
 }
 
 func (i *CheckpointIndex) Buffer() *bytes.Buffer {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
+
 	var b bytes.Buffer
 	b.WriteString(strconv.FormatUint(uint64(i.firstCheckpoint), 10))
 	b.WriteByte(0)
