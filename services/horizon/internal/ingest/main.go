@@ -88,6 +88,8 @@ type Config struct {
 
 	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
 	CheckpointFrequency uint32
+
+	EnableIngestionFiltering bool
 }
 
 const (

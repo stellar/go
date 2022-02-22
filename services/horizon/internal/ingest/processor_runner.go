@@ -149,6 +149,9 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 }
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
+	if !s.config.EnableIngestionFiltering {
+		return newGroupTransactionFilterers(nil)
+	}
 	return newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{
 		filters.NewAccountFilter(s.historyQ),
 		filters.NewAssetFilterFromParams(&filters.AssetFilterParms{
