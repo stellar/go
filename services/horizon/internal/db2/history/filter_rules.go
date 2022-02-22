@@ -2,9 +2,9 @@ package history
 
 import (
 	"context"
-	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/support/errors"
 )
 
 const (
@@ -46,12 +46,38 @@ func (q *Q) GetFilterByName(ctx context.Context, name string) (FilterConfig, err
 }
 
 func (q *Q) SetFilterConfig(ctx context.Context, config FilterConfig) error {
-	upsertFields := []upsertField{
-		{filterRulesLastModifiedColumnName, "bigint", []interface{}{time.Now().Unix()}},
-		{filterRulesEnabledColumnName, "bool", []interface{}{config.Enabled}},
-		{filterRulesColumnName, "jsonb", []interface{}{config.Rules}},
-		{filterRulesTypeColumnName, "text", []interface{}{config.Name}},
+	updateCols := map[string]interface{}{
+		filterRulesLastModifiedColumnName: sq.Expr("extract(epoch from now() at time zone 'utc')"),
+		filterRulesEnabledColumnName:      config.Enabled,
+		filterRulesColumnName:             config.Rules,
+		filterRulesTypeColumnName:         config.Name,
 	}
 
-	return q.upsertRows(ctx, filterRulesTableName, filterRulesTypeColumnName, upsertFields)
+	sqlUpdate := sq.Update(filterRulesTableName).SetMap(updateCols).Where(
+		sq.Eq{filterRulesTypeColumnName: config.Name})
+
+	rowCnt, err := q.checkForError(sqlUpdate, ctx)
+	if err != nil {
+		return err
+	}
+
+	if rowCnt < 1 {
+		sqlInsert := sq.Insert(filterRulesTableName).SetMap(updateCols)
+		rowCnt, err = q.checkForError(sqlInsert, ctx)
+		if err != nil {
+			return err
+		}
+		if rowCnt < 1 {
+			return errors.Errorf("insertion of filter rule did not result in new row created in db")
+		}
+	}
+	return nil
+}
+
+func (q *Q) checkForError(builder sq.Sqlizer, ctx context.Context) (int64, error) {
+	result, err := q.Exec(ctx, builder)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
