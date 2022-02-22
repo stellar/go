@@ -98,9 +98,9 @@ func (handler AssetFilterRuleHandler) Set(w http.ResponseWriter, r *http.Request
 		}
 		problem.Render(r.Context(), w, err)
 		return
-	} 
+	}
 	filterConfig.Rules = string(assetFilterRules)
-	
+
 	if err = historyQ.SetFilterConfig(r.Context(), filterConfig); err != nil {
 		problem.Render(r.Context(), w, err)
 		return

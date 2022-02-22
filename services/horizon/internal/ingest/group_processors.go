@@ -92,8 +92,8 @@ type groupTransactionFilterers struct {
 
 func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer, lastFilterConfigCheckUnixEpoch int64) *groupTransactionFilterers {
 	return &groupTransactionFilterers{
-		filterers:                   filterers,
-		processorsRunDurations:      make(map[string]time.Duration),
+		filterers:                      filterers,
+		processorsRunDurations:         make(map[string]time.Duration),
 		lastFilterConfigCheckUnixEpoch: lastFilterConfigCheckUnixEpoch,
 	}
 }

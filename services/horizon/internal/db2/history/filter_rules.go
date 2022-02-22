@@ -46,7 +46,7 @@ func (q *Q) GetFilterByName(ctx context.Context, name string) (FilterConfig, err
 }
 
 func (q *Q) SetFilterConfig(ctx context.Context, config FilterConfig) error {
-    upsertFields := []upsertField{
+	upsertFields := []upsertField{
 		{filterRulesLastModifiedColumnName, "bigint", []interface{}{time.Now().Unix()}},
 		{filterRulesEnabledColumnName, "bool", []interface{}{config.Enabled}},
 		{filterRulesColumnName, "jsonb", []interface{}{config.Rules}},
