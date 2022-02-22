@@ -88,7 +88,7 @@ var (
 		"processor": "filters",
 	})
 	// the filter config cache will be checked against latest from db at most once per each of this interval,
-	filterConfigCheckIntervalMS int64 = 10000
+	filterConfigCheckIntervalSeconds int64 = 10
 )
 
 type ProcessorRunner struct {
@@ -162,7 +162,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
 
 	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().UnixMilli() < (groupFilterers.lastFilterConfigCheckUnixMS + filterConfigCheckIntervalMS) {
+	if time.Now().Unix() < (groupFilterers.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
 		return groupFilterers
 	}
 
@@ -171,7 +171,7 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	if err != nil {
 		LOG.Errorf("unable to query filter configs, %v", err)
 		// reset the cache time regardless, so next attempt is at next interval
-		groupFilterers.lastFilterConfigCheckUnixMS = time.Now().UnixMilli()
+		groupFilterers.lastFilterConfigCheckUnixEpoch = time.Now().Unix()
 		return groupFilterers
 	}
 
@@ -189,7 +189,7 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 			}
 		}
 	}
-	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().UnixMilli())
+	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().Unix())
 	return groupFilterers
 }
 

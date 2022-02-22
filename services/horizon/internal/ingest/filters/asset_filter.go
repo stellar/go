@@ -31,7 +31,7 @@ type AssetFilterRules struct {
 
 type AssetFilter struct {
 	canonicalAssetsLookup map[string]bool
-	lastModified          uint64
+	lastModified          int64
 }
 
 func GetAssetFilter(filterConfig *history.FilterConfig) (*AssetFilter, error) {
@@ -107,7 +107,7 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 				allowed = true
 			}
 		}
-		
+
 		if allowed {
 			return true, nil
 		}

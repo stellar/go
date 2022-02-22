@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 )
@@ -19,7 +20,7 @@ type FilterConfig struct {
 	Enabled      bool   `db:"enabled"`
 	Rules        string `db:"rules"`
 	Name         string `db:"name"`
-	LastModified uint64 `db:"last_modified"`
+	LastModified int64  `db:"last_modified"`
 }
 
 type QFilter interface {
@@ -45,15 +46,12 @@ func (q *Q) GetFilterByName(ctx context.Context, name string) (FilterConfig, err
 }
 
 func (q *Q) SetFilterConfig(ctx context.Context, config FilterConfig) error {
-	updateCols := map[string]interface{}{
-		filterRulesLastModifiedColumnName: sq.Expr("extract(epoch from now() at time zone 'utc')"),
-		filterRulesEnabledColumnName:      config.Enabled,
-		filterRulesColumnName:             config.Rules,
+    upsertFields := []upsertField{
+		{filterRulesLastModifiedColumnName, "bigint", []interface{}{time.Now().Unix()}},
+		{filterRulesEnabledColumnName, "bool", []interface{}{config.Enabled}},
+		{filterRulesColumnName, "jsonb", []interface{}{config.Rules}},
+		{filterRulesTypeColumnName, "text", []interface{}{config.Name}},
 	}
 
-	sql := sq.Update(filterRulesTableName).SetMap(updateCols).Where(
-		sq.Eq{filterRulesTypeColumnName: config.Name})
-
-	_, err := q.Exec(ctx, sql)
-	return err
+	return q.upsertRows(ctx, filterRulesTableName, filterRulesTypeColumnName, upsertFields)
 }

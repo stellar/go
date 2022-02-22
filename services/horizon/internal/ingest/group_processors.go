@@ -87,14 +87,14 @@ func (g groupTransactionProcessors) Commit(ctx context.Context) error {
 type groupTransactionFilterers struct {
 	filterers []processors.LedgerTransactionFilterer
 	processorsRunDurations
-	lastFilterConfigCheckUnixMS int64
+	lastFilterConfigCheckUnixEpoch int64
 }
 
-func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer, lastFilterConfigCheckUnixMS int64) *groupTransactionFilterers {
+func newGroupTransactionFilterers(filterers []processors.LedgerTransactionFilterer, lastFilterConfigCheckUnixEpoch int64) *groupTransactionFilterers {
 	return &groupTransactionFilterers{
 		filterers:                   filterers,
 		processorsRunDurations:      make(map[string]time.Duration),
-		lastFilterConfigCheckUnixMS: lastFilterConfigCheckUnixMS,
+		lastFilterConfigCheckUnixEpoch: lastFilterConfigCheckUnixEpoch,
 	}
 }
 
