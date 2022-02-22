@@ -8,10 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
@@ -24,22 +20,17 @@ var (
 	mutex   sync.RWMutex
 	indexes = map[string]*index.CheckpointIndex{}
 
-	parallel  = uint32(20)
-	s3Session *session.Session
-
-	downloader *s3manager.Downloader
+	// Should we use runtime.NumCPU() for a reasonable default?
+	parallel = uint32(20)
 )
 
 func main() {
 	log.SetLevel(log.InfoLevel)
 
-	var err error
-	s3Session, err = session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+	indexStore, err := index.NewS3IndexStore(&aws.Config{Region: aws.String("us-east-1")}, parallel)
 	if err != nil {
 		panic(err)
 	}
-
-	downloader = s3manager.NewDownloader(s3Session)
 
 	historyArchive, err := historyarchive.Connect(
 		// "file:///Users/Bartek/archive",
@@ -135,14 +126,20 @@ func main() {
 							panic(err)
 						}
 
-						addParticipantsToIndexes(checkpoint, "%s_all_all", allParticipants)
+						err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_all_all", allParticipants)
+						if err != nil {
+							panic(err)
+						}
 
 						paymentsParticipants, err := participantsForOperations(tx, true)
 						if err != nil {
 							panic(err)
 						}
 
-						addParticipantsToIndexes(checkpoint, "%s_all_payments", paymentsParticipants)
+						err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_all_payments", paymentsParticipants)
+						if err != nil {
+							panic(err)
+						}
 
 						if tx.Result.Successful() {
 							allParticipants, err := participantsForOperations(tx, false)
@@ -150,14 +147,20 @@ func main() {
 								panic(err)
 							}
 
-							addParticipantsToIndexes(checkpoint, "%s_successful_all", allParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_successful_all", allParticipants)
+							if err != nil {
+								panic(err)
+							}
 
 							paymentsParticipants, err := participantsForOperations(tx, true)
 							if err != nil {
 								panic(err)
 							}
 
-							addParticipantsToIndexes(checkpoint, "%s_successful_payments", paymentsParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_successful_payments", paymentsParticipants)
+							if err != nil {
+								panic(err)
+							}
 						}
 					}
 				}
@@ -173,7 +176,9 @@ func main() {
 
 					// Clear indexes to save memory
 					mutex.Lock()
-					uploadIndexes()
+					if err := indexStore.Flush(); err != nil {
+						panic(err)
+					}
 					indexes = map[string]*index.CheckpointIndex{}
 					mutex.Unlock()
 				}
@@ -182,107 +187,9 @@ func main() {
 	}
 
 	wg.Wait()
-	uploadIndexes()
-}
-
-func uploadIndexes() {
-	var wg sync.WaitGroup
-
-	type upload struct {
-		id    string
-		index *index.CheckpointIndex
+	if err := indexStore.Flush(); err != nil {
+		panic(err)
 	}
-
-	uch := make(chan upload, parallel)
-
-	go func() {
-		for id, index := range indexes {
-			uch <- upload{
-				id:    id,
-				index: index,
-			}
-		}
-		close(uch)
-	}()
-
-	uploader := s3manager.NewUploader(s3Session)
-
-	written := uint64(0)
-	for i := uint32(0); i < parallel; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for {
-				u, ok := <-uch
-				if !ok {
-					return
-				}
-
-				_, err := uploader.Upload(&s3manager.UploadInput{
-					Bucket: aws.String("horizon-index"),
-					Key:    aws.String(u.id),
-					Body:   u.index.Buffer(),
-				})
-				if err != nil {
-					log.Errorf("Unable to upload %s, %v", u.id, err)
-					uch <- u
-					continue
-				}
-
-				nwritten := atomic.AddUint64(&written, 1)
-				if nwritten%1000 == 0 {
-					log.Infof("Writing indexes... %d/%d %.2f%%", nwritten, len(indexes), (float64(nwritten)/float64(len(indexes)))*100)
-				}
-			}
-		}()
-	}
-
-	wg.Wait()
-}
-
-func addParticipantsToIndexes(checkpoint uint32, indexFormat string, participants []string) {
-	for _, participant := range participants {
-		ind := getCreateIndex(fmt.Sprintf(indexFormat, participant))
-		err := ind.SetActive(checkpoint)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func getCreateIndex(id string) *index.CheckpointIndex {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	ind, ok := indexes[id]
-	if !ok {
-		// Check if index exists in S3
-		b := &aws.WriteAtBuffer{}
-		_, err := downloader.Download(b, &s3.GetObjectInput{
-			Bucket: aws.String("horizon-index"),
-			Key:    aws.String(id),
-		})
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				if aerr.Code() == s3.ErrCodeNoSuchKey {
-					ind = &index.CheckpointIndex{}
-				} else {
-					panic(err)
-				}
-			} else {
-				panic(err)
-			}
-		} else {
-			ind, err = index.NewCheckpointIndexFromBytes(b.Bytes())
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		indexes[id] = ind
-	}
-	return ind
 }
 
 func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayments bool) ([]string, error) {
