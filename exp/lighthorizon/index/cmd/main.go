@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,9 +18,6 @@ import (
 )
 
 var (
-	mutex   sync.RWMutex
-	indexes = map[string]*index.CheckpointIndex{}
-
 	// Should we use runtime.NumCPU() for a reasonable default?
 	parallel = uint32(20)
 )
@@ -173,12 +169,9 @@ func main() {
 					)
 
 					// Clear indexes to save memory
-					mutex.Lock()
 					if err := indexStore.Flush(); err != nil {
 						return err
 					}
-					indexes = map[string]*index.CheckpointIndex{}
-					mutex.Unlock()
 				}
 			}
 			return nil

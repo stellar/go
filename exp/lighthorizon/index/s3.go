@@ -38,6 +38,9 @@ func NewS3IndexStore(awsConfig *aws.Config, parallel uint32) (*S3IndexStore, err
 }
 
 func (s *S3IndexStore) Flush() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	var wg sync.WaitGroup
 
 	type upload struct {
@@ -64,13 +67,7 @@ func (s *S3IndexStore) Flush() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
-			for {
-				u, ok := <-uch
-				if !ok {
-					return
-				}
-
+			for u := range uch {
 				_, err := uploader.Upload(&s3manager.UploadInput{
 					Bucket: aws.String(BUCKET),
 					Key:    aws.String(u.id),
@@ -91,6 +88,10 @@ func (s *S3IndexStore) Flush() error {
 	}
 
 	wg.Wait()
+
+	// clear indexes to save memory
+	s.indexes = map[string]*CheckpointIndex{}
+
 	return nil
 }
 
