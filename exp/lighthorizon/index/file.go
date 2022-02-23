@@ -31,7 +31,12 @@ func (s *FileIndexStore) Flush() error {
 	var written uint64
 
 	for id, index := range s.indexes {
-		err := ioutil.WriteFile(filepath.Join(s.dir, id), index.Bytes(), 0644)
+		dir := filepath.Join(s.dir, id[:3])
+		if err := os.MkdirAll(dir, 0644); err != nil {
+			log.Errorf("Unable to save %s, %v", id, err)
+			continue
+		}
+		err := ioutil.WriteFile(filepath.Join(dir, id), index.Buffer().Bytes(), 0644)
 		if err != nil {
 			log.Errorf("Unable to save %s, %v", id, err)
 			continue
