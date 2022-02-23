@@ -341,7 +341,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 		// In Tick we only check txs in a queue so those which did not have results before Tick
 		// so we check for them in the last 5 mins of ledgers: 60.
-		var sinceLedgerSeq int32 = int32(latestLedger) - 60
+		sinceLedgerSeq := int32(latestLedger) - 60
 		if sinceLedgerSeq < 0 {
 			sinceLedgerSeq = 0
 		}
