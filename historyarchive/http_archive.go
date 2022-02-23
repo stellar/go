@@ -58,7 +58,7 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 }
 
 func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
-	var derived = b.base
+	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
 	req, err := http.NewRequest("HEAD", derived.String(), nil)
 	if err != nil {
