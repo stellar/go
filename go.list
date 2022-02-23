@@ -35,7 +35,6 @@ github.com/jarcoal/httpmock v0.0.0-20161210151336-4442edb3db31
 github.com/jmespath/go-jmespath v0.4.0
 github.com/jmoiron/sqlx v1.2.0
 github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd
-github.com/klauspost/cpuid v0.0.0-20160302075316-09cded8978dc
 github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6
 github.com/kr/pretty v0.1.0
 github.com/kr/text v0.1.0
@@ -89,6 +88,7 @@ go.opencensus.io v0.23.0
 golang.org/x/crypto v0.0.0-20211202192323-5770296d904e
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
+golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
 golang.org/x/text v0.3.6
