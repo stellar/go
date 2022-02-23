@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -51,7 +53,8 @@ func main() {
 	endCheckpoint := uint32((39685056) / 64)
 	all := endCheckpoint - startCheckpoint
 
-	var wg sync.WaitGroup
+	ctx := context.Background()
+	wg, ctx := errgroup.WithContext(ctx)
 
 	ch := make(chan uint32, parallel)
 
@@ -64,14 +67,8 @@ func main() {
 
 	processed := uint64(0)
 	for i := uint32(0); i < parallel; i++ {
-		wg.Add(1)
-		go func(i uint32) {
-			for {
-				checkpoint, ok := <-ch
-				if !ok {
-					wg.Done()
-					return
-				}
+		wg.Go(func() error {
+			for checkpoint := range ch {
 
 				startLedger := checkpoint * 64
 				if startLedger == 0 {
@@ -91,7 +88,7 @@ func main() {
 				for i := startLedger; i <= endLedger; i++ {
 					ledger, ok := ledgers[i]
 					if !ok {
-						panic(fmt.Sprintf("no ledger %d", i))
+						return fmt.Errorf("no ledger %d", i)
 					}
 
 					resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))
@@ -109,7 +106,7 @@ func main() {
 
 					reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, closeMeta)
 					if err != nil {
-						panic(err)
+						return err
 					}
 
 					for {
@@ -118,48 +115,48 @@ func main() {
 							if err == io.EOF {
 								break
 							}
-							panic(err)
+							return err
 						}
 
 						allParticipants, err := participantsForOperations(tx, false)
 						if err != nil {
-							panic(err)
+							return err
 						}
 
 						err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_all_all", allParticipants)
 						if err != nil {
-							panic(err)
+							return err
 						}
 
 						paymentsParticipants, err := participantsForOperations(tx, true)
 						if err != nil {
-							panic(err)
+							return err
 						}
 
 						err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_all_payments", paymentsParticipants)
 						if err != nil {
-							panic(err)
+							return err
 						}
 
 						if tx.Result.Successful() {
 							allParticipants, err := participantsForOperations(tx, false)
 							if err != nil {
-								panic(err)
+								return err
 							}
 
 							err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_successful_all", allParticipants)
 							if err != nil {
-								panic(err)
+								return err
 							}
 
 							paymentsParticipants, err := participantsForOperations(tx, true)
 							if err != nil {
-								panic(err)
+								return err
 							}
 
 							err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_successful_payments", paymentsParticipants)
 							if err != nil {
-								panic(err)
+								return err
 							}
 						}
 					}
@@ -178,16 +175,20 @@ func main() {
 					// Clear indexes to save memory
 					mutex.Lock()
 					if err := indexStore.Flush(); err != nil {
-						panic(err)
+						return err
 					}
 					indexes = map[string]*index.CheckpointIndex{}
 					mutex.Unlock()
 				}
 			}
-		}(i)
+			return nil
+		})
 	}
 
-	wg.Wait()
+	if err := wg.Wait(); err != nil {
+		panic(err)
+	}
+	log.Infof("Uploading indexes")
 	if err := indexStore.Flush(); err != nil {
 		panic(err)
 	}
