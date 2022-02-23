@@ -2,6 +2,7 @@ package index
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -31,12 +32,13 @@ func (s *FileIndexStore) Flush() error {
 	var written uint64
 
 	for id, index := range s.indexes {
-		dir := filepath.Join(s.dir, id[:3])
-		if err := os.MkdirAll(dir, 0644); err != nil {
-			log.Errorf("Unable to save %s, %v", id, err)
+		path := filepath.Join(s.dir, id[:3], id)
+		err := os.MkdirAll(filepath.Dir(path), fs.ModeDir|0755)
+		if err != nil {
+			log.Errorf("Unable to mkdir %s, %v", filepath.Dir(path), err)
 			continue
 		}
-		err := ioutil.WriteFile(filepath.Join(dir, id), index.Buffer().Bytes(), 0644)
+		err = ioutil.WriteFile(path, index.Buffer().Bytes(), 0644)
 		if err != nil {
 			log.Errorf("Unable to save %s, %v", id, err)
 			continue
