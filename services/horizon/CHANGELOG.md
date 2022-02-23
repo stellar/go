@@ -3,11 +3,24 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## v2.15.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### DB Schema Migration
+
+* DB migrations add columns to the `history_trades` table to enable filtering trades by "rounding slippage". This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+
+### Features
 
 * New feature, enable captive core based ingestion to use remote db persistence rather than in-memory for ledger states. Essentially moves what would have been stored in RAM to the external db instead. Recent profiling on the two approaches shows an approximate space usgae of about 8GB for ledger states as of 02/2022 timeframe, but it will gradually continue to increase as more accounts/assets are added to network. Current horizon ingest behavior when configured for captive core usage will by default take this space from RAM, unless a new command line flag is specified `--captive-core-use-db=true`, which enables this space to be taken from the external db instead, and not RAM. The external db used is determined be setting `DATABASE` parameter in the captive core cfg/.toml file. If no value is set, then by default it uses sqlite and the db file is stored in `--captive-core-storage-path` - ([4092](https://github.com/stellar/go/pull/4092))
+
+### Fixes
+
 * Exclude trades with high "rounding slippage" from `/trade_aggregations` endpoint. ([4178](https://github.com/stellar/go/pull/4178))
   * Note, to apply this change retroactively to existing data you will need to reingest starting from protocol 18 (ledger `38115806`).
+* Release DB connection in `/paths` when no longer needed. ([4228](https://github.com/stellar/go/pull/4228))
+* Fixed false positive warning during orderbook verification in the horizon log output whenever the in memory orderbook is inconsistent with the postgres liquidity pool and offers table. ([4236](https://github.com/stellar/go/pull/4236))
 
 ## v2.14.0
 
