@@ -169,9 +169,10 @@ func main() {
 
 				if nprocessed%100 == 0 {
 					log.Infof(
-						"Reading checkpoints... - %.2f%% - time elapsed: %s",
+						"Reading checkpoints... - %.2f%% - elapsed: %s, remaining: %s",
 						(float64(nprocessed)/float64(all))*100,
-						time.Since(startTime),
+						time.Since(startTime).Round(1*time.Second),
+						(time.Duration(int64(time.Since(startTime))*int64(all)/int64(nprocessed)) - time.Since(startTime)).Round(1*time.Second),
 					)
 
 					// Clear indexes to save memory
