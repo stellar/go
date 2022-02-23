@@ -81,7 +81,7 @@ func (s *FileIndexStore) getCreateIndex(id string) (*CheckpointIndex, error) {
 
 	// Check if index exists in S3
 	log.Debugf("Opening index: %v", id)
-	b, err := ioutil.ReadFile(filepath.Join(s.dir, id))
+	b, err := ioutil.ReadFile(filepath.Join(s.dir, id[:3], id))
 	if os.IsNotExist(err) {
 		ind = &CheckpointIndex{}
 	} else if err != nil {
