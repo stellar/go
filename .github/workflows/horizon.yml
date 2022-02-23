@@ -1,0 +1,62 @@
+name: Horizon
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+
+  integration:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go: [1.17]
+        pg: [9.6.5]
+        ingestion-backend: [db, captive-core, captive-core-remote-storage]
+    runs-on: ${{ matrix.os }}
+    services:
+      postgres:
+        image: postgres:${{ matrix.pg }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+        - 5432:5432
+    env:
+      HORIZON_INTEGRATION_TESTS: "true"
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+    - name: Pull latest Stellar Core image
+      run: docker pull stellar/stellar-core
+    - if: ${{ startsWith(matrix.ingestion-backend, 'captive-core') }}
+      name: Install and enable Captive Core
+      env:
+        CAPTIVE_CORE_VERSION: 18.0.3-746.f3baea6.focal
+      run: |
+        sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
+        sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
+        sudo apt-get update && sudo apt-get install -y stellar-core=$CAPTIVE_CORE_VERSION
+        echo "Using stellar core version $(stellar-core version)"
+        echo 'HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
+        echo 'CAPTIVE_CORE_BIN=/usr/bin/stellar-core'       >> $GITHUB_ENV
+    - if: ${{ matrix.ingestion-backend == 'captive-core-remote-storage' }}
+      name: Setup Captive Core Remote Storage
+      run: echo 'HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
+    - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
+
