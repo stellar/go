@@ -196,9 +196,9 @@ func (q *Q) StreamAllLiquidityPools(ctx context.Context, callback func(Liquidity
 	}
 
 	defer rows.Close()
-	liquidityPool := LiquidityPool{}
 
 	for rows.Next() {
+		liquidityPool := LiquidityPool{}
 		if err = rows.StructScan(&liquidityPool); err != nil {
 			return errors.Wrap(err, "could not scan row into liquidity pool struct")
 		}
@@ -246,9 +246,23 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
 
+func cloneAsset(a xdr.Asset) xdr.Asset {
+	b64, err := xdr.MarshalBase64(a)
+	if err != nil {
+		panic(err)
+	}
+	var b xdr.Asset
+	if err = xdr.SafeUnmarshalBase64(b64, &b); err != nil {
+		panic(err)
+	}
+	return b
+}
+
 // MakeTestPool is a helper to make liquidity pools for testing purposes. It's
 // public because it's used in other test suites.
 func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
+	A = cloneAsset(A)
+	B = cloneAsset(B)
 	if !A.LessThan(B) {
 		B, A = A, B
 		b, a = a, b
