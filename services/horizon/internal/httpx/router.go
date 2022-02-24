@@ -343,13 +343,17 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
 	if config.EnableIngestionFiltering {
 		r.Internal.Route("/ingestion/filters", func(r chi.Router) {
-			// 3 paths
-			// GetAll:     GET /ingestion/filters/ = response of list of {Name, Rules, Enabled, LastModified} 
-			// GetOne:     GET /ingestion/filters/{name} = response of {Name, Rules, Enabled, LastModified} with Name='name' or NOT Found err
-			// Upsert One: POST /ingestion/filters,  http body = {Name, Rules, Enabled}, response of {Name, Rules, Enabled, LastModified} 
+			// 5 paths
+			// POST /intestion/filters
+			// GET /ingestion/filters/{name}
+			// GET /ingestion/filters
+			// PUT /ingestion/filters/{name}
+			// DELETE /ingestion/filters/{name}
 			handler := actions.FilterRuleHandler{}
-			r.With(historyMiddleware).Post("/", handler.Set)
+			r.With(historyMiddleware).Post("/", handler.Create)
+			r.With(historyMiddleware).Put("/", handler.Update)
 			r.With(historyMiddleware).Get("/", handler.Get)
+			r.With(historyMiddleware).Delete("/", handler.Delete)
 		})
 	}
 }
