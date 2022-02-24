@@ -342,17 +342,14 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Internal.Get("/debug/pprof/heap", pprof.Index)
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
 	if config.EnableIngestionFiltering {
-		r.Internal.Route("/ingestion/filter/rules", func(r chi.Router) {
-			r.Route("/asset", func(r chi.Router) {
-				handler := actions.AssetFilterRuleHandler{}
-				r.With(historyMiddleware).Put("/", handler.Set)
-				r.With(historyMiddleware).Get("/", handler.Get)
-			})
-			r.Route("/account", func(r chi.Router) {
-				handler := actions.AccountFilterRuleHandler{}
-				r.With(historyMiddleware).Put("/", handler.Set)
-				r.With(historyMiddleware).Get("/", handler.Get)
-			})
+		r.Internal.Route("/ingestion/filters", func(r chi.Router) {
+			// 3 paths
+			// GetAll:     GET /ingestion/filters/ = response of list of {Name, Rules, Enabled, LastModified} 
+			// GetOne:     GET /ingestion/filters/{name} = response of {Name, Rules, Enabled, LastModified} with Name='name' or NOT Found err
+			// Upsert One: POST /ingestion/filters,  http body = {Name, Rules, Enabled}, response of {Name, Rules, Enabled, LastModified} 
+			handler := actions.FilterRuleHandler{}
+			r.With(historyMiddleware).Post("/", handler.Set)
+			r.With(historyMiddleware).Get("/", handler.Get)
 		})
 	}
 }
