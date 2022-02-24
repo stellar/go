@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17]
+        go: [1.17, 1.18.0-rc1]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -19,6 +19,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
+        stable: ${{ !contains(matrix.go, 'rc') }}
     - run: ./gomod.sh
     - run: ./gofmt.sh
     - run: ./gogenerate.sh
@@ -29,7 +30,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.16.7]
+        go: [1.17, 1.16.7, 1.18.0-rc1]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -37,13 +38,14 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
+        stable: ${{ !contains(matrix.go, 'rc') }}
     - run: go build ./...
 
   test:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.16.7]
+        go: [1.17, 1.16.7, 1.18.0-rc1]
         pg: [9.6.5, 10]
     runs-on: ${{ matrix.os }}
     services:
@@ -83,4 +85,5 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
+        stable: ${{ !contains(matrix.go, 'rc') }}
     - run: go test -race -cover ./...
