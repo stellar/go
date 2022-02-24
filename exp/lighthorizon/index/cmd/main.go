@@ -119,7 +119,7 @@ func main() {
 							return err
 						}
 
-						err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_all_all", allParticipants)
+						err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
 						if err != nil {
 							return err
 						}
@@ -129,7 +129,7 @@ func main() {
 							return err
 						}
 
-						err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_all_payments", paymentsParticipants)
+						err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
 						if err != nil {
 							return err
 						}
@@ -140,7 +140,7 @@ func main() {
 								return err
 							}
 
-							err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_successful_all", allParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_all", allParticipants)
 							if err != nil {
 								return err
 							}
@@ -150,7 +150,7 @@ func main() {
 								return err
 							}
 
-							err = indexStore.AddParticipantsToIndexes(checkpoint, "%s_successful_payments", paymentsParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_payments", paymentsParticipants)
 							if err != nil {
 								return err
 							}

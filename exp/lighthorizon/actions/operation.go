@@ -71,7 +71,7 @@ func Operations(archiveWrapper archive.Wrapper, indexStore index.Store) func(htt
 		account := query.Get("account")
 		if account != "" {
 			// Skip the cursor ahead to the next active checkpoint for this account
-			checkpoint, err := indexStore.NextActive(fmt.Sprintf("%s_all_all", account), uint32(toid.Parse(cursor).LedgerSequence/64))
+			checkpoint, err := indexStore.NextActive(account, "all_all", uint32(toid.Parse(cursor).LedgerSequence/64))
 			if err == io.EOF {
 				// never active. No results.
 				page.PopulateLinks()

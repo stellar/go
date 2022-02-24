@@ -1,7 +1,6 @@
 package index
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -95,9 +94,9 @@ func (s *S3IndexStore) Flush() error {
 	return nil
 }
 
-func (s *S3IndexStore) AddParticipantsToIndexes(checkpoint uint32, indexFormat string, participants []string) error {
+func (s *S3IndexStore) AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error {
 	for _, participant := range participants {
-		ind, err := s.getCreateIndex(fmt.Sprintf(indexFormat, participant))
+		ind, err := s.getCreateIndex(participant, index)
 		if err != nil {
 			return err
 		}
@@ -109,21 +108,22 @@ func (s *S3IndexStore) AddParticipantsToIndexes(checkpoint uint32, indexFormat s
 	return nil
 }
 
-func (s *S3IndexStore) getCreateIndex(id string) (*CheckpointIndex, error) {
+func (s *S3IndexStore) getCreateIndex(account, index string) (*CheckpointIndex, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	id := account + "_" + index
 	ind, ok := s.indexes[id]
 	if ok {
 		return ind, nil
 	}
 
 	// Check if index exists in S3
-	log.Debugf("Downloading index: %v", id)
+	log.Debugf("Downloading index: %v_%v", account, id)
 	b := &aws.WriteAtBuffer{}
 	_, err := s.downloader.Download(b, &s3.GetObjectInput{
 		Bucket: aws.String(BUCKET),
-		Key:    aws.String(id),
+		Key:    aws.String(account + "_" + id),
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -147,8 +147,8 @@ func (s *S3IndexStore) getCreateIndex(id string) (*CheckpointIndex, error) {
 	return ind, nil
 }
 
-func (s *S3IndexStore) NextActive(indexId string, afterCheckpoint uint32) (uint32, error) {
-	ind, err := s.getCreateIndex(indexId)
+func (s *S3IndexStore) NextActive(account, indexId string, afterCheckpoint uint32) (uint32, error) {
+	ind, err := s.getCreateIndex(account, indexId)
 	if err != nil {
 		return 0, err
 	}
