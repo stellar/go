@@ -1,7 +1,13 @@
 #! /bin/bash
 set -e
 
-version='d5c28addcbbbafca0b9a0f9ad8957912e9371015'
+gover=$(go version | { read _ _ gover _; printf $gover; })
+
+version='2020.1.4'
+if [[ "$gover" = "go1.18"* ]]; then
+  version='d5c28addcbbbafca0b9a0f9ad8957912e9371015'
+fi
+
 staticcheck='go run honnef.co/go/tools/cmd/staticcheck@'"$version"
 
 printf "Running staticcheck $version...\n"
