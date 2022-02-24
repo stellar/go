@@ -16,6 +16,9 @@ ls -d */ \
   | egrep -v '^vendor|^docs' \
   | xargs -I {} $staticcheck -tests=false -checks="all,-ST1003,-SA1019,-ST1005,-ST1000,-ST1016,-S1039,-ST1021,-ST1020,-ST1019,-SA4022" ./{}...
 
+# Whole program unused checks were removed from staticcheck in newer versions,
+# so this check is being sunset and will be removed once Go 1.18 is released and
+# a proper release of staticcheck is released that supports it.
 if [ "$version" = "2020.1.4" ]; then
   # Check horizon for unused exported symbols (relying on the fact that it should be self-contained)
   $staticcheck -unused.whole-program -checks='U*' ./services/horizon/...
