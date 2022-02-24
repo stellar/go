@@ -91,9 +91,9 @@ func (q *Q) StreamAllOffers(ctx context.Context, callback func(Offer) error) err
 	}
 
 	defer rows.Close()
-	offer := Offer{}
 
 	for rows.Next() {
+		offer := Offer{}
 		if err = rows.StructScan(&offer); err != nil {
 			return errors.Wrap(err, "could not scan row into offer struct")
 		}
