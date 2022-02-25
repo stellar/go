@@ -30,7 +30,7 @@ type assetFilter struct {
 
 type AssetFilter interface {
 	processors.LedgerTransactionFilterer
-	RefreshAssetFilter(filterConfig *history.FilterConfig) (error)
+	RefreshAssetFilter(filterConfig *history.FilterConfig) error
 }
 
 func NewAssetFilter() AssetFilter {
@@ -39,7 +39,7 @@ func NewAssetFilter() AssetFilter {
 	}
 }
 
-func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig) (error) {
+func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
@@ -47,9 +47,9 @@ func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return errors.Wrap(err, "unable to serialize asset filter rules")
 		}
-		
+
 		filter.canonicalAssetsLookup = listToMap(assetFilterRules.CanonicalWhitelist)
-		filter.lastModified          = filterConfig.LastModified
+		filter.lastModified = filterConfig.LastModified
 	}
 
 	return nil

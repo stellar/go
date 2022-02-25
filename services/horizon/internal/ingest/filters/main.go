@@ -17,28 +17,28 @@ const (
 )
 
 var (
-	supportedFilterNames           = []string{FilterAssetFilterName, FilterAccountFilterName}
-	LOG                            = log.WithFields(log.F{
+	supportedFilterNames = []string{FilterAssetFilterName, FilterAccountFilterName}
+	LOG                  = log.WithFields(log.F{
 		"filters": "load",
 	})
 )
 
 type filtersCache struct {
-    cachedFilters                  map[string]processors.LedgerTransactionFilterer
+	cachedFilters                  map[string]processors.LedgerTransactionFilterer
 	lastFilterConfigCheckUnixEpoch int64
 }
 
 type Filters interface {
-    GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer 
+	GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer
 }
 
 func NewFilters() Filters {
-     return &filtersCache{
-		 cachedFilters: map[string]processors.LedgerTransactionFilterer{
-			 FilterAssetFilterName: NewAccountFilter(),
-			 FilterAccountFilterName: NewAssetFilter(),
-		 },
-	 }
+	return &filtersCache{
+		cachedFilters: map[string]processors.LedgerTransactionFilterer{
+			FilterAssetFilterName:   NewAccountFilter(),
+			FilterAccountFilterName: NewAssetFilter(),
+		},
+	}
 }
 
 // Provide list of the active filters. Optimize performance by caching the list, only
@@ -93,8 +93,8 @@ func SupportedFilterNames(name string) bool {
 
 func (f *filtersCache) convertCacheToList() []processors.LedgerTransactionFilterer {
 	filters := []processors.LedgerTransactionFilterer{}
-    for _, filter := range f.cachedFilters {
-        filters = append(filters, filter)
-    }
-	return  filters
+	for _, filter := range f.cachedFilters {
+		filters = append(filters, filter)
+	}
+	return filters
 }

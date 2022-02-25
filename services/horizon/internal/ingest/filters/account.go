@@ -21,7 +21,7 @@ type accountFilter struct {
 
 type AccountFilter interface {
 	processors.LedgerTransactionFilterer
-    RefreshAccountFilter(filterConfig *history.FilterConfig) (error)
+	RefreshAccountFilter(filterConfig *history.FilterConfig) error
 }
 
 func NewAccountFilter() AccountFilter {
@@ -31,7 +31,7 @@ func NewAccountFilter() AccountFilter {
 }
 
 // TODO:(fons) this code should probably be generic for all filters
-func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterConfig) (error) {
+func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
@@ -39,10 +39,10 @@ func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterCo
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return errors.Wrap(err, "unable to serialize asset filter rules")
 		}
-		
+
 		filter.whitelistedAccountsSet = listToMap(assetFilterRules.CanonicalWhitelist)
-		filter.lastModified           = filterConfig.LastModified
-		
+		filter.lastModified = filterConfig.LastModified
+
 	}
 
 	return nil
