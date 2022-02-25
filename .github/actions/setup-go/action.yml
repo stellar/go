@@ -18,7 +18,7 @@ runs:
     shell: bash
     run: |
       # Set a base, fixed modification time of all directories.
-      # git-restore-mtime doesn't set the mtime of of all directories.
+      # git-restore-mtime doesn't set the mtime of all directories.
       # (see https://github.com/MestreLion/git-tools/issues/47 for details)
       touch -m -t '201509301646' $(find . -type d -not -path '.git/*')
       # Restore original modification time from git. git clone sets the

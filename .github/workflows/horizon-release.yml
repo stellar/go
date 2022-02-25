@@ -1,0 +1,71 @@
+name: Horizon release
+
+on:
+  push:
+    tags: ['horizon-v.*']
+  # TODO: Pull requests enabled temporarily, to test the code, remove before merging!
+  pull_request:
+
+jobs:
+
+  publish-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run deprecation tests
+        shell: bash
+        run: |
+          export VERSION=${GITHUB_REF_NAME#horizon-v}
+          echo "Searching for \"Action needed in release ${VERSION}\" tags..."
+          # Negate the result so process exits with 1 if anything found
+          ! egrep -irn -A 1 --include=*.go "Action.+needed.+in.+release:.+$VERSION" ./
+
+      - uses: actions/checkout@v2
+
+      - uses: ./.github/actions/setup-go
+        with:
+          go-version: 1.17
+
+      - name: Check dependencies
+        run: ./gomod.sh
+
+      - name: Build binaries
+        run: go run ./support/scripts/build_release_artifacts/main.go
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          # TODO: Replaced with a phony value until we disable the CircleCI jobs
+          # file: ./dist/*
+          file: thisfiledoesntexist
+          file_glob: true
+          overwrite: true
+
+  push-horizon-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Extract Horizon version
+        shell: bash
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF_NAME#horizon-v}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Build and push to DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          # TODO: Commented out until we disable the CircleCI jobs
+          # push: true
+          # TODO(fons): pushing stellar/horizon:latest should be reviewed and manually approved.
+          # We might not want the latest tag here being pushed on every release.
+          # We might release a patch for older versions of horizon.
+          # Otherwise, if we are currently on e.g. v1.6.1 and need to release v1.5.3, v1.5.3 will become latest.
+          tags: stellar/horizon:latest,stellar/horizon:${{ steps.get_version.outputs.VERSION }}
+          file: services/horizon/docker/Dockerfile.dev

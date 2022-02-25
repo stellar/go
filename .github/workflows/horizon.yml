@@ -62,3 +62,74 @@ jobs:
       run: echo 'HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
     - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
+  verify-range:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build and test the Verify Range Docker image
+      env:
+        COMMIT_SHA: ${{ github.sha }}
+      run: |
+        docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
+        # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
+        docker run -ti -e BRANCH=${COMMIT_SHA} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
+
+    # Push
+    - if: ${{ github.ref == 'master' }}
+      name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USER }}
+        password: ${{ secrets.DOCKER_PASS }}
+    - if: ${{ github.ref == 'master' }}
+      name: Push to DockerHub
+      # TODO(fons): Commented out until we disable the CircleCI jobs
+      run: \# docker push stellar/horizon-verify-range
+
+  push-horizon-image:
+    if: ${{ github.ref == 'master' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get image tag (short sha)
+        shell: bash
+        id: get_tag
+        run: echo ::set-output name=TAG::$(git rev-parse --short HEAD)
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Build and push to DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          # TODO: Commented out until we disable the CircleCI jobs
+          # push: true
+          tags: stellar/horizon:${{ steps.get_tag.outputs.TAG }}
+          file: services/horizon/docker/Dockerfile.dev
+
+  push-state-diff-image:
+    if: ${{ github.ref == 'master' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Build and push to DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          # TODO: Commented out until we disable the CircleCI jobs
+          # push: true
+          tags: stellar/ledger-state-diff:${{ github.sha }},stellar/ledger-state-diff:latest
+          file: exp/tools/dump-ledger-state/Dockerfile
+          build-args: GITCOMMIT=${{ github.sha }}
+          no-cache: true
