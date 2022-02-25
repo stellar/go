@@ -15,11 +15,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
-        stable: ${{ !contains(matrix.go, 'rc') }}
     - run: ./gomod.sh
     - run: ./gofmt.sh
     - run: ./gogenerate.sh
@@ -34,11 +32,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
-        stable: ${{ !contains(matrix.go, 'rc') }}
     - run: go build ./...
 
   test:
@@ -81,9 +77,11 @@ jobs:
       REDIS_PORT: 6379
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+      with:
+        # We need to full history for git-restore-mtime to know what modification dates to use.
+        # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
+        fetch-depth: '0'
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
-        stable: ${{ !contains(matrix.go, 'rc') }}
     - run: go test -race -cover ./...

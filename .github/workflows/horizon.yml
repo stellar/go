@@ -14,6 +14,7 @@ jobs:
         go: [1.17]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
+        captive-core: [18.0.3-746.f3baea6.focal]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -38,20 +39,21 @@ jobs:
       PGDATABASE: postgres
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+      with:
+        # We need to full history for git-restore-mtime to know what modification dates to use.
+        # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
+        fetch-depth: '0'
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
     - name: Pull latest Stellar Core image
       run: docker pull stellar/stellar-core
     - if: ${{ startsWith(matrix.ingestion-backend, 'captive-core') }}
       name: Install and enable Captive Core
-      env:
-        CAPTIVE_CORE_VERSION: 18.0.3-746.f3baea6.focal
       run: |
         sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
         sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
-        sudo apt-get update && sudo apt-get install -y stellar-core=$CAPTIVE_CORE_VERSION
+        sudo apt-get update && sudo apt-get install -y stellar-core=${{ matrix.captive-core }}
         echo "Using stellar core version $(stellar-core version)"
         echo 'HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
         echo 'CAPTIVE_CORE_BIN=/usr/bin/stellar-core'       >> $GITHUB_ENV
