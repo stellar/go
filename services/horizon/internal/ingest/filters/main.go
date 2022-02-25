@@ -19,7 +19,7 @@ const (
 
 var (
 	supportedFilterNames           = []string{FilterAssetFilterName, FilterAccountFilterName}
-	loadedFilters                  []processors.LedgerTransactionFilterer
+	cachedFilters                  []processors.LedgerTransactionFilterer
 	lastFilterConfigCheckUnixEpoch int64
 	LOG                            = log.WithFields(log.F{
 		"filters": "load",
@@ -34,20 +34,19 @@ func GetFilters(filterQ history.QFilter, ctx context.Context) []processors.Ledge
 	defer lock.Unlock()
 	// only attempt to refresh filter config cache state at configured interval limit
 	if time.Now().Unix() < (lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
-		return append([]processors.LedgerTransactionFilterer{}, loadedFilters...)
+		return append([]processors.LedgerTransactionFilterer{}, cachedFilters...)
 	}
 
-	loadedFilters = []processors.LedgerTransactionFilterer{}
 	LOG.Info("expired filter config cache, refresh from db")
 	filterConfigs, err := filterQ.GetAllFilters(ctx)
 	if err != nil {
 		LOG.Errorf("unable to query filter configs, %v", err)
 		// reset the cache time regardless, so next attempt is at next interval
 		lastFilterConfigCheckUnixEpoch = time.Now().Unix()
-		return append([]processors.LedgerTransactionFilterer{}, loadedFilters...)
+		return append([]processors.LedgerTransactionFilterer{}, cachedFilters...)
 	}
 
-	loadedFilters := []processors.LedgerTransactionFilterer{}
+	cachedFilters = []processors.LedgerTransactionFilterer{}
 	for _, filterConfig := range filterConfigs {
 		if filterConfig.Enabled {
 			switch filterConfig.Name {
@@ -57,19 +56,19 @@ func GetFilters(filterQ history.QFilter, ctx context.Context) []processors.Ledge
 					LOG.Errorf("unable to create asset filter %v", err)
 					continue
 				}
-				loadedFilters = append(loadedFilters, assetFilter)
+				cachedFilters = append(cachedFilters, assetFilter)
 			case FilterAccountFilterName:
 				accountFilter, err := GetAccountFilter(&filterConfig)
 				if err != nil {
 					LOG.Errorf("unable to create asset filter %v", err)
 					continue
 				}
-				loadedFilters = append(loadedFilters, accountFilter)
+				cachedFilters = append(cachedFilters, accountFilter)
 			}
 
 		}
 	}
-	return append([]processors.LedgerTransactionFilterer{}, loadedFilters...)
+	return append([]processors.LedgerTransactionFilterer{}, cachedFilters...)
 }
 
 func SupportedFilterNames(name string) bool {
