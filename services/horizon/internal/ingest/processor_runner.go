@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
-
-	logger "github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -82,15 +79,6 @@ type ProcessorRunnerInterface interface {
 }
 
 var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
-var (
-	// default empty filters, this will get populated on first processor invocation
-	groupFilterers = newGroupTransactionFilterers([]processors.LedgerTransactionFilterer{}, 0)
-	LOG            = log.WithFields(logger.F{
-		"processor": "filters",
-	})
-	// the filter config cache will be checked against latest from db at most once per each of this interval,
-	filterConfigCheckIntervalSeconds int64 = 10
-)
 
 type ProcessorRunner struct {
 	config Config
@@ -162,48 +150,10 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 
 func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers {
 	if !s.config.EnableIngestionFiltering {
-		return newGroupTransactionFilterers(nil, time.Now().Unix())
-	}
-	// TODO(fons): I think this caching mechanism should probably live in the filters package
-
-	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().Unix() < (groupFilterers.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
-		return groupFilterers
+		return newGroupTransactionFilterers(nil)
 	}
 
-	LOG.Info("expired filter config cache, refresh from db")
-	filterConfigs, err := s.historyQ.GetAllFilters(s.ctx)
-	if err != nil {
-		LOG.Errorf("unable to query filter configs, %v", err)
-		// reset the cache time regardless, so next attempt is at next interval
-		groupFilterers.lastFilterConfigCheckUnixEpoch = time.Now().Unix()
-		return groupFilterers
-	}
-
-	newFilters := []processors.LedgerTransactionFilterer{}
-	for _, filterConfig := range filterConfigs {
-		if filterConfig.Enabled {
-			switch filterConfig.Name {
-			case history.FilterAssetFilterName:
-				assetFilter, err := filters.GetAssetFilter(&filterConfig)
-				if err != nil {
-					LOG.Errorf("unable to create asset filter %v", err)
-					continue
-				}
-				newFilters = append(newFilters, assetFilter)
-			case history.FilterAccountFilterName:
-				accountFilter, err := filters.GetAccountFilter(&filterConfig)
-				if err != nil {
-					LOG.Errorf("unable to create asset filter %v", err)
-					continue
-				}
-				newFilters = append(newFilters, accountFilter)
-			}
-
-		}
-	}
-	groupFilterers = newGroupTransactionFilterers(newFilters, time.Now().Unix())
-	return groupFilterers
+	return newGroupTransactionFilterers(filters.GetFilters(s.historyQ, s.ctx))
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the

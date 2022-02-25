@@ -2,11 +2,9 @@ package history
 
 import (
 	"context"
-	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/render/problem"
 )
 
 const (
@@ -15,12 +13,6 @@ const (
 	filterRulesColumnName             = "rules"
 	filterRulesEnabledColumnName      = "enabled"
 	filterRulesLastModifiedColumnName = "last_modified"
-	FilterAssetFilterName             = "asset"
-	FilterAccountFilterName           = "account"
-)
-
-var (
-	supportedNames = []string{FilterAssetFilterName, FilterAccountFilterName}
 )
 
 type FilterConfig struct {
@@ -75,14 +67,6 @@ func (q *Q) UpsertFilterConfig(ctx context.Context, config FilterConfig) error {
 		filterRulesTypeColumnName:         config.Name,
 	}
 
-	if !q.supportedFilterNames(config.Name) {
-		p := problem.ServerError
-		p.Extras = map[string]interface{}{
-			"reason": fmt.Sprintf("invalid filter name, %v, no implementation for this exists", config.Name),
-		}
-		return p
-	}
-
 	sqlUpdate := sq.Update(filterRulesTableName).SetMap(updateCols).Where(
 		sq.Eq{filterRulesTypeColumnName: config.Name})
 
@@ -110,13 +94,4 @@ func (q *Q) checkForError(builder sq.Sqlizer, ctx context.Context) (int64, error
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-func (q *Q) supportedFilterNames(name string) bool {
-	for _, supportedName := range supportedNames {
-		if name == supportedName {
-			return true
-		}
-	}
-	return false
 }

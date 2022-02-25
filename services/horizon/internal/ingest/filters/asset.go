@@ -18,7 +18,7 @@ var (
 	})
 	// TODO:(fons) I don't think we should be using a singleton
 	// (we should just create an instance which lives in the processor)
-	assetSingleton = &AssetFilter{
+	assetFilter = &AssetFilter{
 		canonicalAssetsLookup: map[string]struct{}{},
 	}
 )
@@ -35,18 +35,18 @@ type AssetFilter struct {
 func GetAssetFilter(filterConfig *history.FilterConfig) (*AssetFilter, error) {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
-	if filterConfig.LastModified > assetSingleton.lastModified {
+	if filterConfig.LastModified > assetFilter.lastModified {
 		var assetFilterRules AssetFilterRules
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
 		}
-		assetSingleton = &AssetFilter{
+		assetFilter = &AssetFilter{
 			canonicalAssetsLookup: listToMap(assetFilterRules.CanonicalWhitelist),
 			lastModified:          filterConfig.LastModified,
 		}
 	}
 
-	return assetSingleton, nil
+	return assetFilter, nil
 }
 
 func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {

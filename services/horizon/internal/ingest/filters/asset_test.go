@@ -24,7 +24,7 @@ func TestFilterHasMatch(t *testing.T) {
 				}`,
 		Enabled:      true,
 		LastModified: 1,
-		Name:         history.FilterAssetFilterName,
+		Name:         FilterAssetFilterName,
 	}
 	filter, err := GetAssetFilter(filterConfig)
 	tt.NoError(err)
@@ -86,7 +86,7 @@ func TestFilterHasNoMatch(t *testing.T) {
 
 		Enabled:      true,
 		LastModified: 1,
-		Name:         history.FilterAssetFilterName,
+		Name:         FilterAssetFilterName,
 	}
 
 	filter, err := GetAssetFilter(filterConfig)

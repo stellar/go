@@ -12,7 +12,7 @@ import (
 
 // TODO:(fons) I don't think we should be using a singleton
 // (we should just create an instance which lives in the processor)
-var accountSingleton = &AccountFilter{
+var accountFilter = &AccountFilter{
 	whitelistedAccountsSet: map[string]struct{}{},
 	lastModified:           0,
 }
@@ -30,18 +30,18 @@ type AccountFilter struct {
 func GetAccountFilter(filterConfig *history.FilterConfig) (*AccountFilter, error) {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
-	if filterConfig.LastModified > accountSingleton.lastModified {
+	if filterConfig.LastModified > accountFilter.lastModified {
 		var assetFilterRules AssetFilterRules
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
 		}
-		accountSingleton = &AccountFilter{
+		accountFilter = &AccountFilter{
 			whitelistedAccountsSet: listToMap(assetFilterRules.CanonicalWhitelist),
 			lastModified:           filterConfig.LastModified,
 		}
 	}
 
-	return accountSingleton, nil
+	return accountFilter, nil
 }
 
 func (f *AccountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {

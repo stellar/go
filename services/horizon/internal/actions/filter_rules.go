@@ -9,6 +9,7 @@ import (
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/support/render/problem"
 )
 
@@ -176,6 +177,14 @@ func (handler FilterRuleHandler) upsert(filterRequest *filterResource, historyQ 
 	filterConfig := history.FilterConfig{}
 	filterConfig.Enabled = filterRequest.Enabled
 	filterConfig.Name = filterRequest.Name
+
+	if !filters.SupportedFilterNames(filterRequest.Name) {
+		p := problem.ServerError
+		p.Extras = map[string]interface{}{
+			"reason": fmt.Sprintf("invalid filter name, %v, no implementation for this exists", filterRequest.Name),
+		}
+		return p
+	}
 
 	filterRules, err := json.Marshal(filterRequest.Rules)
 	if err != nil {
