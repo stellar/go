@@ -87,6 +87,7 @@ type ProcessorRunner struct {
 	historyQ       history.IngestionQ
 	historyAdapter historyArchiveAdapterInterface
 	logMemoryStats bool
+	filters        filters.Filters
 }
 
 func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
@@ -153,7 +154,7 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 		return newGroupTransactionFilterers(nil)
 	}
 
-	return newGroupTransactionFilterers(filters.GetFilters(s.historyQ, s.ctx))
+	return newGroupTransactionFilterers(s.filters.GetFilters(s.historyQ, s.ctx))
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the

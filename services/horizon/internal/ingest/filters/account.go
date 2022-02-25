@@ -10,41 +10,45 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// TODO:(fons) I don't think we should be using a singleton
-// (we should just create an instance which lives in the processor)
-var accountFilter = &AccountFilter{
-	whitelistedAccountsSet: map[string]struct{}{},
-	lastModified:           0,
-}
-
 type AccountFilterRules struct {
 	CanonicalWhitelist []string `json:"account_whitelist"`
 }
 
-type AccountFilter struct {
+type accountFilter struct {
 	whitelistedAccountsSet map[string]struct{}
 	lastModified           int64
 }
 
-// TODO:(fons) this code should probably be generic for all filters
-func GetAccountFilter(filterConfig *history.FilterConfig) (*AccountFilter, error) {
-	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
-	// is older than the incoming config version based on lastModified epoch timestamp
-	if filterConfig.LastModified > accountFilter.lastModified {
-		var assetFilterRules AssetFilterRules
-		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
-			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
-		}
-		accountFilter = &AccountFilter{
-			whitelistedAccountsSet: listToMap(assetFilterRules.CanonicalWhitelist),
-			lastModified:           filterConfig.LastModified,
-		}
-	}
-
-	return accountFilter, nil
+type AccountFilter interface {
+	processors.LedgerTransactionFilterer
+    RefreshAccountFilter(filterConfig *history.FilterConfig) (error)
 }
 
-func (f *AccountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
+func NewAccountFilter() AccountFilter {
+	return &accountFilter{
+		whitelistedAccountsSet: map[string]struct{}{},
+	}
+}
+
+// TODO:(fons) this code should probably be generic for all filters
+func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterConfig) (error) {
+	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
+	// is older than the incoming config version based on lastModified epoch timestamp
+	if filterConfig.LastModified > filter.lastModified {
+		var assetFilterRules AssetFilterRules
+		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
+			return errors.Wrap(err, "unable to serialize asset filter rules")
+		}
+		
+		filter.whitelistedAccountsSet = listToMap(assetFilterRules.CanonicalWhitelist)
+		filter.lastModified           = filterConfig.LastModified
+		
+	}
+
+	return nil
+}
+
+func (f *accountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
 	// Whitelisting is disabled if the whitelist is empty
 	if len(f.whitelistedAccountsSet) == 0 {
 		return true, nil

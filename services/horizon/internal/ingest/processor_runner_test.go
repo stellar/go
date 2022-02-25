@@ -54,6 +54,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 			NetworkPassphrase: network.PublicNetworkPassphrase,
 		},
 		historyQ: q,
+		filters: &mockFilters{},
 	}
 
 	_, err := runner.RunGenesisStateIngestion()
@@ -117,6 +118,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
+		filters: &mockFilters{},
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(63, MaxSupportedProtocolVersion, bucketListHash)
@@ -151,6 +153,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
+		filters: &mockFilters{},
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
@@ -170,6 +173,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		historyQ: q,
+		filters: &mockFilters{},
 	}
 
 	stats := &ingest.StatsChangeProcessor{}
@@ -191,6 +195,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	runner = ProcessorRunner{
 		ctx:      ctx,
 		historyQ: q,
+		filters: &mockFilters{},
 	}
 
 	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456)
@@ -288,6 +293,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		ctx:      ctx,
 		config:   config,
 		historyQ: q,
+		filters: &mockFilters{},
 	}
 
 	_, err := runner.RunAllProcessorsOnLedger(ledger)
@@ -336,6 +342,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		ctx:      ctx,
 		config:   config,
 		historyQ: q,
+		filters: &mockFilters{},
 	}
 
 	_, err := runner.RunAllProcessorsOnLedger(ledger)

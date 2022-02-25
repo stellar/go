@@ -26,7 +26,8 @@ func TestFilterHasMatch(t *testing.T) {
 		LastModified: 1,
 		Name:         FilterAssetFilterName,
 	}
-	filter, err := GetAssetFilter(filterConfig)
+	filter := NewAssetFilter()
+	err := filter.RefreshAssetFilter(filterConfig)
 	tt.NoError(err)
 
 	var xdrAssetCode [12]byte
@@ -89,7 +90,8 @@ func TestFilterHasNoMatch(t *testing.T) {
 		Name:         FilterAssetFilterName,
 	}
 
-	filter, err := GetAssetFilter(filterConfig)
+	filter := NewAssetFilter()
+	err := filter.RefreshAssetFilter(filterConfig)
 	tt.NoError(err)
 
 	var xdrAssetCode [12]byte

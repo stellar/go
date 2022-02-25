@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -16,40 +17,45 @@ var (
 	logger = log.WithFields(log.F{
 		"ingest filter": "asset",
 	})
-	// TODO:(fons) I don't think we should be using a singleton
-	// (we should just create an instance which lives in the processor)
-	assetFilter = &AssetFilter{
-		canonicalAssetsLookup: map[string]struct{}{},
-	}
 )
 
 type AssetFilterRules struct {
 	CanonicalWhitelist []string `json:"canonical_asset_whitelist"`
 }
 
-type AssetFilter struct {
+type assetFilter struct {
 	canonicalAssetsLookup map[string]struct{}
 	lastModified          int64
 }
 
-func GetAssetFilter(filterConfig *history.FilterConfig) (*AssetFilter, error) {
-	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
-	// is older than the incoming config version based on lastModified epoch timestamp
-	if filterConfig.LastModified > assetFilter.lastModified {
-		var assetFilterRules AssetFilterRules
-		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
-			return nil, errors.Wrap(err, "unable to serialize asset filter rules")
-		}
-		assetFilter = &AssetFilter{
-			canonicalAssetsLookup: listToMap(assetFilterRules.CanonicalWhitelist),
-			lastModified:          filterConfig.LastModified,
-		}
-	}
-
-	return assetFilter, nil
+type AssetFilter interface {
+	processors.LedgerTransactionFilterer
+	RefreshAssetFilter(filterConfig *history.FilterConfig) (error)
 }
 
-func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
+func NewAssetFilter() AssetFilter {
+	return &assetFilter{
+		canonicalAssetsLookup: map[string]struct{}{},
+	}
+}
+
+func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig) (error) {
+	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
+	// is older than the incoming config version based on lastModified epoch timestamp
+	if filterConfig.LastModified > filter.lastModified {
+		var assetFilterRules AssetFilterRules
+		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
+			return errors.Wrap(err, "unable to serialize asset filter rules")
+		}
+		
+		filter.canonicalAssetsLookup = listToMap(assetFilterRules.CanonicalWhitelist)
+		filter.lastModified          = filterConfig.LastModified
+	}
+
+	return nil
+}
+
+func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
 
 	tx, v1Exists := transaction.Envelope.GetV1()
 	if !v1Exists {
@@ -115,7 +121,7 @@ func (f *AssetFilter) FilterTransaction(ctx context.Context, transaction ingest.
 	return false, nil
 }
 
-func (f *AssetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
+func (f *assetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
 	var matched = false
 	if _, found := f.canonicalAssetsLookup[asset.StringCanonical()]; found {
 		matched = true

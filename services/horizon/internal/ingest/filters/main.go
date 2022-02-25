@@ -2,7 +2,6 @@ package filters
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -19,22 +18,35 @@ const (
 
 var (
 	supportedFilterNames           = []string{FilterAssetFilterName, FilterAccountFilterName}
-	cachedFilters                  []processors.LedgerTransactionFilterer
-	lastFilterConfigCheckUnixEpoch int64
 	LOG                            = log.WithFields(log.F{
 		"filters": "load",
 	})
-	lock sync.Mutex
 )
+
+type filtersCache struct {
+    cachedFilters                  map[string]processors.LedgerTransactionFilterer
+	lastFilterConfigCheckUnixEpoch int64
+}
+
+type Filters interface {
+    GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer 
+}
+
+func NewFilters() Filters {
+     return &filtersCache{
+		 cachedFilters: map[string]processors.LedgerTransactionFilterer{
+			 FilterAssetFilterName: NewAccountFilter(),
+			 FilterAccountFilterName: NewAssetFilter(),
+		 },
+	 }
+}
 
 // Provide list of the active filters. Optimize performance by caching the list, only
 // rebuild the list on expiration time interval. Method is thread-safe.
-func GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
-	lock.Lock()
-	defer lock.Unlock()
+func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
 	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().Unix() < (lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
-		return append([]processors.LedgerTransactionFilterer{}, cachedFilters...)
+	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
+		return f.convertCacheToList()
 	}
 
 	LOG.Info("expired filter config cache, refresh from db")
@@ -42,33 +54,32 @@ func GetFilters(filterQ history.QFilter, ctx context.Context) []processors.Ledge
 	if err != nil {
 		LOG.Errorf("unable to query filter configs, %v", err)
 		// reset the cache time regardless, so next attempt is at next interval
-		lastFilterConfigCheckUnixEpoch = time.Now().Unix()
-		return append([]processors.LedgerTransactionFilterer{}, cachedFilters...)
+		f.lastFilterConfigCheckUnixEpoch = time.Now().Unix()
+		return f.convertCacheToList()
 	}
 
-	cachedFilters = []processors.LedgerTransactionFilterer{}
 	for _, filterConfig := range filterConfigs {
 		if filterConfig.Enabled {
 			switch filterConfig.Name {
 			case FilterAssetFilterName:
-				assetFilter, err := GetAssetFilter(&filterConfig)
+				assetFilter := f.cachedFilters[FilterAssetFilterName].(AssetFilter)
+				err := assetFilter.RefreshAssetFilter(&filterConfig)
 				if err != nil {
-					LOG.Errorf("unable to create asset filter %v", err)
+					LOG.Errorf("unable to refresh asset filter config %v", err)
 					continue
 				}
-				cachedFilters = append(cachedFilters, assetFilter)
 			case FilterAccountFilterName:
-				accountFilter, err := GetAccountFilter(&filterConfig)
+				accountFilter := f.cachedFilters[FilterAccountFilterName].(AccountFilter)
+				err := accountFilter.RefreshAccountFilter(&filterConfig)
 				if err != nil {
-					LOG.Errorf("unable to create asset filter %v", err)
+					LOG.Errorf("unable to refresh account filter config %v", err)
 					continue
 				}
-				cachedFilters = append(cachedFilters, accountFilter)
 			}
 
 		}
 	}
-	return append([]processors.LedgerTransactionFilterer{}, cachedFilters...)
+	return f.convertCacheToList()
 }
 
 func SupportedFilterNames(name string) bool {
@@ -78,4 +89,12 @@ func SupportedFilterNames(name string) bool {
 		}
 	}
 	return false
+}
+
+func (f *filtersCache) convertCacheToList() []processors.LedgerTransactionFilterer {
+	filters := []processors.LedgerTransactionFilterer{}
+    for _, filter := range f.cachedFilters {
+        filters = append(filters, filter)
+    }
+	return  filters
 }
