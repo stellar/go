@@ -8,11 +8,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type mockFilters struct {
+type MockFilters struct {
 	mock.Mock
 }
 
-func (m *mockFilters) GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
-	a := m.Called(filterQ, ctx)
-	return a.Get(0).([]processors.LedgerTransactionFilterer)
+func (m *MockFilters) GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
+	return []processors.LedgerTransactionFilterer{}
 }

@@ -31,16 +31,16 @@ type QFilter interface {
 
 func (q *Q) GetAllFilters(ctx context.Context) ([]FilterConfig, error) {
 	var filterConfigs []FilterConfig
-	sql := sq.Select().From(filterRulesTableName)
-	err := q.Select(ctx, filterConfigs, sql)
+	sql := sq.Select("*").From(filterRulesTableName)
+	err := q.Select(ctx, &filterConfigs, sql)
 
 	return filterConfigs, err
 }
 
 func (q *Q) GetFilterByName(ctx context.Context, name string) (FilterConfig, error) {
-	var filterConfig FilterConfig
-	sql := sq.Select().From(filterRulesTableName).Where(sq.Eq{filterRulesTypeColumnName: name})
-	err := q.Select(ctx, filterConfig, sql)
+	filterConfig := FilterConfig{}
+	sql := sq.Select("*").From(filterRulesTableName).Where(sq.Eq{filterRulesTypeColumnName: name})
+	err := q.Get(ctx, &filterConfig, sql)
 
 	return filterConfig, err
 }

@@ -35,12 +35,12 @@ func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterCo
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
-		var assetFilterRules AssetFilterRules
-		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
-			return errors.Wrap(err, "unable to serialize asset filter rules")
+		var accountFilterRules AccountFilterRules
+		if err := json.Unmarshal([]byte(filterConfig.Rules), &accountFilterRules); err != nil {
+			return errors.Wrap(err, "unable to serialize account filter rules")
 		}
 
-		filter.whitelistedAccountsSet = listToMap(assetFilterRules.CanonicalWhitelist)
+		filter.whitelistedAccountsSet = listToMap(accountFilterRules.CanonicalWhitelist)
 		filter.lastModified = filterConfig.LastModified
 
 	}
