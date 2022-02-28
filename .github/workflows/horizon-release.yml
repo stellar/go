@@ -10,6 +10,7 @@ jobs:
 
   publish-artifacts:
     runs-on: ubuntu-latest
+    name: Upload artifacts to GitHub release
     steps:
       - name: Run deprecation tests
         shell: bash
@@ -44,6 +45,7 @@ jobs:
 
   push-horizon-image:
     runs-on: ubuntu-latest
+    name: Push stellar/horizon:{version,latest} to DockerHub
     steps:
       - uses: actions/checkout@v2
 

@@ -1,0 +1,56 @@
+name: Horizon
+
+on:
+  push:
+    branches: [master]
+  # TODO: Pull requests enabled temporarily, to test the code, remove before merging!
+  pull_request:
+
+jobs:
+
+  push-horizon-image-sha:
+    name: Push stellar/horizon:sha to DockerHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get image tag (short sha)
+        shell: bash
+        id: get_tag
+        run: echo ::set-output name=TAG::$(git rev-parse --short HEAD)
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Build and push to DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          # TODO: Commented out until we disable the CircleCI jobs
+          # push: true
+          tags: stellar/horizon:${{ steps.get_tag.outputs.TAG }}
+          file: services/horizon/docker/Dockerfile.dev
+
+  push-state-diff-image:
+    name: Push stellar/ledger-state-diff:{sha,latest} to DockerHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Build and push to DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          # TODO: Commented out until we disable the CircleCI jobs
+          # push: true
+          tags: stellar/ledger-state-diff:${{ github.sha }},stellar/ledger-state-diff:latest
+          file: exp/tools/dump-ledger-state/Dockerfile
+          build-args: GITCOMMIT=${{ github.sha }}
+          no-cache: true

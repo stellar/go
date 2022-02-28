@@ -8,6 +8,7 @@ on:
 jobs:
 
   integration:
+    name: Integration tests
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -87,49 +88,3 @@ jobs:
       # TODO(fons): Commented out until we disable the CircleCI jobs
       run: \# docker push stellar/horizon-verify-range
 
-  push-horizon-image:
-    if: ${{ github.ref == 'master' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Get image tag (short sha)
-        shell: bash
-        id: get_tag
-        run: echo ::set-output name=TAG::$(git rev-parse --short HEAD)
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
-      - name: Build and push to DockerHub
-        uses: docker/build-push-action@v2
-        with:
-          # TODO: Commented out until we disable the CircleCI jobs
-          # push: true
-          tags: stellar/horizon:${{ steps.get_tag.outputs.TAG }}
-          file: services/horizon/docker/Dockerfile.dev
-
-  push-state-diff-image:
-    if: ${{ github.ref == 'master' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
-      - name: Build and push to DockerHub
-        uses: docker/build-push-action@v2
-        with:
-          # TODO: Commented out until we disable the CircleCI jobs
-          # push: true
-          tags: stellar/ledger-state-diff:${{ github.sha }},stellar/ledger-state-diff:latest
-          file: exp/tools/dump-ledger-state/Dockerfile
-          build-args: GITCOMMIT=${{ github.sha }}
-          no-cache: true
