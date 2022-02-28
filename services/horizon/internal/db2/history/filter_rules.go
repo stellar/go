@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/errors"
@@ -61,9 +62,9 @@ func (q *Q) DeleteFilterByName(ctx context.Context, name string) error {
 
 func (q *Q) UpsertFilterConfig(ctx context.Context, config FilterConfig) error {
 	updateCols := map[string]interface{}{
-		filterRulesLastModifiedColumnName: sq.Expr("extract(epoch from now() at time zone 'utc')"),
+		filterRulesLastModifiedColumnName: sq.Expr(`extract(epoch from now() at time zone 'utc')`),
 		filterRulesEnabledColumnName:      config.Enabled,
-		filterRulesColumnName:             config.Rules,
+		filterRulesColumnName:             sq.Expr(fmt.Sprintf(`'%v'::json`, config.Rules)),
 		filterRulesTypeColumnName:         config.Name,
 	}
 
