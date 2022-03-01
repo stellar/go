@@ -351,8 +351,9 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			// DELETE /ingestion/filters/{name}
 			handler := actions.FilterRuleHandler{}
 			r.With(historyMiddleware).Post("/", handler.Create)
-			r.With(historyMiddleware).Put("/", handler.Update)
+			r.With(historyMiddleware).Put("/{filter_name}", handler.Update)
 			r.With(historyMiddleware).Get("/", handler.Get)
+			r.With(historyMiddleware).Get("/{filter_name}", handler.Get)
 			r.With(historyMiddleware).Delete("/", handler.Delete)
 		})
 	}

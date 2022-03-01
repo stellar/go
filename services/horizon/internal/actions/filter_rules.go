@@ -22,11 +22,11 @@ type filterResource struct {
 }
 
 type QueryPathParams struct {
-	NAME string `schema:"name" valid:"optional"`
+	NAME string `schema:"filter_name" valid:"optional"`
 }
 
 type UpdatePathParams struct {
-	NAME string `schema:"name" valid:"required"`
+	NAME string `schema:"filter_name" valid:"required"`
 }
 
 type FilterRuleHandler struct{}
@@ -49,12 +49,17 @@ func (handler FilterRuleHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	if pp.NAME != "" {
 		responsePayload, err = handler.findOne(pp.NAME, historyQ, r.Context())
+		if historyQ.NoRows(err) {
+			err = problem.NotFound
+		}
+
 	} else {
 		responsePayload, err = handler.findAll(historyQ, r.Context())
 	}
 
 	if err != nil {
 		problem.Render(r.Context(), w, err)
+		return
 	}
 
 	enc := json.NewEncoder(w)
@@ -73,6 +78,7 @@ func (handler FilterRuleHandler) Create(w http.ResponseWriter, r *http.Request) 
 	filterRequest, err := handler.requestedFilter(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
+		return
 	}
 
 	existing, err := handler.findOne(filterRequest.Name, historyQ, r.Context())
@@ -89,6 +95,7 @@ func (handler FilterRuleHandler) Create(w http.ResponseWriter, r *http.Request) 
 
 	if err = handler.upsert(filterRequest, historyQ, r.Context()); err != nil {
 		problem.Render(r.Context(), w, err)
+		return
 	}
 	w.WriteHeader(201)
 }
@@ -125,6 +132,7 @@ func (handler FilterRuleHandler) Update(w http.ResponseWriter, r *http.Request) 
 	if _, err = handler.findOne(filterRequest.Name, historyQ, r.Context()); err != nil {
 		// not found or other error
 		problem.Render(r.Context(), w, err)
+		return
 	}
 
 	if err = handler.upsert(filterRequest, historyQ, r.Context()); err != nil {
@@ -149,10 +157,12 @@ func (handler FilterRuleHandler) Delete(w http.ResponseWriter, r *http.Request) 
 	if _, err = handler.findOne(pp.NAME, historyQ, r.Context()); err != nil {
 		// not found or other error
 		problem.Render(r.Context(), w, err)
+		return
 	}
 
 	if err = historyQ.DeleteFilterByName(r.Context(), pp.NAME); err != nil {
 		problem.Render(r.Context(), w, err)
+		return
 	}
 	w.WriteHeader(204)
 }
@@ -179,7 +189,7 @@ func (handler FilterRuleHandler) upsert(filterRequest *filterResource, historyQ 
 	filterConfig.Name = filterRequest.Name
 
 	if !filters.SupportedFilterNames(filterRequest.Name) {
-		p := problem.ServerError
+		p := problem.BadRequest
 		p.Extras = map[string]interface{}{
 			"reason": fmt.Sprintf("invalid filter name, %v, no implementation for this exists", filterRequest.Name),
 		}
@@ -203,6 +213,7 @@ func (handler FilterRuleHandler) findOne(name string, historyQ *history.Q, ctx c
 	if err != nil {
 		return nil, err
 	}
+
 	rules, err := handler.rules(filter.Rules)
 	if err != nil {
 		return nil, err
