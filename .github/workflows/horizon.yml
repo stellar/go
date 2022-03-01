@@ -64,6 +64,7 @@ jobs:
     - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
   verify-range:
+    name: Test and push verify-range image
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
