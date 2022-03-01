@@ -3,6 +3,7 @@ package index
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -49,15 +50,18 @@ func (s *S3Backend) Flush(indexes map[string]map[string]*CheckpointIndex) error 
 }
 
 func (s *S3Backend) writeBatch(b *batch, r retry) error {
+	// TODO: re-use buffers in a pool
 	var buf bytes.Buffer
 	if _, err := writeGzippedTo(&buf, b.indexes); err != nil {
 		// TODO: Should we retry or what here??
 		return errors.Wrapf(err, "unable to serialize %s", b.account)
 	}
 
+	path := filepath.Join(b.account[:3], b.account)
+
 	_, err := s.uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(BUCKET),
-		Key:    aws.String(b.account),
+		Key:    aws.String(path),
 		Body:   &buf,
 	})
 	if err != nil {
@@ -73,15 +77,19 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 	// Check if index exists in S3
 	log.Debugf("Downloading index: %s", account)
 	b := &aws.WriteAtBuffer{}
-	_, err := s.downloader.Download(b, &s3.GetObjectInput{
+	path := filepath.Join(account[:3], account)
+	n, err := s.downloader.Download(b, &s3.GetObjectInput{
 		Bucket: aws.String(BUCKET),
-		Key:    aws.String(account),
+		Key:    aws.String(path),
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
 			return nil, os.ErrNotExist
 		}
 		return nil, errors.Wrapf(err, "Unable to download %s", account)
+	}
+	if n == 0 {
+		return nil, os.ErrNotExist
 	}
 	indexes, _, err := readGzippedFrom(bytes.NewReader(b.Bytes()))
 	if err != nil {
