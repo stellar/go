@@ -75,7 +75,7 @@ jobs:
       run: |
         docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
         # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-        docker run -ti -e BRANCH=${COMMIT_SHA} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
+        docker run -e BRANCH=${COMMIT_SHA} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
 
     # Push
     - if: ${{ github.ref == 'master' }}
