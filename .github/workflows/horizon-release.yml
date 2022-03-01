@@ -38,8 +38,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           # TODO: Replaced with a phony value until we disable the CircleCI jobs
-          # file: ./dist/*
-          file: thisfiledoesntexist
+          file: ./dist/*
           file_glob: true
           overwrite: true
 
