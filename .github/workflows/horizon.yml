@@ -64,7 +64,7 @@ jobs:
     - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
   verify-range:
-    name: Test and push verify-range image
+    name: Test (and push) verify-range image
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -87,5 +87,5 @@ jobs:
     - if: ${{ github.ref == 'master' }}
       name: Push to DockerHub
       # TODO(fons): Commented out until we disable the CircleCI jobs
-      run: \# docker push stellar/horizon-verify-range
+      run: \# docker push stellar/horizon-verify-range:latest
 
