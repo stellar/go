@@ -41,31 +41,3 @@ jobs:
           file_glob: true
           overwrite: true
 
-  push-horizon-image:
-    runs-on: ubuntu-latest
-    name: Push stellar/horizon:{version,latest} to DockerHub
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Extract Horizon version
-        shell: bash
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF_NAME#horizon-v}
-
-      - name: Login to DockerHub
-        uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
-      - name: Build and push to DockerHub
-        uses: docker/build-push-action@7f9d37fa544684fb73bfe4835ed7214c255ce02b
-        with:
-          # TODO: Commented out until we disable the CircleCI jobs
-          # push: true
-          # TODO(fons): pushing stellar/horizon:latest should be reviewed and manually approved.
-          # We might not want the latest tag here being pushed on every release.
-          # We might release a patch for older versions of horizon.
-          # Otherwise, if we are currently on e.g. v1.6.1 and need to release v1.5.3, v1.5.3 will become latest.
-          tags: stellar/horizon:latest,stellar/horizon:${{ steps.get_version.outputs.VERSION }}
-          file: services/horizon/docker/Dockerfile.dev
