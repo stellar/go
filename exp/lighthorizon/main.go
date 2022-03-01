@@ -20,6 +20,10 @@ func main() {
 			S3Region:          "us-west-1",
 			UnsignedRequests:  false,
 			Wrap: func(a historyarchive.ArchiveBackend) (historyarchive.ArchiveBackend, error) {
+				// WARNING: No cache expiry yet! This will save checkpoints into a temp
+				// dir, and only clear them when the program exits. So be careful you
+				// don't call big queries, and accidentally fill your hard-drive!
+				// Total checkpoints now are around 0.6TB.
 				return historyarchive.MakeFsCacheBackend(a, "")
 			},
 		},
