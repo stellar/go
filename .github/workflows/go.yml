@@ -33,9 +33,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        # For pull requests, make sure we checkout `ref/pull/<PR_number>/head`
-        # and not `ref/pull/<PR_number>/merge` (which doesn't exist for the PR creator and
-        # is what github.ref points to)
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
         ref: ${{ github.head_ref || github.ref }}
     - uses: ./.github/actions/setup-go
       with:
@@ -83,9 +81,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        # For pull requests, make sure we checkout `ref/pull/<PR_number>/head`
-        # and not `ref/pull/<PR_number>/merge` (which doesn't exist for the PR creator and
-        # is what github.ref points to)
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
         ref: ${{ github.head_ref || github.ref }}
         # We need to full history for git-restore-mtime to know what modification dates to use.
         # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
