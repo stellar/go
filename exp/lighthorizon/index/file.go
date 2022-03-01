@@ -68,5 +68,9 @@ func (s *FileBackend) Read(account string) (map[string]*CheckpointIndex, error) 
 	}
 	defer b.Close()
 	indexes, _, err := readGzippedFrom(b)
-	return indexes, err
+	if err != nil {
+		log.Errorf("Unable to parse %s: %v", account, err)
+		return nil, os.ErrNotExist
+	}
+	return indexes, nil
 }

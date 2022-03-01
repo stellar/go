@@ -2,7 +2,6 @@ package index
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
@@ -52,7 +52,7 @@ func (s *S3Backend) writeBatch(b *batch, r retry) error {
 	var buf bytes.Buffer
 	if _, err := writeGzippedTo(&buf, b.indexes); err != nil {
 		// TODO: Should we retry or what here??
-		return fmt.Errorf("unable to serialize %s: %v", b.account, err)
+		return errors.Wrapf(err, "unable to serialize %s", b.account)
 	}
 
 	_, err := s.uploader.Upload(&s3manager.UploadInput{
@@ -61,8 +61,9 @@ func (s *S3Backend) writeBatch(b *batch, r retry) error {
 		Body:   &buf,
 	})
 	if err != nil {
+		log.Errorf("Unable to upload %s: %v", b.account, err)
 		r(b)
-		return fmt.Errorf("unable to upload %s, %v", b.account, err)
+		return nil
 	}
 
 	return nil
@@ -80,8 +81,12 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
 			return nil, os.ErrNotExist
 		}
-		return nil, err
+		return nil, errors.Wrapf(err, "Unable to download %s", account)
 	}
 	indexes, _, err := readGzippedFrom(bytes.NewReader(b.Bytes()))
-	return indexes, err
+	if err != nil {
+		log.Errorf("Unable to parse %s: %v", account, err)
+		return nil, os.ErrNotExist
+	}
+	return indexes, nil
 }
