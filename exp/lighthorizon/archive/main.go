@@ -22,8 +22,13 @@ import (
 // TODO: make this configurable.
 const checkpointsToLookup = 1
 
+// Archive here only has the methods we care about, to make caching/wrapping easier
+type Archive interface {
+	GetLedgers(start, end uint32) (map[uint32]*historyarchive.Ledger, error)
+}
+
 type Wrapper struct {
-	*historyarchive.Archive
+	Archive
 }
 
 func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, error) {
@@ -36,7 +41,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 	ops := []common.Operation{}
 	appending := false
 
-	ledgers, err := a.Archive.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
+	ledgers, err := a.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
 	if err != nil {
 		return nil, err
 	}

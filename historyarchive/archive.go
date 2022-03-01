@@ -48,6 +48,9 @@ type ConnectOptions struct {
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
+
+	// Wrap the archivebackend after connection. For example, to add a caching or introspection layer.
+	Wrap func(ArchiveBackend) (ArchiveBackend, error)
 }
 
 type Ledger struct {
@@ -422,6 +425,9 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		arch.backend = makeMockBackend(opts)
 	} else {
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
+	}
+	if err == nil && opts.Wrap != nil {
+		arch.backend, err = opts.Wrap(arch.backend)
 	}
 	return &arch, err
 }

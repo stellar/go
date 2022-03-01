@@ -19,6 +19,9 @@ func main() {
 			NetworkPassphrase: network.PublicNetworkPassphrase,
 			S3Region:          "us-west-1",
 			UnsignedRequests:  false,
+			Wrap: func(a historyarchive.ArchiveBackend) (historyarchive.ArchiveBackend, error) {
+				return historyarchive.MakeFsCacheBackend(a, "")
+			},
 		},
 	)
 	if err != nil {
