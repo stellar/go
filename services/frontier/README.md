@@ -16,7 +16,7 @@ Packages available as:
 
 1. Configure digitalbits-frontier repository from cloudsmith.io:
 
-        curl -1sLf 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/setup.deb.sh' | sudo -E bash
+        curl -1sLf 'https://archive.digitalbits.io/public/digitalbits-frontier/setup.deb.sh' | sudo -E bash
 
 2. Install digitalbits-frontier package:
 
@@ -26,7 +26,7 @@ Packages available as:
 ## RPM-based
 1. Configure digitalbits-frontier repository from cloudsmith.io:
 
-        curl -1sLf 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/setup.rpm.sh' | sudo -E bash
+        curl -1sLf 'https://archive.digitalbits.io/public/digitalbits-frontier/setup.rpm.sh' | sudo -E bash
 
 2. Install digitalbits-frontier package:
 
@@ -37,30 +37,30 @@ Packages available as:
 
 - MacOS
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_darwin-amd64.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_darwin-amd64.tar.gz'
 
 - Linux
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-amd64.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-amd64.tar.gz'
 
 - Windows
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-amd64.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-amd64.tar.gz'
 
 - Linux (32-bit)
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-386.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-386.tar.gz'
         
 
 - Windows (32-bit)
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-386.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-386.tar.gz'
 
         
 
 ## Docker image
 
-    docker pull docker.cloudsmith.io/xdb-foundation/digitalbits-frontier/digitalbits-frontier:latest
+    docker pull docker.digitalbits.io/digitalbits-frontier/digitalbits-frontier:latest
 
 
 ## Run a production server

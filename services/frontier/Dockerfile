@@ -13,7 +13,7 @@ ENV FEE_PASSPHRASE="Testnet DigitalBits Fee Pool ; February 2021"
 ENV PORT=80
 
 RUN apt-get update && apt-get install curl postgresql-client libpq-dev -y
-RUN curl -o frontier.deb https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/deb/ubuntu/pool/focal/main/d/di/digitalbits-frontier_${FRONTIER_VERSION}/digitalbits-frontier_${FRONTIER_VERSION}_amd64.deb \
+RUN curl -o frontier.deb https://archive.digitalbits.io/public/digitalbits-frontier/deb/ubuntu/pool/focal/main/d/di/digitalbits-frontier_${FRONTIER_VERSION}/digitalbits-frontier_${FRONTIER_VERSION}_amd64.deb \
 && dpkg -i frontier.deb && rm frontier.deb
 
 ENTRYPOINT frontier db migrate up && frontier
