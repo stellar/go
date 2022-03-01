@@ -1,4 +1,4 @@
-name: Horizon
+name: Horizon master
 
 on:
   push:
