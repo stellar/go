@@ -30,15 +30,15 @@ jobs:
         run: ./gomod.sh
 
       - name: Build binaries
-        # TODO: remove GITHUB_REF override before merging, it's just used for testing
-        run: GITHUB_REF=refs/tags/horizon-v20.3.1 go run ./support/scripts/build_release_artifacts/main.go
+        run: go run ./support/scripts/build_release_artifacts/main.go
 
-      - name: Upload binaries to release
+      # TODO: Disabled until we remove the CircleCI jobs
+      - if: false
+        name: Upload binaries to release
         uses: svenstaro/upload-release-action@483c1e56f95e88835747b1c7c60581215016cbf2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
-          # TODO: Replaced with a phony value until we disable the CircleCI jobs
           file: ./dist/*
           file_glob: true
           overwrite: true

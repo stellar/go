@@ -89,14 +89,14 @@ jobs:
         # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
         docker run -e BRANCH=$(git rev-parse HEAD) -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
 
-    # Push
-    - if: ${{ github.ref == 'master' }}
+    # Push image
+    - if: github.ref == 'refs/heads/master'
       name: Login to DockerHub
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKER_USER }}
         password: ${{ secrets.DOCKER_PASS }}
-    - if: ${{ github.ref == 'master' }}
+    - if: github.ref == 'refs/heads/master'
       name: Push to DockerHub
       # TODO(fons): Commented out until we disable the CircleCI jobs
       run: \# docker push stellar/horizon-verify-range:latest
