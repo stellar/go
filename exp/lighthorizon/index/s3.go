@@ -1,8 +1,9 @@
 package index
 
 import (
-	"sync"
-	"sync/atomic"
+	"bytes"
+	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -14,143 +15,73 @@ import (
 
 const BUCKET = "horizon-index"
 
-type S3IndexStore struct {
-	mutex      sync.RWMutex
-	indexes    map[string]*CheckpointIndex
+type S3Backend struct {
 	s3Session  *session.Session
 	downloader *s3manager.Downloader
+	uploader   *s3manager.Uploader
 	parallel   uint32
 }
 
-func NewS3IndexStore(awsConfig *aws.Config, parallel uint32) (*S3IndexStore, error) {
+func NewS3Store(awsConfig *aws.Config, parallel uint32) (Store, error) {
+	backend, err := NewS3Backend(awsConfig, parallel)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(backend)
+}
+
+func NewS3Backend(awsConfig *aws.Config, parallel uint32) (*S3Backend, error) {
 	s3Session, err := session.NewSession(awsConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return &S3IndexStore{
-		indexes:    map[string]*CheckpointIndex{},
+	return &S3Backend{
 		s3Session:  s3Session,
 		downloader: s3manager.NewDownloader(s3Session),
-		parallel:   uint32(parallel),
+		uploader:   s3manager.NewUploader(s3Session),
+		parallel:   parallel,
 	}, nil
 }
 
-func (s *S3IndexStore) Flush() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *S3Backend) Flush(indexes map[string]map[string]*CheckpointIndex) error {
+	return parallelFlush(s.parallel, indexes, s.writeBatch)
+}
 
-	var wg sync.WaitGroup
-
-	type upload struct {
-		id    string
-		index *CheckpointIndex
+func (s *S3Backend) writeBatch(b *batch, r retry) error {
+	var buf bytes.Buffer
+	if _, err := writeGzippedTo(&buf, b.indexes); err != nil {
+		// TODO: Should we retry or what here??
+		return fmt.Errorf("unable to serialize %s: %v", b.account, err)
 	}
 
-	uch := make(chan upload, s.parallel)
-
-	go func() {
-		for id, index := range s.indexes {
-			uch <- upload{
-				id:    id,
-				index: index,
-			}
-		}
-		close(uch)
-	}()
-
-	uploader := s3manager.NewUploader(s.s3Session)
-
-	written := uint64(0)
-	for i := uint32(0); i < s.parallel; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for u := range uch {
-				_, err := uploader.Upload(&s3manager.UploadInput{
-					Bucket: aws.String(BUCKET),
-					Key:    aws.String(u.id),
-					Body:   u.index.Buffer(),
-				})
-				if err != nil {
-					log.Errorf("Unable to upload %s, %v", u.id, err)
-					uch <- u
-					continue
-				}
-
-				nwritten := atomic.AddUint64(&written, 1)
-				if nwritten%1000 == 0 {
-					log.Infof("Writing indexes... %d/%d %.2f%%", nwritten, len(s.indexes), (float64(nwritten)/float64(len(s.indexes)))*100)
-				}
-			}
-		}()
+	_, err := s.uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(BUCKET),
+		Key:    aws.String(b.account),
+		Body:   &buf,
+	})
+	if err != nil {
+		r(b)
+		return fmt.Errorf("unable to upload %s, %v", b.account, err)
 	}
-
-	wg.Wait()
-
-	// clear indexes to save memory
-	s.indexes = map[string]*CheckpointIndex{}
 
 	return nil
 }
 
-func (s *S3IndexStore) AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error {
-	for _, participant := range participants {
-		ind, err := s.getCreateIndex(participant, index)
-		if err != nil {
-			return err
-		}
-		err = ind.SetActive(checkpoint)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *S3IndexStore) getCreateIndex(account, index string) (*CheckpointIndex, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	id := account + "_" + index
-	ind, ok := s.indexes[id]
-	if ok {
-		return ind, nil
-	}
-
+func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 	// Check if index exists in S3
-	log.Debugf("Downloading index: %v_%v", account, id)
+	log.Debugf("Downloading index: %s", account)
 	b := &aws.WriteAtBuffer{}
 	_, err := s.downloader.Download(b, &s3.GetObjectInput{
 		Bucket: aws.String(BUCKET),
-		Key:    aws.String(account + "_" + id),
+		Key:    aws.String(account),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == s3.ErrCodeNoSuchKey {
-				ind = &CheckpointIndex{}
-			} else {
-				return nil, err
-			}
-		} else {
-			return nil, err
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
+			return nil, os.ErrNotExist
 		}
-	} else {
-		ind, err = NewCheckpointIndexFromBytes(b.Bytes())
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
-
-	s.indexes[id] = ind
-
-	return ind, nil
-}
-
-func (s *S3IndexStore) NextActive(account, indexId string, afterCheckpoint uint32) (uint32, error) {
-	ind, err := s.getCreateIndex(account, indexId)
-	if err != nil {
-		return 0, err
-	}
-	return ind.NextActive(afterCheckpoint)
+	indexes, _, err := readGzippedFrom(bytes.NewReader(b.Bytes()))
+	return indexes, err
 }

@@ -25,7 +25,7 @@ var (
 func main() {
 	log.SetLevel(log.InfoLevel)
 
-	indexStore, err := index.NewS3IndexStore(&aws.Config{Region: aws.String("us-east-1")}, parallel)
+	indexStore, err := index.NewS3Store(&aws.Config{Region: aws.String("us-east-1")}, parallel)
 	if err != nil {
 		panic(err)
 	}

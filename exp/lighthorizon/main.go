@@ -25,7 +25,7 @@ func main() {
 		panic(err)
 	}
 
-	indexStore, err := index.NewS3IndexStore(&aws.Config{Region: aws.String("us-east-1")}, 20)
+	indexStore, err := index.NewS3Store(&aws.Config{Region: aws.String("us-east-1")}, 20)
 	if err != nil {
 		panic(err)
 	}
