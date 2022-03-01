@@ -25,7 +25,7 @@ func writeGzippedTo(w io.Writer, indexes map[string]*CheckpointIndex) (int64, er
 		zw.Reset(w)
 	}
 
-	return n, zw.Close()
+	return n, nil
 }
 
 func readGzippedFrom(r io.Reader) (map[string]*CheckpointIndex, int64, error) {
