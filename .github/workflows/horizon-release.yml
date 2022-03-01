@@ -2,9 +2,7 @@ name: Horizon release
 
 on:
   push:
-    tags: ['horizon-v.*']
-  # TODO: Pull requests enabled temporarily, to test the code, remove before merging!
-  pull_request:
+    tags: ['horizon-v*']
 
 jobs:
 

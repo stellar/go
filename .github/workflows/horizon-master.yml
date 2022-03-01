@@ -3,8 +3,6 @@ name: Horizon master
 on:
   push:
     branches: [master]
-  # TODO: Pull requests enabled temporarily, to test the code, remove before merging!
-  pull_request:
 
 jobs:
 
