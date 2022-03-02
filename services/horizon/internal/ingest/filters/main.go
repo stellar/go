@@ -17,8 +17,7 @@ const (
 )
 
 var (
-	supportedFilterNames = []string{FilterAssetFilterName, FilterAccountFilterName}
-	LOG                  = log.WithFields(log.F{
+	LOG = log.WithFields(log.F{
 		"filters": "load",
 	})
 )
@@ -80,15 +79,6 @@ func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) 
 		}
 	}
 	return f.convertCacheToList()
-}
-
-func SupportedFilterNames(name string) bool {
-	for _, supportedName := range supportedFilterNames {
-		if name == supportedName {
-			return true
-		}
-	}
-	return false
 }
 
 func (f *filtersCache) convertCacheToList() []processors.LedgerTransactionFilterer {

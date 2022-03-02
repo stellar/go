@@ -21,12 +21,7 @@ func (m *MockQFilter) GetFilterByName(ctx context.Context, name string) (FilterC
 	return a.Get(0).(FilterConfig), a.Error(1)
 }
 
-func (m *MockQFilter) UpsertFilterConfig(ctx context.Context, config FilterConfig) error {
+func (m *MockQFilter) UpdateFilterConfig(ctx context.Context, config FilterConfig) error {
 	a := m.Called(ctx, config)
-	return a.Error(0)
-}
-
-func (m *MockQFilter) DeleteFilterByName(ctx context.Context, name string) error {
-	a := m.Called(ctx, name)
 	return a.Error(0)
 }

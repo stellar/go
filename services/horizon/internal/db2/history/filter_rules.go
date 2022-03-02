@@ -2,10 +2,10 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/stellar/go/support/errors"
 )
 
 const (
@@ -26,8 +26,7 @@ type FilterConfig struct {
 type QFilter interface {
 	GetAllFilters(ctx context.Context) ([]FilterConfig, error)
 	GetFilterByName(ctx context.Context, name string) (FilterConfig, error)
-	UpsertFilterConfig(ctx context.Context, config FilterConfig) error
-	DeleteFilterByName(ctx context.Context, name string) error
+	UpdateFilterConfig(ctx context.Context, config FilterConfig) error
 }
 
 func (q *Q) GetAllFilters(ctx context.Context) ([]FilterConfig, error) {
@@ -46,21 +45,7 @@ func (q *Q) GetFilterByName(ctx context.Context, name string) (FilterConfig, err
 	return filterConfig, err
 }
 
-func (q *Q) DeleteFilterByName(ctx context.Context, name string) error {
-	sql := sq.Delete(filterRulesTableName).Where(sq.Eq{filterRulesTypeColumnName: name})
-	rowCnt, err := q.checkForError(sql, ctx)
-
-	if err != nil {
-		return err
-	}
-
-	if rowCnt < 1 {
-		return errors.Errorf("deletion of filter rule did not result any rows affected")
-	}
-	return nil
-}
-
-func (q *Q) UpsertFilterConfig(ctx context.Context, config FilterConfig) error {
+func (q *Q) UpdateFilterConfig(ctx context.Context, config FilterConfig) error {
 	updateCols := map[string]interface{}{
 		filterRulesLastModifiedColumnName: sq.Expr(`extract(epoch from now() at time zone 'utc')`),
 		filterRulesEnabledColumnName:      config.Enabled,
@@ -77,14 +62,7 @@ func (q *Q) UpsertFilterConfig(ctx context.Context, config FilterConfig) error {
 	}
 
 	if rowCnt < 1 {
-		sqlInsert := sq.Insert(filterRulesTableName).SetMap(updateCols)
-		rowCnt, err = q.checkForError(sqlInsert, ctx)
-		if err != nil {
-			return err
-		}
-		if rowCnt < 1 {
-			return errors.Errorf("insertion of filter rule did not result in new row created in db")
-		}
+		return sql.ErrNoRows
 	}
 	return nil
 }

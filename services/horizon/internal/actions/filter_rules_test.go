@@ -42,13 +42,14 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
+	// put some more values into the config for resource validation after retrieval
 	fc1 := history.FilterConfig{
 		Rules:   `{"whitelist": ["1","2","3"]}`,
-		Name:    "xyz",
-		Enabled: false,
+		Name:    filters.FilterAssetFilterName,
+		Enabled: true,
 	}
 
-	q.UpsertFilterConfig(tt.Ctx, fc1)
+	q.UpdateFilterConfig(tt.Ctx, fc1)
 
 	handler := &FilterRuleHandler{}
 	recorder := httptest.NewRecorder()
@@ -57,7 +58,7 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 		makeRequest(
 			t,
 			map[string]string{},
-			map[string]string{"filter_name": "xyz"},
+			map[string]string{"filter_name": filters.FilterAssetFilterName},
 			q,
 		),
 	)
@@ -72,9 +73,12 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 	json.Unmarshal(raw, &filterCfgResource)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(filterCfgResource.Name, "xyz")
+	tt.Assert.Equal(filterCfgResource.Name, filters.FilterAssetFilterName)
 	tt.Assert.Equal(len(filterCfgResource.Rules["whitelist"].([]interface{})), 3)
-	tt.Assert.Equal(filterCfgResource.Enabled, false)
+	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[0], "1")
+	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[1], "2")
+	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[2], "3")
+	tt.Assert.Equal(filterCfgResource.Enabled, true)
 	tt.Assert.True(filterCfgResource.LastModified > 0)
 }
 
@@ -84,14 +88,6 @@ func TestGetFilterConfigListResult(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
-
-	fc1 := history.FilterConfig{
-		Rules:   `{"whitelist": ["1","2","3"]}`,
-		Name:    "xyz",
-		Enabled: false,
-	}
-
-	q.UpsertFilterConfig(tt.Ctx, fc1)
 
 	handler := &FilterRuleHandler{}
 	recorder := httptest.NewRecorder()
@@ -111,15 +107,54 @@ func TestGetFilterConfigListResult(t *testing.T) {
 	raw, err := ioutil.ReadAll(resp.Body)
 	tt.Assert.NoError(err)
 
-	var filterCfgResourceList []filterResource
-	json.Unmarshal(raw, &filterCfgResourceList)
+	var filterCfgResourceResponse []filterResource
+	json.Unmarshal(raw, &filterCfgResourceResponse)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Len(filterCfgResourceList, 1)
-	tt.Assert.Equal(filterCfgResourceList[0].Name, "xyz")
-	tt.Assert.Equal(len(filterCfgResourceList[0].Rules["whitelist"].([]interface{})), 3)
-	tt.Assert.Equal(filterCfgResourceList[0].Enabled, false)
-	tt.Assert.True(filterCfgResourceList[0].LastModified > 0)
+	// these are from the pre-defined default config rows seeded/created by scheam migrations file
+	filterCfgResourceList := []filterResource{
+		{Name: "asset", LastModified: 0, Rules: map[string]interface{}{}, Enabled: false},
+		{Name: "account", LastModified: 0, Rules: map[string]interface{}{}, Enabled: false},
+	}
+
+	tt.Assert.Len(filterCfgResourceResponse, 2)
+	tt.Assert.ElementsMatchf(filterCfgResourceList, filterCfgResourceResponse, "filter resource list does not match")
+}
+
+func TestMalFormedUpdateFilterConfig(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{SessionInterface: tt.HorizonSession()}
+
+	handler := &FilterRuleHandler{}
+	recorder := httptest.NewRecorder()
+	request := makeRequest(
+		t,
+		map[string]string{},
+		map[string]string{"filter_name": "asset"},
+		q,
+	)
+
+	request.Body = ioutil.NopCloser(strings.NewReader(`
+	    {
+			"rules": {
+			    "whitelist": ["4","5","6"]
+			},
+			"enabled": true,
+			"name": "unsupported"
+		}
+		`))
+
+	handler.Update(
+		recorder,
+		request,
+	)
+
+	resp := recorder.Result()
+	// can't update a filter with a name that doens't match up to an existing implemented filter
+	tt.Assert.Equal(http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestUpdateUnsupportedFilterConfig(t *testing.T) {
@@ -128,14 +163,6 @@ func TestUpdateUnsupportedFilterConfig(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
-
-	fc1 := history.FilterConfig{
-		Rules:   `{"whitelist": ["1","2","3"]}`,
-		Name:    "unsupported",
-		Enabled: false,
-	}
-
-	q.UpsertFilterConfig(tt.Ctx, fc1)
 
 	handler := &FilterRuleHandler{}
 	recorder := httptest.NewRecorder()
@@ -162,7 +189,8 @@ func TestUpdateUnsupportedFilterConfig(t *testing.T) {
 	)
 
 	resp := recorder.Result()
-	tt.Assert.Equal(http.StatusBadRequest, resp.StatusCode)
+	// can't update a filter with a name that doens't match up to an existing implemented filter
+	tt.Assert.Equal(http.StatusNotFound, resp.StatusCode)
 }
 
 func TestUpdateFilterConfig(t *testing.T) {
@@ -171,14 +199,6 @@ func TestUpdateFilterConfig(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
-
-	fc1 := history.FilterConfig{
-		Rules:   `{"whitelist": ["1","2","3"]}`,
-		Name:    filters.FilterAssetFilterName,
-		Enabled: false,
-	}
-
-	q.UpsertFilterConfig(tt.Ctx, fc1)
 
 	handler := &FilterRuleHandler{}
 	recorder := httptest.NewRecorder()
@@ -216,5 +236,8 @@ func TestUpdateFilterConfig(t *testing.T) {
 	var filterRules map[string]interface{}
 	err = json.Unmarshal([]byte(fcUpdated.Rules), &filterRules)
 	tt.Assert.NoError(err)
+	tt.Assert.Len(filterRules["whitelist"].([]interface{}), 3)
 	tt.Assert.Equal(filterRules["whitelist"].([]interface{})[0], "4")
+	tt.Assert.Equal(filterRules["whitelist"].([]interface{})[1], "5")
+	tt.Assert.Equal(filterRules["whitelist"].([]interface{})[2], "6")
 }
