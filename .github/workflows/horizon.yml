@@ -90,8 +90,8 @@ jobs:
       name: Login to DockerHub
       uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
       with:
-        username: ${{ secrets.DOCKER_USER }}
-        password: ${{ secrets.DOCKER_PASS }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     - if: github.ref == 'refs/heads/master'
       name: Push to DockerHub
       # TODO(fons): Commented out until we disable the CircleCI jobs

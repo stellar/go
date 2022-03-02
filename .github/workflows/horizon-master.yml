@@ -20,8 +20,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push to DockerHub
         uses: docker/build-push-action@7f9d37fa544684fb73bfe4835ed7214c255ce02b
@@ -40,8 +40,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push to DockerHub
         uses: docker/build-push-action@7f9d37fa544684fb73bfe4835ed7214c255ce02b
