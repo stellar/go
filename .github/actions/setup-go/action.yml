@@ -18,7 +18,7 @@ runs:
     shell: bash
     run: |
       # Set a base, fixed modification time of all directories.
-      # git-restore-mtime doesn't set the mtime of of all directories.
+      # git-restore-mtime doesn't set the mtime of all directories.
       # (see https://github.com/MestreLion/git-tools/issues/47 for details)
       touch -m -t '201509301646' $(find . -type d -not -path '.git/*')
       # Restore original modification time from git. git clone sets the
@@ -42,7 +42,7 @@ runs:
   # rebuilds and cause test runs to skip tests that have no reason to rerun.
   # Don't run this for protected branches like master/main.
   - uses: actions/cache@v2
-    if: ${{ github.ref_protected || github.ref != 'master' || github.ref != 'main' }}
+    if: github.ref_protected || github.ref != 'refs/heads/master'
     with:
       path: ~/.cache/go-build
       key: ${{ env.PREFIX }}-go-build-${{ github.ref }}-${{ hashFiles('**', '!.git') }}

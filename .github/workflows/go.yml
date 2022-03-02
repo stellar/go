@@ -32,6 +32,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
+      with:
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
+        ref: ${{ github.head_ref || github.ref }}
     - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
@@ -78,6 +81,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
+        ref: ${{ github.head_ref || github.ref }}
         # We need to full history for git-restore-mtime to know what modification dates to use.
         # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
         fetch-depth: '0'
