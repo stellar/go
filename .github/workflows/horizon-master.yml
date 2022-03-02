@@ -10,7 +10,7 @@ jobs:
     name: Push stellar/horizon:sha to DockerHub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Get image tag (short sha)
         shell: bash
@@ -35,7 +35,7 @@ jobs:
     name: Push stellar/ledger-state-diff:{sha,latest} to DockerHub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
