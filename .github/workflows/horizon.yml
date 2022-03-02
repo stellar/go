@@ -39,10 +39,10 @@ jobs:
       PGPASSWORD: postgres
       PGDATABASE: postgres
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # For pull requests, build and test the PR head not a merge of the PR with the destination.
-        ref: ${{ github.head_ref || github.ref }}
+        ref: ${{ github.event.pull_request.head.sha || github.ref }}
         # We need to full history for git-restore-mtime to know what modification dates to use.
         # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
         fetch-depth: '0'
@@ -74,10 +74,10 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         # For pull requests, build and test the PR head not a merge of the PR with the destination.
-        ref: ${{ github.head_ref || github.ref }}
+        ref:  ${{ github.event.pull_request.head.sha || github.ref }}
 
     - name: Build and test the Verify Range Docker image
       run: |
@@ -92,8 +92,8 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - if: github.ref == 'refs/heads/master'
-      name: Push to DockerHub
-      # TODO(fons): Commented out until we disable the CircleCI jobs
-      run: \# docker push stellar/horizon-verify-range:latest
+    # TODO(fons): Commented out until we disable the CircleCI jobs
+    # - if: github.ref == 'refs/heads/master'
+    #   name: Push to DockerHub
+    #   run: docker push stellar/horizon-verify-range:latest
 
