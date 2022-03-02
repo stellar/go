@@ -5,9 +5,11 @@
 package historyarchive
 
 import (
+	"container/heap"
 	"io"
 	"os"
 	"path"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -15,7 +17,10 @@ import (
 // FsCacheBackend fronts another backend with a local filesystem cache
 type FsCacheBackend struct {
 	ArchiveBackend
-	dir string
+	dir        string
+	knownFiles lruCache
+	maxFiles   int
+	lru        lruCache
 }
 
 type trc struct {
@@ -41,6 +46,7 @@ func (b *FsCacheBackend) GetFile(pth string) (r io.ReadCloser, err error) {
 	localPath := path.Join(b.dir, pth)
 	local, err := os.Open(localPath)
 	if err == nil {
+		b.updateLRU(localPath)
 		return local, nil
 	}
 	if !os.IsNotExist(err) {
@@ -72,22 +78,28 @@ func (b *FsCacheBackend) createLocal(pth string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	b.updateLRU(localPath)
 	return local, err
 }
 
 func (b *FsCacheBackend) Exists(pth string) (bool, error) {
+	localPath := path.Join(b.dir, pth)
 	log.WithField("path", pth).Trace("fs-cache: check exists")
-	if _, err := os.Stat(path.Join(b.dir, pth)); err == nil {
+	if _, err := os.Stat(localPath); err == nil {
+		b.updateLRU(localPath)
 		return true, nil
 	}
 	return b.ArchiveBackend.Exists(pth)
 }
 
 func (b *FsCacheBackend) Size(pth string) (int64, error) {
+	localPath := path.Join(b.dir, pth)
 	log.WithField("path", pth).Trace("fs-cache: check exists")
-	fi, err := os.Stat(path.Join(b.dir, pth))
+	fi, err := os.Stat(localPath)
 	if err == nil {
 		log.WithField("path", pth).WithField("size", fi.Size()).Trace("fs-cache: got size")
+		b.updateLRU(localPath)
+		return fi.Size(), nil
 	}
 	log.WithField("path", pth).WithError(err).Error("fs-cache: get size")
 	return b.ArchiveBackend.Size(pth)
@@ -111,18 +123,99 @@ func (b *FsCacheBackend) tryLocalPutFile(pth string, in io.ReadCloser) io.ReadCl
 	return teeReadCloser(in, local)
 }
 
+func (b *FsCacheBackend) updateLRU(pth string) {
+	b.lru.bump(pth)
+	for i := b.lru.Len(); i > b.maxFiles; i-- {
+		item := b.lru.Pop().(*lruCacheItem)
+		if err := os.Remove(item.path); err != nil {
+			log.WithField("path", item.path).WithError(err).Error("fs-cache: evict")
+		}
+	}
+}
+
 // MakeFsCacheBackend, wraps an ArchiveBackend with a local filesystem cache in
 // `dir`. If dir is blank, a temporary directory will be created.
-func MakeFsCacheBackend(upstream ArchiveBackend, dir string) (ArchiveBackend, error) {
+func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (ArchiveBackend, error) {
 	if dir == "" {
 		tmp, err := os.MkdirTemp(os.TempDir(), "stellar-horizon-*")
 		if err != nil {
 			return nil, err
 		}
 		dir = tmp
+		log.WithField("dir", dir).Info("fs-cache: temp dir")
 	}
+	if maxFiles == 0 {
+		// A guess at a reasonable number of checkpoints. This is 90 days of
+		// ledgers. (90*86_400)/(5*64) = 24_300
+		maxFiles = 24_300
+	}
+	// Add 10 here, cause we need a bit of spare room for pending evictions.
+	var lru lruCache
+	heap.Init(&lru)
 	return &FsCacheBackend{
 		ArchiveBackend: upstream,
 		dir:            dir,
+		maxFiles:       int(maxFiles),
+		lru:            lru,
 	}, nil
+}
+
+// lruCache is a heap-based LRU cache that we use to limit the on-disk size
+type lruCache []*lruCacheItem
+
+type lruCacheItem struct {
+	path       string
+	lastUsedAt time.Time
+	index      int
+}
+
+func (c lruCache) Len() int { return len(c) }
+
+func (c lruCache) Less(i, j int) bool {
+	// We want Pop to give us the oldest, so we use before than here.
+	return c[i].lastUsedAt.Before(c[j].lastUsedAt)
+}
+
+func (c lruCache) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+	c[i].index = i
+	c[j].index = j
+}
+
+func (c *lruCache) Push(x interface{}) {
+	n := len(*c)
+	item := x.(*lruCacheItem)
+	item.index = n
+	*c = append(*c, item)
+}
+
+func (c *lruCache) Pop() interface{} {
+	old := *c
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil  // avoid memory leak
+	item.index = -1 // for safety
+	*c = old[0 : n-1]
+	return item
+}
+
+func (c *lruCache) bump(pth string) {
+	c.upsert(pth, time.Now())
+}
+
+// upsert modifies the priority and value of an item in the heap, or inserts it.
+func (c *lruCache) upsert(pth string, lastUsedAt time.Time) {
+	// Try to find by path and update
+	for _, item := range *c {
+		if item.path == pth {
+			item.lastUsedAt = lastUsedAt
+			heap.Fix(c, item.index)
+			return
+		}
+	}
+	// not found, add this item
+	heap.Push(c, &lruCacheItem{
+		path:       pth,
+		lastUsedAt: lastUsedAt,
+	})
 }
