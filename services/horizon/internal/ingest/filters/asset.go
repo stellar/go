@@ -43,6 +43,7 @@ func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
+		logger.Infof("New Asset Filter config detected, reloading new config %v ", *filterConfig)
 		var assetFilterRules AssetFilterRules
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
 			return errors.Wrap(err, "unable to serialize asset filter rules")

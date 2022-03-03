@@ -35,6 +35,7 @@ func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterCo
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
+		logger.Infof("New Account Filter config detected, reloading new config %v ", *filterConfig)
 		var accountFilterRules AccountFilterRules
 		if err := json.Unmarshal([]byte(filterConfig.Rules), &accountFilterRules); err != nil {
 			return errors.Wrap(err, "unable to serialize account filter rules")
