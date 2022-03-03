@@ -92,8 +92,7 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    # TODO(fons): Commented out until we disable the CircleCI jobs
-    # - if: github.ref == 'refs/heads/master'
-    #   name: Push to DockerHub
-    #   run: docker push stellar/horizon-verify-range:latest
 
+    - if: github.ref == 'refs/heads/master'
+      name: Push to DockerHub
+      run: docker push stellar/horizon-verify-range:latest
