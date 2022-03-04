@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.15.1
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### Fixes
+
+* Fixed a regression preventing running multiple concurrent captive-core ingestion instances. ([4251](https://github.com/stellar/go/pull/4251))
+
 ## v2.15.0
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
