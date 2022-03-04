@@ -11,12 +11,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17]
+        go: [1.17, 1.18.0-rc1]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+    - uses: actions/checkout@v3
+      with:
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
+        ref: ${{ github.event.pull_request.head.sha || github.ref }}
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
     - run: ./gomod.sh
@@ -29,12 +31,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.16.7]
+        go: [1.17, 1.16.7, 1.18.0-rc1]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+    - uses: actions/checkout@v3
+      with:
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
+        ref: ${{ github.event.pull_request.head.sha || github.ref }}
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
     - run: go build ./...
@@ -43,7 +47,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.16.7]
+        go: [1.17, 1.16.7, 1.18.0-rc1]
         pg: [9.6.5, 10]
     runs-on: ${{ matrix.os }}
     services:
@@ -78,9 +82,14 @@ jobs:
       REDIS_HOST: localhost
       REDIS_PORT: 6379
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
+    - uses: actions/checkout@v3
+      with:
+        # For pull requests, build and test the PR head not a merge of the PR with the destination.
+        ref: ${{ github.event.pull_request.head.sha || github.ref }}
+        # We need to full history for git-restore-mtime to know what modification dates to use.
+        # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
+        fetch-depth: '0'
+    - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
     - run: go test -race -cover ./...
