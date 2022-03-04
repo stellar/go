@@ -12,60 +12,64 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func TestAssetFilterHasMatch(t *testing.T) {
+func TestAccountFilterHasMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
 	filterConfig := &history.FilterConfig{
 		Rules: `{
-			        "canonical_asset_whitelist": [
-			            "USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
+			        "account_whitelist": [
+			            "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
 					]	 
 				}`,
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         FilterAccountFilterName,
 	}
-	filter := NewAssetFilter()
-	err := filter.RefreshAssetFilter(filterConfig)
+	filter := NewAccountFilter()
+	err := filter.RefreshAccountFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	result, err := filter.FilterTransaction(ctx, getAccountTestTx(t,
+		"GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"))
 
 	tt.NoError(err)
 	tt.Equal(result, true)
 }
 
-func TestAssetFilterEnablesWhenEmptyWhitelist(t *testing.T) {
+func TestAccountFilterEnablesWhenEmptyWhitelist(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
 	filterConfig := &history.FilterConfig{
 		Rules: `{
-			        "canonical_asset_whitelist": []	 
+			        "account_whitelist": []	 
 				}`,
 		Enabled:      true,
 		LastModified: 1,
 		Name:         FilterAssetFilterName,
 	}
-	filter := NewAssetFilter()
-	err := filter.RefreshAssetFilter(filterConfig)
+	filter := NewAccountFilter()
+	err := filter.RefreshAccountFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	result, err := filter.FilterTransaction(ctx, getAccountTestTx(t,
+		"GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"))
 
 	tt.NoError(err)
 	tt.Equal(result, true)
 }
 
-func TestAssetFilterHasNoMatch(t *testing.T) {
+func TestAccountFilterHasNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
 	filterConfig := &history.FilterConfig{
 		Rules: `{
-			        "canonical_asset_whitelist": [ 
-		                "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
+			        "account_whitelist": [ 
+		                "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
 		            ]	 
 				 }`,
 
@@ -74,23 +78,32 @@ func TestAssetFilterHasNoMatch(t *testing.T) {
 		Name:         FilterAssetFilterName,
 	}
 
-	filter := NewAssetFilter()
-	err := filter.RefreshAssetFilter(filterConfig)
+	filter := NewAccountFilter()
+	err := filter.RefreshAccountFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	result, err := filter.FilterTransaction(ctx, getAccountTestTx(t,
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"))
 
 	tt.NoError(err)
 	tt.Equal(result, false)
 }
 
-func getAssetTestTx(t *testing.T, issuer string) ingest.LedgerTransaction {
+func getAccountTestTx(t *testing.T, accountId string, issuer string) ingest.LedgerTransaction {
+
 	var xdrAssetCode [12]byte
 	var xdrIssuer xdr.AccountId
 	copy(xdrAssetCode[:], "USDC")
 	require.NoError(t, xdrIssuer.SetAddress(issuer))
 
 	return ingest.LedgerTransaction{
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 1,
+			V1: &xdr.TransactionMetaV1{
+				Operations: []xdr.OperationMeta{},
+			},
+		},
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
@@ -102,11 +115,12 @@ func getAssetTestTx(t *testing.T, issuer string) ingest.LedgerTransaction {
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
+					SourceAccount: xdr.MustMuxedAddress(accountId),
 					Operations: []xdr.Operation{
 						{Body: xdr.OperationBody{
 							Type: xdr.OperationTypePayment,
 							PaymentOp: &xdr.PaymentOp{
-								Destination: xdr.MustMuxedAddress("GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"),
+								Destination: xdr.MustMuxedAddress(accountId),
 								Asset: xdr.Asset{
 									Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
 									AlphaNum12: &xdr.AlphaNum12{

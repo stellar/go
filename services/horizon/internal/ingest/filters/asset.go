@@ -58,6 +58,10 @@ func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig
 
 func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
 
+	if len(f.canonicalAssetsLookup) < 1 {
+		return true, nil
+	}
+
 	tx, v1Exists := transaction.Envelope.GetV1()
 	if !v1Exists {
 		return true, nil
