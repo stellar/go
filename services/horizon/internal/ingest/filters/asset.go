@@ -26,6 +26,7 @@ type AssetFilterRules struct {
 type assetFilter struct {
 	canonicalAssetsLookup map[string]struct{}
 	lastModified          int64
+	enabled               bool
 }
 
 type AssetFilter interface {
@@ -49,6 +50,7 @@ func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig
 			return errors.Wrap(err, "unable to serialize asset filter rules")
 		}
 
+		filter.enabled = filterConfig.Enabled
 		filter.canonicalAssetsLookup = listToMap(assetFilterRules.CanonicalWhitelist)
 		filter.lastModified = filterConfig.LastModified
 	}
@@ -57,8 +59,8 @@ func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig
 }
 
 func (f *assetFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-
-	if len(f.canonicalAssetsLookup) < 1 {
+	// filtering is disabled if the whitelist is empty for now as that is the only filter rule
+	if len(f.canonicalAssetsLookup) < 1 || !f.enabled {
 		return true, nil
 	}
 

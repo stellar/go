@@ -12,7 +12,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func TestAccountFilterHasMatch(t *testing.T) {
+func TestAccountFilterAllowsWhenMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
@@ -38,7 +38,35 @@ func TestAccountFilterHasMatch(t *testing.T) {
 	tt.Equal(result, true)
 }
 
-func TestAccountFilterEnablesWhenEmptyWhitelist(t *testing.T) {
+func TestAccountFilterAllowsWhenDisabled(t *testing.T) {
+	tt := assert.New(t)
+	ctx := context.Background()
+
+	filterConfig := &history.FilterConfig{
+		Rules: `{
+			        "account_whitelist": [
+			            "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
+					]	 
+				}`,
+		Enabled:      false,
+		LastModified: 1,
+		Name:         FilterAccountFilterName,
+	}
+	filter := NewAccountFilter()
+	err := filter.RefreshAccountFilter(filterConfig)
+	tt.NoError(err)
+
+	result, err := filter.FilterTransaction(ctx, getAccountTestTx(t,
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"))
+
+	tt.NoError(err)
+
+	// there is no match on filter rule, but since filter is disabled, it should allow all
+	tt.Equal(result, true)
+}
+
+func TestAccountFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
@@ -62,7 +90,7 @@ func TestAccountFilterEnablesWhenEmptyWhitelist(t *testing.T) {
 	tt.Equal(result, true)
 }
 
-func TestAccountFilterHasNoMatch(t *testing.T) {
+func TestAccountFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 

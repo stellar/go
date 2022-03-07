@@ -34,8 +34,8 @@ type Filters interface {
 func NewFilters() Filters {
 	return &filtersCache{
 		cachedFilters: map[string]processors.LedgerTransactionFilterer{
-			FilterAssetFilterName:   NewAccountFilter(),
-			FilterAccountFilterName: NewAssetFilter(),
+			FilterAssetFilterName:   NewAssetFilter(),
+			FilterAccountFilterName: NewAccountFilter(),
 		},
 	}
 }
@@ -63,24 +63,21 @@ func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) 
 	}
 
 	for _, filterConfig := range filterConfigs {
-		if filterConfig.Enabled {
-			switch filterConfig.Name {
-			case FilterAssetFilterName:
-				assetFilter := f.cachedFilters[FilterAssetFilterName].(AssetFilter)
-				err := assetFilter.RefreshAssetFilter(&filterConfig)
-				if err != nil {
-					LOG.Errorf("unable to refresh asset filter config %v", err)
-					continue
-				}
-			case FilterAccountFilterName:
-				accountFilter := f.cachedFilters[FilterAccountFilterName].(AccountFilter)
-				err := accountFilter.RefreshAccountFilter(&filterConfig)
-				if err != nil {
-					LOG.Errorf("unable to refresh account filter config %v", err)
-					continue
-				}
+		switch filterConfig.Name {
+		case FilterAssetFilterName:
+			assetFilter := f.cachedFilters[FilterAssetFilterName].(AssetFilter)
+			err := assetFilter.RefreshAssetFilter(&filterConfig)
+			if err != nil {
+				LOG.Errorf("unable to refresh asset filter config %v", err)
+				continue
 			}
-
+		case FilterAccountFilterName:
+			accountFilter := f.cachedFilters[FilterAccountFilterName].(AccountFilter)
+			err := accountFilter.RefreshAccountFilter(&filterConfig)
+			if err != nil {
+				LOG.Errorf("unable to refresh account filter config %v", err)
+				continue
+			}
 		}
 	}
 	return f.convertCacheToList()

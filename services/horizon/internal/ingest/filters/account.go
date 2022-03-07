@@ -17,6 +17,7 @@ type AccountFilterRules struct {
 type accountFilter struct {
 	whitelistedAccountsSet map[string]struct{}
 	lastModified           int64
+	enabled                bool
 }
 
 type AccountFilter interface {
@@ -41,17 +42,17 @@ func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterCo
 			return errors.Wrap(err, "unable to serialize account filter rules")
 		}
 
+		filter.enabled = filterConfig.Enabled
 		filter.whitelistedAccountsSet = listToMap(accountFilterRules.CanonicalWhitelist)
 		filter.lastModified = filterConfig.LastModified
-
 	}
 
 	return nil
 }
 
 func (f *accountFilter) FilterTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (bool, error) {
-	// Whitelisting is disabled if the whitelist is empty
-	if len(f.whitelistedAccountsSet) == 0 {
+	// filtering is disabled if the whitelist is empty for now, as that is the only filter rule
+	if len(f.whitelistedAccountsSet) == 0 || !f.enabled {
 		return true, nil
 	}
 

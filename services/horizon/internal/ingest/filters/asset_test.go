@@ -12,7 +12,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func TestAssetFilterHasMatch(t *testing.T) {
+func TestAssetFilterAllowsOnMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
@@ -36,7 +36,7 @@ func TestAssetFilterHasMatch(t *testing.T) {
 	tt.Equal(result, true)
 }
 
-func TestAssetFilterEnablesWhenEmptyWhitelist(t *testing.T) {
+func TestAssetFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
@@ -58,7 +58,32 @@ func TestAssetFilterEnablesWhenEmptyWhitelist(t *testing.T) {
 	tt.Equal(result, true)
 }
 
-func TestAssetFilterHasNoMatch(t *testing.T) {
+func TestAssetFilterAllowsWhenDisabled(t *testing.T) {
+	tt := assert.New(t)
+	ctx := context.Background()
+
+	filterConfig := &history.FilterConfig{
+		Rules: `{
+			        "canonical_asset_whitelist": [
+			            "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
+					]	 
+				}`,
+		Enabled:      false,
+		LastModified: 1,
+		Name:         FilterAssetFilterName,
+	}
+	filter := NewAssetFilter()
+	err := filter.RefreshAssetFilter(filterConfig)
+	tt.NoError(err)
+
+	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+
+	tt.NoError(err)
+	// there was no match on filter rules, but since filter was disabled also, it should allow all
+	tt.Equal(result, true)
+}
+
+func TestAssetFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
