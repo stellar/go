@@ -66,7 +66,7 @@ func TestAssetFilterAllowsWhenDisabled(t *testing.T) {
 		Rules: `{
 			        "canonical_asset_whitelist": [
 			            "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-					]	 
+					]
 				}`,
 		Enabled:      false,
 		LastModified: 1,
@@ -91,7 +91,7 @@ func TestAssetFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 		Rules: `{
 			        "canonical_asset_whitelist": [ 
 		                "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-		            ]	 
+		            ]
 				 }`,
 
 		Enabled:      true,

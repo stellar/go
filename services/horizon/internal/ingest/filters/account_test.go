@@ -46,7 +46,7 @@ func TestAccountFilterAllowsWhenDisabled(t *testing.T) {
 		Rules: `{
 			        "account_whitelist": [
 			            "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-					]	 
+					]
 				}`,
 		Enabled:      false,
 		LastModified: 1,
@@ -72,7 +72,7 @@ func TestAccountFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 
 	filterConfig := &history.FilterConfig{
 		Rules: `{
-			        "account_whitelist": []	 
+			        "account_whitelist": []
 				}`,
 		Enabled:      true,
 		LastModified: 1,
