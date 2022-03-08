@@ -21,17 +21,18 @@ type S3Backend struct {
 	downloader *s3manager.Downloader
 	uploader   *s3manager.Uploader
 	parallel   uint32
+	prefix     string
 }
 
-func NewS3Store(awsConfig *aws.Config, parallel uint32) (Store, error) {
-	backend, err := NewS3Backend(awsConfig, parallel)
+func NewS3Store(awsConfig *aws.Config, prefix string, parallel uint32) (Store, error) {
+	backend, err := NewS3Backend(awsConfig, prefix, parallel)
 	if err != nil {
 		return nil, err
 	}
 	return NewStore(backend)
 }
 
-func NewS3Backend(awsConfig *aws.Config, parallel uint32) (*S3Backend, error) {
+func NewS3Backend(awsConfig *aws.Config, prefix string, parallel uint32) (*S3Backend, error) {
 	s3Session, err := session.NewSession(awsConfig)
 	if err != nil {
 		return nil, err
@@ -42,6 +43,7 @@ func NewS3Backend(awsConfig *aws.Config, parallel uint32) (*S3Backend, error) {
 		downloader: s3manager.NewDownloader(s3Session),
 		uploader:   s3manager.NewUploader(s3Session),
 		parallel:   parallel,
+		prefix:     prefix,
 	}, nil
 }
 
@@ -57,7 +59,7 @@ func (s *S3Backend) writeBatch(b *batch, r retry) error {
 		return errors.Wrapf(err, "unable to serialize %s", b.account)
 	}
 
-	path := filepath.Join(b.account[:3], b.account)
+	path := filepath.Join(s.prefix, b.account[:3], b.account)
 
 	_, err := s.uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(BUCKET),
@@ -77,7 +79,7 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 	// Check if index exists in S3
 	log.Debugf("Downloading index: %s", account)
 	b := &aws.WriteAtBuffer{}
-	path := filepath.Join(account[:3], account)
+	path := filepath.Join(s.prefix, account[:3], account)
 	n, err := s.downloader.Download(b, &s3.GetObjectInput{
 		Bucket: aws.String(BUCKET),
 		Key:    aws.String(path),

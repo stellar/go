@@ -8,6 +8,7 @@ import (
 type Store interface {
 	NextActive(account, index string, afterCheckpoint uint32) (uint32, error)
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
+	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
 	Flush() error
 }
 
@@ -40,6 +41,32 @@ func (s *store) Flush() error {
 	// clear indexes to save memory
 	s.indexes = map[string]map[string]*CheckpointIndex{}
 
+	return nil
+}
+
+// AddParticipantsToIndexesNoBackend is a temp version of AddParticipantsToIndexes that
+// skips backend downloads and it used in AWS Batch. Refactoring required to make it better.
+func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for _, participant := range participants {
+		_, ok := s.indexes[participant]
+		if !ok {
+			s.indexes[participant] = map[string]*CheckpointIndex{}
+		}
+
+		ind, ok := s.indexes[participant][index]
+		if !ok {
+			ind = &CheckpointIndex{}
+			s.indexes[participant][index] = ind
+		}
+
+		err := ind.SetActive(checkpoint)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
