@@ -14,12 +14,13 @@ type CheckpointIndex struct {
 	mutex           sync.RWMutex
 	bitmap          []byte
 	firstCheckpoint uint32
-	shift           uint32
+	lastCheckpoint  uint32
 }
 
 func NewCheckpointIndexFromBytes(b []byte) (*CheckpointIndex, error) {
 	buf := bytes.NewBuffer(b)
 	r := bufio.NewReader(buf)
+
 	firstCheckpointString, err := r.ReadString(0x00)
 	if err != nil {
 		return nil, err
@@ -33,77 +34,96 @@ func NewCheckpointIndexFromBytes(b []byte) (*CheckpointIndex, error) {
 		return nil, err
 	}
 
+	lastCheckpointString, err := r.ReadString(0x00)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove trailing 0x00 byte
+	lastCheckpointString = lastCheckpointString[:len(lastCheckpointString)-1]
+
+	lastCheckpoint, err := strconv.ParseUint(lastCheckpointString, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
 	bitmap, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 
-	var shift uint32
-	if firstCheckpoint%8 == 0 {
-		shift = 7
-	} else {
-		shift = uint32(firstCheckpoint)%8 - 1
-	}
-
 	return &CheckpointIndex{
 		bitmap:          bitmap,
-		shift:           shift,
 		firstCheckpoint: uint32(firstCheckpoint),
+		lastCheckpoint:  uint32(lastCheckpoint),
 	}, nil
 }
 
 func (i *CheckpointIndex) SetActive(checkpoint uint32) error {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
+	return i.setActive(checkpoint)
+}
 
+func bitShiftLeft(checkpoint uint32) byte {
+	if checkpoint%8 == 0 {
+		return 1
+	} else {
+		return byte(1) << (8 - checkpoint%8)
+	}
+}
+
+func (i *CheckpointIndex) rangeFirstCheckpoint() uint32 {
+	return (i.firstCheckpoint-1)/8*8 + 1
+}
+
+func (i *CheckpointIndex) rangeLastCheckpoint() uint32 {
+	return i.rangeFirstCheckpoint() + uint32(len(i.bitmap))*8 - 1
+}
+
+func (i *CheckpointIndex) setActive(checkpoint uint32) error {
 	if i.firstCheckpoint == 0 {
 		i.firstCheckpoint = checkpoint
-		b := byte(1) << (8 - checkpoint%8)
-		if checkpoint%8 == 0 {
-			i.shift = 7
-		} else {
-			i.shift = checkpoint%8 - 1
-		}
+		i.lastCheckpoint = checkpoint
+		b := bitShiftLeft(checkpoint)
 		i.bitmap = []byte{b}
 	} else {
-		lastCheckpoint := i.firstCheckpoint + uint32(len(i.bitmap))*8 - i.shift - 1
-
-		if checkpoint >= i.firstCheckpoint && checkpoint <= lastCheckpoint {
+		if checkpoint >= i.rangeFirstCheckpoint() && checkpoint <= i.rangeLastCheckpoint() {
 			// Update the bit in existing range
-			b := byte(1) << (8 - checkpoint%8)
-			loc := (checkpoint - i.firstCheckpoint) / 8
+			b := bitShiftLeft(checkpoint)
+			loc := (checkpoint - i.rangeFirstCheckpoint()) / 8
 			i.bitmap[loc] = i.bitmap[loc] | b
-		} else {
-			// Expand the map
-			if checkpoint < i.firstCheckpoint {
-				// Check if moving the shift left will be enough
-				if i.firstCheckpoint-checkpoint <= i.shift {
-					b := byte(1) << (8 - checkpoint%8)
-					i.bitmap[0] = i.bitmap[0] | b
-					i.shift = checkpoint%8 - 1
-				} else {
-					c := (i.firstCheckpoint - checkpoint - i.shift) / 8
-					if (i.firstCheckpoint-checkpoint-i.shift)%8 > 0 {
-						c++
-					}
-					newBytes := make([]byte, c)
-					i.bitmap = append(newBytes, i.bitmap...)
 
-					b := byte(1) << (8 - checkpoint%8)
-					i.bitmap[0] = i.bitmap[0] | b
-					if checkpoint%8 == 0 {
-						i.shift = 7
-					} else {
-						i.shift = checkpoint%8 - 1
-					}
-				}
+			if checkpoint < i.firstCheckpoint {
 				i.firstCheckpoint = checkpoint
-			} else if checkpoint > lastCheckpoint {
-				newBytes := make([]byte, (checkpoint-lastCheckpoint)/8+1)
+			}
+			if checkpoint > i.lastCheckpoint {
+				i.lastCheckpoint = checkpoint
+			}
+		} else {
+			// Expand the bitmap
+			if checkpoint < i.rangeFirstCheckpoint() {
+				// ...to the left
+				c := (i.rangeFirstCheckpoint() - checkpoint) / 8
+				if (i.rangeFirstCheckpoint()-checkpoint)%8 != 0 {
+					c++
+				}
+				newBytes := make([]byte, c)
+				i.bitmap = append(newBytes, i.bitmap...)
+
+				b := bitShiftLeft(checkpoint)
+				i.bitmap[0] = i.bitmap[0] | b
+
+				i.firstCheckpoint = checkpoint
+			} else if checkpoint > i.rangeLastCheckpoint() {
+				// ... to the right
+				newBytes := make([]byte, (checkpoint-i.rangeLastCheckpoint())/8+1)
 				i.bitmap = append(i.bitmap, newBytes...)
-				b := byte(1) << (8 - checkpoint%8)
-				loc := (checkpoint - i.firstCheckpoint) / 8
+				b := bitShiftLeft(checkpoint)
+				loc := (checkpoint - i.rangeFirstCheckpoint()) / 8
 				i.bitmap[loc] = i.bitmap[loc] | b
+
+				i.lastCheckpoint = checkpoint
 			}
 		}
 	}
@@ -111,27 +131,68 @@ func (i *CheckpointIndex) SetActive(checkpoint uint32) error {
 	return nil
 }
 
-func (i *CheckpointIndex) Bytes() []byte {
-	i.mutex.RLock()
-	defer i.mutex.RUnlock()
-
-	return i.bitmap
+func (i *CheckpointIndex) isActive(checkpoint uint32) bool {
+	if checkpoint >= i.firstCheckpoint && checkpoint <= i.lastCheckpoint {
+		b := bitShiftLeft(checkpoint)
+		loc := (checkpoint - i.rangeFirstCheckpoint()) / 8
+		return i.bitmap[loc]&b != 0
+	} else {
+		return false
+	}
 }
 
-func (i *CheckpointIndex) Shift() uint32 {
+func (i *CheckpointIndex) iterate(f func(checkpoint uint32)) error {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
-	return i.shift
+	if i.firstCheckpoint == 0 {
+		return nil
+	}
+
+	f(i.firstCheckpoint)
+	curr := i.firstCheckpoint
+
+	for {
+		var err error
+		curr, err = i.nextActive(curr + 1)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		f(curr)
+	}
+
+	return nil
+}
+
+func (i *CheckpointIndex) Merge(other *CheckpointIndex) error {
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
+	var err error
+
+	other.iterate(func(checkpoint uint32) {
+		if err != nil {
+			return
+		}
+		err = i.setActive(checkpoint)
+	})
+
+	return err
 }
 
 // NextActive returns the next checkpoint (inclusive) where this index is active.
 func (i *CheckpointIndex) NextActive(checkpoint uint32) (uint32, error) {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
+	return i.nextActive(checkpoint)
+}
 
-	lastCheckpoint := i.firstCheckpoint + uint32(len(i.bitmap))*8 - i.shift - 1
-	if i.firstCheckpoint == 0 || lastCheckpoint < checkpoint {
+func (i *CheckpointIndex) nextActive(checkpoint uint32) (uint32, error) {
+	if i.firstCheckpoint == 0 || checkpoint > i.lastCheckpoint {
 		// We're past the end.
 		// TODO: Should this be an error? or how should we signal NONE here?
 		return 0, io.EOF
@@ -142,11 +203,11 @@ func (i *CheckpointIndex) NextActive(checkpoint uint32) (uint32, error) {
 	}
 
 	// Must be within the range, find the first non-zero after our start
-	loc := (checkpoint - i.firstCheckpoint) / 8
+	loc := (checkpoint - i.rangeFirstCheckpoint()) / 8
 
 	// Is it in the same byte?
-	if shift, ok := maxBitAfter(i.bitmap[loc], (checkpoint-i.firstCheckpoint)%8); ok {
-		return i.firstCheckpoint + (loc * 8) + shift, nil
+	if shift, ok := maxBitAfter(i.bitmap[loc], (checkpoint-1)%8); ok {
+		return i.rangeFirstCheckpoint() + (loc * 8) + shift, nil
 	}
 
 	// Scan bytes after
@@ -154,7 +215,7 @@ func (i *CheckpointIndex) NextActive(checkpoint uint32) (uint32, error) {
 	for ; loc < uint32(len(i.bitmap)); loc++ {
 		// Find the offset of the set bit
 		if shift, ok := maxBitAfter(i.bitmap[loc], 0); ok {
-			return i.firstCheckpoint + (loc * 8) + shift, nil
+			return i.rangeFirstCheckpoint() + (loc * 8) + shift, nil
 		}
 	}
 
@@ -170,7 +231,7 @@ func maxBitAfter(b byte, after uint32) (uint32, bool) {
 	}
 
 	for shift := uint32(after); shift < 8; shift++ {
-		mask := byte(0x80) >> shift
+		mask := byte(0b1000_0000) >> shift
 		if mask&b != 0 {
 			return shift, true
 		}
@@ -184,6 +245,8 @@ func (i *CheckpointIndex) Buffer() *bytes.Buffer {
 
 	var b bytes.Buffer
 	b.WriteString(strconv.FormatUint(uint64(i.firstCheckpoint), 10))
+	b.WriteByte(0)
+	b.WriteString(strconv.FormatUint(uint64(i.lastCheckpoint), 10))
 	b.WriteByte(0)
 	b.Write(i.bitmap)
 	return &b
