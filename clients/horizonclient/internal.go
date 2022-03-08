@@ -32,7 +32,10 @@ func decodeResponse(resp *http.Response, object interface{}, hc *Client) (err er
 		}
 		return horizonError
 	}
-
+	if object == nil {
+		// Nothing to decode
+		return nil
+	}
 	err = decoder.Decode(&object)
 	if err != nil {
 		return errors.Wrap(err, "error decoding response")

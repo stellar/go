@@ -133,7 +133,11 @@ type UniversalTimeHandler func() int64
 type Client struct {
 	// URL of Horizon server to connect
 	HorizonURL        string
+	horizonURL        url.URL
 	fixHorizonURLOnce sync.Once
+
+	// Admin port (admin requests will fail if unset)
+	AdminPort uint16
 
 	// HTTP client to make requests with
 	HTTP HTTP
@@ -214,6 +218,9 @@ type ClientInterface interface {
 	LiquidityPools(request LiquidityPoolsRequest) (hProtocol.LiquidityPoolsPage, error)
 	NextLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
 	PrevLiquidityPoolsPage(hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error)
+	AdminGetAllIngestionFilters() ([]hProtocol.IngestionFilter, error)
+	AdminGetIngestionFilter(name string) (hProtocol.IngestionFilter, error)
+	AdminSetIngestionFilter(ingestionFilter hProtocol.IngestionFilter) error
 }
 
 // DefaultTestNetClient is a default client to connect to test network.

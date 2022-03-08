@@ -6,30 +6,23 @@ import (
 	"fmt"
 	"net/http"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/render/problem"
 )
 
-// standard resource interface for a filter config
-type filterResource struct {
-	Rules        map[string]interface{} `json:"rules"`
-	Enabled      bool                   `json:"enabled"`
-	Name         string                 `json:"name,omitempty"`
-	LastModified int64                  `json:"last_modified,omitempty"`
-}
-
 type QueryPathParams struct {
-	NAME string `schema:"filter_name" valid:"optional"`
+	Name string `schema:"filter_name" valid:"optional"`
 }
 
 type UpdatePathParams struct {
-	NAME string `schema:"filter_name" valid:"required"`
+	Name string `schema:"filter_name" valid:"required"`
 }
 
-type FilterRuleHandler struct{}
+type IngestionFilterHandler struct{}
 
-func (handler FilterRuleHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (handler IngestionFilterHandler) Get(w http.ResponseWriter, r *http.Request) {
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
@@ -45,8 +38,8 @@ func (handler FilterRuleHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	var responsePayload interface{}
 
-	if pp.NAME != "" {
-		responsePayload, err = handler.findOne(pp.NAME, historyQ, r.Context())
+	if pp.Name != "" {
+		responsePayload, err = handler.findOne(pp.Name, historyQ, r.Context())
 		if historyQ.NoRows(err) {
 			err = problem.NotFound
 		}
@@ -66,7 +59,7 @@ func (handler FilterRuleHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (handler FilterRuleHandler) Update(w http.ResponseWriter, r *http.Request) {
+func (handler IngestionFilterHandler) Update(w http.ResponseWriter, r *http.Request) {
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
@@ -86,10 +79,10 @@ func (handler FilterRuleHandler) Update(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if pp.NAME != filterRequest.Name {
+	if pp.Name != filterRequest.Name {
 		p := problem.BadRequest
 		p.Extras = map[string]interface{}{
-			"reason": fmt.Sprintf("url path %v, does not match body value %v", pp.NAME, filterRequest.Name),
+			"reason": fmt.Sprintf("url path %v, does not match body value %v", pp.Name, filterRequest.Name),
 		}
 		problem.Render(r.Context(), w, p)
 		return
@@ -103,20 +96,20 @@ func (handler FilterRuleHandler) Update(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (handler FilterRuleHandler) requestedFilter(r *http.Request) (filterResource, error) {
-	filterRequest := filterResource{}
+func (handler IngestionFilterHandler) requestedFilter(r *http.Request) (hProtocol.IngestionFilter, error) {
+	var filterRequest hProtocol.IngestionFilter
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&filterRequest); err != nil {
 		p := problem.BadRequest
 		p.Extras = map[string]interface{}{
 			"reason": fmt.Sprintf("invalid json for filter config %v", err.Error()),
 		}
-		return filterResource{}, p
+		return hProtocol.IngestionFilter{}, p
 	}
 	return filterRequest, nil
 }
 
-func (handler FilterRuleHandler) update(filterRequest filterResource, historyQ *history.Q, ctx context.Context) error {
+func (handler IngestionFilterHandler) update(filterRequest hProtocol.IngestionFilter, historyQ *history.Q, ctx context.Context) error {
 	//TODO, consider type specific schema validation of the json in filterRequest.Rules based on filterRequest.Name
 	// if name='asset', verify against an Asset Config Struct
 	// if name='account', verify against an Account Config Struct
@@ -136,25 +129,25 @@ func (handler FilterRuleHandler) update(filterRequest filterResource, historyQ *
 	return historyQ.UpdateFilterConfig(ctx, filterConfig)
 }
 
-func (handler FilterRuleHandler) findOne(name string, historyQ *history.Q, ctx context.Context) (filterResource, error) {
+func (handler IngestionFilterHandler) findOne(name string, historyQ *history.Q, ctx context.Context) (hProtocol.IngestionFilter, error) {
 	filter, err := historyQ.GetFilterByName(ctx, name)
 	if err != nil {
-		return filterResource{}, err
+		return hProtocol.IngestionFilter{}, err
 	}
 
 	rules, err := handler.rules(filter.Rules)
 	if err != nil {
-		return filterResource{}, err
+		return hProtocol.IngestionFilter{}, err
 	}
 	return handler.resource(filter, rules), nil
 }
 
-func (handler FilterRuleHandler) findAll(historyQ *history.Q, ctx context.Context) ([]filterResource, error) {
+func (handler IngestionFilterHandler) findAll(historyQ *history.Q, ctx context.Context) ([]hProtocol.IngestionFilter, error) {
 	configs, err := historyQ.GetAllFilters(ctx)
 	if err != nil {
 		return nil, err
 	}
-	resources := []filterResource{}
+	resources := []hProtocol.IngestionFilter{}
 	for _, config := range configs {
 		rules, err := handler.rules(config.Rules)
 		if err != nil {
@@ -165,7 +158,7 @@ func (handler FilterRuleHandler) findAll(historyQ *history.Q, ctx context.Contex
 	return resources, nil
 }
 
-func (handler FilterRuleHandler) rules(input string) (map[string]interface{}, error) {
+func (handler IngestionFilterHandler) rules(input string) (map[string]interface{}, error) {
 	rules := make(map[string]interface{})
 	if err := json.Unmarshal([]byte(input), &rules); err != nil {
 		p := problem.ServerError
@@ -177,8 +170,8 @@ func (handler FilterRuleHandler) rules(input string) (map[string]interface{}, er
 	return rules, nil
 }
 
-func (handler FilterRuleHandler) resource(config history.FilterConfig, rules map[string]interface{}) filterResource {
-	return filterResource{
+func (handler IngestionFilterHandler) resource(config history.FilterConfig, rules map[string]interface{}) hProtocol.IngestionFilter {
+	return hProtocol.IngestionFilter{
 		Rules:        rules,
 		Enabled:      config.Enabled,
 		Name:         config.Name,

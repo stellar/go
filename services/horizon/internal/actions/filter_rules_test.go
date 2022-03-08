@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -19,7 +20,7 @@ func TestGetFilterConfigNotFound(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
-	handler := &FilterRuleHandler{}
+	handler := &IngestionFilterHandler{}
 	recorder := httptest.NewRecorder()
 	handler.Get(
 		recorder,
@@ -51,7 +52,7 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 
 	q.UpdateFilterConfig(tt.Ctx, fc1)
 
-	handler := &FilterRuleHandler{}
+	handler := &IngestionFilterHandler{}
 	recorder := httptest.NewRecorder()
 	handler.Get(
 		recorder,
@@ -69,7 +70,7 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 	raw, err := ioutil.ReadAll(resp.Body)
 	tt.Assert.NoError(err)
 
-	var filterCfgResource filterResource
+	var filterCfgResource hProtocol.IngestionFilter
 	json.Unmarshal(raw, &filterCfgResource)
 	tt.Assert.NoError(err)
 
@@ -89,7 +90,7 @@ func TestGetFilterConfigListResult(t *testing.T) {
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &FilterRuleHandler{}
+	handler := &IngestionFilterHandler{}
 	recorder := httptest.NewRecorder()
 	handler.Get(
 		recorder,
@@ -107,12 +108,12 @@ func TestGetFilterConfigListResult(t *testing.T) {
 	raw, err := ioutil.ReadAll(resp.Body)
 	tt.Assert.NoError(err)
 
-	var filterCfgResourceResponse []filterResource
+	var filterCfgResourceResponse []hProtocol.IngestionFilter
 	json.Unmarshal(raw, &filterCfgResourceResponse)
 	tt.Assert.NoError(err)
 
 	// these are from the pre-defined default config rows seeded/created by scheam migrations file
-	filterCfgResourceList := []filterResource{
+	filterCfgResourceList := []hProtocol.IngestionFilter{
 		{Name: "asset", LastModified: 0, Rules: map[string]interface{}{}, Enabled: false},
 		{Name: "account", LastModified: 0, Rules: map[string]interface{}{}, Enabled: false},
 	}
@@ -128,7 +129,7 @@ func TestMalFormedUpdateFilterConfig(t *testing.T) {
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &FilterRuleHandler{}
+	handler := &IngestionFilterHandler{}
 	recorder := httptest.NewRecorder()
 	request := makeRequest(
 		t,
@@ -164,7 +165,7 @@ func TestUpdateUnsupportedFilterConfig(t *testing.T) {
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &FilterRuleHandler{}
+	handler := &IngestionFilterHandler{}
 	recorder := httptest.NewRecorder()
 	request := makeRequest(
 		t,
@@ -200,7 +201,7 @@ func TestUpdateFilterConfig(t *testing.T) {
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &FilterRuleHandler{}
+	handler := &IngestionFilterHandler{}
 	recorder := httptest.NewRecorder()
 	request := makeRequest(
 		t,

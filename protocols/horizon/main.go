@@ -817,3 +817,11 @@ type LiquidityPoolReserve struct {
 	Asset  string `json:"asset"`
 	Amount string `json:"amount"`
 }
+
+// IngestionFilter represents the configuration for an ingestion filter
+type IngestionFilter struct {
+	Rules        map[string]interface{} `json:"rules"`
+	Enabled      bool                   `json:"enabled"`
+	Name         string                 `json:"name,omitempty"`
+	LastModified int64                  `json:"last_modified,omitempty"`
+}

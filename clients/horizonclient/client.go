@@ -270,6 +270,9 @@ func (c *Client) setDefaultClient() {
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
 func (c *Client) fixHorizonURL() string {
 	c.fixHorizonURLOnce.Do(func() {
+		// TODO: we shouldn't happily edit data provided by the user,
+		//       better store it in an internal variable or, even better,
+		//       just parse it every time (what if the url changes during the life of the client?).
 		c.HorizonURL = strings.TrimRight(c.HorizonURL, "/") + "/"
 	})
 	return c.HorizonURL
@@ -839,6 +842,57 @@ func (c *Client) NextLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (lp h
 func (c *Client) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (lp hProtocol.LiquidityPoolsPage, err error) {
 	err = c.sendGetRequest(page.Links.Prev.Href, &lp)
 	return
+}
+
+func (c *Client) getIngestionFiltersURL(name string) (string, error) {
+	baseURL, err := url.Parse(c.fixHorizonURL())
+	if err != nil {
+		return "", err
+	}
+	baseURL.Path = baseURL.Path + "ingestion/filters/" + name
+	if c.AdminPort == 0 {
+		return "", errors.New("Client.AdminPort not specified")
+	}
+	baseURL.Host = fmt.Sprintf("%s:%d", baseURL.Hostname(), c.AdminPort)
+	return baseURL.String(), nil
+}
+
+func (c *Client) AdminGetAllIngestionFilters() ([]hProtocol.IngestionFilter, error) {
+	url, err := c.getIngestionFiltersURL("")
+	if err != nil {
+		return nil, err
+	}
+	var filters []hProtocol.IngestionFilter
+	err = c.sendGetRequest(url, &filters)
+	return filters, err
+}
+
+func (c *Client) AdminGetIngestionFilter(name string) (hProtocol.IngestionFilter, error) {
+	url, err := c.getIngestionFiltersURL("name")
+	if err != nil {
+		return hProtocol.IngestionFilter{}, err
+	}
+	var filter hProtocol.IngestionFilter
+	err = c.sendGetRequest(url, &filter)
+	return filter, err
+}
+
+func (c *Client) AdminSetIngestionFilter(filter hProtocol.IngestionFilter) error {
+	url, err := c.getIngestionFiltersURL("name")
+	if err != nil {
+		return err
+	}
+	buf := bytes.NewBuffer(nil)
+	err = json.NewEncoder(buf).Encode(filter)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPut, url, buf)
+	if err != nil {
+		return errors.Wrap(err, "error creating HTTP request")
+	}
+	req.Header.Add("Content-Type", "application/json")
+	return c.sendHTTPRequest(req, nil)
 }
 
 // ensure that the horizon client implements ClientInterface

@@ -349,5 +349,20 @@ func (m *MockClient) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (
 	return a.Get(0).(hProtocol.LiquidityPoolsPage), a.Error(1)
 }
 
+func (m *MockClient) AdminGetAllIngestionFilters() ([]hProtocol.IngestionFilter, error) {
+	a := m.Called()
+	return a.Get(0).([]hProtocol.IngestionFilter), a.Error(1)
+}
+
+func (m *MockClient) AdminGetIngestionFilter(name string) (hProtocol.IngestionFilter, error) {
+	a := m.Called(name)
+	return a.Get(0).(hProtocol.IngestionFilter), a.Error(1)
+}
+
+func (m *MockClient) AdminSetIngestionFilter(resource hProtocol.IngestionFilter) error {
+	a := m.Called(resource)
+	return a.Error(0)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

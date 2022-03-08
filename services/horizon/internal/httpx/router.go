@@ -347,7 +347,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			// GET /ingestion/filters/{name}
 			// GET /ingestion/filters
 			// PUT /ingestion/filters/{name}
-			handler := actions.FilterRuleHandler{}
+			handler := actions.IngestionFilterHandler{}
 			r.With(historyMiddleware).Put("/{filter_name}", handler.Update)
 			r.With(historyMiddleware).Get("/", handler.Get)
 			r.With(historyMiddleware).Get("/{filter_name}", handler.Get)
