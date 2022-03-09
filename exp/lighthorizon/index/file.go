@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/stellar/go/support/log"
 )
@@ -30,6 +31,13 @@ func NewFileBackend(dir string, parallel uint32) (*FileBackend, error) {
 
 func (s *FileBackend) Flush(indexes map[string]map[string]*CheckpointIndex) error {
 	return parallelFlush(s.parallel, indexes, s.writeBatch)
+}
+
+func (s *FileBackend) FlushAccounts(accounts []string) error {
+	path := filepath.Join(s.dir, "accounts")
+
+	accountsString := strings.Join(accounts, "\n")
+	return os.WriteFile(path, []byte(accountsString), fs.ModeDir|0755)
 }
 
 func (s *FileBackend) writeBatch(b *batch, r retry) error {

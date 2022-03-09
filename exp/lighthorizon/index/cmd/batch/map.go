@@ -204,6 +204,10 @@ func Map() {
 	if err := wg.Wait(); err != nil {
 		panic(err)
 	}
+	log.Infof("Uploading accounts")
+	if err := indexStore.FlushAccounts(); err != nil {
+		panic(err)
+	}
 	log.Infof("Uploading indexes")
 	if err := indexStore.Flush(); err != nil {
 		panic(err)

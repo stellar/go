@@ -10,10 +10,12 @@ type Store interface {
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
 	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
 	Flush() error
+	FlushAccounts() error
 }
 
 type Backend interface {
 	Flush(map[string]map[string]*CheckpointIndex) error
+	FlushAccounts([]string) error
 	Read(account string) (map[string]*CheckpointIndex, error)
 }
 
@@ -28,6 +30,25 @@ func NewStore(backend Backend) (Store, error) {
 		indexes: map[string]map[string]*CheckpointIndex{},
 		backend: backend,
 	}, nil
+}
+
+func (s *store) accounts() []string {
+	accounts := make([]string, 0, len(s.indexes))
+	for account, _ := range s.indexes {
+		accounts = append(accounts, account)
+	}
+	return accounts
+}
+
+func (s *store) FlushAccounts() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if err := s.backend.FlushAccounts(s.accounts()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *store) Flush() error {

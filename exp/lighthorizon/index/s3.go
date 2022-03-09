@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -45,6 +46,28 @@ func NewS3Backend(awsConfig *aws.Config, prefix string, parallel uint32) (*S3Bac
 		parallel:   parallel,
 		prefix:     prefix,
 	}, nil
+}
+
+func (s *S3Backend) FlushAccounts(accounts []string) error {
+	var buf bytes.Buffer
+	accountsString := strings.Join(accounts, "\n")
+	_, err := buf.WriteString(accountsString)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(s.prefix, "accounts")
+
+	_, err = s.uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(BUCKET),
+		Key:    aws.String(path),
+		Body:   &buf,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *S3Backend) Flush(indexes map[string]map[string]*CheckpointIndex) error {
