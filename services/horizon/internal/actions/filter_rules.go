@@ -103,20 +103,20 @@ func (handler FilterRuleHandler) Update(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (handler FilterRuleHandler) requestedFilter(r *http.Request) (*filterResource, error) {
-	filterRequest := &filterResource{}
+func (handler FilterRuleHandler) requestedFilter(r *http.Request) (filterResource, error) {
+	filterRequest := filterResource{}
 	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(filterRequest); err != nil {
+	if err := dec.Decode(&filterRequest); err != nil {
 		p := problem.BadRequest
 		p.Extras = map[string]interface{}{
 			"reason": fmt.Sprintf("invalid json for filter config %v", err.Error()),
 		}
-		return nil, p
+		return filterResource{}, p
 	}
 	return filterRequest, nil
 }
 
-func (handler FilterRuleHandler) update(filterRequest *filterResource, historyQ *history.Q, ctx context.Context) error {
+func (handler FilterRuleHandler) update(filterRequest filterResource, historyQ *history.Q, ctx context.Context) error {
 	//TODO, consider type specific schema validation of the json in filterRequest.Rules based on filterRequest.Name
 	// if name='asset', verify against an Asset Config Struct
 	// if name='account', verify against an Account Config Struct
@@ -136,25 +136,25 @@ func (handler FilterRuleHandler) update(filterRequest *filterResource, historyQ 
 	return historyQ.UpdateFilterConfig(ctx, filterConfig)
 }
 
-func (handler FilterRuleHandler) findOne(name string, historyQ *history.Q, ctx context.Context) (*filterResource, error) {
+func (handler FilterRuleHandler) findOne(name string, historyQ *history.Q, ctx context.Context) (filterResource, error) {
 	filter, err := historyQ.GetFilterByName(ctx, name)
 	if err != nil {
-		return nil, err
+		return filterResource{}, err
 	}
 
 	rules, err := handler.rules(filter.Rules)
 	if err != nil {
-		return nil, err
+		return filterResource{}, err
 	}
 	return handler.resource(filter, rules), nil
 }
 
-func (handler FilterRuleHandler) findAll(historyQ *history.Q, ctx context.Context) ([]*filterResource, error) {
+func (handler FilterRuleHandler) findAll(historyQ *history.Q, ctx context.Context) ([]filterResource, error) {
 	configs, err := historyQ.GetAllFilters(ctx)
 	if err != nil {
 		return nil, err
 	}
-	resources := []*filterResource{}
+	resources := []filterResource{}
 	for _, config := range configs {
 		rules, err := handler.rules(config.Rules)
 		if err != nil {
@@ -177,8 +177,8 @@ func (handler FilterRuleHandler) rules(input string) (map[string]interface{}, er
 	return rules, nil
 }
 
-func (handler FilterRuleHandler) resource(config history.FilterConfig, rules map[string]interface{}) *filterResource {
-	return &filterResource{
+func (handler FilterRuleHandler) resource(config history.FilterConfig, rules map[string]interface{}) filterResource {
+	return filterResource{
 		Rules:        rules,
 		Enabled:      config.Enabled,
 		Name:         config.Name,
