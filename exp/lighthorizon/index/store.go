@@ -1,12 +1,17 @@
 package index
 
 import (
+	"encoding/binary"
+	"encoding/hex"
+	"io"
 	"os"
 	"sync"
 )
 
 type Store interface {
 	NextActive(account, index string, afterCheckpoint uint32) (uint32, error)
+	AddTransactionToIndexes(ledgerSeq uint32, hash [32]byte) error
+	TransactionLedger(hash [32]byte) (uint32, error)
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
 	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
 	Flush() error
@@ -17,18 +22,22 @@ type Backend interface {
 	Flush(map[string]map[string]*CheckpointIndex) error
 	FlushAccounts([]string) error
 	Read(account string) (map[string]*CheckpointIndex, error)
+	FlushTries(map[string]*TrieIndex) error
+	ReadTrie(prefix string) (*TrieIndex, error)
 }
 
 type store struct {
-	mutex   sync.RWMutex
-	indexes map[string]map[string]*CheckpointIndex
-	backend Backend
+	mutex     sync.RWMutex
+	indexes   map[string]map[string]*CheckpointIndex
+	txIndexes map[string]*TrieIndex
+	backend   Backend
 }
 
 func NewStore(backend Backend) (Store, error) {
 	return &store{
-		indexes: map[string]map[string]*CheckpointIndex{},
-		backend: backend,
+		indexes:   map[string]map[string]*CheckpointIndex{},
+		txIndexes: map[string]*TrieIndex{},
+		backend:   backend,
 	}, nil
 }
 
@@ -62,7 +71,38 @@ func (s *store) Flush() error {
 	// clear indexes to save memory
 	s.indexes = map[string]map[string]*CheckpointIndex{}
 
+	if err := s.backend.FlushTries(s.txIndexes); err != nil {
+		return err
+	}
+	s.txIndexes = map[string]*TrieIndex{}
+
 	return nil
+}
+
+func (s *store) AddTransactionToIndexes(ledgerSeq uint32, hash [32]byte) error {
+	index, err := s.getCreateTrieIndex(hex.EncodeToString(hash[:1]))
+	if err != nil {
+		return err
+	}
+
+	value := make([]byte, 4)
+	binary.BigEndian.PutUint32(value, ledgerSeq)
+	index.Replace(hash[1:], value)
+
+	return nil
+}
+
+func (s *store) TransactionLedger(hash [32]byte) (uint32, error) {
+	index, ok := s.txIndexes[hex.EncodeToString(hash[:1])]
+	if !ok {
+		return 0, io.EOF
+	}
+
+	value, ok := index.Get(hash[1:])
+	if !ok {
+		return 0, io.EOF
+	}
+	return binary.BigEndian.Uint32(value), nil
 }
 
 // AddParticipantsToIndexesNoBackend is a temp version of AddParticipantsToIndexes that
@@ -144,4 +184,32 @@ func (s *store) NextActive(account, indexId string, afterCheckpoint uint32) (uin
 		return 0, err
 	}
 	return ind.NextActive(afterCheckpoint)
+}
+
+func (s *store) getCreateTrieIndex(prefix string) (*TrieIndex, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Check if we already have it loaded
+	index, ok := s.txIndexes[prefix]
+	if ok {
+		return index, nil
+	}
+
+	// Check if index exists in backend
+	found, err := s.backend.ReadTrie(prefix)
+	if err == nil {
+		s.txIndexes[prefix] = found
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	index, ok = s.txIndexes[prefix]
+	if !ok {
+		// Not found anywhere, make a new one.
+		index = &TrieIndex{}
+		s.txIndexes[prefix] = index
+	}
+
+	return index, nil
 }

@@ -1,6 +1,7 @@
 package index
 
 import (
+	"compress/gzip"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -68,6 +69,43 @@ func (s *FileBackend) writeBatch(b *batch, r retry) error {
 	return nil
 }
 
+func (s *FileBackend) FlushTries(indexes map[string]*TrieIndex) error {
+	// TODO: Parallelize this
+	for key, index := range indexes {
+		path := filepath.Join(s.dir, key)
+
+		err := os.MkdirAll(filepath.Dir(path), fs.ModeDir|0755)
+		if err != nil {
+			log.Errorf("Unable to mkdir %s, %v", filepath.Dir(path), err)
+			continue
+		}
+
+		f, err := os.Create(path)
+		if err != nil {
+			log.Errorf("Unable to create %s: %v", path, err)
+			continue
+		}
+
+		zw := gzip.NewWriter(f)
+		if _, err := index.WriteTo(zw); err != nil {
+			log.Errorf("Unable to serialize %s: %v", path, err)
+			f.Close()
+			continue
+		}
+
+		if err := zw.Close(); err != nil {
+			log.Errorf("Unable to serialize %s: %v", path, err)
+			f.Close()
+			continue
+		}
+
+		if err := f.Close(); err != nil {
+			log.Errorf("Unable to save %s: %v", path, err)
+		}
+	}
+	return nil
+}
+
 func (s *FileBackend) Read(account string) (map[string]*CheckpointIndex, error) {
 	log.Debugf("Opening index: %s", account)
 	b, err := os.Open(filepath.Join(s.dir, account[:3], account))
@@ -81,4 +119,26 @@ func (s *FileBackend) Read(account string) (map[string]*CheckpointIndex, error) 
 		return nil, os.ErrNotExist
 	}
 	return indexes, nil
+}
+
+func (s *FileBackend) ReadTrie(prefix string) (*TrieIndex, error) {
+	log.Debugf("Opening index: %s", prefix)
+	b, err := os.Open(filepath.Join(s.dir, prefix))
+	if err != nil {
+		return nil, err
+	}
+	defer b.Close()
+	zr, err := gzip.NewReader(b)
+	if err != nil {
+		log.Errorf("Unable to parse %s: %v", prefix, err)
+		return nil, os.ErrNotExist
+	}
+	defer zr.Close()
+	var index TrieIndex
+	_, err = index.ReadFrom(zr)
+	if err != nil {
+		log.Errorf("Unable to parse %s: %v", prefix, err)
+		return nil, os.ErrNotExist
+	}
+	return &index, nil
 }

@@ -114,6 +114,8 @@ func main() {
 							return err
 						}
 
+						indexStore.AddTransactionToIndexes(closeMeta.LedgerSequence(), tx.Result.TransactionHash)
+
 						allParticipants, err := participantsForOperations(tx, false)
 						if err != nil {
 							return err
