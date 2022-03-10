@@ -10,8 +10,8 @@ import (
 
 type Store interface {
 	NextActive(account, index string, afterCheckpoint uint32) (uint32, error)
-	AddTransactionToIndexes(ledgerSeq uint32, hash [32]byte) error
-	TransactionLedger(hash [32]byte) (uint32, error)
+	AddTransactionToIndexes(txnTOID int64, hash [32]byte) error
+	TransactionTOID(hash [32]byte) (int64, error)
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
 	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
 	Flush() error
@@ -79,30 +79,29 @@ func (s *store) Flush() error {
 	return nil
 }
 
-func (s *store) AddTransactionToIndexes(ledgerSeq uint32, hash [32]byte) error {
+func (s *store) AddTransactionToIndexes(txnTOID int64, hash [32]byte) error {
 	index, err := s.getCreateTrieIndex(hex.EncodeToString(hash[:1]))
 	if err != nil {
 		return err
 	}
 
-	value := make([]byte, 4)
-	binary.BigEndian.PutUint32(value, ledgerSeq)
+	value := make([]byte, 8)
+	binary.BigEndian.PutUint64(value, uint64(txnTOID))
 	index.Replace(hash[1:], value)
 
 	return nil
 }
 
-func (s *store) TransactionLedger(hash [32]byte) (uint32, error) {
-	index, ok := s.txIndexes[hex.EncodeToString(hash[:1])]
-	if !ok {
-		return 0, io.EOF
+func (s *store) TransactionTOID(hash [32]byte) (int64, error) {
+	index, err := s.getCreateTrieIndex(hex.EncodeToString(hash[:1]))
+	if err != nil {
+		return 0, err
 	}
-
 	value, ok := index.Get(hash[1:])
 	if !ok {
 		return 0, io.EOF
 	}
-	return binary.BigEndian.Uint32(value), nil
+	return int64(binary.BigEndian.Uint64(value)), nil
 }
 
 // AddParticipantsToIndexesNoBackend is a temp version of AddParticipantsToIndexes that
