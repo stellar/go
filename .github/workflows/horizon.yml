@@ -71,6 +71,10 @@ jobs:
 
     - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
+    - if: failure()
+      name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+
   verify-range:
     name: Test (and push) verify-range image
     runs-on: ubuntu-latest
@@ -97,3 +101,4 @@ jobs:
     - if: github.ref == 'refs/heads/master'
       name: Push to DockerHub
       run: docker push stellar/horizon-verify-range:latest
+
