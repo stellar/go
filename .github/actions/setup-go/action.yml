@@ -36,16 +36,21 @@ runs:
     with:
       path: ~/go/pkg/mod
       key: ${{ env.PREFIX }}-go-mod-${{ hashFiles('**/go.sum') }}
-      restore-keys: ${{ env.PREFIX }}-go-mod
+      restore-keys: ${{ env.PREFIX }}-go-mod-
 
   # Cache any build and test artifacts during the job, which will speed up
   # rebuilds and cause test runs to skip tests that have no reason to rerun.
-  # Don't run this for protected branches like master/main.
   - uses: actions/cache@v2
-    if: (!github.ref_protected) && github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
     with:
       path: ~/.cache/go-build
       key: ${{ env.PREFIX }}-go-build-${{ github.ref }}-${{ hashFiles('**', '!.git') }}
       restore-keys: |
-        ${{ env.PREFIX }}-go-build-${{ github.ref }}
-        ${{ env.PREFIX }}-go-build
+        ${{ env.PREFIX }}-go-build-${{ github.ref }}-
+        ${{ env.PREFIX }}-go-build-master-
+        ${{ env.PREFIX }}-go-build-
+
+  # Reset the cache for master/protected branches, to ensure they build and run the tests from zero
+  # and that the module cache is cleaned (otherwise it accumulates orphan dependencies over time).
+  - if: github.ref_protected
+    shell: bash
+    run: rm -r ~/.cache/go-build ~/go/pkg/mod
