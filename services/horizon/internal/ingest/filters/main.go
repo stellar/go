@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/log"
 )
 
 const (
-	FilterAssetFilterName   = "asset"
-	FilterAccountFilterName = "account"
+
 	// the filter config cache will be checked against latest from db at most once per each of this interval,
 	filterConfigCheckIntervalSeconds int64 = 10
 )
@@ -34,8 +34,8 @@ type Filters interface {
 func NewFilters() Filters {
 	return &filtersCache{
 		cachedFilters: map[string]processors.LedgerTransactionFilterer{
-			FilterAssetFilterName:   NewAssetFilter(),
-			FilterAccountFilterName: NewAccountFilter(),
+			horizon.IngestionFilterAssetName:   NewAssetFilter(),
+			horizon.IngestionFilterAccountName: NewAccountFilter(),
 		},
 	}
 }
@@ -64,15 +64,15 @@ func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) 
 
 	for _, filterConfig := range filterConfigs {
 		switch filterConfig.Name {
-		case FilterAssetFilterName:
-			assetFilter := f.cachedFilters[FilterAssetFilterName].(AssetFilter)
+		case horizon.IngestionFilterAssetName:
+			assetFilter := f.cachedFilters[horizon.IngestionFilterAssetName].(AssetFilter)
 			err := assetFilter.RefreshAssetFilter(&filterConfig)
 			if err != nil {
 				LOG.Errorf("unable to refresh asset filter config %v", err)
 				continue
 			}
-		case FilterAccountFilterName:
-			accountFilter := f.cachedFilters[FilterAccountFilterName].(AccountFilter)
+		case horizon.IngestionFilterAccountName:
+			accountFilter := f.cachedFilters[horizon.IngestionFilterAccountName].(AccountFilter)
 			err := accountFilter.RefreshAccountFilter(&filterConfig)
 			if err != nil {
 				LOG.Errorf("unable to refresh account filter config %v", err)

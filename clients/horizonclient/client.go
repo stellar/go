@@ -122,7 +122,7 @@ func (c *Client) sendHTTPRequest(req *http.Request, a interface{}) error {
 	if resp, err := c.HTTP.Do(req.WithContext(ctx)); err != nil {
 		return err
 	} else {
-		return decodeResponse(resp, &a, c)
+		return decodeResponse(resp, a, c)
 	}
 }
 
@@ -868,7 +868,7 @@ func (c *Client) AdminGetAllIngestionFilters() ([]hProtocol.IngestionFilter, err
 }
 
 func (c *Client) AdminGetIngestionFilter(name string) (hProtocol.IngestionFilter, error) {
-	url, err := c.getIngestionFiltersURL("name")
+	url, err := c.getIngestionFiltersURL(name)
 	if err != nil {
 		return hProtocol.IngestionFilter{}, err
 	}
@@ -878,7 +878,7 @@ func (c *Client) AdminGetIngestionFilter(name string) (hProtocol.IngestionFilter
 }
 
 func (c *Client) AdminSetIngestionFilter(filter hProtocol.IngestionFilter) error {
-	url, err := c.getIngestionFiltersURL("name")
+	url, err := c.getIngestionFiltersURL(filter.Name)
 	if err != nil {
 		return err
 	}

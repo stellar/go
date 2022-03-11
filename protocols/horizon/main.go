@@ -818,6 +818,16 @@ type LiquidityPoolReserve struct {
 	Amount string `json:"amount"`
 }
 
+// TODO: We should probably have specific filters without the Name  and LastModified fields for the
+//       supported filters, e.g. IngestionAccountFilter, IngestionAssetFilter
+//
+// TODO: We should also streamline the Rules structure, right now, the keys are implicit, e.g. "account_whitelist"
+
+const (
+	IngestionFilterAssetName   = "asset"
+	IngestionFilterAccountName = "account"
+)
+
 // IngestionFilter represents the configuration for an ingestion filter
 type IngestionFilter struct {
 	Rules        map[string]interface{} `json:"rules"`

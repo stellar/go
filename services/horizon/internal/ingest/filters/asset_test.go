@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +25,7 @@ func TestAssetFilterAllowsOnMatch(t *testing.T) {
 				}`,
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAssetFilter()
 	err := filter.RefreshAssetFilter(filterConfig)
@@ -46,7 +47,7 @@ func TestAssetFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 				}`,
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAssetFilter()
 	err := filter.RefreshAssetFilter(filterConfig)
@@ -70,7 +71,7 @@ func TestAssetFilterAllowsWhenDisabled(t *testing.T) {
 				}`,
 		Enabled:      false,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAssetFilter()
 	err := filter.RefreshAssetFilter(filterConfig)
@@ -96,7 +97,7 @@ func TestAssetFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         horizon.IngestionFilterAssetName,
 	}
 
 	filter := NewAssetFilter()

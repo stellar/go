@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +25,7 @@ func TestAccountFilterAllowsWhenMatch(t *testing.T) {
 				}`,
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAccountFilterName,
+		Name:         horizon.IngestionFilterAccountName,
 	}
 	filter := NewAccountFilter()
 	err := filter.RefreshAccountFilter(filterConfig)
@@ -50,7 +51,7 @@ func TestAccountFilterAllowsWhenDisabled(t *testing.T) {
 				}`,
 		Enabled:      false,
 		LastModified: 1,
-		Name:         FilterAccountFilterName,
+		Name:         horizon.IngestionFilterAccountName,
 	}
 	filter := NewAccountFilter()
 	err := filter.RefreshAccountFilter(filterConfig)
@@ -76,7 +77,7 @@ func TestAccountFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 				}`,
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAccountFilter()
 	err := filter.RefreshAccountFilter(filterConfig)
@@ -103,7 +104,7 @@ func TestAccountFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 
 		Enabled:      true,
 		LastModified: 1,
-		Name:         FilterAssetFilterName,
+		Name:         horizon.IngestionFilterAssetName,
 	}
 
 	filter := NewAccountFilter()

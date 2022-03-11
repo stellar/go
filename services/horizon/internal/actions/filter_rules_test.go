@@ -10,7 +10,6 @@ import (
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -46,7 +45,7 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 	// put some more values into the config for resource validation after retrieval
 	fc1 := history.FilterConfig{
 		Rules:   `{"whitelist": ["1","2","3"]}`,
-		Name:    filters.FilterAssetFilterName,
+		Name:    hProtocol.IngestionFilterAssetName,
 		Enabled: true,
 	}
 
@@ -59,7 +58,7 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 		makeRequest(
 			t,
 			map[string]string{},
-			map[string]string{"filter_name": filters.FilterAssetFilterName},
+			map[string]string{"filter_name": hProtocol.IngestionFilterAssetName},
 			q,
 		),
 	)
@@ -74,7 +73,7 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 	json.Unmarshal(raw, &filterCfgResource)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(filterCfgResource.Name, filters.FilterAssetFilterName)
+	tt.Assert.Equal(filterCfgResource.Name, hProtocol.IngestionFilterAssetName)
 	tt.Assert.Equal(len(filterCfgResource.Rules["whitelist"].([]interface{})), 3)
 	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[0], "1")
 	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[1], "2")
@@ -206,7 +205,7 @@ func TestUpdateFilterConfig(t *testing.T) {
 	request := makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"filter_name": filters.FilterAssetFilterName},
+		map[string]string{"filter_name": hProtocol.IngestionFilterAssetName},
 		q,
 	)
 
@@ -216,7 +215,7 @@ func TestUpdateFilterConfig(t *testing.T) {
 			    "whitelist": ["4","5","6"]
 			},
 			"enabled": true,
-			"name": "` + filters.FilterAssetFilterName + `"
+			"name": "` + hProtocol.IngestionFilterAssetName + `"
 		}`))
 
 	handler.Update(
@@ -227,10 +226,10 @@ func TestUpdateFilterConfig(t *testing.T) {
 	resp := recorder.Result()
 	tt.Assert.Equal(http.StatusOK, resp.StatusCode)
 
-	fcUpdated, err := q.GetFilterByName(tt.Ctx, filters.FilterAssetFilterName)
+	fcUpdated, err := q.GetFilterByName(tt.Ctx, hProtocol.IngestionFilterAssetName)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(fcUpdated.Name, filters.FilterAssetFilterName)
+	tt.Assert.Equal(fcUpdated.Name, hProtocol.IngestionFilterAssetName)
 	tt.Assert.Equal(fcUpdated.Enabled, true)
 	tt.Assert.True(fcUpdated.LastModified > 0)
 
