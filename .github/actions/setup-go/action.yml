@@ -53,4 +53,4 @@ runs:
   # and that the module cache is cleaned (otherwise it accumulates orphan dependencies over time).
   - if: github.ref_protected
     shell: bash
-    run: rm -r ~/.cache/go-build ~/go/pkg/mod
+    run: sudo rm -r ~/.cache/go-build ~/go/pkg/mod
