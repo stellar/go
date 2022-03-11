@@ -11,68 +11,178 @@ import (
 const TrieIndexVersion = 1
 
 type TrieIndex struct {
-	mutex sync.RWMutex
-	trieNode
+	sync.RWMutex
+	Root *trieNode `json:"root"`
 }
 
 // TODO: Store the suffix here so we can truncate the branches
 type trieNode struct {
-	value []byte
+	// Common prefix we ignore
+	Prefix []byte `json:"prefix,omitempty"`
 
-	children map[byte]*trieNode
+	// The value of this node.
+	Value []byte `json:"value,omitempty"`
+
+	// Any children of this node, mapped by the next byte of their path
+	Children map[byte]*trieNode `json:"children,omitempty"`
 }
 
 func NewTrieIndexFromBytes(r io.Reader) (*TrieIndex, error) {
-	return nil, fmt.Errorf("TODO: Implement NewTrieIndexFromReader")
+	var index TrieIndex
+	if _, err := index.ReadFrom(r); err != nil {
+		return nil, err
+	}
+	return &index, nil
 }
 
-func (i *TrieIndex) Replace(key, value []byte) ([]byte, bool) {
+func (index *TrieIndex) Upsert(key, value []byte) ([]byte, bool) {
 	if len(key) == 0 {
 		panic("len(key) must be > 0")
 	}
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
-	return i.replace(key, value)
-}
-
-// TODO: Not sure this is right..
-func (i *trieNode) replace(key, value []byte) ([]byte, bool) {
-	n := i
-	for j := 0; j < len(key); j++ {
-		if n.children == nil {
-			n.children = map[byte]*trieNode{}
-		}
-		child, exists := n.children[key[j]]
-		if !exists {
-			child = &trieNode{}
-			n.children[key[j]] = child
-		}
-		n = child
+	index.Lock()
+	defer index.Unlock()
+	if index.Root == nil {
+		index.Root = &trieNode{Prefix: key, Value: value}
+		return nil, false
 	}
-	prev := n.value
-	n.value = value
-	return prev, prev != nil
-}
 
-func (i *TrieIndex) Get(key []byte) ([]byte, bool) {
-	i.mutex.RLock()
-	defer i.mutex.RUnlock()
-	return i.get(key)
-}
+	node := index.Root
+	var parent *trieNode
+	var parentIdx byte
+	splitPos := 0
+	for len(key) > 0 {
+		for splitPos < len(node.Prefix) && len(key) > 0 {
+			if node.Prefix[splitPos] != key[0] {
+				break
+			}
+			splitPos++
+			key = key[1:]
+		}
+		if splitPos != len(node.Prefix) {
+			// split this node
+			break
+		}
+		if len(key) == 0 {
+			// simple update-in-place at this node
+			break
+		}
 
-func (i *trieNode) get(key []byte) ([]byte, bool) {
-	n := i
-	for j := 0; j < len(key); j++ {
-		if n.children == nil {
+		// Jump to the next child
+		parent = node
+		parentIdx = key[0]
+		child, ok := node.Children[key[0]]
+		if !ok {
+			if node.Children == nil {
+				node.Children = map[byte]*trieNode{}
+			}
+			// child doesn't exist. Insert a new node
+			node.Children[key[0]] = &trieNode{
+				Prefix: key[1:],
+				Value:  value,
+			}
 			return nil, false
 		}
-		child, exists := n.children[key[j]]
-		if !exists {
+		node = child
+		key = key[1:]
+		splitPos = 0
+	}
+
+	// Key fully consumed just as we reached "node"
+	if len(key) == 0 {
+		if splitPos == len(node.Prefix) {
+			// node prefix matches (or is none), simple update-in-place
+			prev := node.Value
+			node.Value = value
+			return prev, true
+		} else {
+			// node has a prefix, so we need to insert a new one here and push it down
+			splitNode := &trieNode{
+				Prefix:   node.Prefix[:splitPos], // the matching segment
+				Value:    value,
+				Children: map[byte]*trieNode{},
+			}
+			splitNode.Children[node.Prefix[splitPos]] = node
+			node.Prefix = node.Prefix[splitPos+1:] // existing part that didn't match
+			if parent == nil {
+				index.Root = splitNode
+			} else {
+				parent.Children[parentIdx] = splitNode
+			}
 			return nil, false
 		}
-		n = child
+	} else {
+		// leftover key
+		if splitPos == len(node.Prefix) {
+			// new child
+			node.Children[key[0]] = &trieNode{
+				Prefix: key[1:],
+				Value:  value,
+			}
+			return nil, false
+		} else {
+			// Need to split the node
+			splitNode := &trieNode{
+				Prefix:   node.Prefix[:splitPos],
+				Children: map[byte]*trieNode{},
+			}
+			splitNode.Children[node.Prefix[splitPos]] = node
+			splitNode.Children[key[0]] = &trieNode{Prefix: key[1:], Value: value}
+			node.Prefix = node.Prefix[splitPos+1:]
+			if parent == nil {
+				index.Root = splitNode
+			} else {
+				parent.Children[parentIdx] = splitNode
+			}
+			return nil, false
+		}
 	}
-	return n.value, true
+}
+
+func (index *TrieIndex) Get(key []byte) ([]byte, bool) {
+	index.RLock()
+	defer index.RUnlock()
+	if index.Root == nil {
+		return nil, false
+	}
+
+	node := index.Root
+	splitPos := 0
+	for len(key) > 0 {
+		for splitPos < len(node.Prefix) && len(key) > 0 {
+			if node.Prefix[splitPos] != key[0] {
+				break
+			}
+			splitPos++
+			key = key[1:]
+		}
+		if splitPos != len(node.Prefix) {
+			// split this node
+			break
+		}
+		if len(key) == 0 {
+			// found it
+			return node.Value, true
+		}
+
+		// Jump to the next child
+		child, ok := node.Children[key[0]]
+		if !ok {
+			// child doesn't exist
+			return nil, false
+		}
+		node = child
+		key = key[1:]
+		splitPos = 0
+	}
+
+	if len(key) == 0 {
+		return node.Value, true
+	}
+	return nil, false
+}
+
+func (i *trieNode) iskey() bool {
+	return len(i.Value) > 0
 }
 
 func (i *TrieIndex) Merge(other *TrieIndex) error {
@@ -82,30 +192,35 @@ func (i *TrieIndex) Merge(other *TrieIndex) error {
 // TODO: Use XDR for this, to be more consistent with rest of the codebase, and
 // do less custom shenanigans.
 func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
-	return i.readFrom(bufio.NewReader(r))
+	i.Lock()
+	defer i.Unlock()
+
+	var nRead int64
+	br := bufio.NewReader(r)
+
+	i.Root = &trieNode{}
+	n, err := i.Root.readFrom(br)
+	return nRead + n, err
 }
 
 func (i *trieNode) readFrom(r *bufio.Reader) (int64, error) {
 	var nRead int64
 
-	// Read this node's value's length
-	valueLen, err := binary.ReadUvarint(r)
-	nRead += int64(uvarintSize(valueLen))
+	// Read this node's prefix
+	prefix, n64, err := readBytes(r)
+	nRead += n64
 	if err != nil {
 		return nRead, err
 	}
+	i.Prefix = prefix
 
-	if valueLen > 0 {
-		// Read this node's value
-		i.value = make([]byte, valueLen)
-		n, err := io.ReadFull(r, i.value)
-		nRead += int64(n)
-		if err != nil {
-			return nRead, err
-		}
+	// Read this node's value
+	value, n64, err := readBytes(r)
+	nRead += n64
+	if err != nil {
+		return nRead, err
 	}
+	i.Value = value
 
 	// Read this node's children count
 	childLen, err := binary.ReadUvarint(r)
@@ -115,8 +230,8 @@ func (i *trieNode) readFrom(r *bufio.Reader) (int64, error) {
 	}
 
 	if childLen > 0 {
+		i.Children = map[byte]*trieNode{}
 		// Read this node's children
-		i.children = map[byte]*trieNode{}
 		for j := uint64(0); j < childLen; j++ {
 			// Read the child's key
 			key, err := r.ReadByte()
@@ -132,7 +247,7 @@ func (i *trieNode) readFrom(r *bufio.Reader) (int64, error) {
 			if err != nil {
 				return nRead, err
 			}
-			i.children[key] = &node
+			i.Children[key] = &node
 		}
 	}
 
@@ -147,36 +262,37 @@ func uvarintSize(value uint64) int {
 // TODO: Use XDR for this, to be more consistent with rest of the codebase, and
 // do less custom shenanigans.
 func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
-	i.mutex.RLock()
-	defer i.mutex.RUnlock()
-	return i.writeTo(w, make([]byte, binary.MaxVarintLen64))
+	i.RLock()
+	defer i.RUnlock()
+	buf := make([]byte, binary.MaxVarintLen64)
+	if i.Root == nil {
+		return (&trieNode{}).writeTo(w, buf)
+	}
+	return i.Root.writeTo(w, buf)
 }
 
 func (i *trieNode) writeTo(w io.Writer, buf []byte) (int64, error) {
 	var nWritten int64
 
-	// Write the length of this node's value
-	n := binary.PutUvarint(buf, uint64(len(i.value)))
-	n, err := w.Write(buf[:n])
-	nWritten += int64(n)
+	// Write this node's prefix
+	n64, err := writeBytes(w, i.Prefix, buf)
+	nWritten += n64
 	if err != nil {
 		return nWritten, err
 	}
 
 	// Write this node's value
-	if len(i.value) > 0 {
-		n, err := w.Write(i.value)
-		nWritten += int64(n)
-		if err != nil {
-			return nWritten, err
-		}
+	n64, err = writeBytes(w, i.Value, buf)
+	nWritten += n64
+	if err != nil {
+		return nWritten, err
 	}
 
 	// TODO: Can we write an "index" of sorts, here that has the byte-offsets, so
 	// that we do just-in-time parsing? Might be more verbose than as is, tho
 
 	// Write how many children we have
-	n = binary.PutUvarint(buf, uint64(len(i.children)))
+	n := binary.PutUvarint(buf, uint64(len(i.Children)))
 	n, err = w.Write(buf[:n])
 	nWritten += int64(n)
 	if err != nil {
@@ -184,7 +300,7 @@ func (i *trieNode) writeTo(w io.Writer, buf []byte) (int64, error) {
 	}
 
 	// Write all the children
-	for key, child := range i.children {
+	for key, child := range i.Children {
 		// Write the child's key
 		n, err = w.Write([]byte{key})
 		nWritten += int64(n)
@@ -201,4 +317,38 @@ func (i *trieNode) writeTo(w io.Writer, buf []byte) (int64, error) {
 	}
 
 	return nWritten, nil
+}
+
+// Read a length-prefixed chunk of bytes
+func readBytes(r *bufio.Reader) ([]byte, int64, error) {
+	var nRead int64
+	// Read this node's value's length
+	valueLen, err := binary.ReadUvarint(r)
+	nRead += int64(uvarintSize(valueLen))
+	if err != nil || valueLen == 0 {
+		return nil, nRead, err
+	}
+
+	// Read this node's value
+	data := make([]byte, valueLen)
+	n, err := io.ReadFull(r, data)
+	nRead += int64(n)
+	if err != nil {
+		return nil, nRead, err
+	}
+	return data, nRead, nil
+}
+
+// Write a length-prefixed chunk of bytes
+func writeBytes(w io.Writer, data, scratch []byte) (int64, error) {
+	var nWritten int64
+	n := binary.PutUvarint(scratch, uint64(len(data)))
+	n, err := w.Write(scratch[:n])
+	nWritten += int64(n)
+	if err != nil || len(data) == 0 {
+		return nWritten, err
+	}
+
+	n, err = w.Write(data)
+	return nWritten + int64(n), err
 }

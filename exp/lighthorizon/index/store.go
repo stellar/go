@@ -87,7 +87,7 @@ func (s *store) AddTransactionToIndexes(txnTOID int64, hash [32]byte) error {
 
 	value := make([]byte, 8)
 	binary.BigEndian.PutUint64(value, uint64(txnTOID))
-	index.Replace(hash[1:], value)
+	index.Upsert(hash[1:], value)
 
 	return nil
 }
