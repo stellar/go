@@ -338,6 +338,15 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	})
 
 	// internal
+	r.Internal.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		p, err := staticFiles.ReadFile("static/admin.apib")
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/vnd.apiblueprint")
+		w.Write(p)
+	})
 	r.Internal.Get("/metrics", promhttp.HandlerFor(config.PrometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
 	r.Internal.Get("/debug/pprof/heap", pprof.Index)
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
