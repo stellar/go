@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/log"
@@ -23,7 +22,8 @@ var (
 )
 
 type filtersCache struct {
-	cachedFilters                  map[string]processors.LedgerTransactionFilterer
+	assetFilter                    AssetFilter
+	accountFilter                  AccountFilter
 	lastFilterConfigCheckUnixEpoch int64
 }
 
@@ -33,10 +33,8 @@ type Filters interface {
 
 func NewFilters() Filters {
 	return &filtersCache{
-		cachedFilters: map[string]processors.LedgerTransactionFilterer{
-			horizon.IngestionFilterAssetName:   NewAssetFilter(),
-			horizon.IngestionFilterAccountName: NewAccountFilter(),
-		},
+		assetFilter:   NewAssetFilter(),
+		accountFilter: NewAccountFilter(),
 	}
 }
 
@@ -55,38 +53,26 @@ func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) 
 	f.lastFilterConfigCheckUnixEpoch = time.Now().Unix()
 
 	LOG.Info("expired filter config cache, refresh from db")
-	filterConfigs, err := filterQ.GetAllFilters(ctx)
-	if err != nil {
-		LOG.Errorf("unable to query filter configs, %v", err)
-		// allow the error, fall back to last loaded config
-		return f.convertCacheToList()
-	}
 
-	for _, filterConfig := range filterConfigs {
-		switch filterConfig.Name {
-		case horizon.IngestionFilterAssetName:
-			assetFilter := f.cachedFilters[horizon.IngestionFilterAssetName].(AssetFilter)
-			err := assetFilter.RefreshAssetFilter(&filterConfig)
-			if err != nil {
-				LOG.Errorf("unable to refresh asset filter config %v", err)
-				continue
-			}
-		case horizon.IngestionFilterAccountName:
-			accountFilter := f.cachedFilters[horizon.IngestionFilterAccountName].(AccountFilter)
-			err := accountFilter.RefreshAccountFilter(&filterConfig)
-			if err != nil {
-				LOG.Errorf("unable to refresh account filter config %v", err)
-				continue
-			}
+	if filterConfig, err := filterQ.GetAssetFilterConfig(ctx); err != nil {
+		LOG.Errorf("unable to refresh asset filter config %v", err)
+	} else {
+		if err := f.assetFilter.RefreshAssetFilter(&filterConfig); err != nil {
+			LOG.Errorf("unable to refresh asset filter config %v", err)
 		}
 	}
+
+	if filterConfig, err := filterQ.GetAccountFilterConfig(ctx); err != nil {
+		LOG.Errorf("unable to refresh account filter config %v", err)
+	} else {
+		if err := f.accountFilter.RefreshAccountFilter(&filterConfig); err != nil {
+			LOG.Errorf("unable to refresh account filter config %v", err)
+		}
+	}
+
 	return f.convertCacheToList()
 }
 
 func (f *filtersCache) convertCacheToList() []processors.LedgerTransactionFilterer {
-	filters := []processors.LedgerTransactionFilterer{}
-	for _, filter := range f.cachedFilters {
-		filters = append(filters, filter)
-	}
-	return filters
+	return []processors.LedgerTransactionFilterer{f.assetFilter, f.accountFilter}
 }

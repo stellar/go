@@ -2,11 +2,9 @@ package filters
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 
@@ -19,10 +17,6 @@ var (
 	})
 )
 
-type AssetFilterRules struct {
-	CanonicalWhitelist []string `json:"canonical_asset_whitelist"`
-}
-
 type assetFilter struct {
 	canonicalAssetsLookup map[string]struct{}
 	lastModified          int64
@@ -31,7 +25,7 @@ type assetFilter struct {
 
 type AssetFilter interface {
 	processors.LedgerTransactionFilterer
-	RefreshAssetFilter(filterConfig *history.FilterConfig) error
+	RefreshAssetFilter(filterConfig *history.AssetFilterConfig) error
 }
 
 func NewAssetFilter() AssetFilter {
@@ -40,18 +34,13 @@ func NewAssetFilter() AssetFilter {
 	}
 }
 
-func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.FilterConfig) error {
+func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
 		logger.Infof("New Asset Filter config detected, reloading new config %v ", *filterConfig)
-		var assetFilterRules AssetFilterRules
-		if err := json.Unmarshal([]byte(filterConfig.Rules), &assetFilterRules); err != nil {
-			return errors.Wrap(err, "unable to serialize asset filter rules")
-		}
-
 		filter.enabled = filterConfig.Enabled
-		filter.canonicalAssetsLookup = listToMap(assetFilterRules.CanonicalWhitelist)
+		filter.canonicalAssetsLookup = listToMap(filterConfig.Whitelist)
 		filter.lastModified = filterConfig.LastModified
 	}
 

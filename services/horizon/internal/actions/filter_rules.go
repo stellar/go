@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,40 +11,19 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-type QueryPathParams struct {
-	Name string `schema:"filter_name" valid:"optional"`
-}
+type FilterConfigHandler struct{}
 
-type UpdatePathParams struct {
-	Name string `schema:"filter_name" valid:"required"`
-}
-
-type IngestionFilterHandler struct{}
-
-func (handler IngestionFilterHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (handler FilterConfigHandler) GetAssetConfig(w http.ResponseWriter, r *http.Request) {
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
 	}
 
-	pp := QueryPathParams{}
-	err = getParams(&pp, r)
-	if err != nil {
-		problem.Render(r.Context(), w, err)
-		return
-	}
+	config, err := historyQ.GetAssetFilterConfig(r.Context())
 
-	var responsePayload interface{}
-
-	if pp.Name != "" {
-		responsePayload, err = handler.findOne(pp.Name, historyQ, r.Context())
-		if historyQ.NoRows(err) {
-			err = problem.NotFound
-		}
-
-	} else {
-		responsePayload, err = handler.findAll(historyQ, r.Context())
+	if historyQ.NoRows(err) {
+		err = problem.NotFound
 	}
 
 	if err != nil {
@@ -53,128 +31,140 @@ func (handler IngestionFilterHandler) Get(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	responsePayload := handler.assetConfigResource(config)
 	enc := json.NewEncoder(w)
 	if err = enc.Encode(responsePayload); err != nil {
 		problem.Render(r.Context(), w, err)
 	}
 }
 
-func (handler IngestionFilterHandler) Update(w http.ResponseWriter, r *http.Request) {
+func (handler FilterConfigHandler) GetAccountConfig(w http.ResponseWriter, r *http.Request) {
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
 	}
 
-	pp := &UpdatePathParams{}
-	err = getParams(pp, r)
+	config, err := historyQ.GetAccountFilterConfig(r.Context())
+
+	if historyQ.NoRows(err) {
+		err = problem.NotFound
+	}
+
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
 	}
 
-	filterRequest, err := handler.requestedFilter(r)
+	responsePayload := handler.accountConfigResource(config)
+	enc := json.NewEncoder(w)
+	if err = enc.Encode(responsePayload); err != nil {
+		problem.Render(r.Context(), w, err)
+	}
+}
+
+func (handler FilterConfigHandler) UpdateAccountConfig(w http.ResponseWriter, r *http.Request) {
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
 	}
 
-	if pp.Name != filterRequest.Name {
-		p := problem.BadRequest
-		p.Extras = map[string]interface{}{
-			"reason": fmt.Sprintf("url path %v, does not match body value %v", pp.Name, filterRequest.Name),
-		}
-		problem.Render(r.Context(), w, p)
+	filterRequest, err := handler.accountFilterResource(r)
+	if err != nil {
+		problem.Render(r.Context(), w, err)
 		return
 	}
 
-	if err = handler.update(filterRequest, historyQ, r.Context()); err != nil {
+	filterConfig := history.AccountFilterConfig{}
+	filterConfig.Enabled = *filterRequest.Enabled
+	filterConfig.Whitelist = filterRequest.Whitelist
+
+	config, err := historyQ.UpdateAccountFilterConfig(r.Context(), filterConfig)
+	if err != nil {
 		if historyQ.NoRows(err) {
 			err = problem.NotFound
 		}
 		problem.Render(r.Context(), w, err)
 	}
+
+	responsePayload := handler.accountConfigResource(config)
+	enc := json.NewEncoder(w)
+	if err = enc.Encode(responsePayload); err != nil {
+		problem.Render(r.Context(), w, err)
+	}
 }
 
-func (handler IngestionFilterHandler) requestedFilter(r *http.Request) (hProtocol.IngestionFilter, error) {
-	var filterRequest hProtocol.IngestionFilter
+func (handler FilterConfigHandler) UpdateAssetConfig(w http.ResponseWriter, r *http.Request) {
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		problem.Render(r.Context(), w, err)
+		return
+	}
+
+	filterRequest, err := handler.assetFilterResource(r)
+	if err != nil {
+		problem.Render(r.Context(), w, err)
+		return
+	}
+
+	filterConfig := history.AssetFilterConfig{}
+	filterConfig.Enabled = *filterRequest.Enabled
+	filterConfig.Whitelist = filterRequest.Whitelist
+
+	config, err := historyQ.UpdateAssetFilterConfig(r.Context(), filterConfig)
+	if err != nil {
+		if historyQ.NoRows(err) {
+			err = problem.NotFound
+		}
+		problem.Render(r.Context(), w, err)
+	}
+
+	responsePayload := handler.assetConfigResource(config)
+	enc := json.NewEncoder(w)
+	if err = enc.Encode(responsePayload); err != nil {
+		problem.Render(r.Context(), w, err)
+	}
+}
+
+func (handler FilterConfigHandler) assetFilterResource(r *http.Request) (hProtocol.AssetFilterConfig, error) {
+	var filterRequest hProtocol.AssetFilterConfig
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&filterRequest); err != nil {
 		p := problem.BadRequest
 		p.Extras = map[string]interface{}{
-			"reason": fmt.Sprintf("invalid json for filter config %v", err.Error()),
+			"reason": fmt.Sprintf("invalid json for asset filter config %v", err.Error()),
 		}
-		return hProtocol.IngestionFilter{}, p
+		return hProtocol.AssetFilterConfig{}, p
 	}
 	return filterRequest, nil
 }
 
-func (handler IngestionFilterHandler) update(filterRequest hProtocol.IngestionFilter, historyQ *history.Q, ctx context.Context) error {
-	//TODO, consider type specific schema validation of the json in filterRequest.Rules based on filterRequest.Name
-	// if name='asset', verify against an Asset Config Struct
-	// if name='account', verify against an Account Config Struct
-	filterConfig := history.FilterConfig{}
-	filterConfig.Enabled = filterRequest.Enabled
-	filterConfig.Name = filterRequest.Name
-
-	filterRules, err := json.Marshal(filterRequest.Rules)
-	if err != nil {
-		p := problem.ServerError
+func (handler FilterConfigHandler) accountFilterResource(r *http.Request) (hProtocol.AccountFilterConfig, error) {
+	var filterRequest hProtocol.AccountFilterConfig
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&filterRequest); err != nil {
+		p := problem.BadRequest
 		p.Extras = map[string]interface{}{
-			"reason": fmt.Sprintf("unable to serialize filter rules resource from json %v", err.Error()),
+			"reason": fmt.Sprintf("invalid json for account filter config %v", err.Error()),
 		}
-		return p
+		return hProtocol.AccountFilterConfig{}, p
 	}
-	filterConfig.Rules = string(filterRules)
-	return historyQ.UpdateFilterConfig(ctx, filterConfig)
+	return filterRequest, nil
 }
 
-func (handler IngestionFilterHandler) findOne(name string, historyQ *history.Q, ctx context.Context) (hProtocol.IngestionFilter, error) {
-	filter, err := historyQ.GetFilterByName(ctx, name)
-	if err != nil {
-		return hProtocol.IngestionFilter{}, err
+func (handler FilterConfigHandler) assetConfigResource(config history.AssetFilterConfig) hProtocol.AssetFilterConfig {
+	return hProtocol.AssetFilterConfig{
+		Whitelist:    config.Whitelist,
+		Enabled:      &config.Enabled,
+		LastModified: config.LastModified,
 	}
-
-	rules, err := handler.rules(filter.Rules)
-	if err != nil {
-		return hProtocol.IngestionFilter{}, err
-	}
-	return handler.resource(filter, rules), nil
 }
 
-func (handler IngestionFilterHandler) findAll(historyQ *history.Q, ctx context.Context) ([]hProtocol.IngestionFilter, error) {
-	configs, err := historyQ.GetAllFilters(ctx)
-	if err != nil {
-		return nil, err
-	}
-	resources := []hProtocol.IngestionFilter{}
-	for _, config := range configs {
-		rules, err := handler.rules(config.Rules)
-		if err != nil {
-			return nil, err
-		}
-		resources = append(resources, handler.resource(config, rules))
-	}
-	return resources, nil
-}
-
-func (handler IngestionFilterHandler) rules(input string) (map[string]interface{}, error) {
-	rules := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(input), &rules); err != nil {
-		p := problem.ServerError
-		p.Extras = map[string]interface{}{
-			"reason": "invalid filter rule json in db",
-		}
-		return nil, p
-	}
-	return rules, nil
-}
-
-func (handler IngestionFilterHandler) resource(config history.FilterConfig, rules map[string]interface{}) hProtocol.IngestionFilter {
-	return hProtocol.IngestionFilter{
-		Rules:        rules,
-		Enabled:      config.Enabled,
-		Name:         config.Name,
+func (handler FilterConfigHandler) accountConfigResource(config history.AccountFilterConfig) hProtocol.AccountFilterConfig {
+	return hProtocol.AccountFilterConfig{
+		Whitelist:    config.Whitelist,
+		Enabled:      &config.Enabled,
 		LastModified: config.LastModified,
 	}
 }

@@ -13,29 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
-func TestGetFilterConfigNotFound(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-
-	q := &history.Q{SessionInterface: tt.HorizonSession()}
-	handler := &IngestionFilterHandler{}
-	recorder := httptest.NewRecorder()
-	handler.Get(
-		recorder,
-		makeRequest(
-			t,
-			map[string]string{},
-			map[string]string{"filter_name": "xyz"},
-			q,
-		),
-	)
-
-	resp := recorder.Result()
-	tt.Assert.Equal(http.StatusNotFound, resp.StatusCode)
-}
-
-func TestGetFilterConfigOneResult(t *testing.T) {
+func TestGetAssetFilterConfig(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -43,22 +21,21 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
 	// put some more values into the config for resource validation after retrieval
-	fc1 := history.FilterConfig{
-		Rules:   `{"whitelist": ["1","2","3"]}`,
-		Name:    hProtocol.IngestionFilterAssetName,
-		Enabled: true,
+	fc1 := history.AssetFilterConfig{
+		Whitelist: []string{"1", "2"},
+		Enabled:   true,
 	}
 
-	q.UpdateFilterConfig(tt.Ctx, fc1)
+	q.UpdateAssetFilterConfig(tt.Ctx, fc1)
 
-	handler := &IngestionFilterHandler{}
+	handler := &FilterConfigHandler{}
 	recorder := httptest.NewRecorder()
-	handler.Get(
+	handler.GetAssetConfig(
 		recorder,
 		makeRequest(
 			t,
 			map[string]string{},
-			map[string]string{"filter_name": hProtocol.IngestionFilterAssetName},
+			map[string]string{},
 			q,
 		),
 	)
@@ -69,29 +46,33 @@ func TestGetFilterConfigOneResult(t *testing.T) {
 	raw, err := ioutil.ReadAll(resp.Body)
 	tt.Assert.NoError(err)
 
-	var filterCfgResource hProtocol.IngestionFilter
+	var filterCfgResource hProtocol.AssetFilterConfig
 	json.Unmarshal(raw, &filterCfgResource)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(filterCfgResource.Name, hProtocol.IngestionFilterAssetName)
-	tt.Assert.Equal(len(filterCfgResource.Rules["whitelist"].([]interface{})), 3)
-	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[0], "1")
-	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[1], "2")
-	tt.Assert.Equal(filterCfgResource.Rules["whitelist"].([]interface{})[2], "3")
-	tt.Assert.Equal(filterCfgResource.Enabled, true)
+	tt.Assert.ElementsMatch(filterCfgResource.Whitelist, []string{"1", "2"})
+	tt.Assert.Equal(*filterCfgResource.Enabled, true)
 	tt.Assert.True(filterCfgResource.LastModified > 0)
 }
 
-func TestGetFilterConfigListResult(t *testing.T) {
+func TestGetAccountFilterConfig(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &IngestionFilterHandler{}
+	// put some more values into the config for resource validation after retrieval
+	fc1 := history.AccountFilterConfig{
+		Whitelist: []string{"1", "2"},
+		Enabled:   true,
+	}
+
+	q.UpdateAccountFilterConfig(tt.Ctx, fc1)
+
+	handler := &FilterConfigHandler{}
 	recorder := httptest.NewRecorder()
-	handler.Get(
+	handler.GetAccountConfig(
 		recorder,
 		makeRequest(
 			t,
@@ -107,118 +88,102 @@ func TestGetFilterConfigListResult(t *testing.T) {
 	raw, err := ioutil.ReadAll(resp.Body)
 	tt.Assert.NoError(err)
 
-	var filterCfgResourceResponse []hProtocol.IngestionFilter
-	json.Unmarshal(raw, &filterCfgResourceResponse)
+	var filterCfgResource hProtocol.AccountFilterConfig
+	json.Unmarshal(raw, &filterCfgResource)
 	tt.Assert.NoError(err)
 
-	// these are from the pre-defined default config rows seeded/created by scheam migrations file
-	filterCfgResourceList := []hProtocol.IngestionFilter{
-		{Name: "asset", LastModified: 0, Rules: map[string]interface{}{}, Enabled: false},
-		{Name: "account", LastModified: 0, Rules: map[string]interface{}{}, Enabled: false},
-	}
-
-	tt.Assert.Len(filterCfgResourceResponse, 2)
-	tt.Assert.ElementsMatchf(filterCfgResourceList, filterCfgResourceResponse, "filter resource list does not match")
+	tt.Assert.ElementsMatch(filterCfgResource.Whitelist, []string{"1", "2"})
+	tt.Assert.Equal(*filterCfgResource.Enabled, true)
+	tt.Assert.True(filterCfgResource.LastModified > 0)
 }
 
-func TestMalFormedUpdateFilterConfig(t *testing.T) {
+func TestMalFormedUpdateAssetFilterConfig(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &IngestionFilterHandler{}
+	handler := &FilterConfigHandler{}
 	recorder := httptest.NewRecorder()
 	request := makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"filter_name": "asset"},
+		map[string]string{},
 		q,
 	)
 
 	request.Body = ioutil.NopCloser(strings.NewReader(`
 	    {
-			"rules": {
-			    "whitelist": ["4","5","6"]
-			},
-			"enabled": true,
-			"name": "unsupported"
+			"enabled": true
 		}
 		`))
 
-	handler.Update(
+	handler.UpdateAssetConfig(
 		recorder,
 		request,
 	)
 
 	resp := recorder.Result()
-	// can't update a filter with a name that doens't match up to an existing implemented filter
+	// can't update a filter when it's missing a required filed, Whitelist
 	tt.Assert.Equal(http.StatusBadRequest, resp.StatusCode)
 }
 
-func TestUpdateUnsupportedFilterConfig(t *testing.T) {
+func TestMalFormedUpdateAccountFilterConfig(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &IngestionFilterHandler{}
+	handler := &FilterConfigHandler{}
 	recorder := httptest.NewRecorder()
 	request := makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"filter_name": "unsupported"},
+		map[string]string{},
 		q,
 	)
 
 	request.Body = ioutil.NopCloser(strings.NewReader(`
 	    {
-			"rules": {
-			    "whitelist": ["4","5","6"]
-			},
-			"enabled": true,
-			"name": "unsupported"
+			"enabled": true
 		}
 		`))
 
-	handler.Update(
+	handler.UpdateAccountConfig(
 		recorder,
 		request,
 	)
 
 	resp := recorder.Result()
-	// can't update a filter with a name that doens't match up to an existing implemented filter
-	tt.Assert.Equal(http.StatusNotFound, resp.StatusCode)
+	// can't update a filter when it's missing a required filed, Whitelist
+	tt.Assert.Equal(http.StatusBadRequest, resp.StatusCode)
 }
 
-func TestUpdateFilterConfig(t *testing.T) {
+func TestUpdateAssetFilterConfig(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 
-	handler := &IngestionFilterHandler{}
+	handler := &FilterConfigHandler{}
 	recorder := httptest.NewRecorder()
 	request := makeRequest(
 		t,
 		map[string]string{},
-		map[string]string{"filter_name": hProtocol.IngestionFilterAssetName},
+		map[string]string{},
 		q,
 	)
 
 	request.Body = ioutil.NopCloser(strings.NewReader(`
 	    {
-			"rules": {
-			    "whitelist": ["4","5","6"]
-			},
-			"enabled": true,
-			"name": "` + hProtocol.IngestionFilterAssetName + `"
+			"whitelist": ["4","5","6"],
+			"enabled": true
 		}`))
 
-	handler.Update(
+	handler.UpdateAssetConfig(
 		recorder,
 		request,
 	)
@@ -226,18 +191,56 @@ func TestUpdateFilterConfig(t *testing.T) {
 	resp := recorder.Result()
 	tt.Assert.Equal(http.StatusOK, resp.StatusCode)
 
-	fcUpdated, err := q.GetFilterByName(tt.Ctx, hProtocol.IngestionFilterAssetName)
+	raw, err := ioutil.ReadAll(resp.Body)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(fcUpdated.Name, hProtocol.IngestionFilterAssetName)
-	tt.Assert.Equal(fcUpdated.Enabled, true)
-	tt.Assert.True(fcUpdated.LastModified > 0)
-
-	var filterRules map[string]interface{}
-	err = json.Unmarshal([]byte(fcUpdated.Rules), &filterRules)
+	var filterCfgResource hProtocol.AssetFilterConfig
+	json.Unmarshal(raw, &filterCfgResource)
 	tt.Assert.NoError(err)
-	tt.Assert.Len(filterRules["whitelist"].([]interface{}), 3)
-	tt.Assert.Equal(filterRules["whitelist"].([]interface{})[0], "4")
-	tt.Assert.Equal(filterRules["whitelist"].([]interface{})[1], "5")
-	tt.Assert.Equal(filterRules["whitelist"].([]interface{})[2], "6")
+
+	tt.Assert.Equal(*filterCfgResource.Enabled, true)
+	tt.Assert.True(filterCfgResource.LastModified > 0)
+	tt.Assert.ElementsMatch(filterCfgResource.Whitelist, []string{"4", "5", "6"})
+}
+
+func TestUpdateAccountFilterConfig(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{SessionInterface: tt.HorizonSession()}
+
+	handler := &FilterConfigHandler{}
+	recorder := httptest.NewRecorder()
+	request := makeRequest(
+		t,
+		map[string]string{},
+		map[string]string{},
+		q,
+	)
+
+	request.Body = ioutil.NopCloser(strings.NewReader(`
+	    {
+			"whitelist": ["4","5","6"],
+			"enabled": true
+		}`))
+
+	handler.UpdateAccountConfig(
+		recorder,
+		request,
+	)
+
+	resp := recorder.Result()
+	tt.Assert.Equal(http.StatusOK, resp.StatusCode)
+
+	raw, err := ioutil.ReadAll(resp.Body)
+	tt.Assert.NoError(err)
+
+	var filterCfgResource hProtocol.AccountFilterConfig
+	json.Unmarshal(raw, &filterCfgResource)
+	tt.Assert.NoError(err)
+
+	tt.Assert.Equal(*filterCfgResource.Enabled, true)
+	tt.Assert.True(filterCfgResource.LastModified > 0)
+	tt.Assert.ElementsMatch(filterCfgResource.Whitelist, []string{"4", "5", "6"})
 }

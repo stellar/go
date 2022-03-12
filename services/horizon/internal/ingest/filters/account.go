@@ -2,17 +2,11 @@ package filters
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	"github.com/stellar/go/support/errors"
 )
-
-type AccountFilterRules struct {
-	CanonicalWhitelist []string `json:"account_whitelist"`
-}
 
 type accountFilter struct {
 	whitelistedAccountsSet map[string]struct{}
@@ -22,7 +16,7 @@ type accountFilter struct {
 
 type AccountFilter interface {
 	processors.LedgerTransactionFilterer
-	RefreshAccountFilter(filterConfig *history.FilterConfig) error
+	RefreshAccountFilter(filterConfig *history.AccountFilterConfig) error
 }
 
 func NewAccountFilter() AccountFilter {
@@ -32,18 +26,14 @@ func NewAccountFilter() AccountFilter {
 }
 
 // TODO:(fons) this code should probably be generic for all filters
-func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.FilterConfig) error {
+func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.AccountFilterConfig) error {
 	// only need to re-initialize the filter config state(rules) if it's cached version(in  memory)
 	// is older than the incoming config version based on lastModified epoch timestamp
 	if filterConfig.LastModified > filter.lastModified {
 		logger.Infof("New Account Filter config detected, reloading new config %v ", *filterConfig)
-		var accountFilterRules AccountFilterRules
-		if err := json.Unmarshal([]byte(filterConfig.Rules), &accountFilterRules); err != nil {
-			return errors.Wrap(err, "unable to serialize account filter rules")
-		}
 
 		filter.enabled = filterConfig.Enabled
-		filter.whitelistedAccountsSet = listToMap(accountFilterRules.CanonicalWhitelist)
+		filter.whitelistedAccountsSet = listToMap(filterConfig.Whitelist)
 		filter.lastModified = filterConfig.LastModified
 	}
 

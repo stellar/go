@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,16 +16,12 @@ func TestAccountFilterAllowsWhenMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "account_whitelist": [
-			            "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-					]	 
-				}`,
+	filterConfig := &history.AccountFilterConfig{
+		Whitelist:    []string{"GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 		Enabled:      true,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAccountName,
 	}
+
 	filter := NewAccountFilter()
 	err := filter.RefreshAccountFilter(filterConfig)
 	tt.NoError(err)
@@ -43,15 +38,10 @@ func TestAccountFilterAllowsWhenDisabled(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "account_whitelist": [
-			            "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-					]
-				}`,
+	filterConfig := &history.AccountFilterConfig{
+		Whitelist:    []string{"GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 		Enabled:      false,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAccountName,
 	}
 	filter := NewAccountFilter()
 	err := filter.RefreshAccountFilter(filterConfig)
@@ -71,13 +61,10 @@ func TestAccountFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "account_whitelist": []
-				}`,
+	filterConfig := &history.AccountFilterConfig{
+		Whitelist:    []string{},
 		Enabled:      true,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAccountFilter()
 	err := filter.RefreshAccountFilter(filterConfig)
@@ -95,16 +82,10 @@ func TestAccountFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "account_whitelist": [ 
-		                "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-		            ]	 
-				 }`,
-
+	filterConfig := &history.AccountFilterConfig{
+		Whitelist:    []string{"GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 		Enabled:      true,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAssetName,
 	}
 
 	filter := NewAccountFilter()

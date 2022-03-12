@@ -857,28 +857,46 @@ func (c *Client) getIngestionFiltersURL(name string) (string, error) {
 	return baseURL.String(), nil
 }
 
-func (c *Client) AdminGetAllIngestionFilters() ([]hProtocol.IngestionFilter, error) {
-	url, err := c.getIngestionFiltersURL("")
+func (c *Client) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
+	url, err := c.getIngestionFiltersURL("asset")
 	if err != nil {
-		return nil, err
+		return hProtocol.AssetFilterConfig{}, err
 	}
-	var filters []hProtocol.IngestionFilter
-	err = c.sendGetRequest(url, &filters)
-	return filters, err
-}
-
-func (c *Client) AdminGetIngestionFilter(name string) (hProtocol.IngestionFilter, error) {
-	url, err := c.getIngestionFiltersURL(name)
-	if err != nil {
-		return hProtocol.IngestionFilter{}, err
-	}
-	var filter hProtocol.IngestionFilter
+	var filter hProtocol.AssetFilterConfig
 	err = c.sendGetRequest(url, &filter)
 	return filter, err
 }
 
-func (c *Client) AdminSetIngestionFilter(filter hProtocol.IngestionFilter) error {
-	url, err := c.getIngestionFiltersURL(filter.Name)
+func (c *Client) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
+	url, err := c.getIngestionFiltersURL("account")
+	if err != nil {
+		return hProtocol.AccountFilterConfig{}, err
+	}
+	var filter hProtocol.AccountFilterConfig
+	err = c.sendGetRequest(url, &filter)
+	return filter, err
+}
+
+func (c *Client) AdminSetIngestionAssetFilter(filter hProtocol.AssetFilterConfig) error {
+	url, err := c.getIngestionFiltersURL("asset")
+	if err != nil {
+		return err
+	}
+	buf := bytes.NewBuffer(nil)
+	err = json.NewEncoder(buf).Encode(filter)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPut, url, buf)
+	if err != nil {
+		return errors.Wrap(err, "error creating HTTP request")
+	}
+	req.Header.Add("Content-Type", "application/json")
+	return c.sendHTTPRequest(req, nil)
+}
+
+func (c *Client) AdminSetIngestionAccountFilter(filter hProtocol.AccountFilterConfig) error {
+	url, err := c.getIngestionFiltersURL("account")
 	if err != nil {
 		return err
 	}

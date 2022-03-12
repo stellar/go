@@ -818,20 +818,54 @@ type LiquidityPoolReserve struct {
 	Amount string `json:"amount"`
 }
 
-// TODO: We should probably have specific filters without the Name  and LastModified fields for the
-//       supported filters, e.g. IngestionAccountFilter, IngestionAssetFilter
-//
-// TODO: We should also streamline the Rules structure, right now, the keys are implicit, e.g. "account_whitelist"
+type AssetFilterConfig struct {
+	Whitelist    []string `json:"whitelist"`
+	Enabled      *bool    `json:"enabled"`
+	LastModified int64    `json:"last_modified,omitempty"`
+}
 
-const (
-	IngestionFilterAssetName   = "asset"
-	IngestionFilterAccountName = "account"
-)
+type AccountFilterConfig struct {
+	Whitelist    []string `json:"whitelist"`
+	Enabled      *bool    `json:"enabled"`
+	LastModified int64    `json:"last_modified,omitempty"`
+}
 
-// IngestionFilter represents the configuration for an ingestion filter
-type IngestionFilter struct {
-	Rules        map[string]interface{} `json:"rules"`
-	Enabled      bool                   `json:"enabled"`
-	Name         string                 `json:"name,omitempty"`
-	LastModified int64                  `json:"last_modified,omitempty"`
+func (f *AccountFilterConfig) UnmarshalJSON(data []byte) error {
+	type accountFilterConfig AccountFilterConfig
+	var config = accountFilterConfig{}
+
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+
+	if config.Whitelist == nil {
+		return errors.New("missing required whitelist")
+	}
+
+	if config.Enabled == nil {
+		return errors.New("missing required enabled")
+	}
+
+	*f = AccountFilterConfig(config)
+	return nil
+}
+
+func (f *AssetFilterConfig) UnmarshalJSON(data []byte) error {
+	type assetFilterConfig AssetFilterConfig
+	var config = assetFilterConfig{}
+
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+
+	if config.Whitelist == nil {
+		return errors.New("missing required whitelist")
+	}
+
+	if config.Enabled == nil {
+		return errors.New("missing required enabled")
+	}
+
+	*f = AssetFilterConfig(config)
+	return nil
 }

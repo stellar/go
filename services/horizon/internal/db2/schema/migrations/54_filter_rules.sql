@@ -1,16 +1,22 @@
 -- +migrate Up
 
-CREATE TABLE ingest_filter_rules (
-    name character varying(256) NOT NULL UNIQUE,
+CREATE TABLE account_filter_rules (
     enabled bool NOT NULL default false,
-    rules jsonb NOT NULL,
+    whitelist varchar[] NOT NULL,
+    last_modified bigint NOT NULL
+);
+
+CREATE TABLE asset_filter_rules (
+    enabled bool NOT NULL default false,
+    whitelist varchar[] NOT NULL,
     last_modified bigint NOT NULL
 );
 
 -- insert the default disabled state for each supported filter implementation
-INSERT INTO ingest_filter_rules VALUES ('asset', false, '{}'::jsonb, 0);
-INSERT INTO ingest_filter_rules VALUES ('account', false, '{}'::jsonb, 0);
+INSERT INTO account_filter_rules VALUES (false, '{}', 0);
+INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
 
 -- +migrate Down
 
-DROP TABLE ingest_filter_rules cascade;
+DROP TABLE account_filter_rules cascade;
+DROP TABLE asset_filter_rules cascade;

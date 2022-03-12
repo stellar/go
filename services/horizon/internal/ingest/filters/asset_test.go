@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,15 +16,10 @@ func TestAssetFilterAllowsOnMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "canonical_asset_whitelist": [
-			            "USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-					]	 
-				}`,
+	filterConfig := &history.AssetFilterConfig{
+		Whitelist:    []string{"USDC:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 		Enabled:      true,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAssetFilter()
 	err := filter.RefreshAssetFilter(filterConfig)
@@ -41,13 +35,10 @@ func TestAssetFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "canonical_asset_whitelist": []	 
-				}`,
+	filterConfig := &history.AssetFilterConfig{
+		Whitelist:    []string{},
 		Enabled:      true,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAssetFilter()
 	err := filter.RefreshAssetFilter(filterConfig)
@@ -63,15 +54,10 @@ func TestAssetFilterAllowsWhenDisabled(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "canonical_asset_whitelist": [
-			            "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-					]
-				}`,
+	filterConfig := &history.AssetFilterConfig{
+		Whitelist:    []string{"USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 		Enabled:      false,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAssetName,
 	}
 	filter := NewAssetFilter()
 	err := filter.RefreshAssetFilter(filterConfig)
@@ -88,16 +74,10 @@ func TestAssetFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
-	filterConfig := &history.FilterConfig{
-		Rules: `{
-			        "canonical_asset_whitelist": [ 
-		                "USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"
-		            ]
-				 }`,
-
+	filterConfig := &history.AssetFilterConfig{
+		Whitelist:    []string{"USDX:GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"},
 		Enabled:      true,
 		LastModified: 1,
-		Name:         horizon.IngestionFilterAssetName,
 	}
 
 	filter := NewAssetFilter()

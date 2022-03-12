@@ -36,27 +36,19 @@ func TestIngestionFiltering(t *testing.T) {
 	nonWhitelistedAsset := txnbuild.CreditAsset{Code: "SEK", Issuer: itest.Master().Address()}
 	itest.MustEstablishTrustline(whitelistedAccountKey, whitelistedAccount, nonWhitelistedAsset)
 	itest.MustEstablishTrustline(nonWhitelistedAccountKey, nonWhitelistedAccount, nonWhitelistedAsset)
+	enabled := true
 
 	// Initialize filters
-	err := itest.Client().AdminSetIngestionFilter(hProtocol.IngestionFilter{
-		Rules: map[string]interface{}{
-			// TODO: this rule structure shouldn't  be implicit for the the SDK client
-			"account_whitelist": []string{whitelistedAccount.GetAccountID()},
-		},
-		Enabled: true,
-		Name:    hProtocol.IngestionFilterAccountName,
+	err := itest.Client().AdminSetIngestionAccountFilter(hProtocol.AccountFilterConfig{
+		Whitelist: []string{whitelistedAccount.GetAccountID()},
+		Enabled:   &enabled,
 	})
 	tt.NoError(err)
 
-	filter, err := itest.Client().AdminGetIngestionFilter(hProtocol.IngestionFilterAccountName)
+	filter, err := itest.Client().AdminGetIngestionAccountFilter()
 	tt.NoError(err)
-	// TODO: The client returns a []string{} when getting the filter by requires []interface{} when setting it
-	expectedAccountRules := map[string]interface{}{
-		// TODO: this rule structure shouldn't  be implicit for the the SDK client
-		"account_whitelist": []interface{}{whitelistedAccount.GetAccountID()},
-	}
-	tt.Equal(expectedAccountRules, filter.Rules)
-	tt.Equal(hProtocol.IngestionFilterAccountName, filter.Name)
+	expectedAccountRules := []string{whitelistedAccount.GetAccountID()}
 
-	// TODO ....
+	tt.ElementsMatch(filter.Whitelist, expectedAccountRules)
+	tt.Equal(filter.Enabled, true)
 }
