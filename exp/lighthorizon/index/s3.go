@@ -2,6 +2,7 @@ package index
 
 import (
 	"bytes"
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,6 +98,38 @@ func (s *S3Backend) writeBatch(b *batch) error {
 	return nil
 }
 
+func (s *S3Backend) FlushTries(indexes map[string]*TrieIndex) error {
+	// TODO: Parallelize this
+	var buf bytes.Buffer
+	for key, index := range indexes {
+		buf.Reset()
+		path := filepath.Join(s.prefix, key)
+
+		zw := gzip.NewWriter(&buf)
+		if _, err := index.WriteTo(zw); err != nil {
+			log.Errorf("Unable to serialize %s: %v", path, err)
+			continue
+		}
+
+		if err := zw.Close(); err != nil {
+			log.Errorf("Unable to serialize %s: %v", path, err)
+			continue
+		}
+
+		_, err := s.uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(BUCKET),
+			Key:    aws.String(path),
+			Body:   &buf,
+		})
+		if err != nil {
+			log.Errorf("Unable to upload %s: %v", path, err)
+			// TODO: retries
+			continue
+		}
+	}
+	return nil
+}
+
 func (s *S3Backend) ReadAccounts() ([]string, error) {
 	log.Debugf("Downloading accounts list")
 	b := &aws.WriteAtBuffer{}
@@ -156,4 +189,38 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 	}
 
 	return nil, err
+}
+
+func (s *S3Backend) ReadTrie(prefix string) (*TrieIndex, error) {
+	// Check if index exists in S3
+	log.Debugf("Downloading index: %s", prefix)
+	b := &aws.WriteAtBuffer{}
+	path := filepath.Join(s.prefix, prefix)
+	n, err := s.downloader.Download(b, &s3.GetObjectInput{
+		Bucket: aws.String(BUCKET),
+		Key:    aws.String(path),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
+			return nil, os.ErrNotExist
+		}
+		return nil, errors.Wrapf(err, "Unable to download %s", prefix)
+	}
+	if n == 0 {
+		return nil, os.ErrNotExist
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
+	if err != nil {
+		log.Errorf("Unable to parse %s: %v", prefix, err)
+		return nil, os.ErrNotExist
+	}
+	defer zr.Close()
+
+	var index TrieIndex
+	_, err = index.ReadFrom(zr)
+	if err != nil {
+		log.Errorf("Unable to parse %s: %v", prefix, err)
+		return nil, os.ErrNotExist
+	}
+	return &index, nil
 }

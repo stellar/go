@@ -38,6 +38,7 @@ func main() {
 
 	archiveWrapper := archive.Wrapper{historyArchive}
 	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
+	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

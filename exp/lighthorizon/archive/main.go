@@ -112,3 +112,82 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 		ledgerSequence++
 	}
 }
+
+func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transaction, error) {
+	parsedID := toid.Parse(cursor)
+	ledgerSequence := uint32(parsedID.LedgerSequence)
+
+	log.Debugf("Searching tx %d", cursor)
+	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
+
+	txns := []common.Transaction{}
+	appending := false
+
+	ledgers, err := a.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		log.Debugf("Checking ledger %d", ledgerSequence)
+		ledger, ok := ledgers[ledgerSequence]
+		if !ok {
+			return nil, errors.Errorf("could not reach limit in %d checkpoints (ledger not found)", checkpointsToLookup)
+		}
+
+		resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))
+		for i, result := range ledger.TransactionResult.TxResultSet.Results {
+			resultMeta[i].Result = result
+		}
+
+		closeMeta := xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: ledger.Header,
+				TxSet:        ledger.Transaction.TxSet,
+				TxProcessing: resultMeta,
+			},
+		}
+
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, closeMeta)
+		if err != nil {
+			return nil, err
+		}
+
+		transactionOrder := int32(0)
+		for {
+			tx, err := reader.Read()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return nil, err
+			}
+
+			currID := toid.New(int32(ledgerSequence), transactionOrder+1, 1).ToInt64()
+
+			if currID >= cursor {
+				appending = true
+				if currID == cursor {
+					continue
+				}
+			}
+
+			if appending {
+				txns = append(txns, common.Transaction{
+					TransactionEnvelope: &tx.Envelope,
+					TransactionResult:   &tx.Result.Result,
+					LedgerHeader:        &ledger.Header.Header,
+					TxIndex:             int32(transactionOrder),
+				})
+			}
+
+			if int64(len(txns)) == limit {
+				return txns, nil
+			}
+
+			transactionOrder++
+		}
+
+		ledgerSequence++
+	}
+}
