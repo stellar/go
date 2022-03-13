@@ -9,14 +9,18 @@ type Store interface {
 	NextActive(account, index string, afterCheckpoint uint32) (uint32, error)
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
 	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
+	AddParticipantToIndexesNoBackend(participant string, indexes map[string]*CheckpointIndex)
 	Flush() error
 	FlushAccounts() error
+	Read(account string) (map[string]*CheckpointIndex, error)
+	ReadAccounts() ([]string, error)
 }
 
 type Backend interface {
 	Flush(map[string]map[string]*CheckpointIndex) error
 	FlushAccounts([]string) error
 	Read(account string) (map[string]*CheckpointIndex, error)
+	ReadAccounts() ([]string, error)
 }
 
 type store struct {
@@ -34,7 +38,7 @@ func NewStore(backend Backend) (Store, error) {
 
 func (s *store) accounts() []string {
 	accounts := make([]string, 0, len(s.indexes))
-	for account, _ := range s.indexes {
+	for account := range s.indexes {
 		accounts = append(accounts, account)
 	}
 	return accounts
@@ -49,6 +53,14 @@ func (s *store) FlushAccounts() error {
 	}
 
 	return nil
+}
+
+func (s *store) Read(account string) (map[string]*CheckpointIndex, error) {
+	return s.backend.Read(account)
+}
+
+func (s *store) ReadAccounts() ([]string, error) {
+	return s.backend.ReadAccounts()
 }
 
 func (s *store) Flush() error {
@@ -89,6 +101,12 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 		}
 	}
 	return nil
+}
+
+func (s *store) AddParticipantToIndexesNoBackend(participant string, indexes map[string]*CheckpointIndex) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.indexes[participant] = indexes
 }
 
 func (s *store) AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error {

@@ -24,9 +24,8 @@ var (
 	parallel = uint32(20)
 )
 
-func Map() {
+func main() {
 	log.SetLevel(log.InfoLevel)
-
 	startTime := time.Now()
 
 	jobIndexString := os.Getenv("AWS_BATCH_JOB_ARRAY_INDEX")

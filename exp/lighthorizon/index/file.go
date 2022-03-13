@@ -40,7 +40,7 @@ func (s *FileBackend) FlushAccounts(accounts []string) error {
 	return os.WriteFile(path, []byte(accountsString), fs.ModeDir|0755)
 }
 
-func (s *FileBackend) writeBatch(b *batch, r retry) error {
+func (s *FileBackend) writeBatch(b *batch) error {
 	if len(b.indexes) == 0 {
 		return nil
 	}
@@ -81,4 +81,8 @@ func (s *FileBackend) Read(account string) (map[string]*CheckpointIndex, error) 
 		return nil, os.ErrNotExist
 	}
 	return indexes, nil
+}
+
+func (s *FileBackend) ReadAccounts() ([]string, error) {
+	panic("TODO")
 }
