@@ -69,10 +69,10 @@ func (s *FileBackend) writeBatch(b *batch) error {
 	return nil
 }
 
-func (s *FileBackend) FlushTries(indexes map[string]*TrieIndex) error {
+func (s *FileBackend) FlushTransactions(indexes map[string]*TrieIndex) error {
 	// TODO: Parallelize this
 	for key, index := range indexes {
-		path := filepath.Join(s.dir, key)
+		path := filepath.Join(s.dir, "tx", key)
 
 		err := os.MkdirAll(filepath.Dir(path), fs.ModeDir|0755)
 		if err != nil {
@@ -125,9 +125,9 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	panic("TODO")
 }
 
-func (s *FileBackend) ReadTrie(prefix string) (*TrieIndex, error) {
+func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
 	log.Debugf("Opening index: %s", prefix)
-	b, err := os.Open(filepath.Join(s.dir, prefix))
+	b, err := os.Open(filepath.Join(s.dir, "tx", prefix))
 	if err != nil {
 		return nil, err
 	}

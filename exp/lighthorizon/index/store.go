@@ -26,8 +26,8 @@ type Backend interface {
 	FlushAccounts([]string) error
 	Read(account string) (map[string]*CheckpointIndex, error)
 	ReadAccounts() ([]string, error)
-	FlushTries(map[string]*TrieIndex) error
-	ReadTrie(prefix string) (*TrieIndex, error)
+	FlushTransactions(map[string]*TrieIndex) error
+	ReadTransactions(prefix string) (*TrieIndex, error)
 }
 
 type store struct {
@@ -83,7 +83,7 @@ func (s *store) Flush() error {
 	// clear indexes to save memory
 	s.indexes = map[string]map[string]*CheckpointIndex{}
 
-	if err := s.backend.FlushTries(s.txIndexes); err != nil {
+	if err := s.backend.FlushTransactions(s.txIndexes); err != nil {
 		return err
 	}
 	s.txIndexes = map[string]*TrieIndex{}
@@ -214,7 +214,7 @@ func (s *store) getCreateTrieIndex(prefix string) (*TrieIndex, error) {
 	}
 
 	// Check if index exists in backend
-	found, err := s.backend.ReadTrie(prefix)
+	found, err := s.backend.ReadTransactions(prefix)
 	if err == nil {
 		s.txIndexes[prefix] = found
 	} else if !os.IsNotExist(err) {

@@ -98,12 +98,12 @@ func (s *S3Backend) writeBatch(b *batch) error {
 	return nil
 }
 
-func (s *S3Backend) FlushTries(indexes map[string]*TrieIndex) error {
+func (s *S3Backend) FlushTransactions(indexes map[string]*TrieIndex) error {
 	// TODO: Parallelize this
 	var buf bytes.Buffer
 	for key, index := range indexes {
 		buf.Reset()
-		path := filepath.Join(s.prefix, key)
+		path := filepath.Join(s.prefix, "tx", key)
 
 		zw := gzip.NewWriter(&buf)
 		if _, err := index.WriteTo(zw); err != nil {
@@ -191,11 +191,11 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 	return nil, err
 }
 
-func (s *S3Backend) ReadTrie(prefix string) (*TrieIndex, error) {
+func (s *S3Backend) ReadTransactions(prefix string) (*TrieIndex, error) {
 	// Check if index exists in S3
 	log.Debugf("Downloading index: %s", prefix)
 	b := &aws.WriteAtBuffer{}
-	path := filepath.Join(s.prefix, prefix)
+	path := filepath.Join(s.prefix, "tx", prefix)
 	n, err := s.downloader.Download(b, &s3.GetObjectInput{
 		Bucket: aws.String(BUCKET),
 		Key:    aws.String(path),
