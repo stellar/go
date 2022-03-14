@@ -47,6 +47,10 @@ func (index *TrieIndex) Upsert(key, value []byte) ([]byte, bool) {
 	}
 	index.Lock()
 	defer index.Unlock()
+	return index.doUpsert(key, value)
+}
+
+func (index *TrieIndex) doUpsert(key, value []byte) ([]byte, bool) {
 	if index.Root == nil {
 		index.Root = &trieNode{Prefix: key, Value: value}
 		return nil, false
@@ -187,12 +191,37 @@ func (index *TrieIndex) Get(key []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (i *trieNode) iskey() bool {
-	return len(i.Value) > 0
+func (index *TrieIndex) iterate(f func(key, value []byte)) {
+	index.RLock()
+	defer index.RUnlock()
+	if index.Root != nil {
+		index.Root.iterate(nil, f)
+	}
 }
 
+func (node *trieNode) iterate(prefix []byte, f func(key, value []byte)) {
+	key := append(prefix, node.Prefix...)
+	if len(node.Value) > 0 {
+		f(key, node.Value)
+	}
+
+	if node.Children != nil {
+		for b, child := range node.Children {
+			child.iterate(append(key, b), f)
+		}
+	}
+}
+
+// TODO: For now this ignores duplicates. should it error?
 func (i *TrieIndex) Merge(other *TrieIndex) error {
-	return fmt.Errorf("TODO: Implement TrieIndex.Merge")
+	i.Lock()
+	defer i.Unlock()
+
+	other.iterate(func(key, value []byte) {
+		i.doUpsert(key, value)
+	})
+
+	return nil
 }
 
 // TODO: Use XDR for this, to be more consistent with rest of the codebase, and

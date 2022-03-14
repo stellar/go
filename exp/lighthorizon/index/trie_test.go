@@ -283,3 +283,38 @@ func TestTrieIndexUpsertAdvanced(t *testing.T) {
 		})
 	}
 }
+
+func TestTrieIndexMerge(t *testing.T) {
+	for i := 0; i < 10_000; i++ {
+		a, aInserts := randomTrie(t, nil)
+		b, bInserts := randomTrie(t, nil)
+
+		require.NoError(t, a.Merge(b))
+
+		// Should still have all the A keys
+		for key, expected := range aInserts {
+			value, ok := a.Get([]byte(key))
+			if !ok {
+				t.Errorf("Key not found: %s", key)
+			} else {
+				ledger := binary.BigEndian.Uint32(value)
+				if ledger != expected {
+					t.Errorf("Key %s found: %v, expected: %v", key, ledger, expected)
+				}
+			}
+		}
+
+		// Should now also have all the B keys
+		for key, expected := range bInserts {
+			value, ok := a.Get([]byte(key))
+			if !ok {
+				t.Errorf("Key not found: %s", key)
+			} else {
+				ledger := binary.BigEndian.Uint32(value)
+				if ledger != expected {
+					t.Errorf("Key %s found: %v, expected: %v", key, ledger, expected)
+				}
+			}
+		}
+	}
+}
