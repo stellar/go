@@ -70,13 +70,8 @@ paths:
           headers: {}
           content:
             application/json:
-              example:
-                whitelist:
-                  - 'usdc:1234'
-                  - 'dotx:1234'
-                  - 'abdc:1234'
-                enabled: true
-                last_modified: 1647121423
+              schema:
+                $ref: '#/components/schemas/AssetConfigExisting'
       summary: Get Asset Filter Config
       operationId: Get Asset Filter Config
       description: Retrieve the configuration for the Asset Filter.
@@ -87,7 +82,10 @@ paths:
         '200':
           description: OK
           headers: {}
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetConfigExisting'
       summary: Update the Asset Filter Config
       operationId: Update the Asset Filter Config
       description: Send the new configuration model which will replace current for Asset Filter.
@@ -98,13 +96,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object 
-            example:
-              whitelist:
-                  - 'usdc:1234'
-                  - 'dotx:1234'
-                  - 'abdc:1234'
-              enabled: true
+              $ref: '#/components/schemas/AssetConfigNew'
   /ingestion/filters/account:
     get:
       responses:
@@ -113,13 +105,8 @@ paths:
           headers: {}
           content:
             application/json:
-              example:
-                whitelist:
-                  - 'accountid1'
-                  - 'accountid2'
-                  - 'accountid3'
-                enabled: true
-                last_modified: 1647121423
+              schema:
+                $ref: '#/components/schemas/AccountConfigExisting'
       summary: Get Account Filter Config
       operationId: Get Account Filter Config
       description: Retrieve the configuration for the Account Filter.
@@ -130,7 +117,10 @@ paths:
         '200':
           description: OK
           headers: {}
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountConfigExisting'
       summary: Update the Account Filter Config
       operationId: Update the Account Filter Config
       description: Send the new configuration model which will replace current for Account Filter.
@@ -141,13 +131,73 @@ paths:
         content:
           application/json:
             schema:
-              type: object 
-            example:
-              whitelist:
-                  - 'accountid1'
-                  - 'accountid2'
-                  - 'accountid3'
-              enabled: true
+              $ref: '#/components/schemas/AccountConfigNew'
 components:
-  schemas: {}
+  schemas: 
+    AssetConfigNew:
+      title: New Asset Config Model
+      type: object
+      properties: 
+        whitelist:
+          type: array
+          items:
+            type: string
+          description: |-
+            a list of canonical asset ids which the asset filter will inspect ledger transactions, if any transaction operations reference the asset id, then the transaction is ingested to local horizon history database, otherwise it will be skipped.
+          example: 
+            - 'usdc:1234'
+            - 'dotx:1234'
+            - 'abdc:1234'
+        enabled:
+          type: boolean
+          description: |- 
+            if disabled, the asset filter will not be executed during ingeestion.
+          example: true
+      required:
+        - whitelist
+        - enabled
+    AccountConfigNew:
+      title: New Account Config Model
+      type: object
+      properties: 
+        whitelist:
+          type: array
+          items:
+            type: string
+          description: |-
+            a list of account ids which account filter will inspect ledger transactions, if any transaction operations reference the account, then the transaction is ingested to local horizon history database, otherwise it will be skipped.
+          example: 
+            - 'accountid1'
+            - 'accountid2'
+            - 'accountid3'
+        enabled:
+          type: boolean
+          description: |- 
+            if disabled, the account filter will not be executed during ingeestion.
+          example: true
+      required:
+        - whitelist
+        - enabled
+    AccountConfigExisting:
+      title: Existing Account Config Model
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/AccountConfigNew'
+      - properties:
+          last_modified:
+            type: integer
+            description: |- 
+              unix epoch timestamp in seconds.
+            example: 1647121423
+    AssetConfigExisting:
+      title: Existing Asset Config Model
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/AssetConfigNew'
+      - properties:
+          last_modified:
+            type: integer
+            description: |- 
+              unix epoch timestamp in seconds.
+            example: 1647121423        
 tags: []
