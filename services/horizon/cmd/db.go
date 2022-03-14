@@ -394,6 +394,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		CaptiveCoreStoragePath:      config.CaptiveCoreStoragePath,
 		StellarCoreCursor:           config.CursorName,
 		StellarCoreURL:              config.StellarCoreURL,
+		RoundingSlippageFilter:      config.RoundingSlippageFilter,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {

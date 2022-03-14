@@ -31,7 +31,7 @@ func checkResp(r *http.Response) error {
 }
 
 func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
-	var derived url.URL = b.base
+	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
 	req, err := http.NewRequest("GET", derived.String(), nil)
 	if err != nil {
@@ -58,7 +58,7 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 }
 
 func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
-	var derived url.URL = b.base
+	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
 	req, err := http.NewRequest("HEAD", derived.String(), nil)
 	if err != nil {

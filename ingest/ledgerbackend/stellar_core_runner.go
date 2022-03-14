@@ -374,7 +374,7 @@ func (r *stellarCoreRunner) handleExit() {
 
 	// Pattern recommended in:
 	// https://github.com/golang/go/blob/cacac8bdc5c93e7bc71df71981fdf32dded017bf/src/cmd/go/script_test.go#L1091-L1098
-	var interrupt os.Signal = os.Interrupt
+	interrupt := os.Interrupt
 	if runtime.GOOS == "windows" {
 		// Per https://golang.org/pkg/os/#Signal, “Interrupt is not implemented on
 		// Windows; using it with os.Process.Signal will return an error.”

@@ -844,7 +844,7 @@ func IngestTestTrade(
 		return err
 	}
 
-	err = q.RebuildTradeAggregationTimes(context.Background(), timestamp, timestamp)
+	err = q.RebuildTradeAggregationTimes(context.Background(), timestamp, timestamp, 1000)
 	if err != nil {
 		return err
 	}
