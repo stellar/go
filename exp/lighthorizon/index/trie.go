@@ -8,7 +8,13 @@ import (
 	"sync"
 )
 
-const TrieIndexVersion = 1
+const (
+	TrieIndexVersion = 1
+
+	HeaderHasPrefix   = 0b0000_0001
+	HeaderHasValue    = 0b0000_0010
+	HeaderHasChildren = 0b0000_0100
+)
 
 type TrieIndex struct {
 	sync.RWMutex
@@ -198,6 +204,15 @@ func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
 	var nRead int64
 	br := bufio.NewReader(r)
 
+	// Read the index version
+	version, err := binary.ReadUvarint(br)
+	nRead += int64(uvarintSize(version))
+	if err != nil {
+		return nRead, err
+	} else if version != TrieIndexVersion {
+		return nRead, fmt.Errorf("unsupported trie version: %d", version)
+	}
+
 	i.Root = &trieNode{}
 	n, err := i.Root.readFrom(br)
 	return nRead + n, err
@@ -206,48 +221,61 @@ func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
 func (i *trieNode) readFrom(r *bufio.Reader) (int64, error) {
 	var nRead int64
 
-	// Read this node's prefix
-	prefix, n64, err := readBytes(r)
-	nRead += n64
+	// Read the header flags byte
+	header, err := r.ReadByte()
+	nRead += 1
 	if err != nil {
 		return nRead, err
 	}
-	i.Prefix = prefix
+
+	// Read this node's prefix
+	if header&HeaderHasPrefix > 0 {
+		prefix, n64, err := readBytes(r)
+		nRead += n64
+		if err != nil {
+			return nRead, err
+		}
+		i.Prefix = prefix
+	}
 
 	// Read this node's value
-	value, n64, err := readBytes(r)
-	nRead += n64
-	if err != nil {
-		return nRead, err
+	if header&HeaderHasValue > 0 {
+		value, n64, err := readBytes(r)
+		nRead += n64
+		if err != nil {
+			return nRead, err
+		}
+		i.Value = value
 	}
-	i.Value = value
 
 	// Read this node's children count
-	childLen, err := binary.ReadUvarint(r)
-	nRead += int64(uvarintSize(childLen))
-	if err != nil {
-		return nRead, err
-	}
+	if header&HeaderHasChildren > 0 {
+		childLen, err := binary.ReadUvarint(r)
+		nRead += int64(uvarintSize(childLen))
+		if err != nil {
+			return nRead, err
+		}
 
-	if childLen > 0 {
-		i.Children = map[byte]*trieNode{}
-		// Read this node's children
-		for j := uint64(0); j < childLen; j++ {
-			// Read the child's key
-			key, err := r.ReadByte()
-			nRead += 1
-			if err != nil {
-				return nRead, err
-			}
+		if childLen > 0 {
+			i.Children = map[byte]*trieNode{}
+			// Read this node's children
+			for j := uint64(0); j < childLen; j++ {
+				// Read the child's key
+				key, err := r.ReadByte()
+				nRead += 1
+				if err != nil {
+					return nRead, err
+				}
 
-			// Read the rest of the child
-			var node trieNode
-			n64, err := node.readFrom(r)
-			nRead += n64
-			if err != nil {
-				return nRead, err
+				// Read the rest of the child
+				var node trieNode
+				n64, err := node.readFrom(r)
+				nRead += n64
+				if err != nil {
+					return nRead, err
+				}
+				i.Children[key] = &node
 			}
-			i.Children[key] = &node
 		}
 	}
 
@@ -265,54 +293,90 @@ func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
 	i.RLock()
 	defer i.RUnlock()
 	buf := make([]byte, binary.MaxVarintLen64)
-	if i.Root == nil {
-		return (&trieNode{}).writeTo(w, buf)
+
+	var nWritten, n64 int64
+
+	// Write the index version
+	n := binary.PutUvarint(buf, uint64(TrieIndexVersion))
+	n, err := w.Write(buf[:n])
+	nWritten += int64(n)
+	if err != nil {
+		return nWritten, err
 	}
-	return i.Root.writeTo(w, buf)
+
+	if i.Root == nil {
+		n64, err = (&trieNode{}).writeTo(w, buf)
+	} else {
+		n64, err = i.Root.writeTo(w, buf)
+	}
+	return nWritten + n64, err
 }
 
 func (i *trieNode) writeTo(w io.Writer, buf []byte) (int64, error) {
-	var nWritten int64
+	var nWritten, n64 int64
 
-	// Write this node's prefix
-	n64, err := writeBytes(w, i.Prefix, buf)
-	nWritten += n64
+	// Write the header flags byte
+	var header byte
+	if len(i.Prefix) > 0 {
+		header |= HeaderHasPrefix
+	}
+	if len(i.Value) > 0 {
+		header |= HeaderHasValue
+	}
+	if i.Children != nil && len(i.Children) > 0 {
+		header |= HeaderHasChildren
+	}
+	n, err := w.Write([]byte{header})
+	nWritten += int64(n)
 	if err != nil {
 		return nWritten, err
 	}
 
+	// Write this node's prefix
+	if header&HeaderHasPrefix > 0 {
+		n64, err := writeBytes(w, i.Prefix, buf)
+		nWritten += n64
+		if err != nil {
+			return nWritten, err
+		}
+	}
+
 	// Write this node's value
-	n64, err = writeBytes(w, i.Value, buf)
-	nWritten += n64
-	if err != nil {
-		return nWritten, err
+	if header&HeaderHasValue > 0 {
+		n64, err = writeBytes(w, i.Value, buf)
+		nWritten += n64
+		if err != nil {
+			return nWritten, err
+		}
 	}
 
 	// TODO: Can we write an "index" of sorts, here that has the byte-offsets, so
 	// that we do just-in-time parsing? Might be more verbose than as is, tho
 
 	// Write how many children we have
-	n := binary.PutUvarint(buf, uint64(len(i.Children)))
-	n, err = w.Write(buf[:n])
-	nWritten += int64(n)
-	if err != nil {
-		return nWritten, err
-	}
-
-	// Write all the children
-	for key, child := range i.Children {
-		// Write the child's key
-		n, err = w.Write([]byte{key})
+	if header&HeaderHasChildren > 0 {
+		n = binary.PutUvarint(buf, uint64(len(i.Children)))
+		n, err = w.Write(buf[:n])
 		nWritten += int64(n)
 		if err != nil {
 			return nWritten, err
 		}
 
-		// Write the rest of the child
-		n64, err := child.writeTo(w, buf)
-		nWritten += n64
-		if err != nil {
-			return nWritten, err
+		// Write all the children
+		for key, child := range i.Children {
+			// Write the child's key
+			n, err = w.Write([]byte{key})
+			nWritten += int64(n)
+			if err != nil {
+				return nWritten, err
+			}
+
+			// Write the rest of the child
+			n64, err := child.writeTo(w, buf)
+			nWritten += n64
+			if err != nil {
+				return nWritten, err
+			}
 		}
 	}
 
