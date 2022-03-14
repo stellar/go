@@ -9,10 +9,10 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-const (
+var (
 
 	// the filter config cache will be checked against latest from db at most once per each of this interval,
-	filterConfigCheckIntervalSeconds int64 = 10
+	FilterConfigCheckIntervalSeconds int64 = 10
 )
 
 var (
@@ -46,7 +46,7 @@ func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) 
 	// thinking can safely avoid the sync overhead?
 
 	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + filterConfigCheckIntervalSeconds) {
+	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + FilterConfigCheckIntervalSeconds) {
 		return f.convertCacheToList()
 	}
 

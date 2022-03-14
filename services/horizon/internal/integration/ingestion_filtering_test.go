@@ -3,8 +3,10 @@ package integration
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
@@ -39,16 +41,53 @@ func TestIngestionFiltering(t *testing.T) {
 	enabled := true
 
 	// Initialize filters
-	err := itest.Client().AdminSetIngestionAccountFilter(hProtocol.AccountFilterConfig{
+
+	// Force refresh of filters to be quick
+	filters.FilterConfigCheckIntervalSeconds = 1
+
+	expectedAccountFilter := hProtocol.AccountFilterConfig{
 		Whitelist: []string{whitelistedAccount.GetAccountID()},
 		Enabled:   &enabled,
-	})
+	}
+	err := itest.Client().AdminSetIngestionAccountFilter(expectedAccountFilter)
 	tt.NoError(err)
 
-	filter, err := itest.Client().AdminGetIngestionAccountFilter()
+	accountFilter, err := itest.Client().AdminGetIngestionAccountFilter()
 	tt.NoError(err)
-	expectedAccountRules := []string{whitelistedAccount.GetAccountID()}
 
-	tt.ElementsMatch(filter.Whitelist, expectedAccountRules)
-	tt.Equal(filter.Enabled, true)
+	tt.ElementsMatch(expectedAccountFilter.Whitelist, accountFilter.Whitelist)
+	tt.Equal(expectedAccountFilter.Enabled, accountFilter.Enabled)
+
+	asset, err := whitelistedAsset.ToXDR()
+	tt.NoError(err)
+	expectedAssetFilter := hProtocol.AssetFilterConfig{
+		Whitelist: []string{asset.StringCanonical()},
+		Enabled:   &enabled,
+	}
+	err = itest.Client().AdminSetIngestionAssetFilter(expectedAssetFilter)
+	tt.NoError(err)
+
+	assetFilter, err := itest.Client().AdminGetIngestionAssetFilter()
+	tt.NoError(err)
+
+	tt.ElementsMatch(expectedAssetFilter.Whitelist, assetFilter.Whitelist)
+	tt.Equal(expectedAssetFilter.Enabled, assetFilter.Enabled)
+
+	// Ensure filters are refreshed and ready to go
+	time.Sleep(time.Duration(filters.FilterConfigCheckIntervalSeconds) * time.Second)
+
+	// Make sure that when using a non-whitelisted account and a non-whitelisted asset,
+	// the transaction is not stored
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+		&txnbuild.Payment{
+			Destination: nonWhitelistedAccount.GetAccountID(),
+			Amount:      "10",
+			Asset:       nonWhitelistedAsset,
+		},
+	)
+
+	// TODO: this should give a 404
+	// resp, err := itest.Client().TransactionDetail(txResp.ID)
+	//
+
 }
