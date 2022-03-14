@@ -46,7 +46,6 @@ runs:
       key: ${{ env.PREFIX }}-go-build-${{ github.ref }}-${{ hashFiles('**', '!.git') }}
       restore-keys: |
         ${{ env.PREFIX }}-go-build-${{ github.ref }}-
-        ${{ env.PREFIX }}-go-build-refs/heads/master-
         ${{ env.PREFIX }}-go-build-
 
   # Reset the cache for master/protected branches, to ensure they build and run the tests from zero
