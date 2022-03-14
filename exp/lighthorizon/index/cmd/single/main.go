@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -24,6 +26,9 @@ var (
 )
 
 func main() {
+	modules := flag.String("modules", "accounts,transactions", "comma-separated list of modules to index (default: all)")
+	flag.Parse()
+
 	log.SetLevel(log.InfoLevel)
 
 	indexStore, err := index.NewS3Store(&aws.Config{Region: aws.String("us-east-1")}, "", parallel)
@@ -115,38 +120,20 @@ func main() {
 							return err
 						}
 
-						indexStore.AddTransactionToIndexes(
-							toid.New(int32(closeMeta.LedgerSequence()), int32(tx.Index), 0).ToInt64(),
-							tx.Result.TransactionHash,
-						)
-
-						allParticipants, err := participantsForOperations(tx, false)
-						if err != nil {
-							return err
+						if strings.Contains(*modules, "transactions") {
+							indexStore.AddTransactionToIndexes(
+								toid.New(int32(closeMeta.LedgerSequence()), int32(tx.Index), 0).ToInt64(),
+								tx.Result.TransactionHash,
+							)
 						}
 
-						err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
-						if err != nil {
-							return err
-						}
-
-						paymentsParticipants, err := participantsForOperations(tx, true)
-						if err != nil {
-							return err
-						}
-
-						err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
-						if err != nil {
-							return err
-						}
-
-						if tx.Result.Successful() {
+						if strings.Contains(*modules, "accounts") {
 							allParticipants, err := participantsForOperations(tx, false)
 							if err != nil {
 								return err
 							}
 
-							err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_all", allParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
 							if err != nil {
 								return err
 							}
@@ -156,9 +143,31 @@ func main() {
 								return err
 							}
 
-							err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_payments", paymentsParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
 							if err != nil {
 								return err
+							}
+
+							if tx.Result.Successful() {
+								allParticipants, err := participantsForOperations(tx, false)
+								if err != nil {
+									return err
+								}
+
+								err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_all", allParticipants)
+								if err != nil {
+									return err
+								}
+
+								paymentsParticipants, err := participantsForOperations(tx, true)
+								if err != nil {
+									return err
+								}
+
+								err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_payments", paymentsParticipants)
+								if err != nil {
+									return err
+								}
 							}
 						}
 					}
