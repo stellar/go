@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"golang.org/x/sync/errgroup"
 )
@@ -140,6 +141,11 @@ func main() {
 							}
 							return err
 						}
+
+						indexStore.AddTransactionToIndexes(
+							toid.New(int32(closeMeta.LedgerSequence()), int32(tx.Index), 0).ToInt64(),
+							tx.Result.TransactionHash,
+						)
 
 						allParticipants, err := participantsForOperations(tx, false)
 						if err != nil {
