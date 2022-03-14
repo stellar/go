@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Next Release
+
+* New Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse. Define filter rules throughn Admin API and the historical ingestion will check the rules and only persist the ledger transactions that pass the filter rules. Iniitally, two filter rules are possible:
+  'whitelist by account id' ([4221](https://github.com/stellar/go/issues/4221))
+  'whitelist by canonical asset id' ([4222](https://github.com/stellar/go/issues/4222))
+The filters and their configuration are optional feature and must be enabled with horizon command line parameter `admin-port=4200` and `enable-ingestion-filtering=true`. Once set, filter configurations and their rules are initially empty and the filters are disabled by default. To configure, refer to the Admin API Docs which are published on the Admin Port at http://localhost:<admin_port>/, follow details and examples for usage of `/ingestion/filters/account` and `/ingestion/filters/asset.`
+
+
 ## v2.15.1
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
