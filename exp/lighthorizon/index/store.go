@@ -19,6 +19,8 @@ type Store interface {
 	FlushAccounts() error
 	Read(account string) (map[string]*CheckpointIndex, error)
 	ReadAccounts() ([]string, error)
+	ReadTransactions(prefix string) (*TrieIndex, error)
+	MergeTransactions(prefix string, other *TrieIndex) error
 }
 
 type Backend interface {
@@ -70,6 +72,22 @@ func (s *store) Read(account string) (map[string]*CheckpointIndex, error) {
 
 func (s *store) ReadAccounts() ([]string, error) {
 	return s.backend.ReadAccounts()
+}
+
+func (s *store) ReadTransactions(prefix string) (*TrieIndex, error) {
+	return s.getCreateTrieIndex(prefix)
+}
+
+func (s *store) MergeTransactions(prefix string, other *TrieIndex) error {
+	index, err := s.getCreateTrieIndex(prefix)
+	if err != nil {
+		return err
+	}
+	if err := index.Merge(other); err != nil {
+		return err
+	}
+	s.txIndexes[prefix] = index
+	return nil
 }
 
 func (s *store) Flush() error {

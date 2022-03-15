@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -189,7 +190,58 @@ func main() {
 					}
 				}
 
-				log.Infof("Last Flushing %d, processed %d", routine, processed)
+				log.Infof("Flushing Accounts %d, processed %d", routine, processed)
+				err = indexStore.Flush()
+				if err != nil {
+					panic(err)
+				}
+
+				// Merge the transaction indexes
+				// There's 256 files, (one for each first byte of the txn hash)
+				processed = 0
+				for i := byte(0x00); i < 0xff; i++ {
+					hashLeft := uint32(i >> 4)
+					hashRight := uint32(0x0f & i)
+					if hashRight%uint32(reduceJobs) != uint32(jobIndex) {
+						// This job is not merging this prefix
+						skipped++
+						continue
+					}
+
+					if hashLeft%uint32(parallel) != uint32(routine) {
+						// This go routine is not merging this prefix
+						skipped++
+						continue
+					}
+					processed++
+
+					prefix := hex.EncodeToString([]byte{i})
+
+					for k := uint64(0); k < mapJobs; k++ {
+						innerJobStore, err := index.NewS3Store(
+							&aws.Config{Region: aws.String("us-east-1")},
+							fmt.Sprintf("job_%d", k),
+							parallel,
+						)
+						if err != nil {
+							panic(err)
+						}
+
+						innerTxnIndexes, err := innerJobStore.ReadTransactions(prefix)
+						if err != nil {
+							if err == os.ErrNotExist {
+								continue
+							}
+							panic(err)
+						}
+
+						if err := indexStore.MergeTransactions(prefix, innerTxnIndexes); err != nil {
+							panic(err)
+						}
+					}
+				}
+
+				log.Infof("Flushing Transactions %d, processed %d", routine, processed)
 				err = indexStore.Flush()
 				if err != nil {
 					panic(err)
