@@ -9,6 +9,7 @@ import (
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,6 +150,7 @@ func TestIgnoreInvalidTOMLUrls(t *testing.T) {
 }
 
 func TestProcessAsset_notCached(t *testing.T) {
+	scraper := &ScraperConfig{Logger:log.DefaultLogger}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `SIGNING_KEY="not cached signing key"`)
 	}))
@@ -159,13 +161,14 @@ func TestProcessAsset_notCached(t *testing.T) {
 	asset.Code = "SOMETHINGVALID"
 	asset.Links.Toml.Href = server.URL
 	tomlCache := map[string]TOMLIssuer{}
-	finalAsset, err := processAsset(asset, tomlCache, true)
+	finalAsset, err := scraper.processAsset(asset, tomlCache, true)
 	require.NoError(t, err)
 	assert.NotZero(t, finalAsset)
 	assert.Equal(t, "not cached signing key", finalAsset.IssuerDetails.SigningKey)
 }
 
 func TestProcessAsset_cached(t *testing.T) {
+	scraper := &ScraperConfig{Logger:log.DefaultLogger}
 	asset := hProtocol.AssetStat{
 		Amount:      "123901.0129310",
 		NumAccounts: 100,
@@ -177,7 +180,7 @@ func TestProcessAsset_cached(t *testing.T) {
 			SigningKey: "signing key",
 		},
 	}
-	finalAsset, err := processAsset(asset, tomlCache, true)
+	finalAsset, err := scraper.processAsset(asset, tomlCache, true)
 	require.NoError(t, err)
 	assert.NotZero(t, finalAsset)
 	assert.Equal(t, "signing key", finalAsset.IssuerDetails.SigningKey)

@@ -212,7 +212,7 @@ func makeFinalAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func processAsset(asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
+func (c *ScraperConfig) processAsset(asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
 	var errors []error
 	var issuer TOMLIssuer
 
@@ -221,7 +221,10 @@ func processAsset(asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, sh
 
 		var ok bool
 		issuer, ok = tomlCache[tomlURL]
-		if !ok {
+		if ok {
+			c.Logger.Infof("Using cached TOML for asset %s:%s", asset.Asset.Code, asset.Asset.Issuer)
+		} else {
+			c.Logger.Infof("Fetching TOML for asset %s:%s", asset.Asset.Code, asset.Asset.Issuer)
 			tomlData, err := fetchTOMLData(tomlURL)
 			if err != nil {
 				errors = append(errors, err)
@@ -269,7 +272,8 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 
 			for j := start; j < end; j++ {
 				if !shouldDiscardAsset(assets[j], shouldValidateTOML) {
-					finalAsset, err := processAsset(assets[j], tomlCache, shouldValidateTOML)
+					c.Logger.Infof("Processing asset %s:%s", assets[j].Asset.Code, assets[j].Asset.Issuer)
+					finalAsset, err := c.processAsset(assets[j], tomlCache, shouldValidateTOML)
 					if err != nil {
 						mutex.Lock()
 						numTrash++
@@ -278,6 +282,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 					}
 					assetQueue <- finalAsset
 				} else {
+					c.Logger.Infof("Discarding asset %s:%s", assets[j].Asset.Code, assets[j].Asset.Issuer)
 					mutex.Lock()
 					numTrash++
 					mutex.Unlock()
