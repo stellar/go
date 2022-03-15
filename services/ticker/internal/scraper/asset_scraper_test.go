@@ -150,7 +150,7 @@ func TestIgnoreInvalidTOMLUrls(t *testing.T) {
 }
 
 func TestProcessAsset_notCached(t *testing.T) {
-	scraper := &ScraperConfig{Logger:log.DefaultLogger}
+	scraper := &ScraperConfig{Logger: log.DefaultLogger}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `SIGNING_KEY="not cached signing key"`)
 	}))
@@ -168,7 +168,7 @@ func TestProcessAsset_notCached(t *testing.T) {
 }
 
 func TestProcessAsset_cached(t *testing.T) {
-	scraper := &ScraperConfig{Logger:log.DefaultLogger}
+	scraper := &ScraperConfig{Logger: log.DefaultLogger}
 	asset := hProtocol.AssetStat{
 		Amount:      "123901.0129310",
 		NumAccounts: 100,
