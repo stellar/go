@@ -3,7 +3,7 @@ package scraper
 // TOMLCache caches a max of one toml at a time. Old records are discarded when
 // new records are added.
 type TOMLCache struct {
-	set bool
+	set        bool
 	tomlURL    string
 	tomlIssuer TOMLIssuer
 }
