@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -255,6 +256,14 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 	numAssets := len(assets)
 	chunkSize := int(math.Ceil(float64(numAssets) / float64(parallelism)))
 	wg.Add(parallelism)
+
+	// Sort assets by their toml URL so that assets with the same toml URL are
+	// grouped together. This is so that we can load each toml URL once, and
+	// cache the result for the subsequent assets without needing to store more
+	// than one toml in memory at a time.
+	sort.Slice(assets, func(i, j int) bool {
+		return assets[i].Links.Toml.Href < assets[j].Links.Toml.Href
+	})
 
 	// The assets are divided into chunks of chunkSize, and each goroutine is responsible
 	// for cleaning up one chunk
