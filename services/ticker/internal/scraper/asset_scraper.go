@@ -60,10 +60,8 @@ func decodeTOMLIssuer(tomlData string) (issuer TOMLIssuer, err error) {
 	return
 }
 
-// fetchTOMLData fetches the TOML data for a given hProtocol.AssetStat
-func fetchTOMLData(asset hProtocol.AssetStat) (data string, err error) {
-	tomlURL := asset.Links.Toml.Href
-
+// fetchTOMLData fetches the TOML data from the URL.
+func fetchTOMLData(tomlURL string) (data string, err error) {
 	if tomlURL == "" {
 		err = errors.New("Asset does not have a TOML URL")
 		return
@@ -214,19 +212,30 @@ func makeFinalAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func processAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) (FinalAsset, error) {
+func (c *ScraperConfig) processAsset(asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
 	var errors []error
 	var issuer TOMLIssuer
 
 	if shouldValidateTOML {
-		tomlData, err := fetchTOMLData(asset)
-		if err != nil {
-			errors = append(errors, err)
-		}
+		tomlURL := asset.Links.Toml.Href
 
-		issuer, err = decodeTOMLIssuer(tomlData)
-		if err != nil {
-			errors = append(errors, err)
+		var ok bool
+		issuer, ok = tomlCache[tomlURL]
+		if ok {
+			c.Logger.Infof("Using cached TOML for asset %s:%s", asset.Asset.Code, asset.Asset.Issuer)
+		} else {
+			c.Logger.Infof("Fetching TOML for asset %s:%s", asset.Asset.Code, asset.Asset.Issuer)
+			tomlData, err := fetchTOMLData(tomlURL)
+			if err != nil {
+				errors = append(errors, err)
+			}
+
+			issuer, err = decodeTOMLIssuer(tomlData)
+			if err != nil {
+				errors = append(errors, err)
+			}
+
+			tomlCache[tomlURL] = issuer
 		}
 	}
 
@@ -255,9 +264,16 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 				end = numAssets
 			}
 
+			// Each routine running concurrently has a separate cache of TOMLs
+			// loaded. A single shared cache would be better, but this is a
+			// tradeoff for simplicity because a shared map mutated with HTTP
+			// lookups would have a significant amount of contention.
+			tomlCache := map[string]TOMLIssuer{}
+
 			for j := start; j < end; j++ {
 				if !shouldDiscardAsset(assets[j], shouldValidateTOML) {
-					finalAsset, err := processAsset(assets[j], shouldValidateTOML)
+					c.Logger.Infof("Processing asset %s:%s", assets[j].Asset.Code, assets[j].Asset.Issuer)
+					finalAsset, err := c.processAsset(assets[j], tomlCache, shouldValidateTOML)
 					if err != nil {
 						mutex.Lock()
 						numTrash++
@@ -266,6 +282,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 					}
 					assetQueue <- finalAsset
 				} else {
+					c.Logger.Infof("Discarding asset %s:%s", assets[j].Asset.Code, assets[j].Asset.Issuer)
 					mutex.Lock()
 					numTrash++
 					mutex.Unlock()
