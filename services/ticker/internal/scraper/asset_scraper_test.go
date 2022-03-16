@@ -160,7 +160,7 @@ func TestProcessAsset_notCached(t *testing.T) {
 	}
 	asset.Code = "SOMETHINGVALID"
 	asset.Links.Toml.Href = server.URL
-	tomlCache := map[string]TOMLIssuer{}
+	tomlCache := TOMLCache{}
 	finalAsset, err := processAsset(logger, asset, tomlCache, true)
 	require.NoError(t, err)
 	assert.NotZero(t, finalAsset)
@@ -175,11 +175,8 @@ func TestProcessAsset_cached(t *testing.T) {
 	}
 	asset.Code = "SOMETHINGVALID"
 	asset.Links.Toml.Href = "url"
-	tomlCache := map[string]TOMLIssuer{
-		"url": {
-			SigningKey: "signing key",
-		},
-	}
+	tomlCache := TOMLCache{}
+	tomlCache.Set("url", TOMLIssuer{SigningKey: "signing key"})
 	finalAsset, err := processAsset(logger, asset, tomlCache, true)
 	require.NoError(t, err)
 	assert.NotZero(t, finalAsset)
