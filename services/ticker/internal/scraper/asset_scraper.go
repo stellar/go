@@ -214,7 +214,6 @@ func makeFinalAsset(
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
 func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
-
 	var errors []error
 	var issuer TOMLIssuer
 
