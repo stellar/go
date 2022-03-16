@@ -214,7 +214,7 @@ func makeFinalAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache TOMLCache, shouldValidateTOML bool) (FinalAsset, error) {
+func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache *TOMLCache, shouldValidateTOML bool) (FinalAsset, error) {
 	var errors []error
 	var issuer TOMLIssuer
 
@@ -280,7 +280,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 			// loaded. A single shared cache would be better, but this is a
 			// tradeoff for simplicity because a shared map mutated with HTTP
 			// lookups would have a significant amount of contention.
-			tomlCache := TOMLCache{}
+			tomlCache := &TOMLCache{}
 
 			for j := start; j < end; j++ {
 				logger := c.Logger.
