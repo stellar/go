@@ -17,6 +17,7 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/ticker/internal/utils"
 	"github.com/stellar/go/support/errors"
+	hlog "github.com/stellar/go/support/log"
 )
 
 // shouldDiscardAsset maps the criteria for discarding an asset from the asset index
@@ -212,19 +213,21 @@ func makeFinalAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func (c *ScraperConfig) processAsset(asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
+func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
 	var errors []error
 	var issuer TOMLIssuer
 
 	if shouldValidateTOML {
 		tomlURL := asset.Links.Toml.Href
+		logger = logger.WithField("asset_toml_url", tomlURL)
+		logger.Info("Collecting TOML for asset")
 
 		var ok bool
 		issuer, ok = tomlCache[tomlURL]
 		if ok {
-			c.Logger.Infof("Using cached TOML for asset %s:%s", asset.Asset.Code, asset.Asset.Issuer)
+			logger.Info("Using cached TOML for asset")
 		} else {
-			c.Logger.Infof("Fetching TOML for asset %s:%s", asset.Asset.Code, asset.Asset.Issuer)
+			logger.Info("Fetching TOML for asset")
 			tomlData, err := fetchTOMLData(tomlURL)
 			if err != nil {
 				errors = append(errors, err)
@@ -271,9 +274,12 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 			tomlCache := map[string]TOMLIssuer{}
 
 			for j := start; j < end; j++ {
+				logger := c.Logger.
+					WithField("asset_code", assets[j].Asset.Code).
+					WithField("asset_issuer", assets[j].Asset.Issuer)
 				if !shouldDiscardAsset(assets[j], shouldValidateTOML) {
-					c.Logger.Infof("Processing asset %s:%s", assets[j].Asset.Code, assets[j].Asset.Issuer)
-					finalAsset, err := c.processAsset(assets[j], tomlCache, shouldValidateTOML)
+					c.Logger.Info("Processing asset")
+					finalAsset, err := processAsset(logger, assets[j], tomlCache, shouldValidateTOML)
 					if err != nil {
 						mutex.Lock()
 						numTrash++
@@ -282,7 +288,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 					}
 					assetQueue <- finalAsset
 				} else {
-					c.Logger.Infof("Discarding asset %s:%s", assets[j].Asset.Code, assets[j].Asset.Issuer)
+					c.Logger.Info("Discarding asset")
 					mutex.Lock()
 					numTrash++
 					mutex.Unlock()
