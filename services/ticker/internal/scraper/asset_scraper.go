@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -213,7 +214,7 @@ func makeFinalAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache map[string]TOMLIssuer, shouldValidateTOML bool) (FinalAsset, error) {
+func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache *TOMLCache, shouldValidateTOML bool) (FinalAsset, error) {
 	var errors []error
 	var issuer TOMLIssuer
 
@@ -223,7 +224,7 @@ func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache map[s
 		logger.Info("Collecting TOML for asset")
 
 		var ok bool
-		issuer, ok = tomlCache[tomlURL]
+		issuer, ok = tomlCache.Get(tomlURL)
 		if ok {
 			logger.Info("Using cached TOML for asset")
 		} else {
@@ -238,7 +239,7 @@ func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache map[s
 				errors = append(errors, err)
 			}
 
-			tomlCache[tomlURL] = issuer
+			tomlCache.Set(tomlURL, issuer)
 		}
 	}
 
@@ -256,6 +257,14 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 	chunkSize := int(math.Ceil(float64(numAssets) / float64(parallelism)))
 	wg.Add(parallelism)
 
+	// Sort assets by their toml URL so that assets with the same toml URL are
+	// grouped together. This is so that we can load each toml URL once, and
+	// cache the result for the subsequent assets without needing to store more
+	// than one toml in memory at a time.
+	sort.Slice(assets, func(i, j int) bool {
+		return assets[i].Links.Toml.Href < assets[j].Links.Toml.Href
+	})
+
 	// The assets are divided into chunks of chunkSize, and each goroutine is responsible
 	// for cleaning up one chunk
 	for i := 0; i < parallelism; i++ {
@@ -271,7 +280,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 			// loaded. A single shared cache would be better, but this is a
 			// tradeoff for simplicity because a shared map mutated with HTTP
 			// lookups would have a significant amount of contention.
-			tomlCache := map[string]TOMLIssuer{}
+			tomlCache := &TOMLCache{}
 
 			for j := start; j < end; j++ {
 				logger := c.Logger.
