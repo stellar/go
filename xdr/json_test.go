@@ -16,8 +16,8 @@ func TestClaimPredicateJSON(t *testing.T) {
 	unconditional := &ClaimPredicate{
 		Type: ClaimPredicateTypeClaimPredicateUnconditional,
 	}
-	relBefore := Int64(12)
-	absBefore := Int64(1598440539)
+	relBefore := Duration(12)
+	absBefore := TimePoint(1598440539)
 
 	source := ClaimPredicate{
 		Type: ClaimPredicateTypeClaimPredicateAnd,
@@ -123,7 +123,7 @@ func TestAbsBeforeTimestamps(t *testing.T) {
 			`{"abs_before":"+292277026596-12-04T15:30:08Z","abs_before_epoch":"-9223372036854775808"}`,
 		},
 	} {
-		xdrSec := Int64(testCase.unix)
+		xdrSec := TimePoint(testCase.unix)
 		source := ClaimPredicate{
 			Type:      ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
 			AbsBefore: &xdrSec,

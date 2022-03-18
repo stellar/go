@@ -24,8 +24,8 @@ func TestPopulateClaimableBalance(t *testing.T) {
 	unconditional := &xdr.ClaimPredicate{
 		Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
 	}
-	relBefore := xdr.Int64(12)
-	absBefore := xdr.Int64(1598440539)
+	relBefore := xdr.Duration(12)
+	absBefore := xdr.TimePoint(1598440539)
 
 	id, err := xdr.MarshalHex(&balanceID)
 	tt.NoError(err)

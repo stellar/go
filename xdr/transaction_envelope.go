@@ -93,9 +93,9 @@ func (e TransactionEnvelope) SeqNum() int64 {
 func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		return e.FeeBump.Tx.InnerTx.V1.Tx.TimeBounds
+		return e.FeeBump.Tx.InnerTx.V1.Tx.TimeBounds()
 	case EnvelopeTypeEnvelopeTypeTx:
-		return e.V1.Tx.TimeBounds
+		return e.V1.Tx.TimeBounds()
 	case EnvelopeTypeEnvelopeTypeTxV0:
 		return e.V0.Tx.TimeBounds
 	default:

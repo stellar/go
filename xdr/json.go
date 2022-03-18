@@ -94,11 +94,11 @@ func (c claimPredicateJSON) toXDR() (ClaimPredicate, error) {
 	case c.Unconditional:
 		result.Type = ClaimPredicateTypeClaimPredicateUnconditional
 	case c.RelBefore != nil:
-		relBefore := Int64(*c.RelBefore)
+		relBefore := Duration(*c.RelBefore)
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeRelativeTime
 		result.RelBefore = &relBefore
 	case c.AbsBefore != nil:
-		absBefore := Int64(c.AbsBefore.UTC().Unix())
+		absBefore := TimePoint(c.AbsBefore.UTC().Unix())
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime
 		result.AbsBefore = &absBefore
 	case c.Not != nil:

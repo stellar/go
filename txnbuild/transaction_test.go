@@ -43,8 +43,8 @@ func TestTimebounds(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, tb, tx.timebounds)
-	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.TimeBounds.MinTime)
-	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.TimeBounds.MaxTime)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.Cond.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.Cond.TimeBounds.MaxTime)
 }
 
 func TestMissingSourceAccount(t *testing.T) {

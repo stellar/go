@@ -75,7 +75,7 @@ func NotPredicate(pred xdr.ClaimPredicate) xdr.ClaimPredicate {
 // includes the CreateClaimableBalance operation is less than this (absolute)
 // Unix timestamp.
 func BeforeAbsoluteTimePredicate(epochSeconds int64) xdr.ClaimPredicate {
-	absBefore := xdr.Int64(epochSeconds)
+	absBefore := xdr.TimePoint(epochSeconds)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
 		AbsBefore: &absBefore,
@@ -88,7 +88,7 @@ func BeforeAbsoluteTimePredicate(epochSeconds int64) xdr.ClaimPredicate {
 // includes the CreateClaimableBalance operation plus this relative time delta
 // (in seconds) is less than the current time.
 func BeforeRelativeTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
-	relBefore := xdr.Int64(secondsBefore)
+	relBefore := xdr.Duration(secondsBefore)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
 		RelBefore: &relBefore,

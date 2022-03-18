@@ -576,6 +576,58 @@ struct TimeBounds
     TimePoint maxTime; // 0 here means no maxTime
 };
 
+struct LedgerBounds
+{
+    uint32 minLedger;
+    uint32 maxLedger;
+};
+
+struct PreconditionsV2 {
+    TimeBounds *timeBounds;
+
+    // Transaciton only valid for ledger numbers n such that
+    // minLedger <= n < maxLedger
+    LedgerBounds *ledgerBounds;
+
+    // If NULL, only valid when sourceAccount's sequence number
+    // is seqNum - 1.  Otherwise, valid when sourceAccount's
+    // sequence number n satisfies minSeqNum <= n < tx.seqNum.
+    // Note that after execution the account's sequence number
+    // is always raised to tx.seqNum, and a transaction is not
+    // valid if tx.seqNum is too high to ensure replay protection.
+    SequenceNumber *minSeqNum;
+
+    // For the transaction to be valid, the current ledger time must
+    // be at least minSeqAge greater than sourceAccount's seqTime.
+    Duration minSeqAge;
+
+    // For the transaction to be valid, the current ledger number
+    // must be at least minSeqLedgerGap greater than sourceAccount's
+    // seqLedger.
+    uint32 minSeqLedgerGap;
+
+    // For the transaction to be valid, there must be a signature
+    // corresponding to every Signer in this array, even if the
+    // signature is not otherwise required by the sourceAccount or
+    // operations.
+    SignerKey extraSigners<2>;
+};
+
+enum PreconditionType {
+    PRECOND_NONE = 0,
+    PRECOND_TIME = 1,
+    PRECOND_V2 = 2
+};
+
+union Preconditions switch (PreconditionType type) {
+    case PRECOND_NONE:
+        void;
+    case PRECOND_TIME:
+        TimeBounds timeBounds;
+    case PRECOND_V2:
+        PreconditionsV2 v2;
+};
+
 // maximum number of operations per transaction
 const MAX_OPS_PER_TX = 100;
 
@@ -627,8 +679,8 @@ struct Transaction
     // sequence number to consume in the account
     SequenceNumber seqNum;
 
-    // validity range (inclusive) for the last ledger close time
-    TimeBounds* timeBounds;
+    // validity conditions
+    Preconditions cond;
 
     Memo memo;
 

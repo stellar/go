@@ -28,6 +28,10 @@ func TestSignerKey_GetAddress(t *testing.T) {
 			"HashX",
 			"XBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
 		},
+		{
+			"SignedPayload",
+			"PA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAOQCAQDAQCQMBYIBEFAWDANBYHRAEISCMKBKFQXDAMRUGY4DUAAAAFGBU",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -40,8 +44,8 @@ func TestSignerKey_GetAddress(t *testing.T) {
 			}
 
 			gotAddress, err := key.GetAddress()
-			assert.Equal(t, tt.wantAddress, gotAddress)
 			assert.NoError(t, err)
+			assert.Equal(t, tt.wantAddress, gotAddress)
 		})
 	}
 }
@@ -63,6 +67,10 @@ func TestSignerKey_SetAddress(t *testing.T) {
 		{
 			Name:    "HashX",
 			Address: "XBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
+		},
+		{
+			"SignedPayload",
+			"PA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAOQCAQDAQCQMBYIBEFAWDANBYHRAEISCMKBKFQXDAMRUGY4DUAAAAFGBU",
 		},
 	}
 
