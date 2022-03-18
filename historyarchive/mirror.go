@@ -77,6 +77,9 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 				}
 
 				for _, cat := range Categories() {
+					if opts.SkipOptional && !categoryRequired(cat) {
+						continue
+					}
 					pth := CategoryCheckpointPath(cat, ix)
 					err = copyPath(src, dst, pth, opts)
 					if err != nil && !categoryRequired(cat) {

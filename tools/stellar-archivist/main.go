@@ -6,10 +6,11 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/historyarchive"
@@ -256,6 +257,13 @@ func main() {
 		"thorough",
 		false,
 		"decode and re-encode all buckets",
+	)
+
+	rootCmd.PersistentFlags().BoolVar(
+		&opts.CommandOpts.SkipOptional,
+		"skip-optional",
+		false,
+		"skip optional (SCP) checkpoint files",
 	)
 
 	rootCmd.PersistentFlags().BoolVar(
