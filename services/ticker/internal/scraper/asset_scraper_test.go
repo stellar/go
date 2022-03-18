@@ -1,13 +1,17 @@
 package scraper
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShouldDiscardAsset(t *testing.T) {
@@ -134,10 +138,7 @@ func TestIsDomainVerified(t *testing.T) {
 
 func TestIgnoreInvalidTOMLUrls(t *testing.T) {
 	invalidURL := "https:// there is something wrong here.com/stellar.toml"
-	assetStat := hProtocol.AssetStat{}
-	assetStat.Links.Toml = hal.Link{Href: invalidURL}
-
-	_, err := fetchTOMLData(assetStat)
+	_, err := fetchTOMLData(invalidURL)
 
 	urlErr, ok := errors.Cause(err).(*url.Error)
 	if !ok {
@@ -146,4 +147,41 @@ func TestIgnoreInvalidTOMLUrls(t *testing.T) {
 	assert.Equal(t, "parse", urlErr.Op)
 	assert.Equal(t, "https:// there is something wrong here.com/stellar.toml", urlErr.URL)
 	assert.EqualError(t, urlErr.Err, `invalid character " " in host name`)
+}
+
+func TestProcessAsset_notCached(t *testing.T) {
+	logger := log.DefaultLogger
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `SIGNING_KEY="not cached signing key"`)
+	}))
+	asset := hProtocol.AssetStat{
+		Amount:      "123901.0129310",
+		NumAccounts: 100,
+	}
+	asset.Code = "SOMETHINGVALID"
+	asset.Links.Toml.Href = server.URL
+	tomlCache := &TOMLCache{}
+	finalAsset, err := processAsset(logger, asset, tomlCache, true)
+	require.NoError(t, err)
+	assert.NotZero(t, finalAsset)
+	assert.Equal(t, "not cached signing key", finalAsset.IssuerDetails.SigningKey)
+	cachedTOML, ok := tomlCache.Get(server.URL)
+	assert.True(t, ok)
+	assert.Equal(t, TOMLIssuer{SigningKey: "not cached signing key"}, cachedTOML)
+}
+
+func TestProcessAsset_cached(t *testing.T) {
+	logger := log.DefaultLogger
+	asset := hProtocol.AssetStat{
+		Amount:      "123901.0129310",
+		NumAccounts: 100,
+	}
+	asset.Code = "SOMETHINGVALID"
+	asset.Links.Toml.Href = "url"
+	tomlCache := &TOMLCache{}
+	tomlCache.Set("url", TOMLIssuer{SigningKey: "signing key"})
+	finalAsset, err := processAsset(logger, asset, tomlCache, true)
+	require.NoError(t, err)
+	assert.NotZero(t, finalAsset)
+	assert.Equal(t, "signing key", finalAsset.IssuerDetails.SigningKey)
 }
