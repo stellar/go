@@ -42,6 +42,7 @@ func contextRoute(ctx context.Context) string {
 
 type SessionWithMetrics struct {
 	SessionInterface
+
 	registry                 *prometheus.Registry
 	queryCounter             *prometheus.CounterVec
 	queryDurationSummary     *prometheus.SummaryVec
@@ -54,6 +55,8 @@ type SessionWithMetrics struct {
 	maxIdleClosedCounter     prometheus.CounterFunc
 	maxIdleTimeClosedCounter prometheus.CounterFunc
 	maxLifetimeClosedCounter prometheus.CounterFunc
+	roundTripProbe           *roundTripProbe
+	roundTripTimeSummary     prometheus.Summary
 }
 
 func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *prometheus.Registry) SessionInterface {
@@ -221,10 +224,28 @@ func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *
 	)
 	registry.MustRegister(s.maxLifetimeClosedCounter)
 
+	s.roundTripTimeSummary = prometheus.NewSummary(
+		prometheus.SummaryOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "round_trip_time_seconds",
+			Help:        "time required to run `select 1` query in a DB - effectively measures round trip time, if time exceeds 1s it will be recorded as 1",
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
+		},
+	)
+	registry.MustRegister(s.roundTripTimeSummary)
+
+	s.roundTripProbe = &roundTripProbe{
+		session:              base,
+		roundTripTimeSummary: s.roundTripTimeSummary,
+	}
+	s.roundTripProbe.start()
 	return s
 }
 
 func (s *SessionWithMetrics) Close() error {
+	s.roundTripProbe.close()
+
 	s.registry.Unregister(s.queryCounter)
 	s.registry.Unregister(s.queryDurationSummary)
 	// s.registry.Unregister(s.txnCounter)
@@ -270,7 +291,12 @@ func (s *SessionWithMetrics) TruncateTables(ctx context.Context, tables []string
 
 func (s *SessionWithMetrics) Clone() SessionInterface {
 	return &SessionWithMetrics{
-		SessionInterface:     s.SessionInterface.Clone(),
+		SessionInterface: s.SessionInterface.Clone(),
+
+		// Note that cloned Session will point at the same roundTripProbe
+		// to avoid starting multiple go routines.
+		roundTripProbe: s.roundTripProbe,
+
 		registry:             s.registry,
 		queryCounter:         s.queryCounter,
 		queryDurationSummary: s.queryDurationSummary,

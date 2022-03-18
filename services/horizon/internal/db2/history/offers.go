@@ -4,19 +4,18 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/stellar/go/support/errors"
 )
 
 // QOffers defines offer related queries.
 type QOffers interface {
-	GetAllOffers(ctx context.Context) ([]Offer, error)
+	StreamAllOffers(ctx context.Context, callback func(Offer) error) error
 	GetOffersByIDs(ctx context.Context, ids []int64) ([]Offer, error)
 	CountOffers(ctx context.Context) (int, error)
 	GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]Offer, error)
-	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	UpdateOffer(ctx context.Context, offer Offer) (int64, error)
-	RemoveOffers(ctx context.Context, offerIDs []int64, lastModifiedLedger uint32) (int64, error)
+	UpsertOffers(ctx context.Context, offers []Offer) error
 	CompactOffers(ctx context.Context, cutOffSequence uint32) (int64, error)
 }
 
@@ -82,11 +81,30 @@ func (q *Q) GetOffers(ctx context.Context, query OffersQuery) ([]Offer, error) {
 	return offers, nil
 }
 
-// GetAllOffers loads all non deleted offers
-func (q *Q) GetAllOffers(ctx context.Context) ([]Offer, error) {
-	var offers []Offer
-	err := q.Select(ctx, &offers, selectOffers.Where("deleted = ?", false))
-	return offers, err
+// StreamAllOffers loads all non deleted offers
+func (q *Q) StreamAllOffers(ctx context.Context, callback func(Offer) error) error {
+	var rows *sqlx.Rows
+	var err error
+
+	if rows, err = q.Query(ctx, selectOffers.Where("deleted = ?", false)); err != nil {
+		return errors.Wrap(err, "could not run all offers select query")
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		offer := Offer{}
+		if err = rows.StructScan(&offer); err != nil {
+			return errors.Wrap(err, "could not scan row into offer struct")
+		}
+
+		if err = callback(offer); err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
+
 }
 
 // GetUpdatedOffers returns all offers created, updated, or deleted after the given ledger sequence.
@@ -96,31 +114,45 @@ func (q *Q) GetUpdatedOffers(ctx context.Context, newerThanSequence uint32) ([]O
 	return offers, err
 }
 
-// UpdateOffer updates a row in the offers table.
-// Returns number of rows affected and error.
-func (q *Q) UpdateOffer(ctx context.Context, offer Offer) (int64, error) {
-	updateBuilder := q.GetTable("offers").Update()
-	result, err := updateBuilder.SetStruct(offer, []string{}).Where("offer_id = ?", offer.OfferID).Exec(ctx)
-	if err != nil {
-		return 0, err
+// UpsertOffers upserts a batch of offers in the offers table.
+// There's currently no limit of the number of offers this method can
+// accept other than 2GB limit of the query string length what should be enough
+// for each ledger with the current limits.
+func (q *Q) UpsertOffers(ctx context.Context, offers []Offer) error {
+	var sellerID, sellingAsset, buyingAsset, offerID, amount, priceN, priceD,
+		price, flags, lastModifiedLedger, deleted, sponsor []interface{}
+
+	for _, offer := range offers {
+		sellerID = append(sellerID, offer.SellerID)
+		offerID = append(offerID, offer.OfferID)
+		sellingAsset = append(sellingAsset, offer.SellingAsset)
+		buyingAsset = append(buyingAsset, offer.BuyingAsset)
+		amount = append(amount, offer.Amount)
+		priceN = append(priceN, offer.Pricen)
+		priceD = append(priceD, offer.Priced)
+		price = append(price, offer.Price)
+		flags = append(flags, offer.Flags)
+		lastModifiedLedger = append(lastModifiedLedger, offer.LastModifiedLedger)
+		deleted = append(deleted, offer.Deleted)
+		sponsor = append(sponsor, offer.Sponsor)
 	}
-	return result.RowsAffected()
-}
 
-// RemoveOffers marks rows in the offers table as deleted.
-// Returns number of rows affected and error.
-func (q *Q) RemoveOffers(ctx context.Context, offerIDs []int64, lastModifiedLedger uint32) (int64, error) {
-	sql := sq.Update("offers").
-		Set("deleted", true).
-		Set("last_modified_ledger", lastModifiedLedger).
-		Where(map[string]interface{}{"offer_id": offerIDs})
-
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
+	upsertFields := []upsertField{
+		{"seller_id", "text", sellerID},
+		{"offer_id", "bigint", offerID},
+		{"selling_asset", "text", sellingAsset},
+		{"buying_asset", "text", buyingAsset},
+		{"amount", "bigint", amount},
+		{"pricen", "integer", priceN},
+		{"priced", "integer", priceD},
+		{"price", "double precision", price},
+		{"flags", "integer", flags},
+		{"deleted", "bool", deleted},
+		{"last_modified_ledger", "integer", lastModifiedLedger},
+		{"sponsor", "text", sponsor},
 	}
 
-	return result.RowsAffected()
+	return q.upsertRows(ctx, "offers", "offer_id", upsertFields)
 }
 
 // CompactOffers removes rows from the offers table which are marked for deletion.

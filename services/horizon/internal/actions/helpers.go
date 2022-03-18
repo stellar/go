@@ -20,9 +20,9 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -440,13 +440,17 @@ func getURIParams(query interface{}, paginated bool) []string {
 	params := getSchemaTags(reflect.ValueOf(query).Elem())
 	if paginated {
 		pagingParams := []string{
-			"cursor",
-			"limit",
-			"order",
+			ParamCursor,
+			ParamLimit,
+			ParamOrder,
 		}
 		params = append(params, pagingParams...)
 	}
 	return params
+}
+
+func getURITemplate(query interface{}, basePath string, paginated bool) string {
+	return "/" + basePath + "{?" + strings.Join(getURIParams(query, paginated), ",") + "}"
 }
 
 func getSchemaTags(v reflect.Value) []string {

@@ -31,6 +31,9 @@ const (
 )
 
 var (
+	// ErrTimeout is an error returned by Session methods when request has
+	// taken longer than context's deadline max duration
+	ErrTimeout = errors.New("canceling statement due to lack of response within timeout period")
 	// ErrCancelled is an error returned by Session methods when request has
 	// been cancelled (ex. context cancelled).
 	ErrCancelled = errors.New("canceling statement due to user request")
@@ -124,6 +127,8 @@ type SessionInterface interface {
 	GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) error
 	SelectRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	Query(ctx context.Context, query squirrel.Sqlizer) (*sqlx.Rows, error)
+	QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	GetTable(name string) *Table
 	Exec(ctx context.Context, query squirrel.Sqlizer) (sql.Result, error)
 	ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error)

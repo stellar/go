@@ -329,5 +329,25 @@ func (m *MockClient) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsP
 	return a.Get(0).(hProtocol.TradeAggregationsPage), a.Error(1)
 }
 
+func (m *MockClient) LiquidityPoolDetail(request LiquidityPoolRequest) (hProtocol.LiquidityPool, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.LiquidityPool), a.Error(1)
+}
+
+func (m *MockClient) LiquidityPools(request LiquidityPoolsRequest) (hProtocol.LiquidityPoolsPage, error) {
+	a := m.Called(request)
+	return a.Get(0).(hProtocol.LiquidityPoolsPage), a.Error(1)
+}
+
+func (m *MockClient) NextLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.LiquidityPoolsPage), a.Error(1)
+}
+
+func (m *MockClient) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (hProtocol.LiquidityPoolsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.LiquidityPoolsPage), a.Error(1)
+}
+
 // ensure that the MockClient implements ClientInterface
 var _ ClientInterface = &MockClient{}

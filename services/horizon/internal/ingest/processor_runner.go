@@ -18,7 +18,7 @@ const (
 	_                    = iota
 	historyArchiveSource = ingestionSource(iota)
 	ledgerSource         = ingestionSource(iota)
-	logFrequency         = 100000
+	logFrequency         = 50000
 )
 
 type horizonChangeProcessor interface {
@@ -47,6 +47,14 @@ func (statsLedgerTransactionProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
+type ledgerStats struct {
+	changeStats          ingest.StatsChangeProcessorResults
+	changeDurations      processorsRunDurations
+	transactionStats     processors.StatsLedgerTransactionProcessorResults
+	transactionDurations processorsRunDurations
+	tradeStats           processors.TradeStats
+}
+
 type ProcessorRunnerInterface interface {
 	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
@@ -60,13 +68,11 @@ type ProcessorRunnerInterface interface {
 	RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
 		transactionDurations processorsRunDurations,
+		tradeStats processors.TradeStats,
 		err error,
 	)
 	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-		changeStats ingest.StatsChangeProcessorResults,
-		changeDurations processorsRunDurations,
-		transactionStats processors.StatsLedgerTransactionProcessorResults,
-		transactionDurations processorsRunDurations,
+		stats ledgerStats,
 		err error,
 	)
 }
@@ -94,7 +100,8 @@ func (s *ProcessorRunner) DisableMemoryStatsLogging() {
 	s.logMemoryStats = false
 }
 
-func (s *ProcessorRunner) buildChangeProcessor(
+func buildChangeProcessor(
+	historyQ history.IngestionQ,
 	changeStats *ingest.StatsChangeProcessor,
 	source ingestionSource,
 	ledgerSequence uint32,
@@ -106,34 +113,37 @@ func (s *ProcessorRunner) buildChangeProcessor(
 	useLedgerCache := source == ledgerSource
 	return newGroupChangeProcessors([]horizonChangeProcessor{
 		statsChangeProcessor,
-		processors.NewAccountDataProcessor(s.historyQ),
-		processors.NewAccountsProcessor(s.historyQ),
-		processors.NewOffersProcessor(s.historyQ, ledgerSequence),
-		processors.NewAssetStatsProcessor(s.historyQ, useLedgerCache),
-		processors.NewSignersProcessor(s.historyQ, useLedgerCache),
-		processors.NewTrustLinesProcessor(s.historyQ),
-		processors.NewClaimableBalancesChangeProcessor(s.historyQ),
+		processors.NewAccountDataProcessor(historyQ),
+		processors.NewAccountsProcessor(historyQ),
+		processors.NewOffersProcessor(historyQ, ledgerSequence),
+		processors.NewAssetStatsProcessor(historyQ, useLedgerCache),
+		processors.NewSignersProcessor(historyQ, useLedgerCache),
+		processors.NewTrustLinesProcessor(historyQ),
+		processors.NewClaimableBalancesChangeProcessor(historyQ),
+		processors.NewLiquidityPoolsChangeProcessor(historyQ, ledgerSequence),
 	})
 }
 
 func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *processors.StatsLedgerTransactionProcessor,
+	tradeProcessor *processors.TradeProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
 ) *groupTransactionProcessors {
 	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
 		StatsLedgerTransactionProcessor: ledgerTransactionStats,
 	}
-
+	*tradeProcessor = *processors.NewTradeProcessor(s.historyQ, ledger)
 	sequence := uint32(ledger.Header.LedgerSeq)
 	return newGroupTransactionProcessors([]horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.historyQ, sequence),
-		processors.NewTradeProcessor(s.historyQ, ledger),
+		tradeProcessor,
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.historyQ, sequence),
 		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
+		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
 	})
 }
 
@@ -186,7 +196,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	bucketListHash xdr.Hash,
 ) (ingest.StatsChangeProcessorResults, error) {
 	changeStats := ingest.StatsChangeProcessor{}
-	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource, checkpointLedger)
+	changeProcessor := buildChangeProcessor(s.historyQ, &changeStats, historyArchiveSource, checkpointLedger)
 
 	if checkpointLedger == 1 {
 		if err := changeProcessor.ProcessChange(s.ctx, ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
@@ -261,10 +271,12 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
+	tradeStats processors.TradeStats,
 	err error,
 ) {
 	var (
 		ledgerTransactionStats processors.StatsLedgerTransactionProcessor
+		tradeProcessor         processors.TradeProcessor
 		transactionReader      *ingest.LedgerTransactionReader
 	)
 
@@ -279,7 +291,8 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
-	groupTransactionProcessors := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
+	groupTransactionProcessors := s.buildTransactionProcessor(
+		&ledgerTransactionStats, &tradeProcessor, transactionReader.GetHeader())
 	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
@@ -288,20 +301,18 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 
 	err = groupTransactionProcessors.Commit(s.ctx)
 	if err != nil {
-		err = errors.Wrap(err, "Error commiting changes from processor")
+		err = errors.Wrap(err, "Error committing changes from processor")
 		return
 	}
 
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
+	tradeStats = tradeProcessor.GetStats()
 	return
 }
 
 func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-	changeStats ingest.StatsChangeProcessorResults,
-	changeDurations processorsRunDurations,
-	transactionStats processors.StatsLedgerTransactionProcessorResults,
-	transactionDurations processorsRunDurations,
+	stats ledgerStats,
 	err error,
 ) {
 	changeStatsProcessor := ingest.StatsChangeProcessor{}
@@ -311,16 +322,16 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	groupChangeProcessors := s.buildChangeProcessor(&changeStatsProcessor, ledgerSource, ledger.LedgerSequence())
+	groupChangeProcessors := buildChangeProcessor(s.historyQ, &changeStatsProcessor, ledgerSource, ledger.LedgerSequence())
 	err = s.runChangeProcessorOnLedger(groupChangeProcessors, ledger)
 	if err != nil {
 		return
 	}
 
-	changeStats = changeStatsProcessor.GetResults()
-	changeDurations = groupChangeProcessors.processorsRunDurations
+	stats.changeStats = changeStatsProcessor.GetResults()
+	stats.changeDurations = groupChangeProcessors.processorsRunDurations
 
-	transactionStats, transactionDurations, err =
+	stats.transactionStats, stats.transactionDurations, stats.tradeStats, err =
 		s.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return

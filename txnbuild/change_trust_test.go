@@ -12,7 +12,7 @@ func TestChangeTrustMaxLimit(t *testing.T) {
 	txSourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639898))
 
 	changeTrust := ChangeTrust{
-		Line: CreditAsset{"ABCD", kp0.Address()},
+		Line: CreditAsset{"ABCD", kp0.Address()}.MustToChangeTrustAsset(),
 	}
 
 	received, err := newSignedTransaction(
@@ -37,7 +37,7 @@ func TestChangeTrustValidateInvalidAsset(t *testing.T) {
 	txSourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639898))
 
 	changeTrust := ChangeTrust{
-		Line: NativeAsset{},
+		Line: NativeAsset{}.MustToChangeTrustAsset(),
 	}
 
 	_, err := NewTransaction(
@@ -60,7 +60,7 @@ func TestChangeTrustValidateInvalidLimit(t *testing.T) {
 	txSourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639898))
 
 	changeTrust := ChangeTrust{
-		Line:  CreditAsset{"ABCD", kp0.Address()},
+		Line:  CreditAsset{"ABCD", kp0.Address()}.MustToChangeTrustAsset(),
 		Limit: "-1",
 	}
 
@@ -82,7 +82,7 @@ func TestChangeTrustValidateInvalidLimit(t *testing.T) {
 func TestChangeTrustRoundtrip(t *testing.T) {
 	changeTrust := ChangeTrust{
 		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-		Line:          CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Line:          CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"}.MustToChangeTrustAsset(),
 		Limit:         "1.0000000",
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{&changeTrust}, false)
@@ -90,7 +90,7 @@ func TestChangeTrustRoundtrip(t *testing.T) {
 	// with muxed accounts
 	changeTrust = ChangeTrust{
 		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
-		Line:          CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Line:          CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"}.MustToChangeTrustAsset(),
 		Limit:         "1.0000000",
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{&changeTrust}, true)

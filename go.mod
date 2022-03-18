@@ -10,7 +10,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
-	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.39.5
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/fatih/structs v1.0.0 // indirect
@@ -23,8 +23,9 @@ require (
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/schema v1.1.0
-	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
+	github.com/graph-gophers/graphql-go v1.3.0
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
+	github.com/holiman/uint256 v1.2.0
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -42,7 +43,6 @@ require (
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/onsi/ginkgo v1.7.0
 	github.com/onsi/gomega v1.4.3
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.9.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
@@ -60,13 +60,14 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431 // indirect
 	github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475
 	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
-	github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a
+	github.com/stellar/go-xdr v0.0.0-20211103144802-8017fc4bdfee
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/objx v0.3.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6 // indirect
-	github.com/xdrpp/goxdr v0.1.0
+	github.com/xdrpp/goxdr v0.1.1
 	github.com/xeipuuv/gojsonpointer v0.0.0-20151027082146-e0fe6f683076 // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20150808065054-e02fc20de94c // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20161231055540-f06f290571ce // indirect
@@ -75,7 +76,7 @@ require (
 	github.com/yudai/golcs v0.0.0-20150405163532-d1c525dea8ce // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
+	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	google.golang.org/api v0.50.0
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0

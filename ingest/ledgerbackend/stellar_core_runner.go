@@ -65,9 +65,9 @@ type stellarCoreRunner struct {
 	processExited    bool
 	processExitError error
 
-	storagePath      string
-	reuseStoragePath bool
-	nonce            string
+	storagePath string
+	useDB       bool
+	nonce       string
 
 	log *log.Entry
 }
@@ -83,7 +83,7 @@ func createRandomHexString(n int) string {
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	var fullStoragePath string
-	if runtime.GOOS == "windows" || mode == stellarCoreRunnerModeOffline || !config.ReuseStoragePath {
+	if runtime.GOOS == "windows" || mode == stellarCoreRunnerModeOffline {
 		// On Windows, first we ALWAYS append something to the base storage path,
 		// because we will delete the directory entirely when Horizon stops. We also
 		// add a random suffix in order to ensure that there aren't naming
@@ -119,12 +119,12 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
-		executablePath:   config.BinaryPath,
-		ctx:              ctx,
-		cancel:           cancel,
-		storagePath:      fullStoragePath,
-		reuseStoragePath: config.ReuseStoragePath,
-		mode:             mode,
+		executablePath: config.BinaryPath,
+		ctx:            ctx,
+		cancel:         cancel,
+		storagePath:    fullStoragePath,
+		useDB:          config.UseDB,
+		mode:           mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -243,20 +243,6 @@ func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 	return cmd
 }
 
-func (r *stellarCoreRunner) runCmd(params ...string) error {
-	cmd := r.createCmd(params...)
-	defer r.closeLogLineWriters(cmd)
-
-	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "could not start `stellar-core %v` cmd", params)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return errors.Wrapf(err, "error waiting for `stellar-core %v` subprocess", params)
-	}
-	return nil
-}
-
 // context returns the context.Context instance associated with the running captive core instance
 func (r *stellarCoreRunner) context() context.Context {
 	return r.ctx
@@ -275,16 +261,24 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	if r.started {
 		return errors.New("runner already started")
 	}
-	if err := r.runCmd("new-db"); err != nil {
-		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
-	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	r.cmd = r.createCmd(
-		"catchup", rangeArg,
-		"--metadata-output-stream", r.getPipeName(),
-		"--in-memory",
-	)
+	params := []string{"catchup", rangeArg, "--metadata-output-stream", r.getPipeName()}
+
+	// horizon operator has specified to use external storage for captive core ledger state
+	// instruct captive core invocation to not use memory, and in that case
+	// cc will look at DATABASE property in cfg toml for the external storage source to use.
+	// when using external storage of ledgers, use new-db to first set the state of
+	// remote db storage to genesis to purge any prior state and reset.
+	if r.useDB {
+		if err := r.createCmd("new-db").Run(); err != nil {
+			return errors.Wrap(err, "error initializing core db")
+		}
+	} else {
+		params = append(params, "--in-memory")
+	}
+
+	r.cmd = r.createCmd(params...)
 
 	var err error
 	r.pipe, err = r.start(r.cmd)
@@ -323,13 +317,34 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 
-	r.cmd = r.createCmd(
-		"run",
-		"--in-memory",
-		"--start-at-ledger", fmt.Sprintf("%d", from),
-		"--start-at-hash", hash,
-		"--metadata-output-stream", r.getPipeName(),
-	)
+	if r.useDB {
+		if err := r.createCmd("new-db").Run(); err != nil {
+			return errors.Wrap(err, "error initializing core db")
+		}
+		// Do a quick catch-up to set the LCL in core to be our expected starting
+		// point.
+		if from > 2 {
+			if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
+				return errors.Wrap(err, "error runing stellar-core catchup")
+			}
+		} else if err := r.createCmd("catchup", "2/0").Run(); err != nil {
+			return errors.Wrap(err, "error runing stellar-core catchup")
+		}
+
+		r.cmd = r.createCmd(
+			"run",
+			"--metadata-output-stream",
+			r.getPipeName(),
+		)
+	} else {
+		r.cmd = r.createCmd(
+			"run",
+			"--in-memory",
+			"--start-at-ledger", fmt.Sprintf("%d", from),
+			"--start-at-hash", hash,
+			"--metadata-output-stream", r.getPipeName(),
+		)
+	}
 
 	var err error
 	r.pipe, err = r.start(r.cmd)
@@ -359,7 +374,7 @@ func (r *stellarCoreRunner) handleExit() {
 
 	// Pattern recommended in:
 	// https://github.com/golang/go/blob/cacac8bdc5c93e7bc71df71981fdf32dded017bf/src/cmd/go/script_test.go#L1091-L1098
-	var interrupt os.Signal = os.Interrupt
+	interrupt := os.Interrupt
 	if runtime.GOOS == "windows" {
 		// Per https://golang.org/pkg/os/#Signal, “Interrupt is not implemented on
 		// Windows; using it with os.Process.Signal will return an error.”
@@ -461,6 +476,12 @@ func (r *stellarCoreRunner) close() error {
 		return nil
 	}
 
+	if !started {
+		// Update processExited if handleExit that updates it not even started
+		// (error before command run).
+		r.processExited = true
+	}
+
 	r.cancel()
 	r.lock.Unlock()
 
@@ -482,8 +503,7 @@ func (r *stellarCoreRunner) close() error {
 
 	if runtime.GOOS == "windows" ||
 		(r.processExitError != nil && r.processExitError != context.Canceled) ||
-		r.mode == stellarCoreRunnerModeOffline ||
-		!r.reuseStoragePath {
+		r.mode == stellarCoreRunnerModeOffline {
 		// It's impossible to send SIGINT on Windows so buckets can become
 		// corrupted. If we can't reuse it, then remove it.
 		// We also remove the storage path if there was an error terminating the

@@ -148,6 +148,69 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 	assert.False(suite.T(), suite.submitter.WasSubmittedTo)
 }
 
+func (suite *SystemTestSuite) TestTimeoutDuringSequnceLoop() {
+	var cancel context.CancelFunc
+	suite.ctx, cancel = context.WithTimeout(suite.ctx, time.Duration(0))
+	defer cancel()
+
+	suite.submitter.R = suite.badSeq
+	suite.db.On("BeginTx", &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}).Return(nil).Once()
+	suite.db.On("Rollback").Return(nil).Once()
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
+		Return(sql.ErrNoRows).Once()
+	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
+		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil)
+
+	r := <-suite.system.Submit(
+		suite.ctx,
+		suite.successTx.Transaction.TxEnvelope,
+		suite.successXDR,
+		suite.successTx.Transaction.TransactionHash,
+	)
+
+	assert.NotNil(suite.T(), r.Err)
+	assert.Equal(suite.T(), ErrTimeout, r.Err)
+}
+
+func (suite *SystemTestSuite) TestClientDisconnectedDuringSequnceLoop() {
+	var cancel context.CancelFunc
+	suite.ctx, cancel = context.WithCancel(suite.ctx)
+
+	suite.submitter.R = suite.badSeq
+	suite.db.On("BeginTx", &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}).Return(nil).Once()
+	suite.db.On("Rollback").Return(nil).Once()
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
+		Return(sql.ErrNoRows).Once()
+	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
+		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
+		Run(func(args mock.Arguments) {
+			// simulate client disconnecting while looping on sequnce number check
+			cancel()
+			suite.ctx.Deadline()
+		}).
+		Once()
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
+		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil)
+
+	r := <-suite.system.Submit(
+		suite.ctx,
+		suite.successTx.Transaction.TxEnvelope,
+		suite.successXDR,
+		suite.successTx.Transaction.TransactionHash,
+	)
+
+	assert.NotNil(suite.T(), r.Err)
+	assert.Equal(suite.T(), ErrCanceled, r.Err)
+}
+
 func getMetricValue(metric prometheus.Metric) *dto.Metric {
 	value := &dto.Metric{}
 	err := metric.Write(value)

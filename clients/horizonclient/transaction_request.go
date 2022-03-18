@@ -14,7 +14,7 @@ import (
 // BuildURL creates the endpoint to be queried based on the data in the TransactionRequest struct.
 // If no data is set, it defaults to the build the URL for all transactions
 func (tr TransactionRequest) BuildURL() (endpoint string, err error) {
-	nParams := countParams(tr.ForAccount, tr.ForLedger, tr.forTransactionHash)
+	nParams := countParams(tr.ForAccount, tr.ForLedger, tr.ForLiquidityPool, tr.forTransactionHash)
 
 	if nParams > 1 {
 		return endpoint, errors.New("invalid request: too many parameters")
@@ -29,6 +29,9 @@ func (tr TransactionRequest) BuildURL() (endpoint string, err error) {
 	}
 	if tr.ForLedger > 0 {
 		endpoint = fmt.Sprintf("ledgers/%d/transactions", tr.ForLedger)
+	}
+	if tr.ForLiquidityPool != "" {
+		endpoint = fmt.Sprintf("liquidity_pools/%s/transactions", tr.ForLiquidityPool)
 	}
 	if tr.forTransactionHash != "" {
 		endpoint = fmt.Sprintf("transactions/%s", tr.forTransactionHash)

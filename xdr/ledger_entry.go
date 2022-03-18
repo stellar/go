@@ -35,6 +35,11 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 		body = LedgerKeyClaimableBalance{
 			BalanceId: cBalance.BalanceId,
 		}
+	case LedgerEntryTypeLiquidityPool:
+		lPool := entry.Data.MustLiquidityPool()
+		body = LedgerKeyLiquidityPool{
+			LiquidityPoolId: lPool.LiquidityPoolId,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}
@@ -125,6 +130,11 @@ func (entry *LedgerEntry) Normalize() *LedgerEntry {
 					Selling: 0,
 				},
 			}
+		} else if trustLineEntry.Ext.V == 1 {
+			// horizon doesn't make use of TrustLineEntryExtensionV2.liquidityPoolUseCount
+			// so clear out those fields to make state verifier pass
+			trustLineEntry.Ext.V1.Ext.V = 0
+			trustLineEntry.Ext.V1.Ext.V2 = nil
 		}
 	case LedgerEntryTypeClaimableBalance:
 		claimableBalanceEntry := entry.Data.ClaimableBalance

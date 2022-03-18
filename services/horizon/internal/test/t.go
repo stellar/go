@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, thinks the code is unused because of the test skips
 package test
 
 import (
@@ -7,6 +8,7 @@ import (
 	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
@@ -25,11 +27,16 @@ func (t *T) CoreSession() *db.Session {
 // Finish finishes the test, logging any accumulated horizon logs to the logs
 // output
 func (t *T) Finish() {
-	RestoreLogger()
+	logEntries := t.testLogs()
 	operationfeestats.ResetState()
 
-	if t.LogBuffer.Len() > 0 {
-		t.T.Log("\n" + t.LogBuffer.String())
+	for _, entry := range logEntries {
+		logString, err := entry.String()
+		if err != nil {
+			t.T.Logf("Error from entry.String: %v", err)
+		} else {
+			t.T.Log(logString)
+		}
 	}
 }
 
@@ -157,4 +164,13 @@ func (t *T) LoadLedgerStatus() ledger.Status {
 	}
 
 	return next
+}
+
+// retrieves entries from test logger instance
+func (t *T) testLogs() []logrus.Entry {
+	if t.EndLogTest == nil {
+		return []logrus.Entry{}
+	}
+
+	return t.EndLogTest()
 }

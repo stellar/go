@@ -36,6 +36,8 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
+	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	CaptiveCoreConfigUseDB = "captive-core-use-db"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
@@ -171,6 +173,25 @@ func Flags() (*Config, support.ConfigOptions) {
 			},
 		},
 		&support.ConfigOption{
+			Name:        CaptiveCoreConfigUseDB,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage: `when enabled, Horizon ingestion will instruct the captive
+			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
+						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
+						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
+						  or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetBool(opt.Name); val {
+					config.CaptiveCoreConfigUseDB = val
+					config.CaptiveCoreTomlParams.UseDB = val
+				}
+				return nil
+			},
+			ConfigKey: &config.CaptiveCoreConfigUseDB,
+		},
+		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
 			OptType:     types.Bool,
 			FlagDefault: true,
@@ -205,14 +226,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:  false,
 			Usage:     "Storage location for Captive Core bucket data",
 			ConfigKey: &config.CaptiveCoreStoragePath,
-		},
-		&support.ConfigOption{
-			Name:        "captive-core-reuse-storage-path",
-			OptType:     types.Bool,
-			Required:    false,
-			FlagDefault: false,
-			Usage:       "determines if storage-path should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
-			ConfigKey:   &config.CaptiveCoreReuseStoragePath,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
@@ -365,6 +378,21 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
 		},
 		&support.ConfigOption{
+			Name:        "max-assets-per-path-request",
+			ConfigKey:   &config.MaxAssetsPerPathRequest,
+			OptType:     types.Int,
+			FlagDefault: int(15),
+			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-recieve' endpoints",
+		},
+		&support.ConfigOption{
+			Name:        "disable-pool-path-finding",
+			ConfigKey:   &config.DisablePoolPathFinding,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
+		},
+		&support.ConfigOption{
 			Name:      "network-passphrase",
 			ConfigKey: &config.NetworkPassphrase,
 			OptType:   types.String,
@@ -403,20 +431,11 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "TLS private key file to use for securing connections to horizon",
 		},
 		&support.ConfigOption{
-			Name:      "ingest",
-			ConfigKey: &config.Ingest,
-			OptType:   types.Bool,
-			// Action needed in release: horizon-v2.9.0: make --ingest default true
-			FlagDefault: false,
-			CustomSetValue: func(opt *support.ConfigOption) error {
-				if support.IsExplicitlySet(opt) {
-					*opt.ConfigKey.(*bool) = viper.GetBool(opt.Name)
-				} else {
-					stdLog.Println("WARNING: in the 2.9.0 Horizon release the --ingest flag will default to true. Update your configuration so that --ingest is explicitly set to false.")
-				}
-				return nil
-			},
-			Usage: "causes this horizon process to ingest data from stellar-core into horizon's db",
+			Name:        "ingest",
+			ConfigKey:   &config.Ingest,
+			OptType:     types.Bool,
+			FlagDefault: true,
+			Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 		},
 		&support.ConfigOption{
 			Name:        "cursor-name",
@@ -455,6 +474,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
 		},
 		&support.ConfigOption{
+			Name:        "ingest-enable-extended-log-ledger-stats",
+			ConfigKey:   &config.IngestEnableExtendedLogLedgerStats,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Usage:       "enables extended ledger stats in the log (ledger entry changes and operations stats)",
+		},
+		&support.ConfigOption{
 			Name:        "apply-migrations",
 			ConfigKey:   &config.ApplyMigrations,
 			OptType:     types.Bool,
@@ -486,6 +512,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
 		},
+		&support.ConfigOption{
+			Name:        "rounding-slippage-filter",
+			ConfigKey:   &config.RoundingSlippageFilter,
+			OptType:     types.Int,
+			FlagDefault: 1000,
+			Required:    false,
+			Usage:       "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
+		},
 	}
 
 	return config, flags
@@ -504,6 +538,8 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 	if config.Ingest && !config.EnableCaptiveCoreIngestion && config.StellarCoreDatabaseURL == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
 	}
+
+	log.Infof("Initializing horizon...")
 	app, err := NewApp(*config)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize app: %s", err)
@@ -540,21 +576,25 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		// only on ingesting instances which are required to have write-access
 		// to the DB.
 		if config.ApplyMigrations {
+			stdLog.Println("Applying DB migrations...")
 			if err := applyMigrations(*config); err != nil {
 				return err
 			}
 		}
+		stdLog.Println("Checking DB migrations...")
 		if err := checkMigrations(*config); err != nil {
 			return err
 		}
 
 		// config.HistoryArchiveURLs contains a single empty value when empty so using
 		// viper.GetString is easier.
-		if len(config.HistoryArchiveURLs) == 0 {
+		if len(config.HistoryArchiveURLs) == 1 && config.HistoryArchiveURLs[0] == "" {
 			return fmt.Errorf("--history-archive-urls must be set when --ingest is set")
 		}
 
 		if config.EnableCaptiveCoreIngestion {
+			stdLog.Println("Preparing captive core...")
+
 			binaryPath := viper.GetString(StellarCoreBinaryPathName)
 
 			// If the user didn't specify a Stellar Core binary, we can check the
@@ -650,20 +690,23 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		if config.StellarCoreDatabaseURL != "" {
 			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
 		}
+		if config.CaptiveCoreConfigUseDB {
+			return fmt.Errorf("Invalid config: --%s has been set, but --ingest not set. ", CaptiveCoreConfigUseDB)
+		}
 	}
 
 	// Configure log file
 	if config.LogFile != "" {
 		logFile, err := os.OpenFile(config.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err == nil {
-			log.DefaultLogger.Logger.Out = logFile
+			log.DefaultLogger.SetOutput(logFile)
 		} else {
 			return fmt.Errorf("Failed to open file to log: %s", err)
 		}
 	}
 
 	// Configure log level
-	log.DefaultLogger.Logger.SetLevel(config.LogLevel)
+	log.DefaultLogger.SetLevel(config.LogLevel)
 
 	// Configure DB params. When config.MaxDBConnections is set, set other
 	// DB params to that value for backward compatibility.

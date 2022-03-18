@@ -15,7 +15,7 @@ func TestCreatePassiveSellOfferValidateBuyingAsset(t *testing.T) {
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{"ABCD", ""},
 		Amount:  "10",
-		Price:   "1.0",
+		Price:   xdr.Price{1, 1},
 	}
 
 	_, err := NewTransaction(
@@ -42,7 +42,7 @@ func TestCreatePassiveSellOfferValidateSellingAsset(t *testing.T) {
 		Selling: CreditAsset{"ABCD0123456789", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "10",
-		Price:   "1.0",
+		Price:   xdr.Price{1, 1},
 	}
 
 	_, err := NewTransaction(
@@ -69,7 +69,7 @@ func TestCreatePassiveSellOfferValidateAmount(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "-3",
-		Price:   "1.0",
+		Price:   xdr.Price{1, 1},
 	}
 
 	_, err := NewTransaction(
@@ -96,7 +96,7 @@ func TestCreatePassiveSellOfferValidatePrice(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "3",
-		Price:   "-1.0",
+		Price:   xdr.Price{-1, 0},
 	}
 
 	_, err := NewTransaction(
@@ -109,7 +109,7 @@ func TestCreatePassiveSellOfferValidatePrice(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Price, Error: amount can not be negative`
+		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Price, Error: price denominator cannot be 0: -1/0`
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -121,19 +121,16 @@ func TestCreatePassiveSellOfferPrice(t *testing.T) {
 		Selling:       CreditAsset{"ABCD", kp0.Address()},
 		Buying:        NativeAsset{},
 		Amount:        "1",
-		Price:         "0.000000001",
+		Price:         xdr.Price{1, 1000000000},
 		SourceAccount: kp0.Address(),
 	}
 
-	xdrOp, err := offer.BuildXDR(false)
+	xdrOp, err := offer.BuildXDR()
 	assert.NoError(t, err)
 	expectedPrice := xdr.Price{N: 1, D: 1000000000}
 	assert.Equal(t, expectedPrice, xdrOp.Body.CreatePassiveSellOfferOp.Price)
-	assert.Equal(t, offer.Price, offer.price.string())
-	assert.Equal(t, expectedPrice, offer.price.toXDR())
 
 	parsed := CreatePassiveSellOffer{}
-	assert.NoError(t, parsed.FromXDR(xdrOp, false))
+	assert.NoError(t, parsed.FromXDR(xdrOp))
 	assert.Equal(t, offer.Price, parsed.Price)
-	assert.Equal(t, offer.price, parsed.price)
 }

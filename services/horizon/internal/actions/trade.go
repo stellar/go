@@ -78,6 +78,8 @@ func (q TradeAssetsQueryParams) Counter() (*xdr.Asset, error) {
 type TradesQuery struct {
 	AccountID              string `schema:"account_id" valid:"accountID,optional"`
 	OfferID                uint64 `schema:"offer_id" valid:"-"`
+	PoolID                 string `schema:"liquidity_pool_id" valid:"sha256,optional"`
+	TradeType              string `schema:"trade_type" valid:"tradeType,optional"`
 	TradeAssetsQueryParams `valid:"optional"`
 }
 
@@ -99,12 +101,58 @@ func (q TradesQuery) Validate() error {
 		)
 	}
 
+	if base != nil && q.OfferID != 0 {
+		return problem.MakeInvalidFieldProblem(
+			"base_asset_type,counter_asset_type,offer_id",
+			errors.New("this endpoint does not support filtering by both asset pair and offer id "),
+		)
+	}
+
+	if base != nil && q.PoolID != "" {
+		return problem.MakeInvalidFieldProblem(
+			"base_asset_type,counter_asset_type,liquidity_pool_id",
+			errors.New("this endpoint does not support filtering by both asset pair and liquidity pool id "),
+		)
+	}
+
+	count, err := countNonEmpty(
+		q.AccountID,
+		q.OfferID,
+		q.PoolID,
+	)
+	if err != nil {
+		return problem.BadRequest
+	}
+
+	if count > 1 {
+		return problem.MakeInvalidFieldProblem(
+			"account_id,liquidity_pool_id,offer_id",
+			errors.New(
+				"Use a single filter for trades, you can only use one of account_id, liquidity_pool_id, offer_id",
+			),
+		)
+	}
+
+	if q.OfferID != 0 && q.TradeType == history.LiquidityPoolTrades {
+		return problem.MakeInvalidFieldProblem(
+			"trade_type",
+			errors.Errorf("trade_type %s cannot be used with the offer_id filter", q.TradeType),
+		)
+	}
+
+	if q.PoolID != "" && q.TradeType == history.OrderbookTrades {
+		return problem.MakeInvalidFieldProblem(
+			"trade_type",
+			errors.Errorf("trade_type %s cannot be used with the liquidity_pool_id filter", q.TradeType),
+		)
+	}
 	return nil
 }
 
 // GetTradesHandler is the action handler for all end-points returning a list of trades.
 type GetTradesHandler struct {
 	LedgerState *ledger.State
+	CoreStateGetter
 }
 
 // GetResourcePage returns a page of trades.
@@ -125,51 +173,41 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	if err = getParams(&qp, r); err != nil {
 		return nil, err
 	}
+	if qp.TradeType == "" {
+		qp.TradeType = history.AllTrades
+	}
 
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
 
-	trades := historyQ.Trades()
-
-	if qp.AccountID != "" {
-		trades.ForAccount(ctx, qp.AccountID)
-	}
-
-	baseAsset, err := qp.Base()
+	var records []history.Trade
+	var baseAsset, counterAsset *xdr.Asset
+	baseAsset, err = qp.Base()
 	if err != nil {
 		return nil, err
 	}
 
 	if baseAsset != nil {
-		baseAssetID, err2 := historyQ.GetAssetID(ctx, *baseAsset)
-		if err2 != nil {
-			return nil, err2
+		counterAsset, err = qp.Counter()
+		if err != nil {
+			return nil, err
 		}
 
-		counterAsset, err2 := qp.Counter()
-		if err2 != nil {
-			return nil, err2
-		}
-
-		counterAssetID, err2 := historyQ.GetAssetID(ctx, *counterAsset)
-		if err2 != nil {
-			return nil, err2
-		}
-		trades = historyQ.TradesForAssetPair(baseAssetID, counterAssetID)
+		records, err = historyQ.GetTradesForAssets(ctx, pq, qp.AccountID, qp.TradeType, *baseAsset, *counterAsset)
+	} else if qp.OfferID != 0 {
+		records, err = historyQ.GetTradesForOffer(ctx, pq, int64(qp.OfferID))
+	} else if qp.PoolID != "" {
+		records, err = historyQ.GetTradesForLiquidityPool(ctx, pq, qp.PoolID)
+	} else {
+		records, err = historyQ.GetTrades(ctx, pq, qp.AccountID, qp.TradeType)
 	}
-
-	if qp.OfferID != 0 {
-		trades = trades.ForOffer(int64(qp.OfferID))
-	}
-
-	var records []history.Trade
-	if err = trades.Page(ctx, pq).Select(ctx, &records); err != nil {
+	if err != nil {
 		return nil, err
 	}
-	var response []hal.Pageable
 
+	var response []hal.Pageable
 	for _, record := range records {
 		var res horizon.Trade
 		resourceadapter.PopulateTrade(ctx, &res, record)
@@ -239,9 +277,10 @@ func (q TradeAggregationsQuery) Validate() error {
 // GetTradeAggregationsHandler is the action handler for trade_aggregations
 type GetTradeAggregationsHandler struct {
 	LedgerState *ledger.State
+	CoreStateGetter
 }
 
-// GetResourcePage returns a page of trade aggregations
+// GetResource returns a page of trade aggregations
 func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	pq, err := GetPageQuery(handler.LedgerState, r)
@@ -266,14 +305,13 @@ func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.R
 	if err != nil {
 		return nil, err
 	}
-	aggregations := []horizon.TradeAggregation{}
+	var aggregations []hal.Pageable
 	for _, record := range records {
 		var res horizon.TradeAggregation
 		err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
 		if err != nil {
 			return nil, err
 		}
-
 		aggregations = append(aggregations, res)
 	}
 
@@ -367,7 +405,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(ctx context.Context, his
 }
 
 // BuildPage builds a custom hal page for this handler
-func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []horizon.TradeAggregation) (hal.Page, error) {
+func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	ctx := r.Context()
 	pageQuery, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
@@ -399,8 +437,15 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 		page.Links.Next = page.Links.Self
 	} else {
 		lastRecord := records[len(records)-1]
+
+		lastRecordTA, ok := lastRecord.(horizon.TradeAggregation)
+		if !ok {
+			panic(fmt.Sprintf("Unknown type: %T", lastRecord))
+		}
+		timestamp := lastRecordTA.Timestamp
+
 		if page.Order == "asc" {
-			newStartTime := lastRecord.Timestamp + int64(qp.ResolutionFilter)
+			newStartTime := timestamp + int64(qp.ResolutionFilter)
 			if newStartTime >= qp.EndTimeFilter.ToInt64() {
 				newStartTime = qp.EndTimeFilter.ToInt64()
 			}
@@ -408,7 +453,7 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 			newURL.RawQuery = q.Encode()
 			page.Links.Next = hal.NewLink(newURL.String())
 		} else { //desc
-			newEndTime := lastRecord.Timestamp
+			newEndTime := timestamp
 			if newEndTime <= qp.StartTimeFilter.ToInt64() {
 				newEndTime = qp.StartTimeFilter.ToInt64()
 			}

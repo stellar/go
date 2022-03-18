@@ -38,6 +38,15 @@ func Parse(v string) (xdr.Price, error) {
 	return continuedFraction(v)
 }
 
+// MustParse is like Parse except that it panics on errors.
+func MustParse(v string) xdr.Price {
+	result, err := Parse(v)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
 // continuedFraction calculates and returns the best rational approximation of
 // the given real number.
 func continuedFraction(price string) (xdrPrice xdr.Price, err error) {
@@ -118,18 +127,22 @@ func StringFromFloat64(v float64) string {
 	return strconv.FormatFloat(v, 'f', 7, 64)
 }
 
-// ConvertToBuyingUnits uses special rounding logic to multiply the amount by the price and returns (buyingUnits, sellingUnits) that can be taken from the offer
+// ConvertToBuyingUnits uses special rounding logic to multiply the amount by
+// the price and returns (buyingUnits, sellingUnits) that can be taken from the
+// offer
 //
-// offerSellingBound = (offer.price.n > offer.price.d)
-// 	? offer.amount : ceil(floor(offer.amount * offer.price) / offer.price)
-// pathPaymentAmountBought = min(offerSellingBound, pathPaymentBuyingBound)
-// pathPaymentAmountSold = ceil(pathPaymentAmountBought * offer.price)
+//     offerSellingBound = (offer.price.n > offer.price.d)
+//         ? offer.amount
+//         : ceil(floor(offer.amount * offer.price) / offer.price)
+//     pathPaymentAmountBought = min(offerSellingBound, pathPaymentBuyingBound)
+//     pathPaymentAmountSold = ceil(pathPaymentAmountBought * offer.price)
 //
-// offer.amount = amount selling
-// offerSellingBound = roundingCorrectedOffer
-// pathPaymentBuyingBound = needed
-// pathPaymentAmountBought = what we are consuming from offer
-// pathPaymentAmountSold = amount we are giving to the buyer
+//     offer.amount = amount selling
+//     offerSellingBound = roundingCorrectedOffer
+//     pathPaymentBuyingBound = needed
+//     pathPaymentAmountBought = what we are consuming from offer
+//     pathPaymentAmountSold = amount we are giving to the buyer
+//
 // Sell units = pathPaymentAmountSold and buy units = pathPaymentAmountBought
 //
 // this is how we do floor and ceiling in stellar-core:

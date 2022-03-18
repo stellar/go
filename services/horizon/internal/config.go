@@ -28,6 +28,7 @@ type Config struct {
 	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
 	CaptiveCoreStoragePath      string
 	CaptiveCoreReuseStoragePath bool
+	CaptiveCoreConfigUseDB      bool
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
@@ -43,8 +44,13 @@ type Config struct {
 	FriendbotURL       *url.URL
 	LogLevel           logrus.Level
 	LogFile            string
+
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
-	MaxPathLength     uint
+	MaxPathLength uint
+	// MaxAssetsPerPathRequest is the maximum number of assets considered for `/paths/strict-send` and `/paths/strict-recieve`
+	MaxAssetsPerPathRequest int
+	DisablePoolPathFinding  bool
+
 	NetworkPassphrase string
 	SentryDSN         string
 	LogglyToken       string
@@ -75,6 +81,9 @@ type Config struct {
 	// IngestDisableStateVerification disables state verification
 	// `System.verifyState()` when set to `true`.
 	IngestDisableStateVerification bool
+	// IngestEnableExtendedLogLedgerStats enables extended ledger stats in
+	// logging.
+	IngestEnableExtendedLogLedgerStats bool
 	// ApplyMigrations will apply pending migrations to the horizon database
 	// before starting the horizon service
 	ApplyMigrations bool
@@ -87,4 +96,6 @@ type Config struct {
 	// balances like ELB or ALB. In such case http.Request.RemoteAddr will be
 	// replaced with the last IP in X-Forwarded-For header.
 	BehindAWSLoadBalancer bool
+	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
+	RoundingSlippageFilter int
 }

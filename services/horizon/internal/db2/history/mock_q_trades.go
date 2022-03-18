@@ -22,13 +22,18 @@ func (m *MockQTrades) CreateAssets(ctx context.Context, assets []xdr.Asset, maxB
 	return a.Get(0).(map[string]Asset), a.Error(1)
 }
 
+func (m *MockQTrades) CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, maxBatchSize int) (map[string]int64, error) {
+	a := m.Called(ctx, poolIDs, maxBatchSize)
+	return a.Get(0).(map[string]int64), a.Error(1)
+}
+
 func (m *MockQTrades) NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder {
 	a := m.Called(maxBatchSize)
 	return a.Get(0).(TradeBatchInsertBuilder)
 }
 
-func (m *MockQTrades) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error {
-	a := m.Called(ctx, fromLedger, toLedger)
+func (m *MockQTrades) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error {
+	a := m.Called(ctx, fromLedger, toLedger, roundingSlippageFilter)
 	return a.Error(0)
 }
 

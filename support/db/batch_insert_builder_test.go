@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/support/db/dbtest"
@@ -18,6 +19,46 @@ type invalidHungerRow struct {
 	Name        string `db:"name"`
 	HungerLevel string `db:"hunger_level"`
 	LastName    string `db:"last_name"`
+}
+
+func BenchmarkBatchInsertBuilder(b *testing.B) {
+	// In order to show SQL queries
+	// log.SetLevel(logrus.DebugLevel)
+	db := dbtest.Postgres(b).Load(testSchema)
+	defer db.Close()
+	sess := &Session{DB: db.Open()}
+	defer sess.DB.Close()
+	ctx := context.Background()
+	maxBatchSize := 1000
+	insertBuilder := &BatchInsertBuilder{
+		Table:        sess.GetTable("people"),
+		MaxBatchSize: maxBatchSize,
+	}
+
+	// Do not count the test initialization
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < maxBatchSize; j++ {
+			err := insertBuilder.RowStruct(ctx, hungerRow{
+				Name:        fmt.Sprintf("bubba%d", i*maxBatchSize+j),
+				HungerLevel: "1202",
+			})
+			require.NoError(b, err)
+		}
+	}
+	err := insertBuilder.Exec(ctx)
+
+	// Do not count the test ending
+	b.StopTimer()
+	assert.NoError(b, err)
+	var count []int
+	err = sess.SelectRaw(ctx,
+		&count,
+		"SELECT COUNT(*) FROM people",
+	)
+	assert.NoError(b, err)
+	preexistingCount := 3
+	assert.Equal(b, b.N*maxBatchSize+preexistingCount, count[0])
 }
 
 func TestBatchInsertBuilder(t *testing.T) {
@@ -87,8 +128,8 @@ func TestBatchInsertBuilder(t *testing.T) {
 		t,
 		found,
 		[]person{
-			person{Name: "bubba", HungerLevel: "120"},
-			person{Name: "bubba2", HungerLevel: "1202"},
+			{Name: "bubba", HungerLevel: "120"},
+			{Name: "bubba2", HungerLevel: "1202"},
 		},
 	)
 
@@ -122,8 +163,8 @@ func TestBatchInsertBuilder(t *testing.T) {
 		t,
 		found,
 		[]person{
-			person{Name: "bubba", HungerLevel: "120"},
-			person{Name: "bubba2", HungerLevel: "1202"},
+			{Name: "bubba", HungerLevel: "120"},
+			{Name: "bubba2", HungerLevel: "1202"},
 		},
 	)
 
@@ -145,8 +186,8 @@ func TestBatchInsertBuilder(t *testing.T) {
 		t,
 		found,
 		[]person{
-			person{Name: "bubba2", HungerLevel: "1202"},
-			person{Name: "bubba", HungerLevel: "1"},
+			{Name: "bubba2", HungerLevel: "1202"},
+			{Name: "bubba", HungerLevel: "1"},
 		},
 	)
 }

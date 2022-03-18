@@ -14,9 +14,10 @@ const (
 	// Distributed ingestion in Horizon relies on this key and it is part
 	// of migration files. If you need to update the key name remember
 	// to upgrade it in migration files too!
-	lastLedgerKey           = "exp_ingest_last_ledger"
-	stateInvalid            = "exp_state_invalid"
-	offerCompactionSequence = "offer_compaction_sequence"
+	lastLedgerKey                   = "exp_ingest_last_ledger"
+	stateInvalid                    = "exp_state_invalid"
+	offerCompactionSequence         = "offer_compaction_sequence"
+	liquidityPoolCompactionSequence = "liquidity_pool_compaction_sequence"
 )
 
 // GetLastLedgerIngestNonBlocking works like GetLastLedgerIngest but
@@ -80,21 +81,11 @@ func (q *Q) UpdateLastLedgerIngest(ctx context.Context, ledgerSequence uint32) e
 // GetIngestVersion returns the ingestion version. Returns zero
 // if there is no value.
 func (q *Q) GetIngestVersion(ctx context.Context) (int, error) {
-	expVersion, err := q.getValueFromStore(ctx, ingestVersion, false)
+	parsed, err := q.getIntValueFromStore(ctx, ingestVersion, 32)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "Error converting sequence value")
 	}
-
-	if expVersion == "" {
-		return 0, nil
-	} else {
-		version, err := strconv.ParseInt(expVersion, 10, 32)
-		if err != nil {
-			return 0, errors.Wrap(err, "Error converting expVersion value")
-		}
-
-		return int(version), nil
-	}
+	return int(parsed), nil
 }
 
 // UpdateIngestVersion updates the ingestion version.
@@ -138,7 +129,26 @@ func (q *Q) UpdateExpStateInvalid(ctx context.Context, val bool) error {
 // GetOfferCompactionSequence returns the sequence number corresponding to the
 // last time the offers table was compacted.
 func (q *Q) GetOfferCompactionSequence(ctx context.Context) (uint32, error) {
-	sequence, err := q.getValueFromStore(ctx, offerCompactionSequence, false)
+	parsed, err := q.getIntValueFromStore(ctx, offerCompactionSequence, 32)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error converting sequence value")
+	}
+	return uint32(parsed), nil
+}
+
+// GetLiquidityPoolCompactionSequence returns the sequence number corresponding to the
+// last time the liquidity pools table was compacted.
+func (q *Q) GetLiquidityPoolCompactionSequence(ctx context.Context) (uint32, error) {
+	parsed, err := q.getIntValueFromStore(ctx, liquidityPoolCompactionSequence, 32)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error converting sequence value")
+	}
+
+	return uint32(parsed), nil
+}
+
+func (q *Q) getIntValueFromStore(ctx context.Context, key string, bitSize int) (int64, error) {
+	sequence, err := q.getValueFromStore(ctx, key, false)
 	if err != nil {
 		return 0, err
 	}
@@ -146,12 +156,11 @@ func (q *Q) GetOfferCompactionSequence(ctx context.Context) (uint32, error) {
 	if sequence == "" {
 		return 0, nil
 	}
-	parsed, err := strconv.ParseInt(sequence, 10, 32)
+	parsed, err := strconv.ParseInt(sequence, 10, bitSize)
 	if err != nil {
-		return 0, errors.Wrap(err, "Error converting sequence value")
+		return 0, errors.Wrap(err, "Error converting value")
 	}
-
-	return uint32(parsed), nil
+	return parsed, nil
 }
 
 // UpdateOfferCompactionSequence sets the sequence number corresponding to the
@@ -160,6 +169,14 @@ func (q *Q) UpdateOfferCompactionSequence(ctx context.Context, sequence uint32) 
 	return q.updateValueInStore(
 		ctx,
 		offerCompactionSequence,
+		strconv.FormatUint(uint64(sequence), 10),
+	)
+}
+
+func (q *Q) UpdateLiquidityPoolCompactionSequence(ctx context.Context, sequence uint32) error {
+	return q.updateValueInStore(
+		ctx,
+		liquidityPoolCompactionSequence,
 		strconv.FormatUint(uint64(sequence), 10),
 	)
 }

@@ -16,7 +16,7 @@ func (ib *InsertBuilder) Exec(ctx context.Context) (sql.Result, error) {
 	}
 
 	template := ib.rows[0]
-	cols := columnsForStruct(template)
+	cols := ColumnsForStruct(template)
 
 	if ib.ignoredCols != nil {
 		finalCols := make([]string, 0, len(cols))

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stretchr/testify/assert"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -40,12 +41,13 @@ const (
 )
 
 var (
-	RunWithCaptiveCore = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
 	PostgresURL           string
-	ProtocolVersion       int32
+	ProtocolVersion       uint32
 	SkipContainerCreation bool
 	CoreDockerImage       string
 
@@ -69,6 +71,7 @@ type Config struct {
 type CaptiveConfig struct {
 	binaryPath string
 	configPath string
+	useDB      bool
 }
 
 type Test struct {
@@ -112,6 +115,11 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
 	}
 
+	// If not specific explicitly, set the protocol to the maximum supported version
+	if config.ProtocolVersion == 0 {
+		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
+	}
+
 	composePath := findDockerComposePath()
 	i := &Test{
 		t:           t,
@@ -147,6 +155,9 @@ func (i *Test) configureCaptiveCore() {
 		composePath := findDockerComposePath()
 		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+		if RunWithCaptiveCoreUseDB {
+			i.coreConfig.useDB = true
+		}
 	}
 
 	if value := i.getParameter(
@@ -288,6 +299,7 @@ func (i *Test) StartHorizon() error {
 	hostname := "localhost"
 	coreBinaryPath := i.coreConfig.binaryPath
 	captiveCoreConfigPath := i.coreConfig.configPath
+	captiveCoreUseDB := strconv.FormatBool(i.coreConfig.useDB)
 
 	defaultArgs := map[string]string{
 		"stellar-core-url": i.coreClient.URL,
@@ -297,9 +309,13 @@ func (i *Test) StartHorizon() error {
 			hostname,
 			stellarCorePostgresPort,
 		),
-		"stellar-core-binary-path":      coreBinaryPath,
-		"captive-core-config-path":      captiveCoreConfigPath,
-		"captive-core-http-port":        "21626",
+		"stellar-core-binary-path": coreBinaryPath,
+		"captive-core-config-path": captiveCoreConfigPath,
+		"captive-core-http-port":   "21626",
+		"captive-core-use-db":      captiveCoreUseDB,
+		// Create the storage directory outside of the source repo,
+		// otherwise it will break Golang test caching.
+		"captive-core-storage-path":     os.TempDir(),
 		"enable-captive-core-ingestion": strconv.FormatBool(len(coreBinaryPath) > 0),
 		"ingest":                        "true",
 		"history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
@@ -352,10 +368,6 @@ func (i *Test) StartHorizon() error {
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
 	}
 
-	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
-		return errors.Wrap(err, "cannot build genesis state")
-	}
-
 	done := make(chan struct{})
 	go func() {
 		i.app.Serve()
@@ -381,14 +393,7 @@ func (i *Test) waitForCore() {
 		break
 	}
 
-	{
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := i.coreClient.Upgrade(ctx, int(i.config.ProtocolVersion))
-		cancel()
-		if err != nil {
-			i.t.Fatalf("could not upgrade protocol: %v", err)
-		}
-	}
+	i.UpgradeProtocol(i.config.ProtocolVersion)
 
 	for t := 0; t < 5; t++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -405,24 +410,53 @@ func (i *Test) waitForCore() {
 	i.t.Fatal("Core could not sync after 30s")
 }
 
+// UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
+func (i *Test) UpgradeProtocol(version uint32) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	err := i.coreClient.Upgrade(ctx, int(version))
+	cancel()
+	if err != nil {
+		i.t.Fatalf("could not upgrade protocol: %v", err)
+	}
+
+	for t := 0; t < 10; t++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		info, err := i.coreClient.Info(ctx)
+		cancel()
+		if err != nil {
+			i.t.Logf("could not obtain info response: %v", err)
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if info.Info.Ledger.Version == int(version) {
+			i.t.Logf("Protocol upgraded to: %d", info.Info.Ledger.Version)
+			return
+		}
+		time.Sleep(time.Second)
+	}
+
+	i.t.Fatalf("could not upgrade protocol in 10s")
+}
+
 func (i *Test) WaitForHorizon() {
-	for t := 200; t >= 0; t -= 1 {
+	for t := 60; t >= 0; t -= 1 {
+		time.Sleep(time.Second)
+
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.horizonClient.Root()
 		if err != nil {
 			i.t.Logf("could not obtain root response %v", err)
-			time.Sleep(time.Second)
 			continue
 		}
 
 		if root.HorizonSequence < 3 ||
 			int(root.HorizonSequence) != int(root.IngestSequence) {
 			i.t.Logf("Horizon ingesting... %v", root)
-			time.Sleep(time.Second)
 			continue
 		}
 
-		if root.CurrentProtocolVersion == i.config.ProtocolVersion {
+		if uint32(root.CurrentProtocolVersion) == i.config.ProtocolVersion {
 			i.t.Logf("Horizon protocol version matches... %v", root)
 			return
 		}
@@ -563,8 +597,12 @@ func (i *Test) EstablishTrustline(
 	if asset.IsNative() {
 		return proto.Transaction{}, nil
 	}
+	line, err := asset.ToChangeTrustAsset()
+	if err != nil {
+		return proto.Transaction{}, err
+	}
 	return i.SubmitOperations(account, truster, &txnbuild.ChangeTrust{
-		Line:  asset,
+		Line:  line,
 		Limit: "2000",
 	})
 }
@@ -641,6 +679,14 @@ func (i *Test) SubmitMultiSigOperations(
 	return i.Client().SubmitTransaction(tx)
 }
 
+func (i *Test) MustSubmitMultiSigOperations(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitMultiSigOperations(source, signers, ops...)
+	panicIf(err)
+	return tx
+}
+
 func (i *Test) CreateSignedTransaction(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {
@@ -650,7 +696,6 @@ func (i *Test) CreateSignedTransaction(
 		BaseFee:              txnbuild.MinBaseFee,
 		Timebounds:           txnbuild.NewInfiniteTimeout(),
 		IncrementSequenceNum: true,
-		EnableMuxedAccounts:  true,
 	}
 
 	tx, err := txnbuild.NewTransaction(txParams)

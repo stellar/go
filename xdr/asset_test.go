@@ -3,12 +3,12 @@ package xdr_test
 import (
 	"testing"
 
+	. "github.com/stellar/go/xdr"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	. "github.com/stellar/go/xdr"
 )
 
 var _ = Describe("xdr.Asset#Extract()", func() {
@@ -387,5 +387,120 @@ func TestBuildAsset(t *testing.T) {
 				assert.Error(t, err)
 			}
 		})
+	}
+}
+
+func TestAssetLessThan(t *testing.T) {
+	xlm := MustNewNativeAsset()
+
+	t.Run("returns false if assets are equal", func(t *testing.T) {
+		assetA, err := NewCreditAsset(
+			"ARST",
+			"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+		)
+		require.NoError(t, err)
+
+		assetB, err := NewCreditAsset(
+			"USD",
+			"GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+		)
+		require.NoError(t, err)
+
+		assert.False(t, xlm.LessThan(xlm))
+		assert.False(t, assetA.LessThan(assetA))
+		assert.False(t, assetB.LessThan(assetB))
+	})
+
+	t.Run("test if asset types are being validated as native < anum4 < anum12", func(t *testing.T) {
+		anum4, err := NewCreditAsset(
+			"ARST",
+			"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+		)
+		require.NoError(t, err)
+		anum12, err := NewCreditAsset(
+			"ARSTANUM12",
+			"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+		)
+		require.NoError(t, err)
+
+		assert.False(t, xlm.LessThan(xlm))
+		assert.True(t, xlm.LessThan(anum4))
+		assert.True(t, xlm.LessThan(anum12))
+
+		assert.False(t, anum4.LessThan(xlm))
+		assert.False(t, anum4.LessThan(anum4))
+		assert.True(t, anum4.LessThan(anum12))
+
+		assert.False(t, anum12.LessThan(xlm))
+		assert.False(t, anum12.LessThan(anum4))
+		assert.False(t, anum12.LessThan(anum12))
+	})
+
+	t.Run("test if asset codes are being validated as assetCodeA < assetCodeB", func(t *testing.T) {
+		assetARST, err := NewCreditAsset(
+			"ARST",
+			"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+		)
+		require.NoError(t, err)
+		assetUSDX, err := NewCreditAsset(
+			"USDX",
+			"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+		)
+		require.NoError(t, err)
+
+		assert.False(t, assetARST.LessThan(assetARST))
+		assert.True(t, assetARST.LessThan(assetUSDX))
+
+		assert.False(t, assetUSDX.LessThan(assetARST))
+		assert.False(t, assetUSDX.LessThan(assetUSDX))
+	})
+
+	t.Run("test if asset issuers are being validated as assetIssuerA < assetIssuerB", func(t *testing.T) {
+		assetIssuerA, err := NewCreditAsset(
+			"ARST",
+			"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+		)
+		require.NoError(t, err)
+		assetIssuerB, err := NewCreditAsset(
+			"ARST",
+			"GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+		)
+		require.NoError(t, err)
+
+		assert.True(t, assetIssuerA.LessThan(assetIssuerB))
+		assert.False(t, assetIssuerA.LessThan(assetIssuerA))
+
+		assert.False(t, assetIssuerB.LessThan(assetIssuerA))
+		assert.False(t, assetIssuerB.LessThan(assetIssuerB))
+	})
+}
+
+func BenchmarkAssetString(b *testing.B) {
+	n := MustNewNativeAsset()
+	a, err := NewCreditAsset(
+		"ARST",
+		"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+	)
+	require.NoError(b, err)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = n.String()
+		_ = a.String()
+	}
+}
+
+func BenchmarkAssetStringCanonical(b *testing.B) {
+	n := MustNewNativeAsset()
+	a, err := NewCreditAsset(
+		"ARST",
+		"GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO",
+	)
+	require.NoError(b, err)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = n.StringCanonical()
+		_ = a.StringCanonical()
 	}
 }

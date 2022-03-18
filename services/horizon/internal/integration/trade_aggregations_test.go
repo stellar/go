@@ -11,10 +11,12 @@ import (
 	strtime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/guregu/null"
 )
 
 func TestTradeAggregations(t *testing.T) {
-	itest := integration.NewTest(t, protocol15Config)
+	itest := integration.NewTest(t, integration.Config{})
 	ctx := context.Background()
 	historyQ := itest.Horizon().HistoryQ()
 
@@ -63,20 +65,17 @@ func TestTradeAggregations(t *testing.T) {
 					HistoryOperationID: 0,
 					Order:              1,
 					LedgerCloseTime:    now.ToTime().Add(5 * time.Second),
-					SellerAccountID:    accounts[itest.Master().Address()],
-					BuyerAccountID:     accounts[itest.Master().Address()],
-					SoldAssetID:        baseAssetId,
-					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimAtom{
-						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-						OrderBook: &xdr.ClaimOfferAtom{
-							AssetSold:    base,
-							AmountSold:   xdr.Int64(4_263_291_501),
-							AssetBought:  counter,
-							AmountBought: xdr.Int64(100),
-						},
-					},
-					SellPrice: xdr.Price{N: 23456, D: 10000},
+					BaseAccountID:      null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:   null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:        baseAssetId,
+					BaseAmount:         int64(4_263_291_501),
+					BaseOfferID:        null.IntFrom(int64(100)),
+					BaseIsSeller:       true,
+					CounterAmount:      int64(100),
+					CounterAssetID:     counterAssetId,
+					PriceN:             23456,
+					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 			},
 			resolution: 60_000,
@@ -106,39 +105,33 @@ func TestTradeAggregations(t *testing.T) {
 					HistoryOperationID: 0,
 					Order:              0,
 					LedgerCloseTime:    now.ToTime().Add(5 * time.Second),
-					SellerAccountID:    accounts[itest.Master().Address()],
-					BuyerAccountID:     accounts[itest.Master().Address()],
-					SoldAssetID:        baseAssetId,
-					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimAtom{
-						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-						OrderBook: &xdr.ClaimOfferAtom{
-							AssetSold:    base,
-							AmountSold:   xdr.Int64(4_263_291_501),
-							AssetBought:  counter,
-							AmountBought: xdr.Int64(100),
-						},
-					},
-					SellPrice: xdr.Price{N: 23456, D: 10000},
+					BaseAccountID:      null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:   null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:        baseAssetId,
+					BaseAmount:         int64(4_263_291_501),
+					BaseOfferID:        null.IntFrom(int64(200)),
+					BaseIsSeller:       true,
+					CounterAmount:      int64(100),
+					CounterAssetID:     counterAssetId,
+					PriceN:             23456,
+					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 				{
 					HistoryOperationID: 0,
 					Order:              1,
 					LedgerCloseTime:    now.ToTime().Add(5 * time.Second),
-					SellerAccountID:    accounts[itest.Master().Address()],
-					BuyerAccountID:     accounts[itest.Master().Address()],
-					SoldAssetID:        baseAssetId,
-					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimAtom{
-						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-						OrderBook: &xdr.ClaimOfferAtom{
-							AssetSold:    base,
-							AmountSold:   xdr.Int64(4_263_291_501),
-							AssetBought:  counter,
-							AmountBought: xdr.Int64(1000),
-						},
-					},
-					SellPrice: xdr.Price{N: 13456, D: 10000},
+					BaseAccountID:      null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:   null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:        baseAssetId,
+					BaseAmount:         int64(4_263_291_501),
+					BaseOfferID:        null.IntFrom(int64(300)),
+					BaseIsSeller:       true,
+					CounterAmount:      int64(1000),
+					CounterAssetID:     counterAssetId,
+					PriceN:             13456,
+					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 			},
 			resolution: 60_000,
@@ -168,39 +161,33 @@ func TestTradeAggregations(t *testing.T) {
 					HistoryOperationID: 0,
 					Order:              0,
 					LedgerCloseTime:    now.ToTime().Add(5 * time.Second),
-					SellerAccountID:    accounts[itest.Master().Address()],
-					BuyerAccountID:     accounts[itest.Master().Address()],
-					SoldAssetID:        baseAssetId,
-					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimAtom{
-						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-						OrderBook: &xdr.ClaimOfferAtom{
-							AssetSold:    base,
-							AmountSold:   xdr.Int64(4_263_301_501),
-							AssetBought:  counter,
-							AmountBought: xdr.Int64(100),
-						},
-					},
-					SellPrice: xdr.Price{N: 23456, D: 10000},
+					BaseAccountID:      null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:   null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:        baseAssetId,
+					BaseAmount:         int64(4_263_301_501),
+					BaseOfferID:        null.IntFrom(int64(400)),
+					BaseIsSeller:       true,
+					CounterAmount:      int64(100),
+					CounterAssetID:     counterAssetId,
+					PriceN:             23456,
+					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 				{
 					HistoryOperationID: 0,
 					Order:              1,
 					LedgerCloseTime:    now.ToTime().Add(5 * time.Second),
-					SellerAccountID:    accounts[itest.Master().Address()],
-					BuyerAccountID:     accounts[itest.Master().Address()],
-					SoldAssetID:        baseAssetId,
-					BoughtAssetID:      counterAssetId,
-					Trade: xdr.ClaimAtom{
-						Type: xdr.ClaimAtomTypeClaimAtomTypeOrderBook,
-						OrderBook: &xdr.ClaimOfferAtom{
-							AssetSold:    base,
-							AmountSold:   xdr.Int64(4_263_291_501),
-							AssetBought:  counter,
-							AmountBought: xdr.Int64(1000),
-						},
-					},
-					SellPrice: xdr.Price{N: 13456, D: 10000},
+					BaseAccountID:      null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:   null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:        baseAssetId,
+					BaseAmount:         int64(4_263_291_501),
+					BaseOfferID:        null.IntFrom(int64(500)),
+					BaseIsSeller:       true,
+					CounterAmount:      int64(1000),
+					CounterAssetID:     counterAssetId,
+					PriceN:             13456,
+					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
 				},
 			},
 			resolution: 86_400_000,
@@ -223,6 +210,64 @@ func TestTradeAggregations(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "excluding high rounding slippage trades",
+			trades: []history.InsertTrade{
+				{
+					HistoryOperationID: 0,
+					Order:              0,
+					LedgerCloseTime:    now.ToTime().Add(5 * time.Second),
+					BaseAccountID:      null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:   null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:        baseAssetId,
+					BaseAmount:         int64(4_263_301_501),
+					BaseOfferID:        null.IntFrom(int64(400)),
+					BaseIsSeller:       true,
+					CounterAmount:      int64(100),
+					CounterAssetID:     counterAssetId,
+					PriceN:             23456,
+					PriceD:             10000,
+					Type:               history.OrderbookTradeType,
+				},
+				{
+					HistoryOperationID:  0,
+					Order:               1,
+					LedgerCloseTime:     now.ToTime().Add(5 * time.Second),
+					BaseAccountID:       null.IntFrom(accounts[itest.Master().Address()]),
+					CounterAccountID:    null.IntFrom(accounts[itest.Master().Address()]),
+					BaseAssetID:         baseAssetId,
+					BaseAmount:          int64(4_263_291_501),
+					BaseLiquidityPoolID: null.IntFrom(int64(500)),
+					LiquidityPoolFee:    null.IntFrom(30),
+					BaseIsSeller:        true,
+					CounterAmount:       int64(1000),
+					CounterAssetID:      counterAssetId,
+					PriceN:              13456,
+					PriceD:              10000,
+					Type:                history.LiquidityPoolTradeType,
+					RoundingSlippage:    null.IntFrom(1500),
+				},
+			},
+			resolution: 86_400_000,
+			pq:         db2.PageQuery{Limit: 100},
+			expected: []history.TradeAggregation{
+				{
+					Timestamp:     now.RoundDown(86_400_000).ToInt64(),
+					TradeCount:    1,
+					BaseVolume:    "4263301501",
+					CounterVolume: "100",
+					Average:       float64(100) / 4_263_301_501,
+					HighN:         23456,
+					HighD:         10000,
+					LowN:          23456,
+					LowD:          10000,
+					OpenN:         23456,
+					OpenD:         10000,
+					CloseN:        23456,
+					CloseD:        10000,
+				},
+			},
+		},
 	}
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -239,7 +284,7 @@ func TestTradeAggregations(t *testing.T) {
 			// Rebuild the aggregates.
 			for _, trade := range scenario.trades {
 				ledgerCloseTime := strtime.MillisFromTime(trade.LedgerCloseTime)
-				assert.NoError(t, historyQ.RebuildTradeAggregationTimes(ctx, ledgerCloseTime, ledgerCloseTime))
+				assert.NoError(t, historyQ.RebuildTradeAggregationTimes(ctx, ledgerCloseTime, ledgerCloseTime, 1000))
 			}
 
 			// Check the result is what we expect

@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -32,6 +33,10 @@ type StatsChangeProcessorResults struct {
 	TrustLinesCreated int64
 	TrustLinesUpdated int64
 	TrustLinesRemoved int64
+
+	LiquidityPoolsCreated int64
+	LiquidityPoolsUpdated int64
+	LiquidityPoolsRemoved int64
 }
 
 func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change) error {
@@ -81,6 +86,15 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			p.results.TrustLinesRemoved++
 		}
+	case xdr.LedgerEntryTypeLiquidityPool:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.LiquidityPoolsCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.LiquidityPoolsUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.LiquidityPoolsRemoved++
+		}
 	}
 
 	return nil
@@ -111,5 +125,9 @@ func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
 		"stats_trust_lines_created": stats.TrustLinesCreated,
 		"stats_trust_lines_updated": stats.TrustLinesUpdated,
 		"stats_trust_lines_removed": stats.TrustLinesRemoved,
+
+		"stats_liquidity_pools_created": stats.LiquidityPoolsCreated,
+		"stats_liquidity_pools_updated": stats.LiquidityPoolsUpdated,
+		"stats_liquidity_pools_removed": stats.LiquidityPoolsRemoved,
 	}
 }

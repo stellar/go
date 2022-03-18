@@ -8,12 +8,14 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
@@ -186,6 +188,24 @@ const (
 
 	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
 	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
+
+	// EffectLiquidityPoolDeposited occurs when a liquidity pool incurs a deposit
+	EffectLiquidityPoolDeposited EffectType = 90 // from liquidity_pool_deposit
+
+	// EffectLiquidityPoolWithdrew occurs when a liquidity pool incurs a withdrawal
+	EffectLiquidityPoolWithdrew EffectType = 91 // from liquidity_pool_withdraw
+
+	// EffectLiquidityPoolTrade occurs when a trade happens in a liquidity pool
+	EffectLiquidityPoolTrade EffectType = 92
+
+	// EffectLiquidityPoolCreated occurs when a liquidity pool is created
+	EffectLiquidityPoolCreated EffectType = 93 // from change_trust
+
+	// EffectLiquidityPoolRemoved occurs when a liquidity pool is removed
+	EffectLiquidityPoolRemoved EffectType = 94 // from change_trust
+
+	// EffectLiquidityPoolRevoked occurs when a liquidity pool is revoked
+	EffectLiquidityPoolRevoked EffectType = 95 // from change_trust_line_flags and allow_trust
 )
 
 // Account is a row of data from the `history_accounts` table
@@ -215,11 +235,6 @@ type AccountEntry struct {
 	NumSponsoring        uint32      `db:"num_sponsoring"`
 }
 
-type AccountsBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
 type IngestionQ interface {
 	QAccounts
 	QAssetStats
@@ -228,6 +243,8 @@ type IngestionQ interface {
 	QData
 	QEffects
 	QLedgers
+	QLiquidityPools
+	QHistoryLiquidityPools
 	QOffers
 	QOperations
 	// QParticipants
@@ -238,8 +255,8 @@ type IngestionQ interface {
 	QSigners
 	//QTrades
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis) error
-	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error
+	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
+	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
@@ -256,16 +273,16 @@ type IngestionQ interface {
 	GetExpStateInvalid(context.Context) (bool, error)
 	GetLatestHistoryLedger(context.Context) (uint32, error)
 	GetOfferCompactionSequence(context.Context) (uint32, error)
+	GetLiquidityPoolCompactionSequence(context.Context) (uint32, error)
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
 }
 
 // QAccounts defines account related queries.
 type QAccounts interface {
-	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
 	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
-	UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error
-	RemoveAccount(ctx context.Context, accountID string) (int64, error)
+	UpsertAccounts(ctx context.Context, accounts []AccountEntry) error
+	RemoveAccounts(ctx context.Context, accountIDs []string) (int64, error)
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
@@ -297,24 +314,17 @@ type Data struct {
 
 type AccountDataValue []byte
 
-type AccountDataBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
-// accountDataBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type accountDataBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
+type AccountDataKey struct {
+	AccountID string
+	DataName  string
 }
 
 // QData defines account data related queries.
 type QData interface {
-	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
 	CountAccountsData(ctx context.Context) (int, error)
-	GetAccountDataByKeys(ctx context.Context, keys []xdr.LedgerKeyData) ([]Data, error)
-	InsertAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	UpdateAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	RemoveAccountData(ctx context.Context, key xdr.LedgerKeyData) (int64, error)
+	GetAccountDataByKeys(ctx context.Context, keys []AccountDataKey) ([]Data, error)
+	UpsertAccountData(ctx context.Context, data []Data) error
+	RemoveAccountData(ctx context.Context, keys []AccountDataKey) (int64, error)
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -351,6 +361,7 @@ type ExpAssetStatAccounts struct {
 	Authorized                      int32 `json:"authorized"`
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               int32 `json:"claimable_balances"`
+	LiquidityPools                  int32 `json:"liquidity_pools"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -372,6 +383,7 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		Authorized:                      a.Authorized + b.Authorized,
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
+		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
 	}
 }
@@ -381,10 +393,12 @@ func (a ExpAssetStatAccounts) IsZero() bool {
 }
 
 // ExpAssetStatBalances represents the summarized balances for a single Asset
+// Note: the string representation is in stroops!
 type ExpAssetStatBalances struct {
 	Authorized                      string `json:"authorized"`
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               string `json:"claimable_balances"`
+	LiquidityPools                  string `json:"liquidity_pools"`
 	Unauthorized                    string `json:"unauthorized"`
 }
 
@@ -398,7 +412,29 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 		return errors.New("Type assertion .([]byte) failed.")
 	}
 
-	return json.Unmarshal(source, &e)
+	err := json.Unmarshal(source, &e)
+	if err != nil {
+		return err
+	}
+
+	// Sets zero values for empty balances
+	if e.Authorized == "" {
+		e.Authorized = "0"
+	}
+	if e.AuthorizedToMaintainLiabilities == "" {
+		e.AuthorizedToMaintainLiabilities = "0"
+	}
+	if e.ClaimableBalances == "" {
+		e.ClaimableBalances = "0"
+	}
+	if e.LiquidityPools == "" {
+		e.LiquidityPools = "0"
+	}
+	if e.Unauthorized == "" {
+		e.Unauthorized = "0"
+	}
+
+	return nil
 }
 
 // QAssetStats defines exp_asset_stats related queries.
@@ -540,9 +576,9 @@ type LedgerCache struct {
 	queued map[int32]struct{}
 }
 
-type LedgerGap struct {
-	StartSequence uint32 `db:"gap_start"`
-	EndSequence   uint32 `db:"gap_end"`
+type LedgerRange struct {
+	StartSequence uint32 `db:"start"`
+	EndSequence   uint32 `db:"end"`
 }
 
 // LedgersQ is a helper struct to aid in configuring queries that loads
@@ -573,6 +609,14 @@ type ManageOffer struct {
 	OfferID int64 `json:"offer_id"`
 }
 
+// upsertField is used in upsertRows function generating upsert query for
+// different tables.
+type upsertField struct {
+	name    string
+	dbType  string
+	objects []interface{}
+}
+
 // Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
 	SellerID string `db:"seller_id"`
@@ -589,16 +633,6 @@ type Offer struct {
 	Deleted            bool        `db:"deleted"`
 	LastModifiedLedger uint32      `db:"last_modified_ledger"`
 	Sponsor            null.String `db:"sponsor"`
-}
-
-type OffersBatchInsertBuilder interface {
-	Add(ctx context.Context, offer Offer) error
-	Exec(ctx context.Context) error
-}
-
-// offersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type offersBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
 }
 
 // OperationsQ is a helper struct to aid in configuring queries that loads
@@ -649,43 +683,28 @@ type TotalOrderID struct {
 // Trade represents a trade from the trades table, joined with asset information from the assets table and account
 // addresses from the accounts table
 type Trade struct {
-	HistoryOperationID int64     `db:"history_operation_id"`
-	Order              int32     `db:"order"`
-	LedgerCloseTime    time.Time `db:"ledger_closed_at"`
-	OfferID            int64     `db:"offer_id"`
-	BaseOfferID        *int64    `db:"base_offer_id"`
-	BaseAccount        string    `db:"base_account"`
-	BaseAssetType      string    `db:"base_asset_type"`
-	BaseAssetCode      string    `db:"base_asset_code"`
-	BaseAssetIssuer    string    `db:"base_asset_issuer"`
-	BaseAmount         xdr.Int64 `db:"base_amount"`
-	CounterOfferID     *int64    `db:"counter_offer_id"`
-	CounterAccount     string    `db:"counter_account"`
-	CounterAssetType   string    `db:"counter_asset_type"`
-	CounterAssetCode   string    `db:"counter_asset_code"`
-	CounterAssetIssuer string    `db:"counter_asset_issuer"`
-	CounterAmount      xdr.Int64 `db:"counter_amount"`
-	BaseIsSeller       bool      `db:"base_is_seller"`
-	PriceN             null.Int  `db:"price_n"`
-	PriceD             null.Int  `db:"price_d"`
-}
-
-// TradesQ is a helper struct to aid in configuring queries that loads
-// slices of trade structs.
-type TradesQ struct {
-	Err        error
-	parent     *Q
-	sql        sq.SelectBuilder
-	pageCalled bool
-
-	// For queries for account and offer we construct UNION query. The alternative
-	// is to use (base = X OR counter = X) query but it's costly.
-	forAccountID int64
-	forOfferID   int64
-
-	// rawSQL will be executed if present (instead of sql - sq.SelectBuilder).
-	rawSQL  string
-	rawArgs []interface{}
+	HistoryOperationID     int64       `db:"history_operation_id"`
+	Order                  int32       `db:"order"`
+	LedgerCloseTime        time.Time   `db:"ledger_closed_at"`
+	BaseOfferID            null.Int    `db:"base_offer_id"`
+	BaseAccount            null.String `db:"base_account"`
+	BaseAssetType          string      `db:"base_asset_type"`
+	BaseAssetCode          string      `db:"base_asset_code"`
+	BaseAssetIssuer        string      `db:"base_asset_issuer"`
+	BaseAmount             int64       `db:"base_amount"`
+	BaseLiquidityPoolID    null.String `db:"base_liquidity_pool_id"`
+	CounterOfferID         null.Int    `db:"counter_offer_id"`
+	CounterAccount         null.String `db:"counter_account"`
+	CounterAssetType       string      `db:"counter_asset_type"`
+	CounterAssetCode       string      `db:"counter_asset_code"`
+	CounterAssetIssuer     string      `db:"counter_asset_issuer"`
+	CounterAmount          int64       `db:"counter_amount"`
+	CounterLiquidityPoolID null.String `db:"counter_liquidity_pool_id"`
+	LiquidityPoolFee       null.Int    `db:"liquidity_pool_fee"`
+	BaseIsSeller           bool        `db:"base_is_seller"`
+	PriceN                 null.Int    `db:"price_n"`
+	PriceD                 null.Int    `db:"price_d"`
+	Type                   TradeType   `db:"trade_type"`
 }
 
 // Transaction is a row of data from the `history_transactions` table
@@ -710,7 +729,9 @@ type TrustLine struct {
 	AssetIssuer        string        `db:"asset_issuer"`
 	AssetCode          string        `db:"asset_code"`
 	Balance            int64         `db:"balance"`
+	LedgerKey          string        `db:"ledger_key"`
 	Limit              int64         `db:"trust_line_limit"`
+	LiquidityPoolID    string        `db:"liquidity_pool_id"`
 	BuyingLiabilities  int64         `db:"buying_liabilities"`
 	SellingLiabilities int64         `db:"selling_liabilities"`
 	Flags              uint32        `db:"flags"`
@@ -720,64 +741,15 @@ type TrustLine struct {
 
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
-	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
-	GetTrustLinesByKeys(ctx context.Context, keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
-	InsertTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	UpdateTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
-	UpsertTrustLines(ctx context.Context, entries []xdr.LedgerEntry) error
-	RemoveTrustLine(ctx context.Context, key xdr.LedgerKeyTrustLine) (int64, error)
-}
-
-type TrustLinesBatchInsertBuilder interface {
-	Add(ctx context.Context, entry xdr.LedgerEntry) error
-	Exec(ctx context.Context) error
-}
-
-// trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
-type trustLinesBatchInsertBuilder struct {
-	builder db.BatchInsertBuilder
-}
-
-func (q *Q) NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder {
-	return &accountsBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
+	GetTrustLinesByKeys(ctx context.Context, ledgerKeys []string) ([]TrustLine, error)
+	UpsertTrustLines(ctx context.Context, trustlines []TrustLine) error
+	RemoveTrustLines(ctx context.Context, ledgerKeys []string) (int64, error)
 }
 
 func (q *Q) NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder {
 	return &accountSignersBatchInsertBuilder{
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("accounts_signers"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
-func (q *Q) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder {
-	return &accountDataBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("accounts_data"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
-func (q *Q) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder {
-	return &offersBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("offers"),
-			MaxBatchSize: maxBatchSize,
-		},
-	}
-}
-
-func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder {
-	return &trustLinesBatchInsertBuilder{
-		builder: db.BatchInsertBuilder{
-			Table:        q.GetTable("trust_lines"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}
@@ -839,11 +811,13 @@ func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 		"history_ledgers":                        "id",
 		"history_operation_claimable_balances":   "history_operation_id",
 		"history_operation_participants":         "history_operation_id",
+		"history_operation_liquidity_pools":      "history_operation_id",
 		"history_operations":                     "id",
 		"history_trades":                         "history_operation_id",
 		"history_trades_60000":                   "open_ledger_toid",
 		"history_transaction_claimable_balances": "history_transaction_id",
 		"history_transaction_participants":       "history_transaction_id",
+		"history_transaction_liquidity_pools":    "history_transaction_id",
 		"history_transactions":                   "id",
 	} {
 		err := q.DeleteRange(ctx, start, end, table, column)
@@ -852,4 +826,68 @@ func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 		}
 	}
 	return nil
+}
+
+// upsertRows builds and executes an upsert query that allows very fast upserts
+// to a given table. The final query is of form:
+//
+// WITH r AS
+// 		(SELECT
+//			/* unnestPart */
+// 			unnest(?::type1[]), /* field1 */
+// 			unnest(?::type2[]), /* field2 */
+//			...
+// 		)
+// 	INSERT INTO table (
+//		/* insertFieldsPart */
+// 		field1,
+// 		field2,
+//		...
+// 	)
+// 	SELECT * from r
+// 	ON CONFLICT (conflictField) DO UPDATE SET
+//		/* onConflictPart */
+// 		field1 = excluded.field1,
+// 		field2 = excluded.field2,
+//		...
+func (q *Q) upsertRows(ctx context.Context, table string, conflictField string, fields []upsertField) error {
+	unnestPart := make([]string, 0, len(fields))
+	insertFieldsPart := make([]string, 0, len(fields))
+	onConflictPart := make([]string, 0, len(fields))
+	pqArrays := make([]interface{}, 0, len(fields))
+
+	for _, field := range fields {
+		unnestPart = append(
+			unnestPart,
+			fmt.Sprintf("unnest(?::%s[]) /* %s */", field.dbType, field.name),
+		)
+		insertFieldsPart = append(
+			insertFieldsPart,
+			field.name,
+		)
+		onConflictPart = append(
+			onConflictPart,
+			fmt.Sprintf("%s = excluded.%s", field.name, field.name),
+		)
+		pqArrays = append(
+			pqArrays,
+			pq.Array(field.objects),
+		)
+	}
+
+	sql := `
+	WITH r AS
+		(SELECT ` + strings.Join(unnestPart, ",") + `)
+	INSERT INTO ` + table + `
+		(` + strings.Join(insertFieldsPart, ",") + `)
+	SELECT * from r
+	ON CONFLICT (` + conflictField + `) DO UPDATE SET
+		` + strings.Join(onConflictPart, ",")
+
+	_, err := q.ExecRaw(
+		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
+		sql,
+		pqArrays...,
+	)
+	return err
 }

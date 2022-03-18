@@ -131,7 +131,7 @@ func TestEmptyHomeDomainOK(t *testing.T) {
 	options := SetOptions{
 		HomeDomain: NewHomeDomain(""),
 	}
-	options.BuildXDR(false)
+	options.BuildXDR()
 
 	assert.Equal(t, string(*options.xdrOp.HomeDomain), "", "empty string home domain is set")
 

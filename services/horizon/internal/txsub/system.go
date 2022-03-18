@@ -77,6 +77,18 @@ type System struct {
 	}
 }
 
+// RegisterMetrics registers the prometheus metrics
+func (sys *System) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(sys.Metrics.SubmissionDuration)
+	registry.MustRegister(sys.Metrics.BufferedSubmissionsGauge)
+	registry.MustRegister(sys.Metrics.OpenSubmissionsGauge)
+	registry.MustRegister(sys.Metrics.FailedSubmissionsCounter)
+	registry.MustRegister(sys.Metrics.SuccessfulSubmissionsCounter)
+	registry.MustRegister(sys.Metrics.V0TransactionsCounter)
+	registry.MustRegister(sys.Metrics.V1TransactionsCounter)
+	registry.MustRegister(sys.Metrics.FeeBumpTransactionsCounter)
+}
+
 // Submit submits the provided base64 encoded transaction envelope to the
 // network using this submission system.
 func (sys *System) Submit(
@@ -100,6 +112,11 @@ func (sys *System) Submit(
 		"tx_type": envelope.Type.String(),
 		"tx":      rawTx,
 	}).Info("Processing transaction")
+
+	if envelope.SeqNum() < 0 {
+		sys.finish(ctx, hash, response, Result{Err: ErrBadSequence})
+		return
+	}
 
 	tx, sequenceNumber, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
 	if err == nil {
@@ -160,9 +177,8 @@ func (sys *System) Submit(
 			sys.finish(ctx, hash, response, Result{Err: sr.Err})
 			return
 		}
-
-		if sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())) {
-			sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
+		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
+			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}
 
@@ -177,7 +193,7 @@ func (sys *System) Submit(
 		}
 
 	case <-ctx.Done():
-		sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
+		sys.finish(ctx, hash, response, Result{Err: sys.deriveTxSubError(ctx)})
 	}
 
 	return
@@ -185,7 +201,7 @@ func (sys *System) Submit(
 
 // waitUntilAccountSequence blocks until either the context times out or the sequence number of the
 // given source account is greater than or equal to `seq`
-func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) bool {
+func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) error {
 	timer := time.NewTimer(sys.accountSeqPollInterval)
 	defer timer.Stop()
 
@@ -205,17 +221,24 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 					Warn("missing sequence number for account")
 			}
 			if num >= seq {
-				return false
+				return nil
 			}
 		}
 
 		select {
 		case <-ctx.Done():
-			return true
+			return sys.deriveTxSubError(ctx)
 		case <-timer.C:
 			timer.Reset(sys.accountSeqPollInterval)
 		}
 	}
+}
+
+func (sys *System) deriveTxSubError(ctx context.Context) error {
+	if ctx.Err() == context.Canceled {
+		return ErrCanceled
+	}
+	return ErrTimeout
 }
 
 // Submit submits the provided base64 encoded transaction envelope to the
@@ -318,7 +341,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 		// In Tick we only check txs in a queue so those which did not have results before Tick
 		// so we check for them in the last 5 mins of ledgers: 60.
-		var sinceLedgerSeq int32 = int32(latestLedger) - 60
+		sinceLedgerSeq := int32(latestLedger) - 60
 		if sinceLedgerSeq < 0 {
 			sinceLedgerSeq = 0
 		}

@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"encoding/base64"
 	"sync"
 
 	"github.com/stellar/go/support/errors"
@@ -48,14 +49,16 @@ import (
 //       already removed.
 type ChangeCompactor struct {
 	// ledger key => Change
-	cache map[string]Change
-	mutex sync.Mutex
+	cache          map[string]Change
+	mutex          sync.Mutex
+	encodingBuffer *xdr.EncodingBuffer
 }
 
 // NewChangeCompactor returns a new ChangeCompactor.
 func NewChangeCompactor() *ChangeCompactor {
 	return &ChangeCompactor{
-		cache: make(map[string]Change),
+		cache:          make(map[string]Change),
+		encodingBuffer: xdr.NewEncodingBuffer(),
 	}
 }
 
@@ -85,10 +88,13 @@ func (c *ChangeCompactor) AddChange(change Change) error {
 // addCreatedChange adds a change to the cache, but returns an error if create
 // change is unexpected.
 func (c *ChangeCompactor) addCreatedChange(change Change) error {
-	ledgerKeyString, err := change.Post.LedgerKey().MarshalBinaryBase64()
+	// safe, since we later cast to string (causing a copy)
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Post.LedgerKey())
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinaryBase64")
+		return errors.Wrap(err, "Error MarshalBinary")
 	}
+
+	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
 	if !exist {
@@ -100,12 +106,12 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 		return NewStateError(errors.Errorf(
 			"can't create an entry that already exists (ledger key = %s)",
-			ledgerKeyString,
+			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
 		return NewStateError(errors.Errorf(
 			"can't create an entry that already exists (ledger key = %s)",
-			ledgerKeyString,
+			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 		// If existing type is removed it means that this entry does exist
@@ -125,10 +131,13 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 // addUpdatedChange adds a change to the cache, but returns an error if update
 // change is unexpected.
 func (c *ChangeCompactor) addUpdatedChange(change Change) error {
-	ledgerKeyString, err := change.Post.LedgerKey().MarshalBinaryBase64()
+	// safe, since we later cast to string (causing a copy)
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Post.LedgerKey())
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinaryBase64")
+		return errors.Wrap(err, "Error MarshalBinary")
 	}
+
+	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
 	if !exist {
@@ -154,7 +163,7 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 		return NewStateError(errors.Errorf(
 			"can't update an entry that was previously removed (ledger key = %s)",
-			ledgerKeyString,
+			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	default:
 		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.Type)
@@ -166,10 +175,13 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 // addRemovedChange adds a change to the cache, but returns an error if remove
 // change is unexpected.
 func (c *ChangeCompactor) addRemovedChange(change Change) error {
-	ledgerKeyString, err := change.Pre.LedgerKey().MarshalBinaryBase64()
+	// safe, since we later cast to string (causing a copy)
+	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(change.Pre.LedgerKey())
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinaryBase64")
+		return errors.Wrap(err, "Error MarshalBinary")
 	}
+
+	ledgerKeyString := string(ledgerKey)
 
 	existingChange, exist := c.cache[ledgerKeyString]
 	if !exist {
@@ -191,7 +203,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 		return NewStateError(errors.Errorf(
 			"can't remove an entry that was previously removed (ledger key = %s)",
-			ledgerKeyString,
+			base64.StdEncoding.EncodeToString(ledgerKey),
 		))
 	default:
 		return errors.Errorf("Unknown LedgerEntryChangeType: %d", existingChange.Type)

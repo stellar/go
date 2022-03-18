@@ -18,8 +18,12 @@ func TestInit(t *testing.T) {
 
 	defer db.Close()
 
-	_, err := Migrate(db.DB, MigrateUp, 0)
+	// make sure migrating in both directions works
 
+	_, err := Migrate(db.DB, MigrateUp, 0)
+	assert.NoError(t, err)
+
+	_, err = Migrate(db.DB, MigrateDown, 0)
 	assert.NoError(t, err)
 }
 

@@ -23,7 +23,7 @@ type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry x
 // StateVerifier verifies if ledger entries provided by Add method are the same
 // as in the checkpoint ledger entries provided by CheckpointChangeReader.
 // The algorithm works in the following way:
-//   0. Develop TransformFunction. It should remove all fields and objects not
+//   0. Develop `transformFunction`. It should remove all fields and objects not
 //      stored in your app. For example, if you only store accounts, all other
 //      ledger entry types should be ignored (return ignore = true).
 //   1. In a loop, get entries from history archive by calling GetEntries()
@@ -32,19 +32,28 @@ type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry x
 //      entries in your storage (to find if some extra entires exist in your
 //      storage).
 // Functions will return StateError type if state is found to be incorrect.
-// It's user responsibility to call `StateReader.Close()` when reading is done.
+// It's user responsibility to call `stateReader.Close()` when reading is done.
 // Check Horizon for an example how to use this tool.
 type StateVerifier struct {
-	StateReader ingest.ChangeReader
-	// TransformFunction transforms (or ignores) ledger entries streamed from
+	stateReader ingest.ChangeReader
+	// transformFunction transforms (or ignores) ledger entries streamed from
 	// checkpoint buckets to match the form added by `Write`. Read
 	// TransformLedgerEntryFunction godoc for more information.
-	TransformFunction TransformLedgerEntryFunction
+	transformFunction TransformLedgerEntryFunction
 
 	readEntries int
 	readingDone bool
 
 	currentEntries map[string]xdr.LedgerEntry
+	encodingBuffer *xdr.EncodingBuffer
+}
+
+func NewStateVerifier(stateReader ingest.ChangeReader, tf TransformLedgerEntryFunction) *StateVerifier {
+	return &StateVerifier{
+		stateReader:       stateReader,
+		transformFunction: tf,
+		encodingBuffer:    xdr.NewEncodingBuffer(),
+	}
 }
 
 // GetLedgerKeys returns up to `count` ledger keys from history buckets
@@ -59,7 +68,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 	v.currentEntries = make(map[string]xdr.LedgerEntry)
 
 	for count > 0 {
-		entryChange, err := v.StateReader.Read()
+		entryChange, err := v.stateReader.Read()
 		if err != nil {
 			if err == io.EOF {
 				v.readingDone = true
@@ -70,22 +79,22 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 
 		entry := *entryChange.Post
 
-		if v.TransformFunction != nil {
-			ignore, _ := v.TransformFunction(entry)
+		if v.transformFunction != nil {
+			ignore, _ := v.transformFunction(entry)
 			if ignore {
 				continue
 			}
 		}
 
 		ledgerKey := entry.LedgerKey()
-		key, err := xdr.MarshalBase64(ledgerKey)
+		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
 		if err != nil {
 			return keys, errors.Wrap(err, "Error marshaling ledgerKey")
 		}
 
 		keys = append(keys, ledgerKey)
 		entry.Normalize()
-		v.currentEntries[key] = entry
+		v.currentEntries[string(key)] = entry
 
 		count--
 		v.readEntries++
@@ -101,46 +110,47 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 // Any `StateError` returned by this method indicates invalid state!
 func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	actualEntry := entry.Normalize()
-	actualEntryMarshaled, err := actualEntry.MarshalBinary()
+	actualEntryMarshaled, err := v.encodingBuffer.MarshalBinary(actualEntry)
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling actualEntry")
 	}
 
-	key, err := xdr.MarshalBase64(actualEntry.LedgerKey())
+	// safe, since we convert to string right away (causing a copy)
+	key, err := v.encodingBuffer.UnsafeMarshalBinary(actualEntry.LedgerKey())
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling ledgerKey")
 	}
 
-	expectedEntry, exist := v.currentEntries[key]
+	expectedEntry, exist := v.currentEntries[string(key)]
 	if !exist {
 		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
-			key,
+			base64.StdEncoding.EncodeToString(key),
 		))
 	}
-	delete(v.currentEntries, key)
+	delete(v.currentEntries, string(key))
 
 	preTransformExpectedEntry := expectedEntry
-	preTransformExpectedEntryMarshaled, err := preTransformExpectedEntry.MarshalBinary()
+	preTransformExpectedEntryMarshaled, err := v.encodingBuffer.MarshalBinary(&preTransformExpectedEntry)
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling preTransformExpectedEntry")
 	}
 
-	if v.TransformFunction != nil {
+	if v.transformFunction != nil {
 		var ignore bool
-		ignore, expectedEntry = v.TransformFunction(expectedEntry)
+		ignore, expectedEntry = v.transformFunction(expectedEntry)
 		// Extra check: if entry was ignored in GetEntries, it shouldn't be
 		// ignored here.
 		if ignore {
 			return errors.Errorf(
-				"Entry ignored in GetEntries but not ignored in Write: %s. Possibly TransformFunction is buggy.",
+				"Entry ignored in GetEntries but not ignored in Write: %s. Possibly transformFunction is buggy.",
 				base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
 			)
 		}
 	}
 
-	expectedEntryMarshaled, err := expectedEntry.MarshalBinary()
+	expectedEntryMarshaled, err := v.encodingBuffer.MarshalBinary(&expectedEntry)
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling expectedEntry")
 	}
@@ -195,7 +205,7 @@ func (v *StateVerifier) checkUnreadEntries() error {
 		}
 
 		// Ignore error as StateError below is more important
-		entryString, _ := xdr.MarshalBase64(entry)
+		entryString, _ := v.encodingBuffer.MarshalBase64(&entry)
 		return ingest.NewStateError(errors.Errorf(
 			"Entries (%d) not found locally, example: %s",
 			len(v.currentEntries),

@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/price"
 	"github.com/stellar/go/xdr"
 	"testing"
 
@@ -15,8 +16,7 @@ func TestManageSellOfferValidateSellingAsset(t *testing.T) {
 	selling := CreditAsset{"", kp0.Address()}
 	buying := NativeAsset{}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"))
 	check(err)
 
 	_, err = NewTransaction(
@@ -42,8 +42,7 @@ func TestManageSellOfferValidateBuyingAsset(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"", kp0.Address()}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"))
 	check(err)
 
 	_, err = NewTransaction(
@@ -69,8 +68,7 @@ func TestManageSellOfferValidateAmount(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "-1"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"))
 	check(err)
 
 	_, err = NewTransaction(
@@ -96,8 +94,7 @@ func TestManageSellOfferValidatePrice(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "0"
-	price := "-0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, xdr.Price{-1, 100})
 	check(err)
 
 	_, err = NewTransaction(
@@ -110,7 +107,7 @@ func TestManageSellOfferValidatePrice(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Price, Error: amount can not be negative"
+		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Price, Error: price cannot be negative: -1/100"
 		assert.Contains(t, err.Error(), expected)
 	}
 }
@@ -124,7 +121,7 @@ func TestManageSellOfferValidateOfferID(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "0",
-		Price:   "0.01",
+		Price:   price.MustParse("0.01"),
 		OfferID: -1,
 	}
 
@@ -150,21 +147,18 @@ func TestManageSellOfferPrice(t *testing.T) {
 		Selling: CreditAsset{"ABCD", kp0.Address()},
 		Buying:  NativeAsset{},
 		Amount:  "1",
-		Price:   "0.000000001",
+		Price:   price.MustParse("0.000000001"),
 		OfferID: 1,
 	}
 
-	xdrOp, err := mso.BuildXDR(false)
+	xdrOp, err := mso.BuildXDR()
 	assert.NoError(t, err)
 	expectedPrice := xdr.Price{N: 1, D: 1000000000}
 	assert.Equal(t, expectedPrice, xdrOp.Body.ManageSellOfferOp.Price)
-	assert.Equal(t, mso.Price, mso.price.string())
-	assert.Equal(t, expectedPrice, mso.price.toXDR())
 
 	parsed := ManageSellOffer{}
-	assert.NoError(t, parsed.FromXDR(xdrOp, false))
+	assert.NoError(t, parsed.FromXDR(xdrOp))
 	assert.Equal(t, mso.Price, parsed.Price)
-	assert.Equal(t, mso.price, parsed.price)
 }
 
 func TestManageSellOfferRoundtrip(t *testing.T) {
@@ -173,7 +167,7 @@ func TestManageSellOfferRoundtrip(t *testing.T) {
 		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
 		Buying:        NativeAsset{},
 		Amount:        "100.0000000",
-		Price:         "0.01",
+		Price:         price.MustParse("0.01"),
 		OfferID:       0,
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{&manageSellOffer}, false)
@@ -184,7 +178,7 @@ func TestManageSellOfferRoundtrip(t *testing.T) {
 		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
 		Buying:        NativeAsset{},
 		Amount:        "100.0000000",
-		Price:         "0.01",
+		Price:         price.MustParse("0.01"),
 		OfferID:       0,
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{&manageSellOffer}, true)

@@ -3,6 +3,162 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.15.1
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### Fixes
+
+* Fixed a regression preventing running multiple concurrent captive-core ingestion instances. ([4251](https://github.com/stellar/go/pull/4251))
+
+## v2.15.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### DB Schema Migration
+
+* DB migrations add columns to the `history_trades` table to enable filtering trades by "rounding slippage". This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+
+### Features
+
+* New feature, enable captive core based ingestion to use remote db persistence rather than in-memory for ledger states. Essentially moves what would have been stored in RAM to the external db instead. Recent profiling on the two approaches shows an approximate space usage of about 8GB for ledger states as of 02/2022 timeframe, but it will gradually continue to increase as more accounts/assets are added to network. Current horizon ingest behavior when configured for captive core usage will by default take this space from RAM, unless a new command line flag is specified `--captive-core-use-db=true`, which enables this space to be taken from the external db instead, and not RAM. The external db used is determined be setting `DATABASE` parameter in the captive core cfg/.toml file. If no value is set, then by default it uses sqlite and the db file is stored in `--captive-core-storage-path` - ([4092](https://github.com/stellar/go/pull/4092))
+  * Note, if using this feature, we recommend using a storage device with capacity for at least 3000 write ops/second.
+
+### Fixes
+
+* Exclude trades with high "rounding slippage" from `/trade_aggregations` endpoint. ([4178](https://github.com/stellar/go/pull/4178))
+  * Note, to apply this change retroactively to existing data you will need to reingest starting from protocol 18 (ledger `38115806`).
+* Release DB connection in `/paths` when no longer needed. ([4228](https://github.com/stellar/go/pull/4228))
+* Fixed false positive warning during orderbook verification in the horizon log output whenever the in memory orderbook is inconsistent with the postgres liquidity pool and offers table. ([4236](https://github.com/stellar/go/pull/4236))
+
+## v2.14.0
+
+* Restart Stellar-Core when it's context is cancelled. ([4192](https://github.com/stellar/go/pull/4192))
+* Resume ingestion immediately when catching up. ([4196](https://github.com/stellar/go/pull/4196))
+* Check if there are newer ledger when requested ledger does not exist. ([4198](https://github.com/stellar/go/pull/4198))
+* Properly check against the HA array being empty. ([4152](https://github.com/stellar/go/pull/4152))
+
+## v2.13.0
+
+### DB Schema Migration
+
+* DB migrations add a column and index to the `history_trades` table to improve performance of some queries. This is very large table so migration may take a long time (depending on your DB hardware). Please test the migrations execution time on the copy of your production DB first.
+
+### Changes
+
+* Improve performance of `/trades?trade_type=liquidity_pool` requests. ([4149](https://github.com/stellar/go/pull/4149))
+* Added `absBeforeEpoch` to ClaimableBalance API Resources. It will contain the Unix epoch representation of absolute before date. ([4148](https://github.com/stellar/go/pull/4148))
+* Path finding results contain empty paths again (removed in Horizon 2.9.0). ([4137](https://github.com/stellar/go/pull/4137))
+* Generate HTTP Status code of 499 for Client Disconnects, should propagate into `horizon_http_requests_duration_seconds_count` metric key with `status="499"` label. ([4098](https://github.com/stellar/go/pull/4098))
+* Fix incorrect counting of rate limited events in stream requests. ([4163](https://github.com/stellar/go/pull/4163))
+* Update cursor on every ledger when using old non Captive-Core ingestion backend. ([4150](https://github.com/stellar/go/pull/4150))
+* Fix the code responsible for updating Stellar-Core status that could stop the metrics updates on connectivity issues. ([4180](https://github.com/stellar/go/pull/4180))
+
+## v2.12.1
+
+### Fixes
+* Fixes a critical vulnerability in HTTP server of Golang <=1.17.4. An attacker can cause unbounded memory growth in a Go server accepting HTTP/2 requests.
+
+## v2.12.0
+
+### Features
+* Result codes for fee-bump transactions will now also include the inner result codes ([4081](https://github.com/stellar/go/pull/4081))
+
+### Performance improvements
+* XDR encoding/decoding pipelines have been optimized ([4069](https://github.com/stellar/go/pull/4069), [4068](https://github.com/stellar/go/pull/4068), [4073](https://github.com/stellar/go/pull/4073), [4064](https://github.com/stellar/go/pull/4064), [4071](https://github.com/stellar/go/pull/4071), [4075](https://github.com/stellar/go/pull/4075), [4077](https://github.com/stellar/go/pull/4077))
+
+* Path-finding on the `/paths` endpoint has been sped up significantly ([4091](https://github.com/stellar/go/pull/4091), [4096](https://github.com/stellar/go/pull/4096), [4102](https://github.com/stellar/go/pull/4102)), [4105](https://github.com/stellar/go/pull/4105), [4113](https://github.com/stellar/go/pull/4113)
+
+* Unused database indices have been removed ([4085](https://github.com/stellar/go/pull/4085), [4089](https://github.com/stellar/go/pull/4089))
+
+### Fixes
+* Improves error parsing from Captive Core ([4066](https://github.com/stellar/go/pull/4066))
+
+* Prevent duplicate errors related to liquidity pool tables during repeated reingestion of same range ([4114](https://github.com/stellar/go/pull/4114))
+
+* In the 2.11.0 release there was a bug introduced which made the `horizon db reingest range` command ignore optional parameters like `--parallel-workers`. This bug is now fixed so all optional command line flags are parsed correctly ([4127](https://github.com/stellar/go/pull/4127))
+
+## v2.11.0
+
+### Changes
+
+* Add a new horizon flag `--max-assets-per-path-request` (`15` by default) that sets the number of assets to consider for strict-send and strict-recieve requests ([4046](https://github.com/stellar/go/pull/4046))
+* Add an endpoint `/liquidity_pools?account={account_id}` which returns the liquidity pools an account is participating in [4043](https://github.com/stellar/go/pull/4043)
+* Add a new horizon command `horizon db fill-gaps` which fills any gaps in history in the horizon db. The command takes optional start and end ledger parameters. If the start and end ledger is provided then horizon will only fill the gaps found within the given ledger range [4060](https://github.com/stellar/go/pull/4060)
+* Improve performance of `/liquidity_pools/{liquidity_pool_id}/effects` endpoint by optimizing the db query to fetch effects for a liquidity pool [4065](https://github.com/stellar/go/pull/4065)
+* Include the captive core binary in the `stellar/horizon` Docker image [4019](https://github.com/stellar/go/pull/4019)
+* Remove `--captive-core-reuse-storage-dir` horizon flag [4048](https://github.com/stellar/go/pull/4048)
+* Improve performance of XDR encoding which should also improve ingestion speeds [4063](https://github.com/stellar/go/pull/4063), [4056](https://github.com/stellar/go/pull/4056), [3957](https://github.com/stellar/go/pull/3957)
+* Improve detection of when the Stellar Core binary has been modified [4050](https://github.com/stellar/go/pull/4050)
+* `horizon_ingest_state_verify_ledger_entries` metric was changed to gauge [4054](https://github.com/stellar/go/pull/4054)
+
+## v2.10.0
+
+This is a minor release with no DB Schema migrations nor explicit state rebuild.
+
+### Changes
+
+* Use the correct asset when calculating liquidity pool disbursements ([4018](https://github.com/stellar/go/pull/4018))
+* Make sure Stellar-Core is not started before previous instance termination ([4020](https://github.com/stellar/go/pull/4020))
+* Add a new feature flag `--ingest-enable-extended-log-ledger-stats` (`false` by default) that enables extra ledger stats when logging ledger processing info ([4017](https://github.com/stellar/go/pull/4017))
+* Add a new command `horizon record-metrics` that records `:[ADMIN_PORT]/metrics` into a zip file for debugging purposes ([4023](https://github.com/stellar/go/pull/4023))
+* Expose the `Latest-Ledger` header to browser web pages ([3995](https://github.com/stellar/go/pull/3995))
+* Correct `horizon db reingest range` output command name when invoking `horizon db detect-gaps` ([4007](https://github.com/stellar/go/pull/4007))
+* Add new prometheus metrics:
+  * `round_trip_time_seconds`:  time required to run `select 1` query in the DB ([4009](https://github.com/stellar/go/pull/4009))
+  * `state_verify_ledger_entries_count`: number of ledger entries downloaded from buckets in a single state verifier run ([4015](https://github.com/stellar/go/pull/4015))
+  * `ledger_fetch_duration_seconds`: duration of fetching ledgers from ledger backend, sliding window = 10m ([4016](https://github.com/stellar/go/pull/4016))
+
+
+## v2.9.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**Protocol 18 support:** This release adds support for Protocol 18 ([CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers).
+
+### DB Schema Migration
+
+* This release comes with a DB migration removing `offer_id` field from `history_trades` table and adding new tables related to AMM. It should not take more than 15 minutes to complete the migration.
+
+### Breaking changes
+
+* There are multiple breaking changes that will activate on Protocol 18 upgrade. Please check the [Horizon Liquidity Pool API](https://docs.google.com/document/d/1pXL8kr1a2vfYSap9T67R-g72B_WWbaE1YsLMa04OgoU/edit) doc for more information. Please upgrade to the latest SDKs that are backward compatible.
+* The `--ingest` flag is set by default. If `--captive-core-config-path` is not set, the config file is generated based on network passhprase ([3783](https://github.com/stellar/go/pull/3783)).
+
+### Changes
+
+* **[CAP 38](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0038.md): Automated Market Makers) support.** All the API changes have been outlined in [Horizon Liquidity Pool API](https://docs.google.com/document/d/1pXL8kr1a2vfYSap9T67R-g72B_WWbaE1YsLMa04OgoU/edit) doc.
+* Update `/paths` endpoint to take liquidity pools into account when searching for possible routes between assets ([3818](https://github.com/stellar/go/pull/3818)).
+* Multiple performance improvements in `/paths`: [3816](https://github.com/stellar/go/pull/3816), [3965](https://github.com/stellar/go/pull/3965), [3933](https://github.com/stellar/go/pull/3933).
+* Requests to `/paths` are now cancelled, respecting `--connection-timeout` flag value ([3081](https://github.com/stellar/go/pull/3081)).
+* Multiple performance improvements to state ingestion processors: [3945](https://github.com/stellar/go/pull/3945), [3956](https://github.com/stellar/go/pull/3956), [3963](https://github.com/stellar/go/pull/3963), [3953](https://github.com/stellar/go/pull/3953), [3944](https://github.com/stellar/go/pull/3944).
+* Add missing tx result codes in `txsub` ([3866](https://github.com/stellar/go/pull/3866)).
+* Add new metric `ProcessorsRunDurationSummary`, old `ProcessorsRunDuration` is deprecated ([3940](https://github.com/stellar/go/pull/3940)).
+* Logs during state ingesiton now display `progress` value which is percentage progress indicator ([3946](https://github.com/stellar/go/pull/3946)).
+
+## v2.8.3
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### DB Schema Migration
+
+* This release comes with a small DB migration. It should not take more than a couple minutes.
+
+### Scheduled Changes
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+### Changes
+
+* Fix ingestion of fee bump transactions which have muxed source accounts ([3948](https://github.com/stellar/go/pull/3948)).
+* Add an index on trade aggregations, to improve ingestion performance ([3947](https://github.com/stellar/go/pull/3947)).
+
+## v2.8.2
+**Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**In the 2.9.0 Horizon release, the `--ingest` flag will be set to `true` by default.**
+
+* Improve performance of `OffersProcessor`. This should speed up ingestion of latest Stellar Public Network activity by up to 30%. Please note that this change does not improve reingestion speed because ledger entries are not processed during reingestion. ([3917](https://github.com/stellar/go/pull/3917))
+
 ## v2.8.1
 **Upgrading to this version from <= v2.8.0 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
@@ -27,6 +183,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix bug in horizon reap system (used by `horizon db reap` command and when horizon is configured with `--history-retention-count`) which could lead to partial deletions. ([3754](https://github.com/stellar/go/pull/3754))
 * Log debug messages from captive core at the appropriate log level. ([3746](https://github.com/stellar/go/pull/3746))
 * Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance. ([3750](https://github.com/stellar/go/pull/3750))
+
+* Add the ability to filter accounts by their participation in a particular liquidity pool ([3873](https://github.com/stellar/go/pull/3873)).
+
+### Update
+* Include pool shares in account balances ([3873](https://github.com/stellar/go/pull/3873)).
 
 ## v2.6.1
 

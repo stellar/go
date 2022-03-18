@@ -48,60 +48,60 @@ func (p *AccountDataProcessor) ProcessChange(ctx context.Context, change ingest.
 }
 
 func (p *AccountDataProcessor) Commit(ctx context.Context) error {
-	batch := p.dataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
-
+	var (
+		datasToUpsert []history.Data
+		datasToDelete []history.AccountDataKey
+	)
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
-		var err error
-		var rowsAffected int64
-		var action string
-		var ledgerKey xdr.LedgerKey
-
 		switch {
 		case change.Pre == nil && change.Post != nil:
 			// Created
-			action = "inserting"
-			err = batch.Add(ctx, *change.Post)
-			rowsAffected = 1 // We don't track this when batch inserting
+			datasToUpsert = append(datasToUpsert, p.ledgerEntryToRow(change.Post))
 		case change.Pre != nil && change.Post == nil:
 			// Removed
-			action = "removing"
 			data := change.Pre.Data.MustData()
-			err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
+			key := history.AccountDataKey{
+				AccountID: data.AccountId.Address(),
+				DataName:  string(data.DataName),
 			}
-			rowsAffected, err = p.dataQ.RemoveAccountData(ctx, *ledgerKey.Data)
+			datasToDelete = append(datasToDelete, key)
 		default:
 			// Updated
-			action = "updating"
-			data := change.Post.Data.MustData()
-			err = ledgerKey.SetData(data.AccountId, string(data.DataName))
-			if err != nil {
-				return errors.Wrap(err, "Error creating ledger key")
-			}
-			rowsAffected, err = p.dataQ.UpdateAccountData(ctx, *change.Post)
+			datasToUpsert = append(datasToUpsert, p.ledgerEntryToRow(change.Post))
 		}
+	}
 
+	if len(datasToUpsert) > 0 {
+		if err := p.dataQ.UpsertAccountData(ctx, datasToUpsert); err != nil {
+			return errors.Wrap(err, "error executing upsert")
+		}
+	}
+
+	if len(datasToDelete) > 0 {
+		count, err := p.dataQ.RemoveAccountData(ctx, datasToDelete)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error executing removal")
 		}
-
-		if rowsAffected != 1 {
+		if count != int64(len(datasToDelete)) {
 			return ingest.NewStateError(errors.Errorf(
-				"%d rows affected when %s data: %s %s",
-				rowsAffected,
-				action,
-				ledgerKey.Data.AccountId.Address(),
-				ledgerKey.Data.DataName,
+				"%d rows affected when deleting %d account data",
+				count,
+				len(datasToDelete),
 			))
 		}
 	}
 
-	err := batch.Exec(ctx)
-	if err != nil {
-		return errors.Wrap(err, "error executing batch")
-	}
-
 	return nil
+}
+
+func (p *AccountDataProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Data {
+	data := entry.Data.MustData()
+	return history.Data{
+		AccountID:          data.AccountId.Address(),
+		Name:               string(data.DataName),
+		Value:              history.AccountDataValue(data.DataValue),
+		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
+		Sponsor:            ledgerEntrySponsorToNullString(*entry),
+	}
 }

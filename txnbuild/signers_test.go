@@ -1,9 +1,11 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/price"
+	"testing"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
-	"testing"
 
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
@@ -103,7 +105,7 @@ func TestChangeTrustMultSigners(t *testing.T) {
 	kp1 := newKeypair1()
 
 	changeTrust := ChangeTrust{
-		Line:          CreditAsset{"ABCD", kp0.Address()},
+		Line:          CreditAsset{"ABCD", kp0.Address()}.MustToChangeTrustAsset(),
 		Limit:         "10",
 		SourceAccount: kp1.Address(),
 	}
@@ -164,7 +166,7 @@ func TestCreatePassiveSellOfferMultSigners(t *testing.T) {
 		Selling:       NativeAsset{},
 		Buying:        CreditAsset{"ABCD", kp0.Address()},
 		Amount:        "10",
-		Price:         "1.0",
+		Price:         xdr.Price{1, 1},
 		SourceAccount: kp1.Address(),
 	}
 
@@ -250,8 +252,7 @@ func TestManageOfferCreateMultSigners(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price, kp1.Address())
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"), kp1.Address())
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -307,9 +308,8 @@ func TestManageOfferUpdateMultSigners(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
-	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID, kp1.Address())
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price.MustParse("0.02"), offerID, kp1.Address())
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -499,7 +499,9 @@ func TestSigningImmutability(t *testing.T) {
 	verifySignatures(t, right, kp0, kp2)
 
 	rootXDRB64, err := xdr.MarshalBase64(rootXDR)
-	assert.Equal(t, expectedRootB64, rootXDRB64)
+	if assert.NoError(t, err) {
+		assert.Equal(t, expectedRootB64, rootXDRB64)
+	}
 }
 
 func TestFeeBumpSigningImmutability(t *testing.T) {

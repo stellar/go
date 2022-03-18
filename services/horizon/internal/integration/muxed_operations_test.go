@@ -13,7 +13,7 @@ import (
 )
 
 func TestMuxedOperations(t *testing.T) {
-	itest := integration.NewTest(t, integration.Config{ProtocolVersion: 17})
+	itest := integration.NewTest(t, integration.Config{})
 
 	sponsored := keypair.MustRandom()
 	// Is there an easier way?
@@ -42,7 +42,7 @@ func TestMuxedOperations(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredMuxed.Address(),
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()}.MustToChangeTrustAsset(),
 			Limit:         txnbuild.MaxTrustlineLimit,
 		},
 		&txnbuild.ManageSellOffer{
@@ -50,7 +50,7 @@ func TestMuxedOperations(t *testing.T) {
 			Selling:       txnbuild.NativeAsset{},
 			Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
 			Amount:        "3",
-			Price:         "1",
+			Price:         xdr.Price{1, 1},
 		},
 		// This will generate a trade effect:
 		&txnbuild.ManageSellOffer{
@@ -58,7 +58,7 @@ func TestMuxedOperations(t *testing.T) {
 			Selling:       txnbuild.CreditAsset{"ABCD", master.Address()},
 			Buying:        txnbuild.NativeAsset{},
 			Amount:        "3",
-			Price:         "1",
+			Price:         xdr.Price{1, 1},
 		},
 		&txnbuild.ManageData{
 			SourceAccount: sponsoredMuxed.Address(),
@@ -97,7 +97,7 @@ func TestMuxedOperations(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredMuxed.Address(),
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()}.MustToChangeTrustAsset(),
 			Limit:         "0",
 		},
 		&txnbuild.ManageData{

@@ -41,18 +41,6 @@ func (t Asset) Value() (driver.Value, error) {
 	return MarshalBase64(t)
 }
 
-// Scan reads from src into a ClaimableBalanceId
-// This method decodes values from hex.
-func (c *ClaimableBalanceId) Scan(src interface{}) error {
-	return safeHexScan(src, c)
-}
-
-// Value implements the database/sql/driver Valuer interface.
-// This method encodes values to hex.
-func (c ClaimableBalanceId) Value() (driver.Value, error) {
-	return MarshalHex(c)
-}
-
 // Scan reads from src into a ClaimPredicate
 func (c *ClaimPredicate) Scan(src interface{}) error {
 	return safeBase64Scan(src, c)
@@ -153,20 +141,4 @@ func safeBase64Scan(src, dest interface{}) error {
 	}
 
 	return SafeUnmarshalBase64(val, dest)
-}
-
-// safeHexScan scans from src (which should be either a []byte or string)
-// into dest by using `SafeUnmarshalBase64`.
-func safeHexScan(src, dest interface{}) error {
-	var val string
-	switch src := src.(type) {
-	case []byte:
-		val = string(src)
-	case string:
-		val = src
-	default:
-		return fmt.Errorf("Invalid value for %T", dest)
-	}
-
-	return SafeUnmarshalHex(val, dest)
 }

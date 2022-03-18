@@ -55,8 +55,9 @@ func init() {
 	problem.RegisterError(db2.ErrInvalidOrder, problem.BadRequest)
 	problem.RegisterError(sse.ErrRateLimited, hProblem.RateLimitExceeded)
 	problem.RegisterError(context.DeadlineExceeded, hProblem.Timeout)
-	problem.RegisterError(context.Canceled, hProblem.ServiceUnavailable)
-	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
+	problem.RegisterError(context.Canceled, hProblem.ClientDisconnected)
+	problem.RegisterError(db.ErrCancelled, hProblem.ClientDisconnected)
+	problem.RegisterError(db.ErrTimeout, hProblem.ServiceUnavailable)
 	problem.RegisterError(db.ErrConflictWithRecovery, hProblem.ServiceUnavailable)
 	problem.RegisterError(db.ErrBadConnection, hProblem.ServiceUnavailable)
 }
@@ -103,6 +104,13 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState
 	}
 	return result, nil
 }
+
+// RegisterMetrics registers the prometheus metrics
+func (s *Server) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(s.Metrics.RequestDurationSummary)
+	registry.MustRegister(s.Metrics.ReplicaLagErrorsCounter)
+}
+
 func (s *Server) Serve() error {
 	if s.internalServer != nil {
 		go func() {

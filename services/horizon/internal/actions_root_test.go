@@ -48,7 +48,7 @@ func TestRootAction(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
 		ht.Assert.Equal(
-			"http://localhost/accounts{?signer,sponsor,asset,cursor,limit,order}",
+			"http://localhost/accounts{?signer,sponsor,asset,liquidity_pool,cursor,limit,order}",
 			actual.Links.Accounts.Href,
 		)
 		ht.Assert.Equal(
@@ -104,6 +104,6 @@ func TestRootCoreClientInfoErrored(t *testing.T) {
 		var actual horizon.Root
 		err := json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
-		ht.Assert.Equal(int32(0), actual.CurrentProtocolVersion)
+		ht.Assert.Equal(int32(18), actual.CurrentProtocolVersion)
 	}
 }

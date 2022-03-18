@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/support/db"
 )
 
-//go:generate go-bindata -nometadata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
+//go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
 
 // TickerSession provides helper methods for making queries against `DB`.
 type TickerSession struct {
@@ -155,12 +155,6 @@ type PartialMarket struct {
 	NumAsks              int       `db:"num_asks"`
 	AskVolume            float64   `db:"ask_volume"`
 	LowestAsk            float64   `db:"lowest_ask"`
-	NumBidsReverse       int       `db:"num_bids_reverse"`
-	BidVolumeReverse     float64   `db:"bid_volume_reverse"`
-	HighestBidReverse    float64   `db:"highest_bid_reverse"`
-	NumAsksReverse       int       `db:"num_asks_reverse"`
-	AskVolumeReverse     float64   `db:"ask_volume_reverse"`
-	LowestAskReverse     float64   `db:"lowest_ask_reverse"`
 	IntervalStart        time.Time `db:"interval_start"`
 	FirstLedgerCloseTime time.Time `db:"first_ledger_close_time"`
 	LastLedgerCloseTime  time.Time `db:"last_ledger_close_time"`

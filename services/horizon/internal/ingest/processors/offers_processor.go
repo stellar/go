@@ -11,15 +11,13 @@ import (
 
 // The offers processor can be configured to trim the offers table
 // by removing all offer rows which were marked for deletion at least 100 ledgers ago
-const offerCompactionWindow = uint32(100)
+const compactionWindow = uint32(100)
 
 type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	cache       *ingest.ChangeCompactor
-	insertBatch history.OffersBatchInsertBuilder
-	removeBatch []int64
+	cache *ingest.ChangeCompactor
 }
 
 func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcessor {
@@ -30,8 +28,6 @@ func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcess
 
 func (p *OffersProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
-	p.insertBatch = p.offersQ.NewOffersBatchInsertBuilder(maxBatchSize)
-	p.removeBatch = []int64{}
 }
 
 func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
@@ -71,58 +67,29 @@ func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer
 }
 
 func (p *OffersProcessor) flushCache(ctx context.Context) error {
+	var batchUpsertOffers []history.Offer
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
-		var rowsAffected int64
-		var err error
-		var action string
-		var offerID xdr.Int64
-
 		switch {
-		case change.Pre == nil && change.Post != nil:
-			// Created
-			action = "inserting"
+		case change.Post != nil:
+			// Created and updated
 			row := p.ledgerEntryToRow(change.Post)
-			err = p.insertBatch.Add(ctx, row)
-			rowsAffected = 1 // We don't track this when batch inserting
+			batchUpsertOffers = append(batchUpsertOffers, row)
 		case change.Pre != nil && change.Post == nil:
 			// Removed
-			action = "removing"
-			offer := change.Pre.Data.MustOffer()
-			p.removeBatch = append(p.removeBatch, int64(offer.OfferId))
-			rowsAffected = 1 // We don't track this when batch removing
+			row := p.ledgerEntryToRow(change.Pre)
+			row.Deleted = true
+			row.LastModifiedLedger = p.sequence
+			batchUpsertOffers = append(batchUpsertOffers, row)
 		default:
-			// Updated
-			action = "updating"
-			offer := change.Post.Data.MustOffer()
-			offerID = offer.OfferId
-			row := p.ledgerEntryToRow(change.Post)
-			rowsAffected, err = p.offersQ.UpdateOffer(ctx, row)
-		}
-
-		if err != nil {
-			return err
-		}
-
-		if rowsAffected != 1 {
-			return ingest.NewStateError(errors.Errorf(
-				"%d rows affected when %s offer %d",
-				rowsAffected,
-				action,
-				offerID,
-			))
+			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
 		}
 	}
 
-	err := p.insertBatch.Exec(ctx)
-	if err != nil {
-		return errors.Wrap(err, "error executing batch")
-	}
-
-	if len(p.removeBatch) > 0 {
-		_, err = p.offersQ.RemoveOffers(ctx, p.removeBatch, p.sequence)
+	if len(batchUpsertOffers) > 0 {
+		err := p.offersQ.UpsertOffers(ctx, batchUpsertOffers)
 		if err != nil {
-			return errors.Wrap(err, "error in RemoveOffers")
+			return errors.Wrap(err, "errors in UpsertOffers")
 		}
 	}
 
@@ -134,9 +101,9 @@ func (p *OffersProcessor) Commit(ctx context.Context) error {
 		return errors.Wrap(err, "error flushing cache")
 	}
 
-	if p.sequence > offerCompactionWindow {
+	if p.sequence > compactionWindow {
 		// trim offers table by removing offers which were deleted before the cutoff ledger
-		if offerRowsRemoved, err := p.offersQ.CompactOffers(ctx, p.sequence-offerCompactionWindow); err != nil {
+		if offerRowsRemoved, err := p.offersQ.CompactOffers(ctx, p.sequence-compactionWindow); err != nil {
 			return errors.Wrap(err, "could not compact offers")
 		} else {
 			log.WithField("offer_rows_removed", offerRowsRemoved).Info("Trimmed offers table")

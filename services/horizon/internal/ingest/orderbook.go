@@ -11,6 +11,7 @@ import (
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -34,6 +35,7 @@ type OrderBookStream struct {
 	LatestLedgerGauge prometheus.Gauge
 	lastLedger        uint32
 	lastVerification  time.Time
+	encodingBuffer    *xdr.EncodingBuffer
 }
 
 // NewOrderBookStream constructs and initializes an OrderBookStream instance
@@ -45,14 +47,16 @@ func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *O
 			Namespace: "horizon", Subsystem: "order_book_stream", Name: "latest_ledger",
 		}),
 		lastVerification: time.Now(),
+		encodingBuffer:   xdr.NewEncodingBuffer(),
 	}
 }
 
 type ingestionStatus struct {
-	HistoryConsistentWithState bool
-	StateInvalid               bool
-	LastIngestedLedger         uint32
-	LastOfferCompactionLedger  uint32
+	HistoryConsistentWithState        bool
+	StateInvalid                      bool
+	LastIngestedLedger                uint32
+	LastOfferCompactionLedger         uint32
+	LastLiquidityPoolCompactionLedger uint32
 }
 
 func (o *OrderBookStream) getIngestionStatus(ctx context.Context) (ingestionStatus, error) {
@@ -77,6 +81,10 @@ func (o *OrderBookStream) getIngestionStatus(ctx context.Context) (ingestionStat
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetOfferCompactionSequence")
 	}
+	status.LastLiquidityPoolCompactionLedger, err = o.historyQ.GetLiquidityPoolCompactionSequence(ctx)
+	if err != nil {
+		return status, errors.Wrap(err, "Error from GetLiquidityPoolCompactionSequence")
+	}
 
 	status.HistoryConsistentWithState = (status.LastIngestedLedger == lastHistoryLedger) ||
 		// Running ingestion on an empty DB is a special case because we first ingest from the history archive.
@@ -84,22 +92,6 @@ func (o *OrderBookStream) getIngestionStatus(ctx context.Context) (ingestionStat
 		// period where there will not be any rows in the history_ledgers table but that is ok.
 		(lastHistoryLedger == 0)
 	return status, nil
-}
-
-func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
-	sellerID := xdr.MustAddress(offer.SellerID)
-	graph.AddOffer(xdr.OfferEntry{
-		SellerId: sellerID,
-		OfferId:  xdr.Int64(offer.OfferID),
-		Selling:  offer.SellingAsset,
-		Buying:   offer.BuyingAsset,
-		Amount:   xdr.Int64(offer.Amount),
-		Price: xdr.Price{
-			N: xdr.Int32(offer.Pricen),
-			D: xdr.Int32(offer.Priced),
-		},
-		Flags: xdr.Uint32(offer.Flags),
-	})
 }
 
 // update returns true if the order book graph was reset
@@ -122,6 +114,11 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 			WithField("last_ledger", o.lastLedger).
 			Warn("order book is behind the last offer compaction ledger")
 		reset = true
+	} else if status.LastOfferCompactionLedger != status.LastLiquidityPoolCompactionLedger {
+		log.WithField("status", status).
+			WithField("last_ledger", o.lastLedger).
+			Warn("offer compaction is not consistentwith liquidity pool compaction")
+		reset = true
 	}
 
 	if reset {
@@ -135,13 +132,26 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 
 		defer o.graph.Discard()
 
-		offers, err := o.historyQ.GetAllOffers(ctx)
+		err := o.historyQ.StreamAllOffers(ctx, func(offer history.Offer) error {
+			o.graph.AddOffers(offerToXDR(offer))
+			return nil
+		})
+
 		if err != nil {
-			return true, errors.Wrap(err, "Error from GetAllOffers")
+			return true, errors.Wrap(err, "Error loading offers into orderbook")
 		}
 
-		for _, offer := range offers {
-			addOfferToGraph(o.graph, offer)
+		err = o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool history.LiquidityPool) error {
+			if liquidityPoolXDR, liquidityPoolErr := liquidityPoolToXDR(liquidityPool); liquidityPoolErr != nil {
+				return errors.Wrapf(liquidityPoolErr, "Invalid liquidity pool row %v, unable to marshal to xdr", liquidityPool)
+			} else {
+				o.graph.AddLiquidityPools(liquidityPoolXDR)
+				return nil
+			}
+		})
+
+		if err != nil {
+			return true, errors.Wrap(err, "Error loading liquidity pools into orderbook")
 		}
 
 		if err := o.graph.Apply(status.LastIngestedLedger); err != nil {
@@ -163,11 +173,29 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 	if err != nil {
 		return false, errors.Wrap(err, "Error from GetUpdatedOffers")
 	}
+	liquidityPools, err := o.historyQ.GetUpdatedLiquidityPools(ctx, o.lastLedger)
+	if err != nil {
+		return false, errors.Wrap(err, "Error from GetUpdatedLiquidityPools")
+	}
+
 	for _, offer := range offers {
 		if offer.Deleted {
 			o.graph.RemoveOffer(xdr.Int64(offer.OfferID))
 		} else {
-			addOfferToGraph(o.graph, offer)
+			o.graph.AddOffers(offerToXDR(offer))
+		}
+	}
+
+	for _, liquidityPool := range liquidityPools {
+		var poolXDR xdr.LiquidityPoolEntry
+		poolXDR, err = liquidityPoolToXDR(liquidityPool)
+		if err != nil {
+			return false, errors.Wrap(err, "Error converting liquidity pool row to xdr")
+		}
+		if liquidityPool.Deleted {
+			o.graph.RemoveLiquidityPool(poolXDR)
+		} else {
+			o.graph.AddLiquidityPools(poolXDR)
 		}
 	}
 
@@ -180,17 +208,17 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 	return false, nil
 }
 
-func (o *OrderBookStream) verifyAllOffers(ctx context.Context) {
-	offers := o.graph.Offers()
-	ingestionOffers, err := o.historyQ.GetAllOffers(ctx)
+func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.OfferEntry) (bool, error) {
+	var ingestionOffers []history.Offer
+	err := o.historyQ.StreamAllOffers(ctx, func(offer history.Offer) error {
+		ingestionOffers = append(ingestionOffers, offer)
+		return nil
+	})
+
 	if err != nil {
-		if !isCancelledError(err) {
-			log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
-		}
-		return
+		return false, errors.Wrap(err, "Error loading all offers for orderbook verification")
 	}
 
-	o.lastVerification = time.Now()
 	mismatch := len(offers) != len(ingestionOffers)
 
 	if !mismatch {
@@ -203,13 +231,16 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context) {
 
 		for i, offerRow := range ingestionOffers {
 			offerEntry := offers[i]
-			if xdr.Int64(offerRow.OfferID) != offerEntry.OfferId ||
-				xdr.Int64(offerRow.Amount) != offerEntry.Amount ||
-				offerRow.Priced != int32(offerEntry.Price.D) ||
-				offerRow.Pricen != int32(offerEntry.Price.N) ||
-				!offerRow.BuyingAsset.Equals(offerEntry.Buying) ||
-				!offerRow.SellingAsset.Equals(offerEntry.Selling) ||
-				offerRow.SellerID != offerEntry.SellerId.Address() {
+			offerRowXDR := offerToXDR(offerRow)
+			offerEntryBase64, err := o.encodingBuffer.MarshalBase64(&offerEntry)
+			if err != nil {
+				return false, errors.Wrap(err, "Error from marshalling offerEntry")
+			}
+			offerRowBase64, err := o.encodingBuffer.MarshalBase64(&offerRowXDR)
+			if err != nil {
+				return false, errors.Wrap(err, "Error from marshalling offerRowXDR")
+			}
+			if offerEntryBase64 != offerRowBase64 {
 				mismatch = true
 				break
 			}
@@ -220,11 +251,67 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context) {
 		log.WithField("stream_offers", offers).
 			WithField("ingestion_offers", ingestionOffers).
 			Error("offers derived from order book stream does not match offers from ingestion")
-		// set last ledger to 0 so that we reset on next update
-		o.lastLedger = 0
-	} else {
-		log.Info("order book stream verification succeeded")
+		return false, nil
 	}
+	log.Info("offer stream verification succeeded")
+	return true, nil
+}
+
+func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidityPools []xdr.LiquidityPoolEntry) (bool, error) {
+	var ingestionLiquidityPools []history.LiquidityPool
+
+	err := o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool history.LiquidityPool) error {
+		ingestionLiquidityPools = append(ingestionLiquidityPools, liquidityPool)
+		return nil
+	})
+
+	if err != nil {
+		return false, errors.Wrap(err, "Error loading all liquidity pools for orderbook verification")
+	}
+
+	mismatch := len(liquidityPools) != len(ingestionLiquidityPools)
+
+	var liquidityPoolEntryBase64, liquidityPoolRowBase64 string
+	if !mismatch {
+		sort.Slice(liquidityPools, func(i, j int) bool {
+			return processors.PoolIDToString(liquidityPools[i].LiquidityPoolId) <
+				processors.PoolIDToString(liquidityPools[j].LiquidityPoolId)
+		})
+		sort.Slice(ingestionLiquidityPools, func(i, j int) bool {
+			return ingestionLiquidityPools[i].PoolID < ingestionLiquidityPools[j].PoolID
+		})
+
+		for i, liquidityPoolRow := range ingestionLiquidityPools {
+			var liquidityPoolRowXDR xdr.LiquidityPoolEntry
+			var err error
+			liquidityPoolEntry := liquidityPools[i]
+			liquidityPoolRowXDR, err = liquidityPoolToXDR(liquidityPoolRow)
+			if err != nil {
+				return false, errors.Wrap(err, "Error from converting liquidity pool row to xdr")
+			}
+			liquidityPoolEntryBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
+			if err != nil {
+				return false, errors.Wrap(err, "Error from marshalling liquidityPoolEntry")
+			}
+			liquidityPoolRowBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
+			if err != nil {
+				return false, errors.Wrap(err, "Error from marshalling liquidityPoolRowXDR")
+			}
+			if liquidityPoolEntryBase64 != liquidityPoolRowBase64 {
+				mismatch = true
+				break
+			}
+		}
+	}
+
+	if mismatch {
+		log.WithField("stream_liquidity_pool", liquidityPoolEntryBase64).
+			WithField("ingestion_liquidity_pool", liquidityPoolRowBase64).
+			Error("one or more liquidity pools derived from order book stream does not match liquidity pool from ingestion")
+		return false, nil
+	}
+	log.Info("liquidity pool stream verification succeeded")
+	return true, nil
 }
 
 // Update will query the Horizon DB for offers which have been created, removed, or updated since the
@@ -249,13 +336,42 @@ func (o *OrderBookStream) Update(ctx context.Context) error {
 	}
 
 	// add 15 minute jitter so that not all horizon nodes are calling
-	// historyQ.GetAllOffers at the same time
+	// historyQ.StreamAllOffers at the same time
 	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
 	requiresVerification := o.lastLedger > 0 &&
 		time.Since(o.lastVerification) >= verificationFrequency+jitter
 
 	if requiresVerification {
-		o.verifyAllOffers(ctx)
+		offers, pools, err := o.graph.Verify()
+		if err != nil {
+			log.WithError(err).
+				Error("Orderbook graph is not internally consistent")
+			o.lastVerification = time.Now()
+			// set last ledger to 0 so that we reset on next update
+			o.lastLedger = 0
+			return nil
+		}
+
+		offersOk, err := o.verifyAllOffers(ctx, offers)
+		if err != nil {
+			if !isCancelledError(err) {
+				log.WithError(err).Info("Could not verify offers")
+				return nil
+			}
+		}
+
+		liquidityPoolsOK, err := o.verifyAllLiquidityPools(ctx, pools)
+		if err != nil {
+			if !isCancelledError(err) {
+				log.WithError(err).Info("Could not verify liquidity pools")
+				return nil
+			}
+		}
+		o.lastVerification = time.Now()
+		if !offersOk || !liquidityPoolsOK {
+			// set last ledger to 0 so that we reset on next update
+			o.lastLedger = 0
+		}
 	}
 	return nil
 }

@@ -8,6 +8,8 @@ xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
 xdr/Stellar-types.x
 
+.PHONY: xdr
+
 keystore:
 	$(MAKE) -C services/keystore/ docker-build
 
@@ -29,3 +31,8 @@ regulated-assets-approval-server:
 gxdr/xdr_generated.go: $(XDRS)
 	go run github.com/xdrpp/goxdr/cmd/goxdr -p gxdr -enum-comments -o $@ $(XDRS)
 	go fmt $@
+
+xdr/xdr_generated.go: $(XDRS) Rakefile Gemfile.lock
+	bundle exec rake xdr:generate
+
+xdr: gxdr/xdr_generated.go xdr/xdr_generated.go

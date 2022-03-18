@@ -3,41 +3,26 @@ package history
 import (
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	data1 = xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.DataEntry{
-				AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-				DataName:  "test data",
-				// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
-				DataValue: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-			},
-		},
-		LastModifiedLedgerSeq: 1234,
+	data1 = Data{
+		AccountID: "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+		Name:      "test data",
+		// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
+		Value:              []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+		LastModifiedLedger: 1234,
 	}
 
-	data2 = xdr.LedgerEntry{
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeData,
-			Data: &xdr.DataEntry{
-				AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-				DataName:  "test data2",
-				DataValue: []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
-			},
-		},
-		LastModifiedLedgerSeq: 1234,
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
-			},
-		},
+	data2 = Data{
+		AccountID:          "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
+		Name:               "test data2",
+		Value:              []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+		LastModifiedLedger: 1234,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 )
 
@@ -47,29 +32,27 @@ func TestInsertAccountData(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccountData(tt.Ctx, data1)
+	err := q.UpsertAccountData(tt.Ctx, []Data{data1})
 	assert.NoError(t, err)
-	tt.Assert.Equal(int64(1), rows)
 
-	rows, err = q.InsertAccountData(tt.Ctx, data2)
+	err = q.UpsertAccountData(tt.Ctx, []Data{data2})
 	assert.NoError(t, err)
-	tt.Assert.Equal(int64(1), rows)
 
-	keys := []xdr.LedgerKeyData{
-		{AccountId: data1.Data.Data.AccountId, DataName: data1.Data.Data.DataName},
-		{AccountId: data2.Data.Data.AccountId, DataName: data2.Data.Data.DataName},
+	keys := []AccountDataKey{
+		{AccountID: data1.AccountID, DataName: data1.Name},
+		{AccountID: data2.AccountID, DataName: data2.Name},
 	}
 
 	datas, err := q.GetAccountDataByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, datas, 2)
 
-	tt.Assert.Equal(data1.Data.Data.DataName, xdr.String64(datas[0].Name))
-	tt.Assert.Equal([]byte(data1.Data.Data.DataValue), []byte(datas[0].Value))
+	tt.Assert.Equal(data1.Name, datas[0].Name)
+	tt.Assert.Equal(data1.Value, datas[0].Value)
 	tt.Assert.True(datas[0].Sponsor.IsZero())
 
-	tt.Assert.Equal(data2.Data.Data.DataName, xdr.String64(datas[1].Name))
-	tt.Assert.Equal([]byte(data2.Data.Data.DataValue), []byte(datas[1].Value))
+	tt.Assert.Equal(data2.Name, datas[1].Name)
+	tt.Assert.Equal(data2.Value, datas[1].Value)
 	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", datas[1].Sponsor.String)
 }
 
@@ -79,26 +62,27 @@ func TestUpdateAccountData(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccountData(tt.Ctx, data1)
+	err := q.UpsertAccountData(tt.Ctx, []Data{data1})
 	assert.NoError(t, err)
-	tt.Assert.Equal(int64(1), rows)
 
 	modifiedData := data1
-	modifiedData.Data.Data.DataValue[0] = 1
+	value2 := make([]byte, len(modifiedData.Value))
+	copy(value2, modifiedData.Value)
+	value2[0] = 1
+	modifiedData.Value = value2
 
-	rows, err = q.UpdateAccountData(tt.Ctx, modifiedData)
+	err = q.UpsertAccountData(tt.Ctx, []Data{modifiedData})
 	assert.NoError(t, err)
-	tt.Assert.Equal(int64(1), rows)
 
-	keys := []xdr.LedgerKeyData{
-		{AccountId: data1.Data.Data.AccountId, DataName: data1.Data.Data.DataName},
+	keys := []AccountDataKey{
+		{AccountID: data1.AccountID, DataName: data1.Name},
 	}
 	datas, err := q.GetAccountDataByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, datas, 1)
 
-	tt.Assert.Equal(modifiedData.Data.Data.DataName, xdr.String64(datas[0].Name))
-	tt.Assert.Equal([]byte(modifiedData.Data.Data.DataValue), []byte(datas[0].Value))
+	tt.Assert.Equal(modifiedData.Name, datas[0].Name)
+	tt.Assert.Equal(modifiedData.Value, datas[0].Value)
 	tt.Assert.Equal(uint32(1234), datas[0].LastModifiedLedger)
 }
 
@@ -108,21 +92,20 @@ func TestRemoveAccountData(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccountData(tt.Ctx, data1)
+	err := q.UpsertAccountData(tt.Ctx, []Data{data1})
+	assert.NoError(t, err)
+
+	key := AccountDataKey{AccountID: data1.AccountID, DataName: data1.Name}
+	rows, err := q.RemoveAccountData(tt.Ctx, []AccountDataKey{key})
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
-	key := xdr.LedgerKeyData{AccountId: data1.Data.Data.AccountId, DataName: data1.Data.Data.DataName}
-	rows, err = q.RemoveAccountData(tt.Ctx, key)
-	assert.NoError(t, err)
-	tt.Assert.Equal(int64(1), rows)
-
-	datas, err := q.GetAccountDataByKeys(tt.Ctx, []xdr.LedgerKeyData{key})
+	datas, err := q.GetAccountDataByKeys(tt.Ctx, []AccountDataKey{key})
 	assert.NoError(t, err)
 	assert.Len(t, datas, 0)
 
 	// Doesn't exist anymore
-	rows, err = q.RemoveAccountData(tt.Ctx, key)
+	rows, err = q.RemoveAccountData(tt.Ctx, []AccountDataKey{key})
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(0), rows)
 }
@@ -133,24 +116,24 @@ func TestGetAccountDataByAccountsID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccountData(tt.Ctx, data1)
+	err := q.UpsertAccountData(tt.Ctx, []Data{data1})
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(tt.Ctx, data2)
+	err = q.UpsertAccountData(tt.Ctx, []Data{data2})
 	assert.NoError(t, err)
 
 	ids := []string{
-		data1.Data.Data.AccountId.Address(),
-		data2.Data.Data.AccountId.Address(),
+		data1.AccountID,
+		data2.AccountID,
 	}
 	datas, err := q.GetAccountDataByAccountsID(tt.Ctx, ids)
 	assert.NoError(t, err)
 	assert.Len(t, datas, 2)
 
-	tt.Assert.Equal(data1.Data.Data.DataName, xdr.String64(datas[0].Name))
-	tt.Assert.Equal([]byte(data1.Data.Data.DataValue), []byte(datas[0].Value))
+	tt.Assert.Equal(data1.Name, datas[0].Name)
+	tt.Assert.Equal(data1.Value, datas[0].Value)
 
-	tt.Assert.Equal(data2.Data.Data.DataName, xdr.String64(datas[1].Name))
-	tt.Assert.Equal([]byte(data2.Data.Data.DataValue), []byte(datas[1].Value))
+	tt.Assert.Equal(data2.Name, datas[1].Name)
+	tt.Assert.Equal(data2.Value, datas[1].Value)
 }
 
 func TestGetAccountDataByAccountID(t *testing.T) {
@@ -159,20 +142,20 @@ func TestGetAccountDataByAccountID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccountData(tt.Ctx, data1)
+	err := q.UpsertAccountData(tt.Ctx, []Data{data1})
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(tt.Ctx, data2)
+	err = q.UpsertAccountData(tt.Ctx, []Data{data2})
 	assert.NoError(t, err)
 
-	records, err := q.GetAccountDataByAccountID(tt.Ctx, data1.Data.Data.AccountId.Address())
+	records, err := q.GetAccountDataByAccountID(tt.Ctx, data1.AccountID)
 	assert.NoError(t, err)
 	assert.Len(t, records, 2)
 
-	tt.Assert.Equal(data1.Data.Data.DataName, xdr.String64(records[0].Name))
-	tt.Assert.Equal([]byte(data1.Data.Data.DataValue), []byte(records[0].Value))
+	tt.Assert.Equal(data1.Name, records[0].Name)
+	tt.Assert.Equal(data1.Value, records[0].Value)
 
-	tt.Assert.Equal(data2.Data.Data.DataName, xdr.String64(records[1].Name))
-	tt.Assert.Equal([]byte(data2.Data.Data.DataValue), []byte(records[1].Value))
+	tt.Assert.Equal(data2.Name, records[1].Name)
+	tt.Assert.Equal(data2.Value, records[1].Value)
 }
 
 func TestGetAccountDataByName(t *testing.T) {
@@ -181,19 +164,19 @@ func TestGetAccountDataByName(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccountData(tt.Ctx, data1)
+	err := q.UpsertAccountData(tt.Ctx, []Data{data1})
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(tt.Ctx, data2)
+	err = q.UpsertAccountData(tt.Ctx, []Data{data2})
 	assert.NoError(t, err)
 
-	record, err := q.GetAccountDataByName(tt.Ctx, data1.Data.Data.AccountId.Address(), string(data1.Data.Data.DataName))
+	record, err := q.GetAccountDataByName(tt.Ctx, data1.AccountID, data1.Name)
 	assert.NoError(t, err)
-	tt.Assert.Equal(data1.Data.Data.DataName, xdr.String64(record.Name))
-	tt.Assert.Equal([]byte(data1.Data.Data.DataValue), []byte(record.Value))
+	tt.Assert.Equal(data1.Name, record.Name)
+	tt.Assert.Equal(data1.Value, record.Value)
 
-	record, err = q.GetAccountDataByName(tt.Ctx, data1.Data.Data.AccountId.Address(), string(data2.Data.Data.DataName))
+	record, err = q.GetAccountDataByName(tt.Ctx, data1.AccountID, data2.Name)
 	assert.NoError(t, err)
-	tt.Assert.Equal(data2.Data.Data.DataName, xdr.String64(record.Name))
-	tt.Assert.Equal([]byte(data2.Data.Data.DataValue), []byte(record.Value))
+	tt.Assert.Equal(data2.Name, record.Name)
+	tt.Assert.Equal(data2.Value, record.Value)
 
 }

@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"context"
-	"encoding/base64"
 	"io"
 	"sync"
 	"time"
@@ -31,6 +30,12 @@ type CheckpointChangeReader struct {
 	streamOnce sync.Once
 	closeOnce  sync.Once
 	done       chan bool
+
+	readBytesMutex sync.RWMutex
+	totalRead      int64
+	totalSize      int64
+
+	encodingBuffer *xdr.EncodingBuffer
 
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
@@ -106,16 +111,17 @@ func NewCheckpointChangeReader(
 	}
 
 	return &CheckpointChangeReader{
-		ctx:        ctx,
-		has:        &has,
-		archive:    archive,
-		tempStore:  tempStore,
-		sequence:   sequence,
-		readChan:   make(chan readResult, msrBufferSize),
-		streamOnce: sync.Once{},
-		closeOnce:  sync.Once{},
-		done:       make(chan bool),
-		sleep:      time.Sleep,
+		ctx:            ctx,
+		has:            &has,
+		archive:        archive,
+		tempStore:      tempStore,
+		sequence:       sequence,
+		readChan:       make(chan readResult, msrBufferSize),
+		streamOnce:     sync.Once{},
+		closeOnce:      sync.Once{},
+		done:           make(chan bool),
+		encodingBuffer: xdr.NewEncodingBuffer(),
+		sleep:          time.Sleep,
 	}, nil
 }
 
@@ -189,7 +195,7 @@ func (r *CheckpointChangeReader) streamBuckets() {
 		}
 	}
 
-	for i, hash := range buckets {
+	for _, hash := range buckets {
 		exists, err := r.bucketExists(hash)
 		if err != nil {
 			r.readChan <- r.error(
@@ -205,6 +211,20 @@ func (r *CheckpointChangeReader) streamBuckets() {
 			return
 		}
 
+		size, err := r.archive.BucketSize(hash)
+		if err != nil {
+			r.readChan <- r.error(
+				errors.Wrapf(err, "error checking bucket size: %s", hash),
+			)
+			return
+		}
+
+		r.readBytesMutex.Lock()
+		r.totalSize += size
+		r.readBytesMutex.Unlock()
+	}
+
+	for i, hash := range buckets {
 		oldestBucket := i == len(buckets)-1
 		if shouldContinue := r.streamBucketContents(hash, oldestBucket); !shouldContinue {
 			break
@@ -223,6 +243,7 @@ func (r *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStrea
 	var entry xdr.BucketEntry
 	var err error
 	currentPosition := stream.BytesRead()
+	gzipCurrentPosition := stream.GzipBytesRead()
 
 	for attempts := 0; ; attempts++ {
 		if r.ctx.Err() != nil {
@@ -232,6 +253,9 @@ func (r *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStrea
 		if err == nil {
 			err = stream.ReadOne(&entry)
 			if err == nil || err == io.EOF {
+				r.readBytesMutex.Lock()
+				r.totalRead += stream.GzipBytesRead() - gzipCurrentPosition
+				r.readBytesMutex.Unlock()
 				break
 			}
 		}
@@ -346,7 +370,8 @@ LoopBucketEntry:
 				}
 
 				// We're using compressed keys here
-				keyBytes, e := key.MarshalBinaryCompress()
+				// safe, since we are converting to string right away
+				keyBytes, e := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
 				if e != nil {
 					r.readChan <- r.error(
 						errors.Wrapf(e, "Error marshaling XDR record %d of hash '%s'", n, hash.String()),
@@ -354,7 +379,7 @@ LoopBucketEntry:
 					return false
 				}
 
-				h := base64.StdEncoding.EncodeToString(keyBytes)
+				h := string(keyBytes)
 				preloadKeys = append(preloadKeys, h)
 			}
 
@@ -400,7 +425,8 @@ LoopBucketEntry:
 		}
 
 		// We're using compressed keys here
-		keyBytes, e := key.MarshalBinaryCompress()
+		// Safe, since we are converting to string right away
+		keyBytes, e := r.encodingBuffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
 		if e != nil {
 			r.readChan <- r.error(
 				errors.Wrapf(
@@ -410,7 +436,7 @@ LoopBucketEntry:
 			return false
 		}
 
-		h := base64.StdEncoding.EncodeToString(keyBytes)
+		h := string(keyBytes)
 
 		switch entry.Type {
 		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
@@ -509,6 +535,13 @@ func (r *CheckpointChangeReader) error(err error) readResult {
 
 func (r *CheckpointChangeReader) close() {
 	close(r.done)
+}
+
+// Progress returns progress reading all buckets in percents.
+func (r *CheckpointChangeReader) Progress() float64 {
+	r.readBytesMutex.RLock()
+	defer r.readBytesMutex.RUnlock()
+	return float64(r.totalRead) / float64(r.totalSize) * 100
 }
 
 // Close should be called when reading is finished.

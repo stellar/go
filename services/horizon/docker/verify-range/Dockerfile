@@ -2,7 +2,8 @@ FROM ubuntu:20.04
 
 MAINTAINER Bartek Nowotarski <bartek@stellar.org>
 
-ENV STELLAR_CORE_VERSION 17.1.0-584.fbc0325.focal
+ARG STELLAR_CORE_VERSION 
+ENV STELLAR_CORE_VERSION=${STELLAR_CORE_VERSION:-*}
 # to remove tzdata interactive flow
 ENV DEBIAN_FRONTEND=noninteractive
 

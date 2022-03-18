@@ -9,10 +9,10 @@ import (
 )
 
 // ChangeTrust represents the Stellar change trust operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html.
+// https://developers.stellar.org/docs/start/list-of-operations/
 // If Limit is omitted, it defaults to txnbuild.MaxTrustlineLimit.
 type ChangeTrust struct {
-	Line          Asset
+	Line          ChangeTrustAsset
 	Limit         string
 	SourceAccount string
 }
@@ -22,7 +22,7 @@ var MaxTrustlineLimit = amount.StringFromInt64(math.MaxInt64)
 
 // RemoveTrustlineOp returns a ChangeTrust operation to remove the trustline of the described asset,
 // by setting the limit to "0".
-func RemoveTrustlineOp(issuedAsset Asset) ChangeTrust {
+func RemoveTrustlineOp(issuedAsset ChangeTrustAsset) ChangeTrust {
 	return ChangeTrust{
 		Line:  issuedAsset,
 		Limit: "0",
@@ -30,7 +30,7 @@ func RemoveTrustlineOp(issuedAsset Asset) ChangeTrust {
 }
 
 // BuildXDR for ChangeTrust returns a fully configured XDR Operation.
-func (ct *ChangeTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (ct *ChangeTrust) BuildXDR() (xdr.Operation, error) {
 	if ct.Line.IsNative() {
 		return xdr.Operation{}, errors.New("trustline cannot be extended to a native (XLM) asset")
 	}
@@ -50,7 +50,7 @@ func (ct *ChangeTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeChangeTrust
 	xdrOp := xdr.ChangeTrustOp{
-		Line:  xdrLine.ToChangeTrustAsset(),
+		Line:  xdrLine,
 		Limit: xdrLimit,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -58,22 +58,18 @@ func (ct *ChangeTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, ct.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, ct.SourceAccount)
-	}
+	SetOpSourceAccount(&op, ct.SourceAccount)
 	return op, nil
 }
 
 // FromXDR for ChangeTrust initialises the txnbuild struct from the corresponding xdr Operation.
-func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetChangeTrustOp()
 	if !ok {
 		return errors.New("error parsing change_trust operation from xdr")
 	}
 
-	ct.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	ct.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	ct.Limit = amount.String(result.Limit)
 	asset, err := assetFromChangeTrustAssetXDR(result.Line)
 	if err != nil {
@@ -85,7 +81,7 @@ func (ct *ChangeTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) erro
 
 // Validate for ChangeTrust validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (ct *ChangeTrust) Validate(withMuxedAccounts bool) error {
+func (ct *ChangeTrust) Validate() error {
 	// only validate limit if it has a value. Empty limit is set to the max trustline limit.
 	if ct.Limit != "" {
 		err := validateAmount(ct.Limit)

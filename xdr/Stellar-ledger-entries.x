@@ -243,12 +243,24 @@ case ASSET_TYPE_POOL_SHARE:
     // add other asset types here in the future
 };
 
+struct TrustLineEntryExtensionV2
+{
+    int32 liquidityPoolUseCount;
+
+    union switch (int v)
+    {
+    case 0:
+        void;
+    }
+    ext;
+};
+
 struct TrustLineEntry
 {
-    AccountID accountID; // account this trustline belongs to
-    TrustLineAsset asset;         // type of asset (with issuer)
-    int64 balance;       // how much of this asset the user has.
-                         // Asset defines the unit for this;
+    AccountID accountID;  // account this trustline belongs to
+    TrustLineAsset asset; // type of asset (with issuer)
+    int64 balance;        // how much of this asset the user has.
+                          // Asset defines the unit for this;
 
     int64 limit;  // balance cannot be above this
     uint32 flags; // see TrustLineFlags
@@ -267,6 +279,8 @@ struct TrustLineEntry
             {
             case 0:
                 void;
+            case 2:
+                TrustLineEntryExtensionV2 v2;
             }
             ext;
         } v1;
@@ -556,6 +570,7 @@ enum EnvelopeType
     ENVELOPE_TYPE_AUTH = 3,
     ENVELOPE_TYPE_SCPVALUE = 4,
     ENVELOPE_TYPE_TX_FEE_BUMP = 5,
-    ENVELOPE_TYPE_OP_ID = 6
+    ENVELOPE_TYPE_OP_ID = 6,
+    ENVELOPE_TYPE_POOL_REVOKE_OP_ID = 7
 };
 }

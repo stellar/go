@@ -8,9 +8,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/toid"
 )
 
 // UnmarshalDetails unmarshals the details of this effect into `dest`
@@ -19,7 +20,37 @@ func (r *Effect) UnmarshalDetails(dest interface{}) error {
 		return nil
 	}
 
-	return errors.Wrap(json.Unmarshal([]byte(r.DetailsString.String), &dest), "unmarshal effect details failed")
+	err := errors.Wrap(json.Unmarshal([]byte(r.DetailsString.String), &dest), "unmarshal effect details failed")
+	if err == nil {
+		// In 2.9.0 a new `asset_type` was introduced to include liquidity
+		// pools. Instead of reingesting entire history, let's fill the
+		// `asset_type` here if it's empty.
+		// (I hate to convert to `protocol` types here but there's no other way
+		// without larger refactor.)
+		switch dest := dest.(type) {
+		case *effects.TrustlineSponsorshipCreated:
+			if dest.Type == "" {
+				dest.Type = getAssetTypeForCanonicalAsset(dest.Asset)
+			}
+		case *effects.TrustlineSponsorshipUpdated:
+			if dest.Type == "" {
+				dest.Type = getAssetTypeForCanonicalAsset(dest.Asset)
+			}
+		case *effects.TrustlineSponsorshipRemoved:
+			if dest.Type == "" {
+				dest.Type = getAssetTypeForCanonicalAsset(dest.Asset)
+			}
+		}
+	}
+	return err
+}
+
+func getAssetTypeForCanonicalAsset(canonicalAsset string) string {
+	if len(canonicalAsset) <= 61 {
+		return "credit_alphanum4"
+	} else {
+		return "credit_alphanum12"
+	}
 }
 
 // ID returns a lexically ordered id for this effect record
@@ -93,6 +124,46 @@ func (q *EffectsQ) ForOperation(id int64) *EffectsQ {
 		end.ToInt64(),
 	)
 
+	return q
+}
+
+// ForLiquidityPool filters the query to only effects in a specific liquidity pool,
+// specified by its id.
+func (q *EffectsQ) ForLiquidityPool(ctx context.Context, page db2.PageQuery, id string) *EffectsQ {
+	if q.Err != nil {
+		return q
+	}
+
+	op, _, err := page.CursorInt64Pair(db2.DefaultPairSep)
+	if err != nil {
+		q.Err = err
+		return q
+	}
+
+	query := `SELECT holp.history_operation_id
+	FROM history_operation_liquidity_pools holp
+	WHERE holp.history_liquidity_pool_id = (SELECT id FROM history_liquidity_pools WHERE liquidity_pool_id =  ?)
+	`
+	switch page.Order {
+	case "asc":
+		query += "AND holp.history_operation_id >= ? ORDER BY holp.history_operation_id asc LIMIT ?"
+	case "desc":
+		query += "AND holp.history_operation_id <= ? ORDER BY holp.history_operation_id desc LIMIT ?"
+	default:
+		q.Err = errors.Errorf("invalid paging order: %s", page.Order)
+		return q
+	}
+
+	var liquidityPoolOperationIDs []int64
+	err = q.parent.SelectRaw(ctx, &liquidityPoolOperationIDs, query, id, op, page.Limit)
+	if err != nil {
+		q.Err = err
+		return q
+	}
+
+	q.sql = q.sql.Where(map[string]interface{}{
+		"heff.history_operation_id": liquidityPoolOperationIDs,
+	})
 	return q
 }
 

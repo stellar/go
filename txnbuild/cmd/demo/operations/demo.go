@@ -86,7 +86,7 @@ func Reset(client *horizonclient.Client, keys []Account) {
 		}
 
 		// It exists - so we will proceed to deconstruct any existing account entries, and then merge it
-		// See https://www.stellar.org/developers/guides/concepts/ledger.html#ledger-entries
+		// See https://developers.stellar.org/docs/glossary/ledger/#ledger-entries
 		log.Info("Found testnet account with ID:", k.HAccount.ID)
 
 		// Find any offers that need deleting...
@@ -131,7 +131,9 @@ func Reset(client *horizonclient.Client, keys []Account) {
 
 			// Delete the now-empty trustline...
 			log.Infof("Deleting trustline for asset %s:%s...", b.Code, b.Issuer)
-			txe, err = deleteTrustline(k.HAccount, asset, k)
+			ctAsset, err := asset.ToChangeTrustAsset()
+			dieIfError("problem building deleteTrustline op", err)
+			txe, err = deleteTrustline(k.HAccount, ctAsset, k)
 			dieIfError("problem building deleteTrustline op", err)
 			resp = submit(client, txe)
 			log.Debug(resp)
@@ -321,7 +323,7 @@ func payment(source *hProtocol.Account, dest, amount string, asset txnbuild.Asse
 	return txeBase64, nil
 }
 
-func deleteTrustline(source *hProtocol.Account, asset txnbuild.Asset, signer Account) (string, error) {
+func deleteTrustline(source *hProtocol.Account, asset txnbuild.ChangeTrustAsset, signer Account) (string, error) {
 	deleteTrustline := txnbuild.RemoveTrustlineOp(asset)
 
 	tx, err := txnbuild.NewTransaction(

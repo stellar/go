@@ -17,10 +17,6 @@ type FriendbotHandler struct {
 
 // Handle is a method that implements http.HandlerFunc
 func (handler *FriendbotHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	accountExistsProblem := problem.BadRequest
-	accountExistsProblem.Detail = ErrAccountExists.Error()
-	problem.RegisterError(ErrAccountExists, accountExistsProblem)
-
 	result, err := handler.doHandle(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
@@ -32,12 +28,7 @@ func (handler *FriendbotHandler) Handle(w http.ResponseWriter, r *http.Request) 
 
 // doHandle is just a convenience method that returns the object to be rendered
 func (handler *FriendbotHandler) doHandle(r *http.Request) (*horizon.Transaction, error) {
-	err := handler.checkEnabled()
-	if err != nil {
-		return nil, err
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		p := problem.BadRequest
 		p.Detail = "Request parameters are not escaped or incorrectly formatted."
@@ -49,19 +40,6 @@ func (handler *FriendbotHandler) doHandle(r *http.Request) (*horizon.Transaction
 		return nil, problem.MakeInvalidFieldProblem("addr", err)
 	}
 	return handler.Friendbot.Pay(address)
-}
-
-func (handler *FriendbotHandler) checkEnabled() error {
-	if handler.Friendbot != nil {
-		return nil
-	}
-
-	return &problem.P{
-		Type:   "friendbot_disabled",
-		Title:  "Friendbot is disabled",
-		Status: http.StatusForbidden,
-		Detail: "Friendbot is disabled on this network. Contact the server administrator if you believe this to be in error.",
-	}
 }
 
 func (handler *FriendbotHandler) loadAddress(r *http.Request) (string, error) {

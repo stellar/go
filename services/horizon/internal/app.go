@@ -33,6 +33,7 @@ import (
 // App represents the root of the state of a horizon instance.
 type App struct {
 	done            chan struct{}
+	doneOnce        sync.Once
 	config          Config
 	webServer       *httpx.Server
 	historyQ        *history.Q
@@ -50,15 +51,9 @@ type App struct {
 	ledgerState     *ledger.State
 
 	// metrics
-	prometheusRegistry                *prometheus.Registry
-	buildInfoGauge                    *prometheus.GaugeVec
-	ingestingGauge                    prometheus.Gauge
-	historyLatestLedgerCounter        prometheus.CounterFunc
-	historyLatestLedgerClosedAgoGauge prometheus.GaugeFunc
-	historyElderLedgerCounter         prometheus.CounterFunc
-	coreLatestLedgerCounter           prometheus.CounterFunc
-	coreSynced                        prometheus.GaugeFunc
-	coreSupportedProtocolVersion      prometheus.GaugeFunc
+	prometheusRegistry *prometheus.Registry
+	buildInfoGauge     *prometheus.GaugeVec
+	ingestingGauge     prometheus.Gauge
 }
 
 func (a *App) GetCoreState() corestate.State {
@@ -152,6 +147,7 @@ func (a *App) Serve() error {
 		wg.Done()
 	}()
 
+	log.Infof("Starting to serve requests")
 	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {
 		return err
@@ -166,7 +162,9 @@ func (a *App) Serve() error {
 
 // Close cancels the app. It does not close DB connections - use App.CloseDB().
 func (a *App) Close() {
-	close(a.done)
+	a.doneOnce.Do(func() {
+		close(a.done)
+	})
 }
 
 func (a *App) waitForDone() {
@@ -197,15 +195,14 @@ func (a *App) HistoryQ() *history.Q {
 	return a.historyQ
 }
 
-// Ingestion returns the ingestion system associated with this Horizon instance
-func (a *App) Ingestion() ingest.System {
-	return a.ingester
-}
-
 // HorizonSession returns a new session that loads data from the horizon
 // database.
 func (a *App) HorizonSession() db.SessionInterface {
 	return a.historyQ.SessionInterface.Clone()
+}
+
+func (a *App) Config() Config {
+	return a.config
 }
 
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
@@ -223,7 +220,7 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 		URL:  a.config.StellarCoreURL,
 	}
 
-	coreInfo, err := coreClient.Info(a.ctx)
+	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
 		logErr(err, "failed to load the stellar-core info")
 		return
@@ -459,8 +456,8 @@ func (a *App) init() error {
 	a.ctx, a.cancel = context.WithCancel(context.Background())
 
 	// log
-	log.DefaultLogger.Logger.Level = a.config.LogLevel
-	log.DefaultLogger.Logger.Hooks.Add(logmetrics.DefaultMetrics)
+	log.DefaultLogger.SetLevel(a.config.LogLevel)
+	log.DefaultLogger.AddHook(logmetrics.DefaultMetrics)
 
 	// sentry
 	initSentry(a)
@@ -508,21 +505,22 @@ func (a *App) init() error {
 	initTxSubMetrics(a)
 
 	routerConfig := httpx.RouterConfig{
-		DBSession:             a.historyQ.SessionInterface,
-		TxSubmitter:           a.submitter,
-		RateQuota:             a.config.RateQuota,
-		BehindCloudflare:      a.config.BehindCloudflare,
-		BehindAWSLoadBalancer: a.config.BehindAWSLoadBalancer,
-		SSEUpdateFrequency:    a.config.SSEUpdateFrequency,
-		StaleThreshold:        a.config.StaleThreshold,
-		ConnectionTimeout:     a.config.ConnectionTimeout,
-		NetworkPassphrase:     a.config.NetworkPassphrase,
-		MaxPathLength:         a.config.MaxPathLength,
-		PathFinder:            a.paths,
-		PrometheusRegistry:    a.prometheusRegistry,
-		CoreGetter:            a,
-		HorizonVersion:        a.horizonVersion,
-		FriendbotURL:          a.config.FriendbotURL,
+		DBSession:               a.historyQ.SessionInterface,
+		TxSubmitter:             a.submitter,
+		RateQuota:               a.config.RateQuota,
+		BehindCloudflare:        a.config.BehindCloudflare,
+		BehindAWSLoadBalancer:   a.config.BehindAWSLoadBalancer,
+		SSEUpdateFrequency:      a.config.SSEUpdateFrequency,
+		StaleThreshold:          a.config.StaleThreshold,
+		ConnectionTimeout:       a.config.ConnectionTimeout,
+		NetworkPassphrase:       a.config.NetworkPassphrase,
+		MaxPathLength:           a.config.MaxPathLength,
+		MaxAssetsPerPathRequest: a.config.MaxAssetsPerPathRequest,
+		PathFinder:              a.paths,
+		PrometheusRegistry:      a.prometheusRegistry,
+		CoreGetter:              a,
+		HorizonVersion:          a.horizonVersion,
+		FriendbotURL:            a.config.FriendbotURL,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,

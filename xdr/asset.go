@@ -251,7 +251,7 @@ func (a Asset) String() string {
 		return t
 	}
 
-	return fmt.Sprintf("%s/%s/%s", t, c, i)
+	return t + "/" + c + "/" + i
 }
 
 // StringCanonical returns a display friendly form of the asset following its
@@ -265,45 +265,7 @@ func (a Asset) StringCanonical() string {
 		return t
 	}
 
-	return fmt.Sprintf("%s:%s", c, i)
-}
-
-// MarshalBinaryCompress marshals Asset to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
-// that XDR is padding data to 4 bytes in union discriminants etc.
-// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
-// memory so this function decrease memory requirements.
-//
-// Warning, do not use UnmarshalBinary() on data encoded using this method!
-func (a Asset) MarshalBinaryCompress() ([]byte, error) {
-	m := []byte{byte(a.Type)}
-
-	var err error
-	var code []byte
-	var issuer []byte
-
-	switch a.Type {
-	case AssetTypeAssetTypeNative:
-		return m, nil
-	case AssetTypeAssetTypeCreditAlphanum4:
-		code = []byte(strings.TrimRight(string(a.AlphaNum4.AssetCode[:]), "\x00"))
-		issuer, err = a.AlphaNum4.Issuer.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-	case AssetTypeAssetTypeCreditAlphanum12:
-		code = []byte(strings.TrimRight(string(a.AlphaNum12.AssetCode[:]), "\x00"))
-		issuer, err = a.AlphaNum12.Issuer.MarshalBinary()
-		if err != nil {
-			panic(err)
-		}
-	default:
-		panic(fmt.Errorf("Unknown asset type: %v", a.Type))
-	}
-
-	m = append(m, code...)
-	m = append(m, issuer...)
-	return m, nil
+	return c + ":" + i
 }
 
 // Equals returns true if `other` is equivalent to `a`
@@ -348,10 +310,10 @@ func (a Asset) Extract(typ interface{}, code interface{}, issuer interface{}) er
 			switch a.Type {
 			case AssetTypeAssetTypeCreditAlphanum4:
 				an := a.MustAlphaNum4()
-				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+				*code = string(trimRightZeros(an.AssetCode[:]))
 			case AssetTypeAssetTypeCreditAlphanum12:
 				an := a.MustAlphaNum12()
-				*code = strings.TrimRight(string(an.AssetCode[:]), "\x00")
+				*code = string(trimRightZeros(an.AssetCode[:]))
 			}
 		default:
 			return errors.New("can't extract code")
@@ -430,4 +392,44 @@ func (a Asset) ToTrustLineAsset() TrustLineAsset {
 	}
 
 	return tla
+}
+
+func (a *Asset) GetCode() string {
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		return ""
+	case AssetTypeAssetTypeCreditAlphanum4:
+		return string((*a.AlphaNum4).AssetCode[:])
+	case AssetTypeAssetTypeCreditAlphanum12:
+		return string((*a.AlphaNum12).AssetCode[:])
+	default:
+		return ""
+	}
+}
+
+func (a *Asset) GetIssuer() string {
+	switch a.Type {
+	case AssetTypeAssetTypeNative:
+		return ""
+	case AssetTypeAssetTypeCreditAlphanum4:
+		addr, _ := (*a.AlphaNum4).Issuer.GetAddress()
+		return addr
+	case AssetTypeAssetTypeCreditAlphanum12:
+		addr, _ := (*a.AlphaNum12).Issuer.GetAddress()
+		return addr
+	default:
+		return ""
+	}
+}
+
+func (a *Asset) LessThan(b Asset) bool {
+	if a.Type != b.Type {
+		return int32(a.Type) < int32(b.Type)
+	}
+
+	if a.GetCode() != b.GetCode() {
+		return a.GetCode() < b.GetCode()
+	}
+
+	return a.GetIssuer() < b.GetIssuer()
 }

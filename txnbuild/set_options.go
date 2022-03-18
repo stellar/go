@@ -51,7 +51,7 @@ func NewInflationDestination(ai string) *string {
 }
 
 // SetOptions represents the Stellar set options operation. See
-// https://www.stellar.org/developers/guides/concepts/list-of-operations.html
+// https://developers.stellar.org/docs/start/list-of-operations/
 type SetOptions struct {
 	InflationDestination *string
 	SetFlags             []AccountFlag
@@ -67,7 +67,7 @@ type SetOptions struct {
 }
 
 // BuildXDR for SetOptions returns a fully configured XDR Operation.
-func (so *SetOptions) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 	err := so.handleInflation()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set inflation destination address")
@@ -95,11 +95,7 @@ func (so *SetOptions) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, so.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, so.SourceAccount)
-	}
+	SetOpSourceAccount(&op, so.SourceAccount)
 	return op, nil
 }
 
@@ -126,7 +122,7 @@ func (so *SetOptions) handleInflationXDR(account *xdr.AccountId) {
 }
 
 // handleSetFlags for SetOptions sets XDR account flags (represented as a bitmask).
-// See https://www.stellar.org/developers/guides/concepts/accounts.html
+// See https://developers.stellar.org/docs/glossary/accounts/#flags
 func (so *SetOptions) handleSetFlags() {
 	var flags xdr.Uint32
 	for _, flag := range so.SetFlags {
@@ -138,7 +134,7 @@ func (so *SetOptions) handleSetFlags() {
 }
 
 // handleSetFlagsXDR for SetOptions sets account flags from XDR object (represented as a bitmask).
-// See https://www.stellar.org/developers/guides/concepts/accounts.html
+// See https://developers.stellar.org/docs/glossary/accounts/#flags
 func (so *SetOptions) handleSetFlagsXDR(flags *xdr.Uint32) {
 	if flags != nil {
 		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable, AuthClawbackEnabled} {
@@ -150,7 +146,7 @@ func (so *SetOptions) handleSetFlagsXDR(flags *xdr.Uint32) {
 }
 
 // handleClearFlags for SetOptions unsets XDR account flags (represented as a bitmask).
-// See https://www.stellar.org/developers/guides/concepts/accounts.html
+// See https://developers.stellar.org/docs/glossary/accounts/#flags
 func (so *SetOptions) handleClearFlags() {
 	var flags xdr.Uint32
 	for _, flag := range so.ClearFlags {
@@ -162,7 +158,7 @@ func (so *SetOptions) handleClearFlags() {
 }
 
 // handleClearFlagsXDR for SetOptions unsets account flags (represented as a bitmask).
-// See https://www.stellar.org/developers/guides/concepts/accounts.html
+// See https://developers.stellar.org/docs/glossary/accounts/#flags
 func (so *SetOptions) handleClearFlagsXDR(flags *xdr.Uint32) {
 	if flags != nil {
 		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable, AuthClawbackEnabled} {
@@ -174,7 +170,7 @@ func (so *SetOptions) handleClearFlagsXDR(flags *xdr.Uint32) {
 }
 
 // handleMasterWeight for SetOptions sets the XDR weight of the master signing key.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleMasterWeight() {
 	if so.MasterWeight != nil {
 		xdrWeight := xdr.Uint32(*so.MasterWeight)
@@ -183,7 +179,7 @@ func (so *SetOptions) handleMasterWeight() {
 }
 
 // handleMasterWeightXDR for SetOptions sets the weight of the master signing key.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleMasterWeightXDR(weight *xdr.Uint32) {
 	if weight != nil {
 		mw := Threshold(uint32(*weight))
@@ -192,7 +188,7 @@ func (so *SetOptions) handleMasterWeightXDR(weight *xdr.Uint32) {
 }
 
 // handleLowThreshold for SetOptions sets the XDR value of the account's "low" threshold.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleLowThreshold() {
 	if so.LowThreshold != nil {
 		xdrThreshold := xdr.Uint32(*so.LowThreshold)
@@ -201,7 +197,7 @@ func (so *SetOptions) handleLowThreshold() {
 }
 
 // handleLowThresholdXDR for SetOptions sets value of the account's "low" threshold.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleLowThresholdXDR(weight *xdr.Uint32) {
 	if weight != nil {
 		lt := Threshold(uint32(*weight))
@@ -210,7 +206,7 @@ func (so *SetOptions) handleLowThresholdXDR(weight *xdr.Uint32) {
 }
 
 // handleMediumThreshold for SetOptions sets the XDR value of the account's "medium" threshold.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleMediumThreshold() {
 	if so.MediumThreshold != nil {
 		xdrThreshold := xdr.Uint32(*so.MediumThreshold)
@@ -219,7 +215,7 @@ func (so *SetOptions) handleMediumThreshold() {
 }
 
 // handleLowMediumXDR for SetOptions sets value of the account's "medium" threshold.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleMediumThresholdXDR(weight *xdr.Uint32) {
 	if weight != nil {
 		mt := Threshold(uint32(*weight))
@@ -228,7 +224,7 @@ func (so *SetOptions) handleMediumThresholdXDR(weight *xdr.Uint32) {
 }
 
 // handleHighThreshold for SetOptions sets the XDR value of the account's "high" threshold.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleHighThreshold() {
 	if so.HighThreshold != nil {
 		xdrThreshold := xdr.Uint32(*so.HighThreshold)
@@ -237,7 +233,7 @@ func (so *SetOptions) handleHighThreshold() {
 }
 
 // handleHighThresholdXDR for SetOptions sets value of the account's "high" threshold.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleHighThresholdXDR(weight *xdr.Uint32) {
 	if weight != nil {
 		ht := Threshold(uint32(*weight))
@@ -246,7 +242,7 @@ func (so *SetOptions) handleHighThresholdXDR(weight *xdr.Uint32) {
 }
 
 // handleHomeDomain for SetOptions sets the XDR value of the account's home domain.
-// https://www.stellar.org/developers/guides/concepts/federation.html
+// https://developers.stellar.org/docs/glossary/federation/
 func (so *SetOptions) handleHomeDomain() error {
 	if so.HomeDomain != nil {
 		if len(*so.HomeDomain) > 32 {
@@ -260,7 +256,7 @@ func (so *SetOptions) handleHomeDomain() error {
 }
 
 // handleHomeDomainXDR for SetOptions sets the value of the account's home domain.
-// https://www.stellar.org/developers/guides/concepts/federation.html
+// https://developers.stellar.org/docs/glossary/federation/
 func (so *SetOptions) handleHomeDomainXDR(xDomain *xdr.String32) {
 	if xDomain != nil {
 		domain := string(*xDomain)
@@ -269,7 +265,7 @@ func (so *SetOptions) handleHomeDomainXDR(xDomain *xdr.String32) {
 }
 
 // handleSigner for SetOptions sets the XDR value of a signer for the account.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleSigner() (err error) {
 	if so.Signer != nil {
 		var xdrSigner xdr.Signer
@@ -286,7 +282,7 @@ func (so *SetOptions) handleSigner() (err error) {
 }
 
 // handleSignerXDR for SetOptions sets the value of a signer for the account.
-// See https://www.stellar.org/developers/guides/concepts/multi-sig.html
+// See https://developers.stellar.org/docs/glossary/multisig/
 func (so *SetOptions) handleSignerXDR(xSigner *xdr.Signer) {
 	if xSigner != nil {
 		newSigner := Signer{}
@@ -297,13 +293,13 @@ func (so *SetOptions) handleSignerXDR(xSigner *xdr.Signer) {
 }
 
 // FromXDR for SetOptions initialises the txnbuild struct from the corresponding xdr Operation.
-func (so *SetOptions) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (so *SetOptions) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetSetOptionsOp()
 	if !ok {
 		return errors.New("error parsing set_options operation from xdr")
 	}
 
-	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	so.handleInflationXDR(result.InflationDest)
 	so.handleClearFlagsXDR(result.ClearFlags)
 	so.handleSetFlagsXDR(result.SetFlags)
@@ -319,7 +315,7 @@ func (so *SetOptions) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 
 // Validate for SetOptions validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (so *SetOptions) Validate(withMuxedAccounts bool) error {
+func (so *SetOptions) Validate() error {
 	// skipping checks here because the individual methods above already check for required fields.
 	// Refactoring is out of the scope of this issue(https://github.com/stellar/go/issues/1041) so will leave as is for now.
 	return nil

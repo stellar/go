@@ -10,10 +10,9 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -390,10 +389,13 @@ func (r resumeState) run(s *system) (transition, error) {
 	if err != nil {
 		return start(), errors.Wrap(err, "error getting ledger blocking")
 	}
+	duration := time.Since(startTime).Seconds()
 	log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
-		"duration": time.Since(startTime).Seconds(),
+		"duration": duration,
 	}).Info("Ledger returned from the backend")
+
+	s.Metrics().LedgerFetchDurationSummary.Observe(float64(duration))
 
 	if err = s.historyQ.Begin(); err != nil {
 		return retryResume(r),
@@ -414,9 +416,18 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithField("ingestLedger", ingestLedger).
 			WithField("lastIngestedLedger", lastIngestedLedger).
 			Info("bumping ingest ledger to next ledger after ingested ledger in db")
-		return retryResume(resumeState{
-			latestSuccessfullyProcessedLedger: lastIngestedLedger,
-		}), nil
+
+		// Update cursor if there's more than one ingesting instance: either
+		// Captive-Core or DB ingestion connected to another Stellar-Core.
+		if err = s.updateCursor(lastIngestedLedger); err != nil {
+			// Don't return updateCursor error.
+			log.WithError(err).Warn("error updating stellar-core cursor")
+		}
+
+		s.maybeVerifyState(ingestLedger)
+
+		// resume immediately so Captive-Core catchup is not slowed down
+		return resumeImmediately(lastIngestedLedger), nil
 	}
 
 	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
@@ -457,14 +468,14 @@ func (r resumeState) run(s *system) (transition, error) {
 		"commit":   true,
 	}).Info("Processing ledger")
 
-	changeStats, changeDurations, transactionStats, transactionDurations, err :=
+	stats, err :=
 		s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 
 	rebuildStart := time.Now()
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger)
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
 	}
@@ -480,29 +491,36 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
 
-	duration := time.Since(startTime).Seconds()
+	duration = time.Since(startTime).Seconds()
 	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
 
 	// Update stats metrics
-	changeStatsMap := changeStats.Map()
+	changeStatsMap := stats.changeStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "change", changeStatsMap)
-	r.addProcessorDurationsMetricFromMap(s, changeDurations)
+	r.addProcessorDurationsMetricFromMap(s, stats.changeDurations)
 
-	transactionStatsMap := transactionStats.Map()
+	transactionStatsMap := stats.transactionStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "ledger", transactionStatsMap)
-	r.addProcessorDurationsMetricFromMap(s, transactionDurations)
+	tradeStatsMap := stats.tradeStats.Map()
+	r.addLedgerStatsMetricFromMap(s, "trades", tradeStatsMap)
+	r.addProcessorDurationsMetricFromMap(s, stats.transactionDurations)
 
-	log.
-		WithFields(changeStatsMap).
-		WithFields(transactionStatsMap).
-		WithFields(logpkg.F{
-			"sequence": ingestLedger,
-			"duration": duration,
-			"state":    true,
-			"ledger":   true,
-			"commit":   true,
-		}).
-		Info("Processed ledger")
+	localLog := log.WithFields(logpkg.F{
+		"sequence": ingestLedger,
+		"duration": duration,
+		"state":    true,
+		"ledger":   true,
+		"commit":   true,
+	})
+
+	if s.config.EnableExtendedLogLedgerStats {
+		localLog = localLog.
+			WithFields(changeStatsMap).
+			WithFields(transactionStatsMap).
+			WithFields(tradeStatsMap)
+	}
+
+	localLog.Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
 
@@ -523,6 +541,8 @@ func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]
 		processorName = strings.Replace(processorName, "*", "", -1)
 		s.Metrics().ProcessorsRunDuration.
 			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
+		s.Metrics().ProcessorsRunDurationSummary.
+			With(prometheus.Labels{"name": processorName}).Observe(value.Seconds())
 	}
 }
 
@@ -618,13 +638,14 @@ func runTransactionProcessorsOnLedger(s *system, ledger xdr.LedgerCloseMeta) err
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	ledgerTransactionStats, _, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
+	ledgerTransactionStats, _, tradeStats, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger.LedgerSequence()))
 	}
 
 	log.
 		WithFields(ledgerTransactionStats.Map()).
+		WithFields(tradeStats.Map()).
 		WithFields(logpkg.F{
 			"sequence": ledger.LedgerSequence(),
 			"duration": time.Since(startTime).Seconds(),
@@ -785,7 +806,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 	}
 
-	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
+	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
 		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
 	}
@@ -913,10 +934,8 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), errors.Wrap(err, "error getting ledger")
 		}
 
-		var changeStats ingest.StatsChangeProcessorResults
-		var ledgerTransactionStats processors.StatsLedgerTransactionProcessorResults
-		changeStats, _, ledgerTransactionStats, _, err =
-			s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
+		var ledgerStats ledgerStats
+		ledgerStats, err = s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return stop(), err
@@ -927,8 +946,9 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		}
 
 		log.
-			WithFields(changeStats.Map()).
-			WithFields(ledgerTransactionStats.Map()).
+			WithFields(ledgerStats.changeStats.Map()).
+			WithFields(ledgerStats.transactionStats.Map()).
+			WithFields(ledgerStats.tradeStats.Map()).
 			WithFields(logpkg.F{
 				"sequence": sequence,
 				"duration": time.Since(startTime).Seconds(),
@@ -939,7 +959,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			Info("Processed ledger")
 	}
 
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, v.fromLedger, v.toLedger)
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, v.fromLedger, v.toLedger, s.config.RoundingSlippageFilter)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
 	}
@@ -993,7 +1013,7 @@ func (stressTestState) run(s *system) (transition, error) {
 		return stop(), errors.Wrap(err, "error getting ledger")
 	}
 
-	changeStats, _, ledgerTransactionStats, _, err := s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
+	stats, err := s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
 	if err != nil {
 		err = errors.Wrap(err, "Error running processors on ledger")
 		return stop(), err
@@ -1005,8 +1025,9 @@ func (stressTestState) run(s *system) (transition, error) {
 
 	curHeap, sysHeap = getMemStats()
 	log.
-		WithFields(changeStats.Map()).
-		WithFields(ledgerTransactionStats.Map()).
+		WithFields(stats.changeStats.Map()).
+		WithFields(stats.transactionStats.Map()).
+		WithFields(stats.tradeStats.Map()).
 		WithFields(logpkg.F{
 			"currentHeapSizeMB": curHeap,
 			"systemHeapSizeMB":  sysHeap,

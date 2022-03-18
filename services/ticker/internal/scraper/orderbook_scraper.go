@@ -33,7 +33,7 @@ func (c *ScraperConfig) fetchOrderbook(bType, bCode, bIssuer, cType, cCode, cIss
 	err = utils.Retry(5, 5*time.Second, c.Logger, func() error {
 		summary, err = c.Client.OrderBook(r)
 		if err != nil {
-			c.Logger.Infoln("Horizon rate limit reached!")
+			c.Logger.Info("Horizon rate limit reached!")
 		}
 		return err
 	})
@@ -121,7 +121,7 @@ func createOrderbookRequest(bType, bCode, bIssuer, cType, cCode, cIssuer string)
 	// when an Asset is native. As we store "XLM" as the asset code for native,
 	// we should only add Code and Issuer info in case we're dealing with
 	// non-native assets.
-	// See: https://www.stellar.org/developers/horizon/reference/endpoints/orderbook-details.html
+	// See: https://developers.stellar.org/api/aggregations/order-books/single/
 	if bType != string(horizonclient.AssetTypeNative) {
 		r.SellingAssetCode = bCode
 		r.SellingAssetIssuer = bIssuer
