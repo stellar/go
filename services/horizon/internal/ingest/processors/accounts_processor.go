@@ -2,11 +2,11 @@ package processors
 
 import (
 	"context"
-
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"time"
 )
 
 type AccountsProcessor struct {
@@ -111,12 +111,17 @@ func (p *AccountsProcessor) ledgerEntryToRow(entry xdr.LedgerEntry) history.Acco
 		inflationDestination = account.InflationDest.Address()
 	}
 
+	seqTime := account.SeqTime()
+	seqLedger := account.SeqLedger()
+
 	return history.AccountEntry{
 		AccountID:            account.AccountId.Address(),
 		Balance:              int64(account.Balance),
 		BuyingLiabilities:    int64(liabilities.Buying),
 		SellingLiabilities:   int64(liabilities.Selling),
 		SequenceNumber:       int64(account.SeqNum),
+		SequenceLedger:       uint32(seqLedger),
+		SequenceTime:         time.Unix(int64(seqTime), 0).UTC(),
 		NumSubEntries:        uint32(account.NumSubEntries),
 		InflationDestination: inflationDestination,
 		Flags:                uint32(account.Flags),
