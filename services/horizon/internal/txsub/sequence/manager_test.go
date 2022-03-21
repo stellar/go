@@ -20,7 +20,7 @@ func TestManager_Push(t *testing.T) {
 	assert.Equal(t, 1, mgr.queues["2"].Size())
 }
 
-// Test the Update method
+// Test the NotifyLastAccountSequence method
 func TestManager_Update(t *testing.T) {
 	mgr := NewManager()
 	results := []<-chan error{

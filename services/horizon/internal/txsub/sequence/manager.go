@@ -14,14 +14,14 @@ import (
 type Manager struct {
 	mutex   sync.Mutex
 	MaxSize int
-	queues  map[string]*Queue
+	queues  map[string]*AccountTxSubmissionQueue
 }
 
 // NewManager returns a new manager
 func NewManager() *Manager {
 	return &Manager{
 		MaxSize: 1024, //TODO: make MaxSize configurable
-		queues:  map[string]*Queue{},
+		queues:  map[string]*AccountTxSubmissionQueue{},
 	}
 }
 
@@ -70,7 +70,7 @@ func (m *Manager) Push(address string, sequence uint64) <-chan error {
 
 	aq, ok := m.queues[address]
 	if !ok {
-		aq = NewQueue()
+		aq = NewAccountTxSubmissionQueue()
 		m.queues[address] = aq
 	}
 
@@ -78,7 +78,7 @@ func (m *Manager) Push(address string, sequence uint64) <-chan error {
 }
 
 // Update notifies the manager of newly loaded account sequence information.  The manager uses this information
-// to notify requests to submit that they should proceed.  See Queue#Update for the actual meat of the logic.
+// to notify requests to submit that they should proceed.  See AccountTxSubmissionQueue#NotifyLastAccountSequence for the actual meat of the logic.
 func (m *Manager) Update(updates map[string]uint64) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -89,7 +89,7 @@ func (m *Manager) Update(updates map[string]uint64) {
 			continue
 		}
 
-		queue.Update(seq)
+		queue.NotifyLastAccountSequence(seq)
 		if queue.Size() == 0 {
 			delete(m.queues, address)
 		}
