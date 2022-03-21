@@ -273,7 +273,7 @@ func TestPopulateTransaction_PreconditionsV2(t *testing.T) {
 	} {
 		envelopeXDR, err := xdr.MarshalBase64(envelope)
 		assert.NoError(t, err)
-		envelopeTimebounds := envelope.Preconditions().TimeBounds
+		envelopeTimebounds := envelope.TimeBounds()
 		row := history.Transaction{
 			TransactionWithoutLedger: history.TransactionWithoutLedger{
 				TimeBounds: history.TimeBounds{

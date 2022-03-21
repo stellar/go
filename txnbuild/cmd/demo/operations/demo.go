@@ -502,7 +502,7 @@ func printHorizonError(hError *horizonclient.Error) error {
 	}
 	log.Println("Fee:", envelope.Fee())
 	log.Println("SequenceNumber:", envelope.SeqNum())
-	log.Println("TimeBounds:", envelope.Preconditions().TimeBounds)
+	log.Println("TimeBounds:", envelope.TimeBounds())
 	log.Println("Memo:", envelope.Memo())
 	log.Println("Memo.Type:", envelope.Memo().Type)
 	if envelope.Memo().Type != xdr.MemoTypeMemoNone {

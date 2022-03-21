@@ -72,8 +72,7 @@ func (t LedgerBounds) Value() (driver.Value, error) {
 	return fmt.Sprintf("[%d, %d)", t.MinLedger.Int64, t.MaxLedger.Int64), nil
 }
 
-func formatLedgerBounds(cond xdr.PreconditionsV2) LedgerBounds {
-	ledgerBounds := cond.LedgerBounds
+func formatLedgerBounds(ledgerBounds *xdr.LedgerBounds) LedgerBounds {
 	if ledgerBounds == nil {
 		return LedgerBounds{Null: true}
 	}

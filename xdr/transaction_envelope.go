@@ -87,18 +87,97 @@ func (e TransactionEnvelope) SeqNum() int64 {
 	}
 }
 
-// Preconditions normalizes and returns the preconditions set in the
-// transaction envelope Note for fee bump transactions, Preconditions() returns
-// the preconditions from the inner transaction
-func (e TransactionEnvelope) Preconditions() PreconditionsV2 {
+// TimeBounds returns the time bounds set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the time bounds
+// of the inner transaction
+func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		return GetPreconditions(&e.FeeBump.Tx.InnerTx.V1.Tx)
+		return e.FeeBump.Tx.InnerTx.V1.Tx.TimeBounds()
 	case EnvelopeTypeEnvelopeTypeTx:
-		return GetPreconditions(&e.V1.Tx)
+		return e.V1.Tx.TimeBounds()
 	case EnvelopeTypeEnvelopeTypeTxV0:
-		// polyfill for older txns
-		return PreconditionsV2{TimeBounds: e.V0.Tx.TimeBounds}
+		return e.V0.Tx.TimeBounds
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
+// LedgerBounds returns the ledger bounds set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the ledger bounds
+// of the inner transaction
+func (e TransactionEnvelope) LedgerBounds() *LedgerBounds {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.LedgerBounds()
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.LedgerBounds()
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
+// MinSeqNum returns the min seq num set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the value
+// of the inner transaction
+func (e TransactionEnvelope) MinSeqNum() *SequenceNumber {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.MinSeqNum()
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.MinSeqNum()
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
+// MinSeqAge returns the min seq age set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the value
+// of the inner transaction
+func (e TransactionEnvelope) MinSeqAge() *Duration {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.MinSeqAge()
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.MinSeqAge()
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
+// MinSeqLedgerGap returns the min seq ledger gap set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the value
+// of the inner transaction
+func (e TransactionEnvelope) MinSeqLedgerGap() *Uint32 {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.MinSeqLedgerGap()
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.MinSeqLedgerGap()
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
+// ExtraSigners returns the extra signers set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the value
+// of the inner transaction
+func (e TransactionEnvelope) ExtraSigners() []SignerKey {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.ExtraSigners()
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.ExtraSigners()
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
 	default:
 		panic("unsupported transaction type: " + e.Type.String())
 	}

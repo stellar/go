@@ -73,8 +73,7 @@ func (t TimeBounds) Value() (driver.Value, error) {
 	return fmt.Sprintf("[%d, %d)", t.Lower.Int64, t.Upper.Int64), nil
 }
 
-func formatTimeBounds(cond xdr.PreconditionsV2) TimeBounds {
-	timeBounds := cond.TimeBounds
+func formatTimeBounds(timeBounds *xdr.TimeBounds) TimeBounds {
 	if timeBounds == nil {
 		return TimeBounds{Null: true}
 	}

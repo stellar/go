@@ -173,8 +173,6 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 		accountMuxed = null.StringFrom(source.Address())
 	}
 
-	cond := transaction.Envelope.Preconditions()
-
 	t := TransactionWithoutLedger{
 		TransactionHash:             hex.EncodeToString(transaction.Result.TransactionHash[:]),
 		LedgerSequence:              int32(sequence),
@@ -189,12 +187,12 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 		TxResult:                    resultBase64,
 		TxMeta:                      metaBase64,
 		TxFeeMeta:                   feeMetaBase64,
-		TimeBounds:                  formatTimeBounds(cond),
-		LedgerBounds:                formatLedgerBounds(cond),
-		MinAccountSequence:          formatMinSequenceNumber(cond.MinSeqNum),
-		MinAccountSequenceAge:       formatDuration(cond.MinSeqAge),
-		MinAccountSequenceLedgerGap: formatUint32(cond.MinSeqLedgerGap),
-		ExtraSigners:                formatSigners(cond.ExtraSigners),
+		TimeBounds:                  formatTimeBounds(transaction.Envelope.TimeBounds()),
+		LedgerBounds:                formatLedgerBounds(transaction.Envelope.LedgerBounds()),
+		MinAccountSequence:          formatMinSequenceNumber(transaction.Envelope.MinSeqNum()),
+		MinAccountSequenceAge:       formatDuration(transaction.Envelope.MinSeqAge()),
+		MinAccountSequenceLedgerGap: formatUint32(transaction.Envelope.MinSeqLedgerGap()),
+		ExtraSigners:                formatSigners(transaction.Envelope.ExtraSigners()),
 		MemoType:                    memoType(transaction),
 		Memo:                        memo(transaction),
 		CreatedAt:                   time.Now().UTC(),
@@ -236,12 +234,18 @@ func formatMinSequenceNumber(minSeqNum *xdr.SequenceNumber) null.Int {
 	return null.IntFrom(int64(*minSeqNum))
 }
 
-func formatDuration(d xdr.Duration) null.Int {
-	return null.IntFrom(int64(d))
+func formatDuration(d *xdr.Duration) null.Int {
+	if d == nil {
+		return null.Int{}
+	}
+	return null.IntFrom(int64(*d))
 }
 
-func formatUint32(u xdr.Uint32) null.Int {
-	return null.IntFrom(int64(u))
+func formatUint32(u *xdr.Uint32) null.Int {
+	if u == nil {
+		return null.Int{}
+	}
+	return null.IntFrom(int64(*u))
 }
 
 func formatSigners(s []xdr.SignerKey) pq.StringArray {
