@@ -133,6 +133,11 @@ type TransactionWithoutLedger struct {
 	MemoType             string         `db:"memo_type"`
 	Memo                 null.String    `db:"memo"`
 	TimeBounds           TimeBounds     `db:"time_bounds"`
+	LedgerBounds         LedgerBounds   `db:"ledger_bounds"`
+	MinAccountSequence   null.Int       `db:"min_account_sequence"`
+	MinSequenceAge       null.Int       `db:"min_sequence_age"`
+	MinSequenceLedgerGap null.Int       `db:"min_sequence_ledger_gap"`
+	ExtraSigners         pq.StringArray `db:"extra_signers"`
 	CreatedAt            time.Time      `db:"created_at"`
 	UpdatedAt            time.Time      `db:"updated_at"`
 	Successful           bool           `db:"successful"`
@@ -171,25 +176,30 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 	cond := transaction.Envelope.Preconditions()
 
 	t := TransactionWithoutLedger{
-		TransactionHash:  hex.EncodeToString(transaction.Result.TransactionHash[:]),
-		LedgerSequence:   int32(sequence),
-		ApplicationOrder: int32(transaction.Index),
-		Account:          account.Address(),
-		AccountMuxed:     accountMuxed,
-		AccountSequence:  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
-		MaxFee:           int64(transaction.Envelope.Fee()),
-		FeeCharged:       int64(transaction.Result.Result.FeeCharged),
-		OperationCount:   int32(len(transaction.Envelope.Operations())),
-		TxEnvelope:       envelopeBase64,
-		TxResult:         resultBase64,
-		TxMeta:           metaBase64,
-		TxFeeMeta:        feeMetaBase64,
-		TimeBounds:       formatTimeBounds(cond),
-		MemoType:         memoType(transaction),
-		Memo:             memo(transaction),
-		CreatedAt:        time.Now().UTC(),
-		UpdatedAt:        time.Now().UTC(),
-		Successful:       transaction.Result.Successful(),
+		TransactionHash:      hex.EncodeToString(transaction.Result.TransactionHash[:]),
+		LedgerSequence:       int32(sequence),
+		ApplicationOrder:     int32(transaction.Index),
+		Account:              account.Address(),
+		AccountMuxed:         accountMuxed,
+		AccountSequence:      strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		MaxFee:               int64(transaction.Envelope.Fee()),
+		FeeCharged:           int64(transaction.Result.Result.FeeCharged),
+		OperationCount:       int32(len(transaction.Envelope.Operations())),
+		TxEnvelope:           envelopeBase64,
+		TxResult:             resultBase64,
+		TxMeta:               metaBase64,
+		TxFeeMeta:            feeMetaBase64,
+		TimeBounds:           formatTimeBounds(cond),
+		LedgerBounds:         formatLedgerBounds(cond),
+		MinAccountSequence:   formatMinSequenceNumber(cond.MinSeqNum),
+		MinSequenceAge:       formatDuration(cond.MinSeqAge),
+		MinSequenceLedgerGap: formatUint32(cond.MinSeqLedgerGap),
+		ExtraSigners:         formatSigners(cond.ExtraSigners),
+		MemoType:             memoType(transaction),
+		Memo:                 memo(transaction),
+		CreatedAt:            time.Now().UTC(),
+		UpdatedAt:            time.Now().UTC(),
+		Successful:           transaction.Result.Successful(),
 	}
 	t.TotalOrderID.ID = toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64()
 
@@ -217,4 +227,27 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 	}
 
 	return t, nil
+}
+
+func formatMinSequenceNumber(minSeqNum *xdr.SequenceNumber) null.Int {
+	if minSeqNum == nil {
+		return null.Int{}
+	}
+	return null.IntFrom(int64(*minSeqNum))
+}
+
+func formatDuration(d xdr.Duration) null.Int {
+	return null.IntFrom(int64(d))
+}
+
+func formatUint32(u xdr.Uint32) null.Int {
+	return null.IntFrom(int64(u))
+}
+
+func formatSigners(s []xdr.SignerKey) pq.StringArray {
+	signers := make([]string, len(s))
+	for i, key := range s {
+		signers[i] = key.Address()
+	}
+	return signers
 }

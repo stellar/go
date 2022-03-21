@@ -110,6 +110,19 @@ func createV2Tx() TransactionEnvelope {
 							MinTime: 2,
 							MaxTime: 4,
 						},
+						LedgerBounds: &LedgerBounds{
+							MinLedger: 5,
+							MaxLedger: 6,
+						},
+						MinSeqNum:       &minSeqNum,
+						MinSeqAge:       Duration(8),
+						MinSeqLedgerGap: Uint32(9),
+						ExtraSigners: []SignerKey{
+							{
+								Type:    SignerKeyTypeSignerKeyTypeEd25519,
+								Ed25519: &Uint256{3, 3, 3},
+							},
+						},
 					},
 				},
 				Operations: []Operation{
