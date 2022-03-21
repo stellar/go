@@ -50,7 +50,7 @@ func (sub *submitter) Submit(ctx context.Context, env string) (result Submission
 		return
 	}
 
-	// interpet response
+	// interpret response
 	if cresp.IsException() {
 		result.Err = errors.Errorf("stellar-core exception: %s", cresp.Exception)
 		return
