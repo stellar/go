@@ -57,7 +57,35 @@ func PopulateTransaction(
 	if !row.TimeBounds.Null {
 		dest.ValidBefore = timeString(dest, row.TimeBounds.Upper)
 		dest.ValidAfter = timeString(dest, row.TimeBounds.Lower)
+
+		dest.Preconditions.Timebounds.MaxTime = timeString(dest, row.TimeBounds.Upper)
+		dest.Preconditions.Timebounds.MinTime = timeString(dest, row.TimeBounds.Lower)
 	}
+
+	if !row.LedgerBounds.Null {
+		if row.LedgerBounds.MinLedger.Valid {
+			minLedger := uint32(row.LedgerBounds.MinLedger.Int64)
+			dest.Preconditions.Ledgerbounds.MinLedger = &minLedger
+		}
+		if row.LedgerBounds.MaxLedger.Valid {
+			maxLedger := uint32(row.LedgerBounds.MaxLedger.Int64)
+			dest.Preconditions.Ledgerbounds.MaxLedger = &maxLedger
+		}
+	}
+
+	if row.MinAccountSequence.Valid {
+		dest.Preconditions.MinAccountSequence = fmt.Sprint(row.MinAccountSequence.Int64)
+	}
+
+	if row.MinSequenceAge.Valid {
+		dest.Preconditions.MinSequenceAge = fmt.Sprint(row.MinSequenceAge.Int64)
+	}
+
+	if row.MinSequenceLedgerGap.Valid {
+		dest.Preconditions.MinSequenceLedgerGap = uint32(row.MinSequenceLedgerGap.Int64)
+	}
+
+	dest.Preconditions.ExtraSigners = row.ExtraSigners
 
 	if row.InnerTransactionHash.Valid {
 		dest.FeeAccount = row.FeeAccount.String
