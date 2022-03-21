@@ -5,24 +5,24 @@ import (
 	"time"
 )
 
-// Queue manages the submission queue for a single source account. The
+// AccountTxSubmissionQueue manages the submission queue for a single source account. The
 // transaction system uses Push to enqueue submissions for given sequence
 // numbers.
 //
-// Queue maintains a priority queue of pending submissions, and when updated
-// (via the Update() method) with the current sequence number of the account
+// AccountTxSubmissionQueue maintains a priority queue of pending submissions, and when updated
+// (via the NotifyLastAccountSequence() method) with the current sequence number of the account
 // being managed, queued submissions that can be acted upon will be unblocked.
 //
-type Queue struct {
+type AccountTxSubmissionQueue struct {
 	lastActiveAt time.Time
 	timeout      time.Duration
 	nextSequence uint64
 	queue        pqueue
 }
 
-// NewQueue creates a new *Queue
-func NewQueue() *Queue {
-	result := &Queue{
+// NewAccountTxSubmissionQueue creates a new *AccountTxSubmissionQueue
+func NewAccountTxSubmissionQueue() *AccountTxSubmissionQueue {
+	result := &AccountTxSubmissionQueue{
 		lastActiveAt: time.Now(),
 		timeout:      10 * time.Second,
 		queue:        nil,
@@ -34,7 +34,7 @@ func NewQueue() *Queue {
 }
 
 // Size returns the count of currently buffered submissions in the queue.
-func (q *Queue) Size() int {
+func (q *AccountTxSubmissionQueue) Size() int {
 	return len(q.queue)
 }
 
@@ -43,26 +43,26 @@ func (q *Queue) Size() int {
 // to do so.
 //
 // Push does not perform any triggering (which
-// occurs in Update(), even if the current sequence number for this queue is
+// occurs in NotifyLastAccountSequence(), even if the current sequence number for this queue is
 // the same as the provided sequence, to keep internal complexity much lower.
 // Given that, the recommended usage pattern is:
 //
 // 1. Push the submission onto the queue
 // 2. Load the current sequence number for the source account from the DB
-// 3. Call Update() with the result from step 2 to trigger the submission if
+// 3. Call NotifyLastAccountSequence() with the result from step 2 to trigger the submission if
 //		possible
-func (q *Queue) Push(sequence uint64) <-chan error {
+func (q *AccountTxSubmissionQueue) Push(sequence uint64) <-chan error {
 	ch := make(chan error, 1)
 	heap.Push(&q.queue, item{sequence, ch})
 	return ch
 }
 
-// Update notifies the queue that the provided sequence number is the latest
+// NotifyLastAccountSequence notifies the queue that the provided sequence number is the latest
 // seen value for the account that this queue manages submissions for.
 //
 // This function is monotonic... calling it with a sequence number lower than
 // the latest seen sequence number is a noop.
-func (q *Queue) Update(sequence uint64) {
+func (q *AccountTxSubmissionQueue) NotifyLastAccountSequence(sequence uint64) {
 	if q.nextSequence <= sequence {
 		q.nextSequence = sequence + 1
 	}
@@ -113,7 +113,7 @@ func (q *Queue) Update(sequence uint64) {
 }
 
 // helper function for interacting with the priority queue
-func (q *Queue) head() (chan error, uint64) {
+func (q *AccountTxSubmissionQueue) head() (chan error, uint64) {
 	if len(q.queue) == 0 {
 		return nil, uint64(0)
 	}
@@ -122,7 +122,7 @@ func (q *Queue) head() (chan error, uint64) {
 }
 
 // helper function for interacting with the priority queue
-func (q *Queue) pop() (chan error, uint64) {
+func (q *AccountTxSubmissionQueue) pop() (chan error, uint64) {
 	i := heap.Pop(&q.queue).(item)
 
 	return i.Chan, i.Sequence
@@ -134,7 +134,7 @@ type item struct {
 	Chan     chan error
 }
 
-// pqueue is a priority queue used by Queue to manage buffered submissions.  It
+// pqueue is a priority queue used by AccountTxSubmissionQueue to manage buffered submissions.  It
 // implements heap.Interface.
 type pqueue []item
 

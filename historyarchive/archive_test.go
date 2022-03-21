@@ -219,8 +219,10 @@ func TestScanSizeSubrangeAllBuckets(t *testing.T) {
 func countMissing(arch *Archive, opts *CommandOptions) int {
 	n := 0
 	arch.Scan(opts)
-	for _, missing := range arch.CheckCheckpointFilesMissing(opts) {
-		n += len(missing)
+	for cat, missing := range arch.CheckCheckpointFilesMissing(opts) {
+		if categoryRequired(cat) || !opts.SkipOptional {
+			n += len(missing)
+		}
 	}
 	n += len(arch.CheckBucketsMissing())
 	return n
@@ -245,6 +247,38 @@ func TestMirror(t *testing.T) {
 	dst := GetTestArchive()
 	Mirror(src, dst, opts)
 	assert.Equal(t, 0, countMissing(dst, opts))
+}
+
+func TestOnlyRequired(t *testing.T) {
+	defer cleanup()
+	optsWithOptional := testOptions()
+
+	optsOnlyRequired := testOptions()
+	optsOnlyRequired.SkipOptional = true
+
+	src := GetRandomPopulatedArchive()
+	dstWithOptional := GetTestArchive()
+	dstOnlyRequired := GetTestArchive()
+
+	// First mirror copies optional files, second does not.
+	Mirror(src, dstWithOptional, optsWithOptional)
+	Mirror(src, dstOnlyRequired, optsOnlyRequired)
+
+	// Scanning the mirror with optional files under either
+	// scan (ignore or require optional) is ok.
+	assert.Equal(t, 0, countMissing(dstWithOptional, optsWithOptional))
+	assert.Equal(t, 0, countMissing(dstWithOptional, optsOnlyRequired))
+
+	// Scanning the mirror without optional files produces
+	// a missing count when requiring optional files.
+	assert.NotEqual(t, 0, countMissing(dstOnlyRequired, optsWithOptional))
+	assert.Equal(t, 0, countMissing(dstOnlyRequired, optsOnlyRequired))
+
+	// First repair ignores optional files, second fills them in.
+	Repair(src, dstOnlyRequired, optsOnlyRequired)
+	assert.NotEqual(t, 0, countMissing(dstOnlyRequired, optsWithOptional))
+	Repair(src, dstOnlyRequired, optsWithOptional)
+	assert.Equal(t, 0, countMissing(dstOnlyRequired, optsWithOptional))
 }
 
 func copyFile(category string, checkpoint uint32, src *Archive, dst *Archive) {

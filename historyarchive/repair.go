@@ -6,6 +6,7 @@ package historyarchive
 
 import (
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,6 +29,9 @@ func Repair(src *Archive, dst *Archive, opts *CommandOptions) error {
 	repairedHistory := false
 	for cat, missing := range missingCheckpointFiles {
 		for _, chk := range missing {
+			if opts.SkipOptional && !categoryRequired(cat) {
+				continue
+			}
 			pth := CategoryCheckpointPath(cat, chk)
 			exists, err := src.backend.Exists(pth)
 			if err != nil {

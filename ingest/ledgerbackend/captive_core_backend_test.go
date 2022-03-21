@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
@@ -131,6 +133,9 @@ type testLedgerHeader struct {
 }
 
 func TestCaptiveNew(t *testing.T) {
+	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	require.NoError(t, err)
+
 	executablePath := "/etc/stellar-core"
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{"http://history.stellar.org/prd/core-live/core_live_001"}
@@ -140,6 +145,7 @@ func TestCaptiveNew(t *testing.T) {
 			BinaryPath:         executablePath,
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: historyURLs,
+			StoragePath:        storagePath,
 		},
 	)
 
@@ -821,6 +827,9 @@ func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *t
 }
 
 func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
+	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	executablePath := "/etc/stellar-core"
 	networkPassphrase := network.PublicNetworkPassphrase
@@ -835,6 +844,7 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: historyURLs,
 			Toml:               captiveCoreToml,
+			StoragePath:        storagePath,
 		},
 	)
 	assert.NoError(t, err)
