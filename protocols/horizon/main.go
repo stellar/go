@@ -545,7 +545,7 @@ type TransactionPreconditions struct {
 	MinSequenceAge       string `json:"min_account_sequence_age,omitempty"`
 	MinSequenceLedgerGap uint32 `json:"min_account_sequence_ledger_gap,omitempty"`
 
-	Signers []string `json:"extra_signers,omitempty"`
+	ExtraSigners []string `json:"extra_signers,omitempty"`
 }
 
 // FeeBumpTransaction contains information about a fee bump transaction
