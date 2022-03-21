@@ -273,7 +273,7 @@ func TestTransactionToMap_Preconditions(t *testing.T) {
 	assert.Equal(t, null.IntFrom(10), row.LedgerBounds.MaxLedger)
 
 	assert.Equal(t, null.IntFrom(24), row.MinAccountSequence)
-	assert.Equal(t, null.IntFrom(1024), row.MinSequenceAge)
-	assert.Equal(t, null.IntFrom(3), row.MinSequenceLedgerGap)
+	assert.Equal(t, null.IntFrom(1024), row.MinAccountSequenceAge)
+	assert.Equal(t, null.IntFrom(3), row.MinAccountSequenceLedgerGap)
 	assert.Equal(t, pq.StringArray{signerKey.Address()}, row.ExtraSigners)
 }

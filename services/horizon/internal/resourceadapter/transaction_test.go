@@ -183,10 +183,10 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 				MinLedger: null.IntFrom(int64(minLedger)),
 				MaxLedger: null.IntFrom(int64(maxLedger)),
 			},
-			MinAccountSequence:   null.IntFrom(minAccountSequence),
-			MinSequenceAge:       null.IntFrom(int64(minSequenceAge)),
-			MinSequenceLedgerGap: null.IntFrom(int64(minSequenceLedgerGap)),
-			ExtraSigners:         pq.StringArray{"D34DB33F", "8BADF00D"},
+			MinAccountSequence:          null.IntFrom(minAccountSequence),
+			MinAccountSequenceAge:       null.IntFrom(int64(minSequenceAge)),
+			MinAccountSequenceLedgerGap: null.IntFrom(int64(minSequenceLedgerGap)),
+			ExtraSigners:                pq.StringArray{"D34DB33F", "8BADF00D"},
 		},
 	}
 
@@ -199,8 +199,8 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 	assert.Equal(t, &minLedger, p.Ledgerbounds.MinLedger)
 	assert.Equal(t, &maxLedger, p.Ledgerbounds.MaxLedger)
 	assert.Equal(t, fmt.Sprint(minAccountSequence), p.MinAccountSequence)
-	assert.Equal(t, fmt.Sprint(int64(minSequenceAge)), p.MinSequenceAge)
-	assert.Equal(t, minSequenceLedgerGap, p.MinSequenceLedgerGap)
+	assert.Equal(t, fmt.Sprint(int64(minSequenceAge)), p.MinAccountSequenceAge)
+	assert.Equal(t, minSequenceLedgerGap, p.MinAccountSequenceLedgerGap)
 	assert.Equal(t, []string{"D34DB33F", "8BADF00D"}, p.ExtraSigners)
 }
 

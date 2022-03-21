@@ -535,9 +535,9 @@ type TransactionPreconditions struct {
 	Timebounds   *TransactionPreconditionsTimebounds   `json:"timebounds,omitempty"`
 	Ledgerbounds *TransactionPreconditionsLedgerbounds `json:"ledgerbounds,omitempty"`
 
-	MinAccountSequence   string `json:"min_account_sequence,omitempty"`
-	MinSequenceAge       string `json:"min_account_sequence_age,omitempty"`
-	MinSequenceLedgerGap uint32 `json:"min_account_sequence_ledger_gap,omitempty"`
+	MinAccountSequence          string `json:"min_account_sequence,omitempty"`
+	MinAccountSequenceAge       string `json:"min_account_sequence_age,omitempty"`
+	MinAccountSequenceLedgerGap uint32 `json:"min_account_sequence_ledger_gap,omitempty"`
 
 	ExtraSigners []string `json:"extra_signers,omitempty"`
 }

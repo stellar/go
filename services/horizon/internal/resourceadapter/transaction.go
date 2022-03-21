@@ -92,18 +92,18 @@ func PopulateTransaction(
 		dest.Preconditions.MinAccountSequence = fmt.Sprint(row.MinAccountSequence.Int64)
 	}
 
-	if row.MinSequenceAge.Valid {
+	if row.MinAccountSequenceAge.Valid {
 		if dest.Preconditions == nil {
 			dest.Preconditions = &protocol.TransactionPreconditions{}
 		}
-		dest.Preconditions.MinSequenceAge = fmt.Sprint(row.MinSequenceAge.Int64)
+		dest.Preconditions.MinAccountSequenceAge = fmt.Sprint(row.MinAccountSequenceAge.Int64)
 	}
 
-	if row.MinSequenceLedgerGap.Valid {
+	if row.MinAccountSequenceLedgerGap.Valid {
 		if dest.Preconditions == nil {
 			dest.Preconditions = &protocol.TransactionPreconditions{}
 		}
-		dest.Preconditions.MinSequenceLedgerGap = uint32(row.MinSequenceLedgerGap.Int64)
+		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(row.MinAccountSequenceLedgerGap.Int64)
 	}
 
 	if len(row.ExtraSigners) > 0 {
