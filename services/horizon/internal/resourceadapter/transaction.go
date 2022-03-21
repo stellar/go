@@ -58,11 +58,23 @@ func PopulateTransaction(
 		dest.ValidBefore = timeString(dest, row.TimeBounds.Upper)
 		dest.ValidAfter = timeString(dest, row.TimeBounds.Lower)
 
+		if dest.Preconditions == nil {
+			dest.Preconditions = &protocol.TransactionPreconditions{}
+		}
+		if dest.Preconditions.Timebounds == nil {
+			dest.Preconditions.Timebounds = &protocol.TransactionPreconditionsTimebounds{}
+		}
 		dest.Preconditions.Timebounds.MaxTime = timeString(dest, row.TimeBounds.Upper)
 		dest.Preconditions.Timebounds.MinTime = timeString(dest, row.TimeBounds.Lower)
 	}
 
 	if !row.LedgerBounds.Null {
+		if dest.Preconditions == nil {
+			dest.Preconditions = &protocol.TransactionPreconditions{}
+		}
+		if dest.Preconditions.Ledgerbounds == nil {
+			dest.Preconditions.Ledgerbounds = &protocol.TransactionPreconditionsLedgerbounds{}
+		}
 		if row.LedgerBounds.MinLedger.Valid {
 			minLedger := uint32(row.LedgerBounds.MinLedger.Int64)
 			dest.Preconditions.Ledgerbounds.MinLedger = &minLedger
@@ -74,18 +86,32 @@ func PopulateTransaction(
 	}
 
 	if row.MinAccountSequence.Valid {
+		if dest.Preconditions == nil {
+			dest.Preconditions = &protocol.TransactionPreconditions{}
+		}
 		dest.Preconditions.MinAccountSequence = fmt.Sprint(row.MinAccountSequence.Int64)
 	}
 
 	if row.MinSequenceAge.Valid {
+		if dest.Preconditions == nil {
+			dest.Preconditions = &protocol.TransactionPreconditions{}
+		}
 		dest.Preconditions.MinSequenceAge = fmt.Sprint(row.MinSequenceAge.Int64)
 	}
 
 	if row.MinSequenceLedgerGap.Valid {
+		if dest.Preconditions == nil {
+			dest.Preconditions = &protocol.TransactionPreconditions{}
+		}
 		dest.Preconditions.MinSequenceLedgerGap = uint32(row.MinSequenceLedgerGap.Int64)
 	}
 
-	dest.Preconditions.ExtraSigners = row.ExtraSigners
+	if len(row.ExtraSigners) > 0 {
+		if dest.Preconditions == nil {
+			dest.Preconditions = &protocol.TransactionPreconditions{}
+		}
+		dest.Preconditions.ExtraSigners = row.ExtraSigners
+	}
 
 	if row.InnerTransactionHash.Valid {
 		dest.FeeAccount = row.FeeAccount.String

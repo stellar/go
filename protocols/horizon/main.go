@@ -524,28 +524,32 @@ type Transaction struct {
 	Memo              string    `json:"memo,omitempty"`
 	Signatures        []string  `json:"signatures"`
 	// Action needed in release: horizon-v3.0.0: remove valid_(after|before)
-	ValidAfter         string                   `json:"valid_after,omitempty"`
-	ValidBefore        string                   `json:"valid_before,omitempty"`
-	Preconditions      TransactionPreconditions `json:"preconditions,omitempty"`
-	FeeBumpTransaction *FeeBumpTransaction      `json:"fee_bump_transaction,omitempty"`
-	InnerTransaction   *InnerTransaction        `json:"inner_transaction,omitempty"`
+	ValidAfter         string                    `json:"valid_after,omitempty"`
+	ValidBefore        string                    `json:"valid_before,omitempty"`
+	Preconditions      *TransactionPreconditions `json:"preconditions,omitempty"`
+	FeeBumpTransaction *FeeBumpTransaction       `json:"fee_bump_transaction,omitempty"`
+	InnerTransaction   *InnerTransaction         `json:"inner_transaction,omitempty"`
 }
 
 type TransactionPreconditions struct {
-	Timebounds struct {
-		MinTime string `json:"min_time,omitempty"`
-		MaxTime string `json:"max_time,omitempty"`
-	} `json:"timebounds,omitempty"`
-	Ledgerbounds struct {
-		MinLedger *uint32 `json:"min_ledger,omitempty"`
-		MaxLedger *uint32 `json:"max_ledger,omitempty"`
-	} `json:"ledgerbounds,omitempty"`
+	Timebounds   *TransactionPreconditionsTimebounds   `json:"timebounds,omitempty"`
+	Ledgerbounds *TransactionPreconditionsLedgerbounds `json:"ledgerbounds,omitempty"`
 
 	MinAccountSequence   string `json:"min_account_sequence,omitempty"`
 	MinSequenceAge       string `json:"min_account_sequence_age,omitempty"`
 	MinSequenceLedgerGap uint32 `json:"min_account_sequence_ledger_gap,omitempty"`
 
 	ExtraSigners []string `json:"extra_signers,omitempty"`
+}
+
+type TransactionPreconditionsTimebounds struct {
+	MinTime string `json:"min_time,omitempty"`
+	MaxTime string `json:"max_time,omitempty"`
+}
+
+type TransactionPreconditionsLedgerbounds struct {
+	MinLedger *uint32 `json:"min_ledger,omitempty"`
+	MaxLedger *uint32 `json:"max_ledger,omitempty"`
 }
 
 // FeeBumpTransaction contains information about a fee bump transaction
