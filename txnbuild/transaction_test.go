@@ -1049,7 +1049,7 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Equal(t, int64(0), txXDR.SeqNum(), "sequence number should be 0")
 		assert.Equal(t, uint32(200), txXDR.Fee(), "Fee should be 100")
 		assert.Equal(t, 2, len(txXDR.Operations()), "number operations should be 2")
-		timeDiff := txXDR.TimeBounds().MaxTime - txXDR.TimeBounds().MinTime
+		timeDiff := txXDR.Preconditions().TimeBounds.MaxTime - txXDR.Preconditions().TimeBounds.MinTime
 		assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 300 seconds")
 		op := txXDR.Operations()[0]
 		assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
@@ -1074,7 +1074,7 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Equal(t, uint32(200), txXDR1.Fee(), "Fee should be 100")
 		assert.Equal(t, 2, len(txXDR1.Operations()), "number operations should be 2")
 
-		timeDiff := txXDR1.TimeBounds().MaxTime - txXDR1.TimeBounds().MinTime
+		timeDiff := txXDR1.Preconditions().TimeBounds.MaxTime - txXDR1.Preconditions().TimeBounds.MinTime
 		assert.Equal(t, int64(300), int64(timeDiff), "time difference should be 300 seconds")
 		op1 := txXDR1.Operations()[0]
 		assert.Equal(t, xdr.OperationTypeManageData, op1.Body.Type, "operation type should be manage data")

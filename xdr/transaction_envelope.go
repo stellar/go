@@ -87,17 +87,18 @@ func (e TransactionEnvelope) SeqNum() int64 {
 	}
 }
 
-// TimeBounds returns the time bounds set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the time bounds
-// of the inner transaction
-func (e TransactionEnvelope) TimeBounds() *TimeBounds {
+// Preconditions normalizes and returns the preconditions set in the
+// transaction envelope Note for fee bump transactions, Preconditions() returns
+// the preconditions from the inner transaction
+func (e TransactionEnvelope) Preconditions() PreconditionsV2 {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		return e.FeeBump.Tx.InnerTx.V1.Tx.TimeBounds()
+		return GetPreconditions(&e.FeeBump.Tx.InnerTx.V1.Tx)
 	case EnvelopeTypeEnvelopeTypeTx:
-		return e.V1.Tx.TimeBounds()
+		return GetPreconditions(&e.V1.Tx)
 	case EnvelopeTypeEnvelopeTypeTxV0:
-		return e.V0.Tx.TimeBounds
+		// polyfill for older txns
+		return PreconditionsV2{TimeBounds: e.V0.Tx.TimeBounds}
 	default:
 		panic("unsupported transaction type: " + e.Type.String())
 	}
