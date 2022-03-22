@@ -71,7 +71,7 @@ func (e TransactionEnvelope) Signatures() []DecoratedSignature {
 	}
 }
 
-// SeqNum returns the sequence number set in the transaction envelope
+// SeqNum returns the sequence number set in the transaction envelope.
 // Note for fee bump transactions, SeqNum() returns the sequence number
 // of the inner transaction
 func (e TransactionEnvelope) SeqNum() int64 {
@@ -87,9 +87,9 @@ func (e TransactionEnvelope) SeqNum() int64 {
 	}
 }
 
-// TimeBounds returns the time bounds set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the time bounds
-// of the inner transaction
+// TimeBounds returns the time bounds set in the transaction envelope. Note for
+// fee bump transactions, TimeBounds() returns the time bounds of the inner
+// transaction
 func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
@@ -103,9 +103,9 @@ func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	}
 }
 
-// LedgerBounds returns the ledger bounds set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the ledger bounds
-// of the inner transaction
+// LedgerBounds returns the ledger bounds set in the transaction envelope. Note
+// for fee bump transactions, LedgerBounds() returns the ledger bounds of the
+// inner transaction
 func (e TransactionEnvelope) LedgerBounds() *LedgerBounds {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
@@ -119,9 +119,9 @@ func (e TransactionEnvelope) LedgerBounds() *LedgerBounds {
 	}
 }
 
-// MinSeqNum returns the min seq num set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the value
-// of the inner transaction
+// MinSeqNum returns the min seq num set in the transaction envelope. Note for
+// fee bump transactions, MinSeqNum() returns the field from the inner
+// transaction
 func (e TransactionEnvelope) MinSeqNum() *SequenceNumber {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
@@ -135,9 +135,9 @@ func (e TransactionEnvelope) MinSeqNum() *SequenceNumber {
 	}
 }
 
-// MinSeqAge returns the min seq age set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the value
-// of the inner transaction
+// MinSeqAge returns the min seq age set in the transaction envelope. Note for
+// fee bump transactions, MinSeqAge() returns the field from the inner
+// transaction
 func (e TransactionEnvelope) MinSeqAge() *Duration {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
@@ -151,9 +151,9 @@ func (e TransactionEnvelope) MinSeqAge() *Duration {
 	}
 }
 
-// MinSeqLedgerGap returns the min seq ledger gap set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the value
-// of the inner transaction
+// MinSeqLedgerGap returns the min seq ledger gap set in the transaction.
+// envelope. Note for fee bump transactions, MinSeqLedgerGap() returns the
+// field from the inner transaction
 func (e TransactionEnvelope) MinSeqLedgerGap() *Uint32 {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
@@ -167,9 +167,9 @@ func (e TransactionEnvelope) MinSeqLedgerGap() *Uint32 {
 	}
 }
 
-// ExtraSigners returns the extra signers set in the transaction envelope
-// Note for fee bump transactions, TimeBounds() returns the value
-// of the inner transaction
+// ExtraSigners returns the extra signers set in the transaction envelope. Note
+// for fee bump transactions, ExtraSigners() returns the field from the inner
+// transaction
 func (e TransactionEnvelope) ExtraSigners() []SignerKey {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
