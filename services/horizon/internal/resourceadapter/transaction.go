@@ -54,13 +54,16 @@ func PopulateTransaction(
 		}
 	}
 	dest.Signatures = row.Signatures
+
+	if row.HasPreconditions() {
+		dest.Preconditions = &protocol.TransactionPreconditions{}
+	}
+
 	if !row.TimeBounds.Null {
+		// Action needed in release: horizon-v3.0.0: remove ValidBefore and ValidAfter
 		dest.ValidBefore = timeString(dest, row.TimeBounds.Upper)
 		dest.ValidAfter = timeString(dest, row.TimeBounds.Lower)
 
-		if dest.Preconditions == nil {
-			dest.Preconditions = &protocol.TransactionPreconditions{}
-		}
 		if dest.Preconditions.Timebounds == nil {
 			dest.Preconditions.Timebounds = &protocol.TransactionPreconditionsTimebounds{}
 		}
@@ -69,9 +72,6 @@ func PopulateTransaction(
 	}
 
 	if !row.LedgerBounds.Null {
-		if dest.Preconditions == nil {
-			dest.Preconditions = &protocol.TransactionPreconditions{}
-		}
 		if dest.Preconditions.Ledgerbounds == nil {
 			dest.Preconditions.Ledgerbounds = &protocol.TransactionPreconditionsLedgerbounds{}
 		}
@@ -86,30 +86,18 @@ func PopulateTransaction(
 	}
 
 	if row.MinAccountSequence.Valid {
-		if dest.Preconditions == nil {
-			dest.Preconditions = &protocol.TransactionPreconditions{}
-		}
 		dest.Preconditions.MinAccountSequence = fmt.Sprint(row.MinAccountSequence.Int64)
 	}
 
 	if row.MinAccountSequenceAge.Valid {
-		if dest.Preconditions == nil {
-			dest.Preconditions = &protocol.TransactionPreconditions{}
-		}
 		dest.Preconditions.MinAccountSequenceAge = fmt.Sprint(row.MinAccountSequenceAge.Int64)
 	}
 
 	if row.MinAccountSequenceLedgerGap.Valid {
-		if dest.Preconditions == nil {
-			dest.Preconditions = &protocol.TransactionPreconditions{}
-		}
 		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(row.MinAccountSequenceLedgerGap.Int64)
 	}
 
 	if len(row.ExtraSigners) > 0 {
-		if dest.Preconditions == nil {
-			dest.Preconditions = &protocol.TransactionPreconditions{}
-		}
 		dest.Preconditions.ExtraSigners = row.ExtraSigners
 	}
 
