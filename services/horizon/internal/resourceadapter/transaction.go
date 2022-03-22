@@ -61,14 +61,14 @@ func PopulateTransaction(
 
 	if !row.TimeBounds.Null {
 		// Action needed in release: horizon-v3.0.0: remove ValidBefore and ValidAfter
-		dest.ValidBefore = timeString(dest, row.TimeBounds.Upper)
-		dest.ValidAfter = timeString(dest, row.TimeBounds.Lower)
+		dest.ValidBefore = timeString(row.TimeBounds.Upper)
+		dest.ValidAfter = timeString(row.TimeBounds.Lower)
 
 		if dest.Preconditions.Timebounds == nil {
 			dest.Preconditions.Timebounds = &protocol.TransactionPreconditionsTimebounds{}
 		}
-		dest.Preconditions.Timebounds.MaxTime = timeString(dest, row.TimeBounds.Upper)
-		dest.Preconditions.Timebounds.MinTime = timeString(dest, row.TimeBounds.Lower)
+		dest.Preconditions.Timebounds.MaxTime = timeString(row.TimeBounds.Upper)
+		dest.Preconditions.Timebounds.MinTime = timeString(row.TimeBounds.Lower)
 	}
 
 	if !row.LedgerBounds.Null {
@@ -151,7 +151,7 @@ func memoBytes(envelopeXDR string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(memo)), nil
 }
 
-func timeString(res *protocol.Transaction, in null.Int) string {
+func timeString(in null.Int) string {
 	if !in.Valid {
 		return ""
 	}
