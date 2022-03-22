@@ -370,7 +370,7 @@ func (suite *SystemTestSuite) TestTick_Deadlock() {
 	suite.db.On("Rollback").Return(nil).Once()
 
 	// Start first Tick
-	suite.system.SubmissionQueue.Push("address", 0)
+	suite.system.SubmissionQueue.Push("address", 0, nil)
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"address"}).
 		Return(map[string]uint64{}, nil).
 		Run(func(args mock.Arguments) {
