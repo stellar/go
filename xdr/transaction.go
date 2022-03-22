@@ -11,7 +11,7 @@ func (tx *Transaction) TimeBounds() *TimeBounds {
 	case PreconditionTypePrecondV2:
 		return tx.Cond.V2.TimeBounds
 	default:
-		panic("unsupported transaction type: " + tx.Cond.Type.String())
+		panic("unsupported precondition type: " + tx.Cond.Type.String())
 	}
 }
 
@@ -19,14 +19,12 @@ func (tx *Transaction) TimeBounds() *TimeBounds {
 // Preconditions.
 func (tx *Transaction) LedgerBounds() *LedgerBounds {
 	switch tx.Cond.Type {
-	case PreconditionTypePrecondNone:
-		return nil
-	case PreconditionTypePrecondTime:
+	case PreconditionTypePrecondNone, PreconditionTypePrecondTime:
 		return nil
 	case PreconditionTypePrecondV2:
 		return tx.Cond.V2.LedgerBounds
 	default:
-		panic("unsupported transaction type: " + tx.Cond.Type.String())
+		panic("unsupported precondition type: " + tx.Cond.Type.String())
 	}
 }
 
@@ -34,14 +32,12 @@ func (tx *Transaction) LedgerBounds() *LedgerBounds {
 // Preconditions.
 func (tx *Transaction) MinSeqNum() *SequenceNumber {
 	switch tx.Cond.Type {
-	case PreconditionTypePrecondNone:
-		return nil
-	case PreconditionTypePrecondTime:
+	case PreconditionTypePrecondNone, PreconditionTypePrecondTime:
 		return nil
 	case PreconditionTypePrecondV2:
 		return tx.Cond.V2.MinSeqNum
 	default:
-		panic("unsupported transaction type: " + tx.Cond.Type.String())
+		panic("unsupported precondition type: " + tx.Cond.Type.String())
 	}
 }
 
@@ -49,14 +45,12 @@ func (tx *Transaction) MinSeqNum() *SequenceNumber {
 // Preconditions.
 func (tx *Transaction) MinSeqAge() *Duration {
 	switch tx.Cond.Type {
-	case PreconditionTypePrecondNone:
-		return nil
-	case PreconditionTypePrecondTime:
+	case PreconditionTypePrecondNone, PreconditionTypePrecondTime:
 		return nil
 	case PreconditionTypePrecondV2:
 		return &tx.Cond.V2.MinSeqAge
 	default:
-		panic("unsupported transaction type: " + tx.Cond.Type.String())
+		panic("unsupported precondition type: " + tx.Cond.Type.String())
 	}
 }
 
@@ -64,14 +58,12 @@ func (tx *Transaction) MinSeqAge() *Duration {
 // Preconditions.
 func (tx *Transaction) MinSeqLedgerGap() *Uint32 {
 	switch tx.Cond.Type {
-	case PreconditionTypePrecondNone:
-		return nil
-	case PreconditionTypePrecondTime:
+	case PreconditionTypePrecondNone, PreconditionTypePrecondTime:
 		return nil
 	case PreconditionTypePrecondV2:
 		return &tx.Cond.V2.MinSeqLedgerGap
 	default:
-		panic("unsupported transaction type: " + tx.Cond.Type.String())
+		panic("unsupported precondition type: " + tx.Cond.Type.String())
 	}
 }
 
@@ -79,13 +71,11 @@ func (tx *Transaction) MinSeqLedgerGap() *Uint32 {
 // Preconditions.
 func (tx *Transaction) ExtraSigners() []SignerKey {
 	switch tx.Cond.Type {
-	case PreconditionTypePrecondNone:
-		return nil
-	case PreconditionTypePrecondTime:
+	case PreconditionTypePrecondNone, PreconditionTypePrecondTime:
 		return nil
 	case PreconditionTypePrecondV2:
 		return tx.Cond.V2.ExtraSigners
 	default:
-		panic("unsupported transaction type: " + tx.Cond.Type.String())
+		panic("unsupported precondition type: " + tx.Cond.Type.String())
 	}
 }
