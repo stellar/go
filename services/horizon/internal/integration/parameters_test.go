@@ -244,7 +244,7 @@ func createCaptiveCoreConfig(contents string) (string, string, func()) {
 		panic(err)
 	}
 
-	storagePath, err := ioutil.TempDir("", "captive-core-test-*-storage")
+	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
 	if err != nil {
 		panic(err)
 	}

@@ -133,8 +133,9 @@ type testLedgerHeader struct {
 }
 
 func TestCaptiveNew(t *testing.T) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	executablePath := "/etc/stellar-core"
 	networkPassphrase := network.PublicNetworkPassphrase
@@ -827,8 +828,9 @@ func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *t
 }
 
 func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	ctx := context.Background()
 	executablePath := "/etc/stellar-core"
