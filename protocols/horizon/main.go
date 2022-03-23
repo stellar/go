@@ -43,6 +43,8 @@ type Account struct {
 	ID                   string            `json:"id"`
 	AccountID            string            `json:"account_id"`
 	Sequence             string            `json:"sequence"`
+	SequenceLedger       uint32            `json:"sequence_ledger,omitempty"`
+	SequenceTime         string            `json:"sequence_time,omitempty"`
 	SubentryCount        int32             `json:"subentry_count"`
 	InflationDestination string            `json:"inflation_destination,omitempty"`
 	HomeDomain           string            `json:"home_domain,omitempty"`
