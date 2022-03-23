@@ -23,39 +23,6 @@ func (suite *QueueTestSuite) SetupTest() {
 	suite.queue = NewAccountTxSubmissionQueue()
 }
 
-//Push adds the provided channel on to the priority queue
-func (suite *QueueTestSuite) TestQueue_Push() {
-	ctx := test.Context()
-	_ = ctx
-
-	assert.Equal(suite.T(), 0, suite.queue.Size())
-
-	suite.queue.Push(6, nil)
-	assert.Equal(suite.T(), 1, suite.queue.Size())
-	entry := suite.queue.queue[0]
-	assert.Equal(suite.T(), uint64(5), entry.MinAccSeqNum)
-	assert.Equal(suite.T(), uint64(5), entry.MinAccSeqNum)
-
-	min := uint64(1)
-	suite.queue.Push(5, &min)
-	assert.Equal(suite.T(), 2, suite.queue.Size())
-	entry = suite.queue.queue[0]
-	assert.Equal(suite.T(), uint64(1), entry.MinAccSeqNum)
-	assert.Equal(suite.T(), uint64(4), entry.MaxAccSeqNum)
-
-	suite.queue.Push(5, nil)
-	assert.Equal(suite.T(), 3, suite.queue.Size())
-	entry = suite.queue.queue[0]
-	assert.Equal(suite.T(), uint64(4), entry.MinAccSeqNum)
-	assert.Equal(suite.T(), uint64(4), entry.MaxAccSeqNum)
-
-	suite.queue.Push(4, nil)
-	assert.Equal(suite.T(), 4, suite.queue.Size())
-	entry = suite.queue.queue[0]
-	assert.Equal(suite.T(), uint64(3), entry.MinAccSeqNum)
-	assert.Equal(suite.T(), uint64(3), entry.MaxAccSeqNum)
-}
-
 // Tests the NotifyLastAccountSequence method
 func (suite *QueueTestSuite) TestQueue_NotifyLastAccountSequence() {
 	// NotifyLastAccountSequence removes sequences that are submittable or in the past
@@ -71,11 +38,11 @@ func (suite *QueueTestSuite) TestQueue_NotifyLastAccountSequence() {
 	suite.queue.NotifyLastAccountSequence(2)
 
 	// the update above signifies that 2 is the accounts current sequence,
-	// meaning that 3 is submittable, and so only 4 (Min/MaxAccSeqNum=3) should remain
+	// meaning that 3 is submittable, and so only 4 (Min/maxAccSeqNum=3) should remain
 	assert.Equal(suite.T(), 1, suite.queue.Size())
-	entry := suite.queue.queue[0]
-	assert.Equal(suite.T(), uint64(3), entry.MinAccSeqNum)
-	assert.Equal(suite.T(), uint64(3), entry.MaxAccSeqNum)
+	entry := suite.queue.transactions[0]
+	assert.Equal(suite.T(), uint64(3), entry.minAccSeqNum)
+	assert.Equal(suite.T(), uint64(3), entry.maxAccSeqNum)
 
 	suite.queue.NotifyLastAccountSequence(4)
 	assert.Equal(suite.T(), 0, suite.queue.Size())
