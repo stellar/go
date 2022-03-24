@@ -7,6 +7,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/lib/pq"
 	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/ingest"
@@ -150,7 +151,7 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_muxed, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, COALESCE(ht.successful, true) as successful, ht.signatures, ht.memo_type, ht.memo, time_bounds, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.fee_account_muxed, ht.new_max_fee, ht.inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_muxed, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, COALESCE(ht.successful, true) as successful, ht.signatures, ht.memo_type, ht.memo, ht.time_bounds, ht.ledger_bounds, ht.min_account_sequence, ht.min_account_sequence_age, ht.min_account_sequence_ledger_gap, ht.extra_signers, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.fee_account_muxed, ht.new_max_fee, ht.inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
 }
 
 func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {
@@ -313,6 +314,7 @@ func TestInsertTransaction(t *testing.T) {
 	timeBoundWithMin := TimeBounds{Lower: null.IntFrom(1576195867)}
 	timeBoundWithMax := TimeBounds{Lower: null.IntFrom(0), Upper: null.IntFrom(1576195867)}
 	timeboundsWithMinAndMax := TimeBounds{Lower: null.IntFrom(1576095867), Upper: null.IntFrom(1576195867)}
+	ledgerboundsWithMinAndMax := LedgerBounds{MinLedger: null.IntFrom(123456), MaxLedger: null.IntFrom(1234567)}
 
 	withMultipleSignatures := []string{
 		"MID8kIOLP/yEymCyhU7A/YeVpnVTDzAqszWtv8c+/qAw542BaKWxCJxl/jsggY0mF+SR8X0bvWXvPBgyYcDZDw==",
@@ -360,6 +362,8 @@ func TestInsertTransaction(t *testing.T) {
 					Memo:             null.NewString("", false),
 					Successful:       success,
 					TimeBounds:       nullTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 				},
 			},
 		},
@@ -394,6 +398,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "none",
 					Memo:             null.NewString("", false),
 					TimeBounds:       nullTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -429,6 +435,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "none",
 					Memo:             null.NewString("", false),
 					TimeBounds:       nullTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       false,
 				},
 			},
@@ -465,6 +473,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:        "text",
 					Memo:            null.NewString("test memo", true),
 					TimeBounds:      infiniteTimeBounds,
+					LedgerBounds:    LedgerBounds{Null: true},
+					ExtraSigners:    pq.StringArray{},
 					Successful:      success,
 				},
 			},
@@ -500,6 +510,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "text",
 					Memo:             null.NewString("test memo", true),
 					TimeBounds:       infiniteTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -535,6 +547,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "id",
 					Memo:             null.NewString("123", true),
 					TimeBounds:       nullTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -570,6 +584,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "hash",
 					Memo:             null.NewString("fi3vINWiGla+KkV7ZI9wLuGviJ099leQ6SoFCB6fq/E=", true),
 					TimeBounds:       infiniteTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -605,6 +621,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "return",
 					Memo:             null.NewString("zdjArlILa/LNv7o7lo/qv5+fVVPNl0yPgZQWB6u+gL4=", true),
 					TimeBounds:       infiniteTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -641,6 +659,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "none",
 					Memo:             null.NewString("", false),
 					TimeBounds:       timeBoundWithMin,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -676,6 +696,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "none",
 					Memo:             null.NewString("", false),
 					TimeBounds:       timeBoundWithMax,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
@@ -711,7 +733,49 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "none",
 					Memo:             null.NewString("", false),
 					TimeBounds:       timeboundsWithMinAndMax,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
+				},
+			},
+		},
+		{
+			"transaction with v2 preconditions",
+			buildLedgerTransaction(tt.T, testTransaction{
+				index:         1,
+				envelopeXDR:   "AAAAAgAAAAEAAAAAAAAAGwAAAAAAAAAqAAAAAQAAABsAAAAqAAAAAQAAAAAAAAAOAAAAAAAAABsAAAAqAAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8w==",
+				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				feeChangesXDR: "AAAAAA==",
+				metaXDR:       "AAAAAQAAAAAAAAAA",
+				hash:          "7aa3419a833fb14e312ae47a98e565f668a72f23c39e0cf79f598d3d3e793b2d",
+			}),
+			Transaction{
+				LedgerCloseTime: ledger.ClosedAt,
+				TransactionWithoutLedger: TransactionWithoutLedger{
+					TotalOrderID:                TotalOrderID{528280981504},
+					TransactionHash:             "7aa3419a833fb14e312ae47a98e565f668a72f23c39e0cf79f598d3d3e793b2d",
+					LedgerSequence:              ledger.Sequence,
+					ApplicationOrder:            1,
+					Account:                     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					AccountSequence:             "123456",
+					MaxFee:                      100,
+					FeeCharged:                  300,
+					OperationCount:              1,
+					TxEnvelope:                  "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAAAAAAAAeJAAAAAAQAAAABd8VB7AAAAAF3y1xsAAAAAAAAAAQAAAAAAAAALAAAAAAAS1ocAAAAAAAAAAA==",
+					TxResult:                    "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+					TxFeeMeta:                   "AAAAAA==",
+					TxMeta:                      "AAAAAQAAAAAAAAAA",
+					Signatures:                  emptySignatures,
+					InnerSignatures:             nullSignatures,
+					MemoType:                    "none",
+					Memo:                        null.NewString("", false),
+					TimeBounds:                  timeboundsWithMinAndMax,
+					LedgerBounds:                ledgerboundsWithMinAndMax,
+					MinAccountSequence:          null.IntFrom(123456),
+					MinAccountSequenceAge:       null.IntFrom(1),
+					MinAccountSequenceLedgerGap: null.IntFrom(1),
+					ExtraSigners:                pq.StringArray{"???"},
+					Successful:                  success,
 				},
 			},
 		},
@@ -746,6 +810,8 @@ func TestInsertTransaction(t *testing.T) {
 					MemoType:         "none",
 					Memo:             null.NewString("", false),
 					TimeBounds:       nullTimeBounds,
+					LedgerBounds:     LedgerBounds{Null: true},
+					ExtraSigners:     pq.StringArray{},
 					Successful:       success,
 				},
 			},
