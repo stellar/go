@@ -87,6 +87,32 @@ func (e TransactionEnvelope) SeqNum() int64 {
 	}
 }
 
+// MinSeqNum returns the minimum sequence number set in the transaction envelope
+//
+// Note for fee bump transactions, MinSeqNum() returns the sequence number
+// of the inner transaction
+func (e TransactionEnvelope) MinSeqNum() *int64 {
+	var p Preconditions
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		p = e.FeeBump.Tx.InnerTx.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTx:
+		p = e.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+	if p.Type != PreconditionTypePrecondV2 {
+		return nil
+	}
+	if p.V2.MinSeqNum == nil {
+		return nil
+	}
+	ret := int64(*p.V2.MinSeqNum)
+	return &ret
+}
+
 // TimeBounds returns the time bounds set in the transaction envelope
 // Note for fee bump transactions, TimeBounds() returns the time bounds
 // of the inner transaction

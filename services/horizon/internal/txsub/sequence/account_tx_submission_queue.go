@@ -76,7 +76,7 @@ func (q *AccountTxSubmissionQueue) Push(sequence uint64, minSeqNum *uint64) <-ch
 // This function is monotonic... calling it with a sequence number lower than
 // the latest seen sequence number is a noop.
 func (q *AccountTxSubmissionQueue) NotifyLastAccountSequence(sequence uint64) {
-	if q.lastSeenAccountSequence <= sequence {
+	if q.lastSeenAccountSequence < sequence {
 		q.lastSeenAccountSequence = sequence
 	}
 
