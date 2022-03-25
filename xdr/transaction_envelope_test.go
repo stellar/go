@@ -380,10 +380,11 @@ func TestPreconditions(t *testing.T) {
 		)
 
 		cond := tx.V1.Tx.Cond.V2
+		minSeqNum := int64(*cond.MinSeqNum)
 		if assert.NotNil(t, cond) {
 			assert.Equal(t, cond.TimeBounds, tx.TimeBounds())
 			assert.Equal(t, cond.LedgerBounds, tx.LedgerBounds())
-			assert.Equal(t, cond.MinSeqNum, tx.MinSeqNum())
+			assert.Equal(t, &minSeqNum, tx.MinSeqNum())
 			assert.Equal(t, &cond.MinSeqAge, tx.MinSeqAge())
 			assert.Equal(t, &cond.MinSeqLedgerGap, tx.MinSeqLedgerGap())
 			assert.Equal(t, cond.ExtraSigners, tx.ExtraSigners())

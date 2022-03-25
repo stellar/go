@@ -71,7 +71,7 @@ func (e TransactionEnvelope) Signatures() []DecoratedSignature {
 	}
 }
 
-// SeqNum returns the sequence number set in the transaction envelope.
+// SeqNum returns the sequence number set in the transaction envelope
 // Note for fee bump transactions, SeqNum() returns the sequence number
 // of the inner transaction
 func (e TransactionEnvelope) SeqNum() int64 {
@@ -87,9 +87,35 @@ func (e TransactionEnvelope) SeqNum() int64 {
 	}
 }
 
-// TimeBounds returns the time bounds set in the transaction envelope. Note for
-// fee bump transactions, TimeBounds() returns the time bounds of the inner
-// transaction
+// MinSeqNum returns the minimum sequence number set in the transaction envelope
+//
+// Note for fee bump transactions, MinSeqNum() returns the sequence number
+// of the inner transaction
+func (e TransactionEnvelope) MinSeqNum() *int64 {
+	var p Preconditions
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		p = e.FeeBump.Tx.InnerTx.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTx:
+		p = e.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+	if p.Type != PreconditionTypePrecondV2 {
+		return nil
+	}
+	if p.V2.MinSeqNum == nil {
+		return nil
+	}
+	ret := int64(*p.V2.MinSeqNum)
+	return &ret
+}
+
+// TimeBounds returns the time bounds set in the transaction envelope
+// Note for fee bump transactions, TimeBounds() returns the time bounds
+// of the inner transaction
 func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
@@ -112,22 +138,6 @@ func (e TransactionEnvelope) LedgerBounds() *LedgerBounds {
 		return e.FeeBump.Tx.InnerTx.V1.Tx.LedgerBounds()
 	case EnvelopeTypeEnvelopeTypeTx:
 		return e.V1.Tx.LedgerBounds()
-	case EnvelopeTypeEnvelopeTypeTxV0:
-		return nil
-	default:
-		panic("unsupported transaction type: " + e.Type.String())
-	}
-}
-
-// MinSeqNum returns the min seq num set in the transaction envelope. Note for
-// fee bump transactions, MinSeqNum() returns the field from the inner
-// transaction
-func (e TransactionEnvelope) MinSeqNum() *SequenceNumber {
-	switch e.Type {
-	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		return e.FeeBump.Tx.InnerTx.V1.Tx.MinSeqNum()
-	case EnvelopeTypeEnvelopeTypeTx:
-		return e.V1.Tx.MinSeqNum()
 	case EnvelopeTypeEnvelopeTypeTxV0:
 		return nil
 	default:
@@ -178,6 +188,24 @@ func (e TransactionEnvelope) ExtraSigners() []SignerKey {
 		return e.V1.Tx.ExtraSigners()
 	case EnvelopeTypeEnvelopeTypeTxV0:
 		return nil
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
+// Preconditions returns the preconditions on the transaction. If the
+// transaction is a V0 envelope (aka before preconditions existed), this returns
+// a new precondition (timebound if present, empty otherwise). If the
+// transaction is a fee bump, it returns the preconditions of the *inner*
+// transaction.
+func (e TransactionEnvelope) Preconditions() Preconditions {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return NewPreconditionsWithTimeBounds(e.TimeBounds())
 	default:
 		panic("unsupported transaction type: " + e.Type.String())
 	}

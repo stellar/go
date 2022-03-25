@@ -7,10 +7,11 @@ package historyarchive
 import (
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type scanCheckpointFastReq struct {
@@ -58,6 +59,9 @@ func (arch *Archive) ScanCheckpointsSlow(opts *CommandOptions) error {
 	cats := Categories()
 	go func() {
 		for _, cat := range cats {
+			if opts.SkipOptional && !categoryRequired(cat) {
+				continue
+			}
 			for chk := range opts.Range.GenerateCheckpoints(arch.checkpointManager) {
 				req <- scanCheckpointSlowReq{category: cat, checkpoint: chk}
 			}
@@ -117,6 +121,9 @@ func (arch *Archive) ScanCheckpointsFast(opts *CommandOptions) error {
 	cats := Categories()
 	go func() {
 		for _, cat := range cats {
+			if opts.SkipOptional && !categoryRequired(cat) {
+				continue
+			}
 			for _, pth := range RangePaths(opts.Range) {
 				req <- scanCheckpointFastReq{category: cat, pathprefix: pth}
 			}
@@ -397,14 +404,18 @@ func (arch *Archive) ReportMissing(opts *CommandOptions) (bool, error) {
 		if !categoryRequired(cat) {
 			if len(missing) > 0 {
 				s := fmtRangeList(missing, arch.checkpointManager)
-				log.Warnf("Missing non-required %s (%d): %s", cat, len(missing), s)
+				if opts.SkipOptional {
+					log.Warnf("Skipped optional %s files (%d): %s", cat, len(missing), s)
+				} else {
+					log.Warnf("Missing optional %s files (%d): %s", cat, len(missing), s)
+				}
 			}
 			continue
 		}
 		if len(missing) != 0 {
 			s := fmtRangeList(missing, arch.checkpointManager)
 			missingCheckpoints = true
-			log.Errorf("Missing %s (%d): %s", cat, len(missing), s)
+			log.Errorf("Missing %s files (%d): %s", cat, len(missing), s)
 		}
 	}
 

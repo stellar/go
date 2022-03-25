@@ -50,6 +50,7 @@
 // migrations/52_add_trade_type_index.sql (424B)
 // migrations/53_add_trades_rounding_slippage.sql (274B)
 // migrations/54_bigger_account_signers.sql (343B)
+// migrations/55_add_account_sequence_ledger.sql (245B)
 // migrations/55_protocol_19.sql (722B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -1125,6 +1126,26 @@ func migrations54_bigger_account_signersSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations55_add_account_sequence_ledgerSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\x48\x4c\x4e\xce\x2f\xcd\x2b\x29\x56\x70\x74\x71\x51\x28\x4e\x2d\x2c\x4d\xcd\x4b\x4e\x8d\xcf\x49\x4d\x49\x4f\x2d\x52\xc8\xcc\x2b\x49\x05\xd1\x79\xa5\x39\x39\xd6\x44\x68\x2b\xc9\xcc\x4d\x55\x00\x11\xc5\x25\x89\xb9\x05\x0a\xe5\x99\x25\x19\xf9\xa5\x25\x60\x11\x85\xaa\xfc\xbc\x54\xa8\x41\x5c\xc8\xee\x71\xc9\x2f\xcf\xc3\x6e\xb4\x4b\x90\x7f\x00\xba\x93\x70\xb8\x02\x55\x29\xc8\x3e\x6b\x2e\x40\x00\x00\x00\xff\xff\x7d\x5b\x7a\x9d\xf5\x00\x00\x00")
+
+func migrations55_add_account_sequence_ledgerSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations55_add_account_sequence_ledgerSql,
+		"migrations/55_add_account_sequence_ledger.sql",
+	)
+}
+
+func migrations55_add_account_sequence_ledgerSql() (*asset, error) {
+	bytes, err := migrations55_add_account_sequence_ledgerSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/55_add_account_sequence_ledger.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x9f, 0x27, 0x8e, 0x25, 0xd4, 0x6e, 0xe6, 0xd9, 0x9d, 0x9f, 0xfe, 0xe1, 0x1d, 0xb, 0x7d, 0x6c, 0x3b, 0xad, 0x9a, 0x34, 0x17, 0xc7, 0x2a, 0x24, 0x2b, 0x84, 0x75, 0x18, 0x8f, 0x95, 0x1e, 0x40}}
+	return a, nil
+}
+
 var _migrations55_protocol_19Sql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x91\x41\x6b\x83\x40\x10\x85\xef\xfb\x2b\xf6\x5e\xbc\x17\x3c\x59\xd6\x9b\xd0\x22\xf6\x54\xca\x32\xae\xc3\x76\xa0\xce\xda\xdd\x91\x9a\x7f\x1f\x12\x02\x51\x22\xc4\x60\xe6\xfe\x3e\xe6\x7d\x2f\xcb\xf4\x4b\x4f\x3e\x82\xa0\xfe\x1c\x54\x51\x35\x65\xad\x9b\xe2\xad\x2a\xf5\x0f\x25\x09\xf1\x60\x25\x02\x27\x70\x42\x81\x93\x2e\x8c\xd1\xbf\xd8\x79\x8c\xb6\x0d\x23\x77\x49\xdf\x1e\xb1\xbc\x46\x60\x8f\xf9\x36\x5e\x4f\x6c\xc1\xb9\x30\xb2\xd8\x84\x7f\x23\xb2\xc3\x39\xaf\x25\x4f\x2c\x3b\x60\x16\x3c\x3e\x0f\x76\xa9\xef\x61\x78\x0c\x86\x93\x44\xb0\x89\x3c\x63\x5c\xd3\x26\x38\xc9\xd7\x77\xae\xd4\x7c\x13\x13\xfe\xf9\x3e\xde\xd4\xef\x1f\xcb\x59\x36\xfc\x74\x0e\xad\x35\xdc\x93\x3d\xa9\xde\x95\xbf\xda\xdd\x8a\x59\x78\xcd\xd5\x31\x00\x00\xff\xff\xd6\x52\xbc\xea\xd2\x02\x00\x00")
 
 func migrations55_protocol_19SqlBytes() ([]byte, error) {
@@ -1406,6 +1427,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/52_add_trade_type_index.sql":                             migrations52_add_trade_type_indexSql,
 	"migrations/53_add_trades_rounding_slippage.sql":                     migrations53_add_trades_rounding_slippageSql,
 	"migrations/54_bigger_account_signers.sql":                           migrations54_bigger_account_signersSql,
+	"migrations/55_add_account_sequence_ledger.sql":                      migrations55_add_account_sequence_ledgerSql,
 	"migrations/55_protocol_19.sql":                                      migrations55_protocol_19Sql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
@@ -1507,6 +1529,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"52_add_trade_type_index.sql":                             &bintree{migrations52_add_trade_type_indexSql, map[string]*bintree{}},
 		"53_add_trades_rounding_slippage.sql":                     &bintree{migrations53_add_trades_rounding_slippageSql, map[string]*bintree{}},
 		"54_bigger_account_signers.sql":                           &bintree{migrations54_bigger_account_signersSql, map[string]*bintree{}},
+		"55_add_account_sequence_ledger.sql":                      &bintree{migrations55_add_account_sequence_ledgerSql, map[string]*bintree{}},
 		"55_protocol_19.sql":                                      &bintree{migrations55_protocol_19Sql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},

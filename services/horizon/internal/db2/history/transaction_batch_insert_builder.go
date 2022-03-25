@@ -227,7 +227,7 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 	return t, nil
 }
 
-func formatMinSequenceNumber(minSeqNum *xdr.SequenceNumber) null.Int {
+func formatMinSequenceNumber(minSeqNum *int64) null.Int {
 	if minSeqNum == nil {
 		return null.Int{}
 	}
