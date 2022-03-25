@@ -242,7 +242,7 @@ func (t *Transaction) Memo() Memo {
 
 // Timebounds returns the Timebounds configured for this transaction.
 func (t *Transaction) Timebounds() TimeBounds {
-	return t.preconditions.Timebounds
+	return t.preconditions.TimeBounds
 }
 
 // Operations returns the list of operations included in this transaction.
@@ -855,6 +855,11 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		return nil, errors.Wrap(err, "invalid preconditions")
 	}
 
+	precondXdr, err := tx.preconditions.BuildXDR()
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid preconditions")
+	}
+
 	envelope := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 		V1: &xdr.TransactionV1Envelope{
@@ -862,7 +867,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 				SourceAccount: sourceAccount,
 				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
-				Cond:          tx.preconditions.BuildXDR(),
+				Cond:          precondXdr,
 			},
 			Signatures: nil,
 		},
@@ -909,7 +914,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 		Operations:           tx.Operations(),
 		BaseFee:              tx.BaseFee(),
 		Memo:                 tx.Memo(),
-		Preconditions:        Preconditions{Timebounds: tx.Timebounds()},
+		Preconditions:        Preconditions{TimeBounds: tx.Timebounds()},
 	})
 	if err != nil {
 		return tx, err
@@ -1048,7 +1053,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 			BaseFee: MinBaseFee,
 			Memo:    nil,
 			Preconditions: Preconditions{
-				Timebounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
 			},
 		},
 	)

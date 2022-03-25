@@ -56,7 +56,7 @@ func TestZeroBalanceAccount(t *testing.T) {
 			Operations:           ops,
 			IncrementSequenceNum: true,
 			BaseFee:              MinBaseFee,
-			Preconditions:        Preconditions{Timebounds: NewInfiniteTimeout()},
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 
@@ -466,7 +466,7 @@ func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation, wi
 		TransactionParams{
 			SourceAccount: &sourceAccount,
 			Operations:    operations,
-			Preconditions: Preconditions{Timebounds: NewInfiniteTimeout()},
+			Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 			BaseFee:       MinBaseFee,
 		},
 	)

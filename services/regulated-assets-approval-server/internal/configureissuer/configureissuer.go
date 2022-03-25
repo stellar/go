@@ -120,7 +120,7 @@ func setup(opts Options, hClient horizonclient.ClientInterface) error {
 			},
 		},
 		BaseFee:       300,
-		Preconditions: txnbuild.Preconditions{Timebounds: txnbuild.NewTimeout(300)},
+		Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 	})
 	if err != nil {
 		return errors.Wrap(err, "building transaction")

@@ -16,7 +16,7 @@ var signers = []xdr.SignerKey{
 // TestPreconditionClassification ensures that Preconditions will correctly
 // differentiate V1 (timebounds-only) or V2 (all other) preconditions correctly.
 func TestPreconditionClassification(t *testing.T) {
-	tbpc := Preconditions{Timebounds: NewTimebounds(1, 2)}
+	tbpc := Preconditions{TimeBounds: NewTimebounds(1, 2)}
 	assert.False(t, (&Preconditions{}).hasV2Conditions())
 	assert.False(t, tbpc.hasV2Conditions())
 
@@ -24,20 +24,30 @@ func TestPreconditionClassification(t *testing.T) {
 	assert.True(t, tbpc.hasV2Conditions())
 }
 
-// TestPreconditionValidation ensures that validation fails when necessary.
+// TestPreconditionValidation ensures that errors occur when necessary.
 func TestPreconditionValidation(t *testing.T) {
+	t.Run("invalid signer", func(t *testing.T) {
+		pc := Preconditions{
+			TimeBounds:   NewTimebounds(27, 42),
+			ExtraSigners: []string{"literally just some nonsense"},
+		}
+
+		_, err := pc.BuildXDR()
+		assert.Error(t, err)
+	})
+
 	t.Run("too many signers", func(t *testing.T) {
 		pc := Preconditions{
-			Timebounds:   NewTimebounds(27, 42),
-			ExtraSigners: signers,
+			TimeBounds:   NewTimebounds(27, 42),
+			ExtraSigners: signerKeysToStrings(signers),
 		}
 
 		assert.Error(t, pc.Validate())
 	})
 
 	t.Run("nonsense ledgerbounds", func(t *testing.T) {
-		pc := Preconditions{Timebounds: NewTimebounds(27, 42)}
-		pc.Ledgerbounds = &LedgerBounds{MinLedger: 42, MaxLedger: 1}
+		pc := Preconditions{TimeBounds: NewTimebounds(27, 42)}
+		pc.LedgerBounds = &LedgerBounds{MinLedger: 42, MaxLedger: 1}
 		assert.Error(t, pc.Validate())
 	})
 }
@@ -66,7 +76,7 @@ func TestPreconditionEncoding(t *testing.T) {
 						MinTime: xdr.TimePoint(1),
 						MaxTime: xdr.TimePoint(2),
 					},
-				}, Preconditions{Timebounds: NewTimebounds(1, 2)}
+				}, Preconditions{TimeBounds: NewTimebounds(1, 2)}
 			},
 		},
 		{
@@ -74,7 +84,7 @@ func TestPreconditionEncoding(t *testing.T) {
 			func() (xdr.Preconditions, Preconditions) {
 				xdrPc, pc := createPreconditionFixtures()
 				xdrPc.V2.LedgerBounds.MaxLedger = 0
-				pc.Ledgerbounds.MaxLedger = 0
+				pc.LedgerBounds.MaxLedger = 0
 				return xdrPc, pc
 			},
 		},
@@ -83,7 +93,7 @@ func TestPreconditionEncoding(t *testing.T) {
 			func() (xdr.Preconditions, Preconditions) {
 				xdrPc, pc := createPreconditionFixtures()
 				xdrPc.V2.LedgerBounds = nil
-				pc.Ledgerbounds = nil
+				pc.LedgerBounds = nil
 				return xdrPc, pc
 			},
 		},
@@ -114,7 +124,9 @@ func TestPreconditionEncoding(t *testing.T) {
 
 			expectedBytes, err := xdrPrecond.MarshalBinary()
 			assert.NoError(t, err)
-			actualBytes, err := precond.BuildXDR().MarshalBinary()
+			encodedPrecond, err := precond.BuildXDR()
+			assert.NoError(t, err)
+			actualBytes, err := encodedPrecond.MarshalBinary()
 			assert.NoError(t, err)
 
 			// building the struct should result in identical XDR!
@@ -156,13 +168,21 @@ func createPreconditionFixtures() (xdr.Preconditions, Preconditions) {
 		},
 	}
 	pc := Preconditions{
-		Timebounds:                 NewTimebounds(27, 42),
-		Ledgerbounds:               &LedgerBounds{27, 42},
+		TimeBounds:                 NewTimebounds(27, 42),
+		LedgerBounds:               &LedgerBounds{27, 42},
 		MinSequenceNumber:          &seqNum,
-		MinSequenceNumberAge:       xdr.Duration(27),
+		MinSequenceNumberAge:       27,
 		MinSequenceNumberLedgerGap: 42,
-		ExtraSigners:               []xdr.SignerKey{signers[0]},
+		ExtraSigners:               []string{signers[0].Address()},
 	}
 
 	return xdrCond, pc
+}
+
+func signerKeysToStrings(signerKeys []xdr.SignerKey) []string {
+	strSigners := make([]string, len(signers))
+	for i, signerKey := range signers {
+		strSigners[i] = signerKey.Address()
+	}
+	return strSigners
 }

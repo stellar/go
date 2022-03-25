@@ -120,7 +120,7 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 				IncrementSequenceNum: true,
 				Operations:           ops,
 				BaseFee:              txnbuild.MinBaseFee,
-				Preconditions:        txnbuild.Preconditions{Timebounds: txnbuild.NewTimeout(300)},
+				Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 			},
 		)
 		if err != nil {
