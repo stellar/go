@@ -65,7 +65,7 @@ func (t LedgerBounds) Value() (driver.Value, error) {
 		return nil, nil
 	}
 
-	if !t.MaxLedger.Valid {
+	if !t.MaxLedger.Valid || t.MaxLedger == 0 {
 		return fmt.Sprintf("[%d,)", t.MinLedger.Int64), nil
 	}
 
