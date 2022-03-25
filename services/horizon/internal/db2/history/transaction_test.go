@@ -314,7 +314,8 @@ func TestInsertTransaction(t *testing.T) {
 	timeBoundWithMin := TimeBounds{Lower: null.IntFrom(1576195867)}
 	timeBoundWithMax := TimeBounds{Lower: null.IntFrom(0), Upper: null.IntFrom(1576195867)}
 	timeboundsWithMinAndMax := TimeBounds{Lower: null.IntFrom(1576095867), Upper: null.IntFrom(1576195867)}
-	ledgerboundsWithMinAndMax := LedgerBounds{MinLedger: null.IntFrom(123456), MaxLedger: null.IntFrom(1234567)}
+	v2TimeboundsWithMinAndMax := TimeBounds{Lower: null.IntFrom(0), Upper: null.IntFrom(1648153609)}
+	v2LedgerboundsWithMinAndMax := LedgerBounds{MinLedger: null.IntFrom(0), MaxLedger: null.IntFrom(1)}
 
 	withMultipleSignatures := []string{
 		"MID8kIOLP/yEymCyhU7A/YeVpnVTDzAqszWtv8c+/qAw542BaKWxCJxl/jsggY0mF+SR8X0bvWXvPBgyYcDZDw==",
@@ -742,26 +743,29 @@ func TestInsertTransaction(t *testing.T) {
 		{
 			"transaction with v2 preconditions",
 			buildLedgerTransaction(tt.T, testTransaction{
-				index:         1,
-				envelopeXDR:   "AAAAAgAAAAEAAAAAAAAAGwAAAAAAAAAqAAAAAQAAABsAAAAqAAAAAQAAAAAAAAAOAAAAAAAAABsAAAAqAAAAAQAAAAAdBJqAD9qPq+j2nRDdjdp5KVoUh8riPkNO9ato7BNs8w==",
-				resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				index:       1,
+				envelopeXDR: "AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQAAAAAAAAAAQAAAAIAAAABAAAAAAAAAAAAAAAAYjzUCQAAAAEAAAAAAAAAAQAAAAAAAAAAAAAACgAAAAIAAAAAAAAAAAAAAAEAAAAAAAAACwAAAAAAAAAAAAAAAAAAAAA=",
+				// Real values pending core accepting these txns
+				resultXDR: "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				// Real values pending core accepting these txns
 				feeChangesXDR: "AAAAAA==",
-				metaXDR:       "AAAAAQAAAAAAAAAA",
-				hash:          "7aa3419a833fb14e312ae47a98e565f668a72f23c39e0cf79f598d3d3e793b2d",
+				// Real values pending core accepting these txns
+				metaXDR: "AAAAAQAAAAAAAAAA",
+				hash:    "7ad89c184dd2aa17f9f96105f9508521b52bb36f74cf57d5ffd6f7205a737764",
 			}),
 			Transaction{
 				LedgerCloseTime: ledger.ClosedAt,
 				TransactionWithoutLedger: TransactionWithoutLedger{
 					TotalOrderID:                TotalOrderID{528280981504},
-					TransactionHash:             "7aa3419a833fb14e312ae47a98e565f668a72f23c39e0cf79f598d3d3e793b2d",
+					TransactionHash:             "7ad89c184dd2aa17f9f96105f9508521b52bb36f74cf57d5ffd6f7205a737764",
 					LedgerSequence:              ledger.Sequence,
 					ApplicationOrder:            1,
-					Account:                     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:             "123456",
+					Account:                     "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+					AccountSequence:             "1",
 					MaxFee:                      100,
 					FeeCharged:                  300,
 					OperationCount:              1,
-					TxEnvelope:                  "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAZAAAAAAAAeJAAAAAAQAAAABd8VB7AAAAAF3y1xsAAAAAAAAAAQAAAAAAAAALAAAAAAAS1ocAAAAAAAAAAA==",
+					TxEnvelope:                  "AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQAAAAAAAAAAQAAAAIAAAABAAAAAAAAAAAAAAAAYjzUCQAAAAEAAAAAAAAAAQAAAAAAAAAAAAAACgAAAAIAAAAAAAAAAAAAAAEAAAAAAAAACwAAAAAAAAAAAAAAAAAAAAA=",
 					TxResult:                    "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
 					TxFeeMeta:                   "AAAAAA==",
 					TxMeta:                      "AAAAAQAAAAAAAAAA",
@@ -769,12 +773,12 @@ func TestInsertTransaction(t *testing.T) {
 					InnerSignatures:             nullSignatures,
 					MemoType:                    "none",
 					Memo:                        null.NewString("", false),
-					TimeBounds:                  timeboundsWithMinAndMax,
-					LedgerBounds:                ledgerboundsWithMinAndMax,
-					MinAccountSequence:          null.IntFrom(123456),
-					MinAccountSequenceAge:       null.IntFrom(1),
-					MinAccountSequenceLedgerGap: null.IntFrom(1),
-					ExtraSigners:                pq.StringArray{"???"},
+					TimeBounds:                  v2TimeboundsWithMinAndMax,
+					LedgerBounds:                v2LedgerboundsWithMinAndMax,
+					MinAccountSequence:          null.Int{},
+					MinAccountSequenceAge:       null.IntFrom(10),
+					MinAccountSequenceLedgerGap: null.IntFrom(2),
+					ExtraSigners:                pq.StringArray{},
 					Successful:                  success,
 				},
 			},
