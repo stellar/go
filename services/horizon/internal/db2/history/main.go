@@ -715,6 +715,15 @@ type Transaction struct {
 	TransactionWithoutLedger
 }
 
+func (t *Transaction) HasPreconditions() bool {
+	return !t.TimeBounds.Null ||
+		!t.LedgerBounds.Null ||
+		t.MinAccountSequence.Valid ||
+		t.MinAccountSequenceAge.Valid ||
+		t.MinAccountSequenceLedgerGap.Valid ||
+		len(t.ExtraSigners) > 0
+}
+
 // TransactionsQ is a helper struct to aid in configuring queries that loads
 // slices of transaction structs.
 type TransactionsQ struct {

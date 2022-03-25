@@ -9,6 +9,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/lib/pq"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
@@ -312,6 +313,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 			MemoType:             "none",
 			Memo:                 null.NewString("", false),
 			TimeBounds:           TimeBounds{Lower: null.IntFrom(2), Upper: null.IntFrom(4)},
+			LedgerBounds:         LedgerBounds{Null: true},
+			ExtraSigners:         pq.StringArray{},
 			Signatures:           signatures(fixture.Envelope.FeeBumpSignatures()),
 			InnerSignatures:      signatures(fixture.Envelope.Signatures()),
 			Successful:           successful,
