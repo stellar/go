@@ -18,7 +18,7 @@ func TestAccountMergeValidate(t *testing.T) {
 		TransactionParams{
 			SourceAccount: &sourceAccount,
 			Operations:    []Operation{&accountMerge},
-			Timebounds:    NewInfiniteTimeout(),
+			Preconditions: Preconditions{Timebounds: NewInfiniteTimeout()},
 			BaseFee:       MinBaseFee,
 		},
 	)

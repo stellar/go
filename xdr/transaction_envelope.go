@@ -129,6 +129,24 @@ func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	}
 }
 
+// Preconditions returns the preconditions on the transaction. If the
+// transaction is a V0 envelope (aka before preconditions existed), this returns
+// a new precondition (timebound if present, empty otherwise). If the
+// transaction is a fee bump, it returns the preconditions of the *inner*
+// transaction.
+func (e TransactionEnvelope) Preconditions() Preconditions {
+	switch e.Type {
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return e.FeeBump.Tx.InnerTx.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTx:
+		return e.V1.Tx.Cond
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return NewPreconditionsWithTimeBounds(e.TimeBounds())
+	default:
+		panic("unsupported transaction type: " + e.Type.String())
+	}
+}
+
 // Operations returns the operations set in the transaction envelope
 // Note for fee bump transactions, Operations() returns the operations
 // of the inner transaction
