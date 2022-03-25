@@ -372,7 +372,7 @@ func TestPreconditions(t *testing.T) {
 	})
 
 	t.Run("v2", func(t *testing.T) {
-		tx := createV2Tx()
+		tx := createCondV2Tx()
 		assert.Equal(
 			t,
 			tx.V1.Tx.Cond.Type,

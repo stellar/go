@@ -65,7 +65,7 @@ func (t LedgerBounds) Value() (driver.Value, error) {
 		return nil, nil
 	}
 
-	if !t.MaxLedger.Valid || t.MaxLedger == 0 {
+	if !t.MaxLedger.Valid || t.MaxLedger.Int64 == 0 {
 		return fmt.Sprintf("[%d,)", t.MinLedger.Int64), nil
 	}
 
@@ -77,16 +77,8 @@ func formatLedgerBounds(ledgerBounds *xdr.LedgerBounds) LedgerBounds {
 		return LedgerBounds{Null: true}
 	}
 
-	// TODO: Is this right?
-	if ledgerBounds.MaxLedger == 0 {
-		return LedgerBounds{
-			MinLedger: null.IntFrom(int64(ledgerBounds.MinLedger)),
-		}
-	}
-
-	maxLedger := ledgerBounds.MaxLedger
 	return LedgerBounds{
 		MinLedger: null.IntFrom(int64(ledgerBounds.MinLedger)),
-		MaxLedger: null.IntFrom(int64(maxLedger)),
+		MaxLedger: null.IntFrom(int64(ledgerBounds.MaxLedger)),
 	}
 }

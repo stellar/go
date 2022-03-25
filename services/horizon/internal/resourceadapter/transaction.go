@@ -76,12 +76,10 @@ func PopulateTransaction(
 			dest.Preconditions.Ledgerbounds = &protocol.TransactionPreconditionsLedgerbounds{}
 		}
 		if row.LedgerBounds.MinLedger.Valid {
-			minLedger := uint32(row.LedgerBounds.MinLedger.Int64)
-			dest.Preconditions.Ledgerbounds.MinLedger = &minLedger
+			dest.Preconditions.Ledgerbounds.MinLedger = uint32(row.LedgerBounds.MinLedger.Int64)
 		}
 		if row.LedgerBounds.MaxLedger.Valid {
-			maxLedger := uint32(row.LedgerBounds.MaxLedger.Int64)
-			dest.Preconditions.Ledgerbounds.MaxLedger = &maxLedger
+			dest.Preconditions.Ledgerbounds.MaxLedger = uint32(row.LedgerBounds.MaxLedger.Int64)
 		}
 	}
 
@@ -97,7 +95,7 @@ func PopulateTransaction(
 		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(row.MinAccountSequenceLedgerGap.Int64)
 	}
 
-	if len(row.ExtraSigners) > 0 {
+	if row.ExtraSigners != nil {
 		dest.Preconditions.ExtraSigners = row.ExtraSigners
 	}
 
