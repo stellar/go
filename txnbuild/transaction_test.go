@@ -54,7 +54,7 @@ func TestV2Preconditions(t *testing.T) {
 		TimeBounds:                 NewTimeout(300),
 		LedgerBounds:               &LedgerBounds{0, 1},
 		MinSequenceNumber:          nil,
-		MinSequenceNumberAge:       xdr.Duration(10),
+		MinSequenceNumberAge:       10,
 		MinSequenceNumberLedgerGap: 2,
 	}
 	assert.True(t, cond.hasV2Conditions())

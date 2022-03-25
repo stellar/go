@@ -27,9 +27,14 @@ func TestPreconditionClassification(t *testing.T) {
 // TestPreconditionValidation ensures that validation fails when necessary.
 func TestPreconditionValidation(t *testing.T) {
 	t.Run("too many signers", func(t *testing.T) {
+		strSigners := make([]string, len(signers))
+		for i, signerKey := range signers {
+			strSigners[i] = signerKey.Address()
+		}
+
 		pc := Preconditions{
 			TimeBounds:   NewTimebounds(27, 42),
-			ExtraSigners: signers,
+			ExtraSigners: strSigners,
 		}
 
 		assert.Error(t, pc.Validate())
@@ -159,9 +164,9 @@ func createPreconditionFixtures() (xdr.Preconditions, Preconditions) {
 		TimeBounds:                 NewTimebounds(27, 42),
 		LedgerBounds:               &LedgerBounds{27, 42},
 		MinSequenceNumber:          &seqNum,
-		MinSequenceNumberAge:       xdr.Duration(27),
+		MinSequenceNumberAge:       27,
 		MinSequenceNumberLedgerGap: 42,
-		ExtraSigners:               []xdr.SignerKey{signers[0]},
+		ExtraSigners:               []string{signers[0].Address()},
 	}
 
 	return xdrCond, pc
