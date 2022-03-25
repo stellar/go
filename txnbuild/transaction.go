@@ -242,7 +242,7 @@ func (t *Transaction) Memo() Memo {
 
 // Timebounds returns the Timebounds configured for this transaction.
 func (t *Transaction) Timebounds() TimeBounds {
-	return t.preconditions.Timebounds
+	return t.preconditions.TimeBounds
 }
 
 // Operations returns the list of operations included in this transaction.
@@ -909,7 +909,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 		Operations:           tx.Operations(),
 		BaseFee:              tx.BaseFee(),
 		Memo:                 tx.Memo(),
-		Preconditions:        Preconditions{Timebounds: tx.Timebounds()},
+		Preconditions:        Preconditions{TimeBounds: tx.Timebounds()},
 	})
 	if err != nil {
 		return tx, err
@@ -1048,7 +1048,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 			BaseFee: MinBaseFee,
 			Memo:    nil,
 			Preconditions: Preconditions{
-				Timebounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
 			},
 		},
 	)

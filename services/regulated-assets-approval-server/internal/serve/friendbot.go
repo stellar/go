@@ -158,7 +158,7 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 			},
 		},
 		BaseFee:       300,
-		Preconditions: txnbuild.Preconditions{Timebounds: txnbuild.NewTimeout(300)},
+		Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 	})
 	if err != nil {
 		err = errors.Wrap(err, "building transaction")

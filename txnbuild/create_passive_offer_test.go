@@ -25,7 +25,7 @@ func TestCreatePassiveSellOfferValidateBuyingAsset(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations:           []Operation{&createPassiveOffer},
 			BaseFee:              MinBaseFee,
-			Preconditions:        Preconditions{Timebounds: NewInfiniteTimeout()},
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	if assert.Error(t, err) {
@@ -52,7 +52,7 @@ func TestCreatePassiveSellOfferValidateSellingAsset(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations:           []Operation{&createPassiveOffer},
 			BaseFee:              MinBaseFee,
-			Preconditions:        Preconditions{Timebounds: NewInfiniteTimeout()},
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	if assert.Error(t, err) {
@@ -79,7 +79,7 @@ func TestCreatePassiveSellOfferValidateAmount(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations:           []Operation{&createPassiveOffer},
 			BaseFee:              MinBaseFee,
-			Preconditions:        Preconditions{Timebounds: NewInfiniteTimeout()},
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	if assert.Error(t, err) {
@@ -106,7 +106,7 @@ func TestCreatePassiveSellOfferValidatePrice(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations:           []Operation{&createPassiveOffer},
 			BaseFee:              MinBaseFee,
-			Preconditions:        Preconditions{Timebounds: NewInfiniteTimeout()},
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	if assert.Error(t, err) {

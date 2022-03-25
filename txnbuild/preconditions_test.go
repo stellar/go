@@ -16,7 +16,7 @@ var signers = []xdr.SignerKey{
 // TestPreconditionClassification ensures that Preconditions will correctly
 // differentiate V1 (timebounds-only) or V2 (all other) preconditions correctly.
 func TestPreconditionClassification(t *testing.T) {
-	tbpc := Preconditions{Timebounds: NewTimebounds(1, 2)}
+	tbpc := Preconditions{TimeBounds: NewTimebounds(1, 2)}
 	assert.False(t, (&Preconditions{}).hasV2Conditions())
 	assert.False(t, tbpc.hasV2Conditions())
 
@@ -28,7 +28,7 @@ func TestPreconditionClassification(t *testing.T) {
 func TestPreconditionValidation(t *testing.T) {
 	t.Run("too many signers", func(t *testing.T) {
 		pc := Preconditions{
-			Timebounds:   NewTimebounds(27, 42),
+			TimeBounds:   NewTimebounds(27, 42),
 			ExtraSigners: signers,
 		}
 
@@ -36,8 +36,8 @@ func TestPreconditionValidation(t *testing.T) {
 	})
 
 	t.Run("nonsense ledgerbounds", func(t *testing.T) {
-		pc := Preconditions{Timebounds: NewTimebounds(27, 42)}
-		pc.Ledgerbounds = &LedgerBounds{MinLedger: 42, MaxLedger: 1}
+		pc := Preconditions{TimeBounds: NewTimebounds(27, 42)}
+		pc.LedgerBounds = &LedgerBounds{MinLedger: 42, MaxLedger: 1}
 		assert.Error(t, pc.Validate())
 	})
 }
@@ -66,7 +66,7 @@ func TestPreconditionEncoding(t *testing.T) {
 						MinTime: xdr.TimePoint(1),
 						MaxTime: xdr.TimePoint(2),
 					},
-				}, Preconditions{Timebounds: NewTimebounds(1, 2)}
+				}, Preconditions{TimeBounds: NewTimebounds(1, 2)}
 			},
 		},
 		{
@@ -74,7 +74,7 @@ func TestPreconditionEncoding(t *testing.T) {
 			func() (xdr.Preconditions, Preconditions) {
 				xdrPc, pc := createPreconditionFixtures()
 				xdrPc.V2.LedgerBounds.MaxLedger = 0
-				pc.Ledgerbounds.MaxLedger = 0
+				pc.LedgerBounds.MaxLedger = 0
 				return xdrPc, pc
 			},
 		},
@@ -83,7 +83,7 @@ func TestPreconditionEncoding(t *testing.T) {
 			func() (xdr.Preconditions, Preconditions) {
 				xdrPc, pc := createPreconditionFixtures()
 				xdrPc.V2.LedgerBounds = nil
-				pc.Ledgerbounds = nil
+				pc.LedgerBounds = nil
 				return xdrPc, pc
 			},
 		},
@@ -156,8 +156,8 @@ func createPreconditionFixtures() (xdr.Preconditions, Preconditions) {
 		},
 	}
 	pc := Preconditions{
-		Timebounds:                 NewTimebounds(27, 42),
-		Ledgerbounds:               &LedgerBounds{27, 42},
+		TimeBounds:                 NewTimebounds(27, 42),
+		LedgerBounds:               &LedgerBounds{27, 42},
 		MinSequenceNumber:          &seqNum,
 		MinSequenceNumberAge:       xdr.Duration(27),
 		MinSequenceNumberLedgerGap: 42,

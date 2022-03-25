@@ -1139,7 +1139,7 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 			BaseFee: txnbuild.MinBaseFee,
 			Memo:    nil,
 			Preconditions: txnbuild.Preconditions{
-				Timebounds: txnbuild.NewTimebounds(txMinTimebounds, txMaxTimebounds),
+				TimeBounds: txnbuild.NewTimebounds(txMinTimebounds, txMaxTimebounds),
 			},
 		},
 	)
