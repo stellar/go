@@ -85,7 +85,7 @@ func createTx() TransactionEnvelope {
 	}
 }
 
-func createV2Tx() TransactionEnvelope {
+func createCondV2Tx() TransactionEnvelope {
 	minSeqNum := SequenceNumber(7)
 	return TransactionEnvelope{
 		Type: EnvelopeTypeEnvelopeTypeTx,
