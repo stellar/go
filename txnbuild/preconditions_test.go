@@ -24,17 +24,22 @@ func TestPreconditionClassification(t *testing.T) {
 	assert.True(t, tbpc.hasV2Conditions())
 }
 
-// TestPreconditionValidation ensures that validation fails when necessary.
+// TestPreconditionValidation ensures that errors occur when necessary.
 func TestPreconditionValidation(t *testing.T) {
-	t.Run("too many signers", func(t *testing.T) {
-		strSigners := make([]string, len(signers))
-		for i, signerKey := range signers {
-			strSigners[i] = signerKey.Address()
-		}
-
+	t.Run("invalid signer", func(t *testing.T) {
 		pc := Preconditions{
 			TimeBounds:   NewTimebounds(27, 42),
-			ExtraSigners: strSigners,
+			ExtraSigners: []string{"literally just some nonsense"},
+		}
+
+		_, err := pc.BuildXDR()
+		assert.Error(t, err)
+	})
+
+	t.Run("too many signers", func(t *testing.T) {
+		pc := Preconditions{
+			TimeBounds:   NewTimebounds(27, 42),
+			ExtraSigners: signerKeysToStrings(signers),
 		}
 
 		assert.Error(t, pc.Validate())
@@ -119,7 +124,9 @@ func TestPreconditionEncoding(t *testing.T) {
 
 			expectedBytes, err := xdrPrecond.MarshalBinary()
 			assert.NoError(t, err)
-			actualBytes, err := precond.BuildXDR().MarshalBinary()
+			encodedPrecond, err := precond.BuildXDR()
+			assert.NoError(t, err)
+			actualBytes, err := encodedPrecond.MarshalBinary()
 			assert.NoError(t, err)
 
 			// building the struct should result in identical XDR!
@@ -170,4 +177,12 @@ func createPreconditionFixtures() (xdr.Preconditions, Preconditions) {
 	}
 
 	return xdrCond, pc
+}
+
+func signerKeysToStrings(signerKeys []xdr.SignerKey) []string {
+	strSigners := make([]string, len(signers))
+	for i, signerKey := range signers {
+		strSigners[i] = signerKey.Address()
+	}
+	return strSigners
 }

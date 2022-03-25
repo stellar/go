@@ -51,7 +51,7 @@ func (cond *Preconditions) Validate() error {
 // BuildXDR will create a precondition structure that varies depending on
 // whether or not there are additional preconditions besides timebounds (which
 // are required).
-func (cond *Preconditions) BuildXDR() xdr.Preconditions {
+func (cond *Preconditions) BuildXDR() (xdr.Preconditions, error) {
 	xdrCond := xdr.Preconditions{}
 	xdrTimeBounds := xdr.TimeBounds{
 		MinTime: xdr.TimePoint(cond.TimeBounds.MinTime),
@@ -70,7 +70,9 @@ func (cond *Preconditions) BuildXDR() xdr.Preconditions {
 			xdrPrecond.ExtraSigners = make([]xdr.SignerKey, len(cond.ExtraSigners))
 			for i, signer := range cond.ExtraSigners {
 				signerKey := xdr.SignerKey{}
-				signerKey.SetAddress(signer)
+				if err := signerKey.SetAddress(signer); err != nil {
+					return xdr.Preconditions{}, errors.Wrap(err, "invalid signer")
+				}
 				xdrPrecond.ExtraSigners[i] = signerKey
 			}
 		}
@@ -96,7 +98,7 @@ func (cond *Preconditions) BuildXDR() xdr.Preconditions {
 		xdrCond.TimeBounds = &xdrTimeBounds
 	}
 
-	return xdrCond
+	return xdrCond, nil
 }
 
 // FromXDR fills in the precondition structure from an xdr.Precondition.
@@ -104,6 +106,7 @@ func (cond *Preconditions) FromXDR(precondXdr xdr.Preconditions) error {
 	*cond = Preconditions{} // reset existing values
 
 	switch precondXdr.Type {
+	case xdr.PreconditionTypePrecondNone:
 	case xdr.PreconditionTypePrecondTime:
 		cond.TimeBounds = NewTimebounds(
 			int64(precondXdr.MustTimeBounds().MinTime),
@@ -145,9 +148,9 @@ func (cond *Preconditions) FromXDR(precondXdr xdr.Preconditions) error {
 			}
 		}
 
-	case xdr.PreconditionTypePrecondNone:
 	default:
-		return errors.New("unsupported precondition type: " + precondXdr.Type.String())
+		return errors.New("unsupported precondition type: " +
+			precondXdr.Type.String())
 	}
 
 	return nil

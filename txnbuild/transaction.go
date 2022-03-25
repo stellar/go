@@ -855,6 +855,11 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		return nil, errors.Wrap(err, "invalid preconditions")
 	}
 
+	precondXdr, err := tx.preconditions.BuildXDR()
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid preconditions")
+	}
+
 	envelope := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 		V1: &xdr.TransactionV1Envelope{
@@ -862,7 +867,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 				SourceAccount: sourceAccount,
 				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
-				Cond:          tx.preconditions.BuildXDR(),
+				Cond:          precondXdr,
 			},
 			Signatures: nil,
 		},
