@@ -2120,7 +2120,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			},
 		},
 	}
-	relBefore := xdr.Duration(1000)
+	relBefore := xdr.Int64(1000)
 	cb1 := xdr.ClaimableBalanceEntry{
 		BalanceId: balanceIDOp1,
 		Amount:    xdr.Int64(200000000),
@@ -2218,7 +2218,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 	}
 }
 func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
-	relBefore := xdr.Duration(1000)
+	relBefore := xdr.Int64(1000)
 	testCases := []struct {
 		desc     string
 		op       xdr.Operation
