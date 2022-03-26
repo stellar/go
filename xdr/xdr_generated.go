@@ -1699,14 +1699,14 @@ var _ xdrType = (*TimePoint)(nil)
 
 // Duration is an XDR Typedef defines as:
 //
-//   typedef int64 Duration;
+//   typedef uint64 Duration;
 //
-type Duration Int64
+type Duration Uint64
 
 // EncodeTo encodes this value using the Encoder.
 func (s Duration) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = Int64(s).EncodeTo(e); err != nil {
+	if err = Uint64(s).EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -1718,10 +1718,10 @@ var _ decoderFrom = (*Duration)(nil)
 func (s *Duration) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = (*Int64)(s).DecodeFrom(d)
+	nTmp, err = (*Uint64)(s).DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Int64: %s", err)
+		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
 	return n, nil
 }
@@ -5858,9 +5858,9 @@ var _ xdrType = (*ClaimPredicateType)(nil)
 //    case CLAIM_PREDICATE_NOT:
 //        ClaimPredicate* notPredicate;
 //    case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-//        TimePoint absBefore; // Predicate will be true if closeTime < absBefore
+//        int64 absBefore; // Predicate will be true if closeTime < absBefore
 //    case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-//        Duration relBefore; // Seconds since closeTime of the ledger in which the
+//        int64 relBefore; // Seconds since closeTime of the ledger in which the
 //                            // ClaimableBalanceEntry was created
 //    };
 //
@@ -5869,8 +5869,8 @@ type ClaimPredicate struct {
 	AndPredicates *[]ClaimPredicate `xdrmaxsize:"2"`
 	OrPredicates  *[]ClaimPredicate `xdrmaxsize:"2"`
 	NotPredicate  **ClaimPredicate
-	AbsBefore     *TimePoint
-	RelBefore     *Duration
+	AbsBefore     *Int64
+	RelBefore     *Int64
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -5927,16 +5927,16 @@ func NewClaimPredicate(aType ClaimPredicateType, value interface{}) (result Clai
 		}
 		result.NotPredicate = &tv
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		tv, ok := value.(TimePoint)
+		tv, ok := value.(Int64)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be TimePoint")
+			err = fmt.Errorf("invalid value, must be Int64")
 			return
 		}
 		result.AbsBefore = &tv
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
-		tv, ok := value.(Duration)
+		tv, ok := value.(Int64)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Duration")
+			err = fmt.Errorf("invalid value, must be Int64")
 			return
 		}
 		result.RelBefore = &tv
@@ -6021,7 +6021,7 @@ func (u ClaimPredicate) GetNotPredicate() (result *ClaimPredicate, ok bool) {
 
 // MustAbsBefore retrieves the AbsBefore value from the union,
 // panicing if the value is not set.
-func (u ClaimPredicate) MustAbsBefore() TimePoint {
+func (u ClaimPredicate) MustAbsBefore() Int64 {
 	val, ok := u.GetAbsBefore()
 
 	if !ok {
@@ -6033,7 +6033,7 @@ func (u ClaimPredicate) MustAbsBefore() TimePoint {
 
 // GetAbsBefore retrieves the AbsBefore value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ClaimPredicate) GetAbsBefore() (result TimePoint, ok bool) {
+func (u ClaimPredicate) GetAbsBefore() (result Int64, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "AbsBefore" {
@@ -6046,7 +6046,7 @@ func (u ClaimPredicate) GetAbsBefore() (result TimePoint, ok bool) {
 
 // MustRelBefore retrieves the RelBefore value from the union,
 // panicing if the value is not set.
-func (u ClaimPredicate) MustRelBefore() Duration {
+func (u ClaimPredicate) MustRelBefore() Int64 {
 	val, ok := u.GetRelBefore()
 
 	if !ok {
@@ -6058,7 +6058,7 @@ func (u ClaimPredicate) MustRelBefore() Duration {
 
 // GetRelBefore retrieves the RelBefore value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ClaimPredicate) GetRelBefore() (result Duration, ok bool) {
+func (u ClaimPredicate) GetRelBefore() (result Int64, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "RelBefore" {
@@ -6203,19 +6203,19 @@ func (u *ClaimPredicate) DecodeFrom(d *xdr.Decoder) (int, error) {
 		}
 		return n, nil
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		u.AbsBefore = new(TimePoint)
+		u.AbsBefore = new(Int64)
 		nTmp, err = (*u.AbsBefore).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding TimePoint: %s", err)
+			return n, fmt.Errorf("decoding Int64: %s", err)
 		}
 		return n, nil
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
-		u.RelBefore = new(Duration)
+		u.RelBefore = new(Int64)
 		nTmp, err = (*u.RelBefore).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding Duration: %s", err)
+			return n, fmt.Errorf("decoding Int64: %s", err)
 		}
 		return n, nil
 	}
@@ -22589,7 +22589,7 @@ var _ xdrType = (*TimeBounds)(nil)
 //   struct LedgerBounds
 //    {
 //        uint32 minLedger;
-//        uint32 maxLedger;
+//        uint32 maxLedger; // 0 here means no maxLedger
 //    };
 //
 type LedgerBounds struct {
@@ -22660,8 +22660,9 @@ var _ xdrType = (*LedgerBounds)(nil)
 //   struct PreconditionsV2 {
 //        TimeBounds *timeBounds;
 //
-//        // Transaciton only valid for ledger numbers n such that
-//        // minLedger <= n < maxLedger
+//        // Transaction only valid for ledger numbers n such that
+//        // minLedger <= n < maxLedger (if maxLedger == 0, then
+//        // only minLedger is checked)
 //        LedgerBounds *ledgerBounds;
 //
 //        // If NULL, only valid when sourceAccount's sequence number
@@ -32962,7 +32963,8 @@ var _ xdrType = (*OperationResult)(nil)
 //
 //        txNOT_SUPPORTED = -12,         // transaction type not supported
 //        txFEE_BUMP_INNER_FAILED = -13, // fee bump inner transaction failed
-//        txBAD_SPONSORSHIP = -14        // sponsorship not confirmed
+//        txBAD_SPONSORSHIP = -14,       // sponsorship not confirmed
+//        txBAD_MIN_SEQ_AGE_OR_GAP = -15 //minSeqAge or minSeqLedgerGap conditions not met
 //    };
 //
 type TransactionResultCode int32
@@ -32984,6 +32986,7 @@ const (
 	TransactionResultCodeTxNotSupported        TransactionResultCode = -12
 	TransactionResultCodeTxFeeBumpInnerFailed  TransactionResultCode = -13
 	TransactionResultCodeTxBadSponsorship      TransactionResultCode = -14
+	TransactionResultCodeTxBadMinSeqAgeOrGap   TransactionResultCode = -15
 )
 
 var transactionResultCodeMap = map[int32]string{
@@ -33003,6 +33006,7 @@ var transactionResultCodeMap = map[int32]string{
 	-12: "TransactionResultCodeTxNotSupported",
 	-13: "TransactionResultCodeTxFeeBumpInnerFailed",
 	-14: "TransactionResultCodeTxBadSponsorship",
+	-15: "TransactionResultCodeTxBadMinSeqAgeOrGap",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -33090,6 +33094,7 @@ var _ xdrType = (*TransactionResultCode)(nil)
 //        case txNOT_SUPPORTED:
 //        // txFEE_BUMP_INNER_FAILED is not included
 //        case txBAD_SPONSORSHIP:
+//        case txBAD_MIN_SEQ_AGE_OR_GAP:
 //            void;
 //        }
 //
@@ -33136,6 +33141,8 @@ func (u InnerTransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case TransactionResultCodeTxBadSponsorship:
 		return "", true
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		return "", true
 	}
 	return "-", false
 }
@@ -33181,6 +33188,8 @@ func NewInnerTransactionResultResult(code TransactionResultCode, value interface
 	case TransactionResultCodeTxNotSupported:
 		// void
 	case TransactionResultCodeTxBadSponsorship:
+		// void
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		// void
 	}
 	return
@@ -33274,6 +33283,9 @@ func (u InnerTransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 	case TransactionResultCodeTxBadSponsorship:
 		// Void
 		return nil
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		// Void
+		return nil
 	}
 	return fmt.Errorf("Code (TransactionResultCode) switch value '%d' is not valid for union InnerTransactionResultResult", u.Code)
 }
@@ -33364,6 +33376,9 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case TransactionResultCodeTxBadSponsorship:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		// Void
 		return n, nil
 	}
@@ -33521,6 +33536,7 @@ var _ xdrType = (*InnerTransactionResultExt)(nil)
 //        case txNOT_SUPPORTED:
 //        // txFEE_BUMP_INNER_FAILED is not included
 //        case txBAD_SPONSORSHIP:
+//        case txBAD_MIN_SEQ_AGE_OR_GAP:
 //            void;
 //        }
 //        result;
