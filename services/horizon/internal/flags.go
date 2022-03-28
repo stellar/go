@@ -393,6 +393,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
 		},
 		&support.ConfigOption{
+			Name:        "max-path-finding-requests",
+			ConfigKey:   &config.MaxPathFindingRequests,
+			OptType:     types.Uint,
+			FlagDefault: uint(0),
+			Required:    false,
+			Usage: "The maximum number of path finding requests per second horizon will allow." +
+				" A value of zero (the default) disables the limit.",
+		},
+		&support.ConfigOption{
 			Name:      "network-passphrase",
 			ConfigKey: &config.NetworkPassphrase,
 			OptType:   types.String,

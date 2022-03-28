@@ -76,6 +76,62 @@ func mockPathFindingClient(
 	return test.NewRequestHelper(router)
 }
 
+func TestPathActionsLimitExceeded(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	assertions := &test.Assertions{tt.Assert}
+	finder := paths.MockFinder{}
+	finder.On("Find", mock.Anything, mock.Anything, uint(3)).
+		Return([]paths.Path{}, uint32(0), paths.ErrRateLimitExceeded).Times(2)
+	finder.On("FindFixedPaths", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return([]paths.Path{}, uint32(0), paths.ErrRateLimitExceeded).Times(1)
+
+	rh := mockPathFindingClient(
+		tt,
+		&finder,
+		2,
+		tt.HorizonSession(),
+	)
+
+	var q = make(url.Values)
+
+	q.Add(
+		"source_assets",
+		"native",
+	)
+	q.Add(
+		"destination_asset_issuer",
+		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
+	)
+	q.Add("destination_asset_type", "credit_alphanum4")
+	q.Add("destination_asset_code", "EUR")
+	q.Add("destination_amount", "10")
+
+	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
+		w := rh.Get(uri + "?" + q.Encode())
+		assertions.Equal(horizonProblem.ServerOverCapacity.Status, w.Code)
+		assertions.Problem(w.Body, horizonProblem.ServerOverCapacity)
+		assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
+	}
+
+	q = make(url.Values)
+
+	q.Add("destination_assets", "native")
+	q.Add("source_asset_issuer", "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN")
+	q.Add("source_asset_type", "credit_alphanum4")
+	q.Add("source_asset_code", "EUR")
+	q.Add("source_amount", "10")
+
+	w := rh.Get("/paths/strict-send" + "?" + q.Encode())
+	assertions.Equal(horizonProblem.ServerOverCapacity.Status, w.Code)
+	assertions.Problem(w.Body, horizonProblem.ServerOverCapacity)
+	assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
+
+	finder.AssertExpectations(t)
+}
+
 func TestPathActionsStillIngesting(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()

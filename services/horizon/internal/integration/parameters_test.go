@@ -2,6 +2,8 @@
 package integration
 
 import (
+	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -160,6 +162,30 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 		assert.NoError(t, err)
 		test.WaitForHorizon()
 		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 2)
+		test.Shutdown()
+	})
+}
+
+func TestMaxPathFindingRequests(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxPathFindingRequests, uint(0))
+		_, ok := test.Horizon().Paths().(simplepath.InMemoryFinder)
+		assert.True(t, ok)
+		test.Shutdown()
+	})
+	t.Run("set to 5", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"max-path-finding-requests": "5"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxPathFindingRequests, uint(5))
+		finder, ok := test.Horizon().Paths().(*paths.RateLimitedFinder)
+		assert.True(t, ok)
+		assert.Equal(t, finder.Limit(), 5)
 		test.Shutdown()
 	})
 }
