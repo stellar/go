@@ -5,7 +5,7 @@ Frontier is the client facing API server for the [DigitalBits ecosystem](https:/
 See Frontier in action by running your own DigitalBits node as part of the DigitalBits [testnet](https://github.com/xdbfoundation/docs/blob/master/guides/concepts/test-net.md). With our Docker quick-start image, you can be running your own fully functional node in around 20 minutes. See the [Quickstart Guide](internal/docs/quickstart.md) to get up and running.
 
 ## Prebuild software
-DigitalBits.io publishes frontier packages to the cloudsmith.io repository https://cloudsmith.io/~xdb-foundation/repos/digitalbits-frontier/packages/
+DigitalBits.io publishes frontier packages to the repository https://cloudsmith.io/~xdb-foundation/repos/digitalbits-frontier/packages/
 
 Packages available as:
    - .deb and .rpm packages and 
@@ -14,9 +14,9 @@ Packages available as:
 
 ## DEB-based
 
-1. Configure digitalbits-frontier repository from cloudsmith.io:
+1. Configure digitalbits-frontier repository from archive.digitalbits.io:
 
-        curl -1sLf 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/setup.deb.sh' | sudo -E bash
+        curl -1sLf 'https://archive.digitalbits.io/public/digitalbits-frontier/setup.deb.sh' | sudo -E bash
 
 2. Install digitalbits-frontier package:
 
@@ -24,9 +24,9 @@ Packages available as:
 
 
 ## RPM-based
-1. Configure digitalbits-frontier repository from cloudsmith.io:
+1. Configure digitalbits-frontier repository from archive.digitalbits.io:
 
-        curl -1sLf 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/setup.rpm.sh' | sudo -E bash
+        curl -1sLf 'https://archive.digitalbits.io/public/digitalbits-frontier/setup.rpm.sh' | sudo -E bash
 
 2. Install digitalbits-frontier package:
 
@@ -37,30 +37,30 @@ Packages available as:
 
 - MacOS
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_darwin-amd64.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_darwin-amd64.tar.gz'
 
 - Linux
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-amd64.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-amd64.tar.gz'
 
 - Windows
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-amd64.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-amd64.tar.gz'
 
 - Linux (32-bit)
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-386.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_linux-386.tar.gz'
         
 
 - Windows (32-bit)
 
-        curl -O 'https://dl.cloudsmith.io/public/xdb-foundation/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-386.tar.gz'
+        curl -O 'https://archive.digitalbits.io/public/digitalbits-frontier/raw/files/frontier_${VERSION}_windows-386.tar.gz'
 
         
 
 ## Docker image
 
-    docker pull docker.cloudsmith.io/xdb-foundation/digitalbits-frontier/digitalbits-frontier:latest
+    docker pull docker.digitalbits.io/digitalbits-frontier/digitalbits-frontier:latest
 
 
 ## Run a production server
