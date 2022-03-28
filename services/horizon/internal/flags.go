@@ -393,6 +393,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
 		},
 		&support.ConfigOption{
+			Name:        "max-path-finding-requests",
+			ConfigKey:   &config.MaxPathFindingRequests,
+			OptType:     types.Int,
+			FlagDefault: 0,
+			Required:    false,
+			Usage: "The maximum number of path finding requests per second horizon will allow." +
+				" A value of zero (the default) disables the limit.",
+		},
+		&support.ConfigOption{
 			Name:      "network-passphrase",
 			ConfigKey: &config.NetworkPassphrase,
 			OptType:   types.String,
@@ -717,6 +726,10 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
 		return fmt.Errorf("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
+	}
+
+	if config.MaxPathFindingRequests < 0 {
+		return fmt.Errorf("Invalid config: --max-path-finxing-requests must not be negative")
 	}
 
 	return nil
