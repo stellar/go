@@ -84,9 +84,9 @@ func TestPathActionsLimitExceeded(t *testing.T) {
 	assertions := &test.Assertions{tt.Assert}
 	finder := paths.MockFinder{}
 	finder.On("Find", mock.Anything, mock.Anything, uint(3)).
-		Return([]paths.Path{}, uint32(0), paths.ErrLimitExceeded).Times(2)
+		Return([]paths.Path{}, uint32(0), paths.ErrRateLimitExceeded).Times(2)
 	finder.On("FindFixedPaths", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return([]paths.Path{}, uint32(0), paths.ErrLimitExceeded).Times(1)
+		Return([]paths.Path{}, uint32(0), paths.ErrRateLimitExceeded).Times(1)
 
 	rh := mockPathFindingClient(
 		tt,

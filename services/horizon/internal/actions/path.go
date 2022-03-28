@@ -167,7 +167,7 @@ func (handler FindPathsHandler) GetResource(w HeaderWriter, r *http.Request) (in
 		switch err {
 		case simplepath.ErrEmptyInMemoryOrderBook:
 			return nil, horizonProblem.StillIngesting
-		case paths.ErrLimitExceeded:
+		case paths.ErrRateLimitExceeded:
 			return nil, horizonProblem.ServerOverCapacity
 		default:
 			if err != nil {
@@ -345,7 +345,7 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 		switch err {
 		case simplepath.ErrEmptyInMemoryOrderBook:
 			return nil, horizonProblem.StillIngesting
-		case paths.ErrLimitExceeded:
+		case paths.ErrRateLimitExceeded:
 			return nil, horizonProblem.ServerOverCapacity
 		default:
 			if err != nil {

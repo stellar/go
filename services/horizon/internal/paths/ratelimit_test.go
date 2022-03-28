@@ -48,7 +48,7 @@ func TestRateLimitedFinder(t *testing.T) {
 
 			for _, f := range []func(Finder){find, findFixedPaths} {
 				wg.Add(totalCalls)
-				rateLimitedFinder := NewRateLimitedFinder(mockFinder, limit)
+				rateLimitedFinder := NewRateLimitedFinder(mockFinder, uint(limit))
 				assert.Equal(t, limit, rateLimitedFinder.Limit())
 				for i := 0; i < totalCalls; i++ {
 					go f(rateLimitedFinder)
@@ -57,7 +57,7 @@ func TestRateLimitedFinder(t *testing.T) {
 				requestsExceedingLimit := totalCalls - limit
 				for i := 0; i < requestsExceedingLimit; i++ {
 					err := <-errorChan
-					assert.Equal(t, ErrLimitExceeded, err)
+					assert.Equal(t, ErrRateLimitExceeded, err)
 				}
 
 				wg.Add(-requestsExceedingLimit)

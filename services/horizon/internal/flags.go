@@ -395,8 +395,8 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:        "max-path-finding-requests",
 			ConfigKey:   &config.MaxPathFindingRequests,
-			OptType:     types.Int,
-			FlagDefault: 0,
+			OptType:     types.Uint,
+			FlagDefault: uint(0),
 			Required:    false,
 			Usage: "The maximum number of path finding requests per second horizon will allow." +
 				" A value of zero (the default) disables the limit.",
@@ -726,10 +726,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
 		return fmt.Errorf("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
-	}
-
-	if config.MaxPathFindingRequests < 0 {
-		return fmt.Errorf("Invalid config: --max-path-finxing-requests must not be negative")
 	}
 
 	return nil
