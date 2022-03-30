@@ -118,6 +118,12 @@ func NewTest(t *testing.T, config Config) *Test {
 	// If not specific explicitly, set the protocol to the maximum supported version
 	if config.ProtocolVersion == 0 {
 		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
+		if os.Getenv("HORIZON_INTEGRATION_ENABLE_NEXT_PROTOCOL") == "" {
+			// TODO: change to ingest.MaxSupportedProtocolVersion once protocol 19 is released
+			//       and all the integration tests use protocol 19
+			//       Maybe there is a nicer way to do this.
+			config.ProtocolVersion = 18
+		}
 	}
 
 	composePath := findDockerComposePath()
@@ -672,7 +678,7 @@ func (i *Test) SubmitOperations(
 func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
-	tx, err := i.CreateSignedTransaction(source, signers, ops...)
+	tx, err := i.CreateSignedTransactionFromOps(source, signers, ops...)
 	if err != nil {
 		return proto.Transaction{}, err
 	}
@@ -687,17 +693,39 @@ func (i *Test) MustSubmitMultiSigOperations(
 	return tx
 }
 
-func (i *Test) CreateSignedTransaction(
-	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
-) (*txnbuild.Transaction, error) {
-	txParams := txnbuild.TransactionParams{
-		SourceAccount:        source,
-		Operations:           ops,
-		BaseFee:              txnbuild.MinBaseFee,
-		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
-		IncrementSequenceNum: true,
-	}
+func (i *Test) MustSubmitTransaction(signer *keypair.Full, txParams txnbuild.TransactionParams,
+) proto.Transaction {
+	tx, err := i.SubmitTransaction(signer, txParams)
+	panicIf(err)
+	return tx
+}
 
+func (i *Test) SubmitTransaction(
+	signer *keypair.Full, txParams txnbuild.TransactionParams,
+) (proto.Transaction, error) {
+	return i.SubmitMultiSigTransaction([]*keypair.Full{signer}, txParams)
+}
+
+func (i *Test) SubmitMultiSigTransaction(
+	signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) (proto.Transaction, error) {
+	tx, err := i.CreateSignedTransaction(signers, txParams)
+	if err != nil {
+		return proto.Transaction{}, err
+	}
+	return i.Client().SubmitTransaction(tx)
+}
+
+func (i *Test) MustSubmitMultiSigTransaction(
+	signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) proto.Transaction {
+	tx, err := i.SubmitMultiSigTransaction(signers, txParams)
+	panicIf(err)
+	return tx
+}
+
+func (i *Test) CreateSignedTransaction(signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) (*txnbuild.Transaction, error) {
 	tx, err := txnbuild.NewTransaction(txParams)
 	if err != nil {
 		return nil, err
@@ -711,6 +739,20 @@ func (i *Test) CreateSignedTransaction(
 	}
 
 	return tx, nil
+}
+
+func (i *Test) CreateSignedTransactionFromOps(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        source,
+		Operations:           ops,
+		BaseFee:              txnbuild.MinBaseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		IncrementSequenceNum: true,
+	}
+
+	return i.CreateSignedTransaction(signers, txParams)
 }
 
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
