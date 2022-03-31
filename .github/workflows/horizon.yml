@@ -58,7 +58,7 @@ jobs:
       name: Install and enable Captive Core
       run: |
         # Workaround for https://github.com/actions/virtual-environments/issues/5245 , remove when fixed
-        sudo apt-get remove -y libc++1-10
+        sudo apt-get remove -y libc++1-10 libc++abi1-10
         wget -q http://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-8/libc++1-8_8.0.1-9_amd64.deb
         wget -q http://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-8/libc++abi1-8_8.0.1-9_amd64.deb
         sudo dpkg -i libc++abi1-8_8.0.1-9_amd64.deb libc++1-8_8.0.1-9_amd64.deb
