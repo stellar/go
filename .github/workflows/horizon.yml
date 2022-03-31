@@ -59,8 +59,9 @@ jobs:
       run: |
         # Workaround for https://github.com/actions/virtual-environments/issues/5245 , remove when fixed
         sudo apt-get remove -y libc++1-10
-        wget http://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-8/libc++1-8_8.0.1-9_amd64.deb
-        sudo dpkg -i libc++1-8_8.0.1-9_amd64.deb
+        wget -q http://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-8/libc++1-8_8.0.1-9_amd64.deb
+        wget -q http://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-8/libc++abi1-8_8.0.1-9_amd64.deb
+        sudo dpkg -i libc++abi1-8_8.0.1-9_amd64.deb libc++1-8_8.0.1-9_amd64.deb
         
         sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
         sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
