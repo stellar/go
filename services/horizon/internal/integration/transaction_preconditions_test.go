@@ -8,17 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var protocol19Config = integration.Config{
-	ProtocolVersion: 19,
-	CoreDockerImage: "stellar/stellar-core:18.4.1-875.95d896a49.focal-v19unsafe",
-}
-
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 19 {
-		t.Skip()
-	}
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol19Config)
+	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
 
 	masterAccount := itest.MasterAccount()
