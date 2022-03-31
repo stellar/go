@@ -64,6 +64,8 @@ jobs:
         curl -s http://azure.archive.ubuntu.com/ubuntu/dists/focal/universe/binary-amd64/Packages.gz | zgrep libc++1-8
         echo utah
         curl -s http://archive.ubuntu.com/ubuntu/dists/focal/universe/binary-amd64/Packages.gz | zgrep libc++1-8
+        # Workaround for https://github.com/actions/virtual-environments/issues/5245 , remove when fixed
+        sudo apt-get remove -y libc++1-10 libc++abi1-10 || true
         
         sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
         sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
