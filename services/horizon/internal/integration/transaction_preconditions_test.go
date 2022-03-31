@@ -17,6 +17,12 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 	currentAccountSeq, err := masterAccount.GetSequenceNumber()
 	tt.NoError(err)
 
+	ops := []txnbuild.Operation{
+		&txnbuild.BumpSequence{
+			BumpTo: currentAccountSeq + 10,
+		},
+	}
+
 	// Ensure that the minSequence of the transaction is enough
 	// but the sequence isn't
 	txParams := txnbuild.TransactionParams{
@@ -25,17 +31,19 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 			Sequence:  currentAccountSeq + 100,
 		},
 		// Phony operation to run
-		Operations: []txnbuild.Operation{&txnbuild.BumpSequence{
-			BumpTo: currentAccountSeq + 10,
-		}},
-		BaseFee: txnbuild.MinBaseFee,
-		Memo:    nil,
+		Operations: ops,
+		BaseFee:    txnbuild.MinBaseFee,
+		Memo:       nil,
 		Preconditions: txnbuild.Preconditions{
-			TimeBounds:        txnbuild.NewInfiniteTimeout(),
-			MinSequenceNumber: &currentAccountSeq,
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
 		},
 	}
 
+	_, err = itest.SubmitTransaction(master, txParams)
+	tt.Error(err)
+
+	// Now the transaction should be submitted without problems
+	txParams.Preconditions.MinSequenceNumber = &currentAccountSeq
 	itest.MustSubmitTransaction(master, txParams)
 
 }
