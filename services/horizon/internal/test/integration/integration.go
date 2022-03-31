@@ -41,8 +41,8 @@ const (
 )
 
 var (
-	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
-	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB") != ""
+	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
@@ -111,8 +111,8 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 //
 // WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
-	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
+	if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "" {
+		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLE not set")
 	}
 
 	// If not specific explicitly, set the protocol to the maximum supported version
@@ -120,7 +120,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
 		if os.Getenv("HORIZON_INTEGRATION_ENABLE_NEXT_PROTOCOL") == "" {
 			// TODO: change to ingest.MaxSupportedProtocolVersion once protocol 19 is released
-			//       and all the integration tests use protocol 19
+			//       and all the integration tests use protocol 19.
 			//       Maybe there is a nicer way to do this.
 			config.ProtocolVersion = 18
 		}
@@ -159,7 +159,7 @@ func (i *Test) configureCaptiveCore() {
 	// custom Horizon parameters.
 	if RunWithCaptiveCore {
 		composePath := findDockerComposePath()
-		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
+		i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 		if RunWithCaptiveCoreUseDB {
 			i.coreConfig.useDB = true
@@ -196,13 +196,18 @@ func (i *Test) runComposeCommand(args ...string) {
 
 	cmdline := append([]string{"-f", integrationYaml}, args...)
 	cmd := exec.Command("docker-compose", cmdline...)
+	coreImageOverride := ""
 	if i.config.CoreDockerImage != "" {
+		coreImageOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
+		coreImageOverride = img
+	}
+	if coreImageOverride != "" {
 		cmd.Env = append(
 			os.Environ(),
-			fmt.Sprintf("CORE_IMAGE=%s", i.config.CoreDockerImage),
+			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
 		)
 	}
-
 	i.t.Log("Running", cmd.Env, cmd.Args)
 	out, innerErr := cmd.Output()
 	if exitErr, ok := innerErr.(*exec.ExitError); ok {
@@ -867,4 +872,16 @@ func mapToFlags(params map[string]string) []string {
 		args = append(args, fmt.Sprintf("--%s=%s", key, value))
 	}
 	return args
+}
+
+func GetCoreMaxSupportedProtocol() uint {
+	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
+	if str == "" {
+		return 0
+	}
+	version, err := strconv.ParseUint(str, 10, 16)
+	if err != nil {
+		return 0
+	}
+	return uint(version)
 }

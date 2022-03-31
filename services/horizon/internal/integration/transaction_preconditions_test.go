@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test/integration"
@@ -15,7 +14,7 @@ var protocol19Config = integration.Config{
 }
 
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_NEXT_PROTOCOL") != "" {
+	if integration.GetCoreMaxSupportedProtocol() < 19 {
 		t.Skip()
 	}
 	tt := assert.New(t)
