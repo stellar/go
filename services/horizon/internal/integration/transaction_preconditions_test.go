@@ -28,9 +28,10 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 		Operations: []txnbuild.Operation{&txnbuild.BumpSequence{
 			BumpTo: currentAccountSeq + 10,
 		}},
-		BaseFee: 0,
+		BaseFee: txnbuild.MinBaseFee,
 		Memo:    nil,
 		Preconditions: txnbuild.Preconditions{
+			TimeBounds:        txnbuild.NewInfiniteTimeout(),
 			MinSequenceNumber: &currentAccountSeq,
 		},
 	}
