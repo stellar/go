@@ -35,7 +35,7 @@ jobs:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol_version }}
       PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 18.4.1-875.95d896a49.focal~v19unsafe
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:18.4.1-875.95d896a49.focal~v19unsafe
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:18.4.1-875.95d896a49.focal-v19unsafe
       PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 18.5.0-873.rc1.d387c6a71.focal
       PROTOCOL_18_CORE_DOCKER_IMG: stellar/stellar-core:18.5.0-873.rc1.d387c6a71.focal
       PGHOST: localhost
