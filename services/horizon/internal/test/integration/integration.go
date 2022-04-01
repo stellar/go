@@ -112,7 +112,7 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 // WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
 	if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "" {
-		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLE not set")
+		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLED not set")
 	}
 
 	// If not specific explicitly, set the protocol to the maximum supported version
