@@ -12,9 +12,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.18]
+        go: [1.18]
         pg: [9.6.5]
-        ingestion-backend: [db, captive-core, captive-core-remote-storage]
+        ingestion-backend: [captive-core]
         captive-core: [18.0.3-746.f3baea6.focal]
     runs-on: ${{ matrix.os }}
     services:
@@ -46,6 +46,13 @@ jobs:
         # We need to full history for git-restore-mtime to know what modification dates to use.
         # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
         fetch-depth: '0'
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
+      with:
+        ## limits ssh access and adds the ssh public key for the user which triggered the workflow
+        limit-access-to-actor: true
+        ## limits ssh access and adds the ssh public keys of the listed GitHub users
+        limit-access-to-users: 2opremio
 
     - uses: ./.github/actions/setup-go
       with:
