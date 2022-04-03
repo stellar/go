@@ -15,7 +15,7 @@ jobs:
         go: [1.18]
         pg: [9.6.5]
         ingestion-backend: [captive-core]
-        captive-core: [18.0.3-746.f3baea6.focal]
+        captive-core: [18.5.0-873.rc1.d387c6a71.focal]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
