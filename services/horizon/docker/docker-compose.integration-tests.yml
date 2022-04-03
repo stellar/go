@@ -11,8 +11,9 @@ services:
     command: ["-p", "5641"]
   core:
     platform: linux/amd64
-    # Note: keep image tag pinned an immutable tag to avoid unexpected upgrades
-    #       which break compatibility with the captive core version used.
+    # Note: keep image pinned to immutable tag matching captive core
+    #       to avoid implicit updates which break compatibility between
+    #       the core container and captive core.
     image: ${CORE_IMAGE:-stellar/stellar-core:18.5.0-873.rc1.d387c6a71.focal}
     depends_on:
       - core-postgres
