@@ -15,7 +15,7 @@ jobs:
         go: [1.17, 1.18]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
-        captive-core: [18.0.3-746.f3baea6.focal]
+        captive-core: [18.5.0-873.rc1.d387c6a71.focal]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -46,6 +46,16 @@ jobs:
         # We need to full history for git-restore-mtime to know what modification dates to use.
         # Otherwise, the Go test cache will fail (due to the modification time of fixtures changing).
         fetch-depth: '0'
+
+    # In order to debug the integration tests, run 'touch continue' once you connect to the ssh session
+    #
+    # - name: Setup upterm session
+    #  uses: lhotari/action-upterm@d23c2722bdab893785c9fbeae314cbf080645bd7
+    #  with:
+    #    ## limits ssh access and adds the ssh public key for the user which triggered the workflow
+    #    limit-access-to-actor: true
+    #    ## limits ssh access and adds the ssh public keys of the listed GitHub users
+    #    limit-access-to-users: <yourGithubUser>
 
     - uses: ./.github/actions/setup-go
       with:
