@@ -331,6 +331,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 										xdr.MustAddressPtr(mockAccountID),
 										xdr.MustAddressPtr(sponsor),
 									},
+									Ext: xdr.AccountEntryExtensionV2Ext{
+										V: 3,
+										V3: &xdr.AccountEntryExtensionV3{
+											SeqTime: xdr.TimePoint(18446744011573954816),
+										},
+									},
 								},
 							},
 						},
