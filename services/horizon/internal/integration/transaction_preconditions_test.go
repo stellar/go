@@ -11,6 +11,9 @@ import (
 )
 
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
@@ -32,6 +35,9 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 }
 
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
@@ -58,6 +64,7 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	itest.MustSubmitTransaction(master, txParams)
 }
 
+// TODO: this should probably be part of the integration package
 func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceAccountSeq int64, txSequence int64) txnbuild.TransactionParams {
 
 	ops := []txnbuild.Operation{
