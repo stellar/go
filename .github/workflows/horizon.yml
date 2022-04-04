@@ -15,7 +15,7 @@ jobs:
         go: [1.17, 1.18]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
-        captive-core: [18.5.0-873.rc1.d387c6a71.focal]
+        protocol-version: [18, 19]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -32,7 +32,12 @@ jobs:
         ports:
         - 5432:5432
     env:
-      HORIZON_INTEGRATION_TESTS: "true"
+      HORIZON_INTEGRATION_TESTS_ENABLED: true
+      HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
+      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 18.4.1-875.95d896a49.focal~v19unsafe
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:18.4.1-875.95d896a49.focal-v19unsafe
+      PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 18.5.0-873.rc1.d387c6a71.focal
+      PROTOCOL_18_CORE_DOCKER_IMG: stellar/stellar-core:18.5.0-873.rc1.d387c6a71.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -61,8 +66,11 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
-    - name: Pull latest Stellar Core image
-      run: docker pull stellar/stellar-core
+    - name: Pull and set Stellar Core image
+      shell: bash
+      run: |
+        docker pull "$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG"
+        echo HORIZON_INTEGRATION_TESTS_DOCKER_IMG="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DOCKER_IMG" >> $GITHUB_ENV
 
     - if: ${{ startsWith(matrix.ingestion-backend, 'captive-core') }}
       name: Install and enable Captive Core
@@ -74,14 +82,14 @@ jobs:
         
         sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
         sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
-        sudo apt-get update && sudo apt-get install -y stellar-core=${{ matrix.captive-core }}
+        sudo apt-get update && sudo apt-get install -y stellar-core="$PROTOCOL_${{ matrix.protocol-version }}_CORE_DEBIAN_PKG_VERSION"
         echo "Using stellar core version $(stellar-core version)"
-        echo 'HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
-        echo 'CAPTIVE_CORE_BIN=/usr/bin/stellar-core'       >> $GITHUB_ENV
+        echo 'HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE=true' >> $GITHUB_ENV
+        echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN=/usr/bin/stellar-core' >> $GITHUB_ENV
 
     - if: ${{ matrix.ingestion-backend == 'captive-core-remote-storage' }}
       name: Setup Captive Core Remote Storage
-      run: echo 'HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
+      run: echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
 
     - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
