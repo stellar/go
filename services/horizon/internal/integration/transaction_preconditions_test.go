@@ -64,7 +64,6 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	itest.MustSubmitTransaction(master, txParams)
 }
 
-// TODO: this should probably be part of the integration package
 func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceAccountSeq int64, txSequence int64) txnbuild.TransactionParams {
 
 	ops := []txnbuild.Operation{
