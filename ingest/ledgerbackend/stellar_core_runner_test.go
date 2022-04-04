@@ -13,8 +13,9 @@ import (
 )
 
 func TestCloseBeforeStartOffline(t *testing.T) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
@@ -42,8 +43,9 @@ func TestCloseBeforeStartOffline(t *testing.T) {
 }
 
 func TestCloseBeforeStartOnline(t *testing.T) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
@@ -72,8 +74,9 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 }
 
 func TestCloseBeforeStartOnlineWithError(t *testing.T) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)

@@ -45,8 +45,9 @@ func (m *mockHash) hashFile(fp string) (hash, error) {
 }
 
 func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	ms := &mockHash{
 		hashResult:   hash{},
@@ -75,8 +76,9 @@ func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher
 }
 
 func TestNewFileWatcherError(t *testing.T) {
-	storagePath, err := os.MkdirTemp(os.TempDir(), "captive-core-*")
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
 	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
 
 	ms := &mockHash{
 		hashResult:   hash{},

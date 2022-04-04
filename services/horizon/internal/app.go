@@ -205,6 +205,11 @@ func (a *App) Config() Config {
 	return a.config
 }
 
+// Paths returns the paths.Finder instance used by horizon
+func (a *App) Paths() paths.Finder {
+	return a.paths
+}
+
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
 // This is done separately from Horizon ledger state update to prevent issues
 // in case Stellar-Core query timeout.
