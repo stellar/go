@@ -64,6 +64,38 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	itest.MustSubmitTransaction(master, txParams)
 }
 
+func TestTransactionPreconditionsExtraSigners(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+
+	// create a new signed payload signer
+	addtlSigners, addtlAccounts := itest.CreateAccounts(1, "1000")
+
+	// build a tx with seqnum based on master.seqNum+1 as source account
+	latestMasterAccount := itest.MustGetAccount(master)
+	currentAccountSeq, err := latestMasterAccount.GetSequenceNumber()
+	tt.NoError(err)
+	txParams := buildTXParams(master, masterAccount, currentAccountSeq, currentAccountSeq+1)
+
+	// this errors because the tx preconditions require extra signer that
+	// didn't sign this tx
+	txParams.Preconditions.ExtraSigners = []string{addtlAccounts[0].GetAccountID()}
+	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
+	tt.Error(err)
+
+	// Now the transaction should be submitted without problems, the extra signer specified
+	// has also signed this transaction.
+	// TODO - doesn't work yet, need to figure out how
+	txParams.Preconditions.ExtraSigners = []string{addtlAccounts[0].GetAccountID()}
+	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master, addtlSigners[0]}, txParams)
+	tt.NoError(err)
+}
+
 func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceAccountSeq int64, txSequence int64) txnbuild.TransactionParams {
 
 	ops := []txnbuild.Operation{
