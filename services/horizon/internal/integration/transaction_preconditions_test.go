@@ -90,7 +90,6 @@ func TestTransactionPreconditionsExtraSigners(t *testing.T) {
 
 	// Now the transaction should be submitted without problems, the extra signer specified
 	// has also signed this transaction.
-	// TODO - doesn't work yet, need to figure out how
 	txParams.Preconditions.ExtraSigners = []string{addtlAccounts[0].GetAccountID()}
 	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master, addtlSigners[0]}, txParams)
 	tt.NoError(err)
