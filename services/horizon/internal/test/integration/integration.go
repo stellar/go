@@ -115,13 +115,12 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLED not set")
 	}
 
-	// If not specific explicitly, set the protocol to the maximum supported version
 	if config.ProtocolVersion == 0 {
 		// Default to the maximum supported protocol version
 		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
 		// If the environment tells us that Core only supports up to certain version,
 		// use that.
-		maxSupportedCoreProtocolFromEnv := GetCoreMaxSupportedProtocol()
+		maxSupportedCoreProtocolFromEnv := getCoreMaxSupportedProtocol()
 		if maxSupportedCoreProtocolFromEnv != 0 && maxSupportedCoreProtocolFromEnv < ingest.MaxSupportedProtocolVersion {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
@@ -875,7 +874,7 @@ func mapToFlags(params map[string]string) []string {
 	return args
 }
 
-func GetCoreMaxSupportedProtocol() uint32 {
+func getCoreMaxSupportedProtocol() uint32 {
 	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
 	if str == "" {
 		return 0
@@ -885,4 +884,8 @@ func GetCoreMaxSupportedProtocol() uint32 {
 		return 0
 	}
 	return uint32(version)
+}
+
+func (i *Test) GetEffectiveProtocolVersion() uint32 {
+	return i.config.ProtocolVersion
 }
