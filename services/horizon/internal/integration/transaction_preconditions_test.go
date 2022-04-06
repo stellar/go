@@ -1,9 +1,11 @@
 package integration
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
+	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
@@ -11,11 +13,11 @@ import (
 )
 
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 19 {
-		t.Skip("Can't run with protocol < 19")
-	}
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()
 	currentAccountSeq, err := masterAccount.GetSequenceNumber()
@@ -35,11 +37,11 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 }
 
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
-	if integration.GetCoreMaxSupportedProtocol() < 19 {
-		t.Skip("Can't run with protocol < 19")
-	}
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()
 	currentAccountSeq, err := masterAccount.GetSequenceNumber()
@@ -85,4 +87,30 @@ func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceA
 			TimeBounds: txnbuild.NewInfiniteTimeout(),
 		},
 	}
+}
+
+func TestTransactionPreconditionsAccountFields(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+	currentAccountSeq, err := masterAccount.GetSequenceNumber()
+	tt.NoError(err)
+
+	tx := itest.MustSubmitOperations(masterAccount, master,
+		&txnbuild.BumpSequence{
+			BumpTo: currentAccountSeq + 10,
+		},
+	)
+
+	// refresh master account
+	account, err := itest.Client().AccountDetail(sdk.AccountRequest{AccountID: master.Address()})
+	assert.NoError(t, err)
+
+	// Check the new fields
+	tt.Equal(uint32(tx.Ledger), account.SequenceLedger)
+	tt.Equal(strconv.FormatInt(tx.LedgerCloseTime.Unix(), 10), account.SequenceTime)
 }
