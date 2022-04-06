@@ -1,14 +1,14 @@
 package integration
 
 import (
-	"strconv"
-	"testing"
-	"time"
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"testing"
+	"time"
 )
 
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
