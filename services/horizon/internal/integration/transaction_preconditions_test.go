@@ -1,15 +1,14 @@
 package integration
 
 import (
-	"strconv"
-	"testing"
-	"time"
-
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"testing"
+	"time"
 )
 
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
@@ -33,7 +32,11 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 
 	// Now the transaction should be submitted without problems
 	txParams.Preconditions.MinSequenceNumber = &currentAccountSeq
-	itest.MustSubmitTransaction(master, txParams)
+	tx := itest.MustSubmitTransaction(master, txParams)
+
+	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
+	assert.NoError(t, err)
+	assert.Equal(t, txHistory.Preconditions.MinAccountSequence, strconv.FormatInt(*txParams.Preconditions.MinSequenceNumber, 10))
 }
 
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
@@ -63,7 +66,52 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	// Now the transaction should be submitted without problems, min < current tx submit time < max
 	txParams.Preconditions.TimeBounds.MinTime = time.Now().Unix() - 3600
 	txParams.Preconditions.TimeBounds.MaxTime = time.Now().Unix() + 3600
-	itest.MustSubmitTransaction(master, txParams)
+	tx := itest.MustSubmitTransaction(master, txParams)
+
+	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
+	assert.NoError(t, err)
+	historyMaxTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.Timebounds.MaxTime)
+	assert.NoError(t, err)
+	historyMinTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.Timebounds.MinTime)
+	assert.NoError(t, err)
+
+	assert.Equal(t, historyMaxTime.UTC().Unix(), txParams.Preconditions.TimeBounds.MaxTime)
+	assert.Equal(t, historyMinTime.UTC().Unix(), txParams.Preconditions.TimeBounds.MinTime)
+}
+
+func TestTransactionPreconditionsExtraSigners(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+
+	// create a new signed payload signer
+	addtlSigners, addtlAccounts := itest.CreateAccounts(1, "1000")
+
+	// build a tx with seqnum based on master.seqNum+1 as source account
+	latestMasterAccount := itest.MustGetAccount(master)
+	currentAccountSeq, err := latestMasterAccount.GetSequenceNumber()
+	tt.NoError(err)
+	txParams := buildTXParams(master, masterAccount, currentAccountSeq, currentAccountSeq+1)
+
+	// this errors because the tx preconditions require extra signer that
+	// didn't sign this tx
+	txParams.Preconditions.ExtraSigners = []string{addtlAccounts[0].GetAccountID()}
+	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
+	tt.Error(err)
+
+	// Now the transaction should be submitted without problems, the extra signer specified
+	// has also signed this transaction.
+	txParams.Preconditions.ExtraSigners = []string{addtlAccounts[0].GetAccountID()}
+	tx, err := itest.SubmitMultiSigTransaction([]*keypair.Full{master, addtlSigners[0]}, txParams)
+	tt.NoError(err)
+
+	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, txHistory.Preconditions.ExtraSigners, txParams.Preconditions.ExtraSigners)
 }
 
 func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceAccountSeq int64, txSequence int64) txnbuild.TransactionParams {
