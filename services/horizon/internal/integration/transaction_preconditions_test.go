@@ -62,12 +62,13 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(len(seqs))
 	for _, s := range seqs {
+		sLocal := s
 		go func() {
-			txParams = buildTXParams(master, masterAccount, s.seq)
-			if s.minSeq > 0 {
-				txParams.Preconditions.MinSequenceNumber = &s.minSeq
+			params := buildTXParams(master, masterAccount, sLocal.seq)
+			if sLocal.minSeq > 0 {
+				params.Preconditions.MinSequenceNumber = &sLocal.minSeq
 			}
-			result := itest.MustSubmitTransaction(master, txParams)
+			result := itest.MustSubmitTransaction(master, params)
 			resultsMx.Lock()
 			results = append(results, result)
 			resultsMx.Unlock()
