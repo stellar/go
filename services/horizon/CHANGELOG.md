@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## V2.16.0
+
+* Replace keybase with publicnode in the stellar core config. ([4291](https://github.com/stellar/go/pull/4291))
+* Add a rate limit for path finding requests. ([4310](https://github.com/stellar/go/pull/4310))
+* Horizonclient, fix multi-parameter url for claimable balance query. ([4248](https://github.com/stellar/go/pull/4248))
+
+
 ## v2.15.1
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
