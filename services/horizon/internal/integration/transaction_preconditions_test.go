@@ -1,14 +1,17 @@
 package integration
 
 import (
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
-	"strconv"
-	"testing"
-	"time"
 )
 
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
@@ -24,7 +27,7 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 
 	// Ensure that the minSequence of the transaction is enough
 	// but the sequence isn't
-	txParams := buildTXParams(master, masterAccount, currentAccountSeq, currentAccountSeq+100)
+	txParams := buildTXParams(master, masterAccount, currentAccountSeq+100)
 
 	// this errors because the tx.seqNum is more than +1 from sourceAccoubnt.seqNum
 	_, err = itest.SubmitTransaction(master, txParams)
@@ -37,6 +40,47 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
 	assert.NoError(t, err)
 	assert.Equal(t, txHistory.Preconditions.MinAccountSequence, strconv.FormatInt(*txParams.Preconditions.MinSequenceNumber, 10))
+
+	// Test the transaction submission queue by sending transactions out of order
+	// and making sure they are all executed properly
+	masterAccount = itest.MasterAccount()
+	currentAccountSeq, err = masterAccount.GetSequenceNumber()
+	tt.NoError(err)
+
+	seqs := []struct {
+		minSeq int64
+		seq    int64
+	}{
+		{0, currentAccountSeq + 9},                 // sent first, executed second
+		{0, currentAccountSeq + 10},                // sent second, executed third
+		{currentAccountSeq, currentAccountSeq + 8}, // sent third, executed first
+	}
+
+	// Send the transactions in parallel since otherwise they are admitted sequentially
+	var results []horizon.Transaction
+	var resultsMx sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(len(seqs))
+	for _, s := range seqs {
+		sLocal := s
+		go func() {
+			params := buildTXParams(master, masterAccount, sLocal.seq)
+			if sLocal.minSeq > 0 {
+				params.Preconditions.MinSequenceNumber = &sLocal.minSeq
+			}
+			result := itest.MustSubmitTransaction(master, params)
+			resultsMx.Lock()
+			results = append(results, result)
+			resultsMx.Unlock()
+			wg.Done()
+		}()
+		// Space out requests to ensure the queue receives the transactions
+		// in the planned order
+		time.Sleep(time.Millisecond * 50)
+	}
+	wg.Wait()
+
+	tt.Len(results, len(seqs))
 }
 
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
@@ -49,7 +93,7 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	masterAccount := itest.MasterAccount()
 	currentAccountSeq, err := masterAccount.GetSequenceNumber()
 	tt.NoError(err)
-	txParams := buildTXParams(master, masterAccount, currentAccountSeq, currentAccountSeq+1)
+	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
 
 	// this errors because the min time is > current tx submit time
 	txParams.Preconditions.TimeBounds.MinTime = time.Now().Unix() + 3600
@@ -95,7 +139,7 @@ func TestTransactionPreconditionsExtraSigners(t *testing.T) {
 	latestMasterAccount := itest.MustGetAccount(master)
 	currentAccountSeq, err := latestMasterAccount.GetSequenceNumber()
 	tt.NoError(err)
-	txParams := buildTXParams(master, masterAccount, currentAccountSeq, currentAccountSeq+1)
+	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
 
 	// this errors because the tx preconditions require extra signer that
 	// didn't sign this tx
@@ -114,13 +158,7 @@ func TestTransactionPreconditionsExtraSigners(t *testing.T) {
 	assert.ElementsMatch(t, txHistory.Preconditions.ExtraSigners, txParams.Preconditions.ExtraSigners)
 }
 
-func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceAccountSeq int64, txSequence int64) txnbuild.TransactionParams {
-
-	ops := []txnbuild.Operation{
-		&txnbuild.BumpSequence{
-			BumpTo: sourceAccountSeq + 10,
-		},
-	}
+func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSequence int64) txnbuild.TransactionParams {
 
 	return txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
@@ -128,9 +166,15 @@ func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, sourceA
 			Sequence:  txSequence,
 		},
 		// Phony operation to run
-		Operations: ops,
-		BaseFee:    txnbuild.MinBaseFee,
-		Memo:       nil,
+		Operations: []txnbuild.Operation{
+			&txnbuild.Payment{
+				Destination: master.Address(),
+				Amount:      "10",
+				Asset:       txnbuild.NativeAsset{},
+			},
+		},
+		BaseFee: txnbuild.MinBaseFee,
+		Memo:    nil,
 		Preconditions: txnbuild.Preconditions{
 			TimeBounds: txnbuild.NewInfiniteTimeout(),
 		},
@@ -145,12 +189,13 @@ func TestTransactionPreconditionsAccountFields(t *testing.T) {
 	}
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()
-	currentAccountSeq, err := masterAccount.GetSequenceNumber()
-	tt.NoError(err)
 
+	// Submit phony operation
 	tx := itest.MustSubmitOperations(masterAccount, master,
-		&txnbuild.BumpSequence{
-			BumpTo: currentAccountSeq + 10,
+		&txnbuild.Payment{
+			Destination: master.Address(),
+			Amount:      "10",
+			Asset:       txnbuild.NativeAsset{},
 		},
 	)
 
