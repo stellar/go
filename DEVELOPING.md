@@ -63,7 +63,7 @@ To add a specific version of a dependency use `go get`:
 go get <importpath>@<version>
 ```
 
-Before opening a PR make sure to run following command to tidy the module file. It would keep the go.* files current:
+Before opening a PR make sure to run following command to tidy the module file. It will keep the go.* files tidy:
 - `go mod tidy`
 
 ### Updating a dependency
