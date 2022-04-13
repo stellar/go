@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## V2.16.1
+
+* v2.16.0 rebuilt using Golang 1.18.1 with security fixes for CVE-2022-24675, CVE-2022-28327 and CVE-2022-27536.
+
 ## V2.16.0
 
 * Replace keybase with publicnode in the stellar core config. ([4291](https://github.com/stellar/go/pull/4291))
