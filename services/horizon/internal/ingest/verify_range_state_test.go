@@ -334,7 +334,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 									Ext: xdr.AccountEntryExtensionV2Ext{
 										V: 3,
 										V3: &xdr.AccountEntryExtensionV3{
-											SeqTime: xdr.TimePoint(18446744011573954816),
+											SeqTime:   xdr.TimePoint(18446744011573954816),
+											SeqLedger: xdr.Uint32(12345678),
 										},
 									},
 								},
@@ -484,6 +485,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		AccountID:          mockAccountID,
 		Balance:            600,
 		LastModifiedLedger: 62,
+		SequenceTime:       18446744011573954816,
+		SequenceLedger:     12345678,
 		MasterWeight:       1,
 		NumSponsored:       0,
 		NumSponsoring:      2,

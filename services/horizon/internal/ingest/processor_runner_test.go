@@ -6,7 +6,6 @@ import (
 	"io"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/guregu/null"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +30,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 			Balance:            int64(1000000000000000000),
 			SequenceNumber:     0,
-			SequenceTime:       time.Unix(0, 0).UTC(),
+			SequenceTime:       0,
 			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
@@ -97,7 +96,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 			Balance:            int64(1000000000000000000),
 			SequenceNumber:     0,
-			SequenceTime:       time.Unix(0, 0).UTC(),
+			SequenceTime:       0,
 			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
