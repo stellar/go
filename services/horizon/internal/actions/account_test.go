@@ -177,7 +177,7 @@ func TestAccountInfo(t *testing.T) {
 		Balance:              9999999900,
 		SequenceNumber:       8589934593,
 		SequenceLedger:       4567,
-		SequenceTime:         time.Unix(1647465533, 0),
+		SequenceTime:         1647465533,
 		NumSubEntries:        1,
 		InflationDestination: "",
 		HomeDomain:           "",

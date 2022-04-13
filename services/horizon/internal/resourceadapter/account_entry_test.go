@@ -46,7 +46,7 @@ var (
 		Balance:              20000,
 		SequenceNumber:       223456789,
 		SequenceLedger:       2345,
-		SequenceTime:         time.Unix(1647265533, 0),
+		SequenceTime:         1647265533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest.Address(),
 		Flags:                0b1001, // required and clawback
@@ -147,7 +147,7 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt.Equal(account.AccountID, hAccount.PT)
 	tt.Equal(strconv.FormatInt(account.SequenceNumber, 10), hAccount.Sequence)
 	tt.Equal(account.SequenceLedger, hAccount.SequenceLedger)
-	tt.Equal(fmt.Sprintf("%d", account.SequenceTime.Unix()), hAccount.SequenceTime)
+	tt.Equal(fmt.Sprintf("%d", account.SequenceTime), hAccount.SequenceTime)
 	tt.Equal(account.NumSubEntries, uint32(hAccount.SubentryCount))
 	tt.Equal(account.InflationDestination, hAccount.InflationDestination)
 	tt.Equal(account.HomeDomain, hAccount.HomeDomain)
