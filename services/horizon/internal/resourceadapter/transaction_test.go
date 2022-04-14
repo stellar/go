@@ -164,12 +164,12 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 		row  history.Transaction
 	)
 
-	validAfter := time.Now().Add(-1 * time.Hour)
-	validBefore := time.Now().Add(1 * time.Hour)
+	validAfter := time.Now().UTC().Add(-1 * time.Hour)
+	validBefore := time.Now().UTC().Add(1 * time.Hour)
 	minLedger := uint32(40071006 - 1024)
 	maxLedger := uint32(40071006 + 1024)
 	minAccountSequence := int64(10)
-	minSequenceAge := 30 * time.Second * 1000
+	minSequenceAge := uint64(30 * 1000)
 	minSequenceLedgerGap := uint32(5)
 
 	dest = Transaction{}
