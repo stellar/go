@@ -1,6 +1,8 @@
 package history
 
 import (
+	"fmt"
+	"math"
 	"testing"
 
 	"github.com/guregu/null"
@@ -188,7 +190,7 @@ func TestTransactionToMap_Preconditions(t *testing.T) {
 		Type:    xdr.CryptoKeyTypeKeyTypeEd25519,
 		Ed25519: &xdr.Uint256{3, 2, 1},
 	}
-	minSeqNum := xdr.SequenceNumber(24)
+	minSeqNum := xdr.SequenceNumber(math.MaxInt64)
 	signerKey := xdr.SignerKey{
 		Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
 		Ed25519: source.Ed25519,
@@ -226,7 +228,7 @@ func TestTransactionToMap_Preconditions(t *testing.T) {
 								MaxLedger: 10,
 							},
 							MinSeqNum:       &minSeqNum,
-							MinSeqAge:       xdr.Duration(1024),
+							MinSeqAge:       xdr.Duration(math.MaxUint64),
 							MinSeqLedgerGap: xdr.Uint32(3),
 							ExtraSigners:    []xdr.SignerKey{signerKey},
 						},
@@ -272,8 +274,8 @@ func TestTransactionToMap_Preconditions(t *testing.T) {
 	assert.Equal(t, null.IntFrom(5), row.LedgerBounds.MinLedger)
 	assert.Equal(t, null.IntFrom(10), row.LedgerBounds.MaxLedger)
 
-	assert.Equal(t, null.IntFrom(24), row.MinAccountSequence)
-	assert.Equal(t, null.IntFrom(1024), row.MinAccountSequenceAge)
+	assert.Equal(t, null.IntFrom(int64(minSeqNum)), row.MinAccountSequence)
+	assert.Equal(t, null.StringFrom(fmt.Sprint(uint64(math.MaxUint64))), row.MinAccountSequenceAge)
 	assert.Equal(t, null.IntFrom(3), row.MinAccountSequenceLedgerGap)
 	assert.Equal(t, pq.StringArray{signerKey.Address()}, row.ExtraSigners)
 }

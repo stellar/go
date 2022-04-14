@@ -776,7 +776,7 @@ func TestInsertTransaction(t *testing.T) {
 					TimeBounds:                  v2TimeboundsWithMinAndMax,
 					LedgerBounds:                v2LedgerboundsWithMinAndMax,
 					MinAccountSequence:          null.Int{},
-					MinAccountSequenceAge:       null.IntFrom(10),
+					MinAccountSequenceAge:       null.StringFrom("10"),
 					MinAccountSequenceLedgerGap: null.IntFrom(2),
 					ExtraSigners:                pq.StringArray{},
 					Successful:                  success,

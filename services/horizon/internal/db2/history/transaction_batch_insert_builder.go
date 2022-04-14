@@ -135,7 +135,7 @@ type TransactionWithoutLedger struct {
 	TimeBounds                  TimeBounds     `db:"time_bounds"`
 	LedgerBounds                LedgerBounds   `db:"ledger_bounds"`
 	MinAccountSequence          null.Int       `db:"min_account_sequence"`
-	MinAccountSequenceAge       null.Int       `db:"min_account_sequence_age"`
+	MinAccountSequenceAge       null.String    `db:"min_account_sequence_age"`
 	MinAccountSequenceLedgerGap null.Int       `db:"min_account_sequence_ledger_gap"`
 	ExtraSigners                pq.StringArray `db:"extra_signers"`
 	CreatedAt                   time.Time      `db:"created_at"`
@@ -234,11 +234,11 @@ func formatMinSequenceNumber(minSeqNum *int64) null.Int {
 	return null.IntFrom(int64(*minSeqNum))
 }
 
-func formatDuration(d *xdr.Duration) null.Int {
+func formatDuration(d *xdr.Duration) null.String {
 	if d == nil {
-		return null.Int{}
+		return null.String{}
 	}
-	return null.IntFrom(int64(*d))
+	return null.StringFrom(fmt.Sprint(uint64(*d)))
 }
 
 func formatUint32(u *xdr.Uint32) null.Int {
