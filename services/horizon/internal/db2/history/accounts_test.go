@@ -94,7 +94,7 @@ func TestInsertAccount(t *testing.T) {
 	assert.Equal(t, int64(20000), accounts[0].Balance)
 	assert.Equal(t, int64(223456789), accounts[0].SequenceNumber)
 	assert.Equal(t, uint32(2345), accounts[0].SequenceLedger)
-	assert.Equal(t, 1647265533, accounts[0].SequenceTime)
+	assert.Equal(t, uint64(1647265533), accounts[0].SequenceTime)
 	assert.Equal(t, uint32(10), accounts[0].NumSubEntries)
 	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", accounts[0].InflationDestination)
 	assert.Equal(t, uint32(1), accounts[0].Flags)
