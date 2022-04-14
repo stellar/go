@@ -221,7 +221,7 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	// gather up the current sequence times
 	signedAcctSeqTime, err := strconv.ParseInt(latestMasterAccount.SequenceTime, 10, 64)
 	tt.NoError(err)
-	tt.GreaterOrEqual(signedAcctSeqTime, 0)
+	tt.GreaterOrEqual(signedAcctSeqTime, int64(0))
 	acctSeqTime := uint64(signedAcctSeqTime)
 	networkSeqTime := uint64(ledgers.Embedded.Records[0].ClosedAt.UTC().Unix())
 
