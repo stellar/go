@@ -11,7 +11,8 @@ ALTER TABLE accounts ADD sequence_time bigint;
 -- CAP-40 signed payload strkeys can be 165 characters long, see
 -- strkey/main.go:maxEncodedSize. But we'll use text here, so we don't need to
 -- adjust it *ever again*.
-ALTER TABLE accounts_signers ALTER COLUMN signer TYPE text;
+ALTER TABLE accounts_signers
+  ALTER COLUMN signer TYPE text;
 
 -- +migrate Down
 ALTER TABLE history_transactions DROP ledger_bounds;
@@ -23,4 +24,5 @@ ALTER TABLE history_transactions DROP extra_signers;
 ALTER TABLE accounts DROP sequence_ledger;
 ALTER TABLE accounts DROP sequence_time;
 
-ALTER TABLE accounts_signers ALTER COLUMN signer TYPE character varying(64);
+ALTER TABLE accounts_signers
+  ALTER COLUMN signer TYPE character varying(64);
