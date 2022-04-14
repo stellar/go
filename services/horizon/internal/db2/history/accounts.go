@@ -98,7 +98,7 @@ func (q *Q) UpsertAccounts(ctx context.Context, accounts []AccountEntry) error {
 		{"selling_liabilities", "bigint", sellingLiabilities},
 		{"sequence_number", "bigint", sequenceNumber},
 		{"sequence_ledger", "int", sequenceLedger},
-		{"sequence_time", "timestamp", sequenceTime},
+		{"sequence_time", "bigint", sequenceTime},
 		{"num_subentries", "int", numSubEntries},
 		{"inflation_destination", "text", inflationDestination},
 		{"flags", "int", flags},

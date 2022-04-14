@@ -426,7 +426,7 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 								V: 3,
 								V3: &xdr.AccountEntryExtensionV3{
 									SeqLedger: xdr.Uint32(row.SequenceLedger),
-									SeqTime:   xdr.TimePoint(row.SequenceTime.Unix()),
+									SeqTime:   xdr.TimePoint(row.SequenceTime),
 								},
 							},
 						},

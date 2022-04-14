@@ -2,7 +2,6 @@ package history
 
 import (
 	"testing"
-	"time"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -21,7 +20,7 @@ var (
 		Balance:              20000,
 		SequenceNumber:       223456789,
 		SequenceLedger:       2345,
-		SequenceTime:         time.Unix(1647265533, 0).UTC(),
+		SequenceTime:         1647265533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                1,
@@ -40,7 +39,7 @@ var (
 		Balance:              50000,
 		SequenceNumber:       648736,
 		SequenceLedger:       3456,
-		SequenceTime:         time.Unix(1647365533, 0).UTC(),
+		SequenceTime:         1647365533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                2,
@@ -62,7 +61,7 @@ var (
 		Balance:              50000,
 		SequenceNumber:       648736,
 		SequenceLedger:       4567,
-		SequenceTime:         time.Unix(1647465533, 0).UTC(),
+		SequenceTime:         1647465533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                2,
@@ -95,9 +94,7 @@ func TestInsertAccount(t *testing.T) {
 	assert.Equal(t, int64(20000), accounts[0].Balance)
 	assert.Equal(t, int64(223456789), accounts[0].SequenceNumber)
 	assert.Equal(t, uint32(2345), accounts[0].SequenceLedger)
-	// Convert actual result to UTC timezone for comparison;
-	// query results from DB for SequenceTime supply a blank timezone.
-	assert.Equal(t, time.Unix(1647265533, 0).UTC(), accounts[0].SequenceTime.UTC())
+	assert.Equal(t, uint64(1647265533), accounts[0].SequenceTime)
 	assert.Equal(t, uint32(10), accounts[0].NumSubEntries)
 	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", accounts[0].InflationDestination)
 	assert.Equal(t, uint32(1), accounts[0].Flags)
@@ -132,6 +129,7 @@ func TestUpsertAccount(t *testing.T) {
 		AccountID:            "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		Balance:              32847893,
 		SequenceNumber:       223456789,
+		SequenceTime:         223456789223456789,
 		SequenceLedger:       2345,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
