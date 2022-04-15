@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -218,9 +219,11 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	tt.Len(ledgers.Embedded.Records, 1)
 
 	// gather up the current sequence times
-	acctSeqTime, err := strconv.ParseInt(latestMasterAccount.SequenceTime, 10, 64)
+	signedAcctSeqTime, err := strconv.ParseInt(latestMasterAccount.SequenceTime, 10, 64)
 	tt.NoError(err)
-	networkSeqTime := ledgers.Embedded.Records[0].ClosedAt.UTC().Unix()
+	tt.GreaterOrEqual(signedAcctSeqTime, int64(0))
+	acctSeqTime := uint64(signedAcctSeqTime)
+	networkSeqTime := uint64(ledgers.Embedded.Records[0].ClosedAt.UTC().Unix())
 
 	// build a tx with seqnum based on master.seqNum+1 as source account
 	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
@@ -241,7 +244,8 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	//verify roundtrip to network and back through the horizon api returns same precondition values
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
 	assert.NoError(t, err)
-	assert.Equal(t, txHistory.Preconditions.MinAccountSequenceAge, strconv.FormatInt(txParams.Preconditions.MinSequenceNumberAge, 10))
+	assert.EqualValues(t, txHistory.Preconditions.MinAccountSequenceAge,
+		fmt.Sprint(uint64(txParams.Preconditions.MinSequenceNumberAge)))
 }
 
 func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {

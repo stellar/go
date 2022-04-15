@@ -164,12 +164,12 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 		row  history.Transaction
 	)
 
-	validAfter := time.Now().Add(-1 * time.Hour)
-	validBefore := time.Now().Add(1 * time.Hour)
+	validAfter := time.Now().UTC().Add(-1 * time.Hour)
+	validBefore := time.Now().UTC().Add(1 * time.Hour)
 	minLedger := uint32(40071006 - 1024)
 	maxLedger := uint32(40071006 + 1024)
 	minAccountSequence := int64(10)
-	minSequenceAge := 30 * time.Second * 1000
+	minSequenceAge := uint64(30 * 1000)
 	minSequenceLedgerGap := uint32(5)
 
 	dest = Transaction{}
@@ -184,7 +184,7 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 				MaxLedger: null.IntFrom(int64(maxLedger)),
 			},
 			MinAccountSequence:          null.IntFrom(minAccountSequence),
-			MinAccountSequenceAge:       null.IntFrom(int64(minSequenceAge)),
+			MinAccountSequenceAge:       null.StringFrom(fmt.Sprint(minSequenceAge)),
 			MinAccountSequenceLedgerGap: null.IntFrom(int64(minSequenceLedgerGap)),
 			ExtraSigners:                pq.StringArray{"D34DB33F", "8BADF00D"},
 		},
@@ -199,7 +199,7 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 	assert.Equal(t, minLedger, p.Ledgerbounds.MinLedger)
 	assert.Equal(t, maxLedger, p.Ledgerbounds.MaxLedger)
 	assert.Equal(t, fmt.Sprint(minAccountSequence), p.MinAccountSequence)
-	assert.Equal(t, fmt.Sprint(int64(minSequenceAge)), p.MinAccountSequenceAge)
+	assert.Equal(t, fmt.Sprint(uint64(minSequenceAge)), p.MinAccountSequenceAge)
 	assert.Equal(t, minSequenceLedgerGap, p.MinAccountSequenceLedgerGap)
 	assert.Equal(t, []string{"D34DB33F", "8BADF00D"}, p.ExtraSigners)
 }

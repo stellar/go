@@ -19,7 +19,7 @@ type Preconditions struct {
 	// Transaction is valid if the current ledger time is at least
 	// minSequenceNumberAge greater than the source account's seqTime (units are
 	// seconds).
-	MinSequenceNumberAge int64
+	MinSequenceNumberAge uint64
 	// Transaction is valid if the current ledger number is at least
 	// minSequenceNumberLedgerGap greater than the source account's seqLedger.
 	MinSequenceNumberLedgerGap uint32
@@ -135,7 +135,7 @@ func (cond *Preconditions) FromXDR(precondXdr xdr.Preconditions) error {
 			cond.MinSequenceNumber = &minSeqNum
 		}
 
-		cond.MinSequenceNumberAge = int64(inner.MinSeqAge)
+		cond.MinSequenceNumberAge = uint64(inner.MinSeqAge)
 		cond.MinSequenceNumberLedgerGap = uint32(inner.MinSeqLedgerGap)
 		if len(inner.ExtraSigners) > 0 {
 			cond.ExtraSigners = make([]string, len(inner.ExtraSigners))
