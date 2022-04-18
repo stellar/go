@@ -45,6 +45,7 @@ type ConnectOptions struct {
 	S3Region          string
 	S3Endpoint        string
 	UnsignedRequests  bool
+	GCSEndpoint       string
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
@@ -410,20 +411,28 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	}
 
 	pth := parsed.Path
-	if parsed.Scheme == "s3" {
+	switch parsed.Scheme {
+	case "s3":
 		// Inside s3, all paths start _without_ the leading /
-		if len(pth) > 0 && pth[0] == '/' {
-			pth = pth[1:]
-		}
+		pth = strings.TrimPrefix(pth, "/")
 		arch.backend, err = makeS3Backend(parsed.Host, pth, opts)
-	} else if parsed.Scheme == "file" {
+
+	case "gcs":
+		// Inside gcs, all paths start _without_ the leading /
+		pth = strings.TrimPrefix(pth, "/")
+		arch.backend, err = makeGCSBackend(parsed.Host, pth, opts)
+
+	case "file":
 		pth = path.Join(parsed.Host, pth)
 		arch.backend = makeFsBackend(pth, opts)
-	} else if parsed.Scheme == "http" || parsed.Scheme == "https" {
+
+	case "http", "https":
 		arch.backend = makeHttpBackend(parsed, opts)
-	} else if parsed.Scheme == "mock" {
+
+	case "mock":
 		arch.backend = makeMockBackend(opts)
-	} else {
+
+	default:
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
 	}
 	if err == nil && opts.Wrap != nil {
