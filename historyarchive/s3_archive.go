@@ -7,10 +7,11 @@ package historyarchive
 import (
 	"bytes"
 	"context"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"path"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -191,6 +192,10 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 
 func (b *S3ArchiveBackend) CanListFiles() bool {
 	return true
+}
+
+func (b *S3ArchiveBackend) Close() error {
+	return nil
 }
 
 func makeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {

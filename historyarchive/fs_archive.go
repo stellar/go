@@ -121,6 +121,10 @@ func (b *FsArchiveBackend) CanListFiles() bool {
 	return true
 }
 
+func (b *FsArchiveBackend) Close() error {
+	return nil
+}
+
 func makeFsBackend(pth string, opts ConnectOptions) ArchiveBackend {
 	return &FsArchiveBackend{
 		prefix: pth,

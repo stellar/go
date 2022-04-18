@@ -133,6 +133,10 @@ func (b *FsCacheBackend) updateLRU(pth string) {
 	}
 }
 
+func (b *FsCacheBackend) Close() error {
+	return b.ArchiveBackend.Close()
+}
+
 // MakeFsCacheBackend, wraps an ArchiveBackend with a local filesystem cache in
 // `dir`. If dir is blank, a temporary directory will be created.
 func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (ArchiveBackend, error) {

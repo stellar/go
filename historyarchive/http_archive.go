@@ -125,6 +125,10 @@ func (b *HttpArchiveBackend) CanListFiles() bool {
 	return false
 }
 
+func (b *HttpArchiveBackend) Close() error {
+	return nil
+}
+
 func makeHttpBackend(base *url.URL, opts ConnectOptions) ArchiveBackend {
 	return &HttpArchiveBackend{
 		ctx:  opts.Context,
