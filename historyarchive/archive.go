@@ -398,13 +398,23 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
 	}
 
+	if opts.Context == nil {
+		opts.Context = context.Background()
+	}
+
+	var err error
+	arch.backend, err = ConnectBackend(u, opts)
+	return &arch, err
+}
+
+func ConnectBackend(u string, opts ConnectOptions) (ArchiveBackend, error) {
 	if u == "" {
-		return &arch, errors.New("URL is empty")
+		return nil, errors.New("URL is empty")
 	}
 
 	parsed, err := url.Parse(u)
 	if err != nil {
-		return &arch, err
+		return nil, err
 	}
 
 	if opts.Context == nil {
@@ -412,34 +422,35 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	}
 
 	pth := parsed.Path
+	var backend ArchiveBackend
 	switch parsed.Scheme {
 	case "s3":
 		// Inside s3, all paths start _without_ the leading /
 		pth = strings.TrimPrefix(pth, "/")
-		arch.backend, err = makeS3Backend(parsed.Host, pth, opts)
+		backend, err = makeS3Backend(parsed.Host, pth, opts)
 
 	case "gcs":
 		// Inside gcs, all paths start _without_ the leading /
 		pth = strings.TrimPrefix(pth, "/")
-		arch.backend, err = makeGCSBackend(parsed.Host, pth, opts)
+		backend, err = makeGCSBackend(parsed.Host, pth, opts)
 
 	case "file":
 		pth = path.Join(parsed.Host, pth)
-		arch.backend = makeFsBackend(pth, opts)
+		backend = makeFsBackend(pth, opts)
 
 	case "http", "https":
-		arch.backend = makeHttpBackend(parsed, opts)
+		backend = makeHttpBackend(parsed, opts)
 
 	case "mock":
-		arch.backend = makeMockBackend(opts)
+		backend = makeMockBackend(opts)
 
 	default:
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
 	}
 	if err == nil && opts.Wrap != nil {
-		arch.backend, err = opts.Wrap(arch.backend)
+		backend, err = opts.Wrap(backend)
 	}
-	return &arch, err
+	return backend, err
 }
 
 func MustConnect(u string, opts ConnectOptions) *Archive {

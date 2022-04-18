@@ -3,38 +3,43 @@ package main
 import (
 	"bytes"
 	"context"
-	"github.com/stellar/go/xdr"
+	"flag"
 	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
-	"cloud.google.com/go/storage"
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	supportlog "github.com/stellar/go/support/log"
 )
 
-const (
-	bucket = "horizon-archive-poc"
-)
 var logger = supportlog.New()
 
 func main() {
+	targetUrl := flag.String("target", "gcs://horizon-archive-poc", "history archive url to write txmeta files")
+	stellarCoreBinaryPath := flag.String("stellar-core-binary-path", os.Getenv("STELLAR_CORE_BINARY_PATH"), "path to the stellar core binary")
+	networkPassphrase := flag.String("network-passphrase", "Test SDF Network ; September 2015", "network passphrase")
+	historyArchiveUrls := flag.String("history-archive-urls", "https://history.stellar.org/prd/core-testnet/core_testnet_001", "comma-separated list of history archive urls to read from")
+	flag.Parse()
+
 	logger.SetLevel(supportlog.InfoLevel)
-	binaryPath := os.Getenv("STELLAR_CORE_BINARY_PATH")
 
 	params := ledgerbackend.CaptiveCoreTomlParams{
-		NetworkPassphrase:  "Test SDF Network ; September 2015",
-		HistoryArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001"},
+		NetworkPassphrase:  *networkPassphrase,
+		HistoryArchiveURLs: strings.Split(*historyArchiveUrls, ","),
 	}
-	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(os.Getenv("CAPTIVE_CORE_TOML_PATH"),params)
+	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(os.Getenv("CAPTIVE_CORE_TOML_PATH"), params)
 	if err != nil {
 		logger.WithError(err).Fatal("Invalid captive core toml")
 	}
 
 	captiveConfig := ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          binaryPath,
+		BinaryPath:          *stellarCoreBinaryPath,
 		NetworkPassphrase:   params.NetworkPassphrase,
 		HistoryArchiveURLs:  params.HistoryArchiveURLs,
 		CheckpointFrequency: 64,
@@ -46,15 +51,17 @@ func main() {
 		logger.WithError(err).Fatal("Could not create captive core instance")
 	}
 
-	client, err := storage.NewClient(context.Background())
-	if err != nil {
-		logger.WithError(err).Fatal("Could not create GCS client")
-	}
-	defer client.Close()
+	target, err := historyarchive.ConnectBackend(
+		*targetUrl,
+		historyarchive.ConnectOptions{
+			Context:           context.Background(),
+			NetworkPassphrase: params.NetworkPassphrase,
+		},
+	)
+	defer target.Close()
 
 	var latestLedger uint32
-	gcsBucket := client.Bucket(bucket)
-	latestLedger = readLatestLedger(gcsBucket)
+	latestLedger = readLatestLedger(target)
 
 	nextLedger := latestLedger + 1
 	if err := core.PrepareRange(context.Background(), ledgerbackend.UnboundedRange(latestLedger)); err != nil {
@@ -69,11 +76,11 @@ func main() {
 			continue
 		}
 
-		if err = writeLedger(gcsBucket, leddger); err != nil {
+		if err = writeLedger(target, leddger); err != nil {
 			continue
 		}
 
-		if err = writeLatestLedger(gcsBucket, nextLedger); err != nil {
+		if err = writeLatestLedger(target, nextLedger); err != nil {
 			logger.WithError(err).Warnf("could not write latest ledger %v", nextLedger)
 		}
 
@@ -82,9 +89,9 @@ func main() {
 
 }
 
-func readLatestLedger(gcsBucket *storage.BucketHandle) uint32 {
-	r, err := gcsBucket.Object("latest").NewReader(context.Background())
-	if err == storage.ErrObjectNotExist {
+func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
+	r, err := backend.GetFile("latest")
+	if err == os.ErrNotExist {
 		return 2
 	} else if err != nil {
 		logger.WithError(err).Fatal("could not open latest ledger bucket")
@@ -103,27 +110,28 @@ func readLatestLedger(gcsBucket *storage.BucketHandle) uint32 {
 	return 0
 }
 
-func writeLedger(gcsBucket *storage.BucketHandle, leddger xdr.LedgerCloseMeta) error {
-	writer := gcsBucket.Object("ledgers/" + strconv.FormatUint(uint64(leddger.LedgerSequence()), 10)).NewWriter(context.Background())
+func writeLedger(backend historyarchive.ArchiveBackend, leddger xdr.LedgerCloseMeta) error {
 	blob, err := leddger.MarshalBinary()
 	if err != nil {
 		logger.WithError(err).Fatalf("could not serialize ledger %v", uint64(leddger.LedgerSequence()))
 	}
-	if _, err = io.Copy(writer, bytes.NewReader(blob)); err != nil {
+	err = backend.PutFile(
+		"ledgers/"+strconv.FormatUint(uint64(leddger.LedgerSequence()), 10),
+		ioutil.NopCloser(bytes.NewReader(blob)),
+	)
+	if err != nil {
 		logger.WithError(err).Warnf("could not write ledger object %v, will retry", uint64(leddger.LedgerSequence()))
-		return err
 	}
-	if err = writer.Close(); err != nil {
-		logger.WithError(err).Warnf("could not close ledger object %v, will retry", uint64(leddger.LedgerSequence()))
-		return err
-	}
-	return nil
+	return err
 }
 
-func writeLatestLedger(gcsBucket *storage.BucketHandle, ledger uint32) error {
-	w := gcsBucket.Object("latest").NewWriter(context.Background())
-	if _, err := io.Copy(w, bytes.NewBufferString(strconv.FormatUint(uint64(ledger), 10))); err != nil {
-		return nil
-	}
-	return w.Close()
+func writeLatestLedger(backend historyarchive.ArchiveBackend, ledger uint32) error {
+	return backend.PutFile(
+		"latest",
+		ioutil.NopCloser(
+			bytes.NewBufferString(
+				strconv.FormatUint(uint64(ledger), 10),
+			),
+		),
+	)
 }
