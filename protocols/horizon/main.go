@@ -43,6 +43,8 @@ type Account struct {
 	ID                   string            `json:"id"`
 	AccountID            string            `json:"account_id"`
 	Sequence             string            `json:"sequence"`
+	SequenceLedger       uint32            `json:"sequence_ledger,omitempty"`
+	SequenceTime         string            `json:"sequence_time,omitempty"`
 	SubentryCount        int32             `json:"subentry_count"`
 	InflationDestination string            `json:"inflation_destination,omitempty"`
 	HomeDomain           string            `json:"home_domain,omitempty"`
@@ -499,34 +501,57 @@ type Transaction struct {
 		// When TransactionSuccess is removed from the SDKs we can remove this HAL link
 		Transaction hal.Link `json:"transaction"`
 	} `json:"_links"`
-	ID                 string              `json:"id"`
-	PT                 string              `json:"paging_token"`
-	Successful         bool                `json:"successful"`
-	Hash               string              `json:"hash"`
-	Ledger             int32               `json:"ledger"`
-	LedgerCloseTime    time.Time           `json:"created_at"`
-	Account            string              `json:"source_account"`
-	AccountMuxed       string              `json:"account_muxed,omitempty"`
-	AccountMuxedID     uint64              `json:"account_muxed_id,omitempty,string"`
-	AccountSequence    string              `json:"source_account_sequence"`
-	FeeAccount         string              `json:"fee_account"`
-	FeeAccountMuxed    string              `json:"fee_account_muxed,omitempty"`
-	FeeAccountMuxedID  uint64              `json:"fee_account_muxed_id,omitempty,string"`
-	FeeCharged         int64               `json:"fee_charged,string"`
-	MaxFee             int64               `json:"max_fee,string"`
-	OperationCount     int32               `json:"operation_count"`
-	EnvelopeXdr        string              `json:"envelope_xdr"`
-	ResultXdr          string              `json:"result_xdr"`
-	ResultMetaXdr      string              `json:"result_meta_xdr"`
-	FeeMetaXdr         string              `json:"fee_meta_xdr"`
-	MemoType           string              `json:"memo_type"`
-	MemoBytes          string              `json:"memo_bytes,omitempty"`
-	Memo               string              `json:"memo,omitempty"`
-	Signatures         []string            `json:"signatures"`
-	ValidAfter         string              `json:"valid_after,omitempty"`
-	ValidBefore        string              `json:"valid_before,omitempty"`
-	FeeBumpTransaction *FeeBumpTransaction `json:"fee_bump_transaction,omitempty"`
-	InnerTransaction   *InnerTransaction   `json:"inner_transaction,omitempty"`
+	ID                string    `json:"id"`
+	PT                string    `json:"paging_token"`
+	Successful        bool      `json:"successful"`
+	Hash              string    `json:"hash"`
+	Ledger            int32     `json:"ledger"`
+	LedgerCloseTime   time.Time `json:"created_at"`
+	Account           string    `json:"source_account"`
+	AccountMuxed      string    `json:"account_muxed,omitempty"`
+	AccountMuxedID    uint64    `json:"account_muxed_id,omitempty,string"`
+	AccountSequence   string    `json:"source_account_sequence"`
+	FeeAccount        string    `json:"fee_account"`
+	FeeAccountMuxed   string    `json:"fee_account_muxed,omitempty"`
+	FeeAccountMuxedID uint64    `json:"fee_account_muxed_id,omitempty,string"`
+	FeeCharged        int64     `json:"fee_charged,string"`
+	MaxFee            int64     `json:"max_fee,string"`
+	OperationCount    int32     `json:"operation_count"`
+	EnvelopeXdr       string    `json:"envelope_xdr"`
+	ResultXdr         string    `json:"result_xdr"`
+	ResultMetaXdr     string    `json:"result_meta_xdr"`
+	FeeMetaXdr        string    `json:"fee_meta_xdr"`
+	MemoType          string    `json:"memo_type"`
+	MemoBytes         string    `json:"memo_bytes,omitempty"`
+	Memo              string    `json:"memo,omitempty"`
+	Signatures        []string  `json:"signatures"`
+	// Action needed in release: horizon-v3.0.0: remove valid_(after|before)
+	ValidAfter         string                    `json:"valid_after,omitempty"`
+	ValidBefore        string                    `json:"valid_before,omitempty"`
+	Preconditions      *TransactionPreconditions `json:"preconditions,omitempty"`
+	FeeBumpTransaction *FeeBumpTransaction       `json:"fee_bump_transaction,omitempty"`
+	InnerTransaction   *InnerTransaction         `json:"inner_transaction,omitempty"`
+}
+
+type TransactionPreconditions struct {
+	TimeBounds   *TransactionPreconditionsTimebounds   `json:"timebounds,omitempty"`
+	LedgerBounds *TransactionPreconditionsLedgerbounds `json:"ledgerbounds,omitempty"`
+
+	MinAccountSequence          string `json:"min_account_sequence,omitempty"`
+	MinAccountSequenceAge       string `json:"min_account_sequence_age,omitempty"`
+	MinAccountSequenceLedgerGap uint32 `json:"min_account_sequence_ledger_gap,omitempty"`
+
+	ExtraSigners []string `json:"extra_signers,omitempty"`
+}
+
+type TransactionPreconditionsTimebounds struct {
+	MinTime string `json:"min_time,omitempty"`
+	MaxTime string `json:"max_time,omitempty"`
+}
+
+type TransactionPreconditionsLedgerbounds struct {
+	MinLedger uint32 `json:"min_ledger"`
+	MaxLedger uint32 `json:"max_ledger"`
 }
 
 // FeeBumpTransaction contains information about a fee bump transaction

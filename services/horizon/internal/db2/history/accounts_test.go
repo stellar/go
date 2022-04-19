@@ -19,6 +19,8 @@ var (
 		AccountID:            "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		Balance:              20000,
 		SequenceNumber:       223456789,
+		SequenceLedger:       2345,
+		SequenceTime:         1647265533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                1,
@@ -36,6 +38,8 @@ var (
 		AccountID:            "GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7",
 		Balance:              50000,
 		SequenceNumber:       648736,
+		SequenceLedger:       3456,
+		SequenceTime:         1647365533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                2,
@@ -56,6 +60,8 @@ var (
 		AccountID:            "GDPGOMFSP4IF7A4P7UBKA4UC4QTRLEHGBD6IMDIS3W3KBDNBFAQ7FXDY",
 		Balance:              50000,
 		SequenceNumber:       648736,
+		SequenceLedger:       4567,
+		SequenceTime:         1647465533,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                2,
@@ -87,6 +93,8 @@ func TestInsertAccount(t *testing.T) {
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", accounts[0].AccountID)
 	assert.Equal(t, int64(20000), accounts[0].Balance)
 	assert.Equal(t, int64(223456789), accounts[0].SequenceNumber)
+	assert.Equal(t, uint32(2345), accounts[0].SequenceLedger)
+	assert.Equal(t, uint64(1647265533), accounts[0].SequenceTime)
 	assert.Equal(t, uint32(10), accounts[0].NumSubEntries)
 	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", accounts[0].InflationDestination)
 	assert.Equal(t, uint32(1), accounts[0].Flags)
@@ -121,6 +129,8 @@ func TestUpsertAccount(t *testing.T) {
 		AccountID:            "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		Balance:              32847893,
 		SequenceNumber:       223456789,
+		SequenceTime:         223456789223456789,
+		SequenceLedger:       2345,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                1,
@@ -156,6 +166,7 @@ func TestUpsertAccount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 1)
 
+	accounts[0].SequenceTime = modifiedAccount.SequenceTime
 	assert.Equal(t, modifiedAccount, accounts[0])
 	assert.Equal(t, uint32(1234), accounts[0].LastModifiedLedger)
 
@@ -163,7 +174,9 @@ func TestUpsertAccount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 1)
 
-	assert.Equal(t, account2, accounts[0])
+	expectedAccount := account2
+	expectedAccount.SequenceTime = accounts[0].SequenceTime
+	assert.Equal(t, expectedAccount, accounts[0])
 	assert.Equal(t, uint32(1235), accounts[0].LastModifiedLedger)
 }
 
@@ -445,6 +458,7 @@ func TestGetAccountByID(t *testing.T) {
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", resultAccount.AccountID)
 	assert.Equal(t, int64(20000), resultAccount.Balance)
 	assert.Equal(t, int64(223456789), resultAccount.SequenceNumber)
+	assert.Equal(t, uint32(2345), resultAccount.SequenceLedger)
 	assert.Equal(t, uint32(10), resultAccount.NumSubEntries)
 	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", resultAccount.InflationDestination)
 	assert.Equal(t, uint32(1), resultAccount.Flags)

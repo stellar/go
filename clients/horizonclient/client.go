@@ -653,10 +653,10 @@ func (c *Client) StreamOrderBooks(ctx context.Context, request OrderBookRequest,
 // It defaults to localtime when the server time is not available.
 // Note that this will generate your timebounds when you init the transaction, not when you build or submit
 // the transaction! So give yourself enough time to get the transaction built and signed before submitting.
-func (c *Client) FetchTimebounds(seconds int64) (txnbuild.Timebounds, error) {
+func (c *Client) FetchTimebounds(seconds int64) (txnbuild.TimeBounds, error) {
 	serverURL, err := url.Parse(c.HorizonURL)
 	if err != nil {
-		return txnbuild.Timebounds{}, errors.Wrap(err, "unable to parse horizon url")
+		return txnbuild.TimeBounds{}, errors.Wrap(err, "unable to parse horizon url")
 	}
 	currentTime := currentServerTime(serverURL.Hostname(), c.clock.Now().UTC().Unix())
 	if currentTime != 0 {

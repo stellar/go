@@ -422,6 +422,13 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 							NumSponsored:        xdr.Uint32(row.NumSponsored),
 							NumSponsoring:       xdr.Uint32(row.NumSponsoring),
 							SignerSponsoringIDs: signerSponsoringIDs,
+							Ext: xdr.AccountEntryExtensionV2Ext{
+								V: 3,
+								V3: &xdr.AccountEntryExtensionV3{
+									SeqLedger: xdr.Uint32(row.SequenceLedger),
+									SeqTime:   xdr.TimePoint(row.SequenceTime),
+								},
+							},
 						},
 					},
 				},

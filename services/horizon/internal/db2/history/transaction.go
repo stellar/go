@@ -250,7 +250,12 @@ var selectTransaction = sq.Select(
 		"ht.signatures, " +
 		"ht.memo_type, " +
 		"ht.memo, " +
-		"time_bounds, " +
+		"ht.time_bounds, " +
+		"ht.ledger_bounds, " +
+		"ht.min_account_sequence, " +
+		"ht.min_account_sequence_age, " +
+		"ht.min_account_sequence_ledger_gap, " +
+		"ht.extra_signers, " +
 		"hl.closed_at AS ledger_close_time, " +
 		"ht.inner_transaction_hash, " +
 		"ht.fee_account, " +

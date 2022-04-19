@@ -1136,9 +1136,11 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 					Value:         []byte("ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg"),
 				},
 			},
-			BaseFee:    txnbuild.MinBaseFee,
-			Memo:       nil,
-			Timebounds: txnbuild.NewTimebounds(txMinTimebounds, txMaxTimebounds),
+			BaseFee: txnbuild.MinBaseFee,
+			Memo:    nil,
+			Preconditions: txnbuild.Preconditions{
+				TimeBounds: txnbuild.NewTimebounds(txMinTimebounds, txMaxTimebounds),
+			},
 		},
 	)
 	require.NoError(t, err)
