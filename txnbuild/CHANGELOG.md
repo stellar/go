@@ -6,9 +6,14 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+
+## [10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-04-18
+
+* Adds support for Protocol 19 transaction preconditions ([CAP-21](https://stellar.org/protocol/cap-21)).
+
 ### Breaking changes
 
-* Adds support for Protocol 19 transaction preconditions ([CAP-21](https://stellar.org/protocol/cap-21)). There are many new ways for a transaction to be (in)valid (see the new `Preconditions` structure), and the corresponding breaking change is in how transactions are built:
+* There are many new ways for a transaction to be (in)valid (see the new `Preconditions` structure), and the corresponding breaking change is in how transactions are built:
 
 ```diff
  tx, err := NewTransaction(TransactionParams{

@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+**Support for Protocol 19** ([4340](https://github.com/stellar/go/pull/4340)):
+
+  - Account records can now contain two new, optional fields:
+
+```json
+    "sequence_ledger": 0, // uint32 ledger number
+    "sequence_time": "0"  // uint64 unix time in seconds, as a string
+```
+
+  The absence of these fields indicates that the account hasn't taken any actions since prior to the Protocol 19 release. Note that they'll either be both present or both absent.
+
+  - Transaction records can now contain the following optional object:
+
+```json
+    "preconditions": {
+      "timebounds": {
+        "min_time": "0",  // uint64 unix time in seconds, as a string
+        "max_time": "0"   // as above
+      },
+      "ledgerbounds": {
+        "min_ledger": 0,  // uint32 ledger number
+        "max_ledger": 0   // as above
+      },
+      "min_account_sequence": "0",          // int64 sequence number, as a string
+      "min_account_sequence_age": "0",      // uint64 unix time in seconds, as a string
+      "min_account_sequence_ledger_gap": 0, // uint32 ledger count
+
+      "extra_signers": [] // list of signers as StrKeys
+    }
+```
+
+  All of the top-level fields within this object are also optional. However, the "ledgerbounds" object will always have its inner values set.
+
+  Note that the existing "valid_before_time" and "valid_after_time" fields on the top-level object will be identical to the "preconditions.timebounds.min_time" and "preconditions.timebounds.min_time" fields, respectively, if those exist. The "valid_before_time" and "valid_after_time" fields are now considered deprecated and will be removed in Horizon v3.0.0.
+
+### DB Schema Migration
+
+The migration makes the following schema changes:
+  
+  - adds new, optional columns to the `history_transactions` table related to the new preconditions
+  - adds new, optional columns to the `accounts` table related to the new account extension
+  - amends the `signer` column of the `accounts_signers` table to allow signers of arbitrary length
+
+### Deprecations
+
+The following fields on transaction records have been deprecated and will be removed in a future version:
+
+  - `"valid_before"` and `"valid_after"`
+
+These fields are now represented by `preconditions.timebounds.min_time` and `preconditions.timebounds.max_time` as `uint64` UNIX timestamps, in seconds.
+
+
 ## v2.15.1
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
