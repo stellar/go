@@ -115,9 +115,9 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
 	assert.NoError(t, err)
-	historyMaxTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.Timebounds.MaxTime)
+	historyMaxTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.TimeBounds.MaxTime)
 	assert.NoError(t, err)
-	historyMinTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.Timebounds.MinTime)
+	historyMinTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.TimeBounds.MinTime)
 	assert.NoError(t, err)
 
 	assert.Equal(t, historyMaxTime.UTC().Unix(), txParams.Preconditions.TimeBounds.MaxTime)
@@ -197,8 +197,8 @@ func TestTransactionPreconditionsLedgerBounds(t *testing.T) {
 	//verify roundtrip to network and back through the horizon api returns same precondition values
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
 	assert.NoError(t, err)
-	assert.Equal(t, txHistory.Preconditions.Ledgerbounds.MaxLedger, txParams.Preconditions.LedgerBounds.MaxLedger)
-	assert.Equal(t, txHistory.Preconditions.Ledgerbounds.MinLedger, txParams.Preconditions.LedgerBounds.MinLedger)
+	assert.Equal(t, txHistory.Preconditions.LedgerBounds.MaxLedger, txParams.Preconditions.LedgerBounds.MaxLedger)
+	assert.Equal(t, txHistory.Preconditions.LedgerBounds.MinLedger, txParams.Preconditions.LedgerBounds.MinLedger)
 }
 
 func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {

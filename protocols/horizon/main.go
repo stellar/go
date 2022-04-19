@@ -534,8 +534,8 @@ type Transaction struct {
 }
 
 type TransactionPreconditions struct {
-	Timebounds   *TransactionPreconditionsTimebounds   `json:"timebounds,omitempty"`
-	Ledgerbounds *TransactionPreconditionsLedgerbounds `json:"ledgerbounds,omitempty"`
+	TimeBounds   *TransactionPreconditionsTimebounds   `json:"timebounds,omitempty"`
+	LedgerBounds *TransactionPreconditionsLedgerbounds `json:"ledgerbounds,omitempty"`
 
 	MinAccountSequence          string `json:"min_account_sequence,omitempty"`
 	MinAccountSequenceAge       string `json:"min_account_sequence_age,omitempty"`

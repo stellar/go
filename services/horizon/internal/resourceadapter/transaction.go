@@ -64,22 +64,22 @@ func PopulateTransaction(
 		dest.ValidBefore = timeString(row.TimeBounds.Upper)
 		dest.ValidAfter = timeString(row.TimeBounds.Lower)
 
-		if dest.Preconditions.Timebounds == nil {
-			dest.Preconditions.Timebounds = &protocol.TransactionPreconditionsTimebounds{}
+		if dest.Preconditions.TimeBounds == nil {
+			dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{}
 		}
-		dest.Preconditions.Timebounds.MaxTime = timeString(row.TimeBounds.Upper)
-		dest.Preconditions.Timebounds.MinTime = timeString(row.TimeBounds.Lower)
+		dest.Preconditions.TimeBounds.MaxTime = timeString(row.TimeBounds.Upper)
+		dest.Preconditions.TimeBounds.MinTime = timeString(row.TimeBounds.Lower)
 	}
 
 	if !row.LedgerBounds.Null {
-		if dest.Preconditions.Ledgerbounds == nil {
-			dest.Preconditions.Ledgerbounds = &protocol.TransactionPreconditionsLedgerbounds{}
+		if dest.Preconditions.LedgerBounds == nil {
+			dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{}
 		}
 		if row.LedgerBounds.MinLedger.Valid {
-			dest.Preconditions.Ledgerbounds.MinLedger = uint32(row.LedgerBounds.MinLedger.Int64)
+			dest.Preconditions.LedgerBounds.MinLedger = uint32(row.LedgerBounds.MinLedger.Int64)
 		}
 		if row.LedgerBounds.MaxLedger.Valid {
-			dest.Preconditions.Ledgerbounds.MaxLedger = uint32(row.LedgerBounds.MaxLedger.Int64)
+			dest.Preconditions.LedgerBounds.MaxLedger = uint32(row.LedgerBounds.MaxLedger.Int64)
 		}
 	}
 
