@@ -47,7 +47,7 @@ func TestPopulateRoot(t *testing.T) {
 	assert.Equal(t, "cVersion", res.StellarCoreVersion)
 	assert.Equal(t, "passphrase", res.NetworkPassphrase)
 	assert.Equal(t, "https://friendbot.example.com/{?addr}", res.Links.Friendbot.Href)
-	assert.Equal(t, int32(ingest.MaxSupportedProtocolVersion), res.HorizonSupportedProtocolVersion)
+	assert.Equal(t, uint32(ingest.MaxSupportedProtocolVersion), res.HorizonSupportedProtocolVersion)
 
 	// Without testbot
 	res = &horizon.Root{}
