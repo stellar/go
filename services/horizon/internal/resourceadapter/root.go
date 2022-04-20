@@ -32,8 +32,8 @@ func PopulateRoot(
 	dest.StellarCoreVersion = cVersion
 	dest.NetworkPassphrase = passphrase
 	dest.CurrentProtocolVersion = currentProtocolVersion
-	dest.CoreSupportedProtocolVersion = coreSupportedProtocolVersion
 	dest.SupportedProtocolVersion = ingest.MaxSupportedProtocolVersion
+	dest.CoreSupportedProtocolVersion = coreSupportedProtocolVersion
 
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
 	if friendBotURL != nil {
