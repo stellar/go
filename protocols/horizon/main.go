@@ -353,7 +353,7 @@ type Root struct {
 	NetworkPassphrase               string    `json:"network_passphrase"`
 	CurrentProtocolVersion          int32     `json:"current_protocol_version"`
 	CoreSupportedProtocolVersion    int32     `json:"core_supported_protocol_version"`
-	HorizonSupportedProtocolVersion uint32     `json:"horizon_supported_protocol_version"`
+	HorizonSupportedProtocolVersion uint32    `json:"horizon_supported_protocol_version"`
 }
 
 // Signer represents one of an account's signers.
