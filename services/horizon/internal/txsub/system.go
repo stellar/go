@@ -198,7 +198,6 @@ func (sys *System) Submit(
 		sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
 			sourceAddress: uint64(envelope.SeqNum()),
 		})
-		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 	case <-ctx.Done():
 		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
 	}
