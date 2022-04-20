@@ -182,13 +182,13 @@ func (sys *System) Submit(
 
 			// If error is txBAD_SEQ, check for the result again
 			tx, err = txResultByHash(ctx, db, hash)
-			if err == nil {
-				// If the found use it as the result
-				sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
-			} else {
+			if err != nil {
 				// finally, return the bad_seq error if no result was found on 2nd attempt
 				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
+				return
 			}
+			// If we found the result, use it as the result
+			sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 			return
 		}
 
