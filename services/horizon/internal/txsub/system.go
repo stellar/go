@@ -163,7 +163,7 @@ func (sys *System) Submit(
 		sr := sys.submitOnce(ctx, rawTx)
 		sys.updateTransactionTypeMetrics(envelope)
 
-		if err != nil {
+		if sr.Err != nil {
 			// any error other than "txBAD_SEQ" is a failure
 			isBad, err := sr.IsBadSeq()
 			if err != nil {
@@ -198,6 +198,7 @@ func (sys *System) Submit(
 		sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
 			sourceAddress: uint64(envelope.SeqNum()),
 		})
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 	case <-ctx.Done():
 		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
 	}
