@@ -117,6 +117,8 @@ func (p *AccountsProcessor) ledgerEntryToRow(entry xdr.LedgerEntry) history.Acco
 		BuyingLiabilities:    int64(liabilities.Buying),
 		SellingLiabilities:   int64(liabilities.Selling),
 		SequenceNumber:       int64(account.SeqNum),
+		SequenceLedger:       uint32(account.SeqLedger()),
+		SequenceTime:         uint64(account.SeqTime()),
 		NumSubEntries:        uint32(account.NumSubEntries),
 		InflationDestination: inflationDestination,
 		Flags:                uint32(account.Flags),

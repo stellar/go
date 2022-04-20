@@ -1697,6 +1697,62 @@ func (s TimePoint) xdrType() {}
 
 var _ xdrType = (*TimePoint)(nil)
 
+// Duration is an XDR Typedef defines as:
+//
+//   typedef uint64 Duration;
+//
+type Duration Uint64
+
+// EncodeTo encodes this value using the Encoder.
+func (s Duration) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = Uint64(s).EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*Duration)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *Duration) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = (*Uint64)(s).DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s Duration) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Duration) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*Duration)(nil)
+	_ encoding.BinaryUnmarshaler = (*Duration)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s Duration) xdrType() {}
+
+var _ xdrType = (*Duration)(nil)
+
 // DataValue is an XDR Typedef defines as:
 //
 //   typedef opaque DataValue<64>;
@@ -3082,16 +3138,106 @@ const MaxSigners = 20
 //
 type SponsorshipDescriptor = *AccountId
 
+// AccountEntryExtensionV3 is an XDR Struct defines as:
+//
+//   struct AccountEntryExtensionV3
+//    {
+//        // We can use this to add more fields, or because it is first, to
+//        // change AccountEntryExtensionV3 into a union.
+//        ExtensionPoint ext;
+//
+//        // Ledger number at which `seqNum` took on its present value.
+//        uint32 seqLedger;
+//
+//        // Time at which `seqNum` took on its present value.
+//        TimePoint seqTime;
+//    };
+//
+type AccountEntryExtensionV3 struct {
+	Ext       ExtensionPoint
+	SeqLedger Uint32
+	SeqTime   TimePoint
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *AccountEntryExtensionV3) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SeqLedger.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SeqTime.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*AccountEntryExtensionV3)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *AccountEntryExtensionV3) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
+	}
+	nTmp, err = s.SeqLedger.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.SeqTime.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimePoint: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s AccountEntryExtensionV3) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *AccountEntryExtensionV3) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*AccountEntryExtensionV3)(nil)
+	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV3)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s AccountEntryExtensionV3) xdrType() {}
+
+var _ xdrType = (*AccountEntryExtensionV3)(nil)
+
 // AccountEntryExtensionV2Ext is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
 //        {
 //        case 0:
 //            void;
+//        case 3:
+//            AccountEntryExtensionV3 v3;
 //        }
 //
 type AccountEntryExtensionV2Ext struct {
-	V int32
+	V  int32
+	V3 *AccountEntryExtensionV3
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -3106,6 +3252,8 @@ func (u AccountEntryExtensionV2Ext) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "", true
+	case 3:
+		return "V3", true
 	}
 	return "-", false
 }
@@ -3116,7 +3264,39 @@ func NewAccountEntryExtensionV2Ext(v int32, value interface{}) (result AccountEn
 	switch int32(v) {
 	case 0:
 		// void
+	case 3:
+		tv, ok := value.(AccountEntryExtensionV3)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AccountEntryExtensionV3")
+			return
+		}
+		result.V3 = &tv
 	}
+	return
+}
+
+// MustV3 retrieves the V3 value from the union,
+// panicing if the value is not set.
+func (u AccountEntryExtensionV2Ext) MustV3() AccountEntryExtensionV3 {
+	val, ok := u.GetV3()
+
+	if !ok {
+		panic("arm V3 is not set")
+	}
+
+	return val
+}
+
+// GetV3 retrieves the V3 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u AccountEntryExtensionV2Ext) GetV3() (result AccountEntryExtensionV3, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V3" {
+		result = *u.V3
+		ok = true
+	}
+
 	return
 }
 
@@ -3129,6 +3309,11 @@ func (u AccountEntryExtensionV2Ext) EncodeTo(e *xdr.Encoder) error {
 	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
+	case 3:
+		if err = (*u.V3).EncodeTo(e); err != nil {
+			return err
+		}
 		return nil
 	}
 	return fmt.Errorf("V (int32) switch value '%d' is not valid for union AccountEntryExtensionV2Ext", u.V)
@@ -3148,6 +3333,14 @@ func (u *AccountEntryExtensionV2Ext) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		// Void
+		return n, nil
+	case 3:
+		u.V3 = new(AccountEntryExtensionV3)
+		nTmp, err = (*u.V3).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding AccountEntryExtensionV3: %s", err)
+		}
 		return n, nil
 	}
 	return n, fmt.Errorf("union AccountEntryExtensionV2Ext has invalid V (int32) switch value '%d'", u.V)
@@ -3192,6 +3385,8 @@ var _ xdrType = (*AccountEntryExtensionV2Ext)(nil)
 //        {
 //        case 0:
 //            void;
+//        case 3:
+//            AccountEntryExtensionV3 v3;
 //        }
 //        ext;
 //    };
@@ -5032,7 +5227,7 @@ var _ xdrType = (*TrustLineEntry)(nil)
 //
 //   enum OfferEntryFlags
 //    {
-//        // issuer has authorized account to perform transactions with its credit
+//        // an offer with this flag will not act on and take a reverse offer of equal price
 //        PASSIVE_FLAG = 1
 //    };
 //
@@ -5666,7 +5861,7 @@ var _ xdrType = (*ClaimPredicateType)(nil)
 //        int64 absBefore; // Predicate will be true if closeTime < absBefore
 //    case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
 //        int64 relBefore; // Seconds since closeTime of the ledger in which the
-//                         // ClaimableBalanceEntry was created
+//                            // ClaimableBalanceEntry was created
 //    };
 //
 type ClaimPredicate struct {
@@ -14023,6 +14218,67 @@ func (s Error) xdrType() {}
 
 var _ xdrType = (*Error)(nil)
 
+// SendMore is an XDR Struct defines as:
+//
+//   struct SendMore
+//    {
+//        uint32 numMessages;
+//    };
+//
+type SendMore struct {
+	NumMessages Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SendMore) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.NumMessages.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SendMore)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SendMore) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.NumMessages.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SendMore) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SendMore) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SendMore)(nil)
+	_ encoding.BinaryUnmarshaler = (*SendMore)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s SendMore) xdrType() {}
+
+var _ xdrType = (*SendMore)(nil)
+
 // AuthCert is an XDR Struct defines as:
 //
 //   struct AuthCert
@@ -14692,7 +14948,9 @@ var _ xdrType = (*PeerAddress)(nil)
 //        HELLO = 13,
 //
 //        SURVEY_REQUEST = 14,
-//        SURVEY_RESPONSE = 15
+//        SURVEY_RESPONSE = 15,
+//
+//        SEND_MORE = 16
 //    };
 //
 type MessageType int32
@@ -14713,6 +14971,7 @@ const (
 	MessageTypeHello           MessageType = 13
 	MessageTypeSurveyRequest   MessageType = 14
 	MessageTypeSurveyResponse  MessageType = 15
+	MessageTypeSendMore        MessageType = 16
 )
 
 var messageTypeMap = map[int32]string{
@@ -14731,6 +14990,7 @@ var messageTypeMap = map[int32]string{
 	13: "MessageTypeHello",
 	14: "MessageTypeSurveyRequest",
 	15: "MessageTypeSurveyResponse",
+	16: "MessageTypeSendMore",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -15906,6 +16166,8 @@ var _ xdrType = (*SurveyResponseBody)(nil)
 //        SCPEnvelope envelope;
 //    case GET_SCP_STATE:
 //        uint32 getSCPLedgerSeq; // ledger seq requested ; if 0, requests the latest
+//    case SEND_MORE:
+//        SendMore sendMoreMessage;
 //    };
 //
 type StellarMessage struct {
@@ -15924,6 +16186,7 @@ type StellarMessage struct {
 	QSet                        *ScpQuorumSet
 	Envelope                    *ScpEnvelope
 	GetScpLedgerSeq             *Uint32
+	SendMoreMessage             *SendMore
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -15966,6 +16229,8 @@ func (u StellarMessage) ArmForSwitch(sw int32) (string, bool) {
 		return "Envelope", true
 	case MessageTypeGetScpState:
 		return "GetScpLedgerSeq", true
+	case MessageTypeSendMore:
+		return "SendMoreMessage", true
 	}
 	return "-", false
 }
@@ -16074,6 +16339,13 @@ func NewStellarMessage(aType MessageType, value interface{}) (result StellarMess
 			return
 		}
 		result.GetScpLedgerSeq = &tv
+	case MessageTypeSendMore:
+		tv, ok := value.(SendMore)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be SendMore")
+			return
+		}
+		result.SendMoreMessage = &tv
 	}
 	return
 }
@@ -16428,6 +16700,31 @@ func (u StellarMessage) GetGetScpLedgerSeq() (result Uint32, ok bool) {
 	return
 }
 
+// MustSendMoreMessage retrieves the SendMoreMessage value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustSendMoreMessage() SendMore {
+	val, ok := u.GetSendMoreMessage()
+
+	if !ok {
+		panic("arm SendMoreMessage is not set")
+	}
+
+	return val
+}
+
+// GetSendMoreMessage retrieves the SendMoreMessage value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetSendMoreMessage() (result SendMore, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SendMoreMessage" {
+		result = *u.SendMoreMessage
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -16510,6 +16807,11 @@ func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case MessageTypeGetScpState:
 		if err = (*u.GetScpLedgerSeq).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case MessageTypeSendMore:
+		if err = (*u.SendMoreMessage).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -16657,6 +16959,14 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
+		}
+		return n, nil
+	case MessageTypeSendMore:
+		u.SendMoreMessage = new(SendMore)
+		nTmp, err = (*u.SendMoreMessage).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SendMore: %s", err)
 		}
 		return n, nil
 	}
@@ -22274,6 +22584,556 @@ func (s TimeBounds) xdrType() {}
 
 var _ xdrType = (*TimeBounds)(nil)
 
+// LedgerBounds is an XDR Struct defines as:
+//
+//   struct LedgerBounds
+//    {
+//        uint32 minLedger;
+//        uint32 maxLedger; // 0 here means no maxLedger
+//    };
+//
+type LedgerBounds struct {
+	MinLedger Uint32
+	MaxLedger Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *LedgerBounds) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.MinLedger.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.MaxLedger.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*LedgerBounds)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *LedgerBounds) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.MinLedger.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.MaxLedger.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerBounds) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerBounds) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerBounds)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerBounds)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s LedgerBounds) xdrType() {}
+
+var _ xdrType = (*LedgerBounds)(nil)
+
+// PreconditionsV2 is an XDR Struct defines as:
+//
+//   struct PreconditionsV2 {
+//        TimeBounds *timeBounds;
+//
+//        // Transaction only valid for ledger numbers n such that
+//        // minLedger <= n < maxLedger (if maxLedger == 0, then
+//        // only minLedger is checked)
+//        LedgerBounds *ledgerBounds;
+//
+//        // If NULL, only valid when sourceAccount's sequence number
+//        // is seqNum - 1.  Otherwise, valid when sourceAccount's
+//        // sequence number n satisfies minSeqNum <= n < tx.seqNum.
+//        // Note that after execution the account's sequence number
+//        // is always raised to tx.seqNum, and a transaction is not
+//        // valid if tx.seqNum is too high to ensure replay protection.
+//        SequenceNumber *minSeqNum;
+//
+//        // For the transaction to be valid, the current ledger time must
+//        // be at least minSeqAge greater than sourceAccount's seqTime.
+//        Duration minSeqAge;
+//
+//        // For the transaction to be valid, the current ledger number
+//        // must be at least minSeqLedgerGap greater than sourceAccount's
+//        // seqLedger.
+//        uint32 minSeqLedgerGap;
+//
+//        // For the transaction to be valid, there must be a signature
+//        // corresponding to every Signer in this array, even if the
+//        // signature is not otherwise required by the sourceAccount or
+//        // operations.
+//        SignerKey extraSigners<2>;
+//    };
+//
+type PreconditionsV2 struct {
+	TimeBounds      *TimeBounds
+	LedgerBounds    *LedgerBounds
+	MinSeqNum       *SequenceNumber
+	MinSeqAge       Duration
+	MinSeqLedgerGap Uint32
+	ExtraSigners    []SignerKey `xdrmaxsize:"2"`
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *PreconditionsV2) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeBool(s.TimeBounds != nil); err != nil {
+		return err
+	}
+	if s.TimeBounds != nil {
+		if err = (*s.TimeBounds).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeBool(s.LedgerBounds != nil); err != nil {
+		return err
+	}
+	if s.LedgerBounds != nil {
+		if err = (*s.LedgerBounds).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeBool(s.MinSeqNum != nil); err != nil {
+		return err
+	}
+	if s.MinSeqNum != nil {
+		if err = (*s.MinSeqNum).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if err = s.MinSeqAge.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.MinSeqLedgerGap.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.ExtraSigners))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.ExtraSigners); i++ {
+		if err = s.ExtraSigners[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*PreconditionsV2)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *PreconditionsV2) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var b bool
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TimeBounds: %s", err)
+	}
+	s.TimeBounds = nil
+	if b {
+		s.TimeBounds = new(TimeBounds)
+		nTmp, err = s.TimeBounds.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TimeBounds: %s", err)
+		}
+	}
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerBounds: %s", err)
+	}
+	s.LedgerBounds = nil
+	if b {
+		s.LedgerBounds = new(LedgerBounds)
+		nTmp, err = s.LedgerBounds.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerBounds: %s", err)
+		}
+	}
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
+	}
+	s.MinSeqNum = nil
+	if b {
+		s.MinSeqNum = new(SequenceNumber)
+		nTmp, err = s.MinSeqNum.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SequenceNumber: %s", err)
+		}
+	}
+	nTmp, err = s.MinSeqAge.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Duration: %s", err)
+	}
+	nTmp, err = s.MinSeqLedgerGap.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding SignerKey: %s", err)
+	}
+	if l > 2 {
+		return n, fmt.Errorf("decoding SignerKey: data size (%d) exceeds size limit (2)", l)
+	}
+	s.ExtraSigners = nil
+	if l > 0 {
+		s.ExtraSigners = make([]SignerKey, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.ExtraSigners[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding SignerKey: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s PreconditionsV2) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *PreconditionsV2) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*PreconditionsV2)(nil)
+	_ encoding.BinaryUnmarshaler = (*PreconditionsV2)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s PreconditionsV2) xdrType() {}
+
+var _ xdrType = (*PreconditionsV2)(nil)
+
+// PreconditionType is an XDR Enum defines as:
+//
+//   enum PreconditionType {
+//        PRECOND_NONE = 0,
+//        PRECOND_TIME = 1,
+//        PRECOND_V2 = 2
+//    };
+//
+type PreconditionType int32
+
+const (
+	PreconditionTypePrecondNone PreconditionType = 0
+	PreconditionTypePrecondTime PreconditionType = 1
+	PreconditionTypePrecondV2   PreconditionType = 2
+)
+
+var preconditionTypeMap = map[int32]string{
+	0: "PreconditionTypePrecondNone",
+	1: "PreconditionTypePrecondTime",
+	2: "PreconditionTypePrecondV2",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for PreconditionType
+func (e PreconditionType) ValidEnum(v int32) bool {
+	_, ok := preconditionTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e PreconditionType) String() string {
+	name, _ := preconditionTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e PreconditionType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := preconditionTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid PreconditionType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*PreconditionType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *PreconditionType) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding PreconditionType: %s", err)
+	}
+	if _, ok := preconditionTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid PreconditionType enum value", v)
+	}
+	*e = PreconditionType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s PreconditionType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *PreconditionType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*PreconditionType)(nil)
+	_ encoding.BinaryUnmarshaler = (*PreconditionType)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s PreconditionType) xdrType() {}
+
+var _ xdrType = (*PreconditionType)(nil)
+
+// Preconditions is an XDR Union defines as:
+//
+//   union Preconditions switch (PreconditionType type) {
+//        case PRECOND_NONE:
+//            void;
+//        case PRECOND_TIME:
+//            TimeBounds timeBounds;
+//        case PRECOND_V2:
+//            PreconditionsV2 v2;
+//    };
+//
+type Preconditions struct {
+	Type       PreconditionType
+	TimeBounds *TimeBounds
+	V2         *PreconditionsV2
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u Preconditions) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of Preconditions
+func (u Preconditions) ArmForSwitch(sw int32) (string, bool) {
+	switch PreconditionType(sw) {
+	case PreconditionTypePrecondNone:
+		return "", true
+	case PreconditionTypePrecondTime:
+		return "TimeBounds", true
+	case PreconditionTypePrecondV2:
+		return "V2", true
+	}
+	return "-", false
+}
+
+// NewPreconditions creates a new  Preconditions.
+func NewPreconditions(aType PreconditionType, value interface{}) (result Preconditions, err error) {
+	result.Type = aType
+	switch PreconditionType(aType) {
+	case PreconditionTypePrecondNone:
+		// void
+	case PreconditionTypePrecondTime:
+		tv, ok := value.(TimeBounds)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TimeBounds")
+			return
+		}
+		result.TimeBounds = &tv
+	case PreconditionTypePrecondV2:
+		tv, ok := value.(PreconditionsV2)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be PreconditionsV2")
+			return
+		}
+		result.V2 = &tv
+	}
+	return
+}
+
+// MustTimeBounds retrieves the TimeBounds value from the union,
+// panicing if the value is not set.
+func (u Preconditions) MustTimeBounds() TimeBounds {
+	val, ok := u.GetTimeBounds()
+
+	if !ok {
+		panic("arm TimeBounds is not set")
+	}
+
+	return val
+}
+
+// GetTimeBounds retrieves the TimeBounds value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u Preconditions) GetTimeBounds() (result TimeBounds, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "TimeBounds" {
+		result = *u.TimeBounds
+		ok = true
+	}
+
+	return
+}
+
+// MustV2 retrieves the V2 value from the union,
+// panicing if the value is not set.
+func (u Preconditions) MustV2() PreconditionsV2 {
+	val, ok := u.GetV2()
+
+	if !ok {
+		panic("arm V2 is not set")
+	}
+
+	return val
+}
+
+// GetV2 retrieves the V2 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u Preconditions) GetV2() (result PreconditionsV2, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "V2" {
+		result = *u.V2
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u Preconditions) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch PreconditionType(u.Type) {
+	case PreconditionTypePrecondNone:
+		// Void
+		return nil
+	case PreconditionTypePrecondTime:
+		if err = (*u.TimeBounds).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case PreconditionTypePrecondV2:
+		if err = (*u.V2).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Type (PreconditionType) switch value '%d' is not valid for union Preconditions", u.Type)
+}
+
+var _ decoderFrom = (*Preconditions)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *Preconditions) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding PreconditionType: %s", err)
+	}
+	switch PreconditionType(u.Type) {
+	case PreconditionTypePrecondNone:
+		// Void
+		return n, nil
+	case PreconditionTypePrecondTime:
+		u.TimeBounds = new(TimeBounds)
+		nTmp, err = (*u.TimeBounds).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TimeBounds: %s", err)
+		}
+		return n, nil
+	case PreconditionTypePrecondV2:
+		u.V2 = new(PreconditionsV2)
+		nTmp, err = (*u.V2).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding PreconditionsV2: %s", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union Preconditions has invalid Type (PreconditionType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s Preconditions) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Preconditions) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*Preconditions)(nil)
+	_ encoding.BinaryUnmarshaler = (*Preconditions)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s Preconditions) xdrType() {}
+
+var _ xdrType = (*Preconditions)(nil)
+
 // MaxOpsPerTx is an XDR Const defines as:
 //
 //   const MAX_OPS_PER_TX = 100;
@@ -22743,8 +23603,8 @@ var _ xdrType = (*TransactionExt)(nil)
 //        // sequence number to consume in the account
 //        SequenceNumber seqNum;
 //
-//        // validity range (inclusive) for the last ledger close time
-//        TimeBounds* timeBounds;
+//        // validity conditions
+//        Preconditions cond;
 //
 //        Memo memo;
 //
@@ -22763,7 +23623,7 @@ type Transaction struct {
 	SourceAccount MuxedAccount
 	Fee           Uint32
 	SeqNum        SequenceNumber
-	TimeBounds    *TimeBounds
+	Cond          Preconditions
 	Memo          Memo
 	Operations    []Operation `xdrmaxsize:"100"`
 	Ext           TransactionExt
@@ -22781,13 +23641,8 @@ func (s *Transaction) EncodeTo(e *xdr.Encoder) error {
 	if err = s.SeqNum.EncodeTo(e); err != nil {
 		return err
 	}
-	if _, err = e.EncodeBool(s.TimeBounds != nil); err != nil {
+	if err = s.Cond.EncodeTo(e); err != nil {
 		return err
-	}
-	if s.TimeBounds != nil {
-		if err = (*s.TimeBounds).EncodeTo(e); err != nil {
-			return err
-		}
 	}
 	if err = s.Memo.EncodeTo(e); err != nil {
 		return err
@@ -22827,20 +23682,10 @@ func (s *Transaction) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding SequenceNumber: %s", err)
 	}
-	var b bool
-	b, nTmp, err = d.DecodeBool()
+	nTmp, err = s.Cond.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding TimeBounds: %s", err)
-	}
-	s.TimeBounds = nil
-	if b {
-		s.TimeBounds = new(TimeBounds)
-		nTmp, err = s.TimeBounds.DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding TimeBounds: %s", err)
-		}
+		return n, fmt.Errorf("decoding Preconditions: %s", err)
 	}
 	nTmp, err = s.Memo.DecodeFrom(d)
 	n += nTmp
@@ -32118,7 +32963,8 @@ var _ xdrType = (*OperationResult)(nil)
 //
 //        txNOT_SUPPORTED = -12,         // transaction type not supported
 //        txFEE_BUMP_INNER_FAILED = -13, // fee bump inner transaction failed
-//        txBAD_SPONSORSHIP = -14        // sponsorship not confirmed
+//        txBAD_SPONSORSHIP = -14,       // sponsorship not confirmed
+//        txBAD_MIN_SEQ_AGE_OR_GAP = -15 //minSeqAge or minSeqLedgerGap conditions not met
 //    };
 //
 type TransactionResultCode int32
@@ -32140,6 +32986,7 @@ const (
 	TransactionResultCodeTxNotSupported        TransactionResultCode = -12
 	TransactionResultCodeTxFeeBumpInnerFailed  TransactionResultCode = -13
 	TransactionResultCodeTxBadSponsorship      TransactionResultCode = -14
+	TransactionResultCodeTxBadMinSeqAgeOrGap   TransactionResultCode = -15
 )
 
 var transactionResultCodeMap = map[int32]string{
@@ -32159,6 +33006,7 @@ var transactionResultCodeMap = map[int32]string{
 	-12: "TransactionResultCodeTxNotSupported",
 	-13: "TransactionResultCodeTxFeeBumpInnerFailed",
 	-14: "TransactionResultCodeTxBadSponsorship",
+	-15: "TransactionResultCodeTxBadMinSeqAgeOrGap",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -32246,6 +33094,7 @@ var _ xdrType = (*TransactionResultCode)(nil)
 //        case txNOT_SUPPORTED:
 //        // txFEE_BUMP_INNER_FAILED is not included
 //        case txBAD_SPONSORSHIP:
+//        case txBAD_MIN_SEQ_AGE_OR_GAP:
 //            void;
 //        }
 //
@@ -32292,6 +33141,8 @@ func (u InnerTransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case TransactionResultCodeTxBadSponsorship:
 		return "", true
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		return "", true
 	}
 	return "-", false
 }
@@ -32337,6 +33188,8 @@ func NewInnerTransactionResultResult(code TransactionResultCode, value interface
 	case TransactionResultCodeTxNotSupported:
 		// void
 	case TransactionResultCodeTxBadSponsorship:
+		// void
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		// void
 	}
 	return
@@ -32430,6 +33283,9 @@ func (u InnerTransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 	case TransactionResultCodeTxBadSponsorship:
 		// Void
 		return nil
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		// Void
+		return nil
 	}
 	return fmt.Errorf("Code (TransactionResultCode) switch value '%d' is not valid for union InnerTransactionResultResult", u.Code)
 }
@@ -32520,6 +33376,9 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case TransactionResultCodeTxBadSponsorship:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		// Void
 		return n, nil
 	}
@@ -32677,6 +33536,7 @@ var _ xdrType = (*InnerTransactionResultExt)(nil)
 //        case txNOT_SUPPORTED:
 //        // txFEE_BUMP_INNER_FAILED is not included
 //        case txBAD_SPONSORSHIP:
+//        case txBAD_MIN_SEQ_AGE_OR_GAP:
 //            void;
 //        }
 //        result;
@@ -33660,6 +34520,103 @@ func (s Int64) xdrType() {}
 
 var _ xdrType = (*Int64)(nil)
 
+// ExtensionPoint is an XDR Union defines as:
+//
+//   union ExtensionPoint switch (int v) {
+//    case 0:
+//         void;
+//    };
+//
+type ExtensionPoint struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ExtensionPoint) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ExtensionPoint
+func (u ExtensionPoint) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewExtensionPoint creates a new  ExtensionPoint.
+func NewExtensionPoint(v int32, value interface{}) (result ExtensionPoint, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ExtensionPoint) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union ExtensionPoint", u.V)
+}
+
+var _ decoderFrom = (*ExtensionPoint)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ExtensionPoint) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %s", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		// Void
+		return n, nil
+	}
+	return n, fmt.Errorf("union ExtensionPoint has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ExtensionPoint) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ExtensionPoint) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ExtensionPoint)(nil)
+	_ encoding.BinaryUnmarshaler = (*ExtensionPoint)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ExtensionPoint) xdrType() {}
+
+var _ xdrType = (*ExtensionPoint)(nil)
+
 // CryptoKeyType is an XDR Enum defines as:
 //
 //   enum CryptoKeyType
@@ -33667,6 +34624,7 @@ var _ xdrType = (*Int64)(nil)
 //        KEY_TYPE_ED25519 = 0,
 //        KEY_TYPE_PRE_AUTH_TX = 1,
 //        KEY_TYPE_HASH_X = 2,
+//        KEY_TYPE_ED25519_SIGNED_PAYLOAD = 3,
 //        // MUXED enum values for supported type are derived from the enum values
 //        // above by ORing them with 0x100
 //        KEY_TYPE_MUXED_ED25519 = 0x100
@@ -33675,16 +34633,18 @@ var _ xdrType = (*Int64)(nil)
 type CryptoKeyType int32
 
 const (
-	CryptoKeyTypeKeyTypeEd25519      CryptoKeyType = 0
-	CryptoKeyTypeKeyTypePreAuthTx    CryptoKeyType = 1
-	CryptoKeyTypeKeyTypeHashX        CryptoKeyType = 2
-	CryptoKeyTypeKeyTypeMuxedEd25519 CryptoKeyType = 256
+	CryptoKeyTypeKeyTypeEd25519              CryptoKeyType = 0
+	CryptoKeyTypeKeyTypePreAuthTx            CryptoKeyType = 1
+	CryptoKeyTypeKeyTypeHashX                CryptoKeyType = 2
+	CryptoKeyTypeKeyTypeEd25519SignedPayload CryptoKeyType = 3
+	CryptoKeyTypeKeyTypeMuxedEd25519         CryptoKeyType = 256
 )
 
 var cryptoKeyTypeMap = map[int32]string{
 	0:   "CryptoKeyTypeKeyTypeEd25519",
 	1:   "CryptoKeyTypeKeyTypePreAuthTx",
 	2:   "CryptoKeyTypeKeyTypeHashX",
+	3:   "CryptoKeyTypeKeyTypeEd25519SignedPayload",
 	256: "CryptoKeyTypeKeyTypeMuxedEd25519",
 }
 
@@ -33839,21 +34799,24 @@ var _ xdrType = (*PublicKeyType)(nil)
 //    {
 //        SIGNER_KEY_TYPE_ED25519 = KEY_TYPE_ED25519,
 //        SIGNER_KEY_TYPE_PRE_AUTH_TX = KEY_TYPE_PRE_AUTH_TX,
-//        SIGNER_KEY_TYPE_HASH_X = KEY_TYPE_HASH_X
+//        SIGNER_KEY_TYPE_HASH_X = KEY_TYPE_HASH_X,
+//        SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD = KEY_TYPE_ED25519_SIGNED_PAYLOAD
 //    };
 //
 type SignerKeyType int32
 
 const (
-	SignerKeyTypeSignerKeyTypeEd25519   SignerKeyType = 0
-	SignerKeyTypeSignerKeyTypePreAuthTx SignerKeyType = 1
-	SignerKeyTypeSignerKeyTypeHashX     SignerKeyType = 2
+	SignerKeyTypeSignerKeyTypeEd25519              SignerKeyType = 0
+	SignerKeyTypeSignerKeyTypePreAuthTx            SignerKeyType = 1
+	SignerKeyTypeSignerKeyTypeHashX                SignerKeyType = 2
+	SignerKeyTypeSignerKeyTypeEd25519SignedPayload SignerKeyType = 3
 )
 
 var signerKeyTypeMap = map[int32]string{
 	0: "SignerKeyTypeSignerKeyTypeEd25519",
 	1: "SignerKeyTypeSignerKeyTypePreAuthTx",
 	2: "SignerKeyTypeSignerKeyTypeHashX",
+	3: "SignerKeyTypeSignerKeyTypeEd25519SignedPayload",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -34056,6 +35019,78 @@ func (s PublicKey) xdrType() {}
 
 var _ xdrType = (*PublicKey)(nil)
 
+// SignerKeyEd25519SignedPayload is an XDR NestedStruct defines as:
+//
+//   struct {
+//            /* Public key that must sign the payload. */
+//            uint256 ed25519;
+//            /* Payload to be raw signed by ed25519. */
+//            opaque payload<64>;
+//        }
+//
+type SignerKeyEd25519SignedPayload struct {
+	Ed25519 Uint256
+	Payload []byte `xdrmaxsize:"64"`
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *SignerKeyEd25519SignedPayload) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ed25519.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeOpaque(s.Payload[:]); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*SignerKeyEd25519SignedPayload)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *SignerKeyEd25519SignedPayload) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ed25519.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint256: %s", err)
+	}
+	s.Payload, nTmp, err = d.DecodeOpaque(64)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Payload: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SignerKeyEd25519SignedPayload) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SignerKeyEd25519SignedPayload) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SignerKeyEd25519SignedPayload)(nil)
+	_ encoding.BinaryUnmarshaler = (*SignerKeyEd25519SignedPayload)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s SignerKeyEd25519SignedPayload) xdrType() {}
+
+var _ xdrType = (*SignerKeyEd25519SignedPayload)(nil)
+
 // SignerKey is an XDR Union defines as:
 //
 //   union SignerKey switch (SignerKeyType type)
@@ -34068,13 +35103,21 @@ var _ xdrType = (*PublicKey)(nil)
 //    case SIGNER_KEY_TYPE_HASH_X:
 //        /* Hash of random 256 bit preimage X */
 //        uint256 hashX;
+//    case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+//        struct {
+//            /* Public key that must sign the payload. */
+//            uint256 ed25519;
+//            /* Payload to be raw signed by ed25519. */
+//            opaque payload<64>;
+//        } ed25519SignedPayload;
 //    };
 //
 type SignerKey struct {
-	Type      SignerKeyType
-	Ed25519   *Uint256
-	PreAuthTx *Uint256
-	HashX     *Uint256
+	Type                 SignerKeyType
+	Ed25519              *Uint256
+	PreAuthTx            *Uint256
+	HashX                *Uint256
+	Ed25519SignedPayload *SignerKeyEd25519SignedPayload
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -34093,6 +35136,8 @@ func (u SignerKey) ArmForSwitch(sw int32) (string, bool) {
 		return "PreAuthTx", true
 	case SignerKeyTypeSignerKeyTypeHashX:
 		return "HashX", true
+	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
+		return "Ed25519SignedPayload", true
 	}
 	return "-", false
 }
@@ -34122,6 +35167,13 @@ func NewSignerKey(aType SignerKeyType, value interface{}) (result SignerKey, err
 			return
 		}
 		result.HashX = &tv
+	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
+		tv, ok := value.(SignerKeyEd25519SignedPayload)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be SignerKeyEd25519SignedPayload")
+			return
+		}
+		result.Ed25519SignedPayload = &tv
 	}
 	return
 }
@@ -34201,6 +35253,31 @@ func (u SignerKey) GetHashX() (result Uint256, ok bool) {
 	return
 }
 
+// MustEd25519SignedPayload retrieves the Ed25519SignedPayload value from the union,
+// panicing if the value is not set.
+func (u SignerKey) MustEd25519SignedPayload() SignerKeyEd25519SignedPayload {
+	val, ok := u.GetEd25519SignedPayload()
+
+	if !ok {
+		panic("arm Ed25519SignedPayload is not set")
+	}
+
+	return val
+}
+
+// GetEd25519SignedPayload retrieves the Ed25519SignedPayload value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SignerKey) GetEd25519SignedPayload() (result SignerKeyEd25519SignedPayload, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Ed25519SignedPayload" {
+		result = *u.Ed25519SignedPayload
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u SignerKey) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -34220,6 +35297,11 @@ func (u SignerKey) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case SignerKeyTypeSignerKeyTypeHashX:
 		if err = (*u.HashX).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
+		if err = (*u.Ed25519SignedPayload).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -34261,6 +35343,14 @@ func (u *SignerKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint256: %s", err)
+		}
+		return n, nil
+	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
+		u.Ed25519SignedPayload = new(SignerKeyEd25519SignedPayload)
+		nTmp, err = (*u.Ed25519SignedPayload).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding SignerKeyEd25519SignedPayload: %s", err)
 		}
 		return n, nil
 	}

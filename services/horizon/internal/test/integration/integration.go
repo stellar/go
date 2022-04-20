@@ -41,8 +41,8 @@ const (
 )
 
 var (
-	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
-	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE_USE_DB") != ""
+	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
+	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
@@ -111,13 +111,19 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 //
 // WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
-	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
+	if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "" {
+		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS_ENABLED not set")
 	}
 
-	// If not specific explicitly, set the protocol to the maximum supported version
 	if config.ProtocolVersion == 0 {
+		// Default to the maximum supported protocol version
 		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
+		// If the environment tells us that Core only supports up to certain version,
+		// use that.
+		maxSupportedCoreProtocolFromEnv := getCoreMaxSupportedProtocol()
+		if maxSupportedCoreProtocolFromEnv != 0 && maxSupportedCoreProtocolFromEnv < ingest.MaxSupportedProtocolVersion {
+			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
+		}
 	}
 
 	composePath := findDockerComposePath()
@@ -153,7 +159,7 @@ func (i *Test) configureCaptiveCore() {
 	// custom Horizon parameters.
 	if RunWithCaptiveCore {
 		composePath := findDockerComposePath()
-		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
+		i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 		if RunWithCaptiveCoreUseDB {
 			i.coreConfig.useDB = true
@@ -190,13 +196,18 @@ func (i *Test) runComposeCommand(args ...string) {
 
 	cmdline := append([]string{"-f", integrationYaml}, args...)
 	cmd := exec.Command("docker-compose", cmdline...)
+	coreImageOverride := ""
 	if i.config.CoreDockerImage != "" {
+		coreImageOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
+		coreImageOverride = img
+	}
+	if coreImageOverride != "" {
 		cmd.Env = append(
 			os.Environ(),
-			fmt.Sprintf("CORE_IMAGE=%s", i.config.CoreDockerImage),
+			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
 		)
 	}
-
 	i.t.Log("Running", cmd.Env, cmd.Args)
 	out, innerErr := cmd.Output()
 	if exitErr, ok := innerErr.(*exec.ExitError); ok {
@@ -672,7 +683,7 @@ func (i *Test) SubmitOperations(
 func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
-	tx, err := i.CreateSignedTransaction(source, signers, ops...)
+	tx, err := i.CreateSignedTransactionFromOps(source, signers, ops...)
 	if err != nil {
 		return proto.Transaction{}, err
 	}
@@ -687,17 +698,39 @@ func (i *Test) MustSubmitMultiSigOperations(
 	return tx
 }
 
-func (i *Test) CreateSignedTransaction(
-	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
-) (*txnbuild.Transaction, error) {
-	txParams := txnbuild.TransactionParams{
-		SourceAccount:        source,
-		Operations:           ops,
-		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewInfiniteTimeout(),
-		IncrementSequenceNum: true,
-	}
+func (i *Test) MustSubmitTransaction(signer *keypair.Full, txParams txnbuild.TransactionParams,
+) proto.Transaction {
+	tx, err := i.SubmitTransaction(signer, txParams)
+	panicIf(err)
+	return tx
+}
 
+func (i *Test) SubmitTransaction(
+	signer *keypair.Full, txParams txnbuild.TransactionParams,
+) (proto.Transaction, error) {
+	return i.SubmitMultiSigTransaction([]*keypair.Full{signer}, txParams)
+}
+
+func (i *Test) SubmitMultiSigTransaction(
+	signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) (proto.Transaction, error) {
+	tx, err := i.CreateSignedTransaction(signers, txParams)
+	if err != nil {
+		return proto.Transaction{}, err
+	}
+	return i.Client().SubmitTransaction(tx)
+}
+
+func (i *Test) MustSubmitMultiSigTransaction(
+	signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) proto.Transaction {
+	tx, err := i.SubmitMultiSigTransaction(signers, txParams)
+	panicIf(err)
+	return tx
+}
+
+func (i *Test) CreateSignedTransaction(signers []*keypair.Full, txParams txnbuild.TransactionParams,
+) (*txnbuild.Transaction, error) {
 	tx, err := txnbuild.NewTransaction(txParams)
 	if err != nil {
 		return nil, err
@@ -711,6 +744,20 @@ func (i *Test) CreateSignedTransaction(
 	}
 
 	return tx, nil
+}
+
+func (i *Test) CreateSignedTransactionFromOps(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        source,
+		Operations:           ops,
+		BaseFee:              txnbuild.MinBaseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
+		IncrementSequenceNum: true,
+	}
+
+	return i.CreateSignedTransaction(signers, txParams)
 }
 
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
@@ -825,4 +872,20 @@ func mapToFlags(params map[string]string) []string {
 		args = append(args, fmt.Sprintf("--%s=%s", key, value))
 	}
 	return args
+}
+
+func getCoreMaxSupportedProtocol() uint32 {
+	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
+	if str == "" {
+		return 0
+	}
+	version, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return uint32(version)
+}
+
+func (i *Test) GetEffectiveProtocolVersion() uint32 {
+	return i.config.ProtocolVersion
 }

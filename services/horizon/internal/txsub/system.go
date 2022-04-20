@@ -113,7 +113,10 @@ func (sys *System) Submit(
 		"tx":      rawTx,
 	}).Info("Processing transaction")
 
-	if envelope.SeqNum() < 0 {
+	seqNum := envelope.SeqNum()
+	minSeqNum := envelope.MinSeqNum()
+	// Ensure sequence numbers make sense
+	if seqNum < 0 || (minSeqNum != nil && (*minSeqNum < 0 || *minSeqNum >= seqNum)) {
 		sys.finish(ctx, hash, resultCh, Result{Err: ErrBadSequence})
 		return
 	}
@@ -132,11 +135,16 @@ func (sys *System) Submit(
 
 	// queue the submission and get the channel that will emit when
 	// submission is valid
-	submissionWait := sys.SubmissionQueue.Push(sourceAddress, uint64(envelope.SeqNum()))
+	var pMinSeqNum *uint64
+	if minSeqNum != nil {
+		uMinSeqNum := uint64(*minSeqNum)
+		pMinSeqNum = &uMinSeqNum
+	}
+	submissionWait := sys.SubmissionQueue.Push(sourceAddress, uint64(seqNum), pMinSeqNum)
 
 	// update the submission queue with the source accounts current sequence value
 	// which will cause the channel returned by Push() to emit if possible.
-	sys.SubmissionQueue.Update(map[string]uint64{
+	sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
 		sourceAddress: sequenceNumber,
 	})
 
@@ -155,7 +163,7 @@ func (sys *System) Submit(
 		sr := sys.submitOnce(ctx, rawTx)
 		sys.updateTransactionTypeMetrics(envelope)
 
-		if sr.Err != nil {
+		if err != nil {
 			// any error other than "txBAD_SEQ" is a failure
 			isBad, err := sr.IsBadSeq()
 			if err != nil {
@@ -187,10 +195,9 @@ func (sys *System) Submit(
 		// add transactions to open list
 		sys.Pending.Add(ctx, hash, resultCh)
 		// update the submission queue, allowing the next submission to proceed
-		sys.SubmissionQueue.Update(map[string]uint64{
+		sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
 			sourceAddress: uint64(envelope.SeqNum()),
 		})
-
 	case <-ctx.Done():
 		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
 	}
@@ -325,7 +332,7 @@ func (sys *System) Tick(ctx context.Context) {
 			logger.WithStack(err).Error(err)
 			return
 		} else {
-			sys.SubmissionQueue.Update(curSeq)
+			sys.SubmissionQueue.NotifyLastAccountSequences(curSeq)
 		}
 	}
 

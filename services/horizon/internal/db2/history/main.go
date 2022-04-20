@@ -221,6 +221,8 @@ type AccountEntry struct {
 	BuyingLiabilities    int64       `db:"buying_liabilities"`
 	SellingLiabilities   int64       `db:"selling_liabilities"`
 	SequenceNumber       int64       `db:"sequence_number"`
+	SequenceLedger       uint32      `db:"sequence_ledger"`
+	SequenceTime         uint64      `db:"sequence_time"`
 	NumSubEntries        uint32      `db:"num_subentries"`
 	InflationDestination string      `db:"inflation_destination"`
 	HomeDomain           string      `db:"home_domain"`
@@ -711,6 +713,15 @@ type Trade struct {
 type Transaction struct {
 	LedgerCloseTime time.Time `db:"ledger_close_time"`
 	TransactionWithoutLedger
+}
+
+func (t *Transaction) HasPreconditions() bool {
+	return !t.TimeBounds.Null ||
+		!t.LedgerBounds.Null ||
+		t.MinAccountSequence.Valid ||
+		t.MinAccountSequenceAge.Valid ||
+		t.MinAccountSequenceLedgerGap.Valid ||
+		len(t.ExtraSigners) > 0
 }
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads

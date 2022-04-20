@@ -121,6 +121,8 @@ type SequenceNumber = Int64
 
 type TimePoint = Uint64
 
+type Duration = Uint64
+
 type DataValue = []byte // bound 64
 
 // SHA256(LiquidityPoolParameters)
@@ -242,6 +244,16 @@ const MAX_SIGNERS = 20
 
 type SponsorshipDescriptor = *AccountID
 
+type AccountEntryExtensionV3 struct {
+	// We can use this to add more fields, or because it is first, to
+	// change AccountEntryExtensionV3 into a union.
+	Ext ExtensionPoint
+	// Ledger number at which `seqNum` took on its present value.
+	SeqLedger Uint32
+	// Time at which `seqNum` took on its present value.
+	SeqTime TimePoint
+}
+
 type AccountEntryExtensionV2 struct {
 	NumSponsored        Uint32
 	NumSponsoring       Uint32
@@ -252,6 +264,8 @@ type XdrAnon_AccountEntryExtensionV2_Ext struct {
 	// The union discriminant V selects among the following arms:
 	//   0:
 	//      void
+	//   3:
+	//      V3() *AccountEntryExtensionV3
 	V  int32
 	_u interface{}
 }
@@ -405,7 +419,7 @@ type XdrAnon_TrustLineEntry_Ext_V1_Ext struct {
 type OfferEntryFlags int32
 
 const (
-	// issuer has authorized account to perform transactions with its credit
+	// an offer with this flag will not act on and take a reverse offer of equal price
 	PASSIVE_FLAG OfferEntryFlags = 1
 )
 
@@ -1100,6 +1114,10 @@ type Error struct {
 	Msg  string // bound 100
 }
 
+type SendMore struct {
+	NumMessages Uint32
+}
+
 type AuthCert struct {
 	Pubkey     Curve25519Public
 	Expiration Uint64
@@ -1169,6 +1187,7 @@ const (
 	HELLO           MessageType = 13
 	SURVEY_REQUEST  MessageType = 14
 	SURVEY_RESPONSE MessageType = 15
+	SEND_MORE       MessageType = 16
 )
 
 type DontHave struct {
@@ -1277,6 +1296,8 @@ type StellarMessage struct {
 	//      Envelope() *SCPEnvelope
 	//   GET_SCP_STATE:
 	//      GetSCPLedgerSeq() *Uint32
+	//   SEND_MORE:
+	//      SendMoreMessage() *SendMore
 	Type MessageType
 	_u   interface{}
 }
@@ -1847,6 +1868,59 @@ type TimeBounds struct {
 	MaxTime TimePoint
 }
 
+type LedgerBounds struct {
+	MinLedger Uint32
+	// 0 here means no maxLedger
+	MaxLedger Uint32
+}
+
+type PreconditionsV2 struct {
+	TimeBounds *TimeBounds
+	// Transaction only valid for ledger numbers n such that
+	// minLedger <= n < maxLedger (if maxLedger == 0, then
+	// only minLedger is checked)
+	LedgerBounds *LedgerBounds
+	// If NULL, only valid when sourceAccount's sequence number
+	// is seqNum - 1.  Otherwise, valid when sourceAccount's
+	// sequence number n satisfies minSeqNum <= n < tx.seqNum.
+	// Note that after execution the account's sequence number
+	// is always raised to tx.seqNum, and a transaction is not
+	// valid if tx.seqNum is too high to ensure replay protection.
+	MinSeqNum *SequenceNumber
+	// For the transaction to be valid, the current ledger time must
+	// be at least minSeqAge greater than sourceAccount's seqTime.
+	MinSeqAge Duration
+	// For the transaction to be valid, the current ledger number
+	// must be at least minSeqLedgerGap greater than sourceAccount's
+	// seqLedger.
+	MinSeqLedgerGap Uint32
+	// For the transaction to be valid, there must be a signature
+	// corresponding to every Signer in this array, even if the
+	// signature is not otherwise required by the sourceAccount or
+	// operations.
+	ExtraSigners []SignerKey // bound 2
+}
+
+type PreconditionType int32
+
+const (
+	PRECOND_NONE PreconditionType = 0
+	PRECOND_TIME PreconditionType = 1
+	PRECOND_V2   PreconditionType = 2
+)
+
+type Preconditions struct {
+	// The union discriminant Type selects among the following arms:
+	//   PRECOND_NONE:
+	//      void
+	//   PRECOND_TIME:
+	//      TimeBounds() *TimeBounds
+	//   PRECOND_V2:
+	//      V2() *PreconditionsV2
+	Type PreconditionType
+	_u   interface{}
+}
+
 // maximum number of operations per transaction
 const MAX_OPS_PER_TX = 100
 
@@ -1894,8 +1968,8 @@ type Transaction struct {
 	Fee Uint32
 	// sequence number to consume in the account
 	SeqNum SequenceNumber
-	// validity range (inclusive) for the last ledger close time
-	TimeBounds *TimeBounds
+	// validity conditions
+	Cond       Preconditions
 	Memo       Memo
 	Operations []Operation // bound MAX_OPS_PER_TX
 	Ext        XdrAnon_Transaction_Ext
@@ -2845,6 +2919,8 @@ const (
 	TxFEE_BUMP_INNER_FAILED TransactionResultCode = -13
 	// sponsorship not confirmed
 	TxBAD_SPONSORSHIP TransactionResultCode = -14
+	//minSeqAge or minSeqLedgerGap conditions not met
+	TxBAD_MIN_SEQ_AGE_OR_GAP TransactionResultCode = -15
 )
 
 // InnerTransactionResult must be binary compatible with TransactionResult
@@ -2859,7 +2935,7 @@ type XdrAnon_InnerTransactionResult_Result struct {
 	// The union discriminant Code selects among the following arms:
 	//   TxSUCCESS, TxFAILED:
 	//      Results() *[]OperationResult
-	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP:
+	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
 	//      void
 	Code TransactionResultCode
 	_u   interface{}
@@ -2920,12 +2996,24 @@ type Uint64 = uint64
 
 type Int64 = int64
 
+// An ExtensionPoint is always marshaled as a 32-bit 0 value.  At a
+// later point, it can be replaced by a different union so as to
+// extend a structure.
+type ExtensionPoint struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      void
+	V  int32
+	_u interface{}
+}
+
 type CryptoKeyType int32
 
 const (
-	KEY_TYPE_ED25519     CryptoKeyType = 0
-	KEY_TYPE_PRE_AUTH_TX CryptoKeyType = 1
-	KEY_TYPE_HASH_X      CryptoKeyType = 2
+	KEY_TYPE_ED25519                CryptoKeyType = 0
+	KEY_TYPE_PRE_AUTH_TX            CryptoKeyType = 1
+	KEY_TYPE_HASH_X                 CryptoKeyType = 2
+	KEY_TYPE_ED25519_SIGNED_PAYLOAD CryptoKeyType = 3
 	// MUXED enum values for supported type are derived from the enum values
 	// above by ORing them with 0x100
 	KEY_TYPE_MUXED_ED25519 CryptoKeyType = CryptoKeyType(0x100)
@@ -2940,9 +3028,10 @@ const (
 type SignerKeyType int32
 
 const (
-	SIGNER_KEY_TYPE_ED25519     SignerKeyType = SignerKeyType(KEY_TYPE_ED25519)
-	SIGNER_KEY_TYPE_PRE_AUTH_TX SignerKeyType = SignerKeyType(KEY_TYPE_PRE_AUTH_TX)
-	SIGNER_KEY_TYPE_HASH_X      SignerKeyType = SignerKeyType(KEY_TYPE_HASH_X)
+	SIGNER_KEY_TYPE_ED25519                SignerKeyType = SignerKeyType(KEY_TYPE_ED25519)
+	SIGNER_KEY_TYPE_PRE_AUTH_TX            SignerKeyType = SignerKeyType(KEY_TYPE_PRE_AUTH_TX)
+	SIGNER_KEY_TYPE_HASH_X                 SignerKeyType = SignerKeyType(KEY_TYPE_HASH_X)
+	SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD SignerKeyType = SignerKeyType(KEY_TYPE_ED25519_SIGNED_PAYLOAD)
 )
 
 type PublicKey struct {
@@ -2961,8 +3050,16 @@ type SignerKey struct {
 	//      PreAuthTx() *Uint256
 	//   SIGNER_KEY_TYPE_HASH_X:
 	//      HashX() *Uint256
+	//   SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+	//      Ed25519SignedPayload() *XdrAnon_SignerKey_Ed25519SignedPayload
 	Type SignerKeyType
 	_u   interface{}
+}
+type XdrAnon_SignerKey_Ed25519SignedPayload struct {
+	/* Public key that must sign the payload. */
+	Ed25519 Uint256
+	/* Payload to be raw signed by ed25519. */
+	Payload []byte // bound 64
 }
 
 // variable size as the size depends on the signature scheme used
@@ -3655,6 +3752,16 @@ func XDR_TimePoint(v *TimePoint) XdrType_TimePoint {
 func (XdrType_TimePoint) XdrTypeName() string  { return "TimePoint" }
 func (v XdrType_TimePoint) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
 
+type XdrType_Duration struct {
+	XdrType_Uint64
+}
+
+func XDR_Duration(v *Duration) XdrType_Duration {
+	return XdrType_Duration{XDR_Uint64(v)}
+}
+func (XdrType_Duration) XdrTypeName() string  { return "Duration" }
+func (v XdrType_Duration) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
+
 type XdrType_DataValue struct {
 	XdrVecOpaque
 }
@@ -4292,16 +4399,48 @@ func XDR_SponsorshipDescriptor(v *SponsorshipDescriptor) XdrType_SponsorshipDesc
 func (XdrType_SponsorshipDescriptor) XdrTypeName() string  { return "SponsorshipDescriptor" }
 func (v XdrType_SponsorshipDescriptor) XdrUnwrap() XdrType { return v._XdrPtr_AccountID }
 
+type XdrType_AccountEntryExtensionV3 = *AccountEntryExtensionV3
+
+func (v *AccountEntryExtensionV3) XdrPointer() interface{}       { return v }
+func (AccountEntryExtensionV3) XdrTypeName() string              { return "AccountEntryExtensionV3" }
+func (v AccountEntryExtensionV3) XdrValue() interface{}          { return v }
+func (v *AccountEntryExtensionV3) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *AccountEntryExtensionV3) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%sseqLedger", name), XDR_Uint32(&v.SeqLedger))
+	x.Marshal(x.Sprintf("%sseqTime", name), XDR_TimePoint(&v.SeqTime))
+}
+func XDR_AccountEntryExtensionV3(v *AccountEntryExtensionV3) *AccountEntryExtensionV3 { return v }
+
 var _XdrTags_XdrAnon_AccountEntryExtensionV2_Ext = map[int32]bool{
 	XdrToI32(0): true,
+	XdrToI32(3): true,
 }
 
 func (_ XdrAnon_AccountEntryExtensionV2_Ext) XdrValidTags() map[int32]bool {
 	return _XdrTags_XdrAnon_AccountEntryExtensionV2_Ext
 }
+func (u *XdrAnon_AccountEntryExtensionV2_Ext) V3() *AccountEntryExtensionV3 {
+	switch u.V {
+	case 3:
+		if v, ok := u._u.(*AccountEntryExtensionV3); ok {
+			return v
+		} else {
+			var zero AccountEntryExtensionV3
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_AccountEntryExtensionV2_Ext.V3 accessed when V == %v", u.V)
+		return nil
+	}
+}
 func (u XdrAnon_AccountEntryExtensionV2_Ext) XdrValid() bool {
 	switch u.V {
-	case 0:
+	case 0, 3:
 		return true
 	}
 	return false
@@ -4316,6 +4455,8 @@ func (u *XdrAnon_AccountEntryExtensionV2_Ext) XdrUnionBody() XdrType {
 	switch u.V {
 	case 0:
 		return nil
+	case 3:
+		return XDR_AccountEntryExtensionV3(u.V3())
 	}
 	return nil
 }
@@ -4323,6 +4464,8 @@ func (u *XdrAnon_AccountEntryExtensionV2_Ext) XdrUnionBodyName() string {
 	switch u.V {
 	case 0:
 		return ""
+	case 3:
+		return "V3"
 	}
 	return ""
 }
@@ -4342,6 +4485,9 @@ func (u *XdrAnon_AccountEntryExtensionV2_Ext) XdrRecurse(x XDR, name string) {
 	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
 	switch u.V {
 	case 0:
+		return
+	case 3:
+		x.Marshal(x.Sprintf("%sv3", name), XDR_AccountEntryExtensionV3(u.V3()))
 		return
 	}
 	XdrPanic("invalid V (%v) in XdrAnon_AccountEntryExtensionV2_Ext", u.V)
@@ -5224,7 +5370,7 @@ type XdrType_OfferEntryFlags = *OfferEntryFlags
 func XDR_OfferEntryFlags(v *OfferEntryFlags) *OfferEntryFlags { return v }
 
 var _XdrComments_OfferEntryFlags = map[int32]string{
-	int32(PASSIVE_FLAG): "issuer has authorized account to perform transactions with its credit",
+	int32(PASSIVE_FLAG): "an offer with this flag will not act on and take a reverse offer of equal price",
 }
 
 func (e OfferEntryFlags) XdrEnumComments() map[int32]string {
@@ -9467,6 +9613,20 @@ func (v *Error) XdrRecurse(x XDR, name string) {
 }
 func XDR_Error(v *Error) *Error { return v }
 
+type XdrType_SendMore = *SendMore
+
+func (v *SendMore) XdrPointer() interface{}       { return v }
+func (SendMore) XdrTypeName() string              { return "SendMore" }
+func (v SendMore) XdrValue() interface{}          { return v }
+func (v *SendMore) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SendMore) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%snumMessages", name), XDR_Uint32(&v.NumMessages))
+}
+func XDR_SendMore(v *SendMore) *SendMore { return v }
+
 type XdrType_AuthCert = *AuthCert
 
 func (v *AuthCert) XdrPointer() interface{}       { return v }
@@ -9705,6 +9865,7 @@ var _XdrNames_MessageType = map[int32]string{
 	int32(HELLO):             "HELLO",
 	int32(SURVEY_REQUEST):    "SURVEY_REQUEST",
 	int32(SURVEY_RESPONSE):   "SURVEY_RESPONSE",
+	int32(SEND_MORE):         "SEND_MORE",
 }
 var _XdrValues_MessageType = map[string]int32{
 	"ERROR_MSG":         int32(ERROR_MSG),
@@ -9722,6 +9883,7 @@ var _XdrValues_MessageType = map[string]int32{
 	"HELLO":             int32(HELLO),
 	"SURVEY_REQUEST":    int32(SURVEY_REQUEST),
 	"SURVEY_RESPONSE":   int32(SURVEY_RESPONSE),
+	"SEND_MORE":         int32(SEND_MORE),
 }
 
 func (MessageType) XdrEnumNames() map[int32]string {
@@ -10165,6 +10327,7 @@ var _XdrTags_StellarMessage = map[int32]bool{
 	XdrToI32(SCP_QUORUMSET):     true,
 	XdrToI32(SCP_MESSAGE):       true,
 	XdrToI32(GET_SCP_STATE):     true,
+	XdrToI32(SEND_MORE):         true,
 }
 
 func (_ StellarMessage) XdrValidTags() map[int32]bool {
@@ -10382,9 +10545,24 @@ func (u *StellarMessage) GetSCPLedgerSeq() *Uint32 {
 		return nil
 	}
 }
+func (u *StellarMessage) SendMoreMessage() *SendMore {
+	switch u.Type {
+	case SEND_MORE:
+		if v, ok := u._u.(*SendMore); ok {
+			return v
+		} else {
+			var zero SendMore
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.SendMoreMessage accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u StellarMessage) XdrValid() bool {
 	switch u.Type {
-	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE:
+	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE:
 		return true
 	}
 	return false
@@ -10427,6 +10605,8 @@ func (u *StellarMessage) XdrUnionBody() XdrType {
 		return XDR_SCPEnvelope(u.Envelope())
 	case GET_SCP_STATE:
 		return XDR_Uint32(u.GetSCPLedgerSeq())
+	case SEND_MORE:
+		return XDR_SendMore(u.SendMoreMessage())
 	}
 	return nil
 }
@@ -10462,6 +10642,8 @@ func (u *StellarMessage) XdrUnionBodyName() string {
 		return "Envelope"
 	case GET_SCP_STATE:
 		return "GetSCPLedgerSeq"
+	case SEND_MORE:
+		return "SendMoreMessage"
 	}
 	return ""
 }
@@ -10521,6 +10703,9 @@ func (u *StellarMessage) XdrRecurse(x XDR, name string) {
 		return
 	case GET_SCP_STATE:
 		x.Marshal(x.Sprintf("%sgetSCPLedgerSeq", name), XDR_Uint32(u.GetSCPLedgerSeq()))
+		return
+	case SEND_MORE:
+		x.Marshal(x.Sprintf("%ssendMoreMessage", name), XDR_SendMore(u.SendMoreMessage()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in StellarMessage", u.Type)
@@ -12878,59 +13063,20 @@ func (v *TimeBounds) XdrRecurse(x XDR, name string) {
 }
 func XDR_TimeBounds(v *TimeBounds) *TimeBounds { return v }
 
-var _XdrTags_XdrAnon_TransactionV0_Ext = map[int32]bool{
-	XdrToI32(0): true,
-}
+type XdrType_LedgerBounds = *LedgerBounds
 
-func (_ XdrAnon_TransactionV0_Ext) XdrValidTags() map[int32]bool {
-	return _XdrTags_XdrAnon_TransactionV0_Ext
-}
-func (u XdrAnon_TransactionV0_Ext) XdrValid() bool {
-	switch u.V {
-	case 0:
-		return true
-	}
-	return false
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionTag() XdrNum32 {
-	return XDR_int32(&u.V)
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionTagName() string {
-	return "V"
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionBody() XdrType {
-	switch u.V {
-	case 0:
-		return nil
-	}
-	return nil
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionBodyName() string {
-	switch u.V {
-	case 0:
-		return ""
-	}
-	return ""
-}
-
-type XdrType_XdrAnon_TransactionV0_Ext = *XdrAnon_TransactionV0_Ext
-
-func (v *XdrAnon_TransactionV0_Ext) XdrPointer() interface{}       { return v }
-func (XdrAnon_TransactionV0_Ext) XdrTypeName() string              { return "XdrAnon_TransactionV0_Ext" }
-func (v XdrAnon_TransactionV0_Ext) XdrValue() interface{}          { return v }
-func (v *XdrAnon_TransactionV0_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *XdrAnon_TransactionV0_Ext) XdrRecurse(x XDR, name string) {
+func (v *LedgerBounds) XdrPointer() interface{}       { return v }
+func (LedgerBounds) XdrTypeName() string              { return "LedgerBounds" }
+func (v LedgerBounds) XdrValue() interface{}          { return v }
+func (v *LedgerBounds) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerBounds) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
-	switch u.V {
-	case 0:
-		return
-	}
-	XdrPanic("invalid V (%v) in XdrAnon_TransactionV0_Ext", u.V)
+	x.Marshal(x.Sprintf("%sminLedger", name), XDR_Uint32(&v.MinLedger))
+	x.Marshal(x.Sprintf("%smaxLedger", name), XDR_Uint32(&v.MaxLedger))
 }
-func XDR_XdrAnon_TransactionV0_Ext(v *XdrAnon_TransactionV0_Ext) *XdrAnon_TransactionV0_Ext { return v }
+func XDR_LedgerBounds(v *LedgerBounds) *LedgerBounds { return v }
 
 type _XdrPtr_TimeBounds struct {
 	p **TimeBounds
@@ -13004,6 +13150,429 @@ func (v _XdrPtr_TimeBounds) XdrRecurse(x XDR, name string) {
 func (_XdrPtr_TimeBounds) XdrTypeName() string       { return "TimeBounds*" }
 func (v _XdrPtr_TimeBounds) XdrPointer() interface{} { return v.p }
 func (v _XdrPtr_TimeBounds) XdrValue() interface{}   { return *v.p }
+
+type _XdrPtr_LedgerBounds struct {
+	p **LedgerBounds
+}
+type _ptrflag_LedgerBounds _XdrPtr_LedgerBounds
+
+func (v _ptrflag_LedgerBounds) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_LedgerBounds) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("LedgerBounds flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_LedgerBounds) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_LedgerBounds) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(LedgerBounds)
+		}
+	default:
+		XdrPanic("*LedgerBounds present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_LedgerBounds) XdrTypeName() string             { return "LedgerBounds?" }
+func (v _ptrflag_LedgerBounds) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_LedgerBounds) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_LedgerBounds) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_LedgerBounds) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_LedgerBounds) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_LedgerBounds) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(LedgerBounds)
+	}
+}
+func (v _XdrPtr_LedgerBounds) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_LedgerBounds(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_LedgerBounds) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_LedgerBounds) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_LedgerBounds(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_LedgerBounds) XdrTypeName() string       { return "LedgerBounds*" }
+func (v _XdrPtr_LedgerBounds) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_LedgerBounds) XdrValue() interface{}   { return *v.p }
+
+type _XdrPtr_SequenceNumber struct {
+	p **SequenceNumber
+}
+type _ptrflag_SequenceNumber _XdrPtr_SequenceNumber
+
+func (v _ptrflag_SequenceNumber) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_SequenceNumber) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("SequenceNumber flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_SequenceNumber) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_SequenceNumber) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(SequenceNumber)
+		}
+	default:
+		XdrPanic("*SequenceNumber present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_SequenceNumber) XdrTypeName() string             { return "SequenceNumber?" }
+func (v _ptrflag_SequenceNumber) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_SequenceNumber) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_SequenceNumber) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_SequenceNumber) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_SequenceNumber) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_SequenceNumber) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(SequenceNumber)
+	}
+}
+func (v _XdrPtr_SequenceNumber) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_SequenceNumber(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_SequenceNumber) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_SequenceNumber) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_SequenceNumber(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_SequenceNumber) XdrTypeName() string       { return "SequenceNumber*" }
+func (v _XdrPtr_SequenceNumber) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_SequenceNumber) XdrValue() interface{}   { return *v.p }
+
+type _XdrVec_2_SignerKey []SignerKey
+
+func (_XdrVec_2_SignerKey) XdrBound() uint32 {
+	const bound uint32 = 2 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_2_SignerKey) XdrCheckLen(length uint32) {
+	if length > uint32(2) {
+		XdrPanic("_XdrVec_2_SignerKey length %d exceeds bound 2", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_2_SignerKey length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_2_SignerKey) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_2_SignerKey) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(2); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]SignerKey, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_2_SignerKey) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_SignerKey(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_2_SignerKey) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 2}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_2_SignerKey) XdrTypeName() string              { return "SignerKey<>" }
+func (v *_XdrVec_2_SignerKey) XdrPointer() interface{}       { return (*[]SignerKey)(v) }
+func (v _XdrVec_2_SignerKey) XdrValue() interface{}          { return ([]SignerKey)(v) }
+func (v *_XdrVec_2_SignerKey) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_PreconditionsV2 = *PreconditionsV2
+
+func (v *PreconditionsV2) XdrPointer() interface{}       { return v }
+func (PreconditionsV2) XdrTypeName() string              { return "PreconditionsV2" }
+func (v PreconditionsV2) XdrValue() interface{}          { return v }
+func (v *PreconditionsV2) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *PreconditionsV2) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stimeBounds", name), _XdrPtr_TimeBounds{&v.TimeBounds})
+	x.Marshal(x.Sprintf("%sledgerBounds", name), _XdrPtr_LedgerBounds{&v.LedgerBounds})
+	x.Marshal(x.Sprintf("%sminSeqNum", name), _XdrPtr_SequenceNumber{&v.MinSeqNum})
+	x.Marshal(x.Sprintf("%sminSeqAge", name), XDR_Duration(&v.MinSeqAge))
+	x.Marshal(x.Sprintf("%sminSeqLedgerGap", name), XDR_Uint32(&v.MinSeqLedgerGap))
+	x.Marshal(x.Sprintf("%sextraSigners", name), (*_XdrVec_2_SignerKey)(&v.ExtraSigners))
+}
+func XDR_PreconditionsV2(v *PreconditionsV2) *PreconditionsV2 { return v }
+
+var _XdrNames_PreconditionType = map[int32]string{
+	int32(PRECOND_NONE): "PRECOND_NONE",
+	int32(PRECOND_TIME): "PRECOND_TIME",
+	int32(PRECOND_V2):   "PRECOND_V2",
+}
+var _XdrValues_PreconditionType = map[string]int32{
+	"PRECOND_NONE": int32(PRECOND_NONE),
+	"PRECOND_TIME": int32(PRECOND_TIME),
+	"PRECOND_V2":   int32(PRECOND_V2),
+}
+
+func (PreconditionType) XdrEnumNames() map[int32]string {
+	return _XdrNames_PreconditionType
+}
+func (v PreconditionType) String() string {
+	if s, ok := _XdrNames_PreconditionType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("PreconditionType#%d", v)
+}
+func (v *PreconditionType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_PreconditionType[stok]; ok {
+			*v = PreconditionType(val)
+			return nil
+		} else if stok == "PreconditionType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid PreconditionType.", stok))
+	}
+}
+func (v PreconditionType) GetU32() uint32                 { return uint32(v) }
+func (v *PreconditionType) SetU32(n uint32)               { *v = PreconditionType(n) }
+func (v *PreconditionType) XdrPointer() interface{}       { return v }
+func (PreconditionType) XdrTypeName() string              { return "PreconditionType" }
+func (v PreconditionType) XdrValue() interface{}          { return v }
+func (v *PreconditionType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_PreconditionType = *PreconditionType
+
+func XDR_PreconditionType(v *PreconditionType) *PreconditionType { return v }
+
+var _XdrTags_Preconditions = map[int32]bool{
+	XdrToI32(PRECOND_NONE): true,
+	XdrToI32(PRECOND_TIME): true,
+	XdrToI32(PRECOND_V2):   true,
+}
+
+func (_ Preconditions) XdrValidTags() map[int32]bool {
+	return _XdrTags_Preconditions
+}
+func (u *Preconditions) TimeBounds() *TimeBounds {
+	switch u.Type {
+	case PRECOND_TIME:
+		if v, ok := u._u.(*TimeBounds); ok {
+			return v
+		} else {
+			var zero TimeBounds
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("Preconditions.TimeBounds accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *Preconditions) V2() *PreconditionsV2 {
+	switch u.Type {
+	case PRECOND_V2:
+		if v, ok := u._u.(*PreconditionsV2); ok {
+			return v
+		} else {
+			var zero PreconditionsV2
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("Preconditions.V2 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u Preconditions) XdrValid() bool {
+	switch u.Type {
+	case PRECOND_NONE, PRECOND_TIME, PRECOND_V2:
+		return true
+	}
+	return false
+}
+func (u *Preconditions) XdrUnionTag() XdrNum32 {
+	return XDR_PreconditionType(&u.Type)
+}
+func (u *Preconditions) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *Preconditions) XdrUnionBody() XdrType {
+	switch u.Type {
+	case PRECOND_NONE:
+		return nil
+	case PRECOND_TIME:
+		return XDR_TimeBounds(u.TimeBounds())
+	case PRECOND_V2:
+		return XDR_PreconditionsV2(u.V2())
+	}
+	return nil
+}
+func (u *Preconditions) XdrUnionBodyName() string {
+	switch u.Type {
+	case PRECOND_NONE:
+		return ""
+	case PRECOND_TIME:
+		return "TimeBounds"
+	case PRECOND_V2:
+		return "V2"
+	}
+	return ""
+}
+
+type XdrType_Preconditions = *Preconditions
+
+func (v *Preconditions) XdrPointer() interface{}       { return v }
+func (Preconditions) XdrTypeName() string              { return "Preconditions" }
+func (v Preconditions) XdrValue() interface{}          { return v }
+func (v *Preconditions) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *Preconditions) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_PreconditionType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case PRECOND_NONE:
+		return
+	case PRECOND_TIME:
+		x.Marshal(x.Sprintf("%stimeBounds", name), XDR_TimeBounds(u.TimeBounds()))
+		return
+	case PRECOND_V2:
+		x.Marshal(x.Sprintf("%sv2", name), XDR_PreconditionsV2(u.V2()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in Preconditions", u.Type)
+}
+func XDR_Preconditions(v *Preconditions) *Preconditions { return v }
+
+var _XdrTags_XdrAnon_TransactionV0_Ext = map[int32]bool{
+	XdrToI32(0): true,
+}
+
+func (_ XdrAnon_TransactionV0_Ext) XdrValidTags() map[int32]bool {
+	return _XdrTags_XdrAnon_TransactionV0_Ext
+}
+func (u XdrAnon_TransactionV0_Ext) XdrValid() bool {
+	switch u.V {
+	case 0:
+		return true
+	}
+	return false
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionTagName() string {
+	return "V"
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	}
+	return nil
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	}
+	return ""
+}
+
+type XdrType_XdrAnon_TransactionV0_Ext = *XdrAnon_TransactionV0_Ext
+
+func (v *XdrAnon_TransactionV0_Ext) XdrPointer() interface{}       { return v }
+func (XdrAnon_TransactionV0_Ext) XdrTypeName() string              { return "XdrAnon_TransactionV0_Ext" }
+func (v XdrAnon_TransactionV0_Ext) XdrValue() interface{}          { return v }
+func (v *XdrAnon_TransactionV0_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *XdrAnon_TransactionV0_Ext) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	}
+	XdrPanic("invalid V (%v) in XdrAnon_TransactionV0_Ext", u.V)
+}
+func XDR_XdrAnon_TransactionV0_Ext(v *XdrAnon_TransactionV0_Ext) *XdrAnon_TransactionV0_Ext { return v }
 
 type _XdrVec_100_Operation []Operation
 
@@ -13221,7 +13790,7 @@ func (v *Transaction) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%ssourceAccount", name), XDR_MuxedAccount(&v.SourceAccount))
 	x.Marshal(x.Sprintf("%sfee", name), XDR_Uint32(&v.Fee))
 	x.Marshal(x.Sprintf("%sseqNum", name), XDR_SequenceNumber(&v.SeqNum))
-	x.Marshal(x.Sprintf("%stimeBounds", name), _XdrPtr_TimeBounds{&v.TimeBounds})
+	x.Marshal(x.Sprintf("%scond", name), XDR_Preconditions(&v.Cond))
 	x.Marshal(x.Sprintf("%smemo", name), XDR_Memo(&v.Memo))
 	x.Marshal(x.Sprintf("%soperations", name), (*_XdrVec_100_Operation)(&v.Operations))
 	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_Transaction_Ext(&v.Ext))
@@ -17830,6 +18399,7 @@ var _XdrNames_TransactionResultCode = map[int32]string{
 	int32(TxNOT_SUPPORTED):          "txNOT_SUPPORTED",
 	int32(TxFEE_BUMP_INNER_FAILED):  "txFEE_BUMP_INNER_FAILED",
 	int32(TxBAD_SPONSORSHIP):        "txBAD_SPONSORSHIP",
+	int32(TxBAD_MIN_SEQ_AGE_OR_GAP): "txBAD_MIN_SEQ_AGE_OR_GAP",
 }
 var _XdrValues_TransactionResultCode = map[string]int32{
 	"txFEE_BUMP_INNER_SUCCESS": int32(TxFEE_BUMP_INNER_SUCCESS),
@@ -17848,6 +18418,7 @@ var _XdrValues_TransactionResultCode = map[string]int32{
 	"txNOT_SUPPORTED":          int32(TxNOT_SUPPORTED),
 	"txFEE_BUMP_INNER_FAILED":  int32(TxFEE_BUMP_INNER_FAILED),
 	"txBAD_SPONSORSHIP":        int32(TxBAD_SPONSORSHIP),
+	"txBAD_MIN_SEQ_AGE_OR_GAP": int32(TxBAD_MIN_SEQ_AGE_OR_GAP),
 }
 
 func (TransactionResultCode) XdrEnumNames() map[int32]string {
@@ -17903,6 +18474,7 @@ var _XdrComments_TransactionResultCode = map[int32]string{
 	int32(TxNOT_SUPPORTED):          "transaction type not supported",
 	int32(TxFEE_BUMP_INNER_FAILED):  "fee bump inner transaction failed",
 	int32(TxBAD_SPONSORSHIP):        "sponsorship not confirmed",
+	int32(TxBAD_MIN_SEQ_AGE_OR_GAP): "minSeqAge or minSeqLedgerGap conditions not met",
 }
 
 func (e TransactionResultCode) XdrEnumComments() map[int32]string {
@@ -17967,20 +18539,21 @@ func (v _XdrVec_unbounded_OperationResult) XdrValue() interface{}          { ret
 func (v *_XdrVec_unbounded_OperationResult) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 var _XdrTags_XdrAnon_InnerTransactionResult_Result = map[int32]bool{
-	XdrToI32(TxSUCCESS):              true,
-	XdrToI32(TxFAILED):               true,
-	XdrToI32(TxTOO_EARLY):            true,
-	XdrToI32(TxTOO_LATE):             true,
-	XdrToI32(TxMISSING_OPERATION):    true,
-	XdrToI32(TxBAD_SEQ):              true,
-	XdrToI32(TxBAD_AUTH):             true,
-	XdrToI32(TxINSUFFICIENT_BALANCE): true,
-	XdrToI32(TxNO_ACCOUNT):           true,
-	XdrToI32(TxINSUFFICIENT_FEE):     true,
-	XdrToI32(TxBAD_AUTH_EXTRA):       true,
-	XdrToI32(TxINTERNAL_ERROR):       true,
-	XdrToI32(TxNOT_SUPPORTED):        true,
-	XdrToI32(TxBAD_SPONSORSHIP):      true,
+	XdrToI32(TxSUCCESS):                true,
+	XdrToI32(TxFAILED):                 true,
+	XdrToI32(TxTOO_EARLY):              true,
+	XdrToI32(TxTOO_LATE):               true,
+	XdrToI32(TxMISSING_OPERATION):      true,
+	XdrToI32(TxBAD_SEQ):                true,
+	XdrToI32(TxBAD_AUTH):               true,
+	XdrToI32(TxINSUFFICIENT_BALANCE):   true,
+	XdrToI32(TxNO_ACCOUNT):             true,
+	XdrToI32(TxINSUFFICIENT_FEE):       true,
+	XdrToI32(TxBAD_AUTH_EXTRA):         true,
+	XdrToI32(TxINTERNAL_ERROR):         true,
+	XdrToI32(TxNOT_SUPPORTED):          true,
+	XdrToI32(TxBAD_SPONSORSHIP):        true,
+	XdrToI32(TxBAD_MIN_SEQ_AGE_OR_GAP): true,
 }
 
 func (_ XdrAnon_InnerTransactionResult_Result) XdrValidTags() map[int32]bool {
@@ -18003,7 +18576,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) Results() *[]OperationResult {
 }
 func (u XdrAnon_InnerTransactionResult_Result) XdrValid() bool {
 	switch u.Code {
-	case TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP:
+	case TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
 		return true
 	}
 	return false
@@ -18018,7 +18591,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrUnionBody() XdrType {
 	switch u.Code {
 	case TxSUCCESS, TxFAILED:
 		return (*_XdrVec_unbounded_OperationResult)(u.Results())
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
 		return nil
 	}
 	return nil
@@ -18027,7 +18600,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrUnionBodyName() string {
 	switch u.Code {
 	case TxSUCCESS, TxFAILED:
 		return "Results"
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
 		return ""
 	}
 	return ""
@@ -18050,7 +18623,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrRecurse(x XDR, name string) {
 	case TxSUCCESS, TxFAILED:
 		x.Marshal(x.Sprintf("%sresults", name), (*_XdrVec_unbounded_OperationResult)(u.Results()))
 		return
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
 		return
 	}
 	XdrPanic("invalid Code (%v) in XdrAnon_InnerTransactionResult_Result", u.Code)
@@ -18388,17 +18961,73 @@ func XDR_Int64(v *Int64) XdrType_Int64 {
 func (XdrType_Int64) XdrTypeName() string  { return "Int64" }
 func (v XdrType_Int64) XdrUnwrap() XdrType { return v.XdrType_int64 }
 
+var _XdrTags_ExtensionPoint = map[int32]bool{
+	XdrToI32(0): true,
+}
+
+func (_ ExtensionPoint) XdrValidTags() map[int32]bool {
+	return _XdrTags_ExtensionPoint
+}
+func (u ExtensionPoint) XdrValid() bool {
+	switch u.V {
+	case 0:
+		return true
+	}
+	return false
+}
+func (u *ExtensionPoint) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *ExtensionPoint) XdrUnionTagName() string {
+	return "V"
+}
+func (u *ExtensionPoint) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	}
+	return nil
+}
+func (u *ExtensionPoint) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	}
+	return ""
+}
+
+type XdrType_ExtensionPoint = *ExtensionPoint
+
+func (v *ExtensionPoint) XdrPointer() interface{}       { return v }
+func (ExtensionPoint) XdrTypeName() string              { return "ExtensionPoint" }
+func (v ExtensionPoint) XdrValue() interface{}          { return v }
+func (v *ExtensionPoint) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *ExtensionPoint) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	}
+	XdrPanic("invalid V (%v) in ExtensionPoint", u.V)
+}
+func XDR_ExtensionPoint(v *ExtensionPoint) *ExtensionPoint { return v }
+
 var _XdrNames_CryptoKeyType = map[int32]string{
-	int32(KEY_TYPE_ED25519):       "KEY_TYPE_ED25519",
-	int32(KEY_TYPE_PRE_AUTH_TX):   "KEY_TYPE_PRE_AUTH_TX",
-	int32(KEY_TYPE_HASH_X):        "KEY_TYPE_HASH_X",
-	int32(KEY_TYPE_MUXED_ED25519): "KEY_TYPE_MUXED_ED25519",
+	int32(KEY_TYPE_ED25519):                "KEY_TYPE_ED25519",
+	int32(KEY_TYPE_PRE_AUTH_TX):            "KEY_TYPE_PRE_AUTH_TX",
+	int32(KEY_TYPE_HASH_X):                 "KEY_TYPE_HASH_X",
+	int32(KEY_TYPE_ED25519_SIGNED_PAYLOAD): "KEY_TYPE_ED25519_SIGNED_PAYLOAD",
+	int32(KEY_TYPE_MUXED_ED25519):          "KEY_TYPE_MUXED_ED25519",
 }
 var _XdrValues_CryptoKeyType = map[string]int32{
-	"KEY_TYPE_ED25519":       int32(KEY_TYPE_ED25519),
-	"KEY_TYPE_PRE_AUTH_TX":   int32(KEY_TYPE_PRE_AUTH_TX),
-	"KEY_TYPE_HASH_X":        int32(KEY_TYPE_HASH_X),
-	"KEY_TYPE_MUXED_ED25519": int32(KEY_TYPE_MUXED_ED25519),
+	"KEY_TYPE_ED25519":                int32(KEY_TYPE_ED25519),
+	"KEY_TYPE_PRE_AUTH_TX":            int32(KEY_TYPE_PRE_AUTH_TX),
+	"KEY_TYPE_HASH_X":                 int32(KEY_TYPE_HASH_X),
+	"KEY_TYPE_ED25519_SIGNED_PAYLOAD": int32(KEY_TYPE_ED25519_SIGNED_PAYLOAD),
+	"KEY_TYPE_MUXED_ED25519":          int32(KEY_TYPE_MUXED_ED25519),
 }
 
 func (CryptoKeyType) XdrEnumNames() map[int32]string {
@@ -18489,14 +19118,16 @@ type XdrType_PublicKeyType = *PublicKeyType
 func XDR_PublicKeyType(v *PublicKeyType) *PublicKeyType { return v }
 
 var _XdrNames_SignerKeyType = map[int32]string{
-	int32(SIGNER_KEY_TYPE_ED25519):     "SIGNER_KEY_TYPE_ED25519",
-	int32(SIGNER_KEY_TYPE_PRE_AUTH_TX): "SIGNER_KEY_TYPE_PRE_AUTH_TX",
-	int32(SIGNER_KEY_TYPE_HASH_X):      "SIGNER_KEY_TYPE_HASH_X",
+	int32(SIGNER_KEY_TYPE_ED25519):                "SIGNER_KEY_TYPE_ED25519",
+	int32(SIGNER_KEY_TYPE_PRE_AUTH_TX):            "SIGNER_KEY_TYPE_PRE_AUTH_TX",
+	int32(SIGNER_KEY_TYPE_HASH_X):                 "SIGNER_KEY_TYPE_HASH_X",
+	int32(SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD): "SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD",
 }
 var _XdrValues_SignerKeyType = map[string]int32{
-	"SIGNER_KEY_TYPE_ED25519":     int32(SIGNER_KEY_TYPE_ED25519),
-	"SIGNER_KEY_TYPE_PRE_AUTH_TX": int32(SIGNER_KEY_TYPE_PRE_AUTH_TX),
-	"SIGNER_KEY_TYPE_HASH_X":      int32(SIGNER_KEY_TYPE_HASH_X),
+	"SIGNER_KEY_TYPE_ED25519":                int32(SIGNER_KEY_TYPE_ED25519),
+	"SIGNER_KEY_TYPE_PRE_AUTH_TX":            int32(SIGNER_KEY_TYPE_PRE_AUTH_TX),
+	"SIGNER_KEY_TYPE_HASH_X":                 int32(SIGNER_KEY_TYPE_HASH_X),
+	"SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD": int32(SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD),
 }
 
 func (SignerKeyType) XdrEnumNames() map[int32]string {
@@ -18605,10 +19236,30 @@ func (u *PublicKey) XdrRecurse(x XDR, name string) {
 }
 func XDR_PublicKey(v *PublicKey) *PublicKey { return v }
 
+type XdrType_XdrAnon_SignerKey_Ed25519SignedPayload = *XdrAnon_SignerKey_Ed25519SignedPayload
+
+func (v *XdrAnon_SignerKey_Ed25519SignedPayload) XdrPointer() interface{} { return v }
+func (XdrAnon_SignerKey_Ed25519SignedPayload) XdrTypeName() string {
+	return "XdrAnon_SignerKey_Ed25519SignedPayload"
+}
+func (v XdrAnon_SignerKey_Ed25519SignedPayload) XdrValue() interface{}          { return v }
+func (v *XdrAnon_SignerKey_Ed25519SignedPayload) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_SignerKey_Ed25519SignedPayload) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sed25519", name), XDR_Uint256(&v.Ed25519))
+	x.Marshal(x.Sprintf("%spayload", name), XdrVecOpaque{&v.Payload, 64})
+}
+func XDR_XdrAnon_SignerKey_Ed25519SignedPayload(v *XdrAnon_SignerKey_Ed25519SignedPayload) *XdrAnon_SignerKey_Ed25519SignedPayload {
+	return v
+}
+
 var _XdrTags_SignerKey = map[int32]bool{
-	XdrToI32(SIGNER_KEY_TYPE_ED25519):     true,
-	XdrToI32(SIGNER_KEY_TYPE_PRE_AUTH_TX): true,
-	XdrToI32(SIGNER_KEY_TYPE_HASH_X):      true,
+	XdrToI32(SIGNER_KEY_TYPE_ED25519):                true,
+	XdrToI32(SIGNER_KEY_TYPE_PRE_AUTH_TX):            true,
+	XdrToI32(SIGNER_KEY_TYPE_HASH_X):                 true,
+	XdrToI32(SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD): true,
 }
 
 func (_ SignerKey) XdrValidTags() map[int32]bool {
@@ -18663,9 +19314,24 @@ func (u *SignerKey) HashX() *Uint256 {
 		return nil
 	}
 }
+func (u *SignerKey) Ed25519SignedPayload() *XdrAnon_SignerKey_Ed25519SignedPayload {
+	switch u.Type {
+	case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+		if v, ok := u._u.(*XdrAnon_SignerKey_Ed25519SignedPayload); ok {
+			return v
+		} else {
+			var zero XdrAnon_SignerKey_Ed25519SignedPayload
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SignerKey.Ed25519SignedPayload accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u SignerKey) XdrValid() bool {
 	switch u.Type {
-	case SIGNER_KEY_TYPE_ED25519, SIGNER_KEY_TYPE_PRE_AUTH_TX, SIGNER_KEY_TYPE_HASH_X:
+	case SIGNER_KEY_TYPE_ED25519, SIGNER_KEY_TYPE_PRE_AUTH_TX, SIGNER_KEY_TYPE_HASH_X, SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
 		return true
 	}
 	return false
@@ -18684,6 +19350,8 @@ func (u *SignerKey) XdrUnionBody() XdrType {
 		return XDR_Uint256(u.PreAuthTx())
 	case SIGNER_KEY_TYPE_HASH_X:
 		return XDR_Uint256(u.HashX())
+	case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+		return XDR_XdrAnon_SignerKey_Ed25519SignedPayload(u.Ed25519SignedPayload())
 	}
 	return nil
 }
@@ -18695,6 +19363,8 @@ func (u *SignerKey) XdrUnionBodyName() string {
 		return "PreAuthTx"
 	case SIGNER_KEY_TYPE_HASH_X:
 		return "HashX"
+	case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+		return "Ed25519SignedPayload"
 	}
 	return ""
 }
@@ -18719,6 +19389,9 @@ func (u *SignerKey) XdrRecurse(x XDR, name string) {
 		return
 	case SIGNER_KEY_TYPE_HASH_X:
 		x.Marshal(x.Sprintf("%shashX", name), XDR_Uint256(u.HashX()))
+		return
+	case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+		x.Marshal(x.Sprintf("%sed25519SignedPayload", name), XDR_XdrAnon_SignerKey_Ed25519SignedPayload(u.Ed25519SignedPayload()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in SignerKey", u.Type)
