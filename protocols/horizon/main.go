@@ -352,6 +352,7 @@ type Root struct {
 	CoreSequence                 int32     `json:"core_latest_ledger"`
 	NetworkPassphrase            string    `json:"network_passphrase"`
 	CurrentProtocolVersion       int32     `json:"current_protocol_version"`
+	SupportedProtocolVersion     uint32    `json:"supported_protocol_version"`
 	CoreSupportedProtocolVersion int32     `json:"core_supported_protocol_version"`
 }
 
