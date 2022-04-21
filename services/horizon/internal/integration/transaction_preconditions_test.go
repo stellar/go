@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"sync"
@@ -9,9 +11,11 @@ import (
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -286,7 +290,6 @@ func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 }
 
 func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSequence int64) txnbuild.TransactionParams {
-
 	return txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: masterAccount.GetAccountID(),
@@ -333,4 +336,77 @@ func TestTransactionPreconditionsAccountV3Fields(t *testing.T) {
 	// Check that the account response has the new AccountV3 fields
 	tt.Equal(uint32(tx.Ledger), account.SequenceLedger)
 	tt.Equal(strconv.FormatInt(tx.LedgerCloseTime.Unix(), 10), account.SequenceTime)
+}
+
+// TestTransactionWithoutPreconditions ensures that Horizon doesn't break when
+// we have a PRECOND_NONE type transaction (which is not possible to submit
+// through SDKs, but is absolutely still possible).
+func TestTransactionWithoutPreconditions(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
+
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+	seqNum, err := masterAccount.GetSequenceNumber()
+	tt.NoError(err)
+
+	account := xdr.MuxedAccount{}
+	tt.NoError(account.SetEd25519Address(master.Address()))
+
+	payment := txnbuild.Payment{ // dummy op
+		Destination: master.Address(),
+		Amount:      "1000",
+		Asset:       txnbuild.NativeAsset{},
+	}
+	paymentOp, err := payment.BuildXDR()
+	tt.NoError(err)
+
+	envelope := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: account,
+				Fee:           xdr.Uint32(1000),
+				SeqNum:        xdr.SequenceNumber(seqNum + 1),
+				Operations:    []xdr.Operation{paymentOp},
+				Cond: xdr.Preconditions{
+					Type: xdr.PreconditionTypePrecondNone,
+				},
+			},
+			Signatures: nil,
+		},
+	}
+
+	// Taken from txnbuild.concatSignatures
+	h, err := network.HashTransactionInEnvelope(envelope,
+		integration.StandaloneNetworkPassphrase)
+	tt.NoError(err)
+
+	sig, err := master.SignDecorated(h[:])
+	tt.NoError(err)
+
+	// taken from txnbuild.marshallBinary
+	var txBytes bytes.Buffer
+	envelope.V1.Signatures = []xdr.DecoratedSignature{sig}
+	_, err = xdr.Marshal(&txBytes, envelope)
+	tt.NoError(err)
+	b64 := base64.StdEncoding.EncodeToString(txBytes.Bytes())
+
+	txResp, err := itest.Client().SubmitTransactionXDR(b64)
+	tt.NoError(err)
+
+	fmt.Println(
+		"envelopeXDR", txResp.EnvelopeXdr,
+		"resultXDR", txResp.ResultXdr,
+		// "feeChangesXDR", txResp.feeChangesXDR,
+		"metaXDR", txResp.FeeMetaXdr,
+		"hash", txResp.Hash,
+	)
+
+	txResp2, err := itest.Client().TransactionDetail(txResp.Hash)
+	tt.NoError(err)
+	tt.Nil(txResp2.Preconditions)
 }
