@@ -398,6 +398,14 @@ func TestTransactionWithoutPreconditions(t *testing.T) {
 	txResp, err := itest.Client().SubmitTransactionXDR(b64)
 	tt.NoError(err)
 
+	fmt.Println(
+		"envelopeXDR", txResp.EnvelopeXdr,
+		"resultXDR", txResp.ResultXdr,
+		// "feeChangesXDR", txResp.feeChangesXDR,
+		"metaXDR", txResp.FeeMetaXdr,
+		"hash", txResp.Hash,
+	)
+
 	txResp2, err := itest.Client().TransactionDetail(txResp.Hash)
 	tt.NoError(err)
 	tt.Nil(txResp2.Preconditions)
