@@ -395,6 +395,10 @@ func TestTransactionWithoutPreconditions(t *testing.T) {
 	tt.NoError(err)
 	b64 := base64.StdEncoding.EncodeToString(txBytes.Bytes())
 
-	_, err = itest.Client().SubmitTransactionXDR(b64)
+	txResp, err := itest.Client().SubmitTransactionXDR(b64)
 	tt.NoError(err)
+
+	txResp2, err := itest.Client().TransactionDetail(txResp.Hash)
+	tt.NoError(err)
+	tt.Nil(txResp2.Preconditions)
 }

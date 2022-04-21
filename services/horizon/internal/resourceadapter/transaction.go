@@ -55,9 +55,9 @@ func PopulateTransaction(
 	}
 	dest.Signatures = row.Signatures
 
-	if row.HasPreconditions() {
-		dest.Preconditions = &protocol.TransactionPreconditions{}
-	}
+	// Prepare it unconditionally to be defensive against accidental nil
+	// dereferences further down.
+	dest.Preconditions = &protocol.TransactionPreconditions{}
 
 	if !row.TimeBounds.Null {
 		// Action needed in release: horizon-v3.0.0: remove ValidBefore and ValidAfter
@@ -95,7 +95,7 @@ func PopulateTransaction(
 		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(row.MinAccountSequenceLedgerGap.Int64)
 	}
 
-	if row.ExtraSigners != nil {
+	if len(row.ExtraSigners) > 0 {
 		dest.Preconditions.ExtraSigners = row.ExtraSigners
 	}
 
@@ -135,6 +135,11 @@ func PopulateTransaction(
 	dest.Links.Transaction = dest.Links.Self
 	dest.Links.Succeeds = lb.Linkf("/transactions?order=desc&cursor=%s", dest.PT)
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
+
+	// If we didn't need the structure, drop it.
+	if !row.HasPreconditions() {
+		dest.Preconditions = nil
+	}
 
 	return nil
 }
