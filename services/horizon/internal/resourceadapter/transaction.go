@@ -55,26 +55,23 @@ func PopulateTransaction(
 	}
 	dest.Signatures = row.Signatures
 
-	if row.HasPreconditions() {
-		dest.Preconditions = &protocol.TransactionPreconditions{}
-	}
+	// If we never use this, we'll remove it later. This just defends us against
+	// nil dereferences.
+	dest.Preconditions = &protocol.TransactionPreconditions{}
 
 	if !row.TimeBounds.Null {
 		// Action needed in release: horizon-v3.0.0: remove ValidBefore and ValidAfter
 		dest.ValidBefore = timeString(row.TimeBounds.Upper)
 		dest.ValidAfter = timeString(row.TimeBounds.Lower)
 
-		if dest.Preconditions.TimeBounds == nil {
-			dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{}
+		dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{
+			MaxTime: timeString(row.TimeBounds.Upper),
+			MinTime: timeString(row.TimeBounds.Lower),
 		}
-		dest.Preconditions.TimeBounds.MaxTime = timeString(row.TimeBounds.Upper)
-		dest.Preconditions.TimeBounds.MinTime = timeString(row.TimeBounds.Lower)
 	}
 
 	if !row.LedgerBounds.Null {
-		if dest.Preconditions.LedgerBounds == nil {
-			dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{}
-		}
+		dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{}
 		if row.LedgerBounds.MinLedger.Valid {
 			dest.Preconditions.LedgerBounds.MinLedger = uint32(row.LedgerBounds.MinLedger.Int64)
 		}
@@ -95,7 +92,7 @@ func PopulateTransaction(
 		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(row.MinAccountSequenceLedgerGap.Int64)
 	}
 
-	if row.ExtraSigners != nil {
+	if len(row.ExtraSigners) > 0 {
 		dest.Preconditions.ExtraSigners = row.ExtraSigners
 	}
 
@@ -135,6 +132,11 @@ func PopulateTransaction(
 	dest.Links.Transaction = dest.Links.Self
 	dest.Links.Succeeds = lb.Linkf("/transactions?order=desc&cursor=%s", dest.PT)
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
+
+	// If we didn't need the structure, drop it.
+	if !row.HasPreconditions() {
+		dest.Preconditions = nil
+	}
 
 	return nil
 }

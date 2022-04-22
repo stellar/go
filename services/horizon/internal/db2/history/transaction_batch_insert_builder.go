@@ -249,6 +249,10 @@ func formatUint32(u *xdr.Uint32) null.Int {
 }
 
 func formatSigners(s []xdr.SignerKey) pq.StringArray {
+	if s == nil {
+		return nil
+	}
+
 	signers := make([]string, len(s))
 	for i, key := range s {
 		signers[i] = key.Address()
