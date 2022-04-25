@@ -41,7 +41,7 @@ func main() {
 	}
 	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(target)
 	defer ledgerBackend.Close()
-	archiveWrapper := archive.Wrapper{Archive: ledgerBackend}
+	archiveWrapper := archive.Wrapper{Archive: ledgerBackend, Passphrase: *networkPassphrase}
 	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
 	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
 

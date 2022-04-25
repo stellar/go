@@ -6,7 +6,7 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -28,11 +28,15 @@ type Archive interface {
 
 type Wrapper struct {
 	Archive
+	Passphrase string
 }
 
 func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
+	if ledgerSequence < 2 {
+		ledgerSequence = 2
+	}
 
 	log.Debugf("Searching op %d", cursor)
 	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
@@ -48,9 +52,9 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 			return nil, err
 		}
 
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, ledger)
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error in ledger %d", ledgerSequence)
 		}
 
 		transactionOrder := int32(0)
@@ -99,6 +103,9 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transaction, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
+	if ledgerSequence < 2 {
+		ledgerSequence = 2
+	}
 
 	log.Debugf("Searching tx %d", cursor)
 	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
@@ -115,7 +122,7 @@ func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transacti
 			return nil, err
 		}
 
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, ledger)
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
 		if err != nil {
 			return nil, err
 		}
