@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/xdr"
-
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 )
 
 var logger = supportlog.New()
@@ -23,8 +23,9 @@ var logger = supportlog.New()
 func main() {
 	targetUrl := flag.String("target", "gcs://horizon-archive-poc", "history archive url to write txmeta files")
 	stellarCoreBinaryPath := flag.String("stellar-core-binary-path", os.Getenv("STELLAR_CORE_BINARY_PATH"), "path to the stellar core binary")
-	networkPassphrase := flag.String("network-passphrase", "Test SDF Network ; September 2015", "network passphrase")
+	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
 	historyArchiveUrls := flag.String("history-archive-urls", "https://history.stellar.org/prd/core-testnet/core_testnet_001", "comma-separated list of history archive urls to read from")
+	captiveCoreTomlPath := flag.String("captive-core-toml-path", os.Getenv("CAPTIVE_CORE_TOML_PATH"), "path to load captive core toml file from")
 	flag.Parse()
 
 	logger.SetLevel(supportlog.InfoLevel)
@@ -33,7 +34,11 @@ func main() {
 		NetworkPassphrase:  *networkPassphrase,
 		HistoryArchiveURLs: strings.Split(*historyArchiveUrls, ","),
 	}
-	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(os.Getenv("CAPTIVE_CORE_TOML_PATH"), params)
+	if *captiveCoreTomlPath == "" {
+		logger.Fatal("Missing -captive-core-toml-path flag")
+	}
+
+	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(*captiveCoreTomlPath, params)
 	if err != nil {
 		logger.WithError(err).Fatal("Invalid captive core toml")
 	}
@@ -58,12 +63,14 @@ func main() {
 			NetworkPassphrase: params.NetworkPassphrase,
 		},
 	)
+	if err != nil {
+		logger.WithError(err).Fatal("Could not connect to target")
+	}
 	defer target.Close()
 
-	var latestLedger uint32
-	latestLedger = readLatestLedger(target)
+	latestLedger := readLatestLedger(target)
 
-	nextLedger := latestLedger + 1
+	nextLedger := latestLedger
 	if err := core.PrepareRange(context.Background(), ledgerbackend.UnboundedRange(latestLedger)); err != nil {
 		logger.WithError(err).Fatalf("could not prepare unbounded range %v", nextLedger)
 	}
@@ -91,7 +98,7 @@ func main() {
 
 func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
 	r, err := backend.GetFile("latest")
-	if err == os.ErrNotExist {
+	if os.IsNotExist(err) {
 		return 2
 	} else if err != nil {
 		logger.WithError(err).Fatal("could not open latest ledger bucket")

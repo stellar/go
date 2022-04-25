@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,25 +10,15 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 )
 
 func main() {
-	historyArchive, err := historyarchive.Connect(
-		"http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001",
-		historyarchive.ConnectOptions{
-			NetworkPassphrase: network.PublicNetworkPassphrase,
-			S3Region:          "us-west-1",
-			UnsignedRequests:  false,
-			Wrap: func(a historyarchive.ArchiveBackend) (historyarchive.ArchiveBackend, error) {
-				return historyarchive.MakeFsCacheBackend(a, "", 0)
-			},
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
+	targetUrl := flag.String("target", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
+	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
+	flag.Parse()
 
 	indexStore, err := index.NewS3Store(&aws.Config{Region: aws.String("us-east-1")}, "", 20)
 	if err != nil {
@@ -36,7 +28,20 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	log.Info("Starting lighthorizon!")
 
-	archiveWrapper := archive.Wrapper{historyArchive}
+	// Simple file os access
+	target, err := historyarchive.ConnectBackend(
+		*targetUrl,
+		historyarchive.ConnectOptions{
+			Context:           context.Background(),
+			NetworkPassphrase: *networkPassphrase,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(target)
+	defer ledgerBackend.Close()
+	archiveWrapper := archive.Wrapper{Archive: ledgerBackend}
 	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
 	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
 

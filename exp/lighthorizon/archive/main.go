@@ -1,13 +1,12 @@
 package archive
 
 import (
+	"context"
 	"io"
 
 	"github.com/stellar/go/exp/lighthorizon/common"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -24,7 +23,7 @@ const checkpointsToLookup = 1
 
 // Archive here only has the methods we care about, to make caching/wrapping easier
 type Archive interface {
-	GetLedgers(start, end uint32) (map[uint32]*historyarchive.Ledger, error)
+	GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
 }
 
 type Wrapper struct {
@@ -40,33 +39,16 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 
 	ops := []common.Operation{}
 	appending := false
-
-	ledgers, err := a.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
-	if err != nil {
-		return nil, err
-	}
+	ctx := context.Background()
 
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, ok := ledgers[ledgerSequence]
-		if !ok {
-			return nil, errors.Errorf("could not reach limit in %d checkpoints (ledger not found)", checkpointsToLookup)
+		ledger, err := a.GetLedger(ctx, ledgerSequence)
+		if err != nil {
+			return nil, err
 		}
 
-		resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))
-		for i, result := range ledger.TransactionResult.TxResultSet.Results {
-			resultMeta[i].Result = result
-		}
-
-		closeMeta := xdr.LedgerCloseMeta{
-			V0: &xdr.LedgerCloseMetaV0{
-				LedgerHeader: ledger.Header,
-				TxSet:        ledger.Transaction.TxSet,
-				TxProcessing: resultMeta,
-			},
-		}
-
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, closeMeta)
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, ledger)
 		if err != nil {
 			return nil, err
 		}
@@ -95,9 +77,10 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 					ops = append(ops, common.Operation{
 						TransactionEnvelope: &tx.Envelope,
 						TransactionResult:   &tx.Result.Result,
-						LedgerHeader:        &ledger.Header.Header,
-						OpIndex:             int32(operationOrder),
-						TxIndex:             int32(transactionOrder),
+						// TODO: Use a method to get the header
+						LedgerHeader: &ledger.V0.LedgerHeader.Header,
+						OpIndex:      int32(operationOrder),
+						TxIndex:      int32(transactionOrder),
 					})
 				}
 
@@ -123,32 +106,16 @@ func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transacti
 	txns := []common.Transaction{}
 	appending := false
 
-	ledgers, err := a.GetLedgers(ledgerSequence, ledgerSequence+64*checkpointsToLookup)
-	if err != nil {
-		return nil, err
-	}
+	ctx := context.Background()
 
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, ok := ledgers[ledgerSequence]
-		if !ok {
-			return nil, errors.Errorf("could not reach limit in %d checkpoints (ledger not found)", checkpointsToLookup)
+		ledger, err := a.GetLedger(ctx, ledgerSequence)
+		if err != nil {
+			return nil, err
 		}
 
-		resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))
-		for i, result := range ledger.TransactionResult.TxResultSet.Results {
-			resultMeta[i].Result = result
-		}
-
-		closeMeta := xdr.LedgerCloseMeta{
-			V0: &xdr.LedgerCloseMetaV0{
-				LedgerHeader: ledger.Header,
-				TxSet:        ledger.Transaction.TxSet,
-				TxProcessing: resultMeta,
-			},
-		}
-
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, closeMeta)
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, ledger)
 		if err != nil {
 			return nil, err
 		}
@@ -176,8 +143,9 @@ func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transacti
 				txns = append(txns, common.Transaction{
 					TransactionEnvelope: &tx.Envelope,
 					TransactionResult:   &tx.Result.Result,
-					LedgerHeader:        &ledger.Header.Header,
-					TxIndex:             int32(transactionOrder),
+					// TODO: Use a method to get the header
+					LedgerHeader: &ledger.V0.LedgerHeader.Header,
+					TxIndex:      int32(transactionOrder),
 				})
 			}
 
