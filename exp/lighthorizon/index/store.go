@@ -23,6 +23,8 @@ type Store interface {
 	MergeTransactions(prefix string, other *TrieIndex) error
 }
 
+// TODO: Use a more standardized filesystem-style backend, so we can re-use
+// code
 type Backend interface {
 	Flush(map[string]map[string]*CheckpointIndex) error
 	FlushAccounts([]string) error

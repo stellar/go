@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
@@ -26,42 +26,59 @@ var (
 )
 
 func main() {
+	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
+	targetUrl := flag.String("target", "file://indexes", "where to write indexes")
+	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
+	start := flag.Int("start", -1, "ledger to start at (default: earliest)")
+	end := flag.Int("end", -1, "ledger to end at (default: latest)")
 	modules := flag.String("modules", "accounts,transactions", "comma-separated list of modules to index (default: all)")
 	flag.Parse()
 
 	log.SetLevel(log.InfoLevel)
 
-	indexStore, err := index.NewS3Store(&aws.Config{Region: aws.String("us-east-1")}, "", parallel)
+	ctx := context.Background()
+
+	indexStore, err := index.Connect(*targetUrl)
 	if err != nil {
 		panic(err)
 	}
 
-	historyArchive, err := historyarchive.Connect(
-		// "file:///Users/Bartek/archive",
-		"s3://history.stellar.org/prd/core-live/core_live_001",
+	// Simple file os access
+	source, err := historyarchive.ConnectBackend(
+		*sourceUrl,
 		historyarchive.ConnectOptions{
-			NetworkPassphrase: network.PublicNetworkPassphrase,
-			S3Region:          "eu-west-1",
-			UnsignedRequests:  false,
+			Context:           context.Background(),
+			NetworkPassphrase: *networkPassphrase,
 		},
 	)
 	if err != nil {
 		panic(err)
 	}
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
+	defer ledgerBackend.Close()
 
 	startTime := time.Now()
 
-	startCheckpoint := uint32(0) //uint32((39680056) / 64)
-	endCheckpoint := uint32((39685056) / 64)
-	all := endCheckpoint - startCheckpoint
+	if *start < 2 {
+		*start = 2
+	}
+	if *end == -1 {
+		latest, err := ledgerBackend.GetLatestLedgerSequence(ctx)
+		if err != nil {
+			panic(err)
+		}
+		*end = int(latest)
+	}
+	startLedger := uint32(*start) //uint32((39680056) / 64)
+	endLedger := uint32(*end)
+	all := endLedger - startLedger
 
-	ctx := context.Background()
 	wg, ctx := errgroup.WithContext(ctx)
 
 	ch := make(chan uint32, parallel)
 
 	go func() {
-		for i := startCheckpoint; i <= endCheckpoint; i++ {
+		for i := startLedger; i <= endLedger; i++ {
 			ch <- i
 		}
 		close(ch)
@@ -70,70 +87,67 @@ func main() {
 	processed := uint64(0)
 	for i := uint32(0); i < parallel; i++ {
 		wg.Go(func() error {
-			for checkpoint := range ch {
-
-				startLedger := checkpoint * 64
-				if startLedger == 0 {
-					startLedger = 1
-				}
-				endLedger := checkpoint*64 - 1 + 64
-
-				// fmt.Println("Processing checkpoint", checkpoint, "ledgers", startLedger, endLedger)
-
-				ledgers, err := historyArchive.GetLedgers(startLedger, endLedger)
+			for ledgerSeq := range ch {
+				fmt.Println("Processing ledger", ledgerSeq)
+				ledger, err := ledgerBackend.GetLedger(ctx, ledgerSeq)
 				if err != nil {
 					log.WithField("error", err).Error("error getting ledgers")
-					ch <- checkpoint
+					ch <- ledgerSeq
 					continue
 				}
 
-				for i := startLedger; i <= endLedger; i++ {
-					ledger, ok := ledgers[i]
-					if !ok {
-						return fmt.Errorf("no ledger %d", i)
-					}
+				checkpoint := ledgerSeq / 64
 
-					resultMeta := make([]xdr.TransactionResultMeta, len(ledger.TransactionResult.TxResultSet.Results))
-					for i, result := range ledger.TransactionResult.TxResultSet.Results {
-						resultMeta[i].Result = result
-					}
+				reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(*networkPassphrase, ledger)
+				if err != nil {
+					return err
+				}
 
-					closeMeta := xdr.LedgerCloseMeta{
-						V0: &xdr.LedgerCloseMetaV0{
-							LedgerHeader: ledger.Header,
-							TxSet:        ledger.Transaction.TxSet,
-							TxProcessing: resultMeta,
-						},
-					}
-
-					reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(network.PublicNetworkPassphrase, closeMeta)
+				for {
+					tx, err := reader.Read()
 					if err != nil {
+						if err == io.EOF {
+							break
+						}
 						return err
 					}
 
-					for {
-						tx, err := reader.Read()
+					if strings.Contains(*modules, "transactions") {
+						indexStore.AddTransactionToIndexes(
+							toid.New(int32(ledger.LedgerSequence()), int32(tx.Index), 0).ToInt64(),
+							tx.Result.TransactionHash,
+						)
+					}
+
+
+					if strings.Contains(*modules, "accounts") {
+						allParticipants, err := participantsForOperations(tx, false)
 						if err != nil {
-							if err == io.EOF {
-								break
-							}
 							return err
 						}
 
-						if strings.Contains(*modules, "transactions") {
-							indexStore.AddTransactionToIndexes(
-								toid.New(int32(closeMeta.LedgerSequence()), int32(tx.Index), 0).ToInt64(),
-								tx.Result.TransactionHash,
-							)
+						err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
+						if err != nil {
+							return err
 						}
 
-						if strings.Contains(*modules, "accounts") {
+						paymentsParticipants, err := participantsForOperations(tx, true)
+						if err != nil {
+							return err
+						}
+
+						err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
+						if err != nil {
+							return err
+						}
+
+						if tx.Result.Successful() {
 							allParticipants, err := participantsForOperations(tx, false)
 							if err != nil {
 								return err
 							}
 
-							err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_all", allParticipants)
 							if err != nil {
 								return err
 							}
@@ -143,50 +157,28 @@ func main() {
 								return err
 							}
 
-							err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
+							err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_payments", paymentsParticipants)
 							if err != nil {
 								return err
-							}
-
-							if tx.Result.Successful() {
-								allParticipants, err := participantsForOperations(tx, false)
-								if err != nil {
-									return err
-								}
-
-								err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_all", allParticipants)
-								if err != nil {
-									return err
-								}
-
-								paymentsParticipants, err := participantsForOperations(tx, true)
-								if err != nil {
-									return err
-								}
-
-								err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_payments", paymentsParticipants)
-								if err != nil {
-									return err
-								}
 							}
 						}
 					}
 				}
+			}
 
-				nprocessed := atomic.AddUint64(&processed, 1)
+			nprocessed := atomic.AddUint64(&processed, 1)
 
-				if nprocessed%100 == 0 {
-					log.Infof(
-						"Reading checkpoints... - %.2f%% - elapsed: %s, remaining: %s",
-						(float64(nprocessed)/float64(all))*100,
-						time.Since(startTime).Round(1*time.Second),
-						(time.Duration(int64(time.Since(startTime))*int64(all)/int64(nprocessed)) - time.Since(startTime)).Round(1*time.Second),
-					)
+			if nprocessed%100 == 0 {
+				log.Infof(
+					"Reading checkpoints... - %.2f%% - elapsed: %s, remaining: %s",
+					(float64(nprocessed)/float64(all))*100,
+					time.Since(startTime).Round(1*time.Second),
+					(time.Duration(int64(time.Since(startTime))*int64(all)/int64(nprocessed)) - time.Since(startTime)).Round(1*time.Second),
+				)
 
-					// Clear indexes to save memory
-					if err := indexStore.Flush(); err != nil {
-						return err
-					}
+				// Clear indexes to save memory
+				if err := indexStore.Flush(); err != nil {
+					return err
 				}
 			}
 			return nil
