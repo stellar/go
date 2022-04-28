@@ -212,6 +212,8 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
+	submitPhonyOp(itest) // upgrades master account to v3
+
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()
 	currentAccountSeq, err := masterAccount.GetSequenceNumber()
