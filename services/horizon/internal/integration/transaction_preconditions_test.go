@@ -231,28 +231,37 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	tt.GreaterOrEqual(signedAcctSeqTime, int64(0))
 	acctSeqTime := uint64(signedAcctSeqTime)
 	networkSeqTime := uint64(ledgers.Embedded.Records[0].ClosedAt.UTC().Unix())
+	tt.GreaterOrEqual(networkSeqTime, acctSeqTime)
 
 	// build a tx with seqnum based on master.seqNum+1 as source account
 	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
 
-	// this txsub will error because the tx preconditions require a min sequence age
-	// which has been set 10000 seconds greater than the current difference between
-	// network ledger sequence time and account sequnece time
+	// This txsub will error because the tx preconditions require a min sequence
+	// age which has been set 10000 seconds greater than the current difference
+	// between network ledger sequence time and account sequnece time.
 	txParams.Preconditions.MinSequenceNumberAge = networkSeqTime - acctSeqTime + 10000
-	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
+	tx, err := itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
 	tt.Error(err)
 
-	txParams.Preconditions.MinSequenceNumberAge = networkSeqTime - acctSeqTime - 1
-	// Now the transaction should be submitted without problems, the min sequence age
-	// is set to be one second less then the current difference between network time and account sequence time.
-	tx, err := itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
-	tt.NoError(err)
+	// Now the transaction should be submitted without problems, the min
+	// sequence age is set to be 1s more than the current difference between
+	// network time and account sequence time.
+	//
+	// We don't need to sleep because the previous txsub would've taken more
+	// than that necessary duration.
+	txParams.Preconditions.MinSequenceNumberAge = 1
+	fmt.Println(networkSeqTime, acctSeqTime, txParams.Preconditions.MinSequenceNumberAge)
+	tx, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
+	itest.LogFailedTx(tx, err)
 
 	//verify roundtrip to network and back through the horizon api returns same precondition values
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
-	assert.NoError(t, err)
-	assert.EqualValues(t, txHistory.Preconditions.MinAccountSequenceAge,
-		fmt.Sprint(uint64(txParams.Preconditions.MinSequenceNumberAge)))
+	tt.NoError(err)
+
+	expected := txParams.Preconditions.MinSequenceNumberAge
+	actual, err := strconv.ParseUint(txHistory.Preconditions.MinAccountSequenceAge, 10, 64)
+	tt.NoError(err)
+	tt.Equal(expected, actual)
 }
 
 func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {

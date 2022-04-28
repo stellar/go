@@ -787,7 +787,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
 	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
-		"Transaction doesn't have success code.")
+		"Transaction did not succeed: %d", txResult.Result.Code)
 }
 
 func (i *Test) GetPassPhrase() string {
