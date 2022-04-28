@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"fmt"
 	"strconv"
 	"testing"
 
@@ -54,8 +53,6 @@ func TestProtocol19Upgrade(t *testing.T) {
 		tt.Error(err)
 		if prob := horizonclient.GetError(err); prob != nil {
 			if results, ok := prob.Problem.Extras["result_codes"].(map[string]interface{}); ok {
-				fmt.Println("RESULTS ARE HERE")
-				fmt.Println(results)
 				tt.Equal("tx_not_supported", results["transaction"])
 			} else {
 				tt.FailNow("result_codes couldn't be parsed: %+v", results)
@@ -78,7 +75,7 @@ func TestProtocol19Upgrade(t *testing.T) {
 
 		// Check that the account response has V3 fields omitted.
 		tt.EqualValues(0, account.SequenceLedger)
-		tt.Equal("0", account.SequenceTime)
+		tt.Equal("", account.SequenceTime)
 
 		itest.UpgradeProtocol(19)
 
