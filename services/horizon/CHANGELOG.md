@@ -5,11 +5,15 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## V2.17.0 Release Candidate
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
 **Support for Protocol 19** ([4340](https://github.com/stellar/go/pull/4340)):
 
   - Account records can now contain two new, optional fields:
 
-```json
+```txt
     "sequence_ledger": 0, // uint32 ledger number
     "sequence_time": "0"  // uint64 unix time in seconds, as a string
 ```
@@ -18,7 +22,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
   - Transaction records can now contain the following optional object:
 
-```json
+```txt
     "preconditions": {
       "timebounds": {
         "min_time": "0",  // uint64 unix time in seconds, as a string
@@ -43,7 +47,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### DB Schema Migration
 
 The migration makes the following schema changes:
-  
+
   - adds new, optional columns to the `history_transactions` table related to the new preconditions
   - adds new, optional columns to the `accounts` table related to the new account extension
   - amends the `signer` column of the `accounts_signers` table to allow signers of arbitrary length
