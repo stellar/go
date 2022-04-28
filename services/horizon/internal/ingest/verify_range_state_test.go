@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -485,8 +486,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		AccountID:          mockAccountID,
 		Balance:            600,
 		LastModifiedLedger: 62,
-		SequenceTime:       18446744011573954816,
-		SequenceLedger:     12345678,
+		SequenceTime:       zero.IntFrom(9223372036854775807),
+		SequenceLedger:     zero.IntFrom(12345678),
 		MasterWeight:       1,
 		NumSponsored:       0,
 		NumSponsoring:      2,

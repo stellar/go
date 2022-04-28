@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -30,7 +31,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 			Balance:            int64(1000000000000000000),
 			SequenceNumber:     0,
-			SequenceTime:       0,
+			SequenceTime:       zero.IntFrom(0),
 			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
@@ -96,7 +97,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 			Balance:            int64(1000000000000000000),
 			SequenceNumber:     0,
-			SequenceTime:       0,
 			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
