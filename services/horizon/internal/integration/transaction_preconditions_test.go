@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 	"testing"
@@ -289,55 +290,6 @@ func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 	assert.Equal(t, txHistory.Preconditions.MinAccountSequenceLedgerGap, txParams.Preconditions.MinSequenceNumberLedgerGap)
 }
 
-func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSequence int64) txnbuild.TransactionParams {
-	return txnbuild.TransactionParams{
-		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: masterAccount.GetAccountID(),
-			Sequence:  txSequence,
-		},
-		// Phony operation to run
-		Operations: []txnbuild.Operation{
-			&txnbuild.Payment{
-				Destination: master.Address(),
-				Amount:      "10",
-				Asset:       txnbuild.NativeAsset{},
-			},
-		},
-		BaseFee: txnbuild.MinBaseFee,
-		Memo:    nil,
-		Preconditions: txnbuild.Preconditions{
-			TimeBounds: txnbuild.NewInfiniteTimeout(),
-		},
-	}
-}
-
-func TestTransactionPreconditionsAccountV3Fields(t *testing.T) {
-	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{})
-	if itest.GetEffectiveProtocolVersion() < 19 {
-		t.Skip("Can't run with protocol < 19")
-	}
-	master := itest.Master()
-	masterAccount := itest.MasterAccount()
-
-	// Submit phony operation
-	tx := itest.MustSubmitOperations(masterAccount, master,
-		&txnbuild.Payment{
-			Destination: master.Address(),
-			Amount:      "10",
-			Asset:       txnbuild.NativeAsset{},
-		},
-	)
-
-	// refresh master account
-	account, err := itest.Client().AccountDetail(sdk.AccountRequest{AccountID: master.Address()})
-	assert.NoError(t, err)
-
-	// Check that the account response has the new AccountV3 fields
-	tt.Equal(uint32(tx.Ledger), account.SequenceLedger)
-	tt.Equal(strconv.FormatInt(tx.LedgerCloseTime.Unix(), 10), account.SequenceTime)
-}
-
 // TestTransactionWithoutPreconditions ensures that Horizon doesn't break when
 // we have a PRECOND_NONE type transaction (which is not possible to submit
 // through SDKs, but is absolutely still possible).
@@ -398,15 +350,69 @@ func TestTransactionWithoutPreconditions(t *testing.T) {
 	txResp, err := itest.Client().SubmitTransactionXDR(b64)
 	tt.NoError(err)
 
-	fmt.Println(
-		"envelopeXDR", txResp.EnvelopeXdr,
-		"resultXDR", txResp.ResultXdr,
-		// "feeChangesXDR", txResp.feeChangesXDR,
-		"metaXDR", txResp.FeeMetaXdr,
-		"hash", txResp.Hash,
-	)
-
 	txResp2, err := itest.Client().TransactionDetail(txResp.Hash)
 	tt.NoError(err)
 	tt.Nil(txResp2.Preconditions)
+}
+
+func TestTransactionPreconditionsEdgeCases(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, integration.Config{})
+	if itest.GetEffectiveProtocolVersion() < 19 {
+		t.Skip("Can't run with protocol < 19")
+	}
+	master := itest.Master()
+	masterAccount := itest.MasterAccount()
+
+	maxMinSeq := int64(math.MaxInt64)
+	preconditionTests := []txnbuild.Preconditions{
+		{LedgerBounds: &txnbuild.LedgerBounds{1, 0}},
+		{LedgerBounds: &txnbuild.LedgerBounds{0, math.MaxUint32}},
+		{LedgerBounds: &txnbuild.LedgerBounds{math.MaxUint32, 1}},
+		{
+			LedgerBounds: &txnbuild.LedgerBounds{math.MaxUint32, 1},
+			ExtraSigners: []string{},
+		},
+		{
+			MinSequenceNumber:          &maxMinSeq,
+			MinSequenceNumberLedgerGap: math.MaxUint32,
+			MinSequenceNumberAge:       math.MaxUint64,
+			ExtraSigners:               nil,
+		},
+	}
+
+	for _, precondition := range preconditionTests {
+		seqNum, err := masterAccount.IncrementSequenceNumber()
+		tt.NoError(err)
+
+		params := buildTXParams(master, masterAccount, seqNum)
+		precondition.TimeBounds = txnbuild.NewInfiniteTimeout()
+		params.Preconditions = precondition
+
+		// The goal here is not to check for validation or errors or responses,
+		// but rather to just make sure the edge case doesn't crash Horizon.
+		itest.SubmitTransaction(master, params)
+	}
+}
+
+func buildTXParams(master *keypair.Full, masterAccount txnbuild.Account, txSequence int64) txnbuild.TransactionParams {
+	return txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: masterAccount.GetAccountID(),
+			Sequence:  txSequence,
+		},
+		// Phony operation to run
+		Operations: []txnbuild.Operation{
+			&txnbuild.Payment{
+				Destination: master.Address(),
+				Amount:      "10",
+				Asset:       txnbuild.NativeAsset{},
+			},
+		},
+		BaseFee: txnbuild.MinBaseFee,
+		Memo:    nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	}
 }

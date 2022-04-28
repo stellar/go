@@ -120,7 +120,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		config.ProtocolVersion = ingest.MaxSupportedProtocolVersion
 		// If the environment tells us that Core only supports up to certain version,
 		// use that.
-		maxSupportedCoreProtocolFromEnv := getCoreMaxSupportedProtocol()
+		maxSupportedCoreProtocolFromEnv := GetCoreMaxSupportedProtocol()
 		if maxSupportedCoreProtocolFromEnv != 0 && maxSupportedCoreProtocolFromEnv < ingest.MaxSupportedProtocolVersion {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
@@ -468,7 +468,8 @@ func (i *Test) WaitForHorizon() {
 		}
 
 		if uint32(root.CurrentProtocolVersion) == i.config.ProtocolVersion {
-			i.t.Logf("Horizon protocol version matches... %v", root)
+			i.t.Logf("Horizon protocol version matches %d: %+v",
+				root.CurrentProtocolVersion, root)
 			return
 		}
 	}
@@ -516,11 +517,16 @@ func (i *Test) Master() *keypair.Full {
 }
 
 func (i *Test) MasterAccount() txnbuild.Account {
+	account := i.MasterAccountDetails()
+	return &account
+}
+
+func (i *Test) MasterAccountDetails() proto.Account {
 	master, client := i.Master(), i.Client()
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
 	panicIf(err)
-	return &account
+	return account
 }
 
 func (i *Test) CurrentTest() *testing.T {
@@ -874,7 +880,7 @@ func mapToFlags(params map[string]string) []string {
 	return args
 }
 
-func getCoreMaxSupportedProtocol() uint32 {
+func GetCoreMaxSupportedProtocol() uint32 {
 	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
 	if str == "" {
 		return 0
