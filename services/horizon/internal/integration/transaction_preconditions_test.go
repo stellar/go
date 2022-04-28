@@ -3,7 +3,6 @@ package integration
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
 	"math"
 	"strconv"
 	"sync"
@@ -248,7 +247,6 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	// network time and account sequence time.
 	time.Sleep(time.Second)
 	txParams.Preconditions.MinSequenceNumberAge = 1
-	fmt.Println(networkSeqTime, acctSeqTime, txParams.Preconditions.MinSequenceNumberAge)
 	tx, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
 	itest.LogFailedTx(tx, err)
 
