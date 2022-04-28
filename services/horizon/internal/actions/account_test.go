@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 
 	"github.com/stretchr/testify/assert"
 
@@ -32,8 +33,8 @@ var (
 		AccountID:          accountOne,
 		Balance:            20000,
 		SequenceNumber:     223456789,
-		SequenceLedger:     2345,
-		SequenceTime:       1647265533,
+		SequenceLedger:     zero.IntFrom(0),
+		SequenceTime:       zero.IntFrom(0),
 		NumSubEntries:      10,
 		Flags:              1,
 		HomeDomain:         "stellar.org",
@@ -50,8 +51,8 @@ var (
 		AccountID:          accountTwo,
 		Balance:            50000,
 		SequenceNumber:     648736,
-		SequenceLedger:     3456,
-		SequenceTime:       1647365533,
+		SequenceLedger:     zero.IntFrom(3456),
+		SequenceTime:       zero.IntFrom(1647365533),
 		NumSubEntries:      10,
 		Flags:              2,
 		HomeDomain:         "meridian.stellar.org",
@@ -68,8 +69,8 @@ var (
 		AccountID:          signer,
 		Balance:            50000,
 		SequenceNumber:     648736,
-		SequenceLedger:     4567,
-		SequenceTime:       1647465533,
+		SequenceLedger:     zero.IntFrom(4567),
+		SequenceTime:       zero.IntFrom(1647465533),
 		NumSubEntries:      10,
 		Flags:              2,
 		MasterWeight:       5,
@@ -176,8 +177,8 @@ func TestAccountInfo(t *testing.T) {
 		AccountID:            accountID,
 		Balance:              9999999900,
 		SequenceNumber:       8589934593,
-		SequenceLedger:       4567,
-		SequenceTime:         1647465533,
+		SequenceLedger:       zero.IntFrom(4567),
+		SequenceTime:         zero.IntFrom(1647465533),
 		NumSubEntries:        1,
 		InflationDestination: "",
 		HomeDomain:           "",
