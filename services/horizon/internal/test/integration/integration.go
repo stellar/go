@@ -468,7 +468,8 @@ func (i *Test) WaitForHorizon() {
 		}
 
 		if uint32(root.CurrentProtocolVersion) == i.config.ProtocolVersion {
-			i.t.Logf("Horizon protocol version matches... %v", root)
+			i.t.Logf("Horizon protocol version matches %d: %+v",
+				root.CurrentProtocolVersion, root)
 			return
 		}
 	}
@@ -516,11 +517,16 @@ func (i *Test) Master() *keypair.Full {
 }
 
 func (i *Test) MasterAccount() txnbuild.Account {
+	account := i.MasterAccountDetails()
+	return &account
+}
+
+func (i *Test) MasterAccountDetails() proto.Account {
 	master, client := i.Master(), i.Client()
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
 	panicIf(err)
-	return &account
+	return account
 }
 
 func (i *Test) CurrentTest() *testing.T {
