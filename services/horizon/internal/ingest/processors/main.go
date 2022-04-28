@@ -20,3 +20,11 @@ func ledgerEntrySponsorToNullString(entry xdr.LedgerEntry) null.String {
 
 	return sponsor
 }
+
+func formatSequenceLedger(ledger xdr.Uint32) null.Int {
+	return null.NewInt(int64(ledger), ledger != 0)
+}
+
+func formatSequenceTime(time xdr.TimePoint) null.Int {
+	return null.NewInt(int64(time), time != 0)
+}

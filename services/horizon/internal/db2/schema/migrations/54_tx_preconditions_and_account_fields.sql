@@ -5,8 +5,8 @@ ALTER TABLE history_transactions ADD min_account_sequence_age        varchar(20)
 ALTER TABLE history_transactions ADD min_account_sequence_ledger_gap bigint;        -- xdr.Int32
 ALTER TABLE history_transactions ADD extra_signers                   text[];
 
-ALTER TABLE accounts ADD sequence_ledger integer DEFAULT 0;
-ALTER TABLE accounts ADD sequence_time bigint DEFAULT 0;
+ALTER TABLE accounts ADD sequence_ledger integer;
+ALTER TABLE accounts ADD sequence_time bigint;
 
 -- CAP-40 signed payload strkeys can be 165 characters long, see
 -- strkey/main.go:maxEncodedSize. But we'll use text here, so we don't need to

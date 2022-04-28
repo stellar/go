@@ -394,6 +394,18 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 			}
 		}
 
+		// Accounts that haven't done anything since Protocol 19 will not have a
+		// V3 extension, so we need to check whether or not this extension needs
+		// to be filled out.
+		v3extension := xdr.AccountEntryExtensionV2Ext{V: 0}
+		if row.SequenceLedger.Valid && row.SequenceTime.Valid {
+			v3extension.V = 3
+			v3extension.V3 = &xdr.AccountEntryExtensionV3{
+				SeqLedger: xdr.Uint32(row.SequenceLedger.Int64),
+				SeqTime:   xdr.TimePoint(row.SequenceTime.Int64),
+			}
+		}
+
 		account := &xdr.AccountEntry{
 			AccountId:     xdr.MustAddress(row.AccountID),
 			Balance:       xdr.Int64(row.Balance),
@@ -422,13 +434,7 @@ func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerif
 							NumSponsored:        xdr.Uint32(row.NumSponsored),
 							NumSponsoring:       xdr.Uint32(row.NumSponsoring),
 							SignerSponsoringIDs: signerSponsoringIDs,
-							Ext: xdr.AccountEntryExtensionV2Ext{
-								V: 3,
-								V3: &xdr.AccountEntryExtensionV3{
-									SeqLedger: xdr.Uint32(row.SequenceLedger),
-									SeqTime:   xdr.TimePoint(row.SequenceTime),
-								},
-							},
+							Ext:                 v3extension,
 						},
 					},
 				},

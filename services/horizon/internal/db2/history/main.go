@@ -221,8 +221,8 @@ type AccountEntry struct {
 	BuyingLiabilities    int64       `db:"buying_liabilities"`
 	SellingLiabilities   int64       `db:"selling_liabilities"`
 	SequenceNumber       int64       `db:"sequence_number"`
-	SequenceLedger       uint32      `db:"sequence_ledger"`
-	SequenceTime         uint64      `db:"sequence_time"`
+	SequenceLedger       null.Int    `db:"sequence_ledger"`
+	SequenceTime         null.Int    `db:"sequence_time"`
 	NumSubEntries        uint32      `db:"num_subentries"`
 	InflationDestination string      `db:"inflation_destination"`
 	HomeDomain           string      `db:"home_domain"`
