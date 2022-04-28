@@ -20,6 +20,10 @@ func TestProtocol19Upgrade(t *testing.T) {
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()
 
+	if integration.GetCoreMaxSupportedProtocol() < 19 {
+		t.Skip("This test run does not support Protocol 19")
+	}
+
 	// Note: These tests are combined to avoid the extra setup/teardown.
 
 	// TestTransactionPreconditionsPremature ensures that submitting
