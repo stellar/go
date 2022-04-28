@@ -147,7 +147,7 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt.Equal(account.AccountID, hAccount.AccountID)
 	tt.Equal(account.AccountID, hAccount.PT)
 	tt.Equal(strconv.FormatInt(account.SequenceNumber, 10), hAccount.Sequence)
-	tt.Equal(account.SequenceLedger.Int64, hAccount.SequenceLedger)
+	tt.Equal(uint32(account.SequenceLedger.Int64), hAccount.SequenceLedger)
 	tt.Equal(fmt.Sprintf("%d", account.SequenceTime.Int64), hAccount.SequenceTime)
 	tt.Equal(account.NumSubEntries, uint32(hAccount.SubentryCount))
 	tt.Equal(account.InflationDestination, hAccount.InflationDestination)
