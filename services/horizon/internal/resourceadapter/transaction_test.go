@@ -2,6 +2,7 @@ package resourceadapter
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -290,6 +291,69 @@ func TestPopulateTransaction_PreconditionsV2(t *testing.T) {
 		gotTimebounds := dest.Preconditions.TimeBounds
 		assert.Equal(t, "1970-01-01T00:00:05Z", gotTimebounds.MinTime)
 		assert.Equal(t, "1970-01-01T00:00:10Z", gotTimebounds.MaxTime)
+	}
+}
+
+// TestPopulateTransaction_PreconditionsV2_Omissions ensures that all fields are
+// omitted from the final JSON when appropriate.
+func TestPopulateTransaction_PreconditionsV2_Omissions(t *testing.T) {
+	ctx, _ := test.ContextWithLogBuffer()
+	tt := assert.New(t)
+
+	jsonifyTx := func(tx history.TransactionWithoutLedger) (
+		Transaction, map[string]interface{},
+	) {
+		var dest Transaction
+		generic := map[string]interface{}{}
+
+		row := history.Transaction{TransactionWithoutLedger: tx}
+		tt.NoError(PopulateTransaction(ctx, row.TransactionHash, &dest, row))
+
+		bytes, err := dest.MarshalJSON()
+		tt.NoError(err)
+		tt.NoError(json.Unmarshal(bytes, &generic)) // round-trip
+
+		return dest, generic
+	}
+
+	for _, tx := range []history.TransactionWithoutLedger{
+		{
+			// minimum precondition so that the field exists in general
+			MinAccountSequenceLedgerGap: null.IntFrom(0),
+			TimeBounds:                  history.TimeBounds{Null: true},
+			LedgerBounds:                history.LedgerBounds{Null: true},
+			MinAccountSequence:          null.IntFromPtr(nil),
+			MinAccountSequenceAge:       null.StringFrom("0"),
+			ExtraSigners:                pq.StringArray{},
+		}, {
+			MinAccountSequenceLedgerGap: null.IntFrom(0),
+			TimeBounds:                  history.TimeBounds{Null: true},
+			LedgerBounds:                history.LedgerBounds{Null: true},
+			MinAccountSequence:          null.IntFromPtr(nil),
+			MinAccountSequenceAge:       null.StringFromPtr(nil),
+			ExtraSigners:                nil,
+		},
+	} {
+		dest, js := jsonifyTx(tx)
+		if !tt.Contains(js, "preconditions") ||
+			!tt.IsType(map[string]interface{}{}, js["preconditions"]) {
+			tt.FailNow("expected 'preconditions' object in transaction")
+		}
+
+		precond := js["preconditions"].(map[string]interface{})
+		helpStr := fmt.Sprintf("input precondition: %+v", dest.Preconditions)
+		tt.NotContainsf(precond, "timebounds", helpStr)
+		tt.NotContainsf(precond, "ledgerbounds", helpStr)
+		tt.NotContainsf(precond, "min_account_sequence", helpStr)
+		tt.NotContainsf(precond, "min_account_sequence_age", helpStr)
+		tt.NotContainsf(precond, "min_account_sequence_ledger_gap", helpStr)
+		tt.NotContainsf(precond, "extra_signers", helpStr)
+
+		// If we drop the minimum precondition, the structure should cease to
+		// exist entirely.
+		tx.MinAccountSequenceLedgerGap = null.IntFromPtr(nil)
+		dest, js = jsonifyTx(tx)
+		tt.NotContains(js, "preconditions")
 	}
 }
 
