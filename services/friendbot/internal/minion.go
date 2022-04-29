@@ -134,7 +134,7 @@ func (minion *Minion) makeTx(destAddress string) ([32]byte, string, error) {
 		return [32]byte{}, "", errors.Wrap(err, "unable to serialize")
 	}
 
-	txh, err := tx.HashHex(minion.Network)
+	txh, err := tx.Hash(minion.Network)
 	if err != nil {
 		return [32]byte{}, "", errors.Wrap(err, "unable to hash")
 	}
