@@ -720,7 +720,8 @@ func (t *Transaction) HasPreconditions() bool {
 	return !t.TimeBounds.Null ||
 		!t.LedgerBounds.Null ||
 		t.MinAccountSequence.Valid ||
-		t.MinAccountSequenceAge.Valid ||
+		(t.MinAccountSequenceAge.Valid &&
+			t.MinAccountSequenceAge.String != "0") ||
 		t.MinAccountSequenceLedgerGap.Valid ||
 		len(t.ExtraSigners) > 0
 }

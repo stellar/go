@@ -79,6 +79,9 @@ func formatLedgerBounds(ledgerBounds *xdr.LedgerBounds) LedgerBounds {
 
 	return LedgerBounds{
 		MinLedger: null.IntFrom(int64(ledgerBounds.MinLedger)),
-		MaxLedger: null.IntFrom(int64(ledgerBounds.MaxLedger)),
+		// elide max_ledger if it's 0 since that means no upper bound
+		MaxLedger: null.NewInt(
+			int64(ledgerBounds.MaxLedger),
+			ledgerBounds.MaxLedger > 0),
 	}
 }
