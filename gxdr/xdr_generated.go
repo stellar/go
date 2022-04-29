@@ -419,7 +419,8 @@ type XdrAnon_TrustLineEntry_Ext_V1_Ext struct {
 type OfferEntryFlags int32
 
 const (
-	// an offer with this flag will not act on and take a reverse offer of equal price
+	// an offer with this flag will not act on and take a reverse offer of equal
+	// price
 	PASSIVE_FLAG OfferEntryFlags = 1
 )
 
@@ -618,7 +619,7 @@ type XdrAnon_LiquidityPoolEntry_Body_ConstantProduct struct {
 	ReserveB Int64
 	// total number of pool shares issued
 	TotalPoolShares Int64
-	// number of trust lines for the associated pool shares
+	// number of trust lines for the
 	PoolSharesTrustLineCount Int64
 }
 
@@ -2919,8 +2920,10 @@ const (
 	TxFEE_BUMP_INNER_FAILED TransactionResultCode = -13
 	// sponsorship not confirmed
 	TxBAD_SPONSORSHIP TransactionResultCode = -14
-	//minSeqAge or minSeqLedgerGap conditions not met
+	// minSeqAge or minSeqLedgerGap conditions not met
 	TxBAD_MIN_SEQ_AGE_OR_GAP TransactionResultCode = -15
+	// precondition is invalid
+	TxMALFORMED TransactionResultCode = -16
 )
 
 // InnerTransactionResult must be binary compatible with TransactionResult
@@ -2935,7 +2938,7 @@ type XdrAnon_InnerTransactionResult_Result struct {
 	// The union discriminant Code selects among the following arms:
 	//   TxSUCCESS, TxFAILED:
 	//      Results() *[]OperationResult
-	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
+	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED:
 	//      void
 	Code TransactionResultCode
 	_u   interface{}
@@ -18400,6 +18403,7 @@ var _XdrNames_TransactionResultCode = map[int32]string{
 	int32(TxFEE_BUMP_INNER_FAILED):  "txFEE_BUMP_INNER_FAILED",
 	int32(TxBAD_SPONSORSHIP):        "txBAD_SPONSORSHIP",
 	int32(TxBAD_MIN_SEQ_AGE_OR_GAP): "txBAD_MIN_SEQ_AGE_OR_GAP",
+	int32(TxMALFORMED):              "txMALFORMED",
 }
 var _XdrValues_TransactionResultCode = map[string]int32{
 	"txFEE_BUMP_INNER_SUCCESS": int32(TxFEE_BUMP_INNER_SUCCESS),
@@ -18419,6 +18423,7 @@ var _XdrValues_TransactionResultCode = map[string]int32{
 	"txFEE_BUMP_INNER_FAILED":  int32(TxFEE_BUMP_INNER_FAILED),
 	"txBAD_SPONSORSHIP":        int32(TxBAD_SPONSORSHIP),
 	"txBAD_MIN_SEQ_AGE_OR_GAP": int32(TxBAD_MIN_SEQ_AGE_OR_GAP),
+	"txMALFORMED":              int32(TxMALFORMED),
 }
 
 func (TransactionResultCode) XdrEnumNames() map[int32]string {
@@ -18475,6 +18480,7 @@ var _XdrComments_TransactionResultCode = map[int32]string{
 	int32(TxFEE_BUMP_INNER_FAILED):  "fee bump inner transaction failed",
 	int32(TxBAD_SPONSORSHIP):        "sponsorship not confirmed",
 	int32(TxBAD_MIN_SEQ_AGE_OR_GAP): "minSeqAge or minSeqLedgerGap conditions not met",
+	int32(TxMALFORMED):              "precondition is invalid",
 }
 
 func (e TransactionResultCode) XdrEnumComments() map[int32]string {
@@ -18554,6 +18560,7 @@ var _XdrTags_XdrAnon_InnerTransactionResult_Result = map[int32]bool{
 	XdrToI32(TxNOT_SUPPORTED):          true,
 	XdrToI32(TxBAD_SPONSORSHIP):        true,
 	XdrToI32(TxBAD_MIN_SEQ_AGE_OR_GAP): true,
+	XdrToI32(TxMALFORMED):              true,
 }
 
 func (_ XdrAnon_InnerTransactionResult_Result) XdrValidTags() map[int32]bool {
@@ -18576,7 +18583,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) Results() *[]OperationResult {
 }
 func (u XdrAnon_InnerTransactionResult_Result) XdrValid() bool {
 	switch u.Code {
-	case TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
+	case TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED:
 		return true
 	}
 	return false
@@ -18591,7 +18598,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrUnionBody() XdrType {
 	switch u.Code {
 	case TxSUCCESS, TxFAILED:
 		return (*_XdrVec_unbounded_OperationResult)(u.Results())
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED:
 		return nil
 	}
 	return nil
@@ -18600,7 +18607,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrUnionBodyName() string {
 	switch u.Code {
 	case TxSUCCESS, TxFAILED:
 		return "Results"
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED:
 		return ""
 	}
 	return ""
@@ -18623,7 +18630,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrRecurse(x XDR, name string) {
 	case TxSUCCESS, TxFAILED:
 		x.Marshal(x.Sprintf("%sresults", name), (*_XdrVec_unbounded_OperationResult)(u.Results()))
 		return
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED:
 		return
 	}
 	XdrPanic("invalid Code (%v) in XdrAnon_InnerTransactionResult_Result", u.Code)

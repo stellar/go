@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/guregu/null/zero"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
@@ -47,7 +48,6 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 			{
 				LastModifiedLedger: 123,
 				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				SequenceTime:       0,
 				MasterWeight:       1,
 				ThresholdLow:       1,
 				ThresholdMedium:    1,
@@ -152,7 +152,6 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 		[]history.AccountEntry{
 			{
 				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				SequenceTime:       0,
 				MasterWeight:       0,
 				ThresholdLow:       1,
 				ThresholdMedium:    2,
@@ -164,7 +163,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	).Return(nil).Once()
 }
 
-func (s *AccountsProcessorTestSuiteLedger) TestNewAccountWithExtension() {
+func (s *AccountsProcessorTestSuiteLedger) TestNewAccountUpgrade() {
 	account := xdr.AccountEntry{
 		AccountId:  xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 		Thresholds: [4]byte{1, 1, 1, 1},
@@ -172,16 +171,8 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccountWithExtension() {
 			V: 1,
 			V1: &xdr.AccountEntryExtensionV1{
 				Ext: xdr.AccountEntryExtensionV1Ext{
-					V: 2,
-					V2: &xdr.AccountEntryExtensionV2{
-						Ext: xdr.AccountEntryExtensionV2Ext{
-							V: 3,
-							V3: &xdr.AccountEntryExtensionV3{
-								SeqLedger: 2345,
-								SeqTime:   1647265533,
-							},
-						},
-					},
+					V:  2,
+					V2: &xdr.AccountEntryExtensionV2{},
 				},
 			},
 		},
@@ -250,8 +241,8 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccountWithExtension() {
 		[]history.AccountEntry{
 			{
 				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				SequenceLedger:     2346,
-				SequenceTime:       1647265534,
+				SequenceLedger:     zero.IntFrom(2346),
+				SequenceTime:       zero.IntFrom(1647265534),
 				MasterWeight:       0,
 				ThresholdLow:       1,
 				ThresholdMedium:    2,
@@ -338,8 +329,8 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			{
 				LastModifiedLedger: uint32(lastModifiedLedgerSeq) + 1,
 				AccountID:          "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-				SequenceTime:       0,
-				SequenceLedger:     0,
+				SequenceTime:       zero.IntFrom(0),
+				SequenceLedger:     zero.IntFrom(0),
 				MasterWeight:       0,
 				ThresholdLow:       1,
 				ThresholdMedium:    2,
@@ -405,8 +396,6 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 				LastModifiedLedger: 0,
 				AccountID:          "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
 				Balance:            300,
-				SequenceTime:       0,
-				SequenceLedger:     0,
 			},
 		},
 	).Return(nil).Once()

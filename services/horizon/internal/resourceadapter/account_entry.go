@@ -27,8 +27,11 @@ func PopulateAccountEntry(
 	dest.PT = account.AccountID
 	dest.AccountID = account.AccountID
 	dest.Sequence = strconv.FormatInt(account.SequenceNumber, 10)
-	dest.SequenceLedger = account.SequenceLedger
-	dest.SequenceTime = fmt.Sprintf("%d", account.SequenceTime)
+	if account.SequenceLedger.Valid && account.SequenceTime.Valid {
+		dest.SequenceLedger = uint32(account.SequenceLedger.Int64)
+		dest.SequenceTime = fmt.Sprintf("%d", account.SequenceTime.Int64)
+	}
+
 	dest.SubentryCount = int32(account.NumSubEntries)
 	dest.InflationDestination = account.InflationDestination
 	dest.HomeDomain = account.HomeDomain

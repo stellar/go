@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -19,8 +20,8 @@ var (
 		AccountID:            "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		Balance:              20000,
 		SequenceNumber:       223456789,
-		SequenceLedger:       2345,
-		SequenceTime:         1647265533,
+		SequenceLedger:       zero.IntFrom(0),
+		SequenceTime:         zero.IntFrom(0),
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                1,
@@ -38,8 +39,8 @@ var (
 		AccountID:            "GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7",
 		Balance:              50000,
 		SequenceNumber:       648736,
-		SequenceLedger:       3456,
-		SequenceTime:         1647365533,
+		SequenceLedger:       zero.IntFrom(3456),
+		SequenceTime:         zero.IntFrom(1647365533),
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                2,
@@ -60,8 +61,8 @@ var (
 		AccountID:            "GDPGOMFSP4IF7A4P7UBKA4UC4QTRLEHGBD6IMDIS3W3KBDNBFAQ7FXDY",
 		Balance:              50000,
 		SequenceNumber:       648736,
-		SequenceLedger:       4567,
-		SequenceTime:         1647465533,
+		SequenceLedger:       zero.IntFrom(4567),
+		SequenceTime:         zero.IntFrom(1647465533),
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                2,
@@ -93,8 +94,8 @@ func TestInsertAccount(t *testing.T) {
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", accounts[0].AccountID)
 	assert.Equal(t, int64(20000), accounts[0].Balance)
 	assert.Equal(t, int64(223456789), accounts[0].SequenceNumber)
-	assert.Equal(t, uint32(2345), accounts[0].SequenceLedger)
-	assert.Equal(t, uint64(1647265533), accounts[0].SequenceTime)
+	assert.Equal(t, zero.IntFrom(0), accounts[0].SequenceLedger)
+	assert.Equal(t, zero.IntFrom(0), accounts[0].SequenceTime)
 	assert.Equal(t, uint32(10), accounts[0].NumSubEntries)
 	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", accounts[0].InflationDestination)
 	assert.Equal(t, uint32(1), accounts[0].Flags)
@@ -129,8 +130,8 @@ func TestUpsertAccount(t *testing.T) {
 		AccountID:            "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		Balance:              32847893,
 		SequenceNumber:       223456789,
-		SequenceTime:         223456789223456789,
-		SequenceLedger:       2345,
+		SequenceTime:         zero.IntFrom(223456789223456789),
+		SequenceLedger:       zero.IntFrom(2345),
 		NumSubEntries:        10,
 		InflationDestination: inflationDest,
 		Flags:                1,
@@ -458,7 +459,8 @@ func TestGetAccountByID(t *testing.T) {
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", resultAccount.AccountID)
 	assert.Equal(t, int64(20000), resultAccount.Balance)
 	assert.Equal(t, int64(223456789), resultAccount.SequenceNumber)
-	assert.Equal(t, uint32(2345), resultAccount.SequenceLedger)
+	assert.Equal(t, zero.IntFrom(0), resultAccount.SequenceLedger)
+	assert.Equal(t, zero.IntFrom(0), resultAccount.SequenceTime)
 	assert.Equal(t, uint32(10), resultAccount.NumSubEntries)
 	assert.Equal(t, "GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4", resultAccount.InflationDestination)
 	assert.Equal(t, uint32(1), resultAccount.Flags)
