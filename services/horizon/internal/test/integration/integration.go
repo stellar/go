@@ -522,11 +522,7 @@ func (i *Test) MasterAccount() txnbuild.Account {
 }
 
 func (i *Test) MasterAccountDetails() proto.Account {
-	master, client := i.Master(), i.Client()
-	request := sdk.AccountRequest{AccountID: master.Address()}
-	account, err := client.AccountDetail(request)
-	panicIf(err)
-	return account
+	return i.MustGetAccount(i.Master())
 }
 
 func (i *Test) CurrentTest() *testing.T {
@@ -791,7 +787,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
 	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
-		"Transaction doesn't have success code.")
+		"Transaction did not succeed: %d", txResult.Result.Code)
 }
 
 func (i *Test) GetPassPhrase() string {
