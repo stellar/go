@@ -84,7 +84,7 @@ func PopulateTransaction(
 		dest.Preconditions.MinAccountSequence = fmt.Sprint(row.MinAccountSequence.Int64)
 	}
 
-	if row.MinAccountSequenceAge.Valid {
+	if row.MinAccountSequenceAge.Valid && row.MinAccountSequenceAge.String != "0" {
 		dest.Preconditions.MinAccountSequenceAge = row.MinAccountSequenceAge.String
 	}
 
