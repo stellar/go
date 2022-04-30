@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/guregu/null"
@@ -65,8 +66,8 @@ func PopulateTransaction(
 		dest.ValidAfter = timeString(row.TimeBounds.Lower)
 
 		dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{
-			MaxTime: timeString(row.TimeBounds.Upper),
-			MinTime: timeString(row.TimeBounds.Lower),
+			MaxTime: timestampString(row.TimeBounds.Upper),
+			MinTime: timestampString(row.TimeBounds.Lower),
 		}
 	}
 
@@ -157,4 +158,12 @@ func timeString(in null.Int) string {
 	}
 
 	return time.Unix(in.Int64, 0).UTC().Format(time.RFC3339)
+}
+
+func timestampString(in null.Int) string {
+	if !in.Valid {
+		return ""
+	}
+
+	return strconv.FormatInt(in.Int64, 10)
 }
