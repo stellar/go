@@ -11,6 +11,8 @@ This is the final release after the [release candidate](v2.17.0-release-candidat
   * `min_account_sequence_age` when it's `"0"`, as this is the default value when the condition is not set
   * `preconditions.ledgerbounds.max_ledger` when it's set to 0 (this means that there is no upper bound)
 
+- Timebounds within the `preconditions` object are a string representing UNIX timestamps in seconds rather than formatted date-times (which was a bug) ([4361](https://github.com/stellar/go/pull/4361)).
+
 ## V2.17.0 Release Candidate
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
