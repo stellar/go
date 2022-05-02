@@ -32,7 +32,24 @@ gxdr/xdr_generated.go: $(XDRS)
 	go run github.com/xdrpp/goxdr/cmd/goxdr -p gxdr -enum-comments -o $@ $(XDRS)
 	go fmt $@
 
-xdr/xdr_generated.go: $(XDRS) Rakefile Gemfile.lock
-	bundle exec rake xdr:generate
+define xdrheader
+//lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
+//lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
+endef
+export xdrheader
+
+xdr/xdr_generated.go: $(XDRS)
+	docker run --platform linux/amd64 -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
+		gem install specific_install && \
+		gem specific_install https://github.com/stellar/xdrgen.git -b master && \
+		xdrgen \
+			--language go \
+			--namespace xdr \
+			--output xdr/ \
+			$(XDRS)'
+	echo "$$xdrheader" > $@.tmp
+	cat $@ >> $@.tmp
+	mv $@.tmp $@
+	go fmt $@
 
 xdr: gxdr/xdr_generated.go xdr/xdr_generated.go
