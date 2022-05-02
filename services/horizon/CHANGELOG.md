@@ -11,7 +11,7 @@ This is the final release after the [release candidate](v2.17.0-release-candidat
   * `min_account_sequence_age` when it's `"0"`, as this is the default value when the condition is not set
   * `preconditions.ledgerbounds.max_ledger` when it's set to 0 (this means that there is no upper bound)
 
-- Timebounds within the `preconditions` object are a string containing int64 UNIX timestamps in seconds rather than formatted date-times (which was a bug) ([4361](https://github.com/stellar/go/pull/4361)).
+- Timebounds within the `preconditions` object are strings containing int64 UNIX timestamps in seconds rather than formatted date-times (which was a bug) ([4361](https://github.com/stellar/go/pull/4361)).
 
 ## V2.17.0 Release Candidate
 
@@ -48,7 +48,7 @@ This is the final release after the [release candidate](v2.17.0-release-candidat
     }
 ```
 
-  All of the top-level fields within this object are also optional. However, the "ledgerbounds" object will always have at least its `max_ledger` field set.
+  All of the top-level fields within this object are also optional. However, the "ledgerbounds" object will always have at least its `min_ledger` field set.
 
   Note that the existing "valid_before_time" and "valid_after_time" fields on the top-level object will be identical to the "preconditions.timebounds.min_time" and "preconditions.timebounds.min_time" fields, respectively, if those exist. The "valid_before_time" and "valid_after_time" fields are now considered deprecated and will be removed in Horizon v3.0.0.
 
