@@ -195,8 +195,8 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 	p := dest.Preconditions
 	assert.Equal(t, validAfter.Format(time.RFC3339), dest.ValidAfter)
 	assert.Equal(t, validBefore.Format(time.RFC3339), dest.ValidBefore)
-	assert.Equal(t, validAfter.Format(time.RFC3339), p.TimeBounds.MinTime)
-	assert.Equal(t, validBefore.Format(time.RFC3339), p.TimeBounds.MaxTime)
+	assert.Equal(t, fmt.Sprint(validAfter.Unix()), p.TimeBounds.MinTime)
+	assert.Equal(t, fmt.Sprint(validBefore.Unix()), p.TimeBounds.MaxTime)
 	assert.Equal(t, minLedger, p.LedgerBounds.MinLedger)
 	assert.Equal(t, maxLedger, p.LedgerBounds.MaxLedger)
 	assert.Equal(t, fmt.Sprint(minAccountSequence), p.MinAccountSequence)
@@ -289,8 +289,8 @@ func TestPopulateTransaction_PreconditionsV2(t *testing.T) {
 		assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
 
 		gotTimebounds := dest.Preconditions.TimeBounds
-		assert.Equal(t, "1970-01-01T00:00:05Z", gotTimebounds.MinTime)
-		assert.Equal(t, "1970-01-01T00:00:10Z", gotTimebounds.MaxTime)
+		assert.Equal(t, "5", gotTimebounds.MinTime)
+		assert.Equal(t, "10", gotTimebounds.MaxTime)
 	}
 }
 
