@@ -131,7 +131,7 @@ func NewResponse(domain, path string, stream bool) *Response {
 		resp.StatusCode != http.StatusGatewayTimeout &&
 		resp.StatusCode != http.StatusGone &&
 		resp.StatusCode != http.StatusServiceUnavailable {
-		panic(resp.StatusCode)
+		panic(fmt.Errorf("%d for GET %s", resp.StatusCode, domain+path))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
