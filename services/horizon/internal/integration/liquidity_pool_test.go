@@ -19,6 +19,7 @@ import (
 func TestLiquidityPoolHappyPath(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	master := itest.Master()
 
 	keys, accounts := itest.CreateAccounts(2, "1000")
@@ -420,6 +421,7 @@ func TestLiquidityPoolHappyPath(t *testing.T) {
 func TestLiquidityPoolRevoke(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	master := itest.Master()
 
 	keys, accounts := itest.CreateAccounts(2, "1000")

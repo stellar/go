@@ -442,6 +442,7 @@ func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reached
 
 func TestReingestDB(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
+	defer itest.Shutdown()
 	tt := assert.New(t)
 
 	// Create a fresh Horizon database
@@ -547,6 +548,7 @@ func command(horizonConfig horizon.Config, args ...string) []string {
 
 func TestFillGaps(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
+	defer itest.Shutdown()
 	tt := assert.New(t)
 
 	// Create a fresh Horizon database
@@ -660,6 +662,7 @@ func TestFillGaps(t *testing.T) {
 
 func TestResumeFromInitializedDB(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
+	defer itest.Shutdown()
 	tt := assert.New(t)
 
 	// Stop the integration test, and restart it with the same database

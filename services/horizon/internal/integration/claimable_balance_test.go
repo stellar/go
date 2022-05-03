@@ -20,6 +20,7 @@ import (
 func TestClaimableBalanceBasics(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	master := itest.Master()
 
 	// Ensure predicting claimable balances works.
@@ -72,6 +73,7 @@ func TestClaimableBalanceBasics(t *testing.T) {
 
 func TestHappyClaimableBalances(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	master, client := itest.Master(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
@@ -295,6 +297,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 // We want to ensure that users can't claim the same claimable balance twice.
 func TestDoubleClaim(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -355,6 +358,7 @@ func TestDoubleClaim(t *testing.T) {
 
 func TestClaimableBalancePredicates(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.

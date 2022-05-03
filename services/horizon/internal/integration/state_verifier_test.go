@@ -19,6 +19,7 @@ import (
 
 func TestStateVerifier(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{

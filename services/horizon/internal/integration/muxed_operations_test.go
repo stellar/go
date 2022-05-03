@@ -14,6 +14,7 @@ import (
 
 func TestMuxedOperations(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 
 	sponsored := keypair.MustRandom()
 	// Is there an easier way?

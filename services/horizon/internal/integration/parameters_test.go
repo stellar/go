@@ -2,14 +2,15 @@
 package integration
 
 import (
-	"github.com/stellar/go/services/horizon/internal/paths"
-	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"testing"
+
+	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
@@ -105,6 +106,7 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 	test := NewParameterTestWithEnv(t, map[string]string{}, map[string]string{
 		"CAPTIVE_CORE_CONFIG_PATH": confName,
 	})
+	defer test.Shutdown()
 
 	err = test.StartHorizon()
 	assert.NoError(t, err)
@@ -112,8 +114,6 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 
 	envValue := os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
 	assert.Equal(t, confName, envValue)
-
-	test.Shutdown()
 
 	envValue = os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
 	assert.Equal(t, "original value", envValue)
@@ -135,6 +135,7 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 	test := NewParameterTest(t, localParams)
 
 	err := test.StartHorizon()
+	defer test.StopHorizon()
 	assert.NoError(t, err)
 	test.WaitForHorizon()
 
@@ -150,35 +151,36 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 func TestMaxAssetsForPathRequests(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{})
+		defer test.Shutdown()
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
 		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 15)
-		test.Shutdown()
 	})
 	t.Run("set to 2", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{"max-assets-per-path-request": "2"})
+		defer test.Shutdown()
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
 		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 2)
-		test.Shutdown()
 	})
 }
 
 func TestMaxPathFindingRequests(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{})
+		defer test.Shutdown()
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
 		assert.Equal(t, test.Horizon().Config().MaxPathFindingRequests, uint(0))
 		_, ok := test.Horizon().Paths().(simplepath.InMemoryFinder)
 		assert.True(t, ok)
-		test.Shutdown()
 	})
 	t.Run("set to 5", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{"max-path-finding-requests": "5"})
+		defer test.Shutdown()
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -186,7 +188,6 @@ func TestMaxPathFindingRequests(t *testing.T) {
 		finder, ok := test.Horizon().Paths().(*paths.RateLimitedFinder)
 		assert.True(t, ok)
 		assert.Equal(t, finder.Limit(), 5)
-		test.Shutdown()
 	})
 }
 

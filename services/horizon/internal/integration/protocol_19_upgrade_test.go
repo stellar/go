@@ -15,6 +15,7 @@ import (
 // correct behavior and no crashes.
 func TestProtocol19Upgrade(t *testing.T) {
 	itest := integration.NewTest(t, integration.Config{ProtocolVersion: 18})
+	defer itest.Shutdown()
 
 	master := itest.Master()
 	masterAccount := itest.MasterAccount()

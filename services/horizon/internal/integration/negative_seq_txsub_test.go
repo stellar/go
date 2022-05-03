@@ -13,6 +13,7 @@ import (
 func TestNegativeSequenceTxSubmission(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	master := itest.Master()
 
 	// First, bump the sequence to the maximum value -1

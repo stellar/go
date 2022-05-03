@@ -22,6 +22,7 @@ import (
 func TestTransactionPreconditionsMinSeq(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -91,6 +92,7 @@ func TestTransactionPreconditionsMinSeq(t *testing.T) {
 func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -141,6 +143,7 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 func TestTransactionPreconditionsExtraSigners(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -176,6 +179,7 @@ func TestTransactionPreconditionsExtraSigners(t *testing.T) {
 func TestTransactionPreconditionsLedgerBounds(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -218,6 +222,7 @@ func TestTransactionPreconditionsLedgerBounds(t *testing.T) {
 func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -273,6 +278,7 @@ func TestTransactionPreconditionsMinSequenceNumberAge(t *testing.T) {
 func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -313,6 +319,7 @@ func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 func TestTransactionWithoutPreconditions(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}
@@ -375,6 +382,7 @@ func TestTransactionWithoutPreconditions(t *testing.T) {
 func TestTransactionPreconditionsEdgeCases(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	if itest.GetEffectiveProtocolVersion() < 19 {
 		t.Skip("Can't run with protocol < 19")
 	}

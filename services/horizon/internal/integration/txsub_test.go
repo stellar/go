@@ -13,6 +13,7 @@ import (
 func TestTxsub(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
+	defer itest.Shutdown()
 	master := itest.Master()
 
 	// Sanity check: create 20 accounts and submit 2 txs from each of them as
