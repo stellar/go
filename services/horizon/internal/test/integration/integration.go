@@ -337,7 +337,8 @@ func (i *Test) StartHorizon() error {
 		"port":                          "8000",
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"checkpoint-frequency": "8",
-		"per-hour-rate-limit":  "0", // disable rate limiting
+		"per-hour-rate-limit":  "0",  // disable rate limiting
+		"max-db-connections":   "50", // the postgres container supports 100 connections, be conservative
 	}
 
 	merged := MergeMaps(defaultArgs, i.config.HorizonParameters)
