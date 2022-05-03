@@ -32,6 +32,9 @@ gxdr/xdr_generated.go: $(XDRS)
 	go run github.com/xdrpp/goxdr/cmd/goxdr -p gxdr -enum-comments -o $@ $(XDRS)
 	go fmt $@
 
+xdr/%.x:
+	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-core/master/src/$@
+
 define xdrheader
 //lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
 //lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
