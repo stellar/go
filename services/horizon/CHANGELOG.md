@@ -3,7 +3,15 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## V2.17.0
+
+This is the final release after the [release candidate](v2.17.0-release-candidate), including some small additional changes:
+
+- The transaction precondition record now excludes ([4360](https://github.com/stellar/go/pull/4360)):
+  * `min_account_sequence_age` when it's `"0"`, as this is the default value when the condition is not set
+  * `preconditions.ledgerbounds.max_ledger` when it's set to 0 (this means that there is no upper bound)
+
+- Timebounds within the `preconditions` object are strings containing int64 UNIX timestamps in seconds rather than formatted date-times (which was a bug) ([4361](https://github.com/stellar/go/pull/4361)).
 
 ## V2.17.0 Release Candidate
 
@@ -40,7 +48,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
     }
 ```
 
-  All of the top-level fields within this object are also optional. However, the "ledgerbounds" object will always have its inner values set.
+  All of the top-level fields within this object are also optional. However, the "ledgerbounds" object will always have at least its `min_ledger` field set.
 
   Note that the existing "valid_before_time" and "valid_after_time" fields on the top-level object will be identical to the "preconditions.timebounds.min_time" and "preconditions.timebounds.min_time" fields, respectively, if those exist. The "valid_before_time" and "valid_after_time" fields are now considered deprecated and will be removed in Horizon v3.0.0.
 
