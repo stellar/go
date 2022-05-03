@@ -8,7 +8,7 @@ xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
 xdr/Stellar-types.x
 
-.PHONY: xdr
+.PHONY: xdr xdr-clean xdr-update
 
 keystore:
 	$(MAKE) -C services/keystore/ docker-build
@@ -42,7 +42,7 @@ endef
 export xdrheader
 
 xdr/xdr_generated.go: $(XDRS)
-	docker run --platform linux/amd64 -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
+	docker run -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
 		gem install specific_install && \
 		gem specific_install https://github.com/stellar/xdrgen.git -b master && \
 		xdrgen \
@@ -56,3 +56,8 @@ xdr/xdr_generated.go: $(XDRS)
 	go fmt $@
 
 xdr: gxdr/xdr_generated.go xdr/xdr_generated.go
+
+xdr-clean:
+	rm xdr/*.x || true
+
+xdr-update: xdr-clean xdr
