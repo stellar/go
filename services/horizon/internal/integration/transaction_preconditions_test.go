@@ -119,13 +119,23 @@ func TestTransactionPreconditionsTimeBounds(t *testing.T) {
 
 	txHistory, err := itest.Client().TransactionDetail(tx.Hash)
 	assert.NoError(t, err)
-	historyMaxTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.TimeBounds.MaxTime)
+
+	// Check that the deprecated string datetime fields match the new UNIX
+	// timestamp fields.
+	deprecatedHistoryMinTime, err := time.Parse(time.RFC3339, txHistory.ValidAfter)
 	assert.NoError(t, err)
-	historyMinTime, err := time.Parse(time.RFC3339, txHistory.Preconditions.TimeBounds.MinTime)
+	deprecatedHistoryMaxTime, err := time.Parse(time.RFC3339, txHistory.ValidBefore)
 	assert.NoError(t, err)
 
-	assert.Equal(t, historyMaxTime.UTC().Unix(), txParams.Preconditions.TimeBounds.MaxTime)
-	assert.Equal(t, historyMinTime.UTC().Unix(), txParams.Preconditions.TimeBounds.MinTime)
+	historyMinTime, err := strconv.ParseInt(txHistory.Preconditions.TimeBounds.MinTime, 10, 64)
+	assert.NoError(t, err)
+	historyMaxTime, err := strconv.ParseInt(txHistory.Preconditions.TimeBounds.MaxTime, 10, 64)
+	assert.NoError(t, err)
+
+	assert.Equal(t, historyMinTime, deprecatedHistoryMinTime.UTC().Unix())
+	assert.Equal(t, historyMaxTime, deprecatedHistoryMaxTime.UTC().Unix())
+	assert.Equal(t, historyMinTime, txParams.Preconditions.TimeBounds.MinTime)
+	assert.Equal(t, historyMaxTime, txParams.Preconditions.TimeBounds.MaxTime)
 }
 
 func TestTransactionPreconditionsExtraSigners(t *testing.T) {

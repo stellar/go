@@ -552,7 +552,7 @@ type TransactionPreconditionsTimebounds struct {
 
 type TransactionPreconditionsLedgerbounds struct {
 	MinLedger uint32 `json:"min_ledger"`
-	MaxLedger uint32 `json:"max_ledger"`
+	MaxLedger uint32 `json:"max_ledger,omitempty"`
 }
 
 // FeeBumpTransaction contains information about a fee bump transaction
