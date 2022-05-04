@@ -1,7 +1,5 @@
 //lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
 //lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
-//lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
-//lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
 
 // Package xdr is generated from:
 //
@@ -171,13 +169,13 @@ var _ xdrType = (*Value)(nil)
 //   struct CheckpointIndex {
 //        uint32 firstCheckpoint;
 //        uint32 lastCheckpoint;
-//        opaque bitmap<>;
+//        Value bitmap;
 //    };
 //
 type CheckpointIndex struct {
 	FirstCheckpoint Uint32
 	LastCheckpoint  Uint32
-	Bitmap          []byte
+	Bitmap          Value
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -189,7 +187,7 @@ func (s *CheckpointIndex) EncodeTo(e *xdr.Encoder) error {
 	if err = s.LastCheckpoint.EncodeTo(e); err != nil {
 		return err
 	}
-	if _, err = e.EncodeOpaque(s.Bitmap[:]); err != nil {
+	if err = s.Bitmap.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -211,10 +209,10 @@ func (s *CheckpointIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	s.Bitmap, nTmp, err = d.DecodeOpaque(0)
+	nTmp, err = s.Bitmap.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Bitmap: %s", err)
+		return n, fmt.Errorf("decoding Value: %s", err)
 	}
 	return n, nil
 }

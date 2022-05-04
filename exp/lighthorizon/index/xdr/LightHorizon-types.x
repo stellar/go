@@ -11,7 +11,7 @@ typedef opaque Value<>;
 struct CheckpointIndex {
     uint32 firstCheckpoint;
     uint32 lastCheckpoint;
-    opaque bitmap<>;
+    Value bitmap;
 };
 
 }
