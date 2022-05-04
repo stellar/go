@@ -5,9 +5,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +23,7 @@ func randomTrie(t *testing.T, index *TrieIndex) (*TrieIndex, map[string]uint32) 
 		ledger := uint32(rand.Int63())
 		hashBytes := make([]byte, 32)
 		if _, err := rand.Read(hashBytes); err != nil {
-			t.Error(err.Error())
+			assert.NoError(t, err)
 		}
 		hash := hex.EncodeToString(hashBytes)
 
@@ -39,14 +41,10 @@ func TestTrieIndex(t *testing.T) {
 
 		for key, expected := range inserts {
 			value, ok := index.Get([]byte(key))
-			if !ok {
-				t.Errorf("Key not found: %s", key)
-			} else {
-				ledger := binary.BigEndian.Uint32(value)
-				if ledger != expected {
-					t.Errorf("Key %s found: %v, expected: %v", key, ledger, expected)
-				}
-			}
+			assert.Truef(t, ok, "Key not found: %s", key)
+			ledger := binary.BigEndian.Uint32(value)
+			assert.Equalf(t, expected, ledger,
+				"Key %s found: %v, expected: %v", key, ledger, expected)
 		}
 	}
 }
@@ -56,19 +54,16 @@ func TestTrieIndexUpsertBasic(t *testing.T) {
 
 	key := "key"
 	prev, ok := index.Upsert([]byte(key), []byte("a"))
-	if ok || prev != nil {
-		t.Errorf("Unexpected previous value: %q, expected: nil", string(prev))
-	}
+	assert.Nil(t, prev)
+	assert.Falsef(t, ok, "expected nil, got prev: %q", string(prev))
 
 	prev, ok = index.Upsert([]byte(key), []byte("b"))
-	if !ok || string(prev) != "a" {
-		t.Errorf("Unexpected previous value: %q, expected: a", string(prev))
-	}
+	assert.Equal(t, "a", string(prev))
+	assert.Truef(t, ok, "expected 'a', got prev: %q", string(prev))
 
 	prev, ok = index.Upsert([]byte(key), []byte("c"))
-	if !ok || string(prev) != "b" {
-		t.Errorf("Unexpected previous value: %q, expected: b", string(prev))
-	}
+	assert.Equal(t, "b", string(prev))
+	assert.Truef(t, ok, "expected 'b', got prev: %q", string(prev))
 }
 
 func TestTrieIndexSuffixes(t *testing.T) {
@@ -101,36 +96,30 @@ func TestTrieIndexSuffixes(t *testing.T) {
 
 func TestTrieIndexSerialization(t *testing.T) {
 	for i := 0; i < 10_000; i++ {
-		index, inserts := randomTrie(t, nil)
+		t.Run(fmt.Sprintf("attempt%d", i), func(t *testing.T) {
+			index, inserts := randomTrie(t, nil)
 
-		// Round-trip it to serialization and back
-		buf := &bytes.Buffer{}
-		nWritten, err := index.WriteTo(buf)
-		if err != nil {
-			t.Error(err.Error())
-		}
+			// Round-trip it to serialization and back
+			buf := &bytes.Buffer{}
+			nWritten, err := index.WriteTo(buf)
+			assert.NoError(t, err)
 
-		read := &TrieIndex{}
-		nRead, err := read.ReadFrom(buf)
-		if err != nil {
-			t.Error(err.Error())
-		}
+			read := &TrieIndex{}
+			nRead, err := read.ReadFrom(buf)
+			assert.NoError(t, err)
 
-		if nWritten != nRead {
-			t.Errorf("Wrote %d bytes, but read %d bytes", nWritten, nRead)
-		}
+			assert.Equal(t, nWritten, nRead, "read more or less than we wrote")
 
-		for key, expected := range inserts {
-			value, ok := read.Get([]byte(key))
-			if !ok {
-				t.Errorf("Key not found: %s", key)
-			} else {
-				ledger := binary.BigEndian.Uint32(value)
-				if ledger != expected {
-					t.Errorf("Key %s found: %v, expected: %v", key, ledger, expected)
+			for key, expected := range inserts {
+				value, ok := read.Get([]byte(key))
+				if !assert.Truef(t, ok, "Key not found: %s", key) {
+					t.FailNow()
 				}
+
+				ledger := binary.BigEndian.Uint32(value)
+				assert.Equal(t, expected, ledger, "for key %s", key)
 			}
-		}
+		})
 	}
 }
 
