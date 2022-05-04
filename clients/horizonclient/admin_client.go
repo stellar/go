@@ -64,7 +64,7 @@ func (c *AdminClient) sendHTTPRequest(req *http.Request, a interface{}) error {
 	if resp, err := c.http.Do(req.WithContext(ctx)); err != nil {
 		return err
 	} else {
-		return decodeResponse(resp, a, req.URL.String(), c.clock)
+		return decodeResponse(resp, a, req.URL.String(), nil)
 	}
 }
 

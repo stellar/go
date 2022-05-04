@@ -158,9 +158,6 @@ type AdminClient struct {
 
 	// max client wait time for response
 	horizonTimeout time.Duration
-
-	// clock is a Clock returning the current time.
-	clock *clock.Clock
 }
 
 // SubmitTxOpts represents the submit transaction options
