@@ -20,7 +20,7 @@ This is the final release after the [release candidate](v2.17.0-release-candidat
   * 'whitelist by account id' ([4221](https://github.com/stellar/go/issues/4221))
   * 'whitelist by canonical asset id' ([4222](https://github.com/stellar/go/issues/4222))
 
-  The filters and their configuration are optional feature and must be enabled with horizon command line parameter `admin-port=4200` and `enable-ingestion-filtering=true`
+  The filters and their configuration are optional features and must be enabled with horizon command line parameters `admin-port=4200` and `enable-ingestion-filtering=true`
 
   Once set, filter configurations and their rules are initially empty and the filters are disabled by default. To enable filters, update the configuration settings, refer to the Admin API Docs which are published on the Admin Port at http://localhost:<admin_port>/, follow details and examples for endpoints:
   * `/ingestion/filters/account`
