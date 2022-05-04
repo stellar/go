@@ -22,7 +22,6 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 			"enable-ingestion-filtering": "true",
 		},
 	})
-	itest.AdminClient().AdminPort = adminPort
 
 	fullKeys, accounts := itest.CreateAccounts(2, "10000")
 	whitelistedAccount := accounts[0]
@@ -99,7 +98,6 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 			"enable-ingestion-filtering": "true",
 		},
 	})
-	itest.AdminClient().AdminPort = adminPort
 
 	fullKeys, accounts := itest.CreateAccounts(1, "10000")
 	defaultAllowedAccount := accounts[0]

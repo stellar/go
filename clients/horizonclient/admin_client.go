@@ -7,10 +7,47 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 )
+
+// port - the horizon admin port, zero value defaults to 4200
+// host - the host interface name that horizon has bound admin web service, zero value defaults to 'localhost'
+// timeout - the length of time for the http client to wait on responses from admin web service
+func NewAdminClient(port uint16, host string, timeout time.Duration) (*AdminClient, error) {
+	baseURL, err := getAdminBaseURL(port, host)
+	if err != nil {
+		return nil, err
+	}
+	if timeout == 0 {
+		timeout = HorizonTimeout
+	}
+
+	return &AdminClient{
+		baseURL:        baseURL,
+		http:           http.DefaultClient,
+		horizonTimeout: timeout,
+	}, nil
+}
+
+func getAdminBaseURL(port uint16, host string) (string, error) {
+	baseURL, err := url.Parse("http://localhost")
+	if err != nil {
+		return "", err
+	}
+	adminPort := uint16(4200)
+	if port > 0 {
+		adminPort = port
+	}
+	adminHost := baseURL.Hostname()
+	if len(host) > 0 {
+		adminHost = host
+	}
+	baseURL.Host = fmt.Sprintf("%s:%d", adminHost, adminPort)
+	return baseURL.String(), nil
+}
 
 func (c *AdminClient) sendGetRequest(requestURL string, a interface{}) error {
 	req, err := http.NewRequest("GET", requestURL, nil)
@@ -21,72 +58,39 @@ func (c *AdminClient) sendGetRequest(requestURL string, a interface{}) error {
 }
 
 func (c *AdminClient) sendHTTPRequest(req *http.Request, a interface{}) error {
-	if c.HTTP == nil {
-		c.HTTP = http.DefaultClient
-	}
-
-	if c.horizonTimeout == 0 {
-		c.horizonTimeout = HorizonTimeout
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), c.horizonTimeout)
 	defer cancel()
 
-	if resp, err := c.HTTP.Do(req.WithContext(ctx)); err != nil {
+	if resp, err := c.http.Do(req.WithContext(ctx)); err != nil {
 		return err
 	} else {
 		return decodeResponse(resp, a, req.URL.String(), c.clock)
 	}
 }
 
-func (c *AdminClient) getIngestionFiltersURL(name string) (string, error) {
-	baseURL, err := url.Parse("http://localhost")
-	if err != nil {
-		return "", err
-	}
-	baseURL.Path = baseURL.Path + "ingestion/filters/" + name
-	adminPort := uint16(4200)
-	if c.AdminPort > 0 {
-		adminPort = c.AdminPort
-	}
-	adminHost := baseURL.Hostname()
-	if len(c.AdminHost) > 0 {
-		adminHost = c.AdminHost
-	}
-	baseURL.Host = fmt.Sprintf("%s:%d", adminHost, adminPort)
-	return baseURL.String(), nil
+func (c *AdminClient) getIngestionFiltersURL(filter string) string {
+	return fmt.Sprintf("%s/ingestion/filters/%s", c.baseURL, filter)
 }
 
 func (c *AdminClient) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
-	url, err := c.getIngestionFiltersURL("asset")
-	if err != nil {
-		return hProtocol.AssetFilterConfig{}, err
-	}
 	var filter hProtocol.AssetFilterConfig
-	err = c.sendGetRequest(url, &filter)
+	err := c.sendGetRequest(c.getIngestionFiltersURL("asset"), &filter)
 	return filter, err
 }
 
 func (c *AdminClient) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
-	url, err := c.getIngestionFiltersURL("account")
-	if err != nil {
-		return hProtocol.AccountFilterConfig{}, err
-	}
 	var filter hProtocol.AccountFilterConfig
-	err = c.sendGetRequest(url, &filter)
+	err := c.sendGetRequest(c.getIngestionFiltersURL("account"), &filter)
 	return filter, err
 }
 
 func (c *AdminClient) AdminSetIngestionAssetFilter(filter hProtocol.AssetFilterConfig) error {
-	url, err := c.getIngestionFiltersURL("asset")
-	if err != nil {
-		return err
-	}
 	buf := bytes.NewBuffer(nil)
-	err = json.NewEncoder(buf).Encode(filter)
+	err := json.NewEncoder(buf).Encode(filter)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPut, url, buf)
+	req, err := http.NewRequest(http.MethodPut, c.getIngestionFiltersURL("asset"), buf)
 	if err != nil {
 		return errors.Wrap(err, "error creating HTTP request")
 	}
@@ -95,16 +99,12 @@ func (c *AdminClient) AdminSetIngestionAssetFilter(filter hProtocol.AssetFilterC
 }
 
 func (c *AdminClient) AdminSetIngestionAccountFilter(filter hProtocol.AccountFilterConfig) error {
-	url, err := c.getIngestionFiltersURL("account")
-	if err != nil {
-		return err
-	}
 	buf := bytes.NewBuffer(nil)
-	err = json.NewEncoder(buf).Encode(filter)
+	err := json.NewEncoder(buf).Encode(filter)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPut, url, buf)
+	req, err := http.NewRequest(http.MethodPut, c.getIngestionFiltersURL("account"), buf)
 	if err != nil {
 		return errors.Wrap(err, "error creating HTTP request")
 	}

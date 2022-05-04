@@ -150,13 +150,11 @@ type Client struct {
 }
 
 type AdminClient struct {
-	// Admin port (admin requests will fail if unset)
-	AdminPort uint16
-
-	AdminHost string
+	// fully qualified url for the admin web service
+	baseURL string
 
 	// HTTP client to make requests with
-	HTTP HTTP
+	http HTTP
 
 	// max client wait time for response
 	horizonTimeout time.Duration
