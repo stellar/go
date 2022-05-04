@@ -14,4 +14,20 @@ struct CheckpointIndex {
     Value bitmap;
 };
 
+struct TrieIndex {
+    uint32 version;
+    TrieNode root;
+};
+
+struct TrieNodeChild {
+    opaque key[1];
+    TrieNode node;
+};
+
+struct TrieNode {
+    Value prefix;
+    Value value;
+    TrieNodeChild children<>;
+};
+
 }
