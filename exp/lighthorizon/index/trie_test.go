@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"math/rand"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -96,7 +96,7 @@ func TestTrieIndexSuffixes(t *testing.T) {
 
 func TestTrieIndexSerialization(t *testing.T) {
 	for i := 0; i < 10_000; i++ {
-		t.Run(fmt.Sprintf("attempt%d", i), func(t *testing.T) {
+		t.Run(strconv.FormatInt(int64(i), 10), func(t *testing.T) {
 			index, inserts := randomTrie(t, nil)
 
 			// Round-trip it to serialization and back
