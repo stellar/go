@@ -41,7 +41,10 @@ func TestTrieIndex(t *testing.T) {
 
 		for key, expected := range inserts {
 			value, ok := index.Get([]byte(key))
-			assert.Truef(t, ok, "Key not found: %s", key)
+			if !assert.Truef(t, ok, "Key not found: %s", key) {
+				t.FailNow()
+				continue
+			}
 			ledger := binary.BigEndian.Uint32(value)
 			assert.Equalf(t, expected, ledger,
 				"Key %s found: %v, expected: %v", key, ledger, expected)
