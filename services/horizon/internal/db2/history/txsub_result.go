@@ -37,14 +37,11 @@ func (q *Q) GetTxSubmissionResult(ctx context.Context, hash string) (Transaction
 	if err != nil {
 		return Transaction{}, err
 	}
-	switch len(transactions) {
-	case 0:
+	if len(transactions) == 0 {
 		return Transaction{}, sql.ErrNoRows
-	case 1:
-		return transactions[0], nil
-	default:
-		return Transaction{}, fmt.Errorf("unexpected result size > 1 (%d)", len(transactions))
 	}
+
+	return transactions[0], nil
 }
 
 // GetTxSubmissionResults gets the result of multiple submitted transactions

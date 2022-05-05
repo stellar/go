@@ -28,6 +28,8 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 	return q.Get(ctx, dest, union)
 }
 
+// TransactionsByHashesSinceLedger fetches transactions from the `history_transactions`
+// table which match the given hash since the given ledger sequence (for perf reasons).
 func (q *Q) TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]Transaction, error) {
 	var dest []Transaction
 	byHash := selectTransaction.
