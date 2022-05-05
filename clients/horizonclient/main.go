@@ -166,10 +166,10 @@ type SubmitTxOpts struct {
 }
 
 type AdminClientInterface interface {
-	AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error)
-	AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error)
-	AdminSetIngestionAccountFilter(hProtocol.AccountFilterConfig) error
-	AdminSetIngestionAssetFilter(hProtocol.AssetFilterConfig) error
+	GetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error)
+	GetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error)
+	SetIngestionAccountFilter(hProtocol.AccountFilterConfig) error
+	SetIngestionAssetFilter(hProtocol.AssetFilterConfig) error
 }
 
 // ClientInterface contains methods implemented by the horizon client

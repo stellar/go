@@ -72,19 +72,19 @@ func (c *AdminClient) getIngestionFiltersURL(filter string) string {
 	return fmt.Sprintf("%s/ingestion/filters/%s", c.baseURL, filter)
 }
 
-func (c *AdminClient) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
+func (c *AdminClient) GetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
 	var filter hProtocol.AssetFilterConfig
 	err := c.sendGetRequest(c.getIngestionFiltersURL("asset"), &filter)
 	return filter, err
 }
 
-func (c *AdminClient) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
+func (c *AdminClient) GetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
 	var filter hProtocol.AccountFilterConfig
 	err := c.sendGetRequest(c.getIngestionFiltersURL("account"), &filter)
 	return filter, err
 }
 
-func (c *AdminClient) AdminSetIngestionAssetFilter(filter hProtocol.AssetFilterConfig) error {
+func (c *AdminClient) SetIngestionAssetFilter(filter hProtocol.AssetFilterConfig) error {
 	buf := bytes.NewBuffer(nil)
 	err := json.NewEncoder(buf).Encode(filter)
 	if err != nil {
@@ -98,7 +98,7 @@ func (c *AdminClient) AdminSetIngestionAssetFilter(filter hProtocol.AssetFilterC
 	return c.sendHTTPRequest(req, nil)
 }
 
-func (c *AdminClient) AdminSetIngestionAccountFilter(filter hProtocol.AccountFilterConfig) error {
+func (c *AdminClient) SetIngestionAccountFilter(filter hProtocol.AccountFilterConfig) error {
 	buf := bytes.NewBuffer(nil)
 	err := json.NewEncoder(buf).Encode(filter)
 	if err != nil {

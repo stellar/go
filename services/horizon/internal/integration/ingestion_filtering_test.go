@@ -54,10 +54,10 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 		Whitelist: []string{whitelistedAccount.GetAccountID()},
 		Enabled:   &enabled,
 	}
-	err = itest.AdminClient().AdminSetIngestionAccountFilter(expectedAccountFilter)
+	err = itest.AdminClient().SetIngestionAccountFilter(expectedAccountFilter)
 	tt.NoError(err)
 
-	accountFilter, err := itest.AdminClient().AdminGetIngestionAccountFilter()
+	accountFilter, err := itest.AdminClient().GetIngestionAccountFilter()
 	tt.NoError(err)
 
 	tt.ElementsMatch(expectedAccountFilter.Whitelist, accountFilter.Whitelist)
@@ -131,10 +131,10 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 		Whitelist: []string{asset.StringCanonical()},
 		Enabled:   &enabled,
 	}
-	err = itest.AdminClient().AdminSetIngestionAssetFilter(expectedAssetFilter)
+	err = itest.AdminClient().SetIngestionAssetFilter(expectedAssetFilter)
 	tt.NoError(err)
 
-	assetFilter, err := itest.AdminClient().AdminGetIngestionAssetFilter()
+	assetFilter, err := itest.AdminClient().GetIngestionAssetFilter()
 	tt.NoError(err)
 
 	tt.ElementsMatch(expectedAssetFilter.Whitelist, assetFilter.Whitelist)

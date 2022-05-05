@@ -353,22 +353,22 @@ func (m *MockClient) PrevLiquidityPoolsPage(page hProtocol.LiquidityPoolsPage) (
 	return a.Get(0).(hProtocol.LiquidityPoolsPage), a.Error(1)
 }
 
-func (m *MockAdminClient) AdminGetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
+func (m *MockAdminClient) GetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error) {
 	a := m.Called()
 	return a.Get(0).(hProtocol.AccountFilterConfig), a.Error(1)
 }
 
-func (m *MockAdminClient) AdminGetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
+func (m *MockAdminClient) GetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error) {
 	a := m.Called()
 	return a.Get(0).(hProtocol.AssetFilterConfig), a.Error(1)
 }
 
-func (m *MockAdminClient) AdminSetIngestionAccountFilter(resource hProtocol.AccountFilterConfig) error {
+func (m *MockAdminClient) SetIngestionAccountFilter(resource hProtocol.AccountFilterConfig) error {
 	a := m.Called(resource)
 	return a.Error(0)
 }
 
-func (m *MockAdminClient) AdminSetIngestionAssetFilter(resource hProtocol.AssetFilterConfig) error {
+func (m *MockAdminClient) SetIngestionAssetFilter(resource hProtocol.AssetFilterConfig) error {
 	a := m.Called(resource)
 	return a.Error(0)
 }
