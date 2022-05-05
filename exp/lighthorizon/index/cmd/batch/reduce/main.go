@@ -137,7 +137,7 @@ func main() {
 					if err != nil {
 						// TODO: in final version this should be critical error, now just skip it
 						if err == os.ErrNotExist {
-							log.Errorf("Account %d is unavailable - TODO fix", account)
+							log.Errorf("Account %s is unavailable - TODO fix", account)
 							continue
 						}
 						panic(err)

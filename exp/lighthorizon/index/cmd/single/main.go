@@ -119,7 +119,6 @@ func main() {
 						)
 					}
 
-
 					if strings.Contains(*modules, "accounts") {
 						allParticipants, err := participantsForOperations(tx, false)
 						if err != nil {

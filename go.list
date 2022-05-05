@@ -35,6 +35,7 @@ github.com/jarcoal/httpmock v0.0.0-20161210151336-4442edb3db31
 github.com/jmespath/go-jmespath v0.4.0
 github.com/jmoiron/sqlx v1.2.0
 github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd
+github.com/klauspost/cpuid v0.0.0-20160302075316-09cded8978dc
 github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6
 github.com/kr/pretty v0.1.0
 github.com/kr/text v0.1.0

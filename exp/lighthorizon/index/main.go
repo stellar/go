@@ -1,11 +1,11 @@
 package index
 
 import (
-	"bufio"
 	"bytes"
 	"io"
-	"strconv"
 	"sync"
+
+	"github.com/stellar/go/exp/lighthorizon/index/xdr"
 )
 
 const CheckpointIndexVersion = 1
@@ -18,44 +18,16 @@ type CheckpointIndex struct {
 }
 
 func NewCheckpointIndexFromBytes(b []byte) (*CheckpointIndex, error) {
-	buf := bytes.NewBuffer(b)
-	r := bufio.NewReader(buf)
-
-	firstCheckpointString, err := r.ReadString(0x00)
-	if err != nil {
-		return nil, err
-	}
-
-	// Remove trailing 0x00 byte
-	firstCheckpointString = firstCheckpointString[:len(firstCheckpointString)-1]
-
-	firstCheckpoint, err := strconv.ParseUint(firstCheckpointString, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-
-	lastCheckpointString, err := r.ReadString(0x00)
-	if err != nil {
-		return nil, err
-	}
-
-	// Remove trailing 0x00 byte
-	lastCheckpointString = lastCheckpointString[:len(lastCheckpointString)-1]
-
-	lastCheckpoint, err := strconv.ParseUint(lastCheckpointString, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-
-	bitmap, err := io.ReadAll(r)
+	xdrCheckpoint := xdr.CheckpointIndex{}
+	err := xdrCheckpoint.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
 
 	return &CheckpointIndex{
-		bitmap:          bitmap,
-		firstCheckpoint: uint32(firstCheckpoint),
-		lastCheckpoint:  uint32(lastCheckpoint),
+		bitmap:          xdrCheckpoint.Bitmap,
+		firstCheckpoint: uint32(xdrCheckpoint.FirstCheckpoint),
+		lastCheckpoint:  uint32(xdrCheckpoint.LastCheckpoint),
 	}, nil
 }
 
@@ -243,13 +215,17 @@ func (i *CheckpointIndex) Buffer() *bytes.Buffer {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
-	var b bytes.Buffer
-	b.WriteString(strconv.FormatUint(uint64(i.firstCheckpoint), 10))
-	b.WriteByte(0)
-	b.WriteString(strconv.FormatUint(uint64(i.lastCheckpoint), 10))
-	b.WriteByte(0)
-	b.Write(i.bitmap)
-	return &b
+	xdrCheckpoint := xdr.CheckpointIndex{
+		FirstCheckpoint: xdr.Uint32(i.firstCheckpoint),
+		LastCheckpoint:  xdr.Uint32(i.lastCheckpoint),
+		Bitmap:          i.bitmap,
+	}
+
+	b, err := xdrCheckpoint.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return bytes.NewBuffer(b)
 }
 
 // Flush flushes the index data to byte slice in index format.
