@@ -41,6 +41,11 @@ func TestVersion(t *testing.T) {
 			Address:             "MBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
 			ExpectedVersionByte: VersionByte(0x60),
 		},
+		{
+			Name:                "Signed Payload",
+			Address:             "PDPYP7E6NEYZSVOTV6M23OFM2XRIMPDUJABHGHHH2Y67X7JL25GW6AAAAAAAAAAAAAAJEVA",
+			ExpectedVersionByte: VersionByteSignedPayload,
+		},
 	}
 
 	for _, kase := range cases {

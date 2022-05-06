@@ -2,6 +2,8 @@
 package integration
 
 import (
+	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -164,6 +166,30 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 	})
 }
 
+func TestMaxPathFindingRequests(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxPathFindingRequests, uint(0))
+		_, ok := test.Horizon().Paths().(simplepath.InMemoryFinder)
+		assert.True(t, ok)
+		test.Shutdown()
+	})
+	t.Run("set to 5", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"max-path-finding-requests": "5"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxPathFindingRequests, uint(5))
+		finder, ok := test.Horizon().Paths().(*paths.RateLimitedFinder)
+		assert.True(t, ok)
+		assert.Equal(t, finder.Limit(), 5)
+		test.Shutdown()
+	})
+}
+
 // Pattern taken from testify issue:
 // https://github.com/stretchr/testify/issues/858#issuecomment-600491003
 //
@@ -244,7 +270,7 @@ func createCaptiveCoreConfig(contents string) (string, string, func()) {
 		panic(err)
 	}
 
-	storagePath, err := ioutil.TempDir("", "captive-core-test-*-storage")
+	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
 	if err != nil {
 		panic(err)
 	}

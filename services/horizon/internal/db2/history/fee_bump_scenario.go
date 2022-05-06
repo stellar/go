@@ -141,9 +141,12 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 								Type: xdr.MemoTypeMemoNone,
 							},
 							SeqNum: 97,
-							TimeBounds: &xdr.TimeBounds{
-								MinTime: 2,
-								MaxTime: 4,
+							Cond: xdr.Preconditions{
+								Type: xdr.PreconditionTypePrecondTime,
+								TimeBounds: &xdr.TimeBounds{
+									MinTime: 2,
+									MaxTime: 4,
+								},
 							},
 							Operations: []xdr.Operation{
 								{
@@ -309,6 +312,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 			MemoType:             "none",
 			Memo:                 null.NewString("", false),
 			TimeBounds:           TimeBounds{Lower: null.IntFrom(2), Upper: null.IntFrom(4)},
+			LedgerBounds:         LedgerBounds{Null: true},
+			ExtraSigners:         nil,
 			Signatures:           signatures(fixture.Envelope.FeeBumpSignatures()),
 			InnerSignatures:      signatures(fixture.Envelope.Signatures()),
 			Successful:           successful,

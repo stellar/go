@@ -49,7 +49,12 @@ type Config struct {
 	MaxPathLength uint
 	// MaxAssetsPerPathRequest is the maximum number of assets considered for `/paths/strict-send` and `/paths/strict-recieve`
 	MaxAssetsPerPathRequest int
-	DisablePoolPathFinding  bool
+	// DisablePoolPathFinding configures horizon to run path finding without including liquidity pools
+	// in the path finding search.
+	DisablePoolPathFinding bool
+	// MaxPathFindingRequests is the maximum number of path finding requests horizon will allow
+	// in a 1-second period. A value of 0 disables the limit.
+	MaxPathFindingRequests uint
 
 	NetworkPassphrase string
 	SentryDSN         string

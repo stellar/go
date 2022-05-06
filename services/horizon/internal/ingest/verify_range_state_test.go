@@ -7,9 +7,11 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"math"
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -331,6 +333,13 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 										xdr.MustAddressPtr(mockAccountID),
 										xdr.MustAddressPtr(sponsor),
 									},
+									Ext: xdr.AccountEntryExtensionV2Ext{
+										V: 3,
+										V3: &xdr.AccountEntryExtensionV3{
+											SeqTime:   xdr.TimePoint(math.MaxInt64),
+											SeqLedger: xdr.Uint32(12345678),
+										},
+									},
 								},
 							},
 						},
@@ -478,6 +487,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		AccountID:          mockAccountID,
 		Balance:            600,
 		LastModifiedLedger: 62,
+		SequenceTime:       zero.IntFrom(9223372036854775807),
+		SequenceLedger:     zero.IntFrom(12345678),
 		MasterWeight:       1,
 		NumSponsored:       0,
 		NumSponsoring:      2,

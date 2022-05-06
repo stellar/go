@@ -26,25 +26,59 @@ func TestMissingTimebounds(t *testing.T) {
 			BaseFee:       MinBaseFee,
 		},
 	)
-	assert.EqualError(t, err, "invalid time bounds: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
+	assert.EqualError(t, err, "invalid preconditions: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
 }
 
 func TestTimebounds(t *testing.T) {
 	kp0 := newKeypair0()
-
 	tb := NewTimeout(300)
-	tx, err := NewTransaction(
-		TransactionParams{
-			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
-			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
-			BaseFee:       MinBaseFee,
-			Timebounds:    tb,
-		},
-	)
+
+	tp := TransactionParams{
+		SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+		Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+		BaseFee:       MinBaseFee,
+	}
+
+	tp.Preconditions.TimeBounds = tb
+	tx, err := NewTransaction(tp)
 	assert.NoError(t, err)
-	assert.Equal(t, tb, tx.timebounds)
-	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.TimeBounds.MinTime)
-	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.TimeBounds.MaxTime)
+	assert.Equal(t, tb, tx.preconditions.TimeBounds)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.TimeBounds().MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.TimeBounds().MaxTime)
+}
+
+func TestV2Preconditions(t *testing.T) {
+	kp0 := newKeypair0()
+
+	cond := Preconditions{
+		TimeBounds:                 NewTimeout(300),
+		LedgerBounds:               &LedgerBounds{0, 1},
+		MinSequenceNumber:          nil,
+		MinSequenceNumberAge:       10,
+		MinSequenceNumberLedgerGap: 2,
+	}
+	assert.True(t, cond.hasV2Conditions())
+
+	tp := TransactionParams{
+		SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+		Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+		BaseFee:       MinBaseFee,
+		Preconditions: cond,
+	}
+
+	tx, err := NewTransaction(tp)
+	assert.NoError(t, err)
+	assert.Equal(t, cond, tx.preconditions)
+
+	b64, err := tx.Base64()
+	assert.NoError(t, err)
+
+	unpackedTx, err := TransactionFromXDR(b64)
+	assert.NoError(t, err)
+	if !assert.NotNil(t, unpackedTx.simple) {
+		t.FailNow()
+	}
+	assert.Equal(t, cond, unpackedTx.simple.preconditions)
 }
 
 func TestMissingSourceAccount(t *testing.T) {
@@ -63,7 +97,7 @@ func TestIncrementSequenceNum(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&inflation},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -75,7 +109,7 @@ func TestIncrementSequenceNum(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&inflation},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -87,7 +121,7 @@ func TestIncrementSequenceNum(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations:           []Operation{&inflation},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -99,7 +133,7 @@ func TestIncrementSequenceNum(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations:           []Operation{&inflation},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -115,7 +149,7 @@ func TestFeeNoOperations(t *testing.T) {
 			SourceAccount: &sourceAccount,
 			Operations:    []Operation{},
 			BaseFee:       MinBaseFee,
-			Timebounds:    NewInfiniteTimeout(),
+			Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.EqualError(t, err, "transaction has no operations")
@@ -133,7 +167,7 @@ func TestInflation(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&inflation},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -159,7 +193,7 @@ func TestCreateAccount(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -186,7 +220,7 @@ func TestPayment(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -222,7 +256,7 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -248,7 +282,7 @@ func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	expectedErrMsg := "validation failed for *txnbuild.Payment operation: Field: Asset, Error: asset is undefined"
@@ -269,7 +303,7 @@ func TestBumpSequence(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&bumpSequence},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -294,7 +328,7 @@ func TestAccountMerge(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&accountMerge},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -320,7 +354,7 @@ func TestManageData(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&manageData},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -345,7 +379,7 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&manageData},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -371,7 +405,7 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -396,7 +430,7 @@ func TestSetOptionsSetFlags(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -421,7 +455,7 @@ func TestSetOptionsClearFlags(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -446,7 +480,7 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -473,7 +507,7 @@ func TestSetOptionsThresholds(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -498,7 +532,7 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -523,7 +557,7 @@ func TestSetOptionsHomeDomainTooLong(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 
@@ -545,7 +579,7 @@ func TestSetOptionsSigner(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -571,7 +605,7 @@ func TestMultipleOperations(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&inflation, &bumpSequence},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -598,7 +632,7 @@ func TestChangeTrust(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&changeTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -624,7 +658,7 @@ func TestChangeTrustNativeAssetNotAllowed(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&changeTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 
@@ -646,7 +680,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&removeTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -675,7 +709,7 @@ func TestAllowTrust(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&allowTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -704,7 +738,7 @@ func TestAllowTrustNoIssuer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&allowTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -732,7 +766,7 @@ func TestManageSellOfferNewOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -757,7 +791,7 @@ func TestManageSellOfferDeleteOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&deleteOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -786,7 +820,7 @@ func TestManageSellOfferUpdateOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&updateOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -815,7 +849,7 @@ func TestCreatePassiveSellOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createPassiveOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -847,7 +881,7 @@ func TestPathPayment(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&pathPayment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp2,
@@ -869,7 +903,7 @@ func TestMemoText(t *testing.T) {
 			Operations:           []Operation{&BumpSequence{BumpTo: 1}},
 			Memo:                 MemoText("Twas brillig"),
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp2,
@@ -891,7 +925,7 @@ func TestMemoID(t *testing.T) {
 			Operations:           []Operation{&BumpSequence{BumpTo: 1}},
 			Memo:                 MemoID(314159),
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp2,
@@ -913,7 +947,7 @@ func TestMemoHash(t *testing.T) {
 			Operations:           []Operation{&BumpSequence{BumpTo: 1}},
 			Memo:                 MemoHash([32]byte{0x01}),
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp2,
@@ -935,7 +969,7 @@ func TestMemoReturn(t *testing.T) {
 			Operations:           []Operation{&BumpSequence{BumpTo: 1}},
 			Memo:                 MemoReturn([32]byte{0x01}),
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp2,
@@ -965,7 +999,7 @@ func TestManageBuyOfferNewOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&buyOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -994,7 +1028,7 @@ func TestManageBuyOfferDeleteOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&buyOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -1023,7 +1057,7 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&buyOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp1,
@@ -1108,7 +1142,7 @@ func TestHashHex(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1152,7 +1186,7 @@ func TestTransactionFee(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1166,7 +1200,7 @@ func TestTransactionFee(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              500,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1200,7 +1234,7 @@ func TestPreAuthTransaction(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1238,7 +1272,7 @@ func TestPreAuthTransaction(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              500,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1279,7 +1313,7 @@ func TestHashXTransaction(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              500,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1309,7 +1343,7 @@ func TestHashXTransaction(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1415,7 +1449,7 @@ func TestBuild(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1475,7 +1509,7 @@ func TestFromXDRBuildSignEncode(t *testing.T) {
 			Operations:           newTx.Operations(),
 			BaseFee:              newTx.BaseFee(),
 			Memo:                 MemoText("newtx"),
-			Timebounds:           newTx.Timebounds(),
+			Preconditions:        Preconditions{TimeBounds: newTx.Timebounds()},
 		},
 		network.TestNetworkPassphrase,
 		kp0,
@@ -1501,7 +1535,7 @@ func TestSignWithSecretKey(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -1514,7 +1548,7 @@ func TestSignWithSecretKey(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1548,7 +1582,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -1561,7 +1595,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1649,8 +1683,8 @@ func TestFeeBumpTransaction_AddSignatureDecorated(t *testing.T) {
 			Amount:        "10",
 			SourceAccount: kp1.Address(),
 		}},
-		BaseFee:    MinBaseFee,
-		Timebounds: NewInfiniteTimeout(),
+		BaseFee:       MinBaseFee,
+		Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 	})
 	require.NoError(t, err)
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0, kp1)
@@ -1700,7 +1734,7 @@ func TestAddSignatureBase64(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -1713,7 +1747,7 @@ func TestAddSignatureBase64(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -1749,8 +1783,8 @@ func TestTransaction_ClearSignatures(t *testing.T) {
 				Amount:        "10",
 				SourceAccount: kp1.Address(),
 			}},
-			BaseFee:    MinBaseFee,
-			Timebounds: NewInfiniteTimeout(),
+			BaseFee:       MinBaseFee,
+			Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	require.NoError(t, err)
@@ -1782,8 +1816,8 @@ func TestFeeBumpTransaction_ClearSignatures(t *testing.T) {
 			Amount:        "10",
 			SourceAccount: kp1.Address(),
 		}},
-		BaseFee:    MinBaseFee,
-		Timebounds: NewInfiniteTimeout(),
+		BaseFee:       MinBaseFee,
+		Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 	})
 	require.NoError(t, err)
 	require.Len(t, tx.Signatures(), 0)
@@ -1835,7 +1869,7 @@ func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1870,7 +1904,7 @@ func TestReadChallengeTx_validSignedByServer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1905,7 +1939,7 @@ func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1938,7 +1972,7 @@ func TestReadChallengeTx_invalidCorrupted(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1979,7 +2013,7 @@ func TestReadChallengeTx_invalidServerAccountIDMismatch(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2014,7 +2048,7 @@ func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2049,7 +2083,7 @@ func TestReadChallengeTx_invalidTimeboundsInfinite(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -2084,7 +2118,7 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimebounds(0, 100),
+			Preconditions:        Preconditions{TimeBounds: NewTimebounds(0, 100)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2121,7 +2155,7 @@ func TestReadChallengeTx_validTimeboundsWithGracePeriod(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimebounds(unixNow+5*59, unixNow+60*60),
+			Preconditions:        Preconditions{TimeBounds: NewTimebounds(unixNow+5*59, unixNow+60*60)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2157,7 +2191,7 @@ func TestReadChallengeTx_invalidTimeboundsWithGracePeriod(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimebounds(unixNow+5*61, unixNow+60*60),
+			Preconditions:        Preconditions{TimeBounds: NewTimebounds(unixNow+5*61, unixNow+60*60)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2187,7 +2221,7 @@ func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2215,7 +2249,7 @@ func TestReadChallengeTx_invalidOperationNoSourceAccount(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2248,7 +2282,7 @@ func TestReadChallengeTx_invalidDataValueWrongEncodedLength(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2283,7 +2317,7 @@ func TestReadChallengeTx_invalidDataValueCorruptBase64(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2318,7 +2352,7 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2468,7 +2502,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2501,7 +2535,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainSuccess(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2539,7 +2573,7 @@ func TestReadChallengeTx_allowsAdditionalManageDataOpsWithSourceAccountSetToServ
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2579,7 +2613,7 @@ func TestReadChallengeTx_disallowsAdditionalManageDataOpsWithoutSourceAccountSet
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2616,7 +2650,7 @@ func TestReadChallengeTx_disallowsAdditionalOpsOfOtherTypes(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2651,7 +2685,7 @@ func TestReadChallengeTx_matchesHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2684,7 +2718,7 @@ func TestReadChallengeTx_doesNotMatchHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2712,7 +2746,7 @@ func TestReadChallengeTx_validWhenWebAuthDomainMissing(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2744,7 +2778,7 @@ func TestReadChallengeTx_invalidWebAuthDomainSourceAccount(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2776,7 +2810,7 @@ func TestReadChallengeTx_invalidWebAuthDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -2809,7 +2843,7 @@ func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		clientKP,
@@ -2845,7 +2879,7 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -2886,7 +2920,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2,
@@ -2941,7 +2975,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2,
@@ -2992,7 +3026,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2,
@@ -3033,7 +3067,7 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2,
@@ -3072,7 +3106,7 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2, clientKP3,
@@ -3108,7 +3142,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2, clientKP3,
@@ -3140,7 +3174,7 @@ func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP1, clientKP2,
@@ -3182,7 +3216,7 @@ func TestVerifyChallengeTxThreshold_matchesHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -3225,7 +3259,7 @@ func TestVerifyChallengeTxThreshold_doesNotMatchHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -3263,7 +3297,7 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainFailure(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3299,7 +3333,7 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainSuccess(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3345,7 +3379,7 @@ func TestVerifyChallengeTxThreshold_allowsAdditionalManageDataOpsWithSourceAccou
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3391,7 +3425,7 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalManageDataOpsWithoutSourc
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3433,7 +3467,7 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalOpsOfOtherTypes(t *testin
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3466,7 +3500,7 @@ func TestVerifyChallengeTxThreshold_validWhenWebAuthDomainMissing(t *testing.T) 
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3506,7 +3540,7 @@ func TestVerifyChallengeTxThreshold_invalidWebAuthDomainSourceAccount(t *testing
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3542,7 +3576,7 @@ func TestVerifyChallengeTxThreshold_invalidWebAuthDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3578,7 +3612,7 @@ func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		clientKP,
@@ -3611,7 +3645,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -3644,7 +3678,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndNoClient(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP,
@@ -3678,7 +3712,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndUnrecognizedClient(t *testing.
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, unrecognizedKP,
@@ -3712,7 +3746,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSigners(t *testing
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP, clientKP2,
@@ -3746,7 +3780,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSignersReverseOrde
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2, clientKP,
@@ -3780,7 +3814,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersNotMasterKey(t *tes
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2,
@@ -3814,7 +3848,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresServerSigner
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2,
@@ -3848,7 +3882,7 @@ func TestVerifyChallengeTxSigners_invalidServerNoClientSignersIgnoresServerSigne
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP,
@@ -3882,7 +3916,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSig
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2,
@@ -3919,7 +3953,7 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2,
@@ -3953,7 +3987,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateS
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2,
@@ -3987,7 +4021,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSig
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2, clientKP2,
@@ -4021,7 +4055,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP2,
@@ -4054,7 +4088,7 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4086,7 +4120,7 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainFailure(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4118,7 +4152,7 @@ func TestVerifyChallengeTxSigners_matchesHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -4158,7 +4192,7 @@ func TestVerifyChallengeTxSigners_doesNotMatchHomeDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(300),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(300)},
 		},
 	)
 	assert.NoError(t, err)
@@ -4198,7 +4232,7 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainSuccess(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4235,7 +4269,7 @@ func TestVerifyChallengeTxSigners_allowsAdditionalManageDataOpsWithSourceAccount
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4273,7 +4307,7 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalManageDataOpsWithoutSourceA
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4310,7 +4344,7 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalOpsOfOtherTypes(t *testing.
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op1, &op2, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4337,7 +4371,7 @@ func TestVerifyChallengeTxSigners_validWhenWebAuthDomainMissing(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4371,7 +4405,7 @@ func TestVerifyChallengeTxSigners_invalidWebAuthDomainSourceAccount(t *testing.T
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4402,7 +4436,7 @@ func TestVerifyChallengeTxSigners_invalidWebAuthDomain(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&op, &webAuthDomainOp},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 		network.TestNetworkPassphrase,
 		serverKP, clientKP,
@@ -4428,7 +4462,7 @@ func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewTimeout(1000),
+			Preconditions:        Preconditions{TimeBounds: NewTimeout(1000)},
 		},
 	)
 	assert.NoError(t, err)
@@ -4454,7 +4488,7 @@ func TestVerifyTxSignatureSingle(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -4480,7 +4514,7 @@ func TestVerifyTxSignatureMultiple(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -4508,7 +4542,7 @@ func TestVerifyTxSignatureInvalid(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)
@@ -4543,7 +4577,7 @@ func TestClaimableBalanceIds(t *testing.T) {
 			SourceAccount:        &aMuxedAccount,
 			IncrementSequenceNum: true,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&claimableBalanceEntry},
 		},
 	)
@@ -4578,7 +4612,7 @@ func TestTransaction_marshalUnmarshalText(t *testing.T) {
 			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
 			IncrementSequenceNum: false,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
 		},
 	)
@@ -4612,7 +4646,7 @@ func TestFeeBumpTransaction_marshalUnmarshalText(t *testing.T) {
 			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
 			IncrementSequenceNum: false,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
 		},
 	)
@@ -4652,7 +4686,7 @@ func TestNewGenericTransactionWithTransaction(t *testing.T) {
 			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
 			IncrementSequenceNum: false,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
 		},
 	)
@@ -4671,7 +4705,7 @@ func TestNewGenericTransactionWithFeeBumpTransaction(t *testing.T) {
 			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
 			IncrementSequenceNum: false,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
 		},
 	)
@@ -4703,7 +4737,7 @@ func TestGenericTransaction_marshalUnmarshalText(t *testing.T) {
 			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
 			IncrementSequenceNum: false,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
 		},
 	)
@@ -4760,7 +4794,7 @@ func TestGenericTransaction_marshalBinary(t *testing.T) {
 			SourceAccount:        &SimpleAccount{AccountID: k.Address(), Sequence: 1},
 			IncrementSequenceNum: false,
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 			Operations:           []Operation{&BumpSequence{BumpTo: 2}},
 		},
 	)
@@ -4806,7 +4840,7 @@ func TestGenericTransaction_HashHex(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 	)
 	assert.NoError(t, err)

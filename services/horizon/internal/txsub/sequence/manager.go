@@ -14,14 +14,14 @@ import (
 type Manager struct {
 	mutex   sync.Mutex
 	MaxSize int
-	queues  map[string]*Queue
+	queues  map[string]*AccountTxSubmissionQueue
 }
 
 // NewManager returns a new manager
 func NewManager() *Manager {
 	return &Manager{
 		MaxSize: 1024, //TODO: make MaxSize configurable
-		queues:  map[string]*Queue{},
+		queues:  map[string]*AccountTxSubmissionQueue{},
 	}
 }
 
@@ -31,7 +31,7 @@ func (m *Manager) String() string {
 	var addys []string
 
 	for addy, q := range m.queues {
-		addys = append(addys, fmt.Sprintf("%5s:%d", addy, q.nextSequence))
+		addys = append(addys, fmt.Sprintf("%5s:%d", addy, q.lastSeenAccountSequence))
 	}
 
 	return "[ " + strings.Join(addys, ",") + " ]"
@@ -60,7 +60,7 @@ func (m *Manager) Addresses() []string {
 // Push registers an intent to submit a transaction for the provided address at
 // the provided sequence.  A channel is returned that will be written to when
 // the requester should attempt the submission.
-func (m *Manager) Push(address string, sequence uint64) <-chan error {
+func (m *Manager) Push(address string, sequence uint64, minSeqNum *uint64) <-chan error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -70,16 +70,16 @@ func (m *Manager) Push(address string, sequence uint64) <-chan error {
 
 	aq, ok := m.queues[address]
 	if !ok {
-		aq = NewQueue()
+		aq = NewAccountTxSubmissionQueue()
 		m.queues[address] = aq
 	}
 
-	return aq.Push(sequence)
+	return aq.Push(sequence, minSeqNum)
 }
 
-// Update notifies the manager of newly loaded account sequence information.  The manager uses this information
-// to notify requests to submit that they should proceed.  See Queue#Update for the actual meat of the logic.
-func (m *Manager) Update(updates map[string]uint64) {
+// NotifyLastAccountSequences notifies the manager of newly loaded account sequence information.  The manager uses this information
+// to notify requests to submit that they should proceed.  See AccountTxSubmissionQueue#NotifyLastAccountSequence for the actual meat of the logic.
+func (m *Manager) NotifyLastAccountSequences(updates map[string]uint64) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -89,7 +89,7 @@ func (m *Manager) Update(updates map[string]uint64) {
 			continue
 		}
 
-		queue.Update(seq)
+		queue.NotifyLastAccountSequence(seq)
 		if queue.Size() == 0 {
 			delete(m.queues, address)
 		}

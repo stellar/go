@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/stellar/go/support/log"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockHash struct {
@@ -43,6 +45,10 @@ func (m *mockHash) hashFile(fp string) (hash, error) {
 }
 
 func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	ms := &mockHash{
 		hashResult:   hash{},
 		expectedPath: "/some/path",
@@ -58,6 +64,7 @@ func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
+		StoragePath:        storagePath,
 	}, stellarCoreRunnerModeOffline)
 	assert.NoError(t, err)
 
@@ -69,6 +76,10 @@ func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher
 }
 
 func TestNewFileWatcherError(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	ms := &mockHash{
 		hashResult:   hash{},
 		expectedPath: "/some/path",
@@ -85,6 +96,7 @@ func TestNewFileWatcherError(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
+		StoragePath:        storagePath,
 	}, stellarCoreRunnerModeOffline)
 	assert.NoError(t, err)
 

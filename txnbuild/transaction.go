@@ -212,7 +212,7 @@ type Transaction struct {
 	sourceAccount SimpleAccount
 	operations    []Operation
 	memo          Memo
-	timebounds    Timebounds
+	preconditions Preconditions
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -241,8 +241,8 @@ func (t *Transaction) Memo() Memo {
 }
 
 // Timebounds returns the Timebounds configured for this transaction.
-func (t *Transaction) Timebounds() Timebounds {
-	return t.timebounds
+func (t *Transaction) Timebounds() TimeBounds {
+	return t.preconditions.TimeBounds
 }
 
 // Operations returns the list of operations included in this transaction.
@@ -770,13 +770,9 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		},
 		operations: nil,
 		memo:       nil,
-		timebounds: Timebounds{},
 	}
 
-	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
-		newTx.simple.timebounds = NewTimebounds(int64(timeBounds.MinTime), int64(timeBounds.MaxTime))
-	}
-
+	newTx.simple.preconditions.FromXDR(xdrEnv.Preconditions())
 	newTx.simple.memo, err = memoFromXDR(xdrEnv.Memo())
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse memo")
@@ -794,26 +790,25 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 	return newTx, nil
 }
 
-// TransactionParams is a container for parameters
-// which are used to construct new Transaction instances
+// TransactionParams is a container for parameters which are used to construct
+// new Transaction instances
 type TransactionParams struct {
 	SourceAccount        Account
 	IncrementSequenceNum bool
 	Operations           []Operation
 	BaseFee              int64
 	Memo                 Memo
-	Timebounds           Timebounds
+	Preconditions        Preconditions
 }
 
 // NewTransaction returns a new Transaction instance
 func NewTransaction(params TransactionParams) (*Transaction, error) {
-	var sequence int64
-	var err error
-
 	if params.SourceAccount == nil {
 		return nil, errors.New("transaction has no source account")
 	}
 
+	var sequence int64
+	var err error
 	if params.IncrementSequenceNum {
 		sequence, err = params.SourceAccount.IncrementSequenceNumber()
 	} else {
@@ -829,9 +824,9 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 			AccountID: params.SourceAccount.GetAccountID(),
 			Sequence:  sequence,
 		},
-		operations: params.Operations,
-		memo:       params.Memo,
-		timebounds: params.Timebounds,
+		operations:    params.Operations,
+		memo:          params.Memo,
+		preconditions: params.Preconditions,
 	}
 	var sourceAccount xdr.MuxedAccount
 	if err = sourceAccount.SetAddress(tx.sourceAccount.AccountID); err != nil {
@@ -850,14 +845,19 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	// if maxFee is negative then there must have been an int overflow
 	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Operations)))
 	if hi > 0 || lo > math.MaxUint32 {
-		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
+		return nil, errors.Errorf(
+			"base fee %d results in an overflow of max fee", params.BaseFee)
 	}
 	tx.maxFee = int64(lo)
 
-	// Check and set the timebounds
-	err = tx.timebounds.Validate()
+	// Check that all preconditions are valid
+	if err = tx.preconditions.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid preconditions")
+	}
+
+	precondXdr, err := tx.preconditions.BuildXDR()
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid time bounds")
+		return nil, errors.Wrap(err, "invalid preconditions")
 	}
 
 	envelope := xdr.TransactionEnvelope{
@@ -867,10 +867,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 				SourceAccount: sourceAccount,
 				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
-				TimeBounds: &xdr.TimeBounds{
-					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
-					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
-				},
+				Cond:          precondXdr,
 			},
 			Signatures: nil,
 		},
@@ -917,7 +914,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 		Operations:           tx.Operations(),
 		BaseFee:              tx.BaseFee(),
 		Memo:                 tx.Memo(),
-		Timebounds:           tx.Timebounds(),
+		Preconditions:        Preconditions{TimeBounds: tx.Timebounds()},
 	})
 	if err != nil {
 		return tx, err
@@ -1053,9 +1050,11 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 					Value:         []byte(webAuthDomain),
 				},
 			},
-			BaseFee:    MinBaseFee,
-			Memo:       nil,
-			Timebounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			BaseFee: MinBaseFee,
+			Memo:    nil,
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
 		},
 	)
 	if err != nil {

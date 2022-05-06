@@ -2,11 +2,13 @@ package ingest
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"reflect"
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -29,6 +31,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 			AccountID:          "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 			Balance:            int64(1000000000000000000),
 			SequenceNumber:     0,
+			SequenceTime:       zero.IntFrom(0),
 			MasterWeight:       1,
 		},
 	}).Return(nil).Once()
@@ -154,7 +157,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 18. Please upgrade to the latest Horizon version.")
+	assert.EqualError(t, err,
+		fmt.Sprintf(
+			"Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			MaxSupportedProtocolVersion,
+		),
+	)
 }
 
 func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
@@ -339,5 +347,10 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	}
 
 	_, err := runner.RunAllProcessorsOnLedger(ledger)
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 18. Please upgrade to the latest Horizon version.")
+	assert.EqualError(t, err,
+		fmt.Sprintf(
+			"Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			MaxSupportedProtocolVersion,
+		),
+	)
 }

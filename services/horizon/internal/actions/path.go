@@ -164,11 +164,15 @@ func (handler FindPathsHandler) GetResource(w HeaderWriter, r *http.Request) (in
 	if len(query.SourceAssets) > 0 {
 		var lastIngestedLedger uint32
 		records, lastIngestedLedger, err = handler.PathFinder.Find(ctx, query, handler.MaxPathLength)
-		if err == simplepath.ErrEmptyInMemoryOrderBook {
-			err = horizonProblem.StillIngesting
-		}
-		if err != nil {
-			return nil, err
+		switch err {
+		case simplepath.ErrEmptyInMemoryOrderBook:
+			return nil, horizonProblem.StillIngesting
+		case paths.ErrRateLimitExceeded:
+			return nil, horizonProblem.ServerOverCapacity
+		default:
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if handler.SetLastLedgerHeader {
@@ -338,11 +342,15 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 			destinationAssets,
 			handler.MaxPathLength,
 		)
-		if err == simplepath.ErrEmptyInMemoryOrderBook {
-			err = horizonProblem.StillIngesting
-		}
-		if err != nil {
-			return nil, err
+		switch err {
+		case simplepath.ErrEmptyInMemoryOrderBook:
+			return nil, horizonProblem.StillIngesting
+		case paths.ErrRateLimitExceeded:
+			return nil, horizonProblem.ServerOverCapacity
+		default:
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if handler.SetLastLedgerHeader {

@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/ticker/internal/utils"
 	"github.com/stellar/go/support/errors"
+	hlog "github.com/stellar/go/support/log"
 )
 
 // shouldDiscardAsset maps the criteria for discarding an asset from the asset index
@@ -60,10 +62,8 @@ func decodeTOMLIssuer(tomlData string) (issuer TOMLIssuer, err error) {
 	return
 }
 
-// fetchTOMLData fetches the TOML data for a given hProtocol.AssetStat
-func fetchTOMLData(asset hProtocol.AssetStat) (data string, err error) {
-	tomlURL := asset.Links.Toml.Href
-
+// fetchTOMLData fetches the TOML data from the URL.
+func fetchTOMLData(tomlURL string) (data string, err error) {
 	if tomlURL == "" {
 		err = errors.New("Asset does not have a TOML URL")
 		return
@@ -214,19 +214,32 @@ func makeFinalAsset(
 }
 
 // processAsset merges data from an AssetStat with data retrieved from its corresponding TOML file
-func processAsset(asset hProtocol.AssetStat, shouldValidateTOML bool) (FinalAsset, error) {
+func processAsset(logger *hlog.Entry, asset hProtocol.AssetStat, tomlCache *TOMLCache, shouldValidateTOML bool) (FinalAsset, error) {
 	var errors []error
 	var issuer TOMLIssuer
 
 	if shouldValidateTOML {
-		tomlData, err := fetchTOMLData(asset)
-		if err != nil {
-			errors = append(errors, err)
-		}
+		tomlURL := asset.Links.Toml.Href
+		logger = logger.WithField("asset_toml_url", tomlURL)
+		logger.Info("Collecting TOML for asset")
 
-		issuer, err = decodeTOMLIssuer(tomlData)
-		if err != nil {
-			errors = append(errors, err)
+		var ok bool
+		issuer, ok = tomlCache.Get(tomlURL)
+		if ok {
+			logger.Info("Using cached TOML for asset")
+		} else {
+			logger.Info("Fetching TOML for asset")
+			tomlData, err := fetchTOMLData(tomlURL)
+			if err != nil {
+				errors = append(errors, err)
+			}
+
+			issuer, err = decodeTOMLIssuer(tomlData)
+			if err != nil {
+				errors = append(errors, err)
+			}
+
+			tomlCache.Set(tomlURL, issuer)
 		}
 	}
 
@@ -244,6 +257,14 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 	chunkSize := int(math.Ceil(float64(numAssets) / float64(parallelism)))
 	wg.Add(parallelism)
 
+	// Sort assets by their toml URL so that assets with the same toml URL are
+	// grouped together. This is so that we can load each toml URL once, and
+	// cache the result for the subsequent assets without needing to store more
+	// than one toml in memory at a time.
+	sort.Slice(assets, func(i, j int) bool {
+		return assets[i].Links.Toml.Href < assets[j].Links.Toml.Href
+	})
+
 	// The assets are divided into chunks of chunkSize, and each goroutine is responsible
 	// for cleaning up one chunk
 	for i := 0; i < parallelism; i++ {
@@ -255,9 +276,19 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 				end = numAssets
 			}
 
+			// Each routine running concurrently has a separate cache of TOMLs
+			// loaded. A single shared cache would be better, but this is a
+			// tradeoff for simplicity because a shared map mutated with HTTP
+			// lookups would have a significant amount of contention.
+			tomlCache := &TOMLCache{}
+
 			for j := start; j < end; j++ {
+				logger := c.Logger.
+					WithField("asset_code", assets[j].Asset.Code).
+					WithField("asset_issuer", assets[j].Asset.Issuer)
 				if !shouldDiscardAsset(assets[j], shouldValidateTOML) {
-					finalAsset, err := processAsset(assets[j], shouldValidateTOML)
+					c.Logger.Info("Processing asset")
+					finalAsset, err := processAsset(logger, assets[j], tomlCache, shouldValidateTOML)
 					if err != nil {
 						mutex.Lock()
 						numTrash++
@@ -266,6 +297,7 @@ func (c *ScraperConfig) parallelProcessAssets(assets []hProtocol.AssetStat, para
 					}
 					assetQueue <- finalAsset
 				} else {
+					c.Logger.Info("Discarding asset")
 					mutex.Lock()
 					numTrash++
 					mutex.Unlock()
