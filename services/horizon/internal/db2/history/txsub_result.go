@@ -102,6 +102,9 @@ func (q *Q) SetTxSubmissionResults(ctx context.Context, transactions []ingest.Le
 	return totalRowsAffected, nil
 }
 
+// Iterates all the incoming completed transactions, 
+// updating the submission result in each tx's corresponding row in txsub_result table
+// with the tx's serialized JSON blob.
 func (q *Q) setTxSubmissionResults(ctx context.Context, transactions []ingest.LedgerTransaction, sequence uint32, ledgerClosetime time.Time) (int64, error) {
 	caseStmt := sq.Case(txSubResultHashColumnName)
 	hashes := make([]string, len(transactions))
