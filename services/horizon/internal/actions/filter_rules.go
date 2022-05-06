@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+// these admin HTTP endpoints are documented in services/horizon/internal/httpx/static/admin_oapi.yml
 type FilterConfigHandler struct{}
 
 func (handler FilterConfigHandler) GetAssetConfig(w http.ResponseWriter, r *http.Request) {
