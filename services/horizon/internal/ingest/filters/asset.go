@@ -135,7 +135,7 @@ func (f *assetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
 }
 
 func listToMap(list []string) map[string]struct{} {
-	set := make(map[string]struct{})
+	set := make(map[string]struct{}, len(list))
 	for i := 0; i < len(list); i++ {
 		set[list[i]] = struct{}{}
 	}
