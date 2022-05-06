@@ -25,8 +25,11 @@ func TestAssetFilterAllowsOnMatch(t *testing.T) {
 	err := filter.RefreshAssetFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	result, err := filter.FilterTransaction(ctx, getAssetTestV1Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	tt.NoError(err)
+	tt.Equal(result, true)
 
+	result, err = filter.FilterTransaction(ctx, getAssetTestV0Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
 	tt.NoError(err)
 	tt.Equal(result, true)
 }
@@ -44,8 +47,11 @@ func TestAssetFilterAllowsWhenEmptyWhitelist(t *testing.T) {
 	err := filter.RefreshAssetFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	result, err := filter.FilterTransaction(ctx, getAssetTestV1Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	tt.NoError(err)
+	tt.Equal(result, true)
 
+	result, err = filter.FilterTransaction(ctx, getAssetTestV0Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
 	tt.NoError(err)
 	tt.Equal(result, true)
 }
@@ -63,14 +69,13 @@ func TestAssetFilterAllowsWhenDisabled(t *testing.T) {
 	err := filter.RefreshAssetFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
-
+	result, err := filter.FilterTransaction(ctx, getAssetTestV1Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
 	tt.NoError(err)
 	// there was no match on filter rules, but since filter was disabled also, it should allow all
 	tt.Equal(result, true)
 }
 
-func TestAssetFilterDoesNotAllowWhenNoMatch(t *testing.T) {
+func TestAssetFilterDoesNotAllowV1WhenNoMatch(t *testing.T) {
 	tt := assert.New(t)
 	ctx := context.Background()
 
@@ -84,13 +89,16 @@ func TestAssetFilterDoesNotAllowWhenNoMatch(t *testing.T) {
 	err := filter.RefreshAssetFilter(filterConfig)
 	tt.NoError(err)
 
-	result, err := filter.FilterTransaction(ctx, getAssetTestTx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	result, err := filter.FilterTransaction(ctx, getAssetTestV1Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
+	tt.NoError(err)
+	tt.Equal(result, false)
 
+	result, err = filter.FilterTransaction(ctx, getAssetTestV0Tx(t, "GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"))
 	tt.NoError(err)
 	tt.Equal(result, false)
 }
 
-func getAssetTestTx(t *testing.T, issuer string) ingest.LedgerTransaction {
+func getAssetTestV1Tx(t *testing.T, issuer string) ingest.LedgerTransaction {
 	var xdrAssetCode [12]byte
 	var xdrIssuer xdr.AccountId
 	copy(xdrAssetCode[:], "USDC")
@@ -108,6 +116,46 @@ func getAssetTestTx(t *testing.T, issuer string) ingest.LedgerTransaction {
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
+					Operations: []xdr.Operation{
+						{Body: xdr.OperationBody{
+							Type: xdr.OperationTypePayment,
+							PaymentOp: &xdr.PaymentOp{
+								Destination: xdr.MustMuxedAddress("GD6WNNTW664WH7FXC5RUMUTF7P5QSURC2IT36VOQEEGFZ4UWUEQGECAL"),
+								Asset: xdr.Asset{
+									Type: xdr.AssetTypeAssetTypeCreditAlphanum12,
+									AlphaNum12: &xdr.AlphaNum12{
+										AssetCode: xdrAssetCode,
+										Issuer:    xdrIssuer,
+									},
+								},
+								Amount: 100,
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+}
+
+func getAssetTestV0Tx(t *testing.T, issuer string) ingest.LedgerTransaction {
+	var xdrAssetCode [12]byte
+	var xdrIssuer xdr.AccountId
+	copy(xdrAssetCode[:], "USDC")
+	require.NoError(t, xdrIssuer.SetAddress(issuer))
+
+	return ingest.LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code: xdr.TransactionResultCodeTxSuccess,
+				},
+			},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+			V0: &xdr.TransactionV0Envelope{
+				Tx: xdr.TransactionV0{
 					Operations: []xdr.Operation{
 						{Body: xdr.OperationBody{
 							Type: xdr.OperationTypePayment,
