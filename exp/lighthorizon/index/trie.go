@@ -2,6 +2,7 @@ package index
 
 import (
 	"bufio"
+	"encoding"
 	"io"
 	"sync"
 
@@ -224,49 +225,7 @@ func (i *TrieIndex) Merge(other *TrieIndex) error {
 	return nil
 }
 
-func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
-	i.Lock()
-	defer i.Unlock()
-
-	br := bufio.NewReader(r)
-	bytes, err := io.ReadAll(br)
-	if err != nil {
-		return int64(len(bytes)), err
-	}
-
-	xdrIndex := xdr.TrieIndex{}
-	err = xdrIndex.UnmarshalBinary(bytes)
-	if err != nil {
-		return int64(len(bytes)), err
-	}
-
-	i.Root = &trieNode{
-		Prefix:   xdrIndex.Root.Prefix,
-		Value:    xdrIndex.Root.Value,
-		Children: make(map[byte]*trieNode, len(xdrIndex.Root.Children)),
-	}
-
-	for _, node := range xdrIndex.Root.Children {
-		buildTrie(&node, i.Root)
-	}
-
-	return int64(len(bytes)), nil
-}
-
-func buildTrie(xdrNode *xdr.TrieNodeChild, parent *trieNode) {
-	node := &trieNode{
-		Prefix:   xdrNode.Node.Prefix,
-		Value:    xdrNode.Node.Value,
-		Children: make(map[byte]*trieNode, len(xdrNode.Node.Children)),
-	}
-	parent.Children[xdrNode.Key[0]] = node
-
-	for _, child := range xdrNode.Node.Children {
-		buildTrie(&child, node)
-	}
-}
-
-func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
+func (i *TrieIndex) MarshalBinary() ([]byte, error) {
 	i.RLock()
 	defer i.RUnlock()
 
@@ -284,7 +243,14 @@ func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	xdrIndex := xdr.TrieIndex{Version: TrieIndexVersion, Root: xdrRoot}
-	bytes, err := xdrIndex.MarshalBinary()
+	return xdrIndex.MarshalBinary()
+}
+
+func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
+	i.RLock()
+	defer i.RUnlock()
+
+	bytes, err := i.MarshalBinary()
 	if err != nil {
 		return int64(len(bytes)), err
 	}
@@ -293,9 +259,67 @@ func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
 	return int64(count), err
 }
 
-// Recursively builds the XDR-equivalent Trie structure, where `i` is the node
-// we're converting and `parent` is the already-converted parent. That is, the
-// non-XDR version of `parent` should have had (`key`, `i`) as a child.
+func (i *TrieIndex) UnmarshalBinary(bytes []byte) error {
+	i.RLock()
+	defer i.RUnlock()
+
+	xdrIndex := xdr.TrieIndex{}
+	err := xdrIndex.UnmarshalBinary(bytes)
+	if err != nil {
+		return err
+	}
+
+	i.Root = &trieNode{
+		Prefix:   xdrIndex.Root.Prefix,
+		Value:    xdrIndex.Root.Value,
+		Children: make(map[byte]*trieNode, len(xdrIndex.Root.Children)),
+	}
+
+	for _, node := range xdrIndex.Root.Children {
+		buildTrie(&node, i.Root)
+	}
+
+	return nil
+}
+
+func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
+	i.RLock()
+	defer i.RUnlock()
+
+	br := bufio.NewReader(r)
+	bytes, err := io.ReadAll(br)
+	if err != nil {
+		return int64(len(bytes)), err
+	}
+
+	return int64(len(bytes)), i.UnmarshalBinary(bytes)
+}
+
+// buildTrie recursively builds the equivalent `TrieNode` structure from raw
+// XDR, creating the key->value child mapping from the flat list of children.
+// Here, `xdrNode` is the node we're processing and `parent` is its non-XDR
+// parent (i.e. the parent was already converted from XDR).
+//
+// This is the opposite of buildXdrTrie.
+func buildTrie(xdrNode *xdr.TrieNodeChild, parent *trieNode) {
+	node := &trieNode{
+		Prefix:   xdrNode.Node.Prefix,
+		Value:    xdrNode.Node.Value,
+		Children: make(map[byte]*trieNode, len(xdrNode.Node.Children)),
+	}
+	parent.Children[xdrNode.Key[0]] = node
+
+	for _, child := range xdrNode.Node.Children {
+		buildTrie(&child, node)
+	}
+}
+
+// buildXdrTrie recursively builds the XDR-equivalent TrieNode structure, where
+// `i` is the node we're converting and `parent` is the already-converted
+// parent. That is, the non-XDR version of `parent` should have had (`key`, `i`)
+// as a child.
+//
+// This is the opposite of buildTrie.
 func buildXdrTrie(key byte, node *trieNode, parent *xdr.TrieNode) {
 	self := xdr.TrieNode{
 		Prefix:   node.Prefix,
@@ -316,3 +340,6 @@ func buildXdrTrie(key byte, node *trieNode, parent *xdr.TrieNode) {
 // Ensure we're compatible with stdlib interfaces.
 var _ io.WriterTo = &TrieIndex{}
 var _ io.ReaderFrom = &TrieIndex{}
+
+var _ encoding.BinaryMarshaler = &TrieIndex{}
+var _ encoding.BinaryUnmarshaler = &TrieIndex{}
