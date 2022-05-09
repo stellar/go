@@ -697,6 +697,7 @@ func (s *system) Shutdown() {
 	s.cancel()
 	// wait for ingestion state machine to terminate
 	s.wg.Wait()
+	s.historyQ.Close()
 	if err := s.ledgerBackend.Close(); err != nil {
 		log.WithError(err).Info("could not close ledger backend")
 	}

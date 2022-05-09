@@ -265,6 +265,11 @@ func (m *mockDBQ) Commit() error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func (m *mockDBQ) Rollback() error {
 	args := m.Called()
 	return args.Error(0)
