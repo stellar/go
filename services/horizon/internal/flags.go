@@ -202,7 +202,7 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:        "enable-ingestion-filtering",
 			OptType:     types.Bool,
-			FlagDefault: true,
+			FlagDefault: false,
 			Required:    false,
 			Usage:       "causes Horizon to enable Ingestion filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
 			ConfigKey:   &config.EnableIngestionFiltering,
