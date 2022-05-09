@@ -374,17 +374,14 @@ var dbFillGapsCmd = &cobra.Command{
 }
 
 func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
+	var err error
+
 	if reingestForce && parallelWorkers > 1 {
 		return errors.New("--force is incompatible with --parallel-workers > 1")
-	}
-	horizonSession, err := db.Open("postgres", config.DatabaseURL)
-	if err != nil {
-		return fmt.Errorf("cannot open Horizon DB: %v", err)
 	}
 
 	ingestConfig := ingest.Config{
 		NetworkPassphrase:           config.NetworkPassphrase,
-		HistorySession:              horizonSession,
 		HistoryArchiveURL:           config.HistoryArchiveURLs[0],
 		CheckpointFrequency:         config.CheckpointFrequency,
 		ReingestEnabled:             true,
@@ -402,15 +399,18 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		EnableIngestionFiltering:    config.EnableIngestionFiltering,
 	}
 
-	if !ingestConfig.EnableCaptiveCore {
+	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {
+		return fmt.Errorf("cannot open Horizon DB: %v", err)
+	}
+
+	if !config.EnableCaptiveCoreIngestion {
 		if config.StellarCoreDatabaseURL == "" {
 			return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 		}
-		coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
-		if dbErr != nil {
-			return fmt.Errorf("cannot open Core DB: %v", dbErr)
+		if ingestConfig.CoreSession, err = db.Open("postgres", config.StellarCoreDatabaseURL); err != nil {
+			ingestConfig.HistorySession.Close()
+			return fmt.Errorf("cannot open Core DB: %v", err)
 		}
-		ingestConfig.CoreSession = coreSession
 	}
 
 	if parallelWorkers > 1 {
@@ -429,6 +429,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 	if systemErr != nil {
 		return systemErr
 	}
+	defer system.Shutdown()
 
 	err = system.ReingestRange(ledgerRanges, reingestForce)
 	if err != nil {
@@ -481,6 +482,7 @@ func runDBDetectGaps(config horizon.Config) ([]history.LedgerRange, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer horizonSession.Close()
 	q := &history.Q{horizonSession}
 	return q.GetLedgerGaps(context.Background())
 }
@@ -490,6 +492,7 @@ func runDBDetectGapsInRange(config horizon.Config, start, end uint32) ([]history
 	if err != nil {
 		return nil, err
 	}
+	defer horizonSession.Close()
 	q := &history.Q{horizonSession}
 	return q.GetLedgerGapsInRange(context.Background(), start, end)
 }
