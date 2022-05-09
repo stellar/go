@@ -51,7 +51,7 @@ func StreamLedgerTransactions(
 			)
 		}
 		if !include {
-			log.Debugf("Filters did not find match, skipping tx hash %v", tx.Result.TransactionHash)
+			log.Infof("Filters did not find match on transaction, dropping this tx with hash %v", tx.Result.TransactionHash)
 			continue
 		}
 
