@@ -9,7 +9,7 @@ docker-build:
 ifndef VERSION
 	$(error VERSION environment variable must be set. For example VERSION=2.4.1-101 )
 endif
-	$(SUDO) docker build --pull --no-cache \
+	$(SUDO) docker build --pull $(DOCKER_OPTS) \
 	--label org.opencontainers.image.created="$(BUILD_DATE)" \
 	--build-arg VERSION=$(VERSION) \
 	-t $(TAG) .
