@@ -384,6 +384,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		NetworkPassphrase:           config.NetworkPassphrase,
 		HistoryArchiveURL:           config.HistoryArchiveURLs[0],
 		CheckpointFrequency:         config.CheckpointFrequency,
+		ReingestEnabled:             true,
 		MaxReingestRetries:          int(retries),
 		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 		EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
@@ -395,6 +396,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 		StellarCoreCursor:           config.CursorName,
 		StellarCoreURL:              config.StellarCoreURL,
 		RoundingSlippageFilter:      config.RoundingSlippageFilter,
+		EnableIngestionFiltering:    config.EnableIngestionFiltering,
 	}
 
 	if ingestConfig.HistorySession, err = db.Open("postgres", config.DatabaseURL); err != nil {

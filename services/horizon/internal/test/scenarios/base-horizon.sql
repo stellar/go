@@ -776,7 +776,10 @@ INSERT INTO gorp_migrations VALUES ('48_rebuild_trade_aggregations.sql', '2021-1
 INSERT INTO gorp_migrations VALUES ('49_add_brin_index_trade_aggregations.sql', '2021-12-02 01:33:33.43274+00');
 INSERT INTO gorp_migrations VALUES ('50_liquidity_pools.sql', '2021-12-02 01:33:33.471893+00');
 INSERT INTO gorp_migrations VALUES ('51_remove_ht_unused_indexes.sql', '2021-12-02 01:33:33.47903+00');
-
+INSERT INTO gorp_migrations VALUES ('52_add_trade_type_index.sql', '2021-12-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('53_add_trades_rounding_slippage.sql', '2021-12-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('54_tx_preconditions_and_account_fields.sql', '2021-12-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('55_filter_rules.sql', '2022-01-02 01:33:33.47903+00');
 
 
 --
@@ -1524,10 +1527,55 @@ ALTER TABLE history_trades DROP offer_id,
 CREATE INDEX htrd_by_base_liquidity_pool_id ON history_trades USING BTREE(base_liquidity_pool_id);
 CREATE INDEX htrd_by_counter_liquidity_pool_id ON history_trades USING BTREE(counter_liquidity_pool_id);
 
--- mgiration 51
+-- migration 51
 DROP INDEX IF EXISTS by_account;
 DROP INDEX IF EXISTS by_fee_account;
 
+-- migration 52
+ALTER TABLE history_trades ADD trade_type smallint DEFAULT 1 CHECK(trade_type > 0);
+UPDATE history_trades SET trade_type = 2 WHERE base_liquidity_pool_id IS NOT NULL OR counter_liquidity_pool_id IS NOT NULL;
+CREATE INDEX htrd_by_trade_type ON history_trades USING BTREE(trade_type, history_operation_id, "order");
+
+-- migration 54
+
+ALTER TABLE accounts ADD sequence_ledger integer;
+ALTER TABLE accounts ADD sequence_time bigint;
+
+-- adjust it *ever again*.
+ALTER TABLE accounts_signers
+    ALTER COLUMN signer TYPE text;
+
+-- migration 55
+
+CREATE TABLE account_filter_rules (
+                                      enabled bool NOT NULL default false,
+                                      whitelist varchar[] NOT NULL,
+                                      last_modified bigint NOT NULL
+);
+
+CREATE TABLE asset_filter_rules (
+                                    enabled bool NOT NULL default false,
+                                    whitelist varchar[] NOT NULL,
+                                    last_modified bigint NOT NULL
+);
+
+-- insert the default disabled state for each supported filter implementation
+INSERT INTO account_filter_rules VALUES (false, '{}', 0);
+INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
+
+CREATE TABLE txsub_results (
+    transaction_hash       varchar(64) NOT NULL UNIQUE,
+    inner_transaction_hash varchar(64),
+    tx_result              text, -- serialized history.Transaction
+    submitted_at           timestamp NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO txsub_results
+VALUES (
+    '2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d',
+    NULL,
+    '{ "TxResult": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=" }',
+    '2019-06-03 18:28:47.032496+02');
 
 --
 -- PostgreSQL database dump complete

@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	// postgresQueryMaxParams defines the maximum number of parameters in a query.
-	postgresQueryMaxParams = 65535
+	// PostgresQueryMaxParams defines the maximum number of parameters in a query.
+	PostgresQueryMaxParams = 65535
 	maxDBPingAttempts      = 30
 )
 

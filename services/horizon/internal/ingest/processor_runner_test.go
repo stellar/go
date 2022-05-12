@@ -57,6 +57,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 			NetworkPassphrase: network.PublicNetworkPassphrase,
 		},
 		historyQ: q,
+		filters:  &MockFilters{},
 	}
 
 	_, err := runner.RunGenesisStateIngestion()
@@ -120,6 +121,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
+		filters:        &MockFilters{},
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(63, MaxSupportedProtocolVersion, bucketListHash)
@@ -154,6 +156,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
+		filters:        &MockFilters{},
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
@@ -178,6 +181,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		historyQ: q,
+		filters:  &MockFilters{},
 	}
 
 	stats := &ingest.StatsChangeProcessor{}
@@ -199,6 +203,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	runner = ProcessorRunner{
 		ctx:      ctx,
 		historyQ: q,
+		filters:  &MockFilters{},
 	}
 
 	processor = buildChangeProcessor(runner.historyQ, stats, historyArchiveSource, 456)
@@ -250,6 +255,63 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 	assert.IsType(t, &processors.TransactionProcessor{}, processor.processors[6])
 }
 
+func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
+	ctx := context.Background()
+	maxBatchSize := 100000
+
+	config := Config{
+		NetworkPassphrase:        network.PublicNetworkPassphrase,
+		EnableIngestionFiltering: true,
+	}
+
+	q := &mockDBQ{}
+	defer mock.AssertExpectationsForObjects(t, q)
+
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+				},
+			},
+		},
+	}
+
+	// Batches
+	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockAccountSignersBatchInsertBuilder)
+	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
+		Return(mockAccountSignersBatchInsertBuilder).Once()
+
+	mockOperationsBatchInsertBuilder := &history.MockOperationsBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockOperationsBatchInsertBuilder)
+	mockOperationsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQOperations.On("NewOperationBatchInsertBuilder", maxBatchSize).
+		Return(mockOperationsBatchInsertBuilder).Twice()
+
+	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
+	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
+		Return(mockTransactionsBatchInsertBuilder).Twice()
+
+	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
+		Return(int64(1), nil).Once()
+
+	q.MockQTxSubmissionResult.On("SetTxSubmissionResults", ctx, []ingest.LedgerTransaction(nil), uint32(0)).
+		Return(int64(0), nil).Once()
+
+	runner := ProcessorRunner{
+		ctx:      ctx,
+		config:   config,
+		historyQ: q,
+		filters:  &MockFilters{},
+	}
+
+	_, err := runner.RunAllProcessorsOnLedger(ledger)
+	assert.NoError(t, err)
+}
+
 func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	ctx := context.Background()
 	maxBatchSize := 100000
@@ -292,10 +354,14 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
+	q.MockQTxSubmissionResult.On("SetTxSubmissionResults", ctx, []ingest.LedgerTransaction(nil), uint32(0)).
+		Return(int64(0), nil).Once()
+
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		config:   config,
 		historyQ: q,
+		filters:  &MockFilters{},
 	}
 
 	_, err := runner.RunAllProcessorsOnLedger(ledger)
@@ -344,6 +410,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		ctx:      ctx,
 		config:   config,
 		historyQ: q,
+		filters:  &MockFilters{},
 	}
 
 	_, err := runner.RunAllProcessorsOnLedger(ledger)

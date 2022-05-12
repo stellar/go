@@ -508,7 +508,13 @@ INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-06-03 18:2
 INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-06-03 18:28:47.117989+02');
 INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-06-03 18:28:47.120034+02');
 INSERT INTO gorp_migrations VALUES ('18_account_for_signers.sql', '2019-10-31 14:19:49.123835+01');
-
+INSERT INTO gorp_migrations VALUES ('24_accounts.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('34_fee_bump_transactions.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('37_add_tx_set_operation_count_to_ledgers.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('46_add_muxed_accounts.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('53_add_trades_rounding_slippage.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('54_tx_preconditions_and_account_fields.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('55_filter_rules.sql', '2019-10-31 14:19:49.123835+01');
 
 --
 -- Data for Name: history_accounts; Type: TABLE DATA; Schema: public; Owner: -
@@ -1038,6 +1044,88 @@ CREATE TABLE accounts_signers (
 ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_account_muxed varchar(69) NULL;
 ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
 ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
+
+-- migration 24
+
+
+CREATE TABLE accounts (
+                          account_id character varying(56) NOT NULL,
+                          balance bigint NOT NULL,
+                          buying_liabilities bigint NOT NULL,
+                          selling_liabilities bigint NOT NULL,
+                          sequence_number bigint NOT NULL,
+                          num_subentries integer NOT NULL,
+                          inflation_destination character varying(56) NOT NULL,
+                          flags integer NOT NULL,
+                          home_domain character varying(32) NOT NULL,
+                          master_weight smallint NOT NULL,
+                          threshold_low smallint NOT NULL,
+                          threshold_medium smallint NOT NULL,
+                          threshold_high smallint NOT NULL,
+                          last_modified_ledger integer NOT NULL
+);
+
+CREATE TABLE accounts_data (
+    -- ledger_key is a LedgerKey marshaled using MarshalBinary
+    -- and base64-encoded used to boost perfomance of some queries.
+                               ledger_key character varying(150) NOT NULL,
+                               account_id character varying(56) NOT NULL,
+                               name character varying(64) NOT NULL,
+                               value character varying(90) NOT NULL, -- base64-encoded 64 bytes
+                               last_modified_ledger INT NOT NULL,
+                               PRIMARY KEY (ledger_key)
+);
+
+-- migration 38
+
+-- migration 54
+
+ALTER TABLE accounts ADD sequence_ledger integer;
+ALTER TABLE accounts ADD sequence_time bigint;
+
+-- CAP-40 signed payload strkeys can be 165 characters long, see
+-- strkey/main.go:maxEncodedSize. But we'll use text here, so we don't need to
+-- adjust it *ever again*.
+ALTER TABLE accounts_signers
+    ALTER COLUMN signer TYPE text;
+
+-- migration 55
+CREATE TABLE txsub_results (
+                               transaction_hash       varchar(64) NOT NULL UNIQUE,
+                               inner_transaction_hash varchar(64),
+                               tx_result              text, -- serialized history.Transaction
+                               submitted_at           timestamp NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE account_filter_rules (
+                                      enabled bool NOT NULL default false,
+                                      whitelist varchar[] NOT NULL,
+                                      last_modified bigint NOT NULL
+);
+
+CREATE TABLE asset_filter_rules (
+                                    enabled bool NOT NULL default false,
+                                    whitelist varchar[] NOT NULL,
+                                    last_modified bigint NOT NULL
+);
+
+-- insert the default disabled state for each supported filter implementation
+INSERT INTO account_filter_rules VALUES (false, '{}', 0);
+INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
+
+INSERT INTO txsub_results
+VALUES (
+    'aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf',
+    NULL,
+    '{ "TxResult": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=" }',
+    '2019-06-03 18:28:47.032496+02');
+
+INSERT INTO txsub_results
+VALUES (
+    '56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1',
+    NULL,
+    '{ "TxResult": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=" }',
+    '2019-06-03 18:28:47.032496+02');
 
 --
 -- PostgreSQL database dump complete
