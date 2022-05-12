@@ -200,6 +200,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
+			Name:        "enable-ingestion-filtering",
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "causes Horizon to enable Ingestion filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
+			ConfigKey:   &config.EnableIngestionFiltering,
+		},
+		&support.ConfigOption{
 			Name:           "captive-core-http-port",
 			OptType:        types.Uint,
 			CustomSetValue: support.SetOptionalUint,

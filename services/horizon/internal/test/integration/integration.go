@@ -84,8 +84,9 @@ type Test struct {
 	horizonConfig horizon.Config
 	environment   *EnvironmentManager
 
-	horizonClient *sdk.Client
-	coreClient    *stellarcore.Client
+	horizonClient      *sdk.Client
+	horizonAdminClient *sdk.AdminClient
+	coreClient         *stellarcore.Client
 
 	app           *horizon.App
 	appStopped    chan struct{}
@@ -96,11 +97,17 @@ type Test struct {
 }
 
 func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string, masterKey *keypair.Full) *Test {
+	adminClient, err := sdk.NewAdminClient(0, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return &Test{
-		t:             t,
-		horizonClient: &sdk.Client{HorizonURL: horizonURL},
-		masterKey:     masterKey,
-		passPhrase:    passPhrase,
+		t:                  t,
+		horizonClient:      &sdk.Client{HorizonURL: horizonURL},
+		horizonAdminClient: adminClient,
+		masterKey:          masterKey,
+		passPhrase:         passPhrase,
 	}
 }
 
@@ -370,12 +377,22 @@ func (i *Test) StartHorizon() error {
 	}
 
 	horizonPort := "8000"
-	if port, ok := merged["--port"]; ok {
+	if port, ok := merged["port"]; ok {
 		horizonPort = port
+	}
+	adminPort := uint16(6060)
+	if port, ok := merged["admin-port"]; ok {
+		if cmdAdminPort, parseErr := strconv.ParseInt(port, 0, 16); parseErr == nil {
+			adminPort = uint16(cmdAdminPort)
+		}
 	}
 	i.horizonConfig = *config
 	i.horizonClient = &sdk.Client{
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
+	}
+	i.horizonAdminClient, err = sdk.NewAdminClient(adminPort, "", 0)
+	if err != nil {
+		return errors.Wrap(err, "cannot initialize Horizon admin client")
 	}
 
 	done := make(chan struct{})
@@ -479,6 +496,11 @@ func (i *Test) WaitForHorizon() {
 // Client returns horizon.Client connected to started Horizon instance.
 func (i *Test) Client() *sdk.Client {
 	return i.horizonClient
+}
+
+// Client returns horizon.Client connected to started Horizon instance.
+func (i *Test) AdminClient() *sdk.AdminClient {
+	return i.horizonAdminClient
 }
 
 // Horizon returns the horizon.App instance for the current integration test

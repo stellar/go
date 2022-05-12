@@ -15,13 +15,14 @@ import (
 )
 
 type HorizonDB interface {
-	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
-	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
-	TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
+	history.QTxSubmissionResult
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
 	BeginTx(*sql.TxOptions) error
+	Commit() error
 	Rollback() error
 	NoRows(error) bool
+	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
+	TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
 }
 
 // System represents a completely configured transaction submission system.
@@ -35,12 +36,14 @@ type System struct {
 
 	accountSeqPollInterval time.Duration
 
-	DB                func(context.Context) HorizonDB
-	Pending           OpenSubmissionList
-	Submitter         Submitter
-	SubmissionQueue   *sequence.Manager
-	SubmissionTimeout time.Duration
-	Log               *log.Entry
+	DB                   func(context.Context) HorizonDB
+	Pending              OpenSubmissionList
+	Submitter            Submitter
+	SubmissionQueue      *sequence.Manager
+	SubmissionTimeout    time.Duration
+	SubmissionResultTTL  time.Duration
+	lastSubResultCleanup time.Time
+	Log                  *log.Entry
 
 	Metrics struct {
 		// SubmissionDuration exposes timing metrics about the rate and latency of
@@ -96,6 +99,7 @@ func (sys *System) Submit(
 	rawTx string,
 	envelope xdr.TransactionEnvelope,
 	hash string,
+	innerHash string,
 ) (resultReadCh <-chan Result) {
 	sys.Init()
 	resultCh := make(chan Result, 1)
@@ -149,7 +153,7 @@ func (sys *System) Submit(
 	})
 
 	select {
-	case err := <-submissionWait:
+	case err = <-submissionWait:
 		if err == sequence.ErrBadSequence {
 			// convert the internal only ErrBadSequence into the FailedTransactionError
 			err = ErrBadSequence
@@ -160,6 +164,11 @@ func (sys *System) Submit(
 			return
 		}
 
+		// initialize row where to wait for results
+		if err := db.InitEmptyTxSubmissionResult(ctx, hash, innerHash); err != nil {
+			sys.finish(ctx, hash, resultCh, Result{Err: err})
+			return
+		}
 		sr := sys.submitOnce(ctx, rawTx)
 		sys.updateTransactionTypeMetrics(envelope)
 
@@ -298,6 +307,27 @@ func (sys *System) unsetTickInProgress() {
 	sys.tickInProgress = false
 }
 
+func (sys *System) getHistoricalTXs(db HorizonDB, ctx context.Context, pending []string, ledgerBackwards int32) ([]history.Transaction, error) {
+	logger := log.Ctx(ctx)
+	latestLedger, err := db.GetLatestHistoryLedger(ctx)
+	if err != nil {
+		logger.WithError(err).Error("error getting latest history ledger")
+		return nil, err
+	}
+
+	sinceLedgerSeq := int32(latestLedger) - ledgerBackwards
+	if sinceLedgerSeq < 0 {
+		sinceLedgerSeq = 0
+	}
+
+	txs, err := db.TransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
+	if err != nil && !db.NoRows(err) {
+		logger.WithError(err).Error("error getting transactions by hashes")
+		return nil, err
+	}
+	return txs, nil
+}
+
 // Tick triggers the system to update itself with any new data available.
 func (sys *System) Tick(ctx context.Context) {
 	sys.Init()
@@ -317,13 +347,14 @@ func (sys *System) Tick(ctx context.Context) {
 	db := sys.DB(ctx)
 	options := &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
+		// we need to delete old transaction submission entries
+		ReadOnly: false,
 	}
 	if err := db.BeginTx(options); err != nil {
 		logger.WithError(err).Error("could not start repeatable read transaction for txsub tick")
 		return
 	}
-	defer db.Rollback()
+	defer db.Commit()
 
 	addys := sys.SubmissionQueue.Addresses()
 	if len(addys) > 0 {
@@ -339,24 +370,19 @@ func (sys *System) Tick(ctx context.Context) {
 	pending := sys.Pending.Pending(ctx)
 
 	if len(pending) > 0 {
-		latestLedger, err := db.GetLatestHistoryLedger(ctx)
-		if err != nil {
-			logger.WithError(err).Error("error getting latest history ledger")
-			return
-		}
-
-		// In Tick we only check txs in a queue so those which did not have results before Tick
-		// so we check for them in the last 5 mins of ledgers: 60.
-		sinceLedgerSeq := int32(latestLedger) - 60
-		if sinceLedgerSeq < 0 {
-			sinceLedgerSeq = 0
-		}
-
-		txs, err := db.TransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
+		txs, err := db.GetTxSubmissionResults(ctx, pending)
 		if err != nil && !db.NoRows(err) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return
 		}
+
+		// In Tick we only check txs in a queue so those which did not have results before Tick
+		// so we include the last 5 mins of ledgers also: 60.
+		historyTxs, err := sys.getHistoricalTXs(db, ctx, pending, 60)
+		if err != nil {
+			return
+		}
+		txs = append(txs, historyTxs...)
 
 		txMap := make(map[string]history.Transaction, len(txs))
 		for _, tx := range txs {
@@ -388,6 +414,16 @@ func (sys *System) Tick(ctx context.Context) {
 			if err != nil {
 				logger.WithStack(err).Error(err)
 			}
+		}
+	}
+
+	// Wait at least SubmissionResultTTL between cleanups
+	if time.Since(sys.lastSubResultCleanup) > sys.SubmissionResultTTL {
+		sys.lastSubResultCleanup = time.Now()
+		ttlInSeconds := uint64(sys.SubmissionResultTTL / time.Second)
+		if _, err := db.DeleteTxSubmissionResultsOlderThan(ctx, ttlInSeconds); err != nil {
+			logger.WithStack(err).Error(err)
+			return
 		}
 	}
 
@@ -442,6 +478,10 @@ func (sys *System) Init() {
 			// to drop the transaction if not added to the ledger and ask client to try again
 			// by sending a Timeout response.
 			sys.SubmissionTimeout = 30 * time.Second
+		}
+
+		if sys.SubmissionResultTTL == 0 {
+			sys.SubmissionResultTTL = 5 * time.Minute
 		}
 	})
 }

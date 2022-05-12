@@ -13,6 +13,19 @@ This is the final release after the [release candidate](v2.17.0-release-candidat
 
 - Timebounds within the `preconditions` object are strings containing int64 UNIX timestamps in seconds rather than formatted date-times (which was a bug) ([4361](https://github.com/stellar/go/pull/4361)).
 
+* New Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse.
+
+  Define filter rules through Admin API and the historical ingestion process will check the rules and only persist the ledger transactions that pass the filter rules. Initially, two filters and corresponding rules are possible:
+
+  * 'whitelist by account id' ([4221](https://github.com/stellar/go/issues/4221))
+  * 'whitelist by canonical asset id' ([4222](https://github.com/stellar/go/issues/4222))
+
+  The filters and their configuration are optional features and must be enabled with horizon command line parameters `admin-port=4200` and `enable-ingestion-filtering=true`
+
+  Once set, filter configurations and their rules are initially empty and the filters are disabled by default. To enable filters, update the configuration settings, refer to the Admin API Docs which are published on the Admin Port at http://localhost:<admin_port>/, follow details and examples for endpoints:
+  * `/ingestion/filters/account`
+  * `/ingestion/filters/asset.`
+
 ## V2.17.0 Release Candidate
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
