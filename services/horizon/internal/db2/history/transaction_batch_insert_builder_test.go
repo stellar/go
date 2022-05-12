@@ -91,7 +91,7 @@ func TestTransactionToMap_muxed(t *testing.T) {
 	b := &transactionBatchInsertBuilder{
 		encodingBuffer: xdr.NewEncodingBuffer(),
 	}
-	row, err := b.transactionToRow(tx, 20)
+	row, err := transactionToRow(tx, 20, b.encodingBuffer)
 	assert.NoError(t, err)
 
 	assert.Equal(t, innerAccountID.Address(), row.Account)
@@ -175,7 +175,7 @@ func TestTransactionToMap_SourceMuxedAndFeeSourceUnmuxed(t *testing.T) {
 	b := &transactionBatchInsertBuilder{
 		encodingBuffer: xdr.NewEncodingBuffer(),
 	}
-	row, err := b.transactionToRow(tx, 20)
+	row, err := transactionToRow(tx, 20, b.encodingBuffer)
 	assert.NoError(t, err)
 
 	assert.Equal(t, innerAccountID.Address(), row.Account)
@@ -262,10 +262,7 @@ func TestTransactionToMap_Preconditions(t *testing.T) {
 			},
 		},
 	}
-	b := &transactionBatchInsertBuilder{
-		encodingBuffer: xdr.NewEncodingBuffer(),
-	}
-	row, err := b.transactionToRow(tx, 20)
+	row, err := transactionToRow(tx, 20, xdr.NewEncodingBuffer())
 	assert.NoError(t, err)
 
 	assert.Equal(t, null.IntFrom(1000), row.TimeBounds.Lower)

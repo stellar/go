@@ -10,19 +10,15 @@ import (
 )
 
 func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Transaction, error) {
-	// query history database
-	var hr history.Transaction
-	err := db.TransactionByHash(ctx, &hr, hash)
-	if err == nil {
-		return txResultFromHistory(hr)
+	hr, err := db.GetTxSubmissionResult(ctx, hash)
+	if err != nil {
+		if db.NoRows(err) {
+			return history.Transaction{}, ErrNoResults
+		}
+		return history.Transaction{}, errors.Wrap(err, "could not lookup transaction by hash")
 	}
 
-	if !db.NoRows(err) {
-		return hr, errors.Wrap(err, "could not lookup transaction by hash")
-	}
-
-	// if no result was found in either db, return ErrNoResults
-	return hr, ErrNoResults
+	return txResultFromHistory(hr)
 }
 
 func txResultFromHistory(tx history.Transaction) (history.Transaction, error) {

@@ -843,3 +843,55 @@ type LiquidityPoolReserve struct {
 	Asset  string `json:"asset"`
 	Amount string `json:"amount"`
 }
+
+type AssetFilterConfig struct {
+	Whitelist    []string `json:"whitelist"`
+	Enabled      *bool    `json:"enabled"`
+	LastModified int64    `json:"last_modified,omitempty"`
+}
+
+type AccountFilterConfig struct {
+	Whitelist    []string `json:"whitelist"`
+	Enabled      *bool    `json:"enabled"`
+	LastModified int64    `json:"last_modified,omitempty"`
+}
+
+func (f *AccountFilterConfig) UnmarshalJSON(data []byte) error {
+	type accountFilterConfig AccountFilterConfig
+	var config = accountFilterConfig{}
+
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+
+	if config.Whitelist == nil {
+		return errors.New("missing required whitelist")
+	}
+
+	if config.Enabled == nil {
+		return errors.New("missing required enabled")
+	}
+
+	*f = AccountFilterConfig(config)
+	return nil
+}
+
+func (f *AssetFilterConfig) UnmarshalJSON(data []byte) error {
+	type assetFilterConfig AssetFilterConfig
+	var config = assetFilterConfig{}
+
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+
+	if config.Whitelist == nil {
+		return errors.New("missing required whitelist")
+	}
+
+	if config.Enabled == nil {
+		return errors.New("missing required enabled")
+	}
+
+	*f = AssetFilterConfig(config)
+	return nil
+}

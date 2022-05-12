@@ -28,10 +28,16 @@ func (sub *MockSubmitter) Submit(ctx context.Context, env string) SubmissionResu
 
 type mockDBQ struct {
 	mock.Mock
+	history.MockQTxSubmissionResult
 }
 
 func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
 	args := m.Called(txOpts)
+	return args.Error(0)
+}
+
+func (m *mockDBQ) Commit() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
@@ -45,14 +51,14 @@ func (m *mockDBQ) NoRows(err error) bool {
 	return args.Bool(0)
 }
 
-func (m *mockDBQ) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {
-	args := m.Called()
-	return args.Get(0).(uint32), args.Error(1)
-}
-
 func (m *mockDBQ) GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error) {
 	args := m.Called(ctx, addresses)
 	return args.Get(0).(map[string]uint64), args.Error(1)
+}
+
+func (m *mockDBQ) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {
+	args := m.Called()
+	return args.Get(0).(uint32), args.Error(1)
 }
 
 func (m *mockDBQ) TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error) {
@@ -61,9 +67,4 @@ func (m *mockDBQ) TransactionsByHashesSinceLedger(ctx context.Context, hashes []
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]history.Transaction), args.Error(1)
-}
-
-func (m *mockDBQ) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
-	args := m.Called(ctx, dest, hash)
-	return args.Error(0)
 }

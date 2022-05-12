@@ -103,6 +103,7 @@ func initIngester(app *App) {
 		DisableStateVerification:     app.config.IngestDisableStateVerification,
 		EnableExtendedLogLedgerStats: app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:       app.config.RoundingSlippageFilter,
+		EnableIngestionFiltering:     app.config.EnableIngestionFiltering,
 	})
 
 	if err != nil {
