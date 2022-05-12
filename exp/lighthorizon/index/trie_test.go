@@ -41,10 +41,7 @@ func TestTrieIndex(t *testing.T) {
 
 		for key, expected := range inserts {
 			value, ok := index.Get([]byte(key))
-			if !assert.Truef(t, ok, "Key not found: %s", key) {
-				t.FailNow()
-				continue
-			}
+			require.Truef(t, ok, "Key not found: %s", key)
 			ledger := binary.BigEndian.Uint32(value)
 			assert.Equalf(t, expected, ledger,
 				"Key %s found: %v, expected: %v", key, ledger, expected)
@@ -115,9 +112,7 @@ func TestTrieIndexSerialization(t *testing.T) {
 
 			for key, expected := range inserts {
 				value, ok := read.Get([]byte(key))
-				if !assert.Truef(t, ok, "Key not found: %s", key) {
-					t.FailNow()
-				}
+				require.Truef(t, ok, "Key not found: %s", key)
 
 				ledger := binary.BigEndian.Uint32(value)
 				assert.Equal(t, expected, ledger, "for key %s", key)
@@ -286,27 +281,17 @@ func TestTrieIndexMerge(t *testing.T) {
 		// Should still have all the A keys
 		for key, expected := range aInserts {
 			value, ok := a.Get([]byte(key))
-			if !ok {
-				t.Errorf("Key not found: %s", key)
-			} else {
-				ledger := binary.BigEndian.Uint32(value)
-				if ledger != expected {
-					t.Errorf("Key %s found: %v, expected: %v", key, ledger, expected)
-				}
-			}
+			require.Truef(t, ok, "Key not found: %s", key)
+			ledger := binary.BigEndian.Uint32(value)
+			assert.Equalf(t, expected, ledger, "Key %s found", key)
 		}
 
 		// Should now also have all the B keys
 		for key, expected := range bInserts {
 			value, ok := a.Get([]byte(key))
-			if !ok {
-				t.Errorf("Key not found: %s", key)
-			} else {
-				ledger := binary.BigEndian.Uint32(value)
-				if ledger != expected {
-					t.Errorf("Key %s found: %v, expected: %v", key, ledger, expected)
-				}
-			}
+			require.Truef(t, ok, "Key not found: %s", key)
+			ledger := binary.BigEndian.Uint32(value)
+			assert.Equalf(t, expected, ledger, "Key %s found", key)
 		}
 	}
 }
