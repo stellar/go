@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/stellar/go-xdr/xdr3"
+	xdr "github.com/stellar/go-xdr/xdr3"
 )
 
 type xdrType interface {
@@ -243,5 +243,242 @@ var (
 func (s CheckpointIndex) xdrType() {}
 
 var _ xdrType = (*CheckpointIndex)(nil)
+
+// TrieIndex is an XDR Struct defines as:
+//
+//   struct TrieIndex {
+//        uint32 version;
+//        TrieNode root;
+//    };
+//
+type TrieIndex struct {
+	Version Uint32
+	Root    TrieNode
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TrieIndex) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Version.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Root.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TrieIndex)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TrieIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Version.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.Root.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TrieNode: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrieIndex) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrieIndex) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrieIndex)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrieIndex)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TrieIndex) xdrType() {}
+
+var _ xdrType = (*TrieIndex)(nil)
+
+// TrieNodeChild is an XDR Struct defines as:
+//
+//   struct TrieNodeChild {
+//        opaque key[1];
+//        TrieNode node;
+//    };
+//
+type TrieNodeChild struct {
+	Key  [1]byte `xdrmaxsize:"1"`
+	Node TrieNode
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TrieNodeChild) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeFixedOpaque(s.Key[:]); err != nil {
+		return err
+	}
+	if err = s.Node.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TrieNodeChild)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TrieNodeChild) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = d.DecodeFixedOpaqueInplace(s.Key[:])
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Key: %s", err)
+	}
+	nTmp, err = s.Node.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TrieNode: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrieNodeChild) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrieNodeChild) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrieNodeChild)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrieNodeChild)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TrieNodeChild) xdrType() {}
+
+var _ xdrType = (*TrieNodeChild)(nil)
+
+// TrieNode is an XDR Struct defines as:
+//
+//   struct TrieNode {
+//        Value prefix;
+//        Value value;
+//        TrieNodeChild children<>;
+//    };
+//
+type TrieNode struct {
+	Prefix   Value
+	Value    Value
+	Children []TrieNodeChild
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TrieNode) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Prefix.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Value.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Children))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Children); i++ {
+		if err = s.Children[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TrieNode)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TrieNode) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Prefix.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Value: %s", err)
+	}
+	nTmp, err = s.Value.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Value: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TrieNodeChild: %s", err)
+	}
+	s.Children = nil
+	if l > 0 {
+		s.Children = make([]TrieNodeChild, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Children[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding TrieNodeChild: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrieNode) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrieNode) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrieNode)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrieNode)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TrieNode) xdrType() {}
+
+var _ xdrType = (*TrieNode)(nil)
 
 var fmtTest = fmt.Sprint("this is a dummy usage of fmt")

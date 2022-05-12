@@ -2,10 +2,11 @@ package index
 
 import (
 	"bufio"
-	"encoding/binary"
-	"fmt"
+	"encoding"
 	"io"
 	"sync"
+
+	"github.com/stellar/go/exp/lighthorizon/index/xdr"
 )
 
 const (
@@ -224,224 +225,121 @@ func (i *TrieIndex) Merge(other *TrieIndex) error {
 	return nil
 }
 
-// TODO: Use XDR for this, to be more consistent with rest of the codebase, and
-// do less custom shenanigans.
-func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
-	i.Lock()
-	defer i.Unlock()
+func (i *TrieIndex) MarshalBinary() ([]byte, error) {
+	i.RLock()
+	defer i.RUnlock()
 
-	var nRead int64
-	br := bufio.NewReader(r)
+	xdrRoot := xdr.TrieNode{}
 
-	// Read the index version
-	version, err := binary.ReadUvarint(br)
-	nRead += int64(uvarintSize(version))
-	if err != nil {
-		return nRead, err
-	} else if version != TrieIndexVersion {
-		return nRead, fmt.Errorf("unsupported trie version: %d", version)
+	// Apparently this is possible?
+	if i.Root != nil {
+		xdrRoot.Prefix = i.Root.Prefix
+		xdrRoot.Value = i.Root.Value
+		xdrRoot.Children = make([]xdr.TrieNodeChild, 0, len(i.Root.Children))
+
+		for key, node := range i.Root.Children {
+			buildXdrTrie(key, node, &xdrRoot)
+		}
 	}
 
-	i.Root = &trieNode{}
-	n, err := i.Root.readFrom(br)
-	return nRead + n, err
+	xdrIndex := xdr.TrieIndex{Version: TrieIndexVersion, Root: xdrRoot}
+	return xdrIndex.MarshalBinary()
 }
 
-func (i *trieNode) readFrom(r *bufio.Reader) (int64, error) {
-	var nRead int64
-
-	// Read the header flags byte
-	header, err := r.ReadByte()
-	nRead += 1
-	if err != nil {
-		return nRead, err
-	}
-
-	// Read this node's prefix
-	if header&HeaderHasPrefix > 0 {
-		prefix, n64, err := readBytes(r)
-		nRead += n64
-		if err != nil {
-			return nRead, err
-		}
-		i.Prefix = prefix
-	}
-
-	// Read this node's value
-	if header&HeaderHasValue > 0 {
-		value, n64, err := readBytes(r)
-		nRead += n64
-		if err != nil {
-			return nRead, err
-		}
-		i.Value = value
-	}
-
-	// Read this node's children count
-	if header&HeaderHasChildren > 0 {
-		childLen, err := binary.ReadUvarint(r)
-		nRead += int64(uvarintSize(childLen))
-		if err != nil {
-			return nRead, err
-		}
-
-		if childLen > 0 {
-			i.Children = map[byte]*trieNode{}
-			// Read this node's children
-			for j := uint64(0); j < childLen; j++ {
-				// Read the child's key
-				key, err := r.ReadByte()
-				nRead += 1
-				if err != nil {
-					return nRead, err
-				}
-
-				// Read the rest of the child
-				var node trieNode
-				n64, err := node.readFrom(r)
-				nRead += n64
-				if err != nil {
-					return nRead, err
-				}
-				i.Children[key] = &node
-			}
-		}
-	}
-
-	return nRead, nil
-}
-
-// TODO: Do this better, without allocating a new byte buffer each time, etc..
-func uvarintSize(value uint64) int {
-	return binary.PutUvarint(make([]byte, binary.MaxVarintLen64), value)
-}
-
-// TODO: Use XDR for this, to be more consistent with rest of the codebase, and
-// do less custom shenanigans.
 func (i *TrieIndex) WriteTo(w io.Writer) (int64, error) {
 	i.RLock()
 	defer i.RUnlock()
-	buf := make([]byte, binary.MaxVarintLen64)
 
-	var nWritten, n64 int64
-
-	// Write the index version
-	n := binary.PutUvarint(buf, uint64(TrieIndexVersion))
-	n, err := w.Write(buf[:n])
-	nWritten += int64(n)
+	bytes, err := i.MarshalBinary()
 	if err != nil {
-		return nWritten, err
+		return int64(len(bytes)), err
 	}
 
-	if i.Root == nil {
-		n64, err = (&trieNode{}).writeTo(w, buf)
-	} else {
-		n64, err = i.Root.writeTo(w, buf)
-	}
-	return nWritten + n64, err
+	count, err := w.Write(bytes)
+	return int64(count), err
 }
 
-func (i *trieNode) writeTo(w io.Writer, buf []byte) (int64, error) {
-	var nWritten, n64 int64
+func (i *TrieIndex) UnmarshalBinary(bytes []byte) error {
+	i.RLock()
+	defer i.RUnlock()
 
-	// Write the header flags byte
-	var header byte
-	if len(i.Prefix) > 0 {
-		header |= HeaderHasPrefix
-	}
-	if len(i.Value) > 0 {
-		header |= HeaderHasValue
-	}
-	if i.Children != nil && len(i.Children) > 0 {
-		header |= HeaderHasChildren
-	}
-	n, err := w.Write([]byte{header})
-	nWritten += int64(n)
+	xdrIndex := xdr.TrieIndex{}
+	err := xdrIndex.UnmarshalBinary(bytes)
 	if err != nil {
-		return nWritten, err
+		return err
 	}
 
-	// Write this node's prefix
-	if header&HeaderHasPrefix > 0 {
-		n64, err := writeBytes(w, i.Prefix, buf)
-		nWritten += n64
-		if err != nil {
-			return nWritten, err
-		}
+	i.Root = &trieNode{
+		Prefix:   xdrIndex.Root.Prefix,
+		Value:    xdrIndex.Root.Value,
+		Children: make(map[byte]*trieNode, len(xdrIndex.Root.Children)),
 	}
 
-	// Write this node's value
-	if header&HeaderHasValue > 0 {
-		n64, err = writeBytes(w, i.Value, buf)
-		nWritten += n64
-		if err != nil {
-			return nWritten, err
-		}
+	for _, node := range xdrIndex.Root.Children {
+		buildTrie(&node, i.Root)
 	}
 
-	// TODO: Can we write an "index" of sorts, here that has the byte-offsets, so
-	// that we do just-in-time parsing? Might be more verbose than as is, tho
-
-	// Write how many children we have
-	if header&HeaderHasChildren > 0 {
-		n = binary.PutUvarint(buf, uint64(len(i.Children)))
-		n, err = w.Write(buf[:n])
-		nWritten += int64(n)
-		if err != nil {
-			return nWritten, err
-		}
-
-		// Write all the children
-		for key, child := range i.Children {
-			// Write the child's key
-			n, err = w.Write([]byte{key})
-			nWritten += int64(n)
-			if err != nil {
-				return nWritten, err
-			}
-
-			// Write the rest of the child
-			n64, err := child.writeTo(w, buf)
-			nWritten += n64
-			if err != nil {
-				return nWritten, err
-			}
-		}
-	}
-
-	return nWritten, nil
+	return nil
 }
 
-// Read a length-prefixed chunk of bytes
-func readBytes(r *bufio.Reader) ([]byte, int64, error) {
-	var nRead int64
-	// Read this node's value's length
-	valueLen, err := binary.ReadUvarint(r)
-	nRead += int64(uvarintSize(valueLen))
-	if err != nil || valueLen == 0 {
-		return nil, nRead, err
-	}
+func (i *TrieIndex) ReadFrom(r io.Reader) (int64, error) {
+	i.RLock()
+	defer i.RUnlock()
 
-	// Read this node's value
-	data := make([]byte, valueLen)
-	n, err := io.ReadFull(r, data)
-	nRead += int64(n)
+	br := bufio.NewReader(r)
+	bytes, err := io.ReadAll(br)
 	if err != nil {
-		return nil, nRead, err
-	}
-	return data, nRead, nil
-}
-
-// Write a length-prefixed chunk of bytes
-func writeBytes(w io.Writer, data, scratch []byte) (int64, error) {
-	var nWritten int64
-	n := binary.PutUvarint(scratch, uint64(len(data)))
-	n, err := w.Write(scratch[:n])
-	nWritten += int64(n)
-	if err != nil || len(data) == 0 {
-		return nWritten, err
+		return int64(len(bytes)), err
 	}
 
-	n, err = w.Write(data)
-	return nWritten + int64(n), err
+	return int64(len(bytes)), i.UnmarshalBinary(bytes)
 }
+
+// buildTrie recursively builds the equivalent `TrieNode` structure from raw
+// XDR, creating the key->value child mapping from the flat list of children.
+// Here, `xdrNode` is the node we're processing and `parent` is its non-XDR
+// parent (i.e. the parent was already converted from XDR).
+//
+// This is the opposite of buildXdrTrie.
+func buildTrie(xdrNode *xdr.TrieNodeChild, parent *trieNode) {
+	node := &trieNode{
+		Prefix:   xdrNode.Node.Prefix,
+		Value:    xdrNode.Node.Value,
+		Children: make(map[byte]*trieNode, len(xdrNode.Node.Children)),
+	}
+	parent.Children[xdrNode.Key[0]] = node
+
+	for _, child := range xdrNode.Node.Children {
+		buildTrie(&child, node)
+	}
+}
+
+// buildXdrTrie recursively builds the XDR-equivalent TrieNode structure, where
+// `i` is the node we're converting and `parent` is the already-converted
+// parent. That is, the non-XDR version of `parent` should have had (`key`, `i`)
+// as a child.
+//
+// This is the opposite of buildTrie.
+func buildXdrTrie(key byte, node *trieNode, parent *xdr.TrieNode) {
+	self := xdr.TrieNode{
+		Prefix:   node.Prefix,
+		Value:    node.Value,
+		Children: make([]xdr.TrieNodeChild, 0, len(node.Children)),
+	}
+
+	for key, node := range node.Children {
+		buildXdrTrie(key, node, &self)
+	}
+
+	parent.Children = append(parent.Children, xdr.TrieNodeChild{
+		Key:  [1]byte{key},
+		Node: self,
+	})
+}
+
+// Ensure we're compatible with stdlib interfaces.
+var _ io.WriterTo = &TrieIndex{}
+var _ io.ReaderFrom = &TrieIndex{}
+
+var _ encoding.BinaryMarshaler = &TrieIndex{}
+var _ encoding.BinaryUnmarshaler = &TrieIndex{}
