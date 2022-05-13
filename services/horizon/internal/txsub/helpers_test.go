@@ -31,8 +31,8 @@ type mockDBQ struct {
 	history.MockQTxSubmissionResult
 }
 
-func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
-	args := m.Called(txOpts)
+func (m *mockDBQ) BeginTx(ctx context.Context, txOpts *sql.TxOptions) error {
+	args := m.Called(ctx, txOpts)
 	return args.Error(0)
 }
 

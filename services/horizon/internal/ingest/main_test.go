@@ -121,7 +121,7 @@ func TestStateMachineTransition(t *testing.T) {
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin").Return(errors.New("my error")).Once()
+	historyQ.On("Begin", mock.Anything).Return(errors.New("my error")).Once()
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 
 	assert.PanicsWithValue(t, "unexpected transaction", func() {
@@ -138,7 +138,7 @@ func TestContextCancel(t *testing.T) {
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin").Return(errors.New("my error")).Once()
+	historyQ.On("Begin", mock.Anything).Return(errors.New("my error")).Once()
 
 	cancel()
 	assert.NoError(t, system.runStateMachine(startState{}))
@@ -210,11 +210,11 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ.On("Rollback").Return(nil).Twice()
 	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
 
-	historyQ.On("BeginTx", mock.Anything).Return(db.ErrCancelled).Once()
+	historyQ.On("BeginTx", system.ctx, mock.Anything).Return(db.ErrCancelled).Once()
 	system.maybeVerifyState(63)
 	system.wg.Wait()
 
-	historyQ.On("BeginTx", mock.Anything).Return(context.Canceled).Once()
+	historyQ.On("BeginTx", system.ctx, mock.Anything).Return(context.Canceled).Once()
 	system.maybeVerifyState(63)
 	system.wg.Wait()
 
@@ -247,13 +247,13 @@ type mockDBQ struct {
 	history.MockQTxSubmissionResult
 }
 
-func (m *mockDBQ) Begin() error {
-	args := m.Called()
+func (m *mockDBQ) Begin(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
-	args := m.Called(txOpts)
+func (m *mockDBQ) BeginTx(ctx context.Context, txOpts *sql.TxOptions) error {
+	args := m.Called(ctx, txOpts)
 	return args.Error(0)
 }
 

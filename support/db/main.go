@@ -114,8 +114,8 @@ type Session struct {
 }
 
 type SessionInterface interface {
-	BeginTx(opts *sql.TxOptions) error
-	Begin() error
+	BeginTx(ctx context.Context, opts *sql.TxOptions) error
+	Begin(ctx context.Context) error
 	Rollback() error
 	Commit() error
 	GetTx() *sqlx.Tx

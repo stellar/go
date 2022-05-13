@@ -16,12 +16,12 @@ import (
 )
 
 // Begin binds this session to a new transaction.
-func (s *Session) Begin() error {
+func (s *Session) Begin(ctx context.Context) error {
 	if s.tx != nil {
 		return errors.New("already in transaction")
 	}
 
-	tx, err := s.DB.BeginTxx(context.Background(), nil)
+	tx, err := s.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		if knownErr := s.replaceWithKnownError(err, context.Background()); knownErr != nil {
 			return knownErr
@@ -37,12 +37,12 @@ func (s *Session) Begin() error {
 
 // BeginTx binds this session to a new transaction which is configured with the
 // given transaction options
-func (s *Session) BeginTx(opts *sql.TxOptions) error {
+func (s *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
 	if s.tx != nil {
 		return errors.New("already in transaction")
 	}
 
-	tx, err := s.DB.BeginTxx(context.Background(), opts)
+	tx, err := s.DB.BeginTxx(ctx, opts)
 	if err != nil {
 		if knownErr := s.replaceWithKnownError(err, context.Background()); knownErr != nil {
 			return knownErr
@@ -179,7 +179,7 @@ func (s *Session) Exec(ctx context.Context, query sq.Sqlizer) (sql.Result, error
 // ExecAll runs all sql commands in `script` against `r` within a single
 // transaction.
 func (s *Session) ExecAll(ctx context.Context, script string) error {
-	err := s.Begin()
+	err := s.Begin(ctx)
 	if err != nil {
 		return err
 	}

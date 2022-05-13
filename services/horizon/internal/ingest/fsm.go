@@ -118,7 +118,7 @@ func (startState) String() string {
 }
 
 func (state startState) run(s *system) (transition, error) {
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -267,7 +267,7 @@ func (b buildState) run(s *system) (transition, error) {
 		}).Info("Ledger returned from the backend")
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		return nextFailState, errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -397,7 +397,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	s.Metrics().LedgerFetchDurationSummary.Observe(float64(duration))
 
-	if err = s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return retryResume(r),
 			errors.Wrap(err, "Error starting a transaction")
 	}
@@ -571,7 +571,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), err
 	}
 
-	if err = s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
@@ -747,7 +747,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 		startTime = time.Now()
 
-		if err := s.historyQ.Begin(); err != nil {
+		if err := s.historyQ.Begin(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
 		defer s.historyQ.Rollback()
@@ -783,7 +783,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 			err = func(ledger uint32) error {
-				if e := s.historyQ.Begin(); e != nil {
+				if e := s.historyQ.Begin(s.ctx); e != nil {
 					return errors.Wrap(e, "Error starting a transaction")
 				}
 				defer s.historyQ.Rollback()
@@ -853,7 +853,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", v.fromLedger, v.toLedger)
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
 	}
@@ -923,7 +923,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		}).Info("Processing ledger")
 		startTime := time.Now()
 
-		if err = s.historyQ.Begin(); err != nil {
+		if err = s.historyQ.Begin(s.ctx); err != nil {
 			err = errors.Wrap(err, "Error starting a transaction")
 			return stop(), err
 		}
@@ -978,7 +978,7 @@ func (stressTestState) String() string {
 }
 
 func (stressTestState) run(s *system) (transition, error) {
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
 	}
