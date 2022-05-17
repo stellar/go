@@ -92,7 +92,7 @@ func migrate(dir schema.MigrateDir, count int) error {
 
 var dbMigrateDownCmd = &cobra.Command{
 	Use:   "down COUNT",
-	Short: "run upwards db schema migrations",
+	Short: "run downwards db schema migrations",
 	Long:  "performs a downards schema migration command",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
