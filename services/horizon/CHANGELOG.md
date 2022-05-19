@@ -6,6 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
+- Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
 
 ## V2.17.0
 
