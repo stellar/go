@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
+
 ## V2.17.0
 
 This is the final release after the [release candidate](v2.17.0-release-candidate), including some small additional changes:
