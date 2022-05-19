@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 )
 
@@ -123,44 +124,84 @@ func (q *TradeAggregationsQ) WithEndTime(endTime strtime.Millis) (*TradeAggregat
 	}
 }
 
+func (q *TradeAggregationsQ) getRawTradesSql(orderPreserved bool) sq.SelectBuilder {
+	var rawTradesSQL sq.SelectBuilder
+	if orderPreserved {
+		rawTradesSQL = bucketTrades(q.resolution, q.offset)
+	} else {
+		rawTradesSQL = reverseBucketTrades(q.resolution, q.offset)
+	}
+
+	rawTradesSQL = rawTradesSQL.Join("timestamp_range r ON 1=1")
+	rawTradesSQL = rawTradesSQL.From("history_trades_60000 AS tr").
+		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID})
+
+	//adjust time range and apply time filters
+	rawTradesSQL = rawTradesSQL.Where("r.max_ts >= ((tr.timestamp - 0) / 86400000) * 86400000 + 0")
+	rawTradesSQL = rawTradesSQL.Where("r.min_ts <= ((tr.timestamp - 0) / 86400000) * 86400000 + 0")
+
+	if q.resolution != 60000 {
+		//ensure open/close order for cases when multiple trades occur in the same ledger
+		rawTradesSQL = rawTradesSQL.OrderBy("timestamp ASC", "open_ledger_toid ASC")
+		// Do on-the-fly aggregation for higher resolutions.
+	}
+	return rawTradesSQL
+}
+
 // GetSql generates a sql statement to aggregate Trades based on given parameters
 func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 	var orderPreserved bool
 	orderPreserved, q.baseAssetID, q.counterAssetID = getCanonicalAssetOrder(q.baseAssetID, q.counterAssetID)
 
 	var bucketSQL sq.SelectBuilder
-	if orderPreserved {
-		bucketSQL = bucketTrades(q.resolution, q.offset)
-	} else {
-		bucketSQL = reverseBucketTrades(q.resolution, q.offset)
-	}
-
-	bucketSQL = bucketSQL.From("history_trades_60000").
-		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID})
-
-	//adjust time range and apply time filters
-	bucketSQL = bucketSQL.Where(sq.GtOrEq{"timestamp": q.startTime})
-	if !q.endTime.IsNil() {
-		bucketSQL = bucketSQL.Where(sq.Lt{"timestamp": q.endTime})
-	}
-
-	if q.resolution != 60000 {
-		//ensure open/close order for cases when multiple trades occur in the same ledger
-		bucketSQL = bucketSQL.OrderBy("timestamp ASC", "open_ledger_toid ASC")
-		// Do on-the-fly aggregation for higher resolutions.
-		bucketSQL = aggregate(bucketSQL)
-	}
-
-	return bucketSQL.
+	bucketSQL = aggregate("raw_trades")
+	bucketSQL = bucketSQL.
 		Limit(q.pagingParams.Limit).
 		OrderBy("timestamp " + q.pagingParams.Order)
+
+	bucketSQL = bucketSQL.Prefix("WITH last_200_ts as (?),",
+		last200Ts(q.baseAssetID, q.counterAssetID, q.startTime, q.endTime))
+	bucketSQL = bucketSQL.Prefix("timestamp_range as (?),",
+		timestampRange())
+	bucketSQL = bucketSQL.Prefix("raw_trades as (?)",
+		q.getRawTradesSql(orderPreserved))
+
+    return bucketSQL
 }
 
 // formatBucketTimestampSelect formats a sql select clause for a bucketed timestamp, based on given resolution
 // and the offset. Given a time t, it gives it a timestamp defined by
 // f(t) = ((t - offset)/resolution)*resolution + offset.
 func formatBucketTimestampSelect(resolution int64, offset int64) string {
-	return fmt.Sprintf("((timestamp - %d) / %d) * %d + %d as timestamp", offset, resolution, resolution, offset)
+	return fmt.Sprintf("((tr.timestamp - %d) / %d) * %d + %d as timestamp", offset, resolution, resolution, offset)
+}
+
+func last200Ts(baseAssetID, counterAssetID int64, startTime, endTime strtime.Millis) sq.SelectBuilder {
+	s :=  sq.Select(
+		"((timestamp - 0) / 86400000) * 86400000 + 0 as timestamp",
+	).From(
+		"history_trades_60000",
+	).Where(
+		sq.Eq{"base_asset_id": baseAssetID, "counter_asset_id": counterAssetID},
+	).Where(sq.GtOrEq{"timestamp": startTime})
+	if !endTime.IsNil() {
+		s = s.Where(sq.Lt{"timestamp": endTime})
+	}
+	s = s.GroupBy(
+		"((timestamp - 0) / 86400000) * 86400000 + 0",
+	).OrderBy(
+		"((timestamp - 0) / 86400000) * 86400000 + 0 DESC",
+	).Suffix(
+		"FETCH FIRST 200 ROWS ONLY",
+	)
+	return s
+}
+
+func timestampRange() sq.SelectBuilder {
+	return sq.Select(
+		"min(timestamp) as min_ts",
+		"max(timestamp) as max_ts",
+	).From("last_200_ts")
 }
 
 // bucketTrades generates a select statement to filter rows from the `history_trades` table in
@@ -203,7 +244,7 @@ func reverseBucketTrades(resolution int64, offset int64) sq.SelectBuilder {
 	)
 }
 
-func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
+func aggregate(rawTradesTable string) sq.SelectBuilder {
 	return sq.Select(
 		"timestamp",
 		"sum(\"count\") as count",
@@ -218,7 +259,7 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 		"(first(ARRAY[open_n, open_d]))[2] as open_d",
 		"(last(ARRAY[close_n, close_d]))[1] as close_n",
 		"(last(ARRAY[close_n, close_d]))[2] as close_d",
-	).FromSelect(query, "htrd").GroupBy("timestamp")
+	).From(rawTradesTable).GroupBy("timestamp")
 }
 
 // RebuildTradeAggregationTimes rebuilds a specific set of trade aggregation
