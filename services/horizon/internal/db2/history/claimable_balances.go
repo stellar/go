@@ -220,7 +220,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 	sql = sql.
 		Prefix("WITH cb AS (").
 		Suffix(
-			") select "+claimableBalancesSelectStatement+" from cb LIMIT ?",
+			"LIMIT ?) select "+claimableBalancesSelectStatement+" from cb",
 			query.PageQuery.Limit,
 		)
 
