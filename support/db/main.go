@@ -190,9 +190,18 @@ func IdleTransactionTimeout(timeout time.Duration) ClientConfig {
 
 func augmentDSN(dsn string, clientConfigs []ClientConfig) string {
 	parsed, err := url.Parse(dsn)
+	// dsn can either be a postgres url like "postgres://postgres:123456@127.0.0.1:5432"
+	// or, it can be a white space separated string of key value pairs like
+	// "host=localhost port=5432 user=bob password=secret"
 	if err != nil || parsed.Scheme == "" {
+		// if dsn does not parse as a postgres url, we assume it must be take
+		// the form of a white space separated string
 		parts := []string{dsn}
 		for _, config := range clientConfigs {
+			// do not override if the key is already present in dsn
+			if strings.Contains(dsn, config.Key+"=") {
+				continue
+			}
 			parts = append(parts, config.Key+"="+config.Value)
 		}
 		return strings.Join(parts, " ")
@@ -200,6 +209,10 @@ func augmentDSN(dsn string, clientConfigs []ClientConfig) string {
 
 	q := parsed.Query()
 	for _, config := range clientConfigs {
+		// do not override if the key is already present in dsn
+		if len(q.Get(config.Key)) > 0 {
+			continue
+		}
 		q.Set(config.Key, config.Value)
 	}
 	parsed.RawQuery = q.Encode()
