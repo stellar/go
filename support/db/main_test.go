@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
@@ -26,4 +27,27 @@ func TestGetTable(t *testing.T) {
 		assert.Equal(t, sess, tbl.Session)
 	}
 
+}
+
+func TestAugmentDSN(t *testing.T) {
+	configs := []ClientConfig{
+		IdleTransactionTimeout(2 * time.Second),
+		StatementTimeout(4 * time.Millisecond),
+	}
+	for _, testCase := range []struct {
+		input    string
+		expected string
+	}{
+		{"postgresql://localhost", "postgresql://localhost?idle_in_transaction_session_timeout=2000&statement_timeout=4"},
+		{"postgresql://localhost", "postgresql://localhost?idle_in_transaction_session_timeout=2000&statement_timeout=4"},
+		{"postgresql://localhost", "postgresql://localhost?idle_in_transaction_session_timeout=2000&statement_timeout=4"},
+		{"user=bob password=secret", "user=bob password=secret idle_in_transaction_session_timeout=2000 statement_timeout=4"},
+	} {
+		t.Run(testCase.input, func(t *testing.T) {
+			output := augmentDSN(testCase.input, configs)
+			if output != testCase.expected {
+				t.Fatalf("got %v but expected %v", output, testCase.expected)
+			}
+		})
+	}
 }

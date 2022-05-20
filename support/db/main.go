@@ -14,6 +14,9 @@ package db
 import (
 	"context"
 	"database/sql"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -44,6 +47,9 @@ var (
 	// ErrBadConnection is an error returned when driver returns `bad connection`
 	// error.
 	ErrBadConnection = errors.New("bad connection")
+	// ErrStatementTimeout is an error returned by Session methods when request has
+	// been cancelled due to a statement timeout.
+	ErrStatementTimeout = errors.New("canceling statement due to statement timeout")
 )
 
 // Conn represents a connection to a single database.
@@ -163,8 +169,46 @@ func pingDB(db *sqlx.DB) error {
 	return errors.Wrapf(err, "failed to connect to DB after %v attempts", maxDBPingAttempts)
 }
 
+type ClientConfig struct {
+	Key   string
+	Value string
+}
+
+func StatementTimeout(timeout time.Duration) ClientConfig {
+	return ClientConfig{
+		Key:   "statement_timeout",
+		Value: strconv.FormatInt(timeout.Milliseconds(), 10),
+	}
+}
+
+func IdleTransactionTimeout(timeout time.Duration) ClientConfig {
+	return ClientConfig{
+		Key:   "idle_in_transaction_session_timeout",
+		Value: strconv.FormatInt(timeout.Milliseconds(), 10),
+	}
+}
+
+func augmentDSN(dsn string, clientConfigs []ClientConfig) string {
+	parsed, err := url.Parse(dsn)
+	if err != nil || parsed.Scheme == "" {
+		parts := []string{dsn}
+		for _, config := range clientConfigs {
+			parts = append(parts, config.Key+"="+config.Value)
+		}
+		return strings.Join(parts, " ")
+	}
+
+	q := parsed.Query()
+	for _, config := range clientConfigs {
+		q.Set(config.Key, config.Value)
+	}
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
+}
+
 // Open the database at `dsn` and returns a new *Session using it.
-func Open(dialect, dsn string) (*Session, error) {
+func Open(dialect, dsn string, clientConfigs ...ClientConfig) (*Session, error) {
+	dsn = augmentDSN(dsn, clientConfigs)
 	db, err := sqlx.Open(dialect, dsn)
 	if err != nil {
 		return nil, errors.Wrap(err, "open failed")
