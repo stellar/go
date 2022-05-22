@@ -126,6 +126,9 @@ func initIngester(app *App) {
 }
 
 func initPathFinder(app *App) {
+	if app.config.DisablePathFinding {
+		return
+	}
 	orderBookGraph := orderbook.NewOrderBookGraph()
 	app.orderBookStream = ingest.NewOrderBookStream(
 		&history.Q{app.HorizonSession()},
@@ -192,7 +195,9 @@ func initDbMetrics(app *App) {
 
 	app.coreState.RegisterMetrics(app.prometheusRegistry)
 
-	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
+	if !app.config.DisablePathFinding {
+		app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
+	}
 }
 
 // initGoMetrics registers the Go collector provided by prometheus package which

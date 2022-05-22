@@ -393,6 +393,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
 		},
 		&support.ConfigOption{
+			Name:        "disable-path-finding",
+			ConfigKey:   &config.DisablePathFinding,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "disables the path finding endpoints",
+		},
+		&support.ConfigOption{
 			Name:        "max-path-finding-requests",
 			ConfigKey:   &config.MaxPathFindingRequests,
 			OptType:     types.Uint,
