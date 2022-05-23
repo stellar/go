@@ -25,6 +25,7 @@ func main() {
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
 	historyArchiveUrls := flag.String("history-archive-urls", "https://history.stellar.org/prd/core-testnet/core_testnet_001", "comma-separated list of history archive urls to read from")
 	captiveCoreTomlPath := flag.String("captive-core-toml-path", os.Getenv("CAPTIVE_CORE_TOML_PATH"), "path to load captive core toml file from")
+	startingLedger := flag.Int("start-ledger", 0, "ledger to start export from")
 	flag.Parse()
 
 	logger.SetLevel(supportlog.InfoLevel)
@@ -63,11 +64,22 @@ func main() {
 
 	latestLedger := readLatestLedger(target)
 
-	nextLedger := latestLedger
-	if err := core.PrepareRange(context.Background(), ledgerbackend.UnboundedRange(latestLedger)); err != nil {
-		logger.WithError(err).Fatalf("could not prepare unbounded range %v", nextLedger)
+	var ledgerRange ledgerbackend.Range
+	if *startingLedger == 0 {
+		ledgerRange = ledgerbackend.UnboundedRange(latestLedger)
+	} else if *startingLedger != 0 && latestLedger == 2 {
+		ledgerRange = ledgerbackend.UnboundedRange(uint32(*startingLedger))
+		latestLedger = uint32(*startingLedger)
+	} else {
+		ledgerRange = ledgerbackend.BoundedRange(uint32(*startingLedger), latestLedger)
 	}
 
+	err = core.PrepareRange(context.Background(), ledgerRange)
+	logFatalIf(err, "could not prepare unbounded range %v", latestLedger)
+
+	logger.Infof("Unpacking ledger range [%d, %d]", *startingLedger, latestLedger)
+
+	nextLedger := latestLedger
 	for {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
@@ -104,7 +116,7 @@ func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
 	defer r.Close()
 
 	var buf bytes.Buffer
-	_, err := io.Copy(&buf, r)
+	_, err = io.Copy(&buf, r)
 	logFatalIf(err, "could not read latest ledger")
 
 	parsed, err := strconv.ParseUint(buf.String(), 10, 32)
