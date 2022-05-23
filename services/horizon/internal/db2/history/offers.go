@@ -2,7 +2,7 @@ package history
 
 import (
 	"context"
-	"math"
+	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -86,6 +86,13 @@ func (q *Q) GetOffers(ctx context.Context, query OffersQuery) ([]Offer, error) {
 
 // StreamAllOffers loads all non deleted offers
 func (q *Q) StreamAllOffers(ctx context.Context, callback func(Offer) error) error {
+	if tx := q.GetTx(); tx == nil {
+		return errors.New("cannot be called outside of a transaction")
+	}
+	if opts := q.GetTxOptions(); opts == nil || !opts.ReadOnly || opts.Isolation != sql.LevelRepeatableRead {
+		return errors.New("should only be called in a repeatable read transaction")
+	}
+
 	lastID := int64(0)
 	for {
 		nextID, err := q.streamAllOffersBatch(ctx, lastID, offersBatchSize, callback)
