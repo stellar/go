@@ -86,7 +86,7 @@ func (q *Q) GetOffers(ctx context.Context, query OffersQuery) ([]Offer, error) {
 
 // StreamAllOffers loads all non deleted offers
 func (q *Q) StreamAllOffers(ctx context.Context, callback func(Offer) error) error {
-	lastID := int64(math.MinInt64)
+	lastID := int64(0)
 	for {
 		nextID, err := q.streamAllOffersBatch(ctx, lastID, offersBatchSize, callback)
 		if err != nil {
