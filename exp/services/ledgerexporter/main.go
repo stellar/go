@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -39,9 +38,7 @@ func main() {
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(*captiveCoreTomlPath, params)
-	if err != nil {
-		logger.WithError(err).Fatal("Invalid captive core toml")
-	}
+	logFatalIf(err, "Invalid captive core toml")
 
 	captiveConfig := ledgerbackend.CaptiveCoreConfig{
 		BinaryPath:          *stellarCoreBinaryPath,
@@ -52,9 +49,7 @@ func main() {
 		Toml:                captiveCoreToml,
 	}
 	core, err := ledgerbackend.NewCaptive(captiveConfig)
-	if err != nil {
-		logger.WithError(err).Fatal("Could not create captive core instance")
-	}
+	logFatalIf(err, "Could not create captive core instance")
 
 	target, err := historyarchive.ConnectBackend(
 		*targetUrl,
@@ -63,9 +58,7 @@ func main() {
 			NetworkPassphrase: params.NetworkPassphrase,
 		},
 	)
-	if err != nil {
-		logger.WithError(err).Fatal("Could not connect to target")
-	}
+	logFatalIf(err, "Could not connect to target")
 	defer target.Close()
 
 	latestLedger := readLatestLedger(target)
@@ -76,14 +69,17 @@ func main() {
 	}
 
 	for {
-		leddger, err := core.GetLedger(context.Background(), nextLedger)
+		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
-			logger.WithError(err).Warnf("could not fetch ledger %v, will retry", nextLedger)
+			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)
 			time.Sleep(time.Second)
 			continue
 		}
 
-		if err = writeLedger(target, leddger); err != nil {
+		if err = writeLedger(target, ledger); err != nil {
+			logger.WithError(err).Warnf(
+				"could not write ledger object %v, retrying",
+				uint64(ledger.LedgerSequence()))
 			continue
 		}
 
@@ -96,49 +92,52 @@ func main() {
 
 }
 
+// readLatestLedger determines the latest ledger in the given backend (at the
+// /latest path), defaulting to Ledger #2 if one doesn't exist
 func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
 	r, err := backend.GetFile("latest")
 	if os.IsNotExist(err) {
 		return 2
-	} else if err != nil {
-		logger.WithError(err).Fatal("could not open latest ledger bucket")
-	} else {
-		defer r.Close()
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, r); err != nil {
-			logger.WithError(err).Fatal("could not read latest ledger")
-		}
-		if parsed, err := strconv.ParseUint(buf.String(), 10, 32); err != nil {
-			logger.WithError(err).Fatalf("could not parse latest ledger: %s", buf.String())
-		} else {
-			return uint32(parsed)
-		}
 	}
-	return 0
+
+	logFatalIf(err, "could not open latest ledger bucket")
+	defer r.Close()
+
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, r)
+	logFatalIf(err, "could not read latest ledger")
+
+	parsed, err := strconv.ParseUint(buf.String(), 10, 32)
+	logFatalIf(err, "could not parse latest ledger: %s", buf.String())
+	return uint32(parsed)
 }
 
-func writeLedger(backend historyarchive.ArchiveBackend, leddger xdr.LedgerCloseMeta) error {
-	blob, err := leddger.MarshalBinary()
-	if err != nil {
-		logger.WithError(err).Fatalf("could not serialize ledger %v", uint64(leddger.LedgerSequence()))
-	}
-	err = backend.PutFile(
-		"ledgers/"+strconv.FormatUint(uint64(leddger.LedgerSequence()), 10),
-		ioutil.NopCloser(bytes.NewReader(blob)),
+// writeLedger stores the given LedgerCloseMeta instance as a raw binary at the
+// /ledgers/<seqNum> path. If an error is returned, it may be transient so you
+// should attempt to retry.
+func writeLedger(backend historyarchive.ArchiveBackend, ledger xdr.LedgerCloseMeta) error {
+	blob, err := ledger.MarshalBinary()
+	logFatalIf(err, "could not serialize ledger %v", ledger.LedgerSequence())
+
+	return backend.PutFile(
+		"ledgers/"+strconv.FormatUint(uint64(ledger.LedgerSequence()), 10),
+		io.NopCloser(bytes.NewReader(blob)),
 	)
-	if err != nil {
-		logger.WithError(err).Warnf("could not write ledger object %v, will retry", uint64(leddger.LedgerSequence()))
-	}
-	return err
 }
 
 func writeLatestLedger(backend historyarchive.ArchiveBackend, ledger uint32) error {
 	return backend.PutFile(
 		"latest",
-		ioutil.NopCloser(
+		io.NopCloser(
 			bytes.NewBufferString(
 				strconv.FormatUint(uint64(ledger), 10),
 			),
 		),
 	)
+}
+
+func logFatalIf(err error, message string, args ...interface{}) {
+	if err != nil {
+		logger.WithError(err).Fatalf(message, args...)
+	}
 }
