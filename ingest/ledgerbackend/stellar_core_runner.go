@@ -66,6 +66,7 @@ type stellarCoreRunner struct {
 	processExitError error
 
 	storagePath string
+	useDB       bool
 	nonce       string
 
 	log *log.Entry
@@ -122,6 +123,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		ctx:            ctx,
 		cancel:         cancel,
 		storagePath:    fullStoragePath,
+		useDB:          config.UseDB,
 		mode:           mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
@@ -261,11 +263,22 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	r.cmd = r.createCmd(
-		"catchup", rangeArg,
-		"--metadata-output-stream", r.getPipeName(),
-		"--in-memory",
-	)
+	params := []string{"catchup", rangeArg, "--metadata-output-stream", r.getPipeName()}
+
+	// horizon operator has specified to use external storage for captive core ledger state
+	// instruct captive core invocation to not use memory, and in that case
+	// cc will look at DATABASE property in cfg toml for the external storage source to use.
+	// when using external storage of ledgers, use new-db to first set the state of
+	// remote db storage to genesis to purge any prior state and reset.
+	if r.useDB {
+		if err := r.createCmd("new-db").Run(); err != nil {
+			return errors.Wrap(err, "error initializing core db")
+		}
+	} else {
+		params = append(params, "--in-memory")
+	}
+
+	r.cmd = r.createCmd(params...)
 
 	var err error
 	r.pipe, err = r.start(r.cmd)
@@ -304,13 +317,34 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 
-	r.cmd = r.createCmd(
-		"run",
-		"--in-memory",
-		"--start-at-ledger", fmt.Sprintf("%d", from),
-		"--start-at-hash", hash,
-		"--metadata-output-stream", r.getPipeName(),
-	)
+	if r.useDB {
+		if err := r.createCmd("new-db").Run(); err != nil {
+			return errors.Wrap(err, "error initializing core db")
+		}
+		// Do a quick catch-up to set the LCL in core to be our expected starting
+		// point.
+		if from > 2 {
+			if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
+				return errors.Wrap(err, "error runing stellar-core catchup")
+			}
+		} else if err := r.createCmd("catchup", "2/0").Run(); err != nil {
+			return errors.Wrap(err, "error runing stellar-core catchup")
+		}
+
+		r.cmd = r.createCmd(
+			"run",
+			"--metadata-output-stream",
+			r.getPipeName(),
+		)
+	} else {
+		r.cmd = r.createCmd(
+			"run",
+			"--in-memory",
+			"--start-at-ledger", fmt.Sprintf("%d", from),
+			"--start-at-hash", hash,
+			"--metadata-output-stream", r.getPipeName(),
+		)
+	}
 
 	var err error
 	r.pipe, err = r.start(r.cmd)
@@ -340,7 +374,7 @@ func (r *stellarCoreRunner) handleExit() {
 
 	// Pattern recommended in:
 	// https://github.com/golang/go/blob/cacac8bdc5c93e7bc71df71981fdf32dded017bf/src/cmd/go/script_test.go#L1091-L1098
-	var interrupt os.Signal = os.Interrupt
+	interrupt := os.Interrupt
 	if runtime.GOOS == "windows" {
 		// Per https://golang.org/pkg/os/#Signal, “Interrupt is not implemented on
 		// Windows; using it with os.Process.Signal will return an error.”

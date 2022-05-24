@@ -74,6 +74,10 @@ func String(code interface{}) (string, error) {
 			return "tx_internal_error", nil
 		case xdr.TransactionResultCodeTxBadSponsorship:
 			return "tx_bad_sponsorship", nil
+		case xdr.TransactionResultCodeTxBadMinSeqAgeOrGap:
+			return "tx_bad_minseq_age_or_gap", nil
+		case xdr.TransactionResultCodeTxMalformed:
+			return "tx_malformed", nil
 		}
 	case xdr.OperationResultCode:
 		switch code {

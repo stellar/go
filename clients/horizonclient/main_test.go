@@ -146,7 +146,7 @@ func TestCheckMemoRequired(t *testing.T) {
 					IncrementSequenceNum: true,
 					Operations:           tc.operations,
 					BaseFee:              txnbuild.MinBaseFee,
-					Timebounds:           txnbuild.NewTimebounds(0, 10),
+					Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 				},
 			)
 			tt.NoError(err)
@@ -878,7 +878,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -946,7 +946,7 @@ func TestSubmitTransactionRequestMuxedAccounts(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1006,7 +1006,7 @@ func TestSubmitFeeBumpTransaction(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1075,7 +1075,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1168,7 +1168,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
 			Memo:                 txnbuild.MemoText("HelloWorld"),
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1202,7 +1202,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1293,7 +1293,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 			Operations:           []txnbuild.Operation{&payment},
 			BaseFee:              txnbuild.MinBaseFee,
 			Memo:                 txnbuild.MemoText("HelloWorld"),
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimebounds(0, 10)},
 		},
 	)
 	assert.NoError(t, err)
@@ -1483,7 +1483,7 @@ func TestFetchTimebounds(t *testing.T) {
 	ServerTimeMap["localhost"] = newRecord
 	st, err = client.FetchTimebounds(100)
 	assert.NoError(t, err)
-	assert.IsType(t, st, txnbuild.Timebounds{})
+	assert.IsType(t, st, txnbuild.TimeBounds{})
 	assert.Equal(t, st.MinTime, int64(0))
 	// time should be 200, serverTime + 100seconds
 	assert.Equal(t, st.MaxTime, int64(200))

@@ -148,15 +148,31 @@ func (handler FindPathsHandler) GetResource(w HeaderWriter, r *http.Request) (in
 		}
 	}
 
+	// Rollback REPEATABLE READ transaction so that a DB connection is released
+	// to be used by other http requests.
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not obtain historyQ from request")
+	}
+
+	err = historyQ.Rollback()
+	if err != nil {
+		return nil, errors.Wrap(err, "error in rollback")
+	}
+
 	records := []paths.Path{}
 	if len(query.SourceAssets) > 0 {
 		var lastIngestedLedger uint32
 		records, lastIngestedLedger, err = handler.PathFinder.Find(ctx, query, handler.MaxPathLength)
-		if err == simplepath.ErrEmptyInMemoryOrderBook {
-			err = horizonProblem.StillIngesting
-		}
-		if err != nil {
-			return nil, err
+		switch err {
+		case simplepath.ErrEmptyInMemoryOrderBook:
+			return nil, horizonProblem.StillIngesting
+		case paths.ErrRateLimitExceeded:
+			return nil, horizonProblem.ServerOverCapacity
+		default:
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if handler.SetLastLedgerHeader {
@@ -301,6 +317,18 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 		}
 	}
 
+	// Rollback REPEATABLE READ transaction so that a DB connection is released
+	// to be used by other http requests.
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not obtain historyQ from request")
+	}
+
+	err = historyQ.Rollback()
+	if err != nil {
+		return nil, errors.Wrap(err, "error in rollback")
+	}
+
 	sourceAsset := qp.SourceAsset()
 	amountToSpend := qp.Amount()
 
@@ -314,11 +342,15 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 			destinationAssets,
 			handler.MaxPathLength,
 		)
-		if err == simplepath.ErrEmptyInMemoryOrderBook {
-			err = horizonProblem.StillIngesting
-		}
-		if err != nil {
-			return nil, err
+		switch err {
+		case simplepath.ErrEmptyInMemoryOrderBook:
+			return nil, horizonProblem.StillIngesting
+		case paths.ErrRateLimitExceeded:
+			return nil, horizonProblem.ServerOverCapacity
+		default:
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if handler.SetLastLedgerHeader {
