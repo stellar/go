@@ -104,17 +104,18 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:      config.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
-			CaptiveCoreBinaryPath:  config.CaptiveCoreBinaryPath,
-			CaptiveCoreConfigUseDB: config.CaptiveCoreConfigUseDB,
-			RemoteCaptiveCoreURL:   config.RemoteCaptiveCoreURL,
-			CheckpointFrequency:    config.CheckpointFrequency,
-			CaptiveCoreToml:        config.CaptiveCoreToml,
-			CaptiveCoreStoragePath: config.CaptiveCoreStoragePath,
-			RoundingSlippageFilter: config.RoundingSlippageFilter,
+			NetworkPassphrase:        config.NetworkPassphrase,
+			HistorySession:           horizonSession,
+			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
+			CaptiveCoreBinaryPath:    config.CaptiveCoreBinaryPath,
+			CaptiveCoreConfigUseDB:   config.CaptiveCoreConfigUseDB,
+			RemoteCaptiveCoreURL:     config.RemoteCaptiveCoreURL,
+			CheckpointFrequency:      config.CheckpointFrequency,
+			CaptiveCoreToml:          config.CaptiveCoreToml,
+			CaptiveCoreStoragePath:   config.CaptiveCoreStoragePath,
+			RoundingSlippageFilter:   config.RoundingSlippageFilter,
+			EnableIngestionFiltering: config.EnableIngestionFiltering,
 		}
 
 		if !ingestConfig.EnableCaptiveCore {
@@ -290,12 +291,13 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:      config.NetworkPassphrase,
-			HistorySession:         horizonSession,
-			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
-			CheckpointFrequency:    config.CheckpointFrequency,
-			RoundingSlippageFilter: config.RoundingSlippageFilter,
+			NetworkPassphrase:        config.NetworkPassphrase,
+			HistorySession:           horizonSession,
+			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
+			CheckpointFrequency:      config.CheckpointFrequency,
+			RoundingSlippageFilter:   config.RoundingSlippageFilter,
+			EnableIngestionFiltering: config.EnableIngestionFiltering,
 		}
 
 		if config.EnableCaptiveCoreIngestion {

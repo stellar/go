@@ -122,7 +122,7 @@ func (c *Client) sendHTTPRequest(req *http.Request, a interface{}) error {
 	if resp, err := c.HTTP.Do(req.WithContext(ctx)); err != nil {
 		return err
 	} else {
-		return decodeResponse(resp, &a, c)
+		return decodeResponse(resp, a, c.HorizonURL, c.clock)
 	}
 }
 
@@ -270,6 +270,9 @@ func (c *Client) setDefaultClient() {
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
 func (c *Client) fixHorizonURL() string {
 	c.fixHorizonURLOnce.Do(func() {
+		// TODO: we shouldn't happily edit data provided by the user,
+		//       better store it in an internal variable or, even better,
+		//       just parse it every time (what if the url changes during the life of the client?).
 		c.HorizonURL = strings.TrimRight(c.HorizonURL, "/") + "/"
 	})
 	return c.HorizonURL

@@ -84,8 +84,9 @@ type Test struct {
 	horizonConfig horizon.Config
 	environment   *EnvironmentManager
 
-	horizonClient *sdk.Client
-	coreClient    *stellarcore.Client
+	horizonClient      *sdk.Client
+	horizonAdminClient *sdk.AdminClient
+	coreClient         *stellarcore.Client
 
 	app           *horizon.App
 	appStopped    chan struct{}
@@ -96,11 +97,17 @@ type Test struct {
 }
 
 func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string, masterKey *keypair.Full) *Test {
+	adminClient, err := sdk.NewAdminClient(0, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return &Test{
-		t:             t,
-		horizonClient: &sdk.Client{HorizonURL: horizonURL},
-		masterKey:     masterKey,
-		passPhrase:    passPhrase,
+		t:                  t,
+		horizonClient:      &sdk.Client{HorizonURL: horizonURL},
+		horizonAdminClient: adminClient,
+		masterKey:          masterKey,
+		passPhrase:         passPhrase,
 	}
 }
 
@@ -278,10 +285,8 @@ func (i *Test) StartHorizon() error {
 	if horizonPostgresURL == "" {
 		postgres := dbtest.Postgres(i.t)
 		i.shutdownCalls = append(i.shutdownCalls, func() {
-			// FIXME: Unfortunately, Horizon leaves open sessions behind,
-			//        leading to a "database is being accessed by other users"
-			//        error when trying to drop it.
-			// postgres.Close()
+			i.StopHorizon()
+			postgres.Close()
 		})
 		horizonPostgresURL = postgres.DSN
 	}
@@ -337,7 +342,8 @@ func (i *Test) StartHorizon() error {
 		"port":                          "8000",
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"checkpoint-frequency": "8",
-		"per-hour-rate-limit":  "0", // disable rate limiting
+		"per-hour-rate-limit":  "0",  // disable rate limiting
+		"max-db-connections":   "50", // the postgres container supports 100 connections, be conservative
 	}
 
 	merged := MergeMaps(defaultArgs, i.config.HorizonParameters)
@@ -371,12 +377,22 @@ func (i *Test) StartHorizon() error {
 	}
 
 	horizonPort := "8000"
-	if port, ok := merged["--port"]; ok {
+	if port, ok := merged["port"]; ok {
 		horizonPort = port
+	}
+	adminPort := uint16(6060)
+	if port, ok := merged["admin-port"]; ok {
+		if cmdAdminPort, parseErr := strconv.ParseInt(port, 0, 16); parseErr == nil {
+			adminPort = uint16(cmdAdminPort)
+		}
 	}
 	i.horizonConfig = *config
 	i.horizonClient = &sdk.Client{
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
+	}
+	i.horizonAdminClient, err = sdk.NewAdminClient(adminPort, "", 0)
+	if err != nil {
+		return errors.Wrap(err, "cannot initialize Horizon admin client")
 	}
 
 	done := make(chan struct{})
@@ -482,6 +498,11 @@ func (i *Test) Client() *sdk.Client {
 	return i.horizonClient
 }
 
+// Client returns horizon.Client connected to started Horizon instance.
+func (i *Test) AdminClient() *sdk.AdminClient {
+	return i.horizonAdminClient
+}
+
 // Horizon returns the horizon.App instance for the current integration test
 func (i *Test) Horizon() *horizon.App {
 	return i.app
@@ -489,7 +510,11 @@ func (i *Test) Horizon() *horizon.App {
 
 // StopHorizon shuts down the running Horizon process
 func (i *Test) StopHorizon() {
-	i.app.CloseDB()
+	if i.app == nil {
+		// horizon has already been stopped
+		return
+	}
+
 	i.app.Close()
 
 	// Wait for Horizon to shut down completely.

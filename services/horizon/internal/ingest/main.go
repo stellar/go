@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -84,6 +85,7 @@ type Config struct {
 	DisableStateVerification     bool
 	EnableExtendedLogLedgerStats bool
 
+	ReingestEnabled             bool
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
 
@@ -91,6 +93,8 @@ type Config struct {
 	CheckpointFrequency uint32
 
 	RoundingSlippageFilter int
+
+	EnableIngestionFiltering bool
 }
 
 const (
@@ -252,8 +256,8 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
-
 	historyAdapter := newHistoryArchiveAdapter(archive)
+	filters := filters.NewFilters()
 
 	system := &system{
 		cancel:                      cancel,
@@ -273,6 +277,7 @@ func NewSystem(config Config) (System, error) {
 			config:         config,
 			historyQ:       historyQ,
 			historyAdapter: historyAdapter,
+			filters:        filters,
 		},
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -697,6 +702,7 @@ func (s *system) Shutdown() {
 	s.cancel()
 	// wait for ingestion state machine to terminate
 	s.wg.Wait()
+	s.historyQ.Close()
 	if err := s.ledgerBackend.Close(); err != nil {
 		log.WithError(err).Info("could not close ledger backend")
 	}

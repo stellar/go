@@ -444,21 +444,7 @@ func TestReingestDB(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
 
-	// Create a fresh Horizon database
-	newDB := dbtest.Postgres(t)
-	// TODO: Unfortunately Horizon's ingestion System leaves open sessions behind,leading to
-	//       a "database  is being accessed by other users" error when trying to drop it
-	// defer newDB.Close()
-	freshHorizonPostgresURL := newDB.DSN
 	horizonConfig := itest.GetHorizonConfig()
-	horizonConfig.DatabaseURL = freshHorizonPostgresURL
-	// Initialize the DB schema
-	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
-	tt.NoError(err)
-	defer dbConn.Close()
-	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
-	tt.NoError(err)
-
 	t.Run("validate parallel range", func(t *testing.T) {
 		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
 			"db",
@@ -559,7 +545,13 @@ func TestFillGaps(t *testing.T) {
 	horizonConfig.DatabaseURL = freshHorizonPostgresURL
 	// Initialize the DB schema
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
-	defer dbConn.Close()
+	tt.NoError(err)
+	historyQ := history.Q{dbConn}
+	defer func() {
+		historyQ.Close()
+		newDB.Close()
+	}()
+
 	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
 	tt.NoError(err)
 
@@ -603,7 +595,6 @@ func TestFillGaps(t *testing.T) {
 	// subprocesses to conflict.
 	itest.StopHorizon()
 
-	historyQ := history.Q{dbConn}
 	var oldestLedger, latestLedger int64
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))

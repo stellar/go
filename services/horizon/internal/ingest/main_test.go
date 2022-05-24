@@ -230,6 +230,7 @@ type mockDBQ struct {
 	mock.Mock
 
 	history.MockQAccounts
+	history.MockQFilter
 	history.MockQClaimableBalances
 	history.MockQHistoryClaimableBalances
 	history.MockQLiquidityPools
@@ -243,6 +244,7 @@ type mockDBQ struct {
 	history.MockQSigners
 	history.MockQTransactions
 	history.MockQTrustLines
+	history.MockQTxSubmissionResult
 }
 
 func (m *mockDBQ) Begin() error {
@@ -261,6 +263,11 @@ func (m *mockDBQ) CloneIngestionQ() history.IngestionQ {
 }
 
 func (m *mockDBQ) Commit() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *mockDBQ) Close() error {
 	args := m.Called()
 	return args.Error(0)
 }
