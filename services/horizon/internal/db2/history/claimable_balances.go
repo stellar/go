@@ -56,32 +56,37 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, string, error) {
 // ApplyCursor applies cursor to the given sql. For performance reason the limit
 // is not applied here. This allows us to hint the planner later to use the right
 // indexes.
-func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
+func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, bool, error) {
+	var hasPagedLimit bool
 	p := cbq.PageQuery
 	l, r, err := cbq.Cursor()
 	if err != nil {
-		return sql, err
+		return sql, hasPagedLimit, err
+	}
+	if l > 0 && r != "" {
+		hasPagedLimit = true
 	}
 
 	switch p.Order {
 	case db2.OrderAscending:
-		if l > 0 && r != "" {
+		if hasPagedLimit {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", l, r))
+
 		}
 		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
 	case db2.OrderDescending:
-		if l > 0 && r != "" {
+		if hasPagedLimit {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", l, r))
 		}
 
 		sql = sql.OrderBy("cb.last_modified_ledger desc, cb.id desc")
 	default:
-		return sql, errors.Errorf("invalid order: %s", p.Order)
+		return sql, hasPagedLimit, errors.Errorf("invalid order: %s", p.Order)
 	}
 
-	return sql, nil
+	return sql, hasPagedLimit, nil
 }
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
@@ -196,7 +201,7 @@ func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID string) (Cla
 
 // GetClaimableBalances finds all claimable balances where accountID is one of the claimants
 func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQuery) ([]ClaimableBalance, error) {
-	sql, err := query.ApplyCursor(selectClaimableBalances)
+	sql, hasPagedLimit, err := query.ApplyCursor(selectClaimableBalances)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
@@ -214,13 +219,17 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 			Where(`cb.claimants @> '[{"destination": "` + query.Claimant.Address() + `"}]'`)
 	}
 
-	// we need to use WITH syntax to force the query planner to use the right
+	// we need to use WITH syntax and correct LIMIT placement to force the query planner to use the right
 	// indexes, otherwise when the limit is small, it will use an index scan
 	// which will be very slow once we have millions of records
+	limitClause := ") select " + claimableBalancesSelectStatement + " from cb LIMIT ?"
+	if hasPagedLimit {
+		limitClause = "LIMIT ?) select " + claimableBalancesSelectStatement + " from cb"
+	}
 	sql = sql.
 		Prefix("WITH cb AS (").
 		Suffix(
-			"LIMIT ?) select "+claimableBalancesSelectStatement+" from cb",
+			limitClause,
 			query.PageQuery.Limit,
 		)
 
