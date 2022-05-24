@@ -114,8 +114,8 @@ func TestAPI_txApprove_revised(t *testing.T) {
 					Asset:         assetGOAT,
 				},
 			},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
+			BaseFee:       txnbuild.MinBaseFee,
+			Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		},
 	)
 	require.NoError(t, err)
@@ -234,8 +234,8 @@ func TestAPI_txAprove_actionRequired(t *testing.T) {
 					Asset:         assetGOAT,
 				},
 			},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
+			BaseFee:       txnbuild.MinBaseFee,
+			Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		},
 	)
 	require.NoError(t, err)
@@ -327,8 +327,8 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 					Asset:         assetGOAT,
 				},
 			},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
+			BaseFee:       txnbuild.MinBaseFee,
+			Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		},
 	)
 	require.NoError(t, err)
@@ -538,8 +538,8 @@ func TestAPI_txApprove_success(t *testing.T) {
 				SourceAccount: issuerKP.Address(),
 			},
 		},
-		BaseFee:    300,
-		Timebounds: txnbuild.NewTimeout(300),
+		BaseFee:       300,
+		Preconditions: txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 	})
 	require.NoError(t, err)
 	txe, err := tx.Base64()

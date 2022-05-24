@@ -141,9 +141,12 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 								Type: xdr.MemoTypeMemoNone,
 							},
 							SeqNum: 97,
-							TimeBounds: &xdr.TimeBounds{
-								MinTime: 2,
-								MaxTime: 4,
+							Cond: xdr.Preconditions{
+								Type: xdr.PreconditionTypePrecondTime,
+								TimeBounds: &xdr.TimeBounds{
+									MinTime: 2,
+									MaxTime: 4,
+								},
 							},
 							Operations: []xdr.Operation{
 								{
@@ -251,6 +254,12 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(insertBuilder.Add(ctx, normalTransaction, sequence))
 	tt.Assert.NoError(insertBuilder.Exec(ctx))
 
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, hex.EncodeToString(normalTransaction.Result.TransactionHash[:]), ""))
+	tt.Assert.NoError(q.InitEmptyTxSubmissionResult(ctx, fixture.OuterHash, fixture.InnerHash))
+	txs := []ingest.LedgerTransaction{normalTransaction, feeBumpTransaction}
+	affectedRows, err := q.SetTxSubmissionResults(ctx, txs, uint32(fixture.Ledger.Sequence), fixture.Ledger.ClosedAt)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(2), affectedRows)
 	account := fixture.Envelope.SourceAccount().ToAccountId()
 	feeBumpAccount := fixture.Envelope.FeeBumpAccount().ToAccountId()
 
@@ -309,6 +318,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 			MemoType:             "none",
 			Memo:                 null.NewString("", false),
 			TimeBounds:           TimeBounds{Lower: null.IntFrom(2), Upper: null.IntFrom(4)},
+			LedgerBounds:         LedgerBounds{Null: true},
+			ExtraSigners:         nil,
 			Signatures:           signatures(fixture.Envelope.FeeBumpSignatures()),
 			InnerSignatures:      signatures(fixture.Envelope.Signatures()),
 			Successful:           successful,

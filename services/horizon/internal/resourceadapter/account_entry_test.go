@@ -3,11 +3,13 @@ package resourceadapter
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
@@ -44,6 +46,8 @@ var (
 		AccountID:            accountID.Address(),
 		Balance:              20000,
 		SequenceNumber:       223456789,
+		SequenceLedger:       zero.IntFrom(2345),
+		SequenceTime:         zero.IntFrom(1647265533),
 		NumSubEntries:        10,
 		InflationDestination: inflationDest.Address(),
 		Flags:                0b1001, // required and clawback
@@ -143,7 +147,9 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt.Equal(account.AccountID, hAccount.AccountID)
 	tt.Equal(account.AccountID, hAccount.PT)
 	tt.Equal(strconv.FormatInt(account.SequenceNumber, 10), hAccount.Sequence)
-	tt.Equal(int32(account.NumSubEntries), hAccount.SubentryCount)
+	tt.Equal(uint32(account.SequenceLedger.Int64), hAccount.SequenceLedger)
+	tt.Equal(fmt.Sprintf("%d", account.SequenceTime.Int64), hAccount.SequenceTime)
+	tt.Equal(account.NumSubEntries, uint32(hAccount.SubentryCount))
 	tt.Equal(account.InflationDestination, hAccount.InflationDestination)
 	tt.Equal(account.HomeDomain, hAccount.HomeDomain)
 	tt.Equal(account.LastModifiedLedger, hAccount.LastModifiedLedger)

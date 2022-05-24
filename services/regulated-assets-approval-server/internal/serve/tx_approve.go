@@ -231,7 +231,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		IncrementSequenceNum: true,
 		Operations:           revisedOperations,
 		BaseFee:              300,
-		Timebounds:           txnbuild.NewTimeout(300),
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(300)},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "building transaction")

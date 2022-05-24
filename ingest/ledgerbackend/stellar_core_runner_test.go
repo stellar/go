@@ -7,11 +7,16 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/support/log"
 )
 
 func TestCloseBeforeStartOffline(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
@@ -20,6 +25,7 @@ func TestCloseBeforeStartOffline(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
+		StoragePath:        storagePath,
 	}, stellarCoreRunnerModeOffline)
 	assert.NoError(t, err)
 
@@ -37,6 +43,10 @@ func TestCloseBeforeStartOffline(t *testing.T) {
 }
 
 func TestCloseBeforeStartOnline(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
@@ -47,6 +57,7 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
+		StoragePath:        storagePath,
 	}, stellarCoreRunnerModeOnline)
 	assert.NoError(t, err)
 
@@ -63,6 +74,10 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 }
 
 func TestCloseBeforeStartOnlineWithError(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
@@ -73,6 +88,7 @@ func TestCloseBeforeStartOnlineWithError(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
+		StoragePath:        storagePath,
 	}, stellarCoreRunnerModeOnline)
 	assert.NoError(t, err)
 

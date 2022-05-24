@@ -7,9 +7,11 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"math"
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/guregu/null/zero"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -213,7 +215,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(200), 0).Return(nil).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().NoError(err)
@@ -269,7 +271,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
-	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(110)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(100), uint32(110), 0).Return(nil).Once()
 
 	clonedQ := &mockDBQ{}
 	s.historyQ.On("CloneIngestionQ").Return(clonedQ).Once()
@@ -330,6 +332,13 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 										nil,
 										xdr.MustAddressPtr(mockAccountID),
 										xdr.MustAddressPtr(sponsor),
+									},
+									Ext: xdr.AccountEntryExtensionV2Ext{
+										V: 3,
+										V3: &xdr.AccountEntryExtensionV3{
+											SeqTime:   xdr.TimePoint(math.MaxInt64),
+											SeqLedger: xdr.Uint32(12345678),
+										},
 									},
 								},
 							},
@@ -478,6 +487,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		AccountID:          mockAccountID,
 		Balance:            600,
 		LastModifiedLedger: 62,
+		SequenceTime:       zero.IntFrom(9223372036854775807),
+		SequenceLedger:     zero.IntFrom(12345678),
 		MasterWeight:       1,
 		NumSponsored:       0,
 		NumSponsoring:      2,
