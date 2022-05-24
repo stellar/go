@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
+- Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
+- Postgres connections for non ingesting Horizon instances are now configured to timeout on long running queries / transactions ([4390](https://github.com/stellar/go/pull/4390)).
+- Added `disable-path-finding` Horizon flag to disable the path finding endpoints. This flag should be enabled on ingesting Horizon instances which do not serve HTTP traffic ([4399](https://github.com/stellar/go/pull/4399)).
+
 ## V2.17.0
 
 This is the final release after the [release candidate](v2.17.0-release-candidate), including some small additional changes:

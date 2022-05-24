@@ -18,9 +18,9 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry) db.SessionInterface {
+func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry, clientConfigs ...db.ClientConfig) db.SessionInterface {
 	log.Infof("Establishing database session for %v", subservice)
-	session, err := db.Open("postgres", databaseURL)
+	session, err := db.Open("postgres", databaseURL, clientConfigs...)
 	if err != nil {
 		log.Fatalf("cannot open %v DB: %v", subservice, err)
 	}
@@ -47,21 +47,36 @@ func mustInitHorizonDB(app *App) {
 	}
 
 	if app.config.RoDatabaseURL == "" {
+		var clientConfigs []db.ClientConfig
+		if !app.config.Ingest {
+			// if we are not ingesting then we don't expect to have long db queries / transactions
+			clientConfigs = append(
+				clientConfigs,
+				db.StatementTimeout(app.config.ConnectionTimeout),
+				db.IdleTransactionTimeout(app.config.ConnectionTimeout),
+			)
+		}
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.DatabaseURL,
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
+			clientConfigs...,
 		)}
 	} else {
 		// If RO set, use it for all DB queries
+		roClientConfigs := []db.ClientConfig{
+			db.StatementTimeout(app.config.ConnectionTimeout),
+			db.IdleTransactionTimeout(app.config.ConnectionTimeout),
+		}
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.RoDatabaseURL,
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
+			roClientConfigs...,
 		)}
 
 		app.primaryHistoryQ = &history.Q{mustNewDBSession(
@@ -112,6 +127,9 @@ func initIngester(app *App) {
 }
 
 func initPathFinder(app *App) {
+	if app.config.DisablePathFinding {
+		return
+	}
 	orderBookGraph := orderbook.NewOrderBookGraph()
 	app.orderBookStream = ingest.NewOrderBookStream(
 		&history.Q{app.HorizonSession()},
@@ -178,7 +196,9 @@ func initDbMetrics(app *App) {
 
 	app.coreState.RegisterMetrics(app.prometheusRegistry)
 
-	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
+	if !app.config.DisablePathFinding {
+		app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
+	}
 }
 
 // initGoMetrics registers the Go collector provided by prometheus package which

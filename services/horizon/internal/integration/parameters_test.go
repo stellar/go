@@ -190,6 +190,27 @@ func TestMaxPathFindingRequests(t *testing.T) {
 	})
 }
 
+func TestDisablePathFinding(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.Horizon().Config().MaxPathFindingRequests, uint(0))
+		_, ok := test.Horizon().Paths().(simplepath.InMemoryFinder)
+		assert.True(t, ok)
+		test.Shutdown()
+	})
+	t.Run("set to true", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"disable-path-finding": "true"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Nil(t, test.Horizon().Paths())
+		test.Shutdown()
+	})
+}
+
 // Pattern taken from testify issue:
 // https://github.com/stretchr/testify/issues/858#issuecomment-600491003
 //
