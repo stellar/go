@@ -1,4 +1,4 @@
-FROM golang:1.17 as build
+FROM golang:1.18 as build
 
 ADD . /src/regulated-assets-approval-server
 WORKDIR /src/regulated-assets-approval-server

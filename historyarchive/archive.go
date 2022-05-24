@@ -28,12 +28,13 @@ const hexPrefixPat = "/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{2}/"
 const rootHASPath = ".well-known/stellar-history.json"
 
 type CommandOptions struct {
-	Concurrency int
-	Range       Range
-	DryRun      bool
-	Force       bool
-	Verify      bool
-	Thorough    bool
+	Concurrency  int
+	Range        Range
+	DryRun       bool
+	Force        bool
+	Verify       bool
+	Thorough     bool
+	SkipOptional bool
 }
 
 type ConnectOptions struct {

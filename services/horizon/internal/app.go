@@ -90,7 +90,9 @@ func (a *App) Serve() error {
 	}
 
 	go a.run()
-	go a.orderBookStream.Run(a.ctx)
+	if !a.config.DisablePathFinding {
+		go a.orderBookStream.Run(a.ctx)
+	}
 
 	// WaitGroup for all go routines. Makes sure that DB is closed when
 	// all services gracefully shutdown.
@@ -195,11 +197,6 @@ func (a *App) HistoryQ() *history.Q {
 	return a.historyQ
 }
 
-// Ingestion returns the ingestion system associated with this Horizon instance
-func (a *App) Ingestion() ingest.System {
-	return a.ingester
-}
-
 // HorizonSession returns a new session that loads data from the horizon
 // database.
 func (a *App) HorizonSession() db.SessionInterface {
@@ -208,6 +205,11 @@ func (a *App) HorizonSession() db.SessionInterface {
 
 func (a *App) Config() Config {
 	return a.config
+}
+
+// Paths returns the paths.Finder instance used by horizon
+func (a *App) Paths() paths.Finder {
+	return a.paths
 }
 
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
@@ -535,6 +537,7 @@ func (a *App) init() error {
 			},
 			cache: newHealthCache(healthCacheTTL),
 		},
+		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
 	}
 
 	if a.primaryHistoryQ != nil {

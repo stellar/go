@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -25,14 +26,13 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-func generateLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (lastLedger int32) {
-
+func submitLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
 	master := itest.Master()
 	keys, accounts := itest.CreateAccounts(2, "1000")
 	shareKeys, shareAccount := keys[0], accounts[0]
 	tradeKeys, tradeAccount := keys[1], accounts[1]
 
-	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master},
+	allOps := []txnbuild.Operation{
 		&txnbuild.ChangeTrust{
 			Line: txnbuild.ChangeTrustAssetWrapper{
 				Asset: txnbuild.CreditAsset{
@@ -64,7 +64,8 @@ func generateLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (l
 			},
 			Amount: "1000",
 		},
-	)
+	}
+	itest.MustSubmitMultiSigOperations(shareAccount, []*keypair.Full{shareKeys, master}, allOps...)
 
 	poolID, err := xdr.NewPoolId(
 		xdr.MustNewNativeAsset(),
@@ -74,17 +75,17 @@ func generateLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (l
 	tt.NoError(err)
 	poolIDHexString := xdr.Hash(poolID).HexString()
 
-	itest.MustSubmitOperations(shareAccount, shareKeys,
-		&txnbuild.LiquidityPoolDeposit{
-			LiquidityPoolID: [32]byte(poolID),
-			MaxAmountA:      "400",
-			MaxAmountB:      "777",
-			MinPrice:        xdr.Price{1, 2},
-			MaxPrice:        xdr.Price{2, 1},
-		},
-	)
+	var op txnbuild.Operation = &txnbuild.LiquidityPoolDeposit{
+		LiquidityPoolID: [32]byte(poolID),
+		MaxAmountA:      "400",
+		MaxAmountB:      "777",
+		MinPrice:        xdr.Price{1, 2},
+		MaxPrice:        xdr.Price{2, 1},
+	}
+	allOps = append(allOps, op)
+	itest.MustSubmitOperations(shareAccount, shareKeys, op)
 
-	itest.MustSubmitOperations(tradeAccount, tradeKeys,
+	ops := []txnbuild.Operation{
 		&txnbuild.ChangeTrust{
 			Line: txnbuild.ChangeTrustAssetWrapper{
 				Asset: txnbuild.CreditAsset{
@@ -104,43 +105,333 @@ func generateLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (l
 			DestAmount:  "2",
 			Destination: tradeKeys.Address(),
 		},
-	)
+	}
+	itest.MustSubmitOperations(tradeAccount, tradeKeys, ops...)
 
 	pool, err := itest.Client().LiquidityPoolDetail(horizonclient.LiquidityPoolRequest{
 		LiquidityPoolID: poolIDHexString,
 	})
 	tt.NoError(err)
 
-	txResp := itest.MustSubmitOperations(shareAccount, shareKeys,
-		&txnbuild.LiquidityPoolWithdraw{
-			LiquidityPoolID: [32]byte(poolID),
-			Amount:          pool.TotalShares,
-			MinAmountA:      "10",
-			MinAmountB:      "20",
-		},
-	)
+	op = &txnbuild.LiquidityPoolWithdraw{
+		LiquidityPoolID: [32]byte(poolID),
+		Amount:          pool.TotalShares,
+		MinAmountA:      "10",
+		MinAmountB:      "20",
+	}
+	allOps = append(allOps, op)
+	txResp := itest.MustSubmitOperations(shareAccount, shareKeys, op)
 
-	return txResp.Ledger
+	return allOps, txResp.Ledger
 }
 
-func generatePaymentOps(itest *integration.Test, tt *assert.Assertions) (lastLedger int32) {
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+func submitPaymentOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+	ops := []txnbuild.Operation{
 		&txnbuild.Payment{
 			Destination: itest.Master().Address(),
 			Amount:      "10",
 			Asset:       txnbuild.NativeAsset{},
 		},
-	)
+		&txnbuild.PathPaymentStrictSend{
+			SendAsset:   txnbuild.NativeAsset{},
+			SendAmount:  "10",
+			Destination: itest.Master().Address(),
+			DestAsset:   txnbuild.NativeAsset{},
+			DestMin:     "10",
+			Path:        []txnbuild.Asset{txnbuild.NativeAsset{}},
+		},
+		&txnbuild.PathPaymentStrictReceive{
+			SendAsset:   txnbuild.NativeAsset{},
+			SendMax:     "10",
+			Destination: itest.Master().Address(),
+			DestAsset:   txnbuild.NativeAsset{},
+			DestAmount:  "10",
+			Path:        []txnbuild.Asset{txnbuild.NativeAsset{}},
+		},
+		&txnbuild.PathPayment{
+			SendAsset:   txnbuild.NativeAsset{},
+			SendMax:     "10",
+			Destination: itest.Master().Address(),
+			DestAsset:   txnbuild.NativeAsset{},
+			DestAmount:  "10",
+			Path:        []txnbuild.Asset{txnbuild.NativeAsset{}},
+		},
+	}
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
 
-	return txResp.Ledger
+	return ops, txResp.Ledger
+}
+
+func submitSponsorshipOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+	keys, accounts := itest.CreateAccounts(1, "1000")
+	sponsor, sponsorPair := accounts[0], keys[0]
+	newAccountKeys := keypair.MustRandom()
+	newAccountID := newAccountKeys.Address()
+
+	ops := sponsorOperations(newAccountID,
+		&txnbuild.CreateAccount{
+			Destination: newAccountID,
+			Amount:      "100",
+		})
+
+	signers := []*keypair.Full{sponsorPair, newAccountKeys}
+	allOps := ops
+	itest.MustSubmitMultiSigOperations(sponsor, signers, ops...)
+
+	// Revoke sponsorship
+	op := &txnbuild.RevokeSponsorship{
+		SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
+		Account:         &newAccountID,
+	}
+	allOps = append(allOps, op)
+	txResp := itest.MustSubmitOperations(sponsor, sponsorPair, op)
+
+	return allOps, txResp.Ledger
+}
+
+func submitClawbackOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+	// Give the master account the revocable flag (needed to set the clawback flag)
+	setRevocableFlag := txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthRevocable,
+		},
+	}
+	allOps := []txnbuild.Operation{&setRevocableFlag}
+
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &setRevocableFlag)
+
+	// Give the master account the clawback flag
+	setClawBackFlag := txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthClawbackEnabled,
+		},
+	}
+	allOps = append(allOps, &setClawBackFlag)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &setClawBackFlag)
+
+	// Create another account from which to claw an asset back
+	keyPairs, accounts := itest.CreateAccounts(1, "100")
+	accountKeyPair := keyPairs[0]
+	account := accounts[0]
+
+	// Add some assets to the account with asset which allows clawback
+
+	// Time machine to Spain before Euros were a thing
+	pesetasAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: itest.Master().Address()}
+	itest.MustEstablishTrustline(accountKeyPair, account, pesetasAsset)
+	pesetasPayment := txnbuild.Payment{
+		Destination: accountKeyPair.Address(),
+		Amount:      "10",
+		Asset:       pesetasAsset,
+	}
+	allOps = append(allOps, &pesetasPayment)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &pesetasPayment)
+
+	clawback := txnbuild.Clawback{
+		From:   account.GetAccountID(),
+		Amount: "10",
+		Asset:  pesetasAsset,
+	}
+	allOps = append(allOps, &clawback)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &clawback)
+
+	// Make a claimable balance from the master account (and asset issuer) to the account with an asset which allows clawback
+	pesetasCreateCB := txnbuild.CreateClaimableBalance{
+		Amount: "10",
+		Asset:  pesetasAsset,
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(accountKeyPair.Address(), nil),
+		},
+	}
+	allOps = append(allOps, &pesetasCreateCB)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &pesetasCreateCB)
+
+	listCBResp, err := itest.Client().ClaimableBalances(horizonclient.ClaimableBalanceRequest{
+		Claimant: accountKeyPair.Address(),
+	})
+	tt.NoError(err)
+	cbID := listCBResp.Embedded.Records[0].BalanceID
+
+	// Clawback the claimable balance
+	pesetasClawbackCB := txnbuild.ClawbackClaimableBalance{
+		BalanceID: cbID,
+	}
+	allOps = append(allOps, &pesetasClawbackCB)
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &pesetasClawbackCB)
+
+	return allOps, txResp.Ledger
+}
+
+func submitClaimableBalanceOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+
+	// Create another account from which to claim an asset back
+	keyPairs, accounts := itest.CreateAccounts(1, "100")
+	accountKeyPair := keyPairs[0]
+	account := accounts[0]
+
+	// Make a claimable balance from the master account (and asset issuer) to the account with an asset which allows clawback
+	createCB := txnbuild.CreateClaimableBalance{
+		Amount: "10",
+		Asset:  txnbuild.NativeAsset{},
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(accountKeyPair.Address(), nil),
+		},
+	}
+	allOps := []txnbuild.Operation{&createCB}
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &createCB)
+
+	listCBResp, err := itest.Client().ClaimableBalances(horizonclient.ClaimableBalanceRequest{
+		Claimant: accountKeyPair.Address(),
+	})
+	tt.NoError(err)
+	cbID := listCBResp.Embedded.Records[0].BalanceID
+
+	// Claim the claimable balance
+	claimCB := txnbuild.ClaimClaimableBalance{
+		BalanceID: cbID,
+	}
+	allOps = append(allOps, &claimCB)
+	txResp := itest.MustSubmitOperations(account, accountKeyPair, &claimCB)
+
+	return allOps, txResp.Ledger
+}
+
+func submitOfferAndTrustlineOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+	// Create another account from which to claw an asset back
+	keyPairs, accounts := itest.CreateAccounts(1, "100")
+	accountKeyPair := keyPairs[0]
+	account := accounts[0]
+
+	// Add some assets to the account with asset which allows clawback
+
+	// Time machine to Spain before Euros were a thing
+	pesetasAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: itest.Master().Address()}
+	itest.MustEstablishTrustline(accountKeyPair, account, pesetasAsset)
+
+	ops := []txnbuild.Operation{
+		&txnbuild.ManageSellOffer{
+			Selling: txnbuild.NativeAsset{},
+			Buying:  pesetasAsset,
+			Amount:  "10",
+			Price:   xdr.Price{1, 1},
+			OfferID: 0,
+		},
+		&txnbuild.ManageBuyOffer{
+			Selling: txnbuild.NativeAsset{},
+			Buying:  pesetasAsset,
+			Amount:  "10",
+			Price:   xdr.Price{1, 1},
+			OfferID: 0,
+		},
+		&txnbuild.CreatePassiveSellOffer{
+			Selling: txnbuild.NativeAsset{},
+			Buying:  pesetasAsset,
+			Amount:  "10",
+			Price:   xdr.Price{1, 1},
+		},
+	}
+	allOps := ops
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
+
+	ops = []txnbuild.Operation{
+		&txnbuild.AllowTrust{
+			Trustor:   account.GetAccountID(),
+			Type:      pesetasAsset,
+			Authorize: true,
+		},
+		&txnbuild.SetTrustLineFlags{
+			Trustor:  account.GetAccountID(),
+			Asset:    pesetasAsset,
+			SetFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+		},
+	}
+	allOps = append(allOps, ops...)
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
+
+	return allOps, txResp.Ledger
+}
+
+func submitAccountOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+	accountPair, _ := keypair.Random()
+
+	ops := []txnbuild.Operation{
+		&txnbuild.CreateAccount{
+			Destination: accountPair.Address(),
+			Amount:      "100",
+		},
+	}
+	allOps := ops
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
+	account := itest.MustGetAccount(accountPair)
+	seq, err := strconv.ParseInt(account.Sequence, 10, 64)
+	tt.NoError(err)
+	domain := "www.example.com"
+	ops = []txnbuild.Operation{
+		&txnbuild.BumpSequence{
+			BumpTo: seq + 1000,
+		},
+		&txnbuild.SetOptions{
+			HomeDomain: &domain,
+		},
+		&txnbuild.ManageData{
+			Name:  "foo",
+			Value: []byte("bar"),
+		},
+	}
+	allOps = append(allOps, ops...)
+	itest.MustSubmitOperations(&account, accountPair, ops...)
+	// Resync bump sequence
+	account = itest.MustGetAccount(accountPair)
+
+	ops = []txnbuild.Operation{
+		&txnbuild.ManageData{
+			Name:  "foo",
+			Value: nil,
+		},
+		&txnbuild.AccountMerge{
+			Destination: itest.Master().Address(),
+		},
+	}
+	allOps = append(allOps, ops...)
+	txResp := itest.MustSubmitOperations(&account, accountPair, ops...)
+
+	return allOps, txResp.Ledger
 }
 
 func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reachedLedger int32) {
 	itest = integration.NewTest(t, integration.Config{})
 	tt := assert.New(t)
 
-	generatePaymentOps(itest, tt)
-	reachedLedger = generateLiquidityPoolOps(itest, tt)
+	// submit all possible operations
+	ops, _ := submitAccountOps(itest, tt)
+	submittedOps := ops
+	ops, _ = submitPaymentOps(itest, tt)
+	submittedOps = append(submittedOps, ops...)
+	ops, _ = submitOfferAndTrustlineOps(itest, tt)
+	submittedOps = append(submittedOps, ops...)
+	ops, _ = submitSponsorshipOps(itest, tt)
+	submittedOps = append(submittedOps, ops...)
+	ops, _ = submitClaimableBalanceOps(itest, tt)
+	submittedOps = append(submittedOps, ops...)
+	ops, _ = submitClawbackOps(itest, tt)
+	submittedOps = append(submittedOps, ops...)
+	ops, reachedLedger = submitLiquidityPoolOps(itest, tt)
+	submittedOps = append(submittedOps, ops...)
+
+	// Make sure all possible operations are covered by reingestion
+	allOpTypes := map[xdr.OperationType]struct{}{}
+	for typ := range xdr.OperationTypeToStringMap {
+		allOpTypes[xdr.OperationType(typ)] = struct{}{}
+	}
+	// Inflation is not supported
+	delete(allOpTypes, xdr.OperationTypeInflation)
+
+	for _, op := range submittedOps {
+		opXDR, err := op.BuildXDR()
+		tt.NoError(err)
+		delete(allOpTypes, opXDR.Body.Type)
+	}
+	tt.Empty(allOpTypes)
 
 	root, err := itest.Client().Root()
 	tt.NoError(err)
@@ -153,21 +444,7 @@ func TestReingestDB(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
 
-	// Create a fresh Horizon database
-	newDB := dbtest.Postgres(t)
-	// TODO: Unfortunately Horizon's ingestion System leaves open sessions behind,leading to
-	//       a "database  is being accessed by other users" error when trying to drop it
-	// defer newDB.Close()
-	freshHorizonPostgresURL := newDB.DSN
 	horizonConfig := itest.GetHorizonConfig()
-	horizonConfig.DatabaseURL = freshHorizonPostgresURL
-	// Initialize the DB schema
-	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
-	tt.NoError(err)
-	defer dbConn.Close()
-	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
-	tt.NoError(err)
-
 	t.Run("validate parallel range", func(t *testing.T) {
 		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
 			"db",
@@ -240,12 +517,17 @@ func command(horizonConfig horizon.Config, args ...string) []string {
 		horizonConfig.CaptiveCoreBinaryPath,
 		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
+		"--captive-core-use-db=" +
+			strconv.FormatBool(horizonConfig.CaptiveCoreConfigUseDB),
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(horizonConfig.EnableCaptiveCoreIngestion),
 		"--network-passphrase",
 		horizonConfig.NetworkPassphrase,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"--checkpoint-frequency",
 		"8",
+		// Create the storage directory outside of the source repo,
+		// otherwise it will break Golang test caching.
+		"--captive-core-storage-path=" + os.TempDir(),
 	}, args...)
 }
 
@@ -263,7 +545,13 @@ func TestFillGaps(t *testing.T) {
 	horizonConfig.DatabaseURL = freshHorizonPostgresURL
 	// Initialize the DB schema
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
-	defer dbConn.Close()
+	tt.NoError(err)
+	historyQ := history.Q{dbConn}
+	defer func() {
+		historyQ.Close()
+		newDB.Close()
+	}()
+
 	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
 	tt.NoError(err)
 
@@ -307,7 +595,6 @@ func TestFillGaps(t *testing.T) {
 	// subprocesses to conflict.
 	itest.StopHorizon()
 
-	historyQ := history.Q{dbConn}
 	var oldestLedger, latestLedger int64
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))

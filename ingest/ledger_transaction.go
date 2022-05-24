@@ -83,6 +83,15 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 	return changes, nil
 }
 
+// GetOperation returns an operation by index.
+func (t *LedgerTransaction) GetOperation(index uint32) (xdr.Operation, bool) {
+	ops := t.Envelope.Operations()
+	if int(index) >= len(ops) {
+		return xdr.Operation{}, false
+	}
+	return ops[index], true
+}
+
 // GetOperationChanges returns a developer friendly representation of LedgerEntryChanges.
 // It contains only operation changes.
 func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change, error) {
@@ -116,7 +125,7 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 }
 
 func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
-	if len(ops) == 0 || int(index) >= len(ops) {
+	if int(index) >= len(ops) {
 		return []Change{}
 	}
 

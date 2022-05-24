@@ -381,6 +381,8 @@ CREATE TABLE history_trades (
     price_d bigint,
     base_offer_id bigint,
     counter_offer_id bigint,
+    rounding_slippage bigint,
+    base_is_exact boolean,
     CONSTRAINT history_trades_base_amount_check CHECK ((base_amount > 0)),
     CONSTRAINT history_trades_check CHECK ((base_asset_id < counter_asset_id)),
     CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount > 0))
@@ -440,6 +442,11 @@ CREATE TABLE history_transactions (
     memo_type character varying DEFAULT 'none'::character varying NOT NULL,
     memo character varying,
     time_bounds int8range,
+    ledger_bounds int8range,
+    min_account_sequence bigint,
+    min_account_sequence_age bigint,
+    min_account_sequence_ledger_gap bigint,
+    extra_signers text[],
     successful boolean,
     fee_charged integer,
     new_max_fee integer

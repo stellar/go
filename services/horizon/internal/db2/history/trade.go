@@ -349,7 +349,7 @@ func getCanonicalAssetOrder(
 type QTrades interface {
 	QCreateAccountsHistory
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	RebuildTradeAggregationBuckets(ctx context.Context, fromledger, toLedger uint32) error
+	RebuildTradeAggregationBuckets(ctx context.Context, fromledger, toLedger uint32, roundingSlippageFilter int) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
 	CreateHistoryLiquidityPools(ctx context.Context, poolIDs []string, batchSize int) (map[string]int64, error)
 }
