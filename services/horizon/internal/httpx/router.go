@@ -196,22 +196,24 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/assets", restPageHandler(ledgerState, actions.AssetStatsHandler{LedgerState: ledgerState}))
 
-		findPaths := ObjectActionHandler{actions.FindPathsHandler{
-			StaleThreshold:       config.StaleThreshold,
-			SetLastLedgerHeader:  true,
-			MaxPathLength:        config.MaxPathLength,
-			MaxAssetsParamLength: config.MaxAssetsPerPathRequest,
-			PathFinder:           config.PathFinder,
-		}}
-		findFixedPaths := ObjectActionHandler{actions.FindFixedPathsHandler{
-			MaxPathLength:        config.MaxPathLength,
-			SetLastLedgerHeader:  true,
-			MaxAssetsParamLength: config.MaxAssetsPerPathRequest,
-			PathFinder:           config.PathFinder,
-		}}
-		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths", findPaths)
-		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths/strict-receive", findPaths)
-		r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
+		if config.PathFinder != nil {
+			findPaths := ObjectActionHandler{actions.FindPathsHandler{
+				StaleThreshold:       config.StaleThreshold,
+				SetLastLedgerHeader:  true,
+				MaxPathLength:        config.MaxPathLength,
+				MaxAssetsParamLength: config.MaxAssetsPerPathRequest,
+				PathFinder:           config.PathFinder,
+			}}
+			findFixedPaths := ObjectActionHandler{actions.FindFixedPathsHandler{
+				MaxPathLength:        config.MaxPathLength,
+				SetLastLedgerHeader:  true,
+				MaxAssetsParamLength: config.MaxAssetsPerPathRequest,
+				PathFinder:           config.PathFinder,
+			}}
+			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths", findPaths)
+			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths/strict-receive", findPaths)
+			r.With(stateMiddleware.Wrap).Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
+		}
 		r.With(stateMiddleware.Wrap).Method(
 			http.MethodGet,
 			"/order_book",
