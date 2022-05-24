@@ -13,7 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         go: [1.17, 1.18]
-        pg: [9.6.5]
+        pg: [9.6.5, 14.3]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
         protocol-version: [18, 19]
     runs-on: ${{ matrix.os }}

@@ -48,7 +48,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         go: [1.17, 1.18]
-        pg: [9.6.5, 10]
+        pg: [9.6.5, 10, 14.3]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
