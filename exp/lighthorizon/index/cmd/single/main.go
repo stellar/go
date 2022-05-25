@@ -36,6 +36,7 @@ func main() {
 
 	flag.Parse()
 	log.SetLevel(log.InfoLevel)
+
 	ctx := context.Background()
 
 	indexStore, err := index.Connect(*targetUrl)
@@ -105,71 +106,34 @@ func main() {
 	for i := 0; i < parallel; i++ {
 		wg.Go(func() error {
 			for ledgerRange := range ch {
-				log.Infof("Working on checkpoint range [%d, %d]",
+				count := (ledgerRange.endLedger - ledgerRange.startLedger) + 1
+				nprocessed := atomic.AddUint64(&processed, uint64(count))
+
+				log.Debugf("Working on checkpoint range [%d, %d]",
 					ledgerRange.startLedger, ledgerRange.endLedger)
 
 				// Assertion for testing
 				if ledgerRange.endLedger != endLedger &&
 					(ledgerRange.endLedger+1)%64 != 0 {
-					log.Warnf("Uh oh: bad range")
+					log.Fatalf("Uh oh: bad range")
 				}
 
-				for ledgerSeq := ledgerRange.startLedger; ledgerSeq <= ledgerRange.endLedger; ledgerSeq++ {
-					ledger, err := ledgerBackend.GetLedger(ctx, ledgerSeq)
-					if err != nil {
-						log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
-						return err
-					}
-
-					checkpoint := ledgerSeq / 64
-
-					reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(*networkPassphrase, ledger)
-					if err != nil {
-						return err
-					}
-
-					for {
-						tx, err := reader.Read()
-						if err == io.EOF {
-							break
-						} else if err != nil {
-							return err
-						}
-
-						for _, part := range strings.Split(*modules, ",") {
-							var err error
-
-							switch part {
-							case "transactions":
-								err = processTransactionModule(indexStore, ledger, tx)
-							case "accounts":
-								err = processAccountsModule(indexStore, checkpoint, tx)
-							default:
-								err = fmt.Errorf("unknown module: %s", part)
-							}
-
-							if err != nil {
-								return err
-							}
-						}
-					}
-
-					nprocessed := atomic.AddUint64(&processed, 1)
-
-					// 42 is an arbitrary number so we don't get boring
-					// multiples of 10 as % updates.
-					if nprocessed%42 == 0 {
-						postProgress("Reading checkpoints",
-							nprocessed, uint64(ledgerCount), startTime)
-					}
+				err = buildIndices(ctx, indexStore, ledgerBackend,
+					*networkPassphrase,
+					strings.Split(*modules, ","),
+					ledgerRange.startLedger, ledgerRange.endLedger)
+				if err != nil {
+					return err
 				}
+
+				postProgress("Reading checkpoints",
+					nprocessed, uint64(ledgerCount), startTime)
 
 				// Upload indices once per checkpoint to save memory
 				if err := indexStore.Flush(); err != nil {
 					return err
 				}
 			}
-
 			return nil
 		})
 	}
@@ -181,8 +145,9 @@ func main() {
 	postProgress("Reading checkpoints",
 		uint64(ledgerCount), uint64(ledgerCount), startTime)
 
+	// Assertion for testing
 	if processed != uint64(ledgerCount) {
-		panic(fmt.Errorf("wtf? processed %d but expected %d", processed, ledgerCount))
+		log.Fatalf("wtf? processed %d but expected %d", processed, ledgerCount)
 	}
 
 	log.Infof("Processed %d ledgers via %d workers", processed, parallel)
@@ -190,6 +155,57 @@ func main() {
 	if err := indexStore.Flush(); err != nil {
 		panic(err)
 	}
+}
+
+func buildIndices(
+	ctx context.Context,
+	indexStore index.Store,
+	ledgerBackend *ledgerbackend.HistoryArchiveBackend,
+	networkPassphrase string,
+	modules []string,
+	startLedger, endLedger uint32,
+) error {
+	for ledgerSeq := startLedger; ledgerSeq <= endLedger; ledgerSeq++ {
+		ledger, err := ledgerBackend.GetLedger(ctx, ledgerSeq)
+		if err != nil {
+			log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
+			return err
+		}
+
+		checkpoint := ledgerSeq / 64
+
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledger)
+		if err != nil {
+			return err
+		}
+
+		for {
+			tx, err := reader.Read()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+
+			for _, part := range modules {
+				var err error
+				switch part {
+				case "transactions":
+					err = processTransactionModule(indexStore, ledger, tx)
+				case "accounts":
+					err = processAccountsModule(indexStore, checkpoint, tx)
+				default:
+					err = fmt.Errorf("unknown module: %s", part)
+				}
+
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func postProgress(prefix string, done, total uint64, startTime time.Time) {
