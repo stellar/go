@@ -94,11 +94,12 @@ jobs:
         go-version: ${{ matrix.go }}
     # In order to debug the tests, run 'touch continue' once you connect to the ssh session
     #
-    # - name: Setup upterm session
-    #  uses: lhotari/action-upterm@d23c2722bdab893785c9fbeae314cbf080645bd7
-    #  with:
-    #    ## limits ssh access and adds the ssh public key for the user which triggered the workflow
-    #    limit-access-to-actor: true
-    #    ## limits ssh access and adds the ssh public keys of the listed GitHub users
-    #    limit-access-to-users: <yourGithubUser>
+    - name: Setup upterm session
+      if: ${{ matrix.pg }} == '14.3'
+      uses: lhotari/action-upterm@d23c2722bdab893785c9fbeae314cbf080645bd7
+      with:
+        ## limits ssh access and adds the ssh public key for the user which triggered the workflow
+        limit-access-to-actor: true
+        ## limits ssh access and adds the ssh public keys of the listed GitHub users
+        limit-access-to-users: 2opremio
     - run: go test -race -cover ./...
