@@ -127,7 +127,7 @@ func main() {
 					return err
 				}
 
-				postProgress("Reading checkpoints",
+				postProgress("Reading ledgers",
 					nprocessed, uint64(ledgerCount), startTime)
 
 				// Upload indices once per checkpoint to save memory
@@ -143,7 +143,7 @@ func main() {
 		panic(err)
 	}
 
-	postProgress("Reading checkpoints",
+	postProgress("Reading ledgers",
 		uint64(ledgerCount), uint64(ledgerCount), startTime)
 
 	// Assertion for testing
