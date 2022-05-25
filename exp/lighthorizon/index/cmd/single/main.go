@@ -22,6 +22,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Module is a way to process data and store it into an index.
+type Module func(
+	idx index.Store,
+	ledger xdr.LedgerCloseMeta,
+	checkpoint uint32,
+	transaction ingest.LedgerTransaction,
+) error
+
 func main() {
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	targetUrl := flag.String("target", "file://indexes", "where to write indexes")
@@ -42,6 +50,18 @@ func main() {
 	indexStore, err := index.Connect(*targetUrl)
 	if err != nil {
 		panic(err)
+	}
+
+	moduleFuncs := []Module{}
+	for _, part := range strings.Split(*modules, ",") {
+		switch part {
+		case "transactions":
+			moduleFuncs = append(moduleFuncs, processTransaction)
+		case "accounts":
+			moduleFuncs = append(moduleFuncs, processAccounts)
+		default:
+			panic(fmt.Errorf("Unknown module: %s", part))
+		}
 	}
 
 	// Simple file os access
@@ -120,7 +140,7 @@ func main() {
 
 				err = buildIndices(ctx, indexStore, ledgerBackend,
 					*networkPassphrase,
-					strings.Split(*modules, ","),
+					moduleFuncs,
 					ledgerRange.startLedger, ledgerRange.endLedger)
 				if err != nil {
 					return err
@@ -162,7 +182,7 @@ func buildIndices(
 	indexStore index.Store,
 	ledgerBackend *ledgerbackend.HistoryArchiveBackend,
 	networkPassphrase string,
-	modules []string,
+	modules []Module,
 	startLedger, endLedger uint32,
 ) error {
 	for ledgerSeq := startLedger; ledgerSeq <= endLedger; ledgerSeq++ {
@@ -187,18 +207,8 @@ func buildIndices(
 				return err
 			}
 
-			for _, part := range modules {
-				var err error
-				switch part {
-				case "transactions":
-					err = processTransactionModule(indexStore, ledger, tx)
-				case "accounts":
-					err = processAccountsModule(indexStore, checkpoint, tx)
-				default:
-					err = fmt.Errorf("unknown module: %s", part)
-				}
-
-				if err != nil {
+			for _, module := range modules {
+				if err := module(indexStore, ledger, checkpoint, tx); err != nil {
 					return err
 				}
 			}
@@ -238,9 +248,10 @@ func postProgress(prefix string, done, total uint64, startTime time.Time) {
 	)
 }
 
-func processTransactionModule(
+func processTransaction(
 	indexStore index.Store,
 	ledger xdr.LedgerCloseMeta,
+	_ uint32,
 	tx ingest.LedgerTransaction,
 ) error {
 	return indexStore.AddTransactionToIndexes(
@@ -249,8 +260,9 @@ func processTransactionModule(
 	)
 }
 
-func processAccountsModule(
+func processAccounts(
 	indexStore index.Store,
+	_ xdr.LedgerCloseMeta,
 	checkpoint uint32,
 	tx ingest.LedgerTransaction,
 ) error {
