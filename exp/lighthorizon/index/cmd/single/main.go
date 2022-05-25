@@ -98,11 +98,8 @@ func main() {
 
 	// Create a bunch of workers that process ledgers a checkpoint range at a
 	// time (better than a ledger at a time to minimize flushes).
-	type work struct {
-		startLedger, endLedger uint32
-	}
 	wg, ctx := errgroup.WithContext(ctx)
-	ch := make(chan work, parallel)
+	ch := make(chan historyarchive.Range, parallel)
 
 	// Submit the work to the channels, breaking up the range into checkpoints.
 	go func() {
@@ -112,7 +109,7 @@ func main() {
 		ledger := startLedger
 		nextLedger := ledger + (nextCheckpoint - startLedger)
 		for ledger <= endLedger {
-			ch <- work{ledger, nextLedger}
+			ch <- historyarchive.Range{Low: ledger, High: nextLedger}
 
 			ledger = nextLedger + 1
 			// Ensure we don't exceed the upper ledger bound
@@ -126,22 +123,21 @@ func main() {
 	for i := 0; i < parallel; i++ {
 		wg.Go(func() error {
 			for ledgerRange := range ch {
-				count := (ledgerRange.endLedger - ledgerRange.startLedger) + 1
+				count := (ledgerRange.High - ledgerRange.Low) + 1
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
 
-				log.Debugf("Working on checkpoint range [%d, %d]",
-					ledgerRange.startLedger, ledgerRange.endLedger)
+				log.Debugf("Working on checkpoint range %+v", ledgerRange)
 
 				// Assertion for testing
-				if ledgerRange.endLedger != endLedger &&
-					(ledgerRange.endLedger+1)%64 != 0 {
+				if ledgerRange.High != endLedger &&
+					(ledgerRange.High+1)%64 != 0 {
 					log.Fatalf("Uh oh: bad range")
 				}
 
 				err = buildIndices(ctx, indexStore, ledgerBackend,
 					*networkPassphrase,
 					moduleFuncs,
-					ledgerRange.startLedger, ledgerRange.endLedger)
+					ledgerRange)
 				if err != nil {
 					return err
 				}
@@ -167,7 +163,7 @@ func main() {
 
 	// Assertion for testing
 	if processed != uint64(ledgerCount) {
-		log.Fatalf("wtf? processed %d but expected %d", processed, ledgerCount)
+		log.Fatalf("processed %d but expected %d", processed, ledgerCount)
 	}
 
 	log.Infof("Processed %d ledgers via %d workers", processed, parallel)
@@ -183,9 +179,9 @@ func buildIndices(
 	ledgerBackend *ledgerbackend.HistoryArchiveBackend,
 	networkPassphrase string,
 	modules []Module,
-	startLedger, endLedger uint32,
+	ledgerRange historyarchive.Range,
 ) error {
-	for ledgerSeq := startLedger; ledgerSeq <= endLedger; ledgerSeq++ {
+	for ledgerSeq := ledgerRange.Low; ledgerSeq <= ledgerRange.High; ledgerSeq++ {
 		ledger, err := ledgerBackend.GetLedger(ctx, ledgerSeq)
 		if err != nil {
 			log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
