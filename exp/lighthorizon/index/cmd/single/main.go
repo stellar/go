@@ -22,14 +22,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Module is a way to process data and store it into an index.
-type Module func(
-	idx index.Store,
-	ledger xdr.LedgerCloseMeta,
-	checkpoint uint32,
-	transaction ingest.LedgerTransaction,
-) error
-
 func main() {
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	targetUrl := flag.String("target", "file://indexes", "where to write indexes")
@@ -50,18 +42,6 @@ func main() {
 	indexStore, err := index.Connect(*targetUrl)
 	if err != nil {
 		panic(err)
-	}
-
-	moduleFuncs := []Module{}
-	for _, part := range strings.Split(*modules, ",") {
-		switch part {
-		case "transactions":
-			moduleFuncs = append(moduleFuncs, processTransaction)
-		case "accounts":
-			moduleFuncs = append(moduleFuncs, processAccounts)
-		default:
-			panic(fmt.Errorf("Unknown module: %s", part))
-		}
 	}
 
 	// Simple file os access
@@ -101,6 +81,18 @@ func main() {
 	wg, ctx := errgroup.WithContext(ctx)
 	ch := make(chan historyarchive.Range, parallel)
 
+	indexBuilder := NewIndexBuilder(indexStore, *ledgerBackend, *networkPassphrase)
+	for _, part := range strings.Split(*modules, ",") {
+		switch part {
+		case "transactions":
+			indexBuilder.RegisterModule(processTransaction)
+		case "accounts":
+			indexBuilder.RegisterModule(processAccounts)
+		default:
+			panic(fmt.Errorf("Unknown module: %s", part))
+		}
+	}
+
 	// Submit the work to the channels, breaking up the range into checkpoints.
 	go func() {
 		// Recall: A ledger X is a checkpoint ledger iff (X + 1) % 64 == 0
@@ -134,10 +126,7 @@ func main() {
 					log.Fatalf("Uh oh: bad range")
 				}
 
-				err = buildIndices(ctx, indexStore, ledgerBackend,
-					*networkPassphrase,
-					moduleFuncs,
-					ledgerRange)
+				err = indexBuilder.Build(ctx, ledgerRange)
 				if err != nil {
 					return err
 				}
@@ -173,16 +162,59 @@ func main() {
 	}
 }
 
-func buildIndices(
-	ctx context.Context,
+// Module is a way to process data and store it into an index.
+type Module func(
+	idx index.Store,
+	ledger xdr.LedgerCloseMeta,
+	checkpoint uint32,
+	transaction ingest.LedgerTransaction,
+) error
+
+// IndexBuilder contains everything needed to build indices from ledger ranges.
+type IndexBuilder struct {
+	store             index.Store
+	history           ledgerbackend.HistoryArchiveBackend
+	networkPassphrase string
+
+	modules []Module
+}
+
+func NewIndexBuilder(
 	indexStore index.Store,
-	ledgerBackend *ledgerbackend.HistoryArchiveBackend,
+	backend ledgerbackend.HistoryArchiveBackend,
 	networkPassphrase string,
-	modules []Module,
-	ledgerRange historyarchive.Range,
+) *IndexBuilder {
+	return &IndexBuilder{
+		store:             indexStore,
+		history:           backend,
+		networkPassphrase: networkPassphrase,
+	}
+}
+
+// RegisterModule adds a module to process every given ledger. It is not
+// threadsafe and all calls should be made *before* any calls to `Build`.
+func (builder *IndexBuilder) RegisterModule(module Module) {
+	builder.modules = append(builder.modules, module)
+}
+
+// RunModules executes all of the registered modules on the given ledger.
+func (builder *IndexBuilder) RunModules(
+	ledger xdr.LedgerCloseMeta,
+	checkpoint uint32,
+	tx ingest.LedgerTransaction,
 ) error {
+	for _, module := range builder.modules {
+		if err := module(builder.store, ledger, checkpoint, tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchive.Range) error {
 	for ledgerSeq := ledgerRange.Low; ledgerSeq <= ledgerRange.High; ledgerSeq++ {
-		ledger, err := ledgerBackend.GetLedger(ctx, ledgerSeq)
+		ledger, err := builder.history.GetLedger(ctx, ledgerSeq)
 		if err != nil {
 			log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
 			return err
@@ -190,7 +222,8 @@ func buildIndices(
 
 		checkpoint := ledgerSeq / 64
 
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledger)
+		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(
+			builder.networkPassphrase, ledger)
 		if err != nil {
 			return err
 		}
@@ -203,10 +236,8 @@ func buildIndices(
 				return err
 			}
 
-			for _, module := range modules {
-				if err := module(indexStore, ledger, checkpoint, tx); err != nil {
-					return err
-				}
+			if err := builder.RunModules(ledger, checkpoint, tx); err != nil {
+				return err
 			}
 		}
 	}
