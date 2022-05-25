@@ -1,6 +1,7 @@
 package history
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/guregu/null"
@@ -114,7 +115,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 			},
 		},
 		Asset:              asset,
-		LastModifiedLedger: 123,
+		LastModifiedLedger: 300,
 		Amount:             10,
 	}
 
@@ -126,6 +127,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Claimant:  xdr.MustAddressPtr(dest1),
 	}
 
+	// this validates the cb query with claimant parameter
 	cbs, err := q.GetClaimableBalances(tt.Ctx, query)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 2)
@@ -134,11 +136,28 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		tt.Assert.Equal(dest1, cb.Claimants[0].Destination)
 	}
 
+	// this validates the cb query with different claimant parameter
 	query.Claimant = xdr.MustAddressPtr(dest2)
 	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 1)
 	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
+
+	// this validates the cb query with claimant and cb.id/ledger cursor parameters
+	query.PageQuery = db2.MustPageQuery(fmt.Sprintf("%v-%s", 150, cbs[0].BalanceID), false, "", 10)
+	query.Claimant = xdr.MustAddressPtr(dest1)
+	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cbs, 1)
+	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
+
+	// this validates the cb query with no claimant parameter,
+	// should still produce working sql, as it triggers different LIMIT position in sql.
+	query.PageQuery = db2.MustPageQuery("", false, "", 1)
+	query.Claimant = nil
+	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(cbs, 1)
 }
 
 func TestUpdateClaimableBalance(t *testing.T) {
