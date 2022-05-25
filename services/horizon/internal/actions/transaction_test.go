@@ -2,6 +2,7 @@ package actions
 
 import (
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -118,7 +119,7 @@ func checkOuterHashResponse(
 	transactionResponse horizon.Transaction,
 ) {
 	tt.Assert.Equal(fixture.Transaction.Account, transactionResponse.Account)
-	tt.Assert.Equal(fixture.Transaction.AccountSequence, transactionResponse.AccountSequence)
+	tt.Assert.Equal(fixture.Transaction.AccountSequence, strconv.FormatInt(transactionResponse.AccountSequence, 10))
 	tt.Assert.Equal(fixture.Transaction.FeeAccount.String, transactionResponse.FeeAccount)
 	tt.Assert.Equal(fixture.Transaction.FeeCharged, transactionResponse.FeeCharged)
 	tt.Assert.Equal(fixture.Transaction.TransactionHash, transactionResponse.ID)
