@@ -77,38 +77,48 @@ func main() {
 
 	// Create a bunch of workers that process ledgers a checkpoint range at a
 	// time (better than a ledger at a time to minimize flushes).
+	type work struct {
+		startLedger, endLedger uint32
+	}
 	wg, ctx := errgroup.WithContext(ctx)
-	ch := make(chan uint32, parallel)
+	ch := make(chan work, parallel)
 
 	// Submit the work to the channels, breaking up the range into checkpoints.
 	go func() {
-		for i := startLedger; i <= endLedger; i += 64 {
-			ch <- i
+		// Recall: A ledger X is a checkpoint ledger iff (X + 1) % 64 == 0
+		nextCheckpoint := (((startLedger / 64) * 64) + 63)
+
+		ledger := startLedger
+		nextLedger := ledger + (nextCheckpoint - startLedger)
+		for ledger <= endLedger {
+			ch <- work{ledger, nextLedger}
+
+			ledger = nextLedger + 1
+			// Ensure we don't exceed the upper ledger bound
+			nextLedger = uint32(min(int(endLedger), int(ledger+63)))
 		}
+
 		close(ch)
 	}()
 
 	processed := uint64(0)
 	for i := 0; i < parallel; i++ {
 		wg.Go(func() error {
-			for ledgerStartSeq := range ch {
-				top := min(
-					64,
-					// If this is the last checkpoint range, we might not have
-					// requested a full 64 ledgers, so make sure we cap the
-					// worker appropriately. We also do +1 here because the
-					// `endLedger` in the range is inclusive.
-					int(1+endLedger-ledgerStartSeq),
-				)
+			for ledgerRange := range ch {
+				log.Infof("Working on checkpoint range [%d, %d]",
+					ledgerRange.startLedger, ledgerRange.endLedger)
 
-				for i := 0; i < top; i++ {
-					ledgerSeq := ledgerStartSeq + uint32(i)
+				// Assertion for testing
+				if ledgerRange.endLedger != endLedger &&
+					(ledgerRange.endLedger+1)%64 != 0 {
+					log.Warnf("Uh oh: bad range")
+				}
 
+				for ledgerSeq := ledgerRange.startLedger; ledgerSeq <= ledgerRange.endLedger; ledgerSeq++ {
 					ledger, err := ledgerBackend.GetLedger(ctx, ledgerSeq)
 					if err != nil {
 						log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
-						ch <- ledgerSeq
-						continue
+						return err
 					}
 
 					checkpoint := ledgerSeq / 64
