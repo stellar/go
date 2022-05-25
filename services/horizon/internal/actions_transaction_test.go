@@ -341,7 +341,6 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(200, w.Code)
 	ht.Assert.Contains(w.Body.String(), `"result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="`)
-	ht.Assert.Contains(w.Body.String(), `"source_account_sequence": "8589934593"`)
 }
 
 func TestTransactionActions_PostFailed(t *testing.T) {

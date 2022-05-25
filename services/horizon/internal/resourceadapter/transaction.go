@@ -14,7 +14,6 @@ import (
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -37,11 +36,7 @@ func PopulateTransaction(
 		muxedAccount := xdr.MustMuxedAddress(dest.AccountMuxed)
 		dest.AccountMuxedID = uint64(muxedAccount.Med25519.Id)
 	}
-	accountSequence, err := strconv.ParseInt(row.AccountSequence, 10, 64)
-	if err != nil {
-		return errors.Wrap(err, "error parsing row.AccountSequence")
-	}
-	dest.AccountSequence = accountSequence
+	dest.AccountSequence = row.AccountSequence
 
 	dest.FeeCharged = row.FeeCharged
 
