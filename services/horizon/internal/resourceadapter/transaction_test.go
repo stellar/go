@@ -30,7 +30,8 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
-			Successful: true,
+			Successful:      true,
+			AccountSequence: "1",
 		},
 	}
 
@@ -40,7 +41,8 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
-			Successful: false,
+			Successful:      false,
+			AccountSequence: "1",
 		},
 	}
 
@@ -53,8 +55,9 @@ func TestPopulateTransaction_HashMemo(t *testing.T) {
 	dest := Transaction{}
 	row := history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
-			MemoType: "hash",
-			Memo:     null.StringFrom("abcdef"),
+			MemoType:        "hash",
+			Memo:            null.StringFrom("abcdef"),
+			AccountSequence: "1",
 		},
 	}
 	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
@@ -119,9 +122,10 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 		assert.NoError(t, err)
 		row := history.Transaction{
 			TransactionWithoutLedger: history.TransactionWithoutLedger{
-				MemoType:   "text",
-				TxEnvelope: envelopeXDR,
-				Memo:       null.StringFrom("sample"),
+				MemoType:        "text",
+				TxEnvelope:      envelopeXDR,
+				Memo:            null.StringFrom("sample"),
+				AccountSequence: "1",
 			},
 		}
 
@@ -146,8 +150,9 @@ func TestPopulateTransaction_Fee(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
-			MaxFee:     10000,
-			FeeCharged: 100,
+			MaxFee:          10000,
+			FeeCharged:      100,
+			AccountSequence: "1",
 		},
 	}
 
@@ -176,6 +181,7 @@ func TestPopulateTransaction_Preconditions(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
+			AccountSequence: "1",
 			TimeBounds: history.TimeBounds{
 				Lower: null.IntFrom(stellarTime.MillisFromTime(validAfter).ToInt64() / 1000),
 				Upper: null.IntFrom(stellarTime.MillisFromTime(validBefore).ToInt64() / 1000),
@@ -277,6 +283,7 @@ func TestPopulateTransaction_PreconditionsV2(t *testing.T) {
 		envelopeTimebounds := envelope.TimeBounds()
 		row := history.Transaction{
 			TransactionWithoutLedger: history.TransactionWithoutLedger{
+				AccountSequence: "1",
 				TimeBounds: history.TimeBounds{
 					Lower: null.IntFrom(int64(envelopeTimebounds.MinTime)),
 					Upper: null.IntFrom(int64(envelopeTimebounds.MaxTime)),
@@ -318,6 +325,7 @@ func TestPopulateTransaction_PreconditionsV2_Omissions(t *testing.T) {
 
 	for _, tx := range []history.TransactionWithoutLedger{
 		{
+			AccountSequence: "1",
 			// minimum precondition so that the field exists in general
 			MinAccountSequenceLedgerGap: null.IntFrom(0),
 			TimeBounds:                  history.TimeBounds{Null: true},
@@ -326,6 +334,7 @@ func TestPopulateTransaction_PreconditionsV2_Omissions(t *testing.T) {
 			MinAccountSequenceAge:       null.StringFrom("0"),
 			ExtraSigners:                pq.StringArray{},
 		}, {
+			AccountSequence:             "1",
 			MinAccountSequenceLedgerGap: null.IntFrom(0),
 			TimeBounds:                  history.TimeBounds{Null: true},
 			LedgerBounds:                history.LedgerBounds{Null: true},
@@ -368,6 +377,7 @@ func TestFeeBumpTransaction(t *testing.T) {
 			FeeAccount:           null.StringFrom("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ"),
 			FeeAccountMuxed:      null.StringFrom("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ"),
 			Account:              "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+			AccountSequence:      "1",
 			AccountMuxed:         null.StringFrom("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
 			NewMaxFee:            null.IntFrom(10000),
 			InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
