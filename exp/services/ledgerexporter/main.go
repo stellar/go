@@ -64,14 +64,23 @@ func main() {
 
 	latestLedger := readLatestLedger(target)
 
+	// Build the appropriate range for the given backend state.
 	var ledgerRange ledgerbackend.Range
-	if *startingLedger == 0 {
+	startLedger := uint32(*startingLedger)
+	if startLedger == 0 {
 		ledgerRange = ledgerbackend.UnboundedRange(latestLedger)
-	} else if *startingLedger != 0 && latestLedger == 2 {
-		ledgerRange = ledgerbackend.UnboundedRange(uint32(*startingLedger))
-		latestLedger = uint32(*startingLedger)
+	} else if startLedger > 0 && latestLedger == 2 {
+		// Special case: if the starting ledger is set but there's no ledger in
+		// the backend (i.e. it's 2), the starting ledger becomes an unbounded
+		// the lower bound
+		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
+		latestLedger = startLedger
 	} else {
-		ledgerRange = ledgerbackend.BoundedRange(uint32(*startingLedger), latestLedger)
+		if startLedger >= latestLedger {
+			logger.Fatalf("Invalid ledger range: %d >= %d",
+				startLedger, latestLedger)
+		}
+		ledgerRange = ledgerbackend.BoundedRange(startLedger, latestLedger)
 	}
 
 	err = core.PrepareRange(context.Background(), ledgerRange)
