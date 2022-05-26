@@ -52,6 +52,8 @@ type Config struct {
 	// DisablePoolPathFinding configures horizon to run path finding without including liquidity pools
 	// in the path finding search.
 	DisablePoolPathFinding bool
+	// DisablePathFinding configures horizon without the path finding endpoint.
+	DisablePathFinding bool
 	// MaxPathFindingRequests is the maximum number of path finding requests horizon will allow
 	// in a 1-second period. A value of 0 disables the limit.
 	MaxPathFindingRequests uint
