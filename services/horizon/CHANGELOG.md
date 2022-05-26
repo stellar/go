@@ -5,6 +5,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- Run postgres autovacuum on `history_trades_60000` table more frequently
+  ([4412](https://github.com/stellar/go/pull/4412)).
 - Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
 - Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
 - Postgres connections for non ingesting Horizon instances are now configured to timeout on long running queries / transactions ([4390](https://github.com/stellar/go/pull/4390)).
