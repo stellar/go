@@ -326,6 +326,7 @@ func TestPopulateTransaction_PreconditionsV2_Omissions(t *testing.T) {
 			MinAccountSequenceAge:       null.StringFrom("0"),
 			ExtraSigners:                pq.StringArray{},
 		}, {
+			AccountSequence:             1,
 			MinAccountSequenceLedgerGap: null.IntFrom(0),
 			TimeBounds:                  history.TimeBounds{Null: true},
 			LedgerBounds:                history.LedgerBounds{Null: true},
@@ -368,6 +369,7 @@ func TestFeeBumpTransaction(t *testing.T) {
 			FeeAccount:           null.StringFrom("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ"),
 			FeeAccountMuxed:      null.StringFrom("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ"),
 			Account:              "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+			AccountSequence:      1,
 			AccountMuxed:         null.StringFrom("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
 			NewMaxFee:            null.IntFrom(10000),
 			InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),

@@ -511,7 +511,7 @@ type Transaction struct {
 	Account           string    `json:"source_account"`
 	AccountMuxed      string    `json:"account_muxed,omitempty"`
 	AccountMuxedID    uint64    `json:"account_muxed_id,omitempty,string"`
-	AccountSequence   string    `json:"source_account_sequence"`
+	AccountSequence   int64     `json:"source_account_sequence,string"`
 	FeeAccount        string    `json:"fee_account"`
 	FeeAccountMuxed   string    `json:"fee_account_muxed,omitempty"`
 	FeeAccountMuxedID uint64    `json:"fee_account_muxed_id,omitempty,string"`
