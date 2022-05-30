@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Run postgres autovacuum on `history_trades_60000` table more frequently
+  ([4412](https://github.com/stellar/go/pull/4412)).
+
 ## 2.18.0
 
 * New Experimental Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse.

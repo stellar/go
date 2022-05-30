@@ -79,7 +79,7 @@ func TestTxSubResult(t *testing.T) {
 			LedgerSequence:   int32(sequence),
 			ApplicationOrder: 1,
 			Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-			AccountSequence:  "78621794419880145",
+			AccountSequence:  78621794419880145,
 			MaxFee:           200,
 			FeeCharged:       300,
 			OperationCount:   1,
