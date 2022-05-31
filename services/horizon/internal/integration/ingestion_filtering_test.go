@@ -18,8 +18,8 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 	const adminPort uint16 = 6000
 	itest := integration.NewTest(t, integration.Config{
 		HorizonParameters: map[string]string{
-			"admin-port":                 strconv.Itoa(int(adminPort)),
-			"enable-ingestion-filtering": "true",
+			"admin-port":                     strconv.Itoa(int(adminPort)),
+			"exp-enable-ingestion-filtering": "true",
 		},
 	})
 
@@ -94,8 +94,8 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	const adminPort uint16 = 6000
 	itest := integration.NewTest(t, integration.Config{
 		HorizonParameters: map[string]string{
-			"admin-port":                 strconv.Itoa(int(adminPort)),
-			"enable-ingestion-filtering": "true",
+			"admin-port":                     strconv.Itoa(int(adminPort)),
+			"exp-enable-ingestion-filtering": "true",
 		},
 	})
 
