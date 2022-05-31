@@ -127,7 +127,7 @@ func main() {
 					return err
 				}
 
-				postProgress("Reading ledgers",
+				printProgress("Reading ledgers",
 					nprocessed, uint64(ledgerCount), startTime)
 
 				// Upload indices once per checkpoint to save memory
@@ -143,7 +143,7 @@ func main() {
 		panic(err)
 	}
 
-	postProgress("Reading ledgers",
+	printProgress("Reading ledgers",
 		uint64(ledgerCount), uint64(ledgerCount), startTime)
 
 	// Assertion for testing
@@ -158,7 +158,7 @@ func main() {
 	}
 }
 
-func postProgress(prefix string, done, total uint64, startTime time.Time) {
+func printProgress(prefix string, done, total uint64, startTime time.Time) {
 	// This should never happen, more of a runtime assertion for now.
 	// We can remove it when production-ready.
 	if done > total {
