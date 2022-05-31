@@ -127,6 +127,9 @@ func (id *ID) IncOperationOrder() {
 }
 
 // New creates a new total order ID
+//
+// FIXME: I feel like since ledger sequences are uint32s, TOIDs should
+// take that into account for the ledger parameter...
 func New(ledger int32, tx int32, op int32) *ID {
 	return &ID{
 		LedgerSequence:   ledger,
