@@ -264,7 +264,6 @@ type IngestionQ interface {
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
-	QTxSubmissionResult
 
 	Begin() error
 	BeginTx(*sql.TxOptions) error
@@ -282,6 +281,7 @@ type IngestionQ interface {
 	GetLiquidityPoolCompactionSequence(context.Context) (uint32, error)
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
+	DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
 
 // QAccounts defines account related queries.
@@ -716,6 +716,12 @@ type Trade struct {
 // Transaction is a row of data from the `history_transactions` table
 type Transaction struct {
 	LedgerCloseTime time.Time `db:"ledger_close_time"`
+	TransactionWithoutLedger
+}
+
+// Transaction is a row of data from the `history_transactions_filtered_tmp` table
+type TransactionFilteredTmp struct {
+	CreatedAt time.Time `db:"created_at"`
 	TransactionWithoutLedger
 }
 
