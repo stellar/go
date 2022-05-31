@@ -71,7 +71,7 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 			return err
 		}
 
-		checkpoint := ledgerSeq / 64
+		checkpoint := (ledgerSeq / 64) + 1
 
 		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(
 			builder.networkPassphrase, ledger)
