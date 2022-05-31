@@ -240,6 +240,7 @@ type AccountEntry struct {
 
 type IngestionQ interface {
 	QAccounts
+	QFilter
 	QAssetStats
 	QClaimableBalances
 	QHistoryClaimableBalances
@@ -263,11 +264,13 @@ type IngestionQ interface {
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
+	QTxSubmissionResult
 
 	Begin() error
 	BeginTx(*sql.TxOptions) error
 	Commit() error
 	CloneIngestionQ() IngestionQ
+	Close() error
 	Rollback() error
 	GetTx() *sqlx.Tx
 	GetIngestVersion(context.Context) (int, error)

@@ -1,5 +1,6 @@
 //lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
 //lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
+
 // Package xdr is generated from:
 //
 //  xdr/Stellar-SCP.x

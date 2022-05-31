@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,7 +44,7 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 
 // Add adds a new transaction to the batch
 func (i *transactionBatchInsertBuilder) Add(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32) error {
-	row, err := i.transactionToRow(transaction, sequence)
+	row, err := transactionToRow(transaction, sequence, i.encodingBuffer)
 	if err != nil {
 		return err
 	}
@@ -121,7 +120,7 @@ type TransactionWithoutLedger struct {
 	ApplicationOrder            int32          `db:"application_order"`
 	Account                     string         `db:"account"`
 	AccountMuxed                null.String    `db:"account_muxed"`
-	AccountSequence             string         `db:"account_sequence"`
+	AccountSequence             int64          `db:"account_sequence"`
 	MaxFee                      int64          `db:"max_fee"`
 	FeeCharged                  int64          `db:"fee_charged"`
 	OperationCount              int32          `db:"operation_count"`
@@ -148,20 +147,20 @@ type TransactionWithoutLedger struct {
 	InnerSignatures             pq.StringArray `db:"inner_signatures"`
 }
 
-func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
-	envelopeBase64, err := i.encodingBuffer.MarshalBase64(transaction.Envelope)
+func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32, encodingBuffer *xdr.EncodingBuffer) (TransactionWithoutLedger, error) {
+	envelopeBase64, err := encodingBuffer.MarshalBase64(transaction.Envelope)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	resultBase64, err := i.encodingBuffer.MarshalBase64(&transaction.Result.Result)
+	resultBase64, err := encodingBuffer.MarshalBase64(&transaction.Result.Result)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	metaBase64, err := i.encodingBuffer.MarshalBase64(transaction.UnsafeMeta)
+	metaBase64, err := encodingBuffer.MarshalBase64(transaction.UnsafeMeta)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	feeMetaBase64, err := i.encodingBuffer.MarshalBase64(transaction.FeeChanges)
+	feeMetaBase64, err := encodingBuffer.MarshalBase64(transaction.FeeChanges)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
@@ -179,7 +178,7 @@ func (i *transactionBatchInsertBuilder) transactionToRow(transaction ingest.Ledg
 		ApplicationOrder:            int32(transaction.Index),
 		Account:                     account.Address(),
 		AccountMuxed:                accountMuxed,
-		AccountSequence:             strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		AccountSequence:             transaction.Envelope.SeqNum(),
 		MaxFee:                      int64(transaction.Envelope.Fee()),
 		FeeCharged:                  int64(transaction.Result.Result.FeeCharged),
 		OperationCount:              int32(len(transaction.Envelope.Operations())),
