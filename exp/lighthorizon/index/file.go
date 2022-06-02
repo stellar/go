@@ -1,15 +1,17 @@
 package index
 
 import (
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 )
 
 type FileBackend struct {
@@ -50,9 +52,21 @@ func (s *FileBackend) FlushAccounts(accounts []string) error {
 
 	defer f.Close()
 
-	accountsString := strings.Join(accounts, "\n") + "\n" // trailing newline
-	if _, err := f.Write([]byte(accountsString)); err != nil {
-		return errors.Wrapf(err, "writing to %s failed", path)
+	for _, account := range accounts {
+		muxed := xdr.MuxedAccount{}
+		if err := muxed.SetAddress(account); err != nil {
+			return errors.Wrapf(err, "failed to encode %s", account)
+		}
+
+		raw, err := muxed.MarshalBinary()
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal %s", account)
+		}
+
+		_, err = f.Write(raw)
+		if err != nil {
+			return errors.Wrapf(err, "failed to write to %s", path)
+		}
 	}
 
 	return nil
@@ -142,18 +156,48 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	path := filepath.Join(s.dir, "accounts")
 	log.Debugf("Opening accounts list at %s", path)
 
-	// This file probably isn't insurmountably large (TODO: Confirm that), so we
-	// can probably read it all in one go.
+	// The entirety of pubnet accounts in a single file will consume ~400MB
+	// (according to Hubble + napkin math). That should never be done on a
+	// single machine anyway. Thus, if this file is insurmountably large to fit
+	// into memory, you should be splitting the work better. That means we can
+	// safely read it all in one go.
 	buffer, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return nil, err
 	} else if err != nil {
 		return nil, errors.Wrapf(err, "failed to read %s", path)
 	} else if len(buffer) == 0 {
+		// This is probably an error... We could also return os.ErrNotExist?
 		return nil, fmt.Errorf("account list at %s is empty", path)
 	}
 
-	return strings.Split(string(buffer), "\n"), nil
+	// The capacity here is ballparked based on all of the values being
+	// G-addresses (32 public key bytes) plus the key type (4 bytes). Note that
+	// this means it's never too large, but might be too small.
+	accounts := make([]string, 0, len(buffer)/36)
+
+	// We don't use UnmarshalBinary here because we need to know how much of
+	// the file was read for each account.
+	reader := bytes.NewReader(buffer)
+	d := xdr3.NewDecoder(reader)
+
+	for i := 0; i < len(buffer); {
+		muxed := xdr.MuxedAccount{}
+		readBytes, err := muxed.DecodeFrom(d)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to decode account")
+		}
+
+		account, err := muxed.GetAddress()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get strkey")
+		}
+
+		accounts = append(accounts, account)
+		i += readBytes
+	}
+
+	return accounts, nil
 }
 
 func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
