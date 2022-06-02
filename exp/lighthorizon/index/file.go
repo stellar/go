@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
@@ -37,8 +38,23 @@ func (s *FileBackend) Flush(indexes map[string]map[string]*CheckpointIndex) erro
 func (s *FileBackend) FlushAccounts(accounts []string) error {
 	path := filepath.Join(s.dir, "accounts")
 
-	accountsString := strings.Join(accounts, "\n")
-	return os.WriteFile(path, []byte(accountsString), fs.ModeDir|0755)
+	f, err := os.OpenFile(path, os.O_CREATE|
+		os.O_APPEND| // crucial! since we might flush from various sources
+		os.O_WRONLY,
+		0664) // rw-rw-r--
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to open account file at %s", path)
+	}
+
+	defer f.Close()
+
+	accountsString := strings.Join(accounts, "\n") + "\n" // trailing newline
+	if _, err := f.Write([]byte(accountsString)); err != nil {
+		return errors.Wrapf(err, "writing to %s failed", path)
+	}
+
+	return nil
 }
 
 func (s *FileBackend) writeBatch(b *batch) error {
