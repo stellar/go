@@ -2,6 +2,7 @@ package index
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -138,7 +139,21 @@ func (s *FileBackend) Read(account string) (map[string]*CheckpointIndex, error) 
 }
 
 func (s *FileBackend) ReadAccounts() ([]string, error) {
-	panic("TODO")
+	path := filepath.Join(s.dir, "accounts")
+	log.Debugf("Opening accounts list at %s", path)
+
+	// This file probably isn't insurmountably large (TODO: Confirm that), so we
+	// can probably read it all in one go.
+	buffer, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil, err
+	} else if err != nil {
+		return nil, errors.Wrapf(err, "failed to read %s", path)
+	} else if len(buffer) == 0 {
+		return nil, fmt.Errorf("account list at %s is empty", path)
+	}
+
+	return strings.Split(string(buffer), "\n"), nil
 }
 
 func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
