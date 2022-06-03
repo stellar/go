@@ -16,8 +16,8 @@ import (
 
 type HorizonDB interface {
 	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
-	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
-	TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
+	PreFilteredTransactionByHash(ctx context.Context, dest interface{}, hash string) error
+	PreFilteredTransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
 	BeginTx(*sql.TxOptions) error
 	Rollback() error
@@ -352,7 +352,7 @@ func (sys *System) Tick(ctx context.Context) {
 			sinceLedgerSeq = 0
 		}
 
-		txs, err := db.TransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
+		txs, err := db.PreFilteredTransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
 		if err != nil && !db.NoRows(err) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return

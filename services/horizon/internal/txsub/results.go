@@ -12,7 +12,7 @@ import (
 func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Transaction, error) {
 	// query history database
 	var hr history.Transaction
-	err := db.TransactionByHash(ctx, &hr, hash)
+	err := db.PreFilteredTransactionByHash(ctx, &hr, hash)
 	if err == nil {
 		return txResultFromHistory(hr)
 	}

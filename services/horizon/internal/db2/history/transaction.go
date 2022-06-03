@@ -16,35 +16,27 @@ import (
 // `history_transactions` table based upon the provided hash.
 func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
 	innerOrOuter := sq.Or{sq.Eq{"ht.transaction_hash": hash}, sq.Eq{"ht.inner_transaction_hash": hash}}
-	byHashOrInnerHashFilteredIn := selectTransactionFilteredIn.Where(innerOrOuter)
-	byHashOrInnerHashFilteredOut := selectTransactionFilteredOut.Where(innerOrOuter)
+	byHashOrInnerHashHistory := selectTransactionHistory.Where(innerOrOuter)
 
-	filteredInString, args, err := byHashOrInnerHashFilteredIn.ToSql()
-	if err != nil {
-		return errors.Wrap(err, "could not get string for inner hash sql query")
-	}
-	union := byHashOrInnerHashFilteredOut.Suffix("UNION ALL "+filteredInString, args...)
+	return q.Get(ctx, dest, byHashOrInnerHashHistory)
+}
 
-	return q.Get(ctx, dest, union)
+func (q *Q) PreFilteredTransactionByHash(ctx context.Context, dest interface{}, hash string) error {
+	innerOrOuter := sq.Or{sq.Eq{"ht.transaction_hash": hash}, sq.Eq{"ht.inner_transaction_hash": hash}}
+	byHashOrInnerHashPreFilter := selectTransactionPreFilteredTmp.Where(innerOrOuter)
+
+	return q.Get(ctx, dest, byHashOrInnerHashPreFilter)
 }
 
 // TransactionsByHashesSinceLedger fetches transactions from the `history_transactions`
 // table which match the given hash since the given ledger sequence (for perf reasons).
-func (q *Q) TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]Transaction, error) {
+func (q *Q) PreFilteredTransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]Transaction, error) {
 	var dest []Transaction
 	innerOrOuterAndSeqGtEq :=
 		sq.And{sq.GtOrEq{"ht.ledger_sequence": sinceLedgerSeq}, sq.Or{sq.Eq{"ht.transaction_hash": hashes}, sq.Eq{"ht.inner_transaction_hash": hashes}}}
-	filteredIn := selectTransactionFilteredIn.Where(innerOrOuterAndSeqGtEq)
-	filteredOut := selectTransactionFilteredOut.Where(innerOrOuterAndSeqGtEq)
+	preFilterTxs := selectTransactionPreFilteredTmp.Where(innerOrOuterAndSeqGtEq)
 
-	filteredInString, args, err := filteredIn.ToSql()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get string for inner hash sql query")
-	}
-	union := filteredOut.Suffix("UNION ALL "+filteredInString, args...)
-
-	err = q.Select(ctx, &dest, union)
-	if err != nil {
+	if err := q.Select(ctx, &dest, preFilterTxs); err != nil {
 		return nil, err
 	}
 
@@ -58,7 +50,7 @@ func (q *Q) TransactionsByIDs(ctx context.Context, ids ...int64) (map[int64]Tran
 		return nil, errors.New("no id arguments provided")
 	}
 
-	sql := selectTransactionFilteredIn.Where(map[string]interface{}{
+	sql := selectTransactionHistory.Where(map[string]interface{}{
 		"ht.id": ids,
 	})
 
@@ -92,7 +84,7 @@ func (q *Q) DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldIn
 func (q *Q) Transactions() *TransactionsQ {
 	return &TransactionsQ{
 		parent:        q,
-		sql:           selectTransactionFilteredIn,
+		sql:           selectTransactionHistory,
 		includeFailed: false,
 	}
 }
@@ -277,5 +269,5 @@ func selectTransaction(table string) sq.SelectBuilder {
 		LeftJoin("history_ledgers hl ON ht.ledger_sequence = hl.sequence")
 }
 
-var selectTransactionFilteredIn = selectTransaction("history_transactions")
-var selectTransactionFilteredOut = selectTransaction("history_transactions_filtered_tmp")
+var selectTransactionHistory = selectTransaction("history_transactions")
+var selectTransactionPreFilteredTmp = selectTransaction("history_transactions_filtered_tmp")
