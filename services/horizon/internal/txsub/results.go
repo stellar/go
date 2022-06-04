@@ -17,6 +17,11 @@ func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Tra
 		return txResultFromHistory(hr)
 	}
 
+	err = db.TransactionByHash(ctx, &hr, hash)
+	if err == nil {
+		return txResultFromHistory(hr)
+	}
+
 	if !db.NoRows(err) {
 		return hr, errors.Wrap(err, "could not lookup transaction by hash")
 	}
