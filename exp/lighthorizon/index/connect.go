@@ -1,7 +1,7 @@
 package index
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
 	"path/filepath"
 
@@ -20,12 +20,14 @@ func Connect(backendUrl string) (Store, error) {
 		if region := query.Get("region"); region != "" {
 			config.Region = aws.String(region)
 		}
+
 		return NewS3Store(config, parsed.Path, 20)
 
 	case "file":
 		return NewFileStore(filepath.Join(parsed.Host, parsed.Path), 20)
 
 	default:
-		return nil, errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
+		return nil, fmt.Errorf("unknown URL scheme: '%s' (from %s)",
+			parsed.Scheme, backendUrl)
 	}
 }
