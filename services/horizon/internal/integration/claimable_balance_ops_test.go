@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,12 +14,6 @@ import (
 )
 
 func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
-	os.Setenv("HORIZON_INTEGRATION_TESTS_ENABLED", "true")
-	os.Setenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE", "true")
-	os.Setenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL", "19")
-	os.Setenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN", "/usr/local/bin/stellar-core")
-	integration.RunWithCaptiveCore = true
-
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()
