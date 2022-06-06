@@ -8,7 +8,7 @@ import (
 )
 
 func TestGzipWriteReadRoundtrip(t *testing.T) {
-	indexes := map[string]*CheckpointIndex{}
+	indexes := NamedIndices{}
 	index := &CheckpointIndex{}
 	index.SetActive(5)
 	indexes["A"] = index

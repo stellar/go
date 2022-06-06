@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
+
+	backend "github.com/stellar/go/exp/lighthorizon/index/backend"
 )
 
 func Connect(backendUrl string) (Store, error) {
@@ -30,4 +32,20 @@ func Connect(backendUrl string) (Store, error) {
 		return nil, fmt.Errorf("unknown URL scheme: '%s' (from %s)",
 			parsed.Scheme, backendUrl)
 	}
+}
+
+func NewFileStore(dir string, parallel uint32) (Store, error) {
+	backend, err := backend.NewFileBackend(dir, parallel)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(backend)
+}
+
+func NewS3Store(awsConfig *aws.Config, prefix string, parallel uint32) (Store, error) {
+	backend, err := backend.NewS3Backend(awsConfig, prefix, parallel)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(backend)
 }

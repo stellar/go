@@ -15,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 )
 
 const BUCKET = "horizon-index"
@@ -25,14 +27,6 @@ type S3Backend struct {
 	uploader   *s3manager.Uploader
 	parallel   uint32
 	prefix     string
-}
-
-func NewS3Store(awsConfig *aws.Config, prefix string, parallel uint32) (Store, error) {
-	backend, err := NewS3Backend(awsConfig, prefix, parallel)
-	if err != nil {
-		return nil, err
-	}
-	return NewStore(backend)
 }
 
 func NewS3Backend(awsConfig *aws.Config, prefix string, parallel uint32) (*S3Backend, error) {
@@ -72,7 +66,7 @@ func (s *S3Backend) FlushAccounts(accounts []string) error {
 	return nil
 }
 
-func (s *S3Backend) Flush(indexes map[string]map[string]*CheckpointIndex) error {
+func (s *S3Backend) Flush(indexes map[string]types.NamedIndices) error {
 	return parallelFlush(s.parallel, indexes, s.writeBatch)
 }
 
@@ -98,7 +92,7 @@ func (s *S3Backend) writeBatch(b *batch) error {
 	return nil
 }
 
-func (s *S3Backend) FlushTransactions(indexes map[string]*TrieIndex) error {
+func (s *S3Backend) FlushTransactions(indexes map[string]*types.TrieIndex) error {
 	// TODO: Parallelize this
 	var buf bytes.Buffer
 	for key, index := range indexes {
@@ -156,7 +150,7 @@ func (s *S3Backend) path(account string) string {
 	return filepath.Join(s.prefix, account[:10], account)
 }
 
-func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
+func (s *S3Backend) Read(account string) (types.NamedIndices, error) {
 	// Check if index exists in S3
 	log.Debugf("Downloading index: %s", account)
 	var err error
@@ -179,7 +173,7 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 		if n == 0 {
 			return nil, os.ErrNotExist
 		}
-		var indexes map[string]*CheckpointIndex
+		var indexes map[string]*types.CheckpointIndex
 		indexes, _, err = readGzippedFrom(bytes.NewReader(b.Bytes()))
 		if err != nil {
 			log.Errorf("Unable to parse %s: %v", account, err)
@@ -191,7 +185,7 @@ func (s *S3Backend) Read(account string) (map[string]*CheckpointIndex, error) {
 	return nil, err
 }
 
-func (s *S3Backend) ReadTransactions(prefix string) (*TrieIndex, error) {
+func (s *S3Backend) ReadTransactions(prefix string) (*types.TrieIndex, error) {
 	// Check if index exists in S3
 	log.Debugf("Downloading index: %s", prefix)
 	b := &aws.WriteAtBuffer{}
@@ -216,7 +210,7 @@ func (s *S3Backend) ReadTransactions(prefix string) (*TrieIndex, error) {
 	}
 	defer zr.Close()
 
-	var index TrieIndex
+	var index types.TrieIndex
 	_, err = index.ReadFrom(zr)
 	if err != nil {
 		log.Errorf("Unable to parse %s: %v", prefix, err)
