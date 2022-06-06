@@ -3,7 +3,7 @@ package index
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -156,45 +156,67 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	path := filepath.Join(s.dir, "accounts")
 	log.Debugf("Opening accounts list at %s", path)
 
-	// The entirety of pubnet accounts in a single file will consume ~400MB
-	// (according to Hubble + napkin math). That should never be done on a
-	// single machine anyway. Thus, if this file is insurmountably large to fit
-	// into memory, you should be splitting the work better. That means we can
-	// safely read it all in one go.
-	buffer, err := os.ReadFile(path)
+	// We read the file in chunks with guarantees that we will always read on an
+	// account boundary:
+	//
+	//   Accounts w/o IDs are always 36 bytes (4-byte type, 32-byte pubkey)
+	//   Muxed accounts with IDs are always 44 bytes (36 + 8-byte ID)
+	//
+	// If we read 36*44=1584 bytes at a time, we are guaranteed to have a
+	// complete set of accounts (no partial buffer). Then, we bump this by 4 to
+	// read a sizeable amount into memory (the built-in buffered reader does
+	// 4096 bytes at a time).
+	//
+	// This keeps minimal file data in memory.
+	const chunkSize = 4 * 36 * 44
+
+	f, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return nil, err
 	} else if err != nil {
 		return nil, errors.Wrapf(err, "failed to read %s", path)
-	} else if len(buffer) == 0 {
-		// This is probably an error... We could also return os.ErrNotExist?
-		return nil, fmt.Errorf("account list at %s is empty", path)
 	}
 
 	// The capacity here is ballparked based on all of the values being
-	// G-addresses (32 public key bytes) plus the key type (4 bytes). Note that
-	// this means it's never too large, but might be too small.
-	accounts := make([]string, 0, len(buffer)/36)
+	// G-addresses (32 public key bytes) plus the key type (4 bytes).
+	preallocationSize := chunkSize / 36
+	info, err := os.Stat(path)
+	if err == nil { // we can still safely continue w/ errors
+		// Note that this will never be too large, but may be too small.
+		preallocationSize = int(info.Size()) / 36
+	}
+	accounts := make([]string, 0, preallocationSize)
 
-	// We don't use UnmarshalBinary here because we need to know how much of
-	// the file was read for each account.
-	reader := bytes.NewReader(buffer)
-	d := xdr3.NewDecoder(reader)
+	for {
+		buffer := [chunkSize]byte{}
+		readBytes, err := f.Read(buffer[:])
 
-	for i := 0; i < len(buffer); {
-		muxed := xdr.MuxedAccount{}
-		readBytes, err := muxed.DecodeFrom(d)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to decode account")
+		if err == io.EOF || readBytes <= 0 {
+			break
+		} else if err != nil {
+			return nil, errors.Wrapf(err, "failed reading %s", path)
 		}
 
-		account, err := muxed.GetAddress()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get strkey")
-		}
+		// We don't use UnmarshalBinary here because we need to know how much of
+		// the buffer was read for each account.
+		reader := bytes.NewReader(buffer[:readBytes])
+		d := xdr3.NewDecoder(reader)
 
-		accounts = append(accounts, account)
-		i += readBytes
+		for i := 0; i < readBytes; {
+			muxed := xdr.MuxedAccount{}
+			xdrBytesRead, err := muxed.DecodeFrom(d)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to decode account")
+			}
+
+			account, err := muxed.GetAddress()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get strkey")
+			}
+
+			accounts = append(accounts, account)
+			i += xdrBytesRead
+		}
 	}
 
 	return accounts, nil
