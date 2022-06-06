@@ -192,9 +192,7 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 		// call, we peek on the reader itself to see if we've reached EOF.
 		if _, err := reader.Peek(1); err == io.EOF {
 			break
-		} else if err != nil {
-			return nil, errors.Wrapf(err, "failed reading %s", path)
-		}
+		} // let later calls bubble up other errors
 
 		muxed := xdr.MuxedAccount{}
 		_, err := muxed.DecodeFrom(decoder)
