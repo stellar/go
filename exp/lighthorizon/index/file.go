@@ -219,7 +219,19 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 		}
 	}
 
-	return accounts, nil
+	// The account list is very unlikely to be unique (especially if it was made
+	// w/ parallel flushes), so let's ensure that that's the case.
+	count := 0
+	accountMap := make(map[string]struct{}, len(accounts))
+	for _, account := range accounts {
+		if _, ok := accountMap[account]; !ok {
+			accountMap[account] = struct{}{}
+			accounts[count] = account // save memory: shove uniques to front
+			count++
+		}
+	}
+
+	return accounts[:count], nil
 }
 
 func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
