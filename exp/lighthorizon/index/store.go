@@ -60,12 +60,7 @@ func (s *store) accounts() []string {
 func (s *store) FlushAccounts() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	if err := s.backend.FlushAccounts(s.accounts()); err != nil {
-		return err
-	}
-
-	return nil
+	return s.backend.FlushAccounts(s.accounts())
 }
 
 func (s *store) Read(account string) (map[string]*CheckpointIndex, error) {
@@ -88,6 +83,9 @@ func (s *store) MergeTransactions(prefix string, other *TrieIndex) error {
 	if err := index.Merge(other); err != nil {
 		return err
 	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.txIndexes[prefix] = index
 	return nil
 }
@@ -97,6 +95,10 @@ func (s *store) Flush() error {
 	defer s.mutex.Unlock()
 
 	if err := s.backend.Flush(s.indexes); err != nil {
+		return err
+	}
+
+	if err := s.backend.FlushAccounts(s.accounts()); err != nil {
 		return err
 	}
 
@@ -159,6 +161,7 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 			return err
 		}
 	}
+
 	return nil
 }
 
