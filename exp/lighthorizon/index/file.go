@@ -38,21 +38,35 @@ func (s *FileBackend) Flush(indexes map[string]map[string]*CheckpointIndex) erro
 	return parallelFlush(s.parallel, indexes, s.writeBatch)
 }
 
+// FlushAccounts does a set union with the passed-in accounts and the existing
+// on-disk accounts.
 func (s *FileBackend) FlushAccounts(accounts []string) error {
+	existingAccounts, err := s.ReadAccounts()
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "failed to read existing accounts")
+	}
+
 	path := filepath.Join(s.dir, "accounts")
-
-	f, err := os.OpenFile(path, os.O_CREATE|
-		os.O_APPEND| // crucial! since we might flush from various sources
-		os.O_WRONLY,
-		0664) // rw-rw-r--
-
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0664) // rw-rw-r--
 	if err != nil {
 		return errors.Wrapf(err, "failed to open account file at %s", path)
 	}
-
 	defer f.Close()
 
-	for _, account := range accounts {
+	allAccounts := map[string]struct{}{} // keep a unique list
+	for i := 0; i < len(existingAccounts)+len(accounts); i++ {
+		var account string
+		if i < len(existingAccounts) {
+			account = existingAccounts[i]
+		} else {
+			account = accounts[i-len(existingAccounts)]
+		}
+
+		if _, ok := allAccounts[account]; ok {
+			continue
+		}
+		allAccounts[account] = struct{}{}
+
 		muxed := xdr.MuxedAccount{}
 		if err := muxed.SetAddress(account); err != nil {
 			return errors.Wrapf(err, "failed to encode %s", account)
