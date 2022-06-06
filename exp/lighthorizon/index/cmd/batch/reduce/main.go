@@ -32,53 +32,53 @@ type ReduceConfig struct {
 
 func ReduceConfigFromEnvironment() (*ReduceConfig, error) {
 	const (
-		mapJobsEnv          = "MAP_JOB_COUNT"
-		reduceJobsEnv       = "REDUCE_JOB_COUNT"
-		workerCountEnv      = "WORKER_COUNT"
-		jobIndexEnv         = "AWS_BATCH_JOB_ARRAY_INDEX"
-		mappedIndicesUrlEnv = "INDEX_SOURCE_ROOT"
-		finalIndexUrlEnv    = "INDEX_TARGET"
+		mapJobsEnv         = "MAP_JOB_COUNT"
+		reduceJobsEnv      = "REDUCE_JOB_COUNT"
+		workerCountEnv     = "WORKER_COUNT"
+		jobIndexEnv        = "AWS_BATCH_JOB_ARRAY_INDEX"
+		indexRootSourceEnv = "INDEX_SOURCE_ROOT"
+		indexTargetEnv     = "INDEX_TARGET"
 	)
 
 	jobIndex, err := strconv.ParseUint(os.Getenv(jobIndexEnv), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+jobIndexEnv)
 	}
-	mapJobs, err := strconv.ParseUint(os.Getenv(mapJobsEnv), 10, 32)
+	mapJobCount, err := strconv.ParseUint(os.Getenv(mapJobsEnv), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+mapJobsEnv)
 	}
-	reduceJobs, err := strconv.ParseUint(os.Getenv(reduceJobsEnv), 10, 32)
+	reduceJobCount, err := strconv.ParseUint(os.Getenv(reduceJobsEnv), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+reduceJobsEnv)
 	}
 
-	workers := os.Getenv(workerCountEnv)
-	if workers == "" {
-		workers = strconv.FormatUint(DEFAULT_WORKER_COUNT, 10)
+	workersStr := os.Getenv(workerCountEnv)
+	if workersStr == "" {
+		workersStr = strconv.FormatUint(DEFAULT_WORKER_COUNT, 10)
 	}
-	workerCount, err := strconv.ParseUint(workers, 10, 32)
+	workers, err := strconv.ParseUint(workersStr, 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+workerCountEnv)
 	}
 
-	finalIndexUrl := os.Getenv(finalIndexUrlEnv)
-	if finalIndexUrl == "" {
-		return nil, errors.New("required parameter missing " + finalIndexUrlEnv)
+	indexTarget := os.Getenv(indexTargetEnv)
+	if indexTarget == "" {
+		return nil, errors.New("required parameter missing " + indexTargetEnv)
 	}
 
-	mappedIndicesUrl := os.Getenv(mappedIndicesUrlEnv)
-	if mappedIndicesUrl == "" {
-		return nil, errors.New("required parameter missing " + mappedIndicesUrlEnv)
+	indexRootSource := os.Getenv(indexRootSourceEnv)
+	if indexRootSource == "" {
+		return nil, errors.New("required parameter missing " + indexRootSourceEnv)
 	}
 
 	return &ReduceConfig{
 		JobIndex:        uint32(jobIndex),
-		MapJobCount:     uint32(mapJobs),
-		ReduceJobCount:  uint32(reduceJobs),
-		Workers:         uint32(workerCount),
-		IndexTarget:     finalIndexUrl,
-		IndexRootSource: mappedIndicesUrl,
+		MapJobCount:     uint32(mapJobCount),
+		ReduceJobCount:  uint32(reduceJobCount),
+		Workers:         uint32(workers),
+		IndexTarget:     indexTarget,
+		IndexRootSource: indexRootSource,
 	}, nil
 }
 
