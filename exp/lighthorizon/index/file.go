@@ -1,7 +1,7 @@
 package index
 
 import (
-	"bytes"
+	"bufio"
 	"compress/gzip"
 	"io"
 	"io/fs"
@@ -162,13 +162,9 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	//   Accounts w/o IDs are always 36 bytes (4-byte type, 32-byte pubkey)
 	//   Muxed accounts with IDs are always 44 bytes (36 + 8-byte ID)
 	//
-	// If we read 36*44=1584 bytes at a time, we are guaranteed to have a
-	// complete set of accounts (no partial buffer). Then, we bump this by 4 to
-	// read a sizeable amount into memory (the built-in buffered reader does
-	// 4096 bytes at a time).
-	//
-	// This keeps minimal file data in memory.
-	const chunkSize = 4 * 36 * 44
+	// Thus, if we read 36*44=1584 bytes at a time, we are guaranteed to have a
+	// complete set of accounts (no partial ones).
+	const chunkSize = 36 * 44 * 4 // times 4 to make it a reasonable buffer
 
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -177,8 +173,7 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 		return nil, errors.Wrapf(err, "failed to read %s", path)
 	}
 
-	// The capacity here is ballparked based on all of the values being
-	// G-addresses (32 public key bytes) plus the key type (4 bytes).
+	// We ballpark the capacity assuming all of the values being G-addresses.
 	preallocationSize := chunkSize / 36
 	info, err := os.Stat(path)
 	if err == nil { // we can still safely continue w/ errors
@@ -187,36 +182,32 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	}
 	accounts := make([]string, 0, preallocationSize)
 
-	for {
-		buffer := [chunkSize]byte{}
-		readBytes, err := f.Read(buffer[:])
+	// We don't use UnmarshalBinary here because we need to know how much of
+	// the buffer was read for each account.
+	reader := bufio.NewReaderSize(f, chunkSize)
+	decoder := xdr3.NewDecoder(reader)
 
-		if err == io.EOF || readBytes <= 0 {
+	for {
+		// Since we can't decode an EOF error from the below `muxed.DecodeFrom`
+		// call, we peek on the reader itself to see if we've reached EOF.
+		if _, err := reader.Peek(1); err == io.EOF {
 			break
 		} else if err != nil {
 			return nil, errors.Wrapf(err, "failed reading %s", path)
 		}
 
-		// We don't use UnmarshalBinary here because we need to know how much of
-		// the buffer was read for each account.
-		reader := bytes.NewReader(buffer[:readBytes])
-		d := xdr3.NewDecoder(reader)
-
-		for i := 0; i < readBytes; {
-			muxed := xdr.MuxedAccount{}
-			xdrBytesRead, err := muxed.DecodeFrom(d)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to decode account")
-			}
-
-			account, err := muxed.GetAddress()
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get strkey")
-			}
-
-			accounts = append(accounts, account)
-			i += xdrBytesRead
+		muxed := xdr.MuxedAccount{}
+		_, err := muxed.DecodeFrom(decoder)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to decode account")
 		}
+
+		account, err := muxed.GetAddress()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get strkey")
+		}
+
+		accounts = append(accounts, account)
 	}
 
 	// The account list is very unlikely to be unique (especially if it was made
