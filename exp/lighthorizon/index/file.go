@@ -145,29 +145,30 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	log.Debugf("Opening accounts list at %s", path)
 
 	f, err := os.Open(path)
-	if os.IsNotExist(err) {
-		return nil, err
-	} else if err != nil {
-		return nil, errors.Wrapf(err, "failed to read %s", path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open %s", path)
 	}
 
-	// We ballpark the capacity assuming all of the values being G-addresses.
 	const gAddressSize = 56
+
+	// We ballpark the capacity assuming all of the values being G-addresses.
 	preallocationSize := 100 * gAddressSize // default to 100 lines
 	info, err := os.Stat(path)
 	if err == nil { // we can still safely continue w/ errors
 		// Note that this will never be too large, but may be too small.
-		preallocationSize = int(info.Size()) / gAddressSize
+		preallocationSize = int(info.Size()) / (gAddressSize + 1) // +1 for \n
 	}
 	accounts := make([]string, 0, preallocationSize)
 
-	// // We don't use UnmarshalBinary here because we need to know how much of
-	// // the buffer was read for each account.
+	// We don't use UnmarshalBinary here because we need to know how much of the
+	// buffer was read for each account.
 	reader := bufio.NewReaderSize(f, 100*gAddressSize) // reasonable buffer size
 	for {
 		line, err := reader.ReadString(byte('\n'))
 		if err == io.EOF {
 			break
+		} else if err != nil {
+			return accounts, errors.Wrapf(err, "failed to read %s", path)
 		}
 
 		accounts = append(accounts, line[:len(line)-1]) // trim newline
