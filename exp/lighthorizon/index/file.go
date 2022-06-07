@@ -152,17 +152,18 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	}
 
 	// We ballpark the capacity assuming all of the values being G-addresses.
-	preallocationSize := 56 * 100 // default to 100 lines
+	const gAddressSize = 56
+	preallocationSize := 100 * gAddressSize // default to 100 lines
 	info, err := os.Stat(path)
 	if err == nil { // we can still safely continue w/ errors
 		// Note that this will never be too large, but may be too small.
-		preallocationSize = int(info.Size()) / 36
+		preallocationSize = int(info.Size()) / gAddressSize
 	}
 	accounts := make([]string, 0, preallocationSize)
 
 	// // We don't use UnmarshalBinary here because we need to know how much of
 	// // the buffer was read for each account.
-	reader := bufio.NewReaderSize(f, 56*10)
+	reader := bufio.NewReaderSize(f, 100*gAddressSize) // reasonable buffer size
 	for {
 		line, err := reader.ReadString(byte('\n'))
 		if err == io.EOF {
