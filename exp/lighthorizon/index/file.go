@@ -8,10 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	xdr3 "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/xdr"
 )
 
 type FileBackend struct {
@@ -52,21 +50,11 @@ func (s *FileBackend) FlushAccounts(accounts []string) error {
 
 	defer f.Close()
 
+	// We write one account at a time because writes that occur within a single
+	// `write()` syscall are thread-safe. A larger write might be split into
+	// many calls and thus get interleaved, so we play it safe.
 	for _, account := range accounts {
-		muxed := xdr.MuxedAccount{}
-		if err := muxed.SetAddress(account); err != nil {
-			return errors.Wrapf(err, "failed to encode %s", account)
-		}
-
-		raw, err := muxed.MarshalBinary()
-		if err != nil {
-			return errors.Wrapf(err, "failed to marshal %s", account)
-		}
-
-		_, err = f.Write(raw)
-		if err != nil {
-			return errors.Wrapf(err, "failed to write to %s", path)
-		}
+		f.Write([]byte(account + "\n"))
 	}
 
 	return nil
@@ -156,16 +144,6 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	path := filepath.Join(s.dir, "accounts")
 	log.Debugf("Opening accounts list at %s", path)
 
-	// We read the file in chunks with guarantees that we will always read on an
-	// account boundary:
-	//
-	//   Accounts w/o IDs are always 36 bytes (4-byte type, 32-byte pubkey)
-	//   Muxed accounts with IDs are always 44 bytes (36 + 8-byte ID)
-	//
-	// Thus, if we read 36*44=1584 bytes at a time, we are guaranteed to have a
-	// complete set of accounts (no partial ones).
-	const chunkSize = 36 * 44 * 4 // times 4 to make it a reasonable buffer
-
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return nil, err
@@ -174,7 +152,7 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	}
 
 	// We ballpark the capacity assuming all of the values being G-addresses.
-	preallocationSize := chunkSize / 36
+	preallocationSize := 56 * 100 // default to 100 lines
 	info, err := os.Stat(path)
 	if err == nil { // we can still safely continue w/ errors
 		// Note that this will never be too large, but may be too small.
@@ -182,30 +160,16 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	}
 	accounts := make([]string, 0, preallocationSize)
 
-	// We don't use UnmarshalBinary here because we need to know how much of
-	// the buffer was read for each account.
-	reader := bufio.NewReaderSize(f, chunkSize)
-	decoder := xdr3.NewDecoder(reader)
-
+	// // We don't use UnmarshalBinary here because we need to know how much of
+	// // the buffer was read for each account.
+	reader := bufio.NewReaderSize(f, 56*10)
 	for {
-		// Since we can't decode an EOF error from the below `muxed.DecodeFrom`
-		// call, we peek on the reader itself to see if we've reached EOF.
-		if _, err := reader.Peek(1); err == io.EOF {
+		line, err := reader.ReadString(byte('\n'))
+		if err == io.EOF {
 			break
-		} // let later calls bubble up other errors
-
-		muxed := xdr.MuxedAccount{}
-		_, err := muxed.DecodeFrom(decoder)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to decode account")
 		}
 
-		account, err := muxed.GetAddress()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get strkey")
-		}
-
-		accounts = append(accounts, account)
+		accounts = append(accounts, line[:len(line)-1]) // trim newline
 	}
 
 	// The account list is very unlikely to be unique (especially if it was made
