@@ -126,7 +126,7 @@ func checkReadOnly(t testing.TB, DSN string) {
 	require.NoError(t, err)
 
 	if !rows.Next() {
-		_, err = tx.Exec("CREATE ROLE user_ro LOGIN;")
+		_, err = tx.Exec("CREATE ROLE user_ro WITH LOGIN PASSWORD 'user_ro';")
 		require.NoError(t, err)
 	}
 
@@ -153,7 +153,7 @@ func Postgres(t testing.TB) *DB {
 
 	postgresDSN := fmt.Sprintf("postgres://%s@localhost/?sslmode=disable", pgUser)
 	result.DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable&timezone=UTC", pgUser, result.dbName)
-	result.RO_DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable&timezone=UTC", "user_ro", result.dbName)
+	result.RO_DSN = fmt.Sprintf("postgres://%s:%s@localhost/%s?sslmode=disable&timezone=UTC", "user_ro", "user_ro", result.dbName)
 
 	execStatement(t, fmt.Sprintf("CREATE DATABASE %s;", result.dbName), postgresDSN)
 	execStatement(t, fmt.Sprintf("GRANT CONNECT ON DATABASE %s TO PUBLIC;", result.dbName), postgresDSN)

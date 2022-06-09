@@ -188,16 +188,6 @@ func (i *Test) configureCaptiveCore() {
 	}
 }
 
-func (i *Test) getWebParameter(argName, envName string) string {
-	if value, ok := i.config.HorizonEnvironment[envName]; ok {
-		return value
-	}
-	if value, ok := i.config.HorizonWebParameters[argName]; ok {
-		return value
-	}
-	return ""
-}
-
 func (i *Test) getIngestParameter(argName, envName string) string {
 	if value, ok := i.config.HorizonEnvironment[envName]; ok {
 		return value
