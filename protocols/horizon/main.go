@@ -21,10 +21,12 @@ import (
 // KeyTypeNames maps from strkey version bytes into json string values to use in
 // horizon responses.
 var KeyTypeNames = map[strkey.VersionByte]string{
-	strkey.VersionByteAccountID: "ed25519_public_key",
-	strkey.VersionByteSeed:      "ed25519_secret_seed",
-	strkey.VersionByteHashX:     "sha256_hash",
-	strkey.VersionByteHashTx:    "preauth_tx",
+	strkey.VersionByteAccountID:     "ed25519_public_key",
+	strkey.VersionByteSeed:          "ed25519_secret_seed",
+	strkey.VersionByteMuxedAccount:  "muxed_account",
+	strkey.VersionByteHashTx:        "preauth_tx",
+	strkey.VersionByteHashX:         "sha256_hash",
+	strkey.VersionByteSignedPayload: "ed25519_signed_payload",
 }
 
 // Account is the summary of an account
