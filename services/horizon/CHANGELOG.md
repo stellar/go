@@ -3,10 +3,15 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## V2.17.1
-
+## Pending
 - Run postgres autovacuum on `history_trades_60000` table more frequently
   ([4412](https://github.com/stellar/go/pull/4412)).
+
+
+## 2.18.1
+* Optimize the claimable balance SQL query for best index query plan performance ([4398](https://github.com/stellar/go/pull/4398))
+* Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
+
 
 ## 2.18.0
 
@@ -26,6 +31,15 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
 - Postgres connections for non ingesting Horizon instances are now configured to timeout on long running queries / transactions ([4390](https://github.com/stellar/go/pull/4390)).
 - Added `disable-path-finding` Horizon flag to disable the path finding endpoints. This flag should be enabled on ingesting Horizon instances which do not serve HTTP traffic ([4399](https://github.com/stellar/go/pull/4399)).
+
+
+## V2.17.1
+
+- Querying claimable balances has been optimized ([4385](https://github.com/stellar/go/pull/4385)).
+- Querying trade aggregations has been optimized ([4389](https://github.com/stellar/go/pull/4389)).
+- Postgres connections for non ingesting Horizon instances are now configured to timeout on long running queries / transactions ([4390](https://github.com/stellar/go/pull/4390)).
+- Added `disable-path-finding` Horizon flag to disable the path finding endpoints. This flag should be enabled on ingesting Horizon instances which do not serve HTTP traffic ([4399](https://github.com/stellar/go/pull/4399)).
+
 
 ## V2.17.0
 
