@@ -1,7 +1,9 @@
 package dbtest
 
 import (
+	"context"
 	"crypto/rand"
+	"database/sql"
 
 	"encoding/hex"
 	"fmt"
@@ -111,18 +113,25 @@ func execStatement(t testing.TB, query string, DSN string) {
 	require.NoError(t, db.Close())
 }
 
-func checkReadOnly(t testing.TB, query string, DSN string) bool {
-	db, err := sqlx.Open("postgres", DSN)
+func checkReadOnly(t testing.TB, DSN string) {
+	conn, err := sqlx.Open("postgres", DSN)
 	require.NoError(t, err)
-	rows, err := db.Query(query)
+	defer conn.Close()
+
+	tx, err := conn.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelSerializable})
 	require.NoError(t, err)
-	hasRORole := false
-	if rows.Next() {
-		hasRORole = true
+	defer tx.Rollback()
+
+	rows, err := tx.Query("SELECT FROM pg_user WHERE  usename = 'user_ro'")
+	require.NoError(t, err)
+
+	if !rows.Next() {
+		_, err = tx.Exec("CREATE ROLE user_ro LOGIN;")
+		require.NoError(t, err)
 	}
-	require.NoError(t, rows.Close())
-	require.NoError(t, db.Close())
-	return hasRORole
+
+	err = tx.Commit()
+	require.NoError(t, err)
 }
 
 // Postgres provisions a new, blank database with a random name on the localhost
@@ -152,10 +161,7 @@ func Postgres(t testing.TB) *DB {
 	execStatement(t, "GRANT SELECT ON ALL TABLES IN SCHEMA public TO PUBLIC;", result.DSN)
 	execStatement(t, "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO PUBLIC;", result.DSN)
 
-	hasRORole := checkReadOnly(t, "SELECT FROM pg_user WHERE  usename = 'user_ro'", postgresDSN)
-	if !hasRORole {
-		execStatement(t, "CREATE ROLE user_ro LOGIN;", postgresDSN)
-	}
+	checkReadOnly(t, postgresDSN)
 
 	result.closer = func() {
 		// pg_terminate_backend is a best effort, it does not gaurantee that it can close any lingering connections
