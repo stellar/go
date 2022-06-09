@@ -278,7 +278,7 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 						if os.IsNotExist(err) {
 							continue
 						} else if err != nil {
-							logger.WithError(err).Error("Error reading tx prefix %s", prefix)
+							logger.WithError(err).Errorf("Error reading tx prefix %s", prefix)
 							panic(err)
 						}
 
