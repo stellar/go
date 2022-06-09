@@ -158,6 +158,7 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 		// Note that this will never be too large, but may be too small.
 		preallocationSize = int(info.Size()) / (gAddressSize + 1) // +1 for \n
 	}
+	accountMap := make(map[string]struct{}, preallocationSize)
 	accounts := make([]string, 0, preallocationSize)
 
 	// We don't use UnmarshalBinary here because we need to know how much of the
@@ -171,22 +172,17 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 			return accounts, errors.Wrapf(err, "failed to read %s", path)
 		}
 
-		accounts = append(accounts, line[:len(line)-1]) // trim newline
-	}
+		account := line[:len(line)-1] // trim newline
 
-	// The account list is very unlikely to be unique (especially if it was made
-	// w/ parallel flushes), so let's ensure that that's the case.
-	count := 0
-	accountMap := make(map[string]struct{}, len(accounts))
-	for _, account := range accounts {
+		// The account list is very unlikely to be unique (especially if it was made
+		// w/ parallel flushes), so let's ensure that that's the case.
 		if _, ok := accountMap[account]; !ok {
 			accountMap[account] = struct{}{}
-			accounts[count] = account // save memory: shove uniques to front
-			count++
+			accounts = append(accounts, account)
 		}
 	}
 
-	return accounts[:count], nil
+	return accounts, nil
 }
 
 func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
