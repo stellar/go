@@ -780,8 +780,7 @@ INSERT INTO gorp_migrations VALUES ('52_add_trade_type_index.sql', '2021-12-02 0
 INSERT INTO gorp_migrations VALUES ('53_add_trades_rounding_slippage.sql', '2021-12-02 01:33:33.47903+00');
 INSERT INTO gorp_migrations VALUES ('54_tx_preconditions_and_account_fields.sql', '2021-12-02 01:33:33.47903+00');
 INSERT INTO gorp_migrations VALUES ('55_filter_rules.sql', '2022-01-02 01:33:33.47903+00');
-INSERT INTO gorp_migrations VALUES ('56_trade_aggregation_autovac.sql', '2022-01-02 01:33:33.47903+00');
-INSERT INTO gorp_migrations VALUES ('57_txsub_read_only.sql', '2022-01-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('56_txsub_read_only.sql', '2022-01-02 01:33:33.47903+00');
 
 
 --
