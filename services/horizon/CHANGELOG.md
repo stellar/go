@@ -11,6 +11,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## 2.18.1
 * Optimize the claimable balance SQL query for best index query plan performance ([4398](https://github.com/stellar/go/pull/4398))
 * Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
+* Optimize the claimable balance SQL query for best index query plan performance([4398](https://github.com/stellar/go/pull/4398))
 
 
 ## 2.18.0
