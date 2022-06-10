@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -17,14 +18,6 @@ type FileBackend struct {
 	parallel uint32
 }
 
-func NewFileStore(dir string, parallel uint32) (Store, error) {
-	backend, err := NewFileBackend(dir, parallel)
-	if err != nil {
-		return nil, err
-	}
-	return NewStore(backend)
-}
-
 func NewFileBackend(dir string, parallel uint32) (*FileBackend, error) {
 	return &FileBackend{
 		dir:      dir,
@@ -32,7 +25,7 @@ func NewFileBackend(dir string, parallel uint32) (*FileBackend, error) {
 	}, nil
 }
 
-func (s *FileBackend) Flush(indexes map[string]map[string]*CheckpointIndex) error {
+func (s *FileBackend) Flush(indexes map[string]types.NamedIndices) error {
 	return parallelFlush(s.parallel, indexes, s.writeBatch)
 }
 
@@ -88,7 +81,7 @@ func (s *FileBackend) writeBatch(b *batch) error {
 	return nil
 }
 
-func (s *FileBackend) FlushTransactions(indexes map[string]*TrieIndex) error {
+func (s *FileBackend) FlushTransactions(indexes map[string]*types.TrieIndex) error {
 	// TODO: Parallelize this
 	for key, index := range indexes {
 		path := filepath.Join(s.dir, "tx", key)
@@ -125,7 +118,7 @@ func (s *FileBackend) FlushTransactions(indexes map[string]*TrieIndex) error {
 	return nil
 }
 
-func (s *FileBackend) Read(account string) (map[string]*CheckpointIndex, error) {
+func (s *FileBackend) Read(account string) (types.NamedIndices, error) {
 	log.Debugf("Opening index: %s", account)
 	b, err := os.Open(filepath.Join(s.dir, account[:3], account))
 	if err != nil {
@@ -185,7 +178,7 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	return accounts, nil
 }
 
-func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
+func (s *FileBackend) ReadTransactions(prefix string) (*types.TrieIndex, error) {
 	log.Debugf("Opening index: %s", prefix)
 	b, err := os.Open(filepath.Join(s.dir, "tx", prefix))
 	if err != nil {
@@ -198,7 +191,7 @@ func (s *FileBackend) ReadTransactions(prefix string) (*TrieIndex, error) {
 		return nil, os.ErrNotExist
 	}
 	defer zr.Close()
-	var index TrieIndex
+	var index types.TrieIndex
 	_, err = index.ReadFrom(zr)
 	if err != nil {
 		log.Errorf("Unable to parse %s: %v", prefix, err)

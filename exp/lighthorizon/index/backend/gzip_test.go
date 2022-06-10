@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"testing"
 
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGzipWriteReadRoundtrip(t *testing.T) {
-	indexes := map[string]*CheckpointIndex{}
-	index := &CheckpointIndex{}
+	indexes := types.NamedIndices{}
+	index := &types.CheckpointIndex{}
 	index.SetActive(5)
 	indexes["A"] = index
 

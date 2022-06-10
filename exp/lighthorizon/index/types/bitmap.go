@@ -17,6 +17,8 @@ type CheckpointIndex struct {
 	lastCheckpoint  uint32
 }
 
+type NamedIndices map[string]*CheckpointIndex
+
 func NewCheckpointIndexFromBytes(b []byte) (*CheckpointIndex, error) {
 	xdrCheckpoint := xdr.CheckpointIndex{}
 	err := xdrCheckpoint.UnmarshalBinary(b)

@@ -5,17 +5,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 	"github.com/stellar/go/support/log"
 )
 
 type batch struct {
 	account string
-	indexes map[string]*CheckpointIndex
+	indexes types.NamedIndices
 }
 
 type flushBatch func(b *batch) error
 
-func parallelFlush(parallel uint32, allIndexes map[string]map[string]*CheckpointIndex, f flushBatch) error {
+func parallelFlush(parallel uint32, allIndexes map[string]types.NamedIndices, f flushBatch) error {
 	var wg sync.WaitGroup
 
 	batches := make(chan *batch, parallel)
