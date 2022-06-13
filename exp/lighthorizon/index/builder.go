@@ -253,10 +253,6 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 	return nil
 }
 
-func (b *IndexBuilder) GetStore() Store {
-	return b.store
-}
-
 func (b *IndexBuilder) Watch(ctx context.Context) error {
 	latestLedger, err := b.ledgerBackend.GetLatestLedgerSequence(ctx)
 	if err != nil {
@@ -266,7 +262,7 @@ func (b *IndexBuilder) Watch(ctx context.Context) error {
 
 	nextLedger := b.lastBuiltLedger + 1
 
-	log.Infof("Catching up to latest ledger (%d, %d]",
+	log.Infof("Catching up to latest ledger: (%d, %d]",
 		nextLedger, latestLedger)
 
 	if err := b.Build(ctx, historyarchive.Range{
