@@ -3,14 +3,15 @@ package actions
 import (
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
-	"net/url"
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/toid"
 )
 
 func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(http.ResponseWriter, *http.Request) {
@@ -24,11 +25,19 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 			return
 		}
 
-		query, err := url.ParseQuery(r.URL.RawQuery)
+		paginate, err := Paging(r)
 		if err != nil {
 			fmt.Fprintf(w, "Error: %v", err)
 			sendErrorResponse(w, http.StatusBadRequest)
 			return
+		}
+
+		if paginate.Cursor < 1 {
+			paginate.Cursor = toid.New(1, 1, 1).ToInt64()
+		}
+
+		if paginate.Limit < 1 {
+			paginate.Limit = 10
 		}
 
 		page := hal.Page{}
@@ -37,13 +46,17 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 
 		// For now, use a query param for now to avoid dragging in chi-router. Not
 		// really the point of the experiment yet.
-		id := query.Get("id")
-		var cursor int64
-		var eof bool
+		txId, err := RequestUnaryParam(r, "id")
+		if err != nil {
+			fmt.Fprintf(w, "Error: %v", err)
+			sendErrorResponse(w, http.StatusBadRequest)
+			return
+		}
 
-		if id != "" {
+		if txId != "" {
+			// if 'id' is on request, it overrides any paging cursor that may be on request.
 			var b []byte
-			b, err = hex.DecodeString(id)
+			b, err = hex.DecodeString(txId)
 			if err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
 				sendErrorResponse(w, http.StatusBadRequest)
@@ -56,18 +69,18 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 			var hash [32]byte
 			copy(hash[:], b)
 
-			if cursor, eof, err = indexedCursorFromHash(hash, indexStore); err != nil {
+			if paginate.Cursor, err = indexStore.TransactionTOID(hash); err != nil {
 				fmt.Fprintf(w, "Error: %v", err)
 				sendErrorResponse(w, http.StatusInternalServerError)
 			}
-			if eof {
+			if err == io.EOF {
 				page.PopulateLinks()
 				sendPageResponse(w, page)
 				return
 			}
 		}
 
-		txns, err := archiveWrapper.GetTransactions(cursor, 1)
+		txns, err := archiveWrapper.GetTransactions(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
 			fmt.Fprintf(w, "Error: %v", err)
 			sendErrorResponse(w, http.StatusInternalServerError)
@@ -75,15 +88,6 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 		}
 
 		for _, txn := range txns {
-			hash, err := txn.TransactionHash()
-			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
-				sendErrorResponse(w, http.StatusInternalServerError)
-				return
-			}
-			if id != "" && hash != id {
-				continue
-			}
 			var response hProtocol.Transaction
 			response, err = adapters.PopulateTransaction(r, &txn)
 			if err != nil {

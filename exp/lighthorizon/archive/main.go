@@ -100,20 +100,18 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 	}
 }
 
-func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transaction, error) {
+func (a *Wrapper) GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
 	if ledgerSequence < 2 {
 		ledgerSequence = 2
 	}
 
-	log.Debugf("Searching tx %d", cursor)
+	log.Debugf("Searching tx %d starting at", cursor)
 	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
 
 	txns := []common.Transaction{}
 	appending := false
-
-	ctx := context.Background()
 
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
@@ -160,6 +158,9 @@ func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transacti
 				return txns, nil
 			}
 
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			transactionOrder++
 		}
 

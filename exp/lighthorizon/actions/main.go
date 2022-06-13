@@ -3,11 +3,17 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stellar/go/exp/lighthorizon/index"
-	"github.com/stellar/go/support/render/hal"
-	"io"
 	"net/http"
+	"net/url"
+	"strconv"
+
+	"github.com/stellar/go/support/render/hal"
 )
+
+type Pagination struct {
+	Limit  int64
+	Cursor int64
+}
 
 func sendPageResponse(w http.ResponseWriter, page hal.Page) {
 	encoder := json.NewEncoder(w)
@@ -23,14 +29,39 @@ func sendErrorResponse(w http.ResponseWriter, errorCode int) {
 	w.WriteHeader(errorCode)
 }
 
-func indexedCursorFromHash(hash [32]byte, indexStore index.Store) (int64, bool, error) {
-	// Skip the cursor ahead to the next active checkpoint for this account
-	cursor, err := indexStore.TransactionTOID(hash)
-	if err == io.EOF {
-		// never active. No results.
-		return 0, true, nil
-	} else if err != nil {
-		return 0, false, err
+func RequestUnaryParam(r *http.Request, paramName string) (string, error) {
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return "", err
 	}
-	return cursor, false, nil
+	return query.Get(paramName), nil
+}
+
+func Paging(r *http.Request) (Pagination, error) {
+	var cursorRequested, limitRequested string
+	var err error
+	paginate := Pagination{}
+
+	if cursorRequested, err = RequestUnaryParam(r, "cursor"); err != nil {
+		return Pagination{}, err
+	}
+
+	if limitRequested, err = RequestUnaryParam(r, "limit"); err != nil {
+		return Pagination{}, err
+	}
+
+	if cursorRequested != "" {
+		paginate.Cursor, err = strconv.ParseInt(cursorRequested, 10, 64)
+		if err != nil {
+			return Pagination{}, err
+		}
+	}
+
+	if limitRequested != "" {
+		paginate.Limit, err = strconv.ParseInt(limitRequested, 10, 64)
+		if err != nil {
+			return Pagination{}, err
+		}
+	}
+	return paginate, nil
 }
