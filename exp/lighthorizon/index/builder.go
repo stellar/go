@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
-	"golang.org/x/sync/errgroup"
 )
 
 func BuildIndices(
@@ -26,13 +27,20 @@ func BuildIndices(
 	startLedger, endLedger uint32,
 	modules []string,
 	workerCount int,
-) error {
-	indexStore, err := Connect(targetUrl)
-	if err != nil {
-		return err
+) (*IndexBuilder, error) {
+	if endLedger < startLedger {
+		log.Warnf("Nothing to do: start > end (%d > %d). "+
+			"Was this a mistake?", startLedger, endLedger)
+		return nil, nil
 	}
 
-	// Simple file os access
+	indexStore, err := Connect(targetUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	// We use historyarchive as a backend here just to abstract away dealing
+	// with the filesystem directly.
 	source, err := historyarchive.ConnectBackend(
 		sourceUrl,
 		historyarchive.ConnectOptions{
@@ -41,7 +49,7 @@ func BuildIndices(
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
@@ -50,7 +58,7 @@ func BuildIndices(
 	if endLedger == 0 {
 		latest, err := ledgerBackend.GetLatestLedgerSequence(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		endLedger = latest
 	}
@@ -78,7 +86,7 @@ func BuildIndices(
 		case "accounts_unbacked":
 			indexBuilder.RegisterModule(ProcessAccountsWithoutBackend)
 		default:
-			return fmt.Errorf("Unknown module: %s", part)
+			return indexBuilder, fmt.Errorf("Unknown module: %s", part)
 		}
 	}
 
@@ -134,7 +142,7 @@ func BuildIndices(
 	}
 
 	if err := wg.Wait(); err != nil {
-		return errors.Wrap(err, "one or more workers failed")
+		return indexBuilder, errors.Wrap(err, "one or more workers failed")
 	}
 
 	printProgress("Reading ledgers", uint64(ledgerCount), uint64(ledgerCount), startTime)
@@ -147,10 +155,10 @@ func BuildIndices(
 	log.Infof("Processed %d ledgers via %d workers", processed, parallel)
 	log.Infof("Uploading indices to %s", targetUrl)
 	if err := indexStore.Flush(); err != nil {
-		return errors.Wrap(err, "flushing indices failed")
+		return indexBuilder, errors.Wrap(err, "flushing indices failed")
 	}
 
-	return nil
+	return indexBuilder, nil
 }
 
 // Module is a way to process ingested data and shove it into an index store.
@@ -163,20 +171,21 @@ type Module func(
 // IndexBuilder contains everything needed to build indices from ledger ranges.
 type IndexBuilder struct {
 	store             Store
-	history           *ledgerbackend.HistoryArchiveBackend
+	ledgerBackend     ledgerbackend.LedgerBackend
 	networkPassphrase string
+	lastBuiltLedger   uint32
 
 	modules []Module
 }
 
 func NewIndexBuilder(
 	indexStore Store,
-	backend *ledgerbackend.HistoryArchiveBackend,
+	backend ledgerbackend.LedgerBackend,
 	networkPassphrase string,
 ) *IndexBuilder {
 	return &IndexBuilder{
 		store:             indexStore,
-		history:           backend,
+		ledgerBackend:     backend,
 		networkPassphrase: networkPassphrase,
 	}
 }
@@ -209,9 +218,11 @@ func (builder *IndexBuilder) RunModules(
 // portion.
 func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchive.Range) error {
 	for ledgerSeq := ledgerRange.Low; ledgerSeq <= ledgerRange.High; ledgerSeq++ {
-		ledger, err := builder.history.GetLedger(ctx, ledgerSeq)
+		ledger, err := builder.ledgerBackend.GetLedger(ctx, ledgerSeq)
 		if err != nil {
-			log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
+			if !os.IsNotExist(err) {
+				log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
+			}
 			return err
 		}
 
@@ -235,248 +246,19 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 		}
 	}
 
-	return nil
-}
-
-func ProcessTransaction(
-	indexStore Store,
-	ledger xdr.LedgerCloseMeta,
-	tx ingest.LedgerTransaction,
-) error {
-	return indexStore.AddTransactionToIndexes(
-		toid.New(int32(ledger.LedgerSequence()), int32(tx.Index), 0).ToInt64(),
-		tx.Result.TransactionHash,
+	builder.lastBuiltLedger = uint32(
+		max(int(builder.lastBuiltLedger),
+			int(ledgerRange.High)),
 	)
-}
-
-func ProcessAccounts(
-	indexStore Store,
-	ledger xdr.LedgerCloseMeta,
-	tx ingest.LedgerTransaction,
-) error {
-	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := getParticipants(tx)
-	if err != nil {
-		return err
-	}
-
-	err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
-	if err != nil {
-		return err
-	}
-
-	paymentsParticipants, err := getPaymentParticipants(tx)
-	if err != nil {
-		return err
-	}
-
-	err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
-	if err != nil {
-		return err
-	}
-
-	if tx.Result.Successful() {
-		err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_all", allParticipants)
-		if err != nil {
-			return err
-		}
-
-		err = indexStore.AddParticipantsToIndexes(checkpoint, "successful_payments", paymentsParticipants)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
-func ProcessAccountsWithoutBackend(
-	indexStore Store,
-	ledger xdr.LedgerCloseMeta,
-	tx ingest.LedgerTransaction,
-) error {
-	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := getParticipants(tx)
-	if err != nil {
-		return err
-	}
+func (b *IndexBuilder) GetStore() Store {
+	return b.store
+}
 
-	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "all_all", allParticipants)
-	if err != nil {
-		return err
-	}
-
-	paymentsParticipants, err := getPaymentParticipants(tx)
-	if err != nil {
-		return err
-	}
-
-	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "all_payments", paymentsParticipants)
-	if err != nil {
-		return err
-	}
-
-	if tx.Result.Successful() {
-		err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful_all", allParticipants)
-		if err != nil {
-			return err
-		}
-
-		err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful_payments", paymentsParticipants)
-		if err != nil {
-			return err
-		}
-	}
-
+func (b *IndexBuilder) Watch() error {
 	return nil
-}
-
-func getPaymentParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
-	return participantsForOperations(transaction, true)
-}
-
-func getParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
-	return participantsForOperations(transaction, false)
-}
-
-func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayments bool) ([]string, error) {
-	var participants []string
-
-	for opindex, operation := range transaction.Envelope.Operations() {
-		opSource := operation.SourceAccount
-		if opSource == nil {
-			txSource := transaction.Envelope.SourceAccount()
-			opSource = &txSource
-		}
-
-		switch operation.Body.Type {
-		case xdr.OperationTypeCreateAccount,
-			xdr.OperationTypePayment,
-			xdr.OperationTypePathPaymentStrictReceive,
-			xdr.OperationTypePathPaymentStrictSend,
-			xdr.OperationTypeAccountMerge:
-			participants = append(participants, opSource.Address())
-		default:
-			if onlyPayments {
-				continue
-			}
-			participants = append(participants, opSource.Address())
-		}
-
-		switch operation.Body.Type {
-		case xdr.OperationTypeCreateAccount:
-			participants = append(participants, operation.Body.MustCreateAccountOp().Destination.Address())
-		case xdr.OperationTypePayment:
-			participants = append(participants, operation.Body.MustPaymentOp().Destination.ToAccountId().Address())
-		case xdr.OperationTypePathPaymentStrictReceive:
-			participants = append(participants, operation.Body.MustPathPaymentStrictReceiveOp().Destination.ToAccountId().Address())
-		case xdr.OperationTypePathPaymentStrictSend:
-			participants = append(participants, operation.Body.MustPathPaymentStrictSendOp().Destination.ToAccountId().Address())
-		case xdr.OperationTypeManageBuyOffer:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeManageSellOffer:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeCreatePassiveSellOffer:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeSetOptions:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeChangeTrust:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeAllowTrust:
-			participants = append(participants, operation.Body.MustAllowTrustOp().Trustor.Address())
-		case xdr.OperationTypeAccountMerge:
-			participants = append(participants, operation.Body.MustDestination().ToAccountId().Address())
-		case xdr.OperationTypeInflation:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeManageData:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeBumpSequence:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeCreateClaimableBalance:
-			for _, c := range operation.Body.MustCreateClaimableBalanceOp().Claimants {
-				participants = append(participants, c.MustV0().Destination.Address())
-			}
-		case xdr.OperationTypeClaimClaimableBalance:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeBeginSponsoringFutureReserves:
-			participants = append(participants, operation.Body.MustBeginSponsoringFutureReservesOp().SponsoredId.Address())
-		case xdr.OperationTypeEndSponsoringFutureReserves:
-			// Failed transactions may not have a compliant sandwich structure
-			// we can rely on (e.g. invalid nesting or a being operation with the wrong sponsoree ID)
-			// and thus we bail out since we could return incorrect information.
-			if transaction.Result.Successful() {
-				sponsoree := transaction.Envelope.SourceAccount().ToAccountId().Address()
-				if operation.SourceAccount != nil {
-					sponsoree = operation.SourceAccount.Address()
-				}
-				operations := transaction.Envelope.Operations()
-				for i := int(opindex) - 1; i >= 0; i-- {
-					if beginOp, ok := operations[i].Body.GetBeginSponsoringFutureReservesOp(); ok &&
-						beginOp.SponsoredId.Address() == sponsoree {
-						participants = append(participants, beginOp.SponsoredId.Address())
-					}
-				}
-			}
-		case xdr.OperationTypeRevokeSponsorship:
-			op := operation.Body.MustRevokeSponsorshipOp()
-			switch op.Type {
-			case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-				participants = append(participants, getLedgerKeyParticipants(*op.LedgerKey)...)
-			case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
-				participants = append(participants, op.Signer.AccountId.Address())
-				// We don't add signer as a participant because a signer can be arbitrary account.
-				// This can spam successful operations history of any account.
-			}
-		case xdr.OperationTypeClawback:
-			op := operation.Body.MustClawbackOp()
-			participants = append(participants, op.From.ToAccountId().Address())
-		case xdr.OperationTypeClawbackClaimableBalance:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeSetTrustLineFlags:
-			op := operation.Body.MustSetTrustLineFlagsOp()
-			participants = append(participants, op.Trustor.Address())
-		case xdr.OperationTypeLiquidityPoolDeposit:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeLiquidityPoolWithdraw:
-			// the only direct participant is the source_account
-		default:
-			return nil, fmt.Errorf("unknown operation type: %s", operation.Body.Type)
-		}
-
-		// Requires meta
-		// sponsor, err := operation.getSponsor()
-		// if err != nil {
-		//  return nil, err
-		// }
-		// if sponsor != nil {
-		//  otherParticipants = append(otherParticipants, *sponsor)
-		// }
-	}
-
-	// FIXME: This could probably be a set rather than a list, since there's no
-	// reason to track a participating account more than once if they are
-	// participants across multiple operations.
-	return participants, nil
-}
-
-// getLedgerKeyParticipants returns a list of accounts that are considered
-// "participants" in a particular ledger entry.
-//
-// This list will have zero or one element, making it easy to expand via `...`.
-func getLedgerKeyParticipants(ledgerKey xdr.LedgerKey) []string {
-	switch ledgerKey.Type {
-	case xdr.LedgerEntryTypeAccount:
-		return []string{ledgerKey.Account.AccountId.Address()}
-	case xdr.LedgerEntryTypeData:
-		return []string{ledgerKey.Data.AccountId.Address()}
-	case xdr.LedgerEntryTypeOffer:
-		return []string{ledgerKey.Offer.SellerId.Address()}
-	case xdr.LedgerEntryTypeTrustline:
-		return []string{ledgerKey.TrustLine.AccountId.Address()}
-	case xdr.LedgerEntryTypeClaimableBalance:
-		// nothing to do
-	}
-	return []string{}
 }
 
 func printProgress(prefix string, done, total uint64, startTime time.Time) {

@@ -18,6 +18,9 @@ func main() {
 	start := flag.Int("start", -1, "ledger to start at (inclusive, default: earliest)")
 	end := flag.Int("end", -1, "ledger to end at (inclusive, default: latest)")
 	modules := flag.String("modules", "accounts,transactions", "comma-separated list of modules to index (default: all)")
+	watch := flag.Bool("watch", false, "whether to watch the `source` for new "+
+		"txmeta files and index them (default: false). "+
+		"note: `-watch` implicitly implies `-end -1`")
 
 	// Should we use runtime.NumCPU() for a reasonable default?
 	// Yes, but leave a CPU open so I can actually use my PC while this runs.
@@ -26,7 +29,7 @@ func main() {
 	flag.Parse()
 	log.SetLevel(log.InfoLevel)
 
-	err := index.BuildIndices(
+	builder, err := index.BuildIndices(
 		context.Background(),
 		*sourceUrl,
 		*targetUrl,
@@ -38,6 +41,12 @@ func main() {
 	)
 	if err != nil {
 		panic(err)
+	}
+
+	if *watch {
+		if err := builder.Watch(); err != nil {
+			panic(err)
+		}
 	}
 }
 
