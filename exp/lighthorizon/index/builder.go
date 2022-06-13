@@ -257,8 +257,73 @@ func (b *IndexBuilder) GetStore() Store {
 	return b.store
 }
 
-func (b *IndexBuilder) Watch() error {
-	return nil
+func (b *IndexBuilder) Watch(ctx context.Context) error {
+	latestLedger, err := b.ledgerBackend.GetLatestLedgerSequence(ctx)
+	if err != nil {
+		log.Errorf("Failed to retrieve latest ledger: %v", err)
+		return err
+	}
+
+	nextLedger := b.lastBuiltLedger + 1
+
+	log.Infof("Catching up to latest ledger (%d, %d]",
+		nextLedger, latestLedger)
+
+	if err := b.Build(ctx, historyarchive.Range{
+		Low:  nextLedger,
+		High: latestLedger,
+	}); err != nil {
+		log.Errorf("Initial catchup failed: %v", err)
+	}
+
+	for {
+		nextLedger = b.lastBuiltLedger + 1
+		log.Infof("Awaiting next ledger (%d)", nextLedger)
+
+		// To keep the MVP simple, let's just naively poll the backend until the
+		// ledger we want becomes available.
+		//
+		//  Refer to this thread [1] for a deeper brain dump on why we're
+		//  preferring this over doing proper filesystem monitoring (e.g.
+		//  fsnotify for on-disk). Essentially, supporting this for every
+		//  possible index backend is a non-trivial amount of work with an
+		//  uncertain payoff.
+		//
+		// [1]: https://stellarfoundation.slack.com/archives/C02B04RMK/p1654903342555669
+
+		// We sleep with linear backoff starting with 1s. Ledgers get posted
+		// every 5-7s on average, but to be extra careful, let's give it a full
+		// minute before we give up entirely.
+		timedCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		defer cancel()
+
+		sleepTime := time.Second
+
+	outer:
+		for {
+			select {
+			case <-timedCtx.Done():
+				return errors.Wrap(timedCtx.Err(), "awaiting next ledger failed")
+
+			default:
+				buildErr := b.Build(timedCtx, historyarchive.Range{
+					Low:  nextLedger,
+					High: nextLedger,
+				})
+				if buildErr == nil {
+					break outer
+				}
+
+				if os.IsNotExist(buildErr) {
+					time.Sleep(sleepTime)
+					sleepTime += 2
+					continue
+				}
+
+				return errors.Wrap(err, "awaiting next ledger failed")
+			}
+		}
+	}
 }
 
 func printProgress(prefix string, done, total uint64, startTime time.Time) {

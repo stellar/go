@@ -44,7 +44,7 @@ func main() {
 	}
 
 	if *watch {
-		if err := builder.Watch(); err != nil {
+		if err := builder.Watch(context.Background()); err != nil {
 			panic(err)
 		}
 	}
