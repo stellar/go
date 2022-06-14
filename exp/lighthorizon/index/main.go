@@ -103,6 +103,7 @@ func (i *CheckpointIndex) setActive(checkpoint uint32) error {
 	return nil
 }
 
+//lint:ignore U1000 Ignore unused function temporarily
 func (i *CheckpointIndex) isActive(checkpoint uint32) bool {
 	if checkpoint >= i.firstCheckpoint && checkpoint <= i.lastCheckpoint {
 		b := bitShiftLeft(checkpoint)

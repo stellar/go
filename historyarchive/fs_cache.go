@@ -18,6 +18,7 @@ import (
 type FsCacheBackend struct {
 	ArchiveBackend
 	dir        string
+	//lint:ignore U1000 Ignore unused temporarily
 	knownFiles lruCache
 	maxFiles   int
 	lru        lruCache
