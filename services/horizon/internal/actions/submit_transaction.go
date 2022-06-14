@@ -18,7 +18,7 @@ import (
 )
 
 type NetworkSubmitter interface {
-	Submit(ctx context.Context, rawTx string, envelope xdr.TransactionEnvelope, hash string, innerHash string) <-chan txsub.Result
+	Submit(ctx context.Context, rawTx string, envelope xdr.TransactionEnvelope, hash string) <-chan txsub.Result
 }
 
 type SubmitTransactionHandler struct {
@@ -155,7 +155,7 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		return nil, hProblem.StaleHistory
 	}
 
-	submission := handler.Submitter.Submit(r.Context(), info.raw, info.parsed, info.hash, info.innerHash)
+	submission := handler.Submitter.Submit(r.Context(), info.raw, info.parsed, info.hash)
 
 	select {
 	case result := <-submission:
