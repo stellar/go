@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 )
 
-func writeGzippedTo(w io.Writer, indexes map[string]*CheckpointIndex) (int64, error) {
+func writeGzippedTo(w io.Writer, indexes types.NamedIndices) (int64, error) {
 	zw := gzip.NewWriter(w)
 
 	var n int64
@@ -28,12 +30,12 @@ func writeGzippedTo(w io.Writer, indexes map[string]*CheckpointIndex) (int64, er
 	return n, nil
 }
 
-func readGzippedFrom(r io.Reader) (map[string]*CheckpointIndex, int64, error) {
+func readGzippedFrom(r io.Reader) (types.NamedIndices, int64, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, 0, err
 	}
-	indexes := map[string]*CheckpointIndex{}
+	indexes := types.NamedIndices{}
 	var buf bytes.Buffer
 	var n int64
 	for {
@@ -45,7 +47,7 @@ func readGzippedFrom(r io.Reader) (map[string]*CheckpointIndex, int64, error) {
 			return nil, n, err
 		}
 
-		ind, err := NewCheckpointIndexFromBytes(buf.Bytes())
+		ind, err := types.NewCheckpointIndexFromBytes(buf.Bytes())
 		if err != nil {
 			return nil, n, err
 		}

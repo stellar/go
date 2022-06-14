@@ -6,6 +6,9 @@ import (
 	"io"
 	"os"
 	"sync"
+
+	backend "github.com/stellar/go/exp/lighthorizon/index/backend"
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 )
 
 type Store interface {
@@ -14,37 +17,26 @@ type Store interface {
 	TransactionTOID(hash [32]byte) (int64, error)
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
 	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
-	AddParticipantToIndexesNoBackend(participant string, indexes map[string]*CheckpointIndex)
+	AddParticipantToIndexesNoBackend(participant string, indexes types.NamedIndices)
 	Flush() error
 	FlushAccounts() error
-	Read(account string) (map[string]*CheckpointIndex, error)
+	Read(account string) (types.NamedIndices, error)
 	ReadAccounts() ([]string, error)
-	ReadTransactions(prefix string) (*TrieIndex, error)
-	MergeTransactions(prefix string, other *TrieIndex) error
-}
-
-// TODO: Use a more standardized filesystem-style backend, so we can re-use
-// code
-type Backend interface {
-	Flush(map[string]map[string]*CheckpointIndex) error
-	FlushAccounts([]string) error
-	Read(account string) (map[string]*CheckpointIndex, error)
-	ReadAccounts() ([]string, error)
-	FlushTransactions(map[string]*TrieIndex) error
-	ReadTransactions(prefix string) (*TrieIndex, error)
+	ReadTransactions(prefix string) (*types.TrieIndex, error)
+	MergeTransactions(prefix string, other *types.TrieIndex) error
 }
 
 type store struct {
 	mutex     sync.RWMutex
-	indexes   map[string]map[string]*CheckpointIndex
-	txIndexes map[string]*TrieIndex
-	backend   Backend
+	indexes   map[string]types.NamedIndices
+	txIndexes map[string]*types.TrieIndex
+	backend   backend.Backend
 }
 
-func NewStore(backend Backend) (Store, error) {
+func NewStore(backend backend.Backend) (Store, error) {
 	return &store{
-		indexes:   map[string]map[string]*CheckpointIndex{},
-		txIndexes: map[string]*TrieIndex{},
+		indexes:   map[string]types.NamedIndices{},
+		txIndexes: map[string]*types.TrieIndex{},
 		backend:   backend,
 	}, nil
 }
@@ -63,7 +55,7 @@ func (s *store) FlushAccounts() error {
 	return s.backend.FlushAccounts(s.accounts())
 }
 
-func (s *store) Read(account string) (map[string]*CheckpointIndex, error) {
+func (s *store) Read(account string) (types.NamedIndices, error) {
 	return s.backend.Read(account)
 }
 
@@ -71,11 +63,11 @@ func (s *store) ReadAccounts() ([]string, error) {
 	return s.backend.ReadAccounts()
 }
 
-func (s *store) ReadTransactions(prefix string) (*TrieIndex, error) {
+func (s *store) ReadTransactions(prefix string) (*types.TrieIndex, error) {
 	return s.getCreateTrieIndex(prefix)
 }
 
-func (s *store) MergeTransactions(prefix string, other *TrieIndex) error {
+func (s *store) MergeTransactions(prefix string, other *types.TrieIndex) error {
 	index, err := s.getCreateTrieIndex(prefix)
 	if err != nil {
 		return err
@@ -103,12 +95,12 @@ func (s *store) Flush() error {
 	}
 
 	// clear indexes to save memory
-	s.indexes = map[string]map[string]*CheckpointIndex{}
+	s.indexes = map[string]types.NamedIndices{}
 
 	if err := s.backend.FlushTransactions(s.txIndexes); err != nil {
 		return err
 	}
-	s.txIndexes = map[string]*TrieIndex{}
+	s.txIndexes = map[string]*types.TrieIndex{}
 
 	return nil
 }
@@ -147,12 +139,12 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 	for _, participant := range participants {
 		_, ok := s.indexes[participant]
 		if !ok {
-			s.indexes[participant] = map[string]*CheckpointIndex{}
+			s.indexes[participant] = map[string]*types.CheckpointIndex{}
 		}
 
 		ind, ok := s.indexes[participant][index]
 		if !ok {
-			ind = &CheckpointIndex{}
+			ind = &types.CheckpointIndex{}
 			s.indexes[participant][index] = ind
 		}
 
@@ -165,7 +157,7 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 	return nil
 }
 
-func (s *store) AddParticipantToIndexesNoBackend(participant string, indexes map[string]*CheckpointIndex) {
+func (s *store) AddParticipantToIndexesNoBackend(participant string, indexes types.NamedIndices) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.indexes[participant] = indexes
@@ -185,14 +177,14 @@ func (s *store) AddParticipantsToIndexes(checkpoint uint32, index string, partic
 	return nil
 }
 
-func (s *store) getCreateIndex(account, id string) (*CheckpointIndex, error) {
+func (s *store) getCreateIndex(account, id string) (*types.CheckpointIndex, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	// Check if we already have it loaded
 	accountIndexes, ok := s.indexes[account]
 	if !ok {
-		accountIndexes = map[string]*CheckpointIndex{}
+		accountIndexes = types.NamedIndices{}
 	}
 	ind, ok := accountIndexes[id]
 	if ok {
@@ -210,7 +202,7 @@ func (s *store) getCreateIndex(account, id string) (*CheckpointIndex, error) {
 	ind, ok = accountIndexes[id]
 	if !ok {
 		// Not found anywhere, make a new one.
-		ind = &CheckpointIndex{}
+		ind = &types.CheckpointIndex{}
 		accountIndexes[id] = ind
 	}
 	s.indexes[account] = accountIndexes
@@ -226,7 +218,7 @@ func (s *store) NextActive(account, indexId string, afterCheckpoint uint32) (uin
 	return ind.NextActive(afterCheckpoint)
 }
 
-func (s *store) getCreateTrieIndex(prefix string) (*TrieIndex, error) {
+func (s *store) getCreateTrieIndex(prefix string) (*types.TrieIndex, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -247,7 +239,7 @@ func (s *store) getCreateTrieIndex(prefix string) (*TrieIndex, error) {
 	index, ok = s.txIndexes[prefix]
 	if !ok {
 		// Not found anywhere, make a new one.
-		index = &TrieIndex{}
+		index = &types.TrieIndex{}
 		s.txIndexes[prefix] = index
 	}
 

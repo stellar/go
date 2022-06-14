@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
+	types "github.com/stellar/go/exp/lighthorizon/index/types"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -337,7 +338,7 @@ func (cfg *ReduceConfig) shouldProcessTx(txPrefix byte, routineIndex uint32) boo
 
 // For every index that exists in `dest`, finds the corresponding index in
 // `source` and merges it into `dest`'s version.
-func mergeIndices(dest, source map[string]*index.CheckpointIndex) error {
+func mergeIndices(dest, source map[string]*types.CheckpointIndex) error {
 	for name, index := range dest {
 		// The source doesn't contain this particular index.
 		//
