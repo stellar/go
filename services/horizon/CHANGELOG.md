@@ -8,6 +8,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
 * Optimize the claimable balance SQL query for best index query plan performance([4398](https://github.com/stellar/go/pull/4398))
 
+### DB Schema Migration
+
+The migration makes the following schema changes:
+
+  - creates new, `history_transactions_filtered_tmp` table related to enabling tx sub processing on read only, only ingest writes to the table. Deprecates, drops prior `txsub_results` table. Migration should be brief, does not incur any data/runtime processing.
+
 ## 2.18.0
 
 * New Experimental Ingestion Filters Feature: Provide the ability to select which ledger transactions are accepted at ingestion time to be stored on horizon's historical databse.
