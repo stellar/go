@@ -48,9 +48,9 @@ func BuildIndices(
 	defer ledgerBackend.Close()
 
 	if endLedger == 0 {
-		latest, err := ledgerBackend.GetLatestLedgerSequence(ctx)
-		if err != nil {
-			return err
+		latest, ledgerErr := ledgerBackend.GetLatestLedgerSequence(ctx)
+		if ledgerErr != nil {
+			return ledgerErr
 		}
 		endLedger = latest
 	}

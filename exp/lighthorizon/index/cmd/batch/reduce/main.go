@@ -105,10 +105,10 @@ func main() {
 func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 	doneAccounts := NewSafeStringSet()
 	for i := uint32(0); i < config.MapJobCount; i++ {
-		logger := log.WithField("job", i)
+		jobLogger := log.WithField("job", i)
 
 		url := filepath.Join(config.IndexRootSource, "job_"+strconv.FormatUint(uint64(i), 10))
-		logger.Infof("Connecting to %s", url)
+		jobLogger.Infof("Connecting to %s", url)
 
 		outerJobStore, err := index.Connect(url)
 		if err != nil {
@@ -118,13 +118,13 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 		accounts, err := outerJobStore.ReadAccounts()
 		// TODO: in final version this should be critical error, now just skip it
 		if os.IsNotExist(err) {
-			logger.Errorf("accounts file not found (TODO!)")
+			jobLogger.Errorf("accounts file not found (TODO!)")
 			continue
 		} else if err != nil {
 			return errors.Wrapf(err, "failed to read accounts for job %d", i)
 		}
 
-		logger.Infof("Processing %d accounts with %d workers",
+		jobLogger.Infof("Processing %d accounts with %d workers",
 			len(accounts), config.Workers)
 
 		workQueues := make([]chan string, config.Workers)
@@ -158,7 +158,7 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 		for j := uint32(0); j < config.Workers; j++ {
 			go func(routineIndex uint32) {
 				defer wg.Done()
-				logger := logger.
+				logger := jobLogger.
 					WithField("worker", routineIndex).
 					WithField("total", len(accounts))
 				logger.Info("Started worker")
@@ -178,14 +178,14 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 
 					// First, open the "final merged indices" at the root level
 					// for this account.
-					mergedIndices, err := outerJobStore.Read(account)
+					mergedIndices, mergeErr := outerJobStore.Read(account)
 
 					// TODO: in final version this should be critical error, now just skip it
-					if os.IsNotExist(err) {
+					if os.IsNotExist(mergeErr) {
 						logger.Errorf("Account %s is unavailable - TODO fix", account)
 						continue
-					} else if err != nil {
-						panic(err)
+					} else if mergeErr != nil {
+						panic(mergeErr)
 					}
 
 					// Then, iterate through all of the job folders and merge
@@ -197,27 +197,27 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 						// worker needs to have a connection to every index
 						// store, so there's no reason to re-open these for each
 						// inner loop.
-						innerJobStore, err := index.Connect(url)
-						if err != nil {
-							logger.WithError(err).
+						innerJobStore, indexErr := index.Connect(url)
+						if indexErr != nil {
+							logger.WithError(indexErr).
 								Errorf("Failed to open index at %s", url)
-							panic(err)
+							panic(indexErr)
 						}
 
-						jobIndices, err := innerJobStore.Read(account)
+						jobIndices, innerJobErr := innerJobStore.Read(account)
 						// This job never touched this account; skip.
-						if os.IsNotExist(err) {
+						if os.IsNotExist(innerJobErr) {
 							continue
-						} else if err != nil {
-							logger.WithError(err).
+						} else if innerJobErr != nil {
+							logger.WithError(innerJobErr).
 								Errorf("Failed to read index for %s", account)
-							panic(err)
+							panic(innerJobErr)
 						}
 
-						if err := mergeIndices(mergedIndices, jobIndices); err != nil {
-							logger.WithError(err).
+						if mergeIndexErr := mergeIndices(mergedIndices, jobIndices); mergeIndexErr != nil {
+							logger.WithError(mergeIndexErr).
 								Errorf("Merge failure for index at %s", url)
-							panic(err)
+							panic(mergeIndexErr)
 						}
 					}
 
@@ -239,7 +239,7 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 					}
 				}
 
-				logger.Infof("Final account flush.")
+				jobLogger.Infof("Final account flush.")
 				if err = finalIndexStore.Flush(); err != nil {
 					logger.WithError(err).Errorf("Flush error.")
 					panic(err)
@@ -248,7 +248,7 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 				// Merge the transaction indexes
 				// There's 256 files, (one for each first byte of the txn hash)
 				var transactionsProcessed, transactionsSkipped uint64
-				logger = logger.
+				logger = jobLogger.
 					WithField("indexed", transactionsProcessed).
 					WithField("skipped", transactionsSkipped)
 
@@ -268,28 +268,28 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 
 					for k := uint32(0); k < config.MapJobCount; k++ {
 						url := filepath.Join(config.IndexRootSource, fmt.Sprintf("job_%d", k))
-						innerJobStore, err := index.Connect(url)
-						if err != nil {
-							logger.WithError(err).Errorf("Failed to open index at %s", url)
-							panic(err)
+						innerJobStore, jobErr := index.Connect(url)
+						if jobErr != nil {
+							logger.WithError(jobErr).Errorf("Failed to open index at %s", url)
+							panic(jobErr)
 						}
 
-						innerTxnIndexes, err := innerJobStore.ReadTransactions(prefix)
-						if os.IsNotExist(err) {
+						innerTxnIndexes, innerJobErr := innerJobStore.ReadTransactions(prefix)
+						if os.IsNotExist(innerJobErr) {
 							continue
-						} else if err != nil {
-							logger.WithError(err).Errorf("Error reading tx prefix %s", prefix)
-							panic(err)
+						} else if innerJobErr != nil {
+							logger.WithError(innerJobErr).Errorf("Error reading tx prefix %s", prefix)
+							panic(innerJobErr)
 						}
 
-						if err := finalIndexStore.MergeTransactions(prefix, innerTxnIndexes); err != nil {
-							logger.WithError(err).Errorf("Error merging txs at prefix %s", prefix)
-							panic(err)
+						if prefixErr := finalIndexStore.MergeTransactions(prefix, innerTxnIndexes); err != nil {
+							logger.WithError(prefixErr).Errorf("Error merging txs at prefix %s", prefix)
+							panic(prefixErr)
 						}
 					}
 				}
 
-				logger.Infof("Final transaction flush (%d processed)", transactionsProcessed)
+				jobLogger.Infof("Final transaction flush (%d processed)", transactionsProcessed)
 				if err = finalIndexStore.Flush(); err != nil {
 					logger.Errorf("Error flushing transactions: %v", err)
 					panic(err)
