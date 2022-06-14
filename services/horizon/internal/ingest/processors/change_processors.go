@@ -23,7 +23,7 @@ type LedgerTransactionFilterer interface {
 func StreamLedgerTransactions(
 	ctx context.Context,
 	txFilterer LedgerTransactionFilterer,
-	unfilteredTxProcessor LedgerTransactionProcessor,
+	filteredTxProcessor LedgerTransactionProcessor,
 	txProcessor LedgerTransactionProcessor,
 	reader *ingest.LedgerTransactionReader,
 ) error {
@@ -43,15 +43,15 @@ func StreamLedgerTransactions(
 				tx.Index,
 			)
 		}
-		if err = unfilteredTxProcessor.ProcessTransaction(ctx, tx); err != nil {
-			return errors.Wrapf(
-				err,
-				"could not process transaction %v",
-				tx.Index,
-			)
-		}
 		if !include {
-			log.Infof("Filters did not find match on transaction, dropping this tx with hash %v", tx.Result.TransactionHash.HexString())
+			if err = filteredTxProcessor.ProcessTransaction(ctx, tx); err != nil {
+				return errors.Wrapf(
+					err,
+					"could not process transaction %v",
+					tx.Index,
+				)
+			}
+			log.Debugf("Filters did not find match on transaction, dropping this tx with hash %v", tx.Result.TransactionHash.HexString())
 			continue
 		}
 

@@ -244,7 +244,6 @@ type mockDBQ struct {
 	history.MockQSigners
 	history.MockQTransactions
 	history.MockQTrustLines
-	history.MockQTxSubmissionResult
 }
 
 func (m *mockDBQ) Begin() error {
@@ -380,6 +379,11 @@ func (m *mockDBQ) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger
 func (m *mockDBQ) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]history.Asset, error) {
 	args := m.Called(ctx, assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
+}
+
+func (m *mockDBQ) DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
+	args := m.Called(ctx, howOldInSeconds)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 type mockLedgerBackend struct {

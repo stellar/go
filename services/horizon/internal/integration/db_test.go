@@ -442,7 +442,7 @@ func TestReingestDB(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
 
-	horizonConfig := itest.GetHorizonConfig()
+	horizonConfig := itest.GetHorizonIngestConfig()
 	t.Run("validate parallel range", func(t *testing.T) {
 		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
 			"db",
@@ -535,11 +535,8 @@ func TestFillGaps(t *testing.T) {
 
 	// Create a fresh Horizon database
 	newDB := dbtest.Postgres(t)
-	// TODO: Unfortunately Horizon's ingestion System leaves open sessions behind,leading to
-	//       a "database  is being accessed by other users" error when trying to drop it
-	// defer newDB.Close()
 	freshHorizonPostgresURL := newDB.DSN
-	horizonConfig := itest.GetHorizonConfig()
+	horizonConfig := itest.GetHorizonIngestConfig()
 	horizonConfig.DatabaseURL = freshHorizonPostgresURL
 	// Initialize the DB schema
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
