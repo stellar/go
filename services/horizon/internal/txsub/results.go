@@ -17,13 +17,17 @@ func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Tra
 		return txResultFromHistory(hr)
 	}
 
+	if !db.NoRows(err) {
+		return hr, errors.Wrap(err, "server error, could not query prefiltered transaction by hash")
+	}
+
 	err = db.TransactionByHash(ctx, &hr, hash)
 	if err == nil {
 		return txResultFromHistory(hr)
 	}
 
 	if !db.NoRows(err) {
-		return hr, errors.Wrap(err, "server error, could not query transaction by hash")
+		return hr, errors.Wrap(err, "server error, could not query history transaction by hash")
 	}
 
 	// if no result was found in either db, return ErrNoResults
