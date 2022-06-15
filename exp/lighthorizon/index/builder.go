@@ -27,6 +27,8 @@ func BuildIndices(
 	modules []string,
 	workerCount int,
 ) error {
+	L := log.Ctx(ctx)
+
 	indexStore, err := Connect(targetUrl)
 	if err != nil {
 		return err
@@ -55,13 +57,17 @@ func BuildIndices(
 		endLedger = latest
 	}
 
+	if endLedger < startLedger {
+		return fmt.Errorf("invalid ledger range: end < start (%d < %d)", endLedger, startLedger)
+	}
+
 	ledgerCount := 1 + (endLedger - startLedger) // +1 because endLedger is inclusive
 	parallel := max(1, workerCount)
 
 	startTime := time.Now()
-	log.Infof("Creating indices for ledger range: %d through %d (%d ledgers)",
+	L.Infof("Creating indices for ledger range: %d through %d (%d ledgers)",
 		startLedger, endLedger, ledgerCount)
-	log.Infof("Using %d workers", parallel)
+	L.Infof("Using %d workers", parallel)
 
 	// Create a bunch of workers that process ledgers a checkpoint range at a
 	// time (better than a ledger at a time to minimize flushes).
@@ -92,7 +98,7 @@ func BuildIndices(
 		nextLedger := min(endLedger, ledger+(nextCheckpoint-startLedger))
 		for ledger <= endLedger {
 			chunk := historyarchive.Range{Low: ledger, High: nextLedger}
-			log.Debugf("Submitted [%d, %d] for work", chunk.Low, chunk.High)
+			L.Debugf("Submitted [%d, %d] for work", chunk.Low, chunk.High)
 			ch <- chunk
 
 			ledger = nextLedger + 1
@@ -109,12 +115,12 @@ func BuildIndices(
 				count := (ledgerRange.High - ledgerRange.Low) + 1
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
 
-				log.Debugf("Working on checkpoint range [%d, %d]",
+				L.Debugf("Working on checkpoint range [%d, %d]",
 					ledgerRange.Low, ledgerRange.High)
 
 				// Assertion for testing
 				if ledgerRange.High != endLedger && (ledgerRange.High+1)%64 != 0 {
-					log.Fatalf("Upper ledger isn't a checkpoint: %v", ledgerRange)
+					L.Fatalf("Upper ledger isn't a checkpoint: %v", ledgerRange)
 				}
 
 				err = indexBuilder.Build(ctx, ledgerRange)
@@ -141,11 +147,11 @@ func BuildIndices(
 
 	// Assertion for testing
 	if processed != uint64(ledgerCount) {
-		log.Fatalf("processed %d but expected %d", processed, ledgerCount)
+		L.Fatalf("processed %d but expected %d", processed, ledgerCount)
 	}
 
-	log.Infof("Processed %d ledgers via %d workers", processed, parallel)
-	log.Infof("Uploading indices to %s", targetUrl)
+	L.Infof("Processed %d ledgers via %d workers", processed, parallel)
+	L.Infof("Uploading indices to %s", targetUrl)
 	if err := indexStore.Flush(); err != nil {
 		return errors.Wrap(err, "flushing indices failed")
 	}
@@ -255,7 +261,7 @@ func ProcessAccounts(
 	tx ingest.LedgerTransaction,
 ) error {
 	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := getParticipants(tx)
+	allParticipants, err := GetParticipants(tx)
 	if err != nil {
 		return err
 	}
@@ -296,7 +302,7 @@ func ProcessAccountsWithoutBackend(
 	tx ingest.LedgerTransaction,
 ) error {
 	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := getParticipants(tx)
+	allParticipants, err := GetParticipants(tx)
 	if err != nil {
 		return err
 	}
@@ -335,7 +341,7 @@ func getPaymentParticipants(transaction ingest.LedgerTransaction) ([]string, err
 	return participantsForOperations(transaction, true)
 }
 
-func getParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
+func GetParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
 	return participantsForOperations(transaction, false)
 }
 

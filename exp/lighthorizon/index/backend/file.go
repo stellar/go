@@ -154,8 +154,6 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	accountMap := make(map[string]struct{}, preallocationSize)
 	accounts := make([]string, 0, preallocationSize)
 
-	// We don't use UnmarshalBinary here because we need to know how much of the
-	// buffer was read for each account.
 	reader := bufio.NewReaderSize(f, 100*gAddressSize) // reasonable buffer size
 	for {
 		line, err := reader.ReadString(byte('\n'))
