@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
 	"github.com/stretchr/testify/require"
 
@@ -21,8 +19,9 @@ import (
 )
 
 const (
-	txmetaSource = "s3://horizon-indices-testnet/txmeta/"
-	elderLedger  = 1460000
+	// txmetaSource = "s3://horizon-indices-testnet/txmeta/"
+	txmetaSource = "file://./fixtures/"
+	elderLedger  = 1410048
 )
 
 /**
@@ -35,36 +34,21 @@ const (
  */
 
 func TestSingleProcess(tt *testing.T) {
-	// FIXME: Skip in production because we don't have CI access to meta yet,
-	// though we should probably do something like include a blob of fixtures,
-	// instead.
-	// tt.Skip()
-
 	const (
-		ledgerCount  = 100
+		ledgerCount  = 32*10 - 1 // exactly 32 checkpoints of ledger data
 		latestLedger = elderLedger + ledgerCount
 	)
+
+	tt.Logf("Validating single-process builder on %d ledgers", ledgerCount)
 
 	for workerCount := 1; workerCount <= 16; workerCount *= 2 {
 		tt.Run(
 			fmt.Sprintf("workers/%d", workerCount),
 			func(t *testing.T) {
-				testLog := log.New()
-				testLog.DisableTimestamp()
-				testLog.SetOutput(os.Stdout)
-				// logEntries := testLog.StartTest(logrus.DebugLevel)
-
-				tmpDir := filepath.Join(
-					"file://",
-					t.TempDir(),
-					// os.TempDir(),
-					// "testing-indices",
-					// strconv.FormatInt(int64(rand.Intn(10000)), 10),
-				)
-
+				tmpDir := filepath.Join("file://", t.TempDir())
 				t.Logf("Storing indices in %s", tmpDir)
-				ctx := log.Set(context.Background(), testLog)
 
+				ctx := context.Background()
 				err := index.BuildIndices(
 					ctx,
 					txmetaSource,
