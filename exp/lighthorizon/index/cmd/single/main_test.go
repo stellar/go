@@ -5,12 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
@@ -24,9 +21,8 @@ import (
 )
 
 const (
-	txmetaSource = "file:///home/george/workspace/txmeta-live-archive"
-	elderLedger  = 1410000
-	// txmetaSource = "s3://horizon-indices-testnet/txmeta/"
+	txmetaSource = "s3://horizon-indices-testnet/txmeta/"
+	elderLedger  = 1460000
 )
 
 /**
@@ -39,14 +35,17 @@ const (
  */
 
 func TestSingleProcess(tt *testing.T) {
+	// FIXME: Skip in production because we don't have CI access to meta yet,
+	// though we should probably do something like include a blob of fixtures,
+	// instead.
+	// tt.Skip()
+
 	const (
-		ledgerCount  = 1000
+		ledgerCount  = 100
 		latestLedger = elderLedger + ledgerCount
 	)
 
-	rand.Seed(time.Now().UnixMilli())
-
-	for workerCount := 1; workerCount <= 32; workerCount *= 2 {
+	for workerCount := 1; workerCount <= 16; workerCount *= 2 {
 		tt.Run(
 			fmt.Sprintf("workers/%d", workerCount),
 			func(t *testing.T) {
@@ -57,10 +56,10 @@ func TestSingleProcess(tt *testing.T) {
 
 				tmpDir := filepath.Join(
 					"file://",
-					// t.TempDir(),
-					os.TempDir(),
-					"testing-indices",
-					strconv.FormatInt(int64(rand.Intn(10000)), 10),
+					t.TempDir(),
+					// os.TempDir(),
+					// "testing-indices",
+					// strconv.FormatInt(int64(rand.Intn(10000)), 10),
 				)
 
 				t.Logf("Storing indices in %s", tmpDir)
@@ -86,6 +85,7 @@ func TestSingleProcess(tt *testing.T) {
 					historyarchive.ConnectOptions{
 						Context:           ctx,
 						NetworkPassphrase: network.TestNetworkPassphrase,
+						S3Region:          "us-east-1",
 					},
 				)
 				require.NoError(t, err)
@@ -153,9 +153,9 @@ func TestSingleProcess(tt *testing.T) {
 
 				for account, knownCheckpoints := range participation {
 					// Ensure that the "everything" index exists for the account.
-					// index, err := store.Read(account)
-					// require.NoError(t, err)
-					// require.Contains(t, index, "all/")
+					index, err := store.Read(account)
+					require.NoError(t, err)
+					require.Contains(t, index, "all/")
 
 					// Ensure that all of the active checkpoints reported by the
 					// index match the ones we tracked while ingesting the range
@@ -163,11 +163,6 @@ func TestSingleProcess(tt *testing.T) {
 					activeCheckpoints := []uint32{}
 					lastActiveCheckpoint := uint32(0)
 					for {
-						// if account == "GDUT3U3X5RID2KKXBF7GGANYH4UT3RUT4Y5KLLGHTAIOJT67UZUNQ4Y2" {
-						// 	fmt.Println(account, activeCheckpoints, lastActiveCheckpoint)
-						// 	fmt.Println(account, knownCheckpoints)
-						// }
-
 						lastActiveCheckpoint, err = store.NextActive(account, "all/", lastActiveCheckpoint)
 						if err == io.EOF {
 							break

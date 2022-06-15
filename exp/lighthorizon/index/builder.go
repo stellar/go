@@ -40,6 +40,7 @@ func BuildIndices(
 		historyarchive.ConnectOptions{
 			Context:           ctx,
 			NetworkPassphrase: networkPassphrase,
+			S3Region:          "us-east-1",
 		},
 	)
 	if err != nil {

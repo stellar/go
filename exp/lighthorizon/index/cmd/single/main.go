@@ -15,8 +15,8 @@ func main() {
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	targetUrl := flag.String("target", "file://indexes", "where to write indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
-	start := flag.Int("start", -1, "ledger to start at (inclusive, default: earliest)")
-	end := flag.Int("end", -1, "ledger to end at (inclusive, default: latest)")
+	start := flag.Int("start", 2, "ledger to start at (inclusive, default: earliest)")
+	end := flag.Int("end", 0, "ledger to end at (inclusive, default: latest)")
 	modules := flag.String("modules", "accounts,transactions", "comma-separated list of modules to index (default: all)")
 
 	// Should we use runtime.NumCPU() for a reasonable default?
