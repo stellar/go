@@ -17,7 +17,7 @@ import (
 // FsCacheBackend fronts another backend with a local filesystem cache
 type FsCacheBackend struct {
 	ArchiveBackend
-	dir        string
+	dir string
 	//lint:ignore U1000 Ignore unused temporarily
 	knownFiles lruCache
 	maxFiles   int

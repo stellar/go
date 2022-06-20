@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,6 +9,11 @@ import (
 	"strconv"
 
 	"github.com/stellar/go/support/render/hal"
+)
+
+var (
+	//go:embed static
+	staticFiles embed.FS
 )
 
 type Pagination struct {
