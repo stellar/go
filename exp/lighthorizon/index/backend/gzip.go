@@ -53,23 +53,22 @@ func readGzippedFrom(r io.Reader) (types.NamedIndices, int64, error) {
 			return nil, n, err
 		}
 
-		ind, err := types.NewCheckpointIndexFromBytes(buf.Bytes())
+		ind, err := types.NewCheckpointIndex(buf.Bytes())
 		if err != nil {
 			return nil, n, err
 		}
+
 		indexes[zr.Name] = ind
 
 		buf.Reset()
+
 		err = zr.Reset(r)
 		if err == io.EOF {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, n, err
 		}
 	}
-	if err := zr.Close(); err != nil {
-		return nil, n, err
-	}
-	return indexes, n, nil
+
+	return indexes, n, zr.Close()
 }
