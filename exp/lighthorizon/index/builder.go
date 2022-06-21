@@ -119,11 +119,6 @@ func BuildIndices(
 				L.Debugf("Working on checkpoint range [%d, %d]",
 					ledgerRange.Low, ledgerRange.High)
 
-				// Assertion for testing
-				if ledgerRange.High != endLedger && (ledgerRange.High+1)%64 != 0 {
-					L.Fatalf("Upper ledger isn't a checkpoint: %v", ledgerRange)
-				}
-
 				err = indexBuilder.Build(ctx, ledgerRange)
 				if err != nil {
 					return err

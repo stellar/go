@@ -206,20 +206,14 @@ func (s *store) getCreateIndex(account, id string) (*types.CheckpointIndex, erro
 		accountIndexes[id] = ind
 	}
 
-	if memoryAccountIndices := s.indexes[account]; memoryAccountIndices != nil {
-		// Merge the indices we just pulled from disk into the indices in
-		// memory. Otherwise, we lose un-flushed changes to unrelated indices.
-		for name, diskIndex := range accountIndexes {
-			if memoryIndex, ok := memoryAccountIndices[name]; ok {
-				if diskIndex == memoryIndex { // same index?
-					continue
-				}
-
-				if err := memoryIndex.Merge(diskIndex); err != nil {
-					return nil, err
-				}
-			} else {
-				memoryAccountIndices[name] = diskIndex
+	// We don't want to replace the entire index map in memory (even though we
+	// read all of it from disk), just the one we loaded from disk. Otherwise,
+	// we lose in-memory changes to unrelated indices.
+	if memoryIndices, ok := s.indexes[account]; ok { // account exists in-mem
+		if memoryIndex, ok2 := memoryIndices[id]; ok2 { // id exists in-mem
+			if memoryIndex != accountIndexes[id] { // not using in-mem already
+				memoryIndex.Merge(ind)
+				s.indexes[account][id] = memoryIndex
 			}
 		}
 	} else {
