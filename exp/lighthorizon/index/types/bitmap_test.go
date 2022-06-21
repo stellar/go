@@ -15,7 +15,7 @@ func TestNewFromBytes(t *testing.T) {
 			index := &CheckpointIndex{}
 			index.SetActive(i)
 			b := index.Flush()
-			newIndex, err := NewCheckpointIndexFromBytes(b)
+			newIndex, err := NewCheckpointIndex(b)
 			require.NoError(t, err)
 			assert.Equal(t, index.firstCheckpoint, newIndex.firstCheckpoint)
 			assert.Equal(t, index.lastCheckpoint, newIndex.lastCheckpoint)
