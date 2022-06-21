@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"net/http"
+	"os"
 
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
@@ -15,6 +16,10 @@ import (
 )
 
 func main() {
+
+	os.Args = append(os.Args, "-source=file:///Users/sreuland/workspace/txmeta-live-archive")
+	os.Args = append(os.Args, "-indexes=file:///Users/sreuland/workspace/txmeta-live-archive")
+
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	indexesUrl := flag.String("indexes", "file://indexes", "url of the indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
