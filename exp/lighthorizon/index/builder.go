@@ -67,7 +67,7 @@ func BuildIndices(
 	}
 
 	if endLedger < startLedger {
-		return fmt.Errorf("invalid ledger range: end < start (%d < %d)", endLedger, startLedger)
+		return nil, fmt.Errorf("invalid ledger range: end < start (%d < %d)", endLedger, startLedger)
 	}
 
 	ledgerCount := 1 + (endLedger - startLedger) // +1 because endLedger is inclusive
@@ -93,7 +93,7 @@ func BuildIndices(
 		case "accounts_unbacked":
 			indexBuilder.RegisterModule(ProcessAccountsWithoutBackend)
 		default:
-			return indexBuilder, fmt.Errorf("Unknown module: %s", part)
+			return indexBuilder, fmt.Errorf("unknown module '%s'", part)
 		}
 	}
 
