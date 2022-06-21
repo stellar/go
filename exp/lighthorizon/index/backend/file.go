@@ -125,7 +125,8 @@ func (s *FileBackend) Read(account string) (types.NamedIndices, error) {
 		return nil, err
 	}
 	defer b.Close()
-	indexes, _, err := readGzippedFrom(b)
+
+	indexes, _, err := readGzippedFrom(bufio.NewReader(b))
 	if err != nil {
 		log.Errorf("Unable to parse %s: %v", account, err)
 		return nil, os.ErrNotExist
