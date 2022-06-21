@@ -27,6 +27,8 @@ func BuildIndices(
 	modules []string,
 	workerCount int,
 ) error {
+	L := log.Ctx(ctx)
+
 	indexStore, err := Connect(targetUrl)
 	if err != nil {
 		return err
@@ -38,6 +40,7 @@ func BuildIndices(
 		historyarchive.ConnectOptions{
 			Context:           ctx,
 			NetworkPassphrase: networkPassphrase,
+			S3Region:          "us-east-1",
 		},
 	)
 	if err != nil {
@@ -55,13 +58,17 @@ func BuildIndices(
 		endLedger = latest
 	}
 
+	if endLedger < startLedger {
+		return fmt.Errorf("invalid ledger range: end < start (%d < %d)", endLedger, startLedger)
+	}
+
 	ledgerCount := 1 + (endLedger - startLedger) // +1 because endLedger is inclusive
 	parallel := max(1, workerCount)
 
 	startTime := time.Now()
-	log.Infof("Creating indices for ledger range: %d through %d (%d ledgers)",
+	L.Infof("Creating indices for ledger range: %d through %d (%d ledgers)",
 		startLedger, endLedger, ledgerCount)
-	log.Infof("Using %d workers", parallel)
+	L.Infof("Using %d workers", parallel)
 
 	// Create a bunch of workers that process ledgers a checkpoint range at a
 	// time (better than a ledger at a time to minimize flushes).
@@ -92,7 +99,7 @@ func BuildIndices(
 		nextLedger := min(endLedger, ledger+(nextCheckpoint-startLedger))
 		for ledger <= endLedger {
 			chunk := historyarchive.Range{Low: ledger, High: nextLedger}
-			log.Debugf("Submitted [%d, %d] for work", chunk.Low, chunk.High)
+			L.Debugf("Submitted [%d, %d] for work", chunk.Low, chunk.High)
 			ch <- chunk
 
 			ledger = nextLedger + 1
@@ -109,13 +116,8 @@ func BuildIndices(
 				count := (ledgerRange.High - ledgerRange.Low) + 1
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
 
-				log.Debugf("Working on checkpoint range [%d, %d]",
+				L.Debugf("Working on checkpoint range [%d, %d]",
 					ledgerRange.Low, ledgerRange.High)
-
-				// Assertion for testing
-				if ledgerRange.High != endLedger && (ledgerRange.High+1)%64 != 0 {
-					log.Fatalf("Upper ledger isn't a checkpoint: %v", ledgerRange)
-				}
 
 				err = indexBuilder.Build(ctx, ledgerRange)
 				if err != nil {
@@ -141,11 +143,11 @@ func BuildIndices(
 
 	// Assertion for testing
 	if processed != uint64(ledgerCount) {
-		log.Fatalf("processed %d but expected %d", processed, ledgerCount)
+		L.Fatalf("processed %d but expected %d", processed, ledgerCount)
 	}
 
-	log.Infof("Processed %d ledgers via %d workers", processed, parallel)
-	log.Infof("Uploading indices to %s", targetUrl)
+	L.Infof("Processed %d ledgers via %d workers", processed, parallel)
+	L.Infof("Uploading indices to %s", targetUrl)
 	if err := indexStore.Flush(); err != nil {
 		return errors.Wrap(err, "flushing indices failed")
 	}
@@ -255,12 +257,12 @@ func ProcessAccounts(
 	tx ingest.LedgerTransaction,
 ) error {
 	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := getParticipants(tx)
+	allParticipants, err := GetParticipants(tx)
 	if err != nil {
 		return err
 	}
 
-	err = indexStore.AddParticipantsToIndexes(checkpoint, "all_all", allParticipants)
+	err = indexStore.AddParticipantsToIndexes(checkpoint, "all/", allParticipants)
 	if err != nil {
 		return err
 	}
@@ -270,7 +272,7 @@ func ProcessAccounts(
 		return err
 	}
 
-	err = indexStore.AddParticipantsToIndexes(checkpoint, "all_payments", paymentsParticipants)
+	err = indexStore.AddParticipantsToIndexes(checkpoint, "all/payments", paymentsParticipants)
 	if err != nil {
 		return err
 	}
@@ -296,7 +298,7 @@ func ProcessAccountsWithoutBackend(
 	tx ingest.LedgerTransaction,
 ) error {
 	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := getParticipants(tx)
+	allParticipants, err := GetParticipants(tx)
 	if err != nil {
 		return err
 	}
@@ -335,7 +337,7 @@ func getPaymentParticipants(transaction ingest.LedgerTransaction) ([]string, err
 	return participantsForOperations(transaction, true)
 }
 
-func getParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
+func GetParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
 	return participantsForOperations(transaction, false)
 }
 
@@ -356,6 +358,7 @@ func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayment
 			xdr.OperationTypePathPaymentStrictSend,
 			xdr.OperationTypeAccountMerge:
 			participants = append(participants, opSource.Address())
+
 		default:
 			if onlyPayments {
 				continue
@@ -366,44 +369,35 @@ func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayment
 		switch operation.Body.Type {
 		case xdr.OperationTypeCreateAccount:
 			participants = append(participants, operation.Body.MustCreateAccountOp().Destination.Address())
+
 		case xdr.OperationTypePayment:
 			participants = append(participants, operation.Body.MustPaymentOp().Destination.ToAccountId().Address())
+
 		case xdr.OperationTypePathPaymentStrictReceive:
 			participants = append(participants, operation.Body.MustPathPaymentStrictReceiveOp().Destination.ToAccountId().Address())
+
 		case xdr.OperationTypePathPaymentStrictSend:
 			participants = append(participants, operation.Body.MustPathPaymentStrictSendOp().Destination.ToAccountId().Address())
-		case xdr.OperationTypeManageBuyOffer:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeManageSellOffer:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeCreatePassiveSellOffer:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeSetOptions:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeChangeTrust:
-			// the only direct participant is the source_account
+
 		case xdr.OperationTypeAllowTrust:
 			participants = append(participants, operation.Body.MustAllowTrustOp().Trustor.Address())
+
 		case xdr.OperationTypeAccountMerge:
 			participants = append(participants, operation.Body.MustDestination().ToAccountId().Address())
-		case xdr.OperationTypeInflation:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeManageData:
-			// the only direct participant is the source_account
-		case xdr.OperationTypeBumpSequence:
-			// the only direct participant is the source_account
+
 		case xdr.OperationTypeCreateClaimableBalance:
 			for _, c := range operation.Body.MustCreateClaimableBalanceOp().Claimants {
 				participants = append(participants, c.MustV0().Destination.Address())
 			}
-		case xdr.OperationTypeClaimClaimableBalance:
-			// the only direct participant is the source_account
+
 		case xdr.OperationTypeBeginSponsoringFutureReserves:
 			participants = append(participants, operation.Body.MustBeginSponsoringFutureReservesOp().SponsoredId.Address())
+
 		case xdr.OperationTypeEndSponsoringFutureReserves:
 			// Failed transactions may not have a compliant sandwich structure
-			// we can rely on (e.g. invalid nesting or a being operation with the wrong sponsoree ID)
-			// and thus we bail out since we could return incorrect information.
+			// we can rely on (e.g. invalid nesting or a being operation with
+			// the wrong sponsoree ID) and thus we bail out since we could
+			// return incorrect information.
 			if transaction.Result.Successful() {
 				sponsoree := transaction.Envelope.SourceAccount().ToAccountId().Address()
 				if operation.SourceAccount != nil {
@@ -417,28 +411,42 @@ func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayment
 					}
 				}
 			}
+
 		case xdr.OperationTypeRevokeSponsorship:
 			op := operation.Body.MustRevokeSponsorshipOp()
 			switch op.Type {
 			case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
 				participants = append(participants, getLedgerKeyParticipants(*op.LedgerKey)...)
+
 			case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
 				participants = append(participants, op.Signer.AccountId.Address())
-				// We don't add signer as a participant because a signer can be arbitrary account.
-				// This can spam successful operations history of any account.
+				// We don't add signer as a participant because a signer can be
+				// arbitrary account. This can spam successful operations
+				// history of any account.
 			}
+
 		case xdr.OperationTypeClawback:
 			op := operation.Body.MustClawbackOp()
 			participants = append(participants, op.From.ToAccountId().Address())
-		case xdr.OperationTypeClawbackClaimableBalance:
-			// the only direct participant is the source_account
+
 		case xdr.OperationTypeSetTrustLineFlags:
 			op := operation.Body.MustSetTrustLineFlagsOp()
 			participants = append(participants, op.Trustor.Address())
+
+		// for the following, the only direct participant is the source_account
+		case xdr.OperationTypeManageBuyOffer:
+		case xdr.OperationTypeManageSellOffer:
+		case xdr.OperationTypeCreatePassiveSellOffer:
+		case xdr.OperationTypeSetOptions:
+		case xdr.OperationTypeChangeTrust:
+		case xdr.OperationTypeInflation:
+		case xdr.OperationTypeManageData:
+		case xdr.OperationTypeBumpSequence:
+		case xdr.OperationTypeClaimClaimableBalance:
+		case xdr.OperationTypeClawbackClaimableBalance:
 		case xdr.OperationTypeLiquidityPoolDeposit:
-			// the only direct participant is the source_account
 		case xdr.OperationTypeLiquidityPoolWithdraw:
-			// the only direct participant is the source_account
+
 		default:
 			return nil, fmt.Errorf("unknown operation type: %s", operation.Body.Type)
 		}
@@ -453,9 +461,9 @@ func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayment
 		// }
 	}
 
-	// FIXME: This could probably be a set rather than a list, since there's no
-	// reason to track a participating account more than once if they are
-	// participants across multiple operations.
+	// TODO: Can/Should we make this a set? It may mean less superfluous
+	// insertions into the index if there's a lot of activity by this
+	// account in this transaction.
 	return participants, nil
 }
 

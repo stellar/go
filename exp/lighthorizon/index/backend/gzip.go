@@ -3,6 +3,7 @@ package index
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
@@ -14,8 +15,8 @@ func writeGzippedTo(w io.Writer, indexes types.NamedIndices) (int64, error) {
 	var n int64
 	for id, index := range indexes {
 		zw.Name = id
-		nRead, err := io.Copy(zw, index.Buffer())
-		n += nRead
+		nWrote, err := io.Copy(zw, index.Buffer())
+		n += nWrote
 		if err != nil {
 			return n, err
 		}
@@ -31,10 +32,15 @@ func writeGzippedTo(w io.Writer, indexes types.NamedIndices) (int64, error) {
 }
 
 func readGzippedFrom(r io.Reader) (types.NamedIndices, int64, error) {
+	if _, ok := r.(io.ByteReader); !ok {
+		return nil, 0, errors.New("reader *must* implement ByteReader")
+	}
+
 	zr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, 0, err
 	}
+
 	indexes := types.NamedIndices{}
 	var buf bytes.Buffer
 	var n int64
@@ -47,23 +53,22 @@ func readGzippedFrom(r io.Reader) (types.NamedIndices, int64, error) {
 			return nil, n, err
 		}
 
-		ind, err := types.NewCheckpointIndexFromBytes(buf.Bytes())
+		ind, err := types.NewCheckpointIndex(buf.Bytes())
 		if err != nil {
 			return nil, n, err
 		}
+
 		indexes[zr.Name] = ind
 
 		buf.Reset()
+
 		err = zr.Reset(r)
 		if err == io.EOF {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, n, err
 		}
 	}
-	if err := zr.Close(); err != nil {
-		return nil, n, err
-	}
-	return indexes, n, nil
+
+	return indexes, n, zr.Close()
 }
