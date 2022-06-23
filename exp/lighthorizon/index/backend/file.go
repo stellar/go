@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )

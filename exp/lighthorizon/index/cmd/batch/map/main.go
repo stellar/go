@@ -97,7 +97,7 @@ func main() {
 	log.Infof("Uploading ledger range [%d, %d] to %s",
 		batch.Range.Low, batch.Range.High, batch.TargetUrl)
 
-	if err := index.BuildIndices(
+	if _, err := index.BuildIndices(
 		context.Background(),
 		batch.TxMetaSourceUrl,
 		batch.TargetUrl,
