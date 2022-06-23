@@ -15,18 +15,19 @@ func main() {
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	targetUrl := flag.String("target", "file://indexes", "where to write indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
-	start := flag.Int("start", -1, "ledger to start at (inclusive, default: earliest)")
-	end := flag.Int("end", -1, "ledger to end at (inclusive, default: latest)")
+	start := flag.Int("start", 2, "ledger to start at (inclusive, default: earliest)")
+	end := flag.Int("end", 0, "ledger to end at (inclusive, default: latest)")
 	modules := flag.String("modules", "accounts,transactions", "comma-separated list of modules to index (default: all)")
-
-	// Should we use runtime.NumCPU() for a reasonable default?
-	// Yes, but leave a CPU open so I can actually use my PC while this runs.
+	watch := flag.Bool("watch", false, "whether to watch the `source` for new "+
+		"txmeta files and index them (default: false). "+
+		"note: `-watch` implicitly implies `-end -1`")
 	workerCount := flag.Int("workers", runtime.NumCPU()-1, "number of workers (default: # of CPUs - 1)")
 
 	flag.Parse()
 	log.SetLevel(log.InfoLevel)
+	// log.SetLevel(log.DebugLevel)
 
-	err := index.BuildIndices(
+	builder, err := index.BuildIndices(
 		context.Background(),
 		*sourceUrl,
 		*targetUrl,
@@ -38,6 +39,12 @@ func main() {
 	)
 	if err != nil {
 		panic(err)
+	}
+
+	if *watch {
+		if err := builder.Watch(context.Background()); err != nil {
+			panic(err)
+		}
 	}
 }
 

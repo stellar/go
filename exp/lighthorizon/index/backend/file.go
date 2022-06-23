@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -125,7 +126,8 @@ func (s *FileBackend) Read(account string) (types.NamedIndices, error) {
 		return nil, err
 	}
 	defer b.Close()
-	indexes, _, err := readGzippedFrom(b)
+
+	indexes, _, err := readGzippedFrom(bufio.NewReader(b))
 	if err != nil {
 		log.Errorf("Unable to parse %s: %v", account, err)
 		return nil, os.ErrNotExist
@@ -154,8 +156,6 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 	accountMap := make(map[string]struct{}, preallocationSize)
 	accounts := make([]string, 0, preallocationSize)
 
-	// We don't use UnmarshalBinary here because we need to know how much of the
-	// buffer was read for each account.
 	reader := bufio.NewReaderSize(f, 100*gAddressSize) // reasonable buffer size
 	for {
 		line, err := reader.ReadString(byte('\n'))

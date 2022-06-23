@@ -19,18 +19,22 @@ type CheckpointIndex struct {
 
 type NamedIndices map[string]*CheckpointIndex
 
-func NewCheckpointIndexFromBytes(b []byte) (*CheckpointIndex, error) {
+func NewCheckpointIndex(b []byte) (*CheckpointIndex, error) {
 	xdrCheckpoint := xdr.CheckpointIndex{}
 	err := xdrCheckpoint.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
 
+	return NewCheckpointIndexFromXDR(xdrCheckpoint), nil
+}
+
+func NewCheckpointIndexFromXDR(index xdr.CheckpointIndex) *CheckpointIndex {
 	return &CheckpointIndex{
-		bitmap:          xdrCheckpoint.Bitmap,
-		firstCheckpoint: uint32(xdrCheckpoint.FirstCheckpoint),
-		lastCheckpoint:  uint32(xdrCheckpoint.LastCheckpoint),
-	}, nil
+		bitmap:          index.Bitmap[:],
+		firstCheckpoint: uint32(index.FirstCheckpoint),
+		lastCheckpoint:  uint32(index.LastCheckpoint),
+	}
 }
 
 func (i *CheckpointIndex) SetActive(checkpoint uint32) error {
@@ -148,7 +152,6 @@ func (i *CheckpointIndex) Merge(other *CheckpointIndex) error {
 	defer i.mutex.Unlock()
 
 	var err error
-
 	other.iterate(func(checkpoint uint32) {
 		if err != nil {
 			return
@@ -214,16 +217,22 @@ func maxBitAfter(b byte, after uint32) (uint32, bool) {
 	return 0, false
 }
 
-func (i *CheckpointIndex) Buffer() *bytes.Buffer {
+func (i *CheckpointIndex) ToXDR() xdr.CheckpointIndex {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
-	xdrCheckpoint := xdr.CheckpointIndex{
+	return xdr.CheckpointIndex{
 		FirstCheckpoint: xdr.Uint32(i.firstCheckpoint),
 		LastCheckpoint:  xdr.Uint32(i.lastCheckpoint),
 		Bitmap:          i.bitmap,
 	}
+}
 
+func (i *CheckpointIndex) Buffer() *bytes.Buffer {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
+
+	xdrCheckpoint := i.ToXDR()
 	b, err := xdrCheckpoint.MarshalBinary()
 	if err != nil {
 		panic(err)
