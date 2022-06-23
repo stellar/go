@@ -58,7 +58,7 @@ func Operations(archiveWrapper archive.Wrapper, indexStore index.Store) func(htt
 		if account != "" {
 			// Skip the cursor ahead to the next active checkpoint for this account
 			var checkpoint uint32
-			checkpoint, err = indexStore.NextActive(account, "all_all", uint32(toid.Parse(paginate.Cursor).LedgerSequence/64))
+			checkpoint, err = indexStore.NextActive(account, "all/all", uint32(toid.Parse(paginate.Cursor).LedgerSequence/64))
 			if err == io.EOF {
 				// never active. No results.
 				page.PopulateLinks()
