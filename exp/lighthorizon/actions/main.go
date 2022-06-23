@@ -62,39 +62,31 @@ func RequestUnaryParam(r *http.Request, paramName string) (string, error) {
 }
 
 func Paging(r *http.Request) (Pagination, error) {
-	var cursorRequested, limitRequested, orderRequested string
-	var err error
 	paginate := Pagination{
 		Order: OrderAsc,
 	}
 
-	if cursorRequested, err = RequestUnaryParam(r, "cursor"); err != nil {
+	if cursorRequested, err := RequestUnaryParam(r, "cursor"); err != nil {
 		return Pagination{}, err
-	}
-
-	if limitRequested, err = RequestUnaryParam(r, "limit"); err != nil {
-		return Pagination{}, err
-	}
-
-	if orderRequested, err = RequestUnaryParam(r, "order"); err != nil {
-		return Pagination{}, err
-	}
-
-	if cursorRequested != "" {
+	} else if cursorRequested != "" {
 		paginate.Cursor, err = strconv.ParseInt(cursorRequested, 10, 64)
 		if err != nil {
 			return Pagination{}, err
 		}
 	}
 
-	if limitRequested != "" {
+	if limitRequested, err := RequestUnaryParam(r, "limit"); err != nil {
+		return Pagination{}, err
+	} else if limitRequested != "" {
 		paginate.Limit, err = strconv.ParseInt(limitRequested, 10, 64)
 		if err != nil {
 			return Pagination{}, err
 		}
 	}
 
-	if orderRequested != "" && orderRequested == string(OrderDesc) {
+	if orderRequested, err := RequestUnaryParam(r, "order"); err != nil {
+		return Pagination{}, err
+	} else if orderRequested != "" && orderRequested == string(OrderDesc) {
 		paginate.Order = OrderDesc
 	}
 
