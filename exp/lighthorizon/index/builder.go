@@ -30,8 +30,7 @@ func BuildIndices(
 ) (*IndexBuilder, error) {
 	if endLedger < startLedger {
 		return nil, fmt.Errorf(
-			"nothing to do: start > end (%d > %d)",
-			startLedger, endLedger)
+			"nothing to do: start > end (%d > %d)", startLedger, endLedger)
 	}
 
 	L := log.Ctx(ctx)
@@ -127,9 +126,8 @@ func BuildIndices(
 				L.Debugf("Working on checkpoint range [%d, %d]",
 					ledgerRange.Low, ledgerRange.High)
 
-				err = indexBuilder.Build(ctx, ledgerRange)
-				if err != nil {
-					return err
+				if err = indexBuilder.Build(ctx, ledgerRange); err != nil {
+					return errors.Wrap(err, "building indices failed")
 				}
 
 				printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)

@@ -49,7 +49,7 @@ func TestSingleProcess(tt *testing.T) {
 				t.Logf("Storing indices in %s", tmpDir)
 
 				ctx := context.Background()
-				err := index.BuildIndices(
+				_, err := index.BuildIndices(
 					ctx,
 					txmetaSource,
 					tmpDir,
@@ -139,7 +139,7 @@ func TestSingleProcess(tt *testing.T) {
 					// Ensure that the "everything" index exists for the account.
 					index, err := store.Read(account)
 					require.NoError(t, err)
-					require.Contains(t, index, "all/")
+					require.Contains(t, index, "all/all")
 
 					// Ensure that all of the active checkpoints reported by the
 					// index match the ones we tracked while ingesting the range
@@ -147,7 +147,7 @@ func TestSingleProcess(tt *testing.T) {
 					activeCheckpoints := []uint32{}
 					lastActiveCheckpoint := uint32(0)
 					for {
-						lastActiveCheckpoint, err = store.NextActive(account, "all/", lastActiveCheckpoint)
+						lastActiveCheckpoint, err = store.NextActive(account, "all/all", lastActiveCheckpoint)
 						if err == io.EOF {
 							break
 						}

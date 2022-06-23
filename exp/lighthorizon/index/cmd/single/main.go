@@ -21,13 +21,11 @@ func main() {
 	watch := flag.Bool("watch", false, "whether to watch the `source` for new "+
 		"txmeta files and index them (default: false). "+
 		"note: `-watch` implicitly implies `-end -1`")
-
-	// Should we use runtime.NumCPU() for a reasonable default?
-	// Yes, but leave a CPU open so I can actually use my PC while this runs.
 	workerCount := flag.Int("workers", runtime.NumCPU()-1, "number of workers (default: # of CPUs - 1)")
 
 	flag.Parse()
 	log.SetLevel(log.InfoLevel)
+	// log.SetLevel(log.DebugLevel)
 
 	builder, err := index.BuildIndices(
 		context.Background(),
