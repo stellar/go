@@ -62,11 +62,11 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 			var b []byte
 			b, err = hex.DecodeString(txId)
 			if err != nil {
-				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter")
+				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter, not valid hex encoding")
 				return
 			}
 			if len(b) != 32 {
-				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter")
+				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter, the encoded hex value must decode to length of 32 bytes")
 				return
 			}
 			var hash [32]byte
