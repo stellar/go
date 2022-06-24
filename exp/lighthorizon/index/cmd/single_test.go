@@ -35,13 +35,20 @@ const (
 
 func TestSingleProcess(tt *testing.T) {
 	eldestLedger, latestLedger := GetFixtureLedgerRange(tt)
+	checkpoints := historyarchive.NewCheckpointManager(0)
 
+	// We want two test variations:
+	//   - starting at the first ledger in a checkpoint range
+	//   - starting at an arbitrary ledger
+	//
+	// To do this, we adjust the known set of fixture ledgers we have.
 	var eldestCheckpointLedger uint32
-	if IsCheckpoint(eldestLedger) {
-		eldestCheckpointLedger = eldestLedger
-		eldestLedger += 2 // make it a non-checkpoint
+	if checkpoints.IsCheckpoint(eldestLedger - 1) {
+		eldestCheckpointLedger = eldestLedger // first in range
+		eldestLedger += 5                     // somewhere in the "middle"
 	} else {
-		eldestCheckpointLedger = NextCheckpoint(eldestLedger)
+		eldestCheckpointLedger = checkpoints.NextCheckpoint(eldestLedger-1) + 1
+		eldestLedger++
 	}
 
 	tt.Run("start-at-checkpoint", func(t *testing.T) {
@@ -79,8 +86,7 @@ func testSingleProcess(t *testing.T, ledgerRange historyarchive.Range) {
 		txmetaSource,
 		tmpDir,
 		network.TestNetworkPassphrase,
-		firstLedger,
-		lastLedger,
+		historyarchive.Range{Low: firstLedger, High: lastLedger},
 		[]string{
 			"accounts",
 			"transactions",
@@ -267,12 +273,4 @@ func GetFixtureLedgerRange(t *testing.T) (low uint32, high uint32) {
 	}
 
 	return low, high
-}
-
-func IsCheckpoint(ledger uint32) bool {
-	return (ledger+1)%64 == 0
-}
-
-func NextCheckpoint(ledger uint32) uint32 {
-	return ((ledger / 64) + 1) * 64
 }

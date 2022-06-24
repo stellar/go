@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 )
@@ -32,8 +33,10 @@ func main() {
 		*sourceUrl,
 		*targetUrl,
 		*networkPassphrase,
-		uint32(max(*start, 2)),
-		uint32(*end),
+		historyarchive.Range{
+			Low:  uint32(max(*start, 2)),
+			High: uint32(*end),
+		},
 		strings.Split(*modules, ","),
 		*workerCount,
 	)

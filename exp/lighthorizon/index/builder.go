@@ -24,15 +24,10 @@ func BuildIndices(
 	sourceUrl string, // where is raw txmeta coming from?
 	targetUrl string, // where should the resulting indices go?
 	networkPassphrase string,
-	startLedger, endLedger uint32,
+	ledgerRange historyarchive.Range, // inclusive
 	modules []string,
 	workerCount int,
 ) (*IndexBuilder, error) {
-	if endLedger < startLedger {
-		return nil, fmt.Errorf(
-			"nothing to do: start > end (%d > %d)", startLedger, endLedger)
-	}
-
 	L := log.Ctx(ctx)
 
 	indexStore, err := Connect(targetUrl)
@@ -57,24 +52,24 @@ func BuildIndices(
 	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
 	defer ledgerBackend.Close()
 
-	if endLedger == 0 {
-		latest, err := ledgerBackend.GetLatestLedgerSequence(ctx)
-		if err != nil {
-			return nil, err
+	if ledgerRange.High == 0 {
+		var backendErr error
+		ledgerRange.High, backendErr = ledgerBackend.GetLatestLedgerSequence(ctx)
+		if backendErr != nil {
+			return nil, backendErr
 		}
-		endLedger = latest
 	}
 
-	if endLedger < startLedger {
-		return nil, fmt.Errorf("invalid ledger range: end < start (%d < %d)", endLedger, startLedger)
+	if ledgerRange.High < ledgerRange.Low {
+		return nil, fmt.Errorf("invalid ledger range: %s", ledgerRange.String())
 	}
 
-	ledgerCount := 1 + (endLedger - startLedger) // +1 because endLedger is inclusive
-	parallel := max(1, workerCount)
+	ledgerCount := 1 + (ledgerRange.High - ledgerRange.Low) // +1 bc inclusive
+	parallel := int(max(1, uint32(workerCount)))
 
 	startTime := time.Now()
-	L.Infof("Creating indices for ledger range: %d through %d (%d ledgers)",
-		startLedger, endLedger, ledgerCount)
+	L.Infof("Creating indices for ledger range: [%d, %d] (%d ledgers)",
+		ledgerRange.Low, ledgerRange.High, ledgerCount)
 	L.Infof("Using %d workers", parallel)
 
 	// Create a bunch of workers that process ledgers a checkpoint range at a
@@ -100,18 +95,14 @@ func BuildIndices(
 	// Submit the work to the channels, breaking up the range into individual
 	// checkpoint ranges.
 	go func() {
-		// Recall: A ledger X is a checkpoint ledger iff (X + 1) % 64 == 0
-		nextCheckpoint := (((startLedger / 64) * 64) + 63)
+		checkpoints := historyarchive.NewCheckpointManager(0)
+		for ledger := range ledgerRange.GenerateCheckpoints(checkpoints) {
+			chunk := checkpoints.GetCheckpointRange(ledger)
+			chunk.High = min(chunk.High, ledgerRange.High)
+			chunk.Low = max(chunk.Low, ledgerRange.Low)
 
-		ledger := startLedger
-		nextLedger := min(endLedger, ledger+(nextCheckpoint-startLedger))
-		for ledger <= endLedger {
-			chunk := historyarchive.Range{Low: ledger, High: nextLedger}
-			L.Debugf("Submitted [%d, %d] for work", chunk.Low, chunk.High)
+			fmt.Printf("Submitted [%d, %d] for work\n", chunk.Low, chunk.High)
 			ch <- chunk
-
-			ledger = nextLedger + 1
-			nextLedger = min(endLedger, ledger+63) // don't exceed upper bound
 		}
 
 		close(ch)
@@ -122,15 +113,14 @@ func BuildIndices(
 		wg.Go(func() error {
 			for ledgerRange := range ch {
 				count := (ledgerRange.High - ledgerRange.Low) + 1
-				nprocessed := atomic.AddUint64(&processed, uint64(count))
-
-				L.Debugf("Working on checkpoint range [%d, %d]",
-					ledgerRange.Low, ledgerRange.High)
+				L.Debugf("Working on checkpoint range [%d, %d] (%d ledgers)",
+					ledgerRange.Low, ledgerRange.High, count)
 
 				if err = indexBuilder.Build(ctx, ledgerRange); err != nil {
 					return errors.Wrap(err, "building indices failed")
 				}
 
+				nprocessed := atomic.AddUint64(&processed, uint64(count))
 				printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
 
 				// Upload indices once per checkpoint to save memory
@@ -247,11 +237,7 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 		}
 	}
 
-	builder.lastBuiltLedger = uint32(
-		max(int(builder.lastBuiltLedger),
-			int(ledgerRange.High)),
-	)
-
+	builder.lastBuiltLedger = max(builder.lastBuiltLedger, ledgerRange.High)
 	return nil
 }
 
@@ -361,7 +347,7 @@ func min(a, b uint32) uint32 {
 	return b
 }
 
-func max(a, b int) int {
+func max(a, b uint32) uint32 {
 	if a > b {
 		return a
 	}

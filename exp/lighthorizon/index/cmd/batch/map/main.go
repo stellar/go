@@ -43,13 +43,21 @@ func NewBatchConfig() (*BatchConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+firstCheckpointEnv)
 	}
-	if (firstCheckpoint+1)%64 != 0 {
-		return nil, fmt.Errorf("invalid checkpoint: %d", firstCheckpoint)
+
+	checkpoints := historyarchive.NewCheckpointManager(0)
+	if checkpoints.IsCheckpoint(uint32(firstCheckpoint) - 1) {
+		return nil, fmt.Errorf(
+			"%s (%d) must be the first ledger in a checkpoint range",
+			firstCheckpointEnv, firstCheckpoint)
 	}
 
 	batchSize, err := strconv.ParseUint(os.Getenv(batchSizeEnv), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+batchSizeEnv)
+	} else if batchSize%uint64(checkpoints.GetCheckpointFrequency()) != 0 {
+		return nil, fmt.Errorf(
+			"%s (%d) must be a multiple of checkpoint frequency (%d)",
+			batchSizeEnv, batchSize, checkpoints.GetCheckpointFrequency())
 	}
 
 	txmetaSourceUrl := os.Getenv(txmetaSourceUrlEnv)
@@ -57,10 +65,10 @@ func NewBatchConfig() (*BatchConfig, error) {
 		return nil, errors.New("required parameter " + txmetaSourceUrlEnv)
 	}
 
-	startCheckpoint := uint32(firstCheckpoint + batchSize*jobIndex)
-	endLedger := startCheckpoint + uint32(batchSize) - 1
+	firstLedger := uint32(firstCheckpoint + batchSize*jobIndex)
+	lastLedger := firstLedger + uint32(batchSize)
 	return &BatchConfig{
-		Range:           historyarchive.Range{Low: startCheckpoint, High: endLedger},
+		Range:           historyarchive.Range{Low: firstLedger, High: lastLedger},
 		TxMetaSourceUrl: txmetaSourceUrl,
 		IndexTargetUrl:  fmt.Sprintf("%s%cjob_%d", indexTargetRootUrl, os.PathSeparator, jobIndex),
 	}, nil
@@ -96,7 +104,7 @@ func main() {
 		batch.TxMetaSourceUrl,
 		batch.IndexTargetUrl,
 		network.TestNetworkPassphrase,
-		batch.Low, batch.High,
+		batch.Range,
 		[]string{
 			"accounts_unbacked",
 			"transactions",
