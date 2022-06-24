@@ -5,6 +5,8 @@
 # the map job resulted in the correct indices.
 # 
 
+# check parameters and their validity (types, existence, etc.)
+
 if [[ "$#" -ne "2" ]]; then 
     echo "Usage: $0 <txmeta src> <index dest>"
     exit 1
@@ -16,30 +18,42 @@ if [[ ! -d "$1" ]]; then
     exit 1
 fi
 
+if [[ -z $BATCH_SIZE ]]; then 
+    echo "BATCH_SIZE environmental variable required"
+    exit 1
+elif ! [[ $BATCH_SIZE =~ ^[0-9]+$ ]]; then 
+    echo "BATCH_SIZE ('$BATCH_SIZE') must be an integer"
+    exit 1
+fi
+
+if [[ -z $FIRST_LEDGER || -z $LAST_LEDGER ]]; then 
+    echo "FIRST_LEDGER and LAST_LEDGER environmental variables required"
+    exit 1
+elif ! [[ $FIRST_LEDGER =~ ^[0-9]+$ && $LAST_LEDGER =~ ^[0-9]+$ ]]; then 
+    echo "FIRST_LEDGER ('$FIRST_LEDGER') and LAST_LEDGER ('$LAST_LEDGER') must be integers"
+    exit 1
+fi
+
 if [[ ! -d "$2" ]]; then 
     echo "Warning: index dest ('$2') does not exist, creating..."
     mkdir -p $2
 fi
 
-echo "Analyzing $1:"
-LATEST=$(cat $1/latest)
-LAST=$(ls $1/ledgers | tail -n1)
+# do work
 
-if [[ "$LATEST" -ne "$LAST" ]]; then 
-    echo "Latest ledger incorrect: $LAST is last but $LATEST reported"
-    exit 1
-fi
-
-FIRST=$(ls $1/ledgers | head -n1)
-COUNT=$(($LAST-$FIRST))
-CHECKPOINT_COUNT=$(($COUNT / 64))
+FIRST=$FIRST_LEDGER
+LAST=$LAST_LEDGER
+COUNT=$(($LAST-$FIRST+1))
+# batches = ceil(count / batch_size)
+# formula is from https://stackoverflow.com/a/12536521
+BATCH_COUNT=$(( ($COUNT + $BATCH_SIZE - 1) / $BATCH_SIZE ))
 
 echo " - start: $FIRST"
 echo " - end:   $LAST"
-echo " - count: $COUNT ($CHECKPOINT_COUNT checkpoints)"
+echo " - count: $COUNT ($BATCH_COUNT batches)"
 
 if [[ "$((($FIRST + 1) % 64))" -ne "0" ]]; then 
-    echo "$FIRST isn't a checkpoint ledger, adjusting..."
+    echo "$FIRST isn't a checkpoint ledger"
     exit 1
 fi
 
@@ -49,26 +63,31 @@ if [[ "$?" -ne "0" ]]; then
     exit 1
 fi
 
-# Because for i in {0..$CHECKPOINT_COUNT} won't work...
-# https://www.cyberciti.biz/faq/unix-linux-iterate-over-a-variable-range-of-numbers-in-bash/
 pids=( )
-for i in $(eval echo "{0..$((CHECKPOINT_COUNT-1))}")
+for (( i=0; i < $BATCH_COUNT; i++ ))
 do
-    echo "Creating job $i"
+    echo -n "Creating job $i... "
 
-    AWS_BATCH_JOB_ARRAY_INDEX=$i BATCH_SIZE=64 FIRST_CHECKPOINT=$FIRST \
-    TXMETA_SOURCE=file://$1 INDEX_TARGET=file://$2 WORKER_COUNT=2 \
-        ./map & pids+=( $! )
+    AWS_BATCH_JOB_ARRAY_INDEX=$i BATCH_SIZE=$BATCH_SIZE FIRST_CHECKPOINT=$FIRST \
+    TXMETA_SOURCE=file://$1 INDEX_TARGET=file://$2 WORKER_COUNT=1 \
+        ./map &
+    
+    echo "pid=$!"
+    pids+=($!)
 done
+
+sleep $BATCH_COUNT
 
 # Check the status codes for all of the map processes.
 for i in "${!pids[@]}"; do
-  pid=${pids[$i]}
-  echo "Checking job $i: pid=$pid"
-  if ! wait "$pid"; then
-    echo "failed"
-    exit 1
-  fi
+    pid=${pids[$i]}
+    echo -n "Checking job $i (pid=$pid)... "
+    if ! wait "$pid"; then
+        echo "failed"
+        exit 1
+    else
+        echo "succeeded!"
+    fi
 done
 
 rm ./map
