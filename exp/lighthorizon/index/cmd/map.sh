@@ -48,14 +48,14 @@ COUNT=$(($LAST-$FIRST+1))
 # formula is from https://stackoverflow.com/a/12536521
 BATCH_COUNT=$(( ($COUNT + $BATCH_SIZE - 1) / $BATCH_SIZE ))
 
-echo " - start: $FIRST"
-echo " - end:   $LAST"
-echo " - count: $COUNT ($BATCH_COUNT batches)"
-
-if [[ "$((($FIRST + 1) % 64))" -ne "0" ]]; then 
-    echo "$FIRST isn't a checkpoint ledger"
+if [[ "$(((LAST + 1) % 64))" -ne "0" ]]; then
+    echo "LAST_LEDGER ($LAST_LEDGER) should be a checkpoint ledger"
     exit 1
 fi
+
+echo " - start: $FIRST"
+echo " - end:   $LAST"
+echo " - count: $COUNT ($BATCH_COUNT batches @ $BATCH_SIZE ledgers each)"
 
 go build -o ./map ./batch/map/...
 if [[ "$?" -ne "0" ]]; then 
