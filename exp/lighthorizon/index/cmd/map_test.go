@@ -45,7 +45,7 @@ func TestMap(t *testing.T) {
 	// First, execute the map jobs in parallel and dump the resulting indices to
 	// a temporary directory.
 
-	tempDir := filepath.Join(os.TempDir(), "indices-map")
+	tempDir := filepath.Join(t.TempDir(), "indices-map")
 	mapTestCmd := exec.Command("./map.sh", txmetaPath, tempDir)
 	mapTestCmd.Env = append(os.Environ(),
 		"BATCH_SIZE="+strconv.FormatUint(batchSize, 10),
