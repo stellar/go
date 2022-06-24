@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -11,12 +12,13 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	batchSize = 321
+	batchSize = 128
 )
 
 func TestMap(t *testing.T) {
@@ -29,18 +31,30 @@ func TestMap(t *testing.T) {
 	}
 	txmetaPath := strings.Replace(txmetaSource, "file://", "", 1)
 
-	// What ledger range are we working with? The maps *require* starting at a
-	// checkpoint ledger, so we need to break them up accordingly.
+	// What ledger range are we working with?
+	checkpointMgr := historyarchive.NewCheckpointManager(0)
 	startLedger, endLedger := GetFixtureLedgerRange(t)
-	if !IsCheckpoint(startLedger) {
-		startLedger = NextCheckpoint(startLedger)
+
+	// The map job *requires* that each one operate on a multiple of a
+	// checkpoint range, so we may need to adjust the ranges (depending on how
+	// many ledgers are in the fixutre) and break them up accordingly.
+	if !checkpointMgr.IsCheckpoint(startLedger - 1) {
+		startLedger = checkpointMgr.NextCheckpoint(startLedger-1) + 1
 	}
+	if !checkpointMgr.IsCheckpoint(endLedger) {
+		endLedger = checkpointMgr.PrevCheckpoint(endLedger - batchSize)
+	}
+
+	require.Greaterf(t, endLedger, startLedger,
+		"not enough fixtures for batchSize=%d", batchSize)
+
 	batchCount := (endLedger - startLedger + batchSize) / batchSize // ceil(ledgerCount / batchSize)
 
-	require.Truef(t, batchCount == 1 || IsCheckpoint(startLedger+batchSize+1),
+	require.Truef(t,
+		batchCount == 1 || checkpointMgr.IsCheckpoint(startLedger+batchSize-1),
 		"expected batch size (%d) to result in checkpoint blocks, "+
 			"but start+batchSize+1 (%d+%d+1=%d) is not a checkpoint",
-		batchSize, startLedger, batchSize+startLedger+1)
+		batchSize, batchSize, startLedger, batchSize+startLedger+1)
 
 	// First, execute the map jobs in parallel and dump the resulting indices to
 	// a temporary directory.
@@ -48,9 +62,9 @@ func TestMap(t *testing.T) {
 	tempDir := filepath.Join(t.TempDir(), "indices-map")
 	mapTestCmd := exec.Command("./map.sh", txmetaPath, tempDir)
 	mapTestCmd.Env = append(os.Environ(),
-		"BATCH_SIZE="+strconv.FormatUint(batchSize, 10),
-		"FIRST_LEDGER="+strconv.FormatUint(uint64(startLedger), 10),
-		"LAST_LEDGER="+strconv.FormatUint(uint64(endLedger), 10))
+		fmt.Sprintf("BATCH_SIZE=%d", batchSize),
+		fmt.Sprintf("FIRST_LEDGER=%d", startLedger),
+		fmt.Sprintf("LAST_LEDGER=%d", endLedger))
 	t.Logf("Running %d map jobs: %s", batchCount, mapTestCmd.String())
 	stdout, err := mapTestCmd.CombinedOutput()
 
