@@ -86,7 +86,7 @@ func TestAPI_txApprove_revised(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence: ,
+			Sequence:  5,
 		}, nil)
 
 	handler := txApproveHandler{
