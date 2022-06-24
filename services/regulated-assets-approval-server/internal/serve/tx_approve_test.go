@@ -140,7 +140,7 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: h.issuerKP.Address(),
-			Sequence:  "1",
+			Sequence:  1,
 		},
 		IncrementSequenceNum: true,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
@@ -166,7 +166,7 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: clientKP.Address(),
-			Sequence:  "1",
+			Sequence:  1,
 		},
 		IncrementSequenceNum: true,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
@@ -194,7 +194,7 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: clientKP.Address(),
-			Sequence:  "1",
+			Sequence:  1,
 		},
 		IncrementSequenceNum: true,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
@@ -332,7 +332,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -360,7 +360,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -388,7 +388,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -411,7 +411,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -441,7 +441,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -471,7 +471,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "20",
+				Sequence:  20,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -516,7 +516,7 @@ func TestTxApproveHandler_txApprove_success(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -533,7 +533,7 @@ func TestTxApproveHandler_txApprove_success(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -603,7 +603,7 @@ func TestTxApproveHandler_txApprove_actionRequired(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -620,7 +620,7 @@ func TestTxApproveHandler_txApprove_actionRequired(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -679,7 +679,7 @@ func TestTxApproveHandler_txApprove_revised(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -696,7 +696,7 @@ func TestTxApproveHandler_txApprove_revised(t *testing.T) {
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
-				Sequence:  "2",
+				Sequence:  2,
 			},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
@@ -773,7 +773,7 @@ func TestValidateTransactionOperationsForSuccess(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "5",
+			Sequence:  5,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -798,7 +798,7 @@ func TestValidateTransactionOperationsForSuccess(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "5",
+			Sequence:  5,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -822,7 +822,7 @@ func TestValidateTransactionOperationsForSuccess(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "5",
+			Sequence:  5,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -851,7 +851,7 @@ func TestValidateTransactionOperationsForSuccess(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "5",
+			Sequence:  5,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -900,7 +900,7 @@ func TestValidateTransactionOperationsForSuccess(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "5",
+			Sequence:  5,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -974,7 +974,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_revisable(t *testing.T) 
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -990,7 +990,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_revisable(t *testing.T) 
 	revisableTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -1033,7 +1033,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_rejected(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -1050,7 +1050,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_rejected(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -1078,7 +1078,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_rejected(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -1158,7 +1158,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_rejected(t *testing.T) {
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "3",
+			Sequence:  3,
 		},
 		IncrementSequenceNum: true,
 		Operations:           compliantOps,
@@ -1194,7 +1194,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_actionRequired(t *testin
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -1211,7 +1211,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_actionRequired(t *testin
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
@@ -1334,7 +1334,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_success(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
 		Return(horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		}, nil)
 
 	handler := txApproveHandler{
@@ -1350,7 +1350,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_success(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
-			Sequence:  "2",
+			Sequence:  2,
 		},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
