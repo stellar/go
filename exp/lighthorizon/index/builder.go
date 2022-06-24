@@ -91,6 +91,7 @@ func BuildIndices(
 			indexBuilder.RegisterModule(ProcessAccounts)
 		case "accounts_unbacked":
 			indexBuilder.RegisterModule(ProcessAccountsWithoutBackend)
+			indexStore.ClearMemory(false)
 		default:
 			return indexBuilder, fmt.Errorf("unknown module '%s'", part)
 		}

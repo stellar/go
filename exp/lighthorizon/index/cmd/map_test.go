@@ -56,7 +56,6 @@ func TestMap(t *testing.T) {
 
 	t.Logf("Tried writing indices to %s:", tempDir)
 	t.Log(string(stdout))
-
 	require.NoError(t, err)
 
 	// Then, build the *same* indices using the single-process tester.
@@ -84,11 +83,8 @@ func TestMap(t *testing.T) {
 	}
 
 	assertParticipantsEqual(t, keys(participants), stores)
-	t.Logf("All %d participants accounted for", len(keys(participants)))
-
 	for account, checkpoints := range participants {
 		assertParticipantCheckpointsEqual(t, account, checkpoints, stores)
-		t.Logf("Account %s has %d checkpoint(s) accounted for", account, len(checkpoints))
 	}
 }
 
@@ -126,14 +122,12 @@ func assertParticipantCheckpointsEqual(t *testing.T,
 		var err error
 		var lastActiveCheckpoint uint32 = 0
 		for {
-			t.Logf("starting from %d", lastActiveCheckpoint)
 			lastActiveCheckpoint, err = store.NextActive(account, "all/all", lastActiveCheckpoint)
 			if err == io.EOF {
 				break
 			}
 			require.NoError(t, err) // still an error since it shouldn't happen
 
-			t.Logf("Found %d for %s", lastActiveCheckpoint, account)
 			foundCheckpoints[lastActiveCheckpoint] = struct{}{}
 			lastActiveCheckpoint += 1 // hit next active one
 		}
