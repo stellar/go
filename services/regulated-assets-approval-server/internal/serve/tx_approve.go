@@ -182,7 +182,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 
 	// validate the sequence number
 	if tx.SourceAccount().Sequence != acc.Sequence+1 {
-		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1: %d`, tx.SourceAccount().Sequence, accountSequence+1)
+		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1: %d`, tx.SourceAccount().Sequence, acc.Sequence+1)
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
 
@@ -325,7 +325,7 @@ func (h txApproveHandler) handleSuccessResponseIfNeeded(ctx context.Context, tx 
 		return nil, errors.Wrapf(err, "getting detail for payment source account %s", paymentSource)
 	}
 	if tx.SourceAccount().Sequence != acc.Sequence+1 {
-		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1: %d`, tx.SourceAccount().Sequence, accountSequence+1)
+		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1: %d`, tx.SourceAccount().Sequence, acc.Sequence+1)
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
 
