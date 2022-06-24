@@ -241,7 +241,7 @@ func TestAccountInfo(t *testing.T) {
 	account, err := AccountInfo(tt.Ctx, &history.Q{tt.HorizonSession()}, accountID)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal("8589934593", account.Sequence)
+	tt.Assert.Equal(int64(8589934593), account.Sequence)
 	tt.Assert.Equal(uint32(4), account.LastModifiedLedger)
 	tt.Assert.NotNil(account.LastModifiedTime)
 	tt.Assert.Equal(ledgerFourCloseTime, account.LastModifiedTime.Unix())

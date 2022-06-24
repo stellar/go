@@ -363,12 +363,10 @@ func submitAccountOps(itest *integration.Test, tt *assert.Assertions) (submitted
 	allOps := ops
 	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
 	account := itest.MustGetAccount(accountPair)
-	seq, err := strconv.ParseInt(account.Sequence, 10, 64)
-	tt.NoError(err)
 	domain := "www.example.com"
 	ops = []txnbuild.Operation{
 		&txnbuild.BumpSequence{
-			BumpTo: seq + 1000,
+			BumpTo: account.Sequence + 1000,
 		},
 		&txnbuild.SetOptions{
 			HomeDomain: &domain,

@@ -575,17 +575,13 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 	// Two paths here: either caller already did some stuff with the master
 	// account so we should retrieve the sequence number, or caller hasn't and
 	// we start from scratch.
-	seq := int64(0)
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
-	if err == nil {
-		seq, err = strconv.ParseInt(account.Sequence, 10, 64) // str -> bigint
-		panicIf(err)
-	}
+	panicIf(err)
 
 	masterAccount := txnbuild.SimpleAccount{
 		AccountID: master.Address(),
-		Sequence:  seq,
+		Sequence:  account.Sequence,
 	}
 
 	for i := 0; i < count; i++ {
