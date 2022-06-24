@@ -5,6 +5,8 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 	"time"
@@ -104,8 +106,10 @@ func (a Account) GetSequenceNumber() (int64, error) {
 // IncrementSequenceNumber increments the internal record of the account's sequence
 // number by 1. This is typically used after a transaction build so that the next
 // transaction to be built will be valid.
-// TODO: since Account.Sequence was changed to int64, error is no longer needed.
 func (a *Account) IncrementSequenceNumber() (int64, error) {
+	if a.Sequence == math.MaxInt64 {
+		return 0, fmt.Errorf("sequence cannot be increased, it already reached MaxInt64 (%d)", int64(math.MaxInt64))
+	}
 	a.Sequence++
 	return a.Sequence, nil
 }
