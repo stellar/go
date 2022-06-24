@@ -71,7 +71,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 			transactionOrder++
 			for operationOrder := range tx.Envelope.Operations() {
 				currID := toid.New(int32(ledgerSequence), transactionOrder, int32(operationOrder+1)).ToInt64()
-				
+
 				if currID >= cursor {
 					appending = true
 					if currID == cursor {
@@ -137,7 +137,7 @@ func (a *Wrapper) GetTransactions(ctx context.Context, cursor int64, limit int64
 
 			transactionOrder++
 			currID := toid.New(int32(ledgerSequence), transactionOrder, 1).ToInt64()
-			
+
 			if currID >= cursor {
 				appending = true
 				if currID == cursor {
