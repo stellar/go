@@ -22,9 +22,11 @@ const (
 func TestMap(t *testing.T) {
 	// Only file:// style URLs for the txmeta source are allowed while testing.
 	parsed, err := url.Parse(txmetaSource)
-	require.NoError(t, err)
-	require.Equalf(t, parsed.Scheme, "file",
-		"%s is not local txmeta source", txmetaSource)
+	require.NoErrorf(t, err, "%s is not a valid URL", txmetaSource)
+	if parsed.Scheme != "file" {
+		t.Logf("%s is not local txmeta source", txmetaSource)
+		t.Skip()
+	}
 	txmetaPath := strings.Replace(txmetaSource, "file://", "", 1)
 
 	// What ledger range are we working with? The maps *require* starting at a

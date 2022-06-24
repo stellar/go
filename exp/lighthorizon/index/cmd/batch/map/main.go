@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -24,8 +25,7 @@ const (
 	firstCheckpointEnv = "FIRST_CHECKPOINT"
 	txmetaSourceUrlEnv = "TXMETA_SOURCE"
 	indexTargetUrlEnv  = "INDEX_TARGET"
-
-	s3BucketName = "sdf-txmeta-pubnet"
+	workerCountEnv     = "WORKER_COUNT"
 )
 
 func NewBatchConfig() (*BatchConfig, error) {
@@ -75,6 +75,19 @@ func main() {
 		panic(err)
 	}
 
+	var workerCount int
+	workerCountStr := os.Getenv(workerCountEnv)
+	if workerCountStr == "" {
+		workerCount = runtime.NumCPU()
+	} else {
+		workerCountParsed, innerErr := strconv.ParseUint(workerCountStr, 10, 8)
+		if innerErr != nil {
+			panic(errors.Wrapf(innerErr,
+				"invalid worker count parameter (%s)", workerCountStr))
+		}
+		workerCount = int(workerCountParsed)
+	}
+
 	log.Infof("Uploading ledger range [%d, %d] to %s",
 		batch.Range.Low, batch.Range.High, batch.IndexTargetUrl)
 
@@ -84,8 +97,11 @@ func main() {
 		batch.IndexTargetUrl,
 		network.TestNetworkPassphrase,
 		batch.Low, batch.High,
-		[]string{"transactions", "accounts_unbacked"},
-		1,
+		[]string{
+			"accounts_unbacked",
+			"transactions",
+		},
+		workerCount,
 	); err != nil {
 		panic(err)
 	}
