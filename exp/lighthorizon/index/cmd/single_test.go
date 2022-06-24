@@ -3,9 +3,11 @@ package main_test
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"io"
+	"io/ioutil"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stellar/go/historyarchive"
@@ -20,7 +22,6 @@ import (
 
 const (
 	txmetaSource = "file://./fixtures/"
-	elderLedger  = 1410048
 )
 
 /**
@@ -33,53 +34,75 @@ const (
  */
 
 func TestSingleProcess(tt *testing.T) {
-	const (
-		ledgerCount  = 64*5 - 1 // exactly 5 checkpoints of ledger data
-		latestLedger = elderLedger + ledgerCount
+	eldestLedger, latestLedger := GetFixtureLedgerRange(tt)
+
+	var eldestCheckpointLedger uint32
+	if IsCheckpoint(eldestLedger) {
+		eldestCheckpointLedger = eldestLedger
+		eldestLedger += 2 // make it a non-checkpoint
+	} else {
+		eldestCheckpointLedger = NextCheckpoint(eldestLedger)
+	}
+
+	tt.Run("start-at-checkpoint", func(t *testing.T) {
+		testSingleProcess(tt, historyarchive.Range{
+			Low:  eldestCheckpointLedger,
+			High: latestLedger,
+		})
+	})
+
+	tt.Run("start-at-ledger", func(t *testing.T) {
+		testSingleProcess(tt, historyarchive.Range{
+			Low:  eldestLedger,
+			High: latestLedger,
+		})
+	})
+}
+
+func testSingleProcess(t *testing.T, ledgerRange historyarchive.Range) {
+	var (
+		firstLedger = ledgerRange.Low
+		lastLedger  = ledgerRange.High
+		ledgerCount = ledgerRange.High - ledgerRange.Low + 1
 	)
 
-	tt.Logf("Validating single-process builder on %d ledgers", ledgerCount)
+	t.Logf("Validating single-process builder on ledger range [%d, %d] (%d ledgers)",
+		firstLedger, lastLedger, ledgerCount)
 
-	for workerCount := 1; workerCount <= 16; workerCount *= 2 {
-		tt.Run(
-			fmt.Sprintf("workers/%d", workerCount),
-			func(t *testing.T) {
-				tmpDir := filepath.Join("file://", t.TempDir())
-				t.Logf("Storing indices in %s", tmpDir)
+	workerCount := 4
+	tmpDir := filepath.Join("file://", t.TempDir())
+	t.Logf("Storing indices in %s", tmpDir)
 
-				ctx := context.Background()
-				_, err := index.BuildIndices(
-					ctx,
-					txmetaSource,
-					tmpDir,
-					network.TestNetworkPassphrase,
-					elderLedger,
-					latestLedger,
-					[]string{
-						"accounts",
-						"transactions",
-					},
-					workerCount,
-				)
-				require.NoError(t, err)
+	ctx := context.Background()
+	_, err := index.BuildIndices(
+		ctx,
+		txmetaSource,
+		tmpDir,
+		network.TestNetworkPassphrase,
+		firstLedger,
+		lastLedger,
+		[]string{
+			"accounts",
+			"transactions",
+		},
+		workerCount,
+	)
+	require.NoError(t, err)
 
-				hashes, participants := CreateBaselineIndices(t,
-					txmetaSource, elderLedger, latestLedger)
+	hashes, participants := CreateBaselineIndices(t,
+		txmetaSource, firstLedger, lastLedger)
 
-				store, err := index.Connect(tmpDir)
-				require.NoError(t, err)
-				require.NotNil(t, store)
+	store, err := index.Connect(tmpDir)
+	require.NoError(t, err)
+	require.NotNil(t, store)
 
-				// Ensure the participants reported by the index and the ones we
-				// tracked while ingesting the ledger range match.
-				AssertParticipantsEqual(t, participants, store)
+	// Ensure the participants reported by the index and the ones we
+	// tracked while ingesting the ledger range match.
+	AssertParticipantsEqual(t, participants, store)
 
-				// Ensure the transactions reported by the index match the ones
-				// tracked when ingesting the ledger range ourselves.
-				AssertTxsEqual(t, hashes, store)
-			},
-		)
-	}
+	// Ensure the transactions reported by the index match the ones
+	// tracked when ingesting the ledger range ourselves.
+	AssertTxsEqual(t, hashes, store)
 }
 
 func AssertTxsEqual(t *testing.T, expected map[string]int64, actual index.Store) {
@@ -139,15 +162,15 @@ func AssertParticipantsEqual(t *testing.T, expected map[string][]uint32, actual 
 // ledger range and build two maps from scratch (i.e. without using the indexer)
 // by ingesting them manually:
 //
-//   - a map of tx hashes to TOIDs
-//   - a map of accounts to a list of checkpoints they were active in
+//  - a map of tx hashes to TOIDs
+//  - a map of accounts to a list of checkpoints they were active in
 //
 // These should be used as a baseline comparison of the indexer, ensuring that
 // all of the data is identical.
 func CreateBaselineIndices(
 	t *testing.T,
 	txmetaSource string,
-	startLedger, endLedger uint32,
+	startLedger, endLedger uint32, // inclusive
 ) (
 	map[string]int64, // map of "tx hash": TOID
 	map[string][]uint32, // map of "account": {checkpoint, checkpoint, ...}
@@ -190,8 +213,8 @@ func CreateBaselineIndices(
 			for _, participant := range participants {
 				checkpoint := 1 + (ledger.LedgerSequence() / 64)
 
-				// Track the checkpoint in which activity occurred,
-				// keeping the list duplicate-free.
+				// Track the checkpoint in which activity occurred, keeping the
+				// list duplicate-free.
 				if list, ok := participation[participant]; ok {
 					if list[len(list)-1] != checkpoint {
 						participation[participant] = append(list, checkpoint)
@@ -212,4 +235,44 @@ func CreateBaselineIndices(
 	}
 
 	return hashes, participation
+}
+
+// GetFixtureLedgerRange determines the oldest and latest ledgers w/in the
+// fixture data. It's *essentially* equivalent to (but better than, since it
+// handles the existence of non-integer files):
+//
+//     LOW=$(ls $txmetaSource/ledgers | sort -n | head -n1)
+//     HIGH=$(ls $txmetaSource/ledgers | sort -n | tail -n1)
+func GetFixtureLedgerRange(t *testing.T) (low uint32, high uint32) {
+	txmetaSourceDir := strings.Replace(
+		txmetaSource,
+		"file://", "",
+		1)
+	files, err := ioutil.ReadDir(filepath.Join(txmetaSourceDir, "ledgers"))
+	require.NoError(t, err)
+
+	for _, file := range files {
+		ledgerNum, innerErr := strconv.ParseUint(file.Name(), 10, 32)
+		if innerErr != nil { // non-integer filename
+			continue
+		}
+
+		ledger := uint32(ledgerNum)
+		if ledger < low || low == 0 {
+			low = ledger
+		}
+		if ledger > high || high == 0 {
+			high = ledger
+		}
+	}
+
+	return low, high
+}
+
+func IsCheckpoint(ledger uint32) bool {
+	return (ledger+1)%64 == 0
+}
+
+func NextCheckpoint(ledger uint32) uint32 {
+	return ((ledger / 64) + 1) * 64
 }
