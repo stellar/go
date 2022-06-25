@@ -79,7 +79,8 @@ func Operations(archiveWrapper archive.Wrapper, indexStore index.Store) func(htt
 			paginate.Cursor = toid.New(ledger, 1, 1).ToInt64()
 		}
 
-		ops, err := archiveWrapper.GetOperations(paginate.Cursor, paginate.Limit)
+		//TODO - implement paginate.Order(asc/desc)
+		ops, err := archiveWrapper.GetOperations(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
 			log.Error(err)
 			sendErrorResponse(w, http.StatusInternalServerError, "")

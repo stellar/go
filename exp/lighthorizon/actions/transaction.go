@@ -83,6 +83,7 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 			}
 		}
 
+		//TODO - implement paginate.Order(asc/desc)
 		txns, err := archiveWrapper.GetTransactions(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
 			log.Error(err)
