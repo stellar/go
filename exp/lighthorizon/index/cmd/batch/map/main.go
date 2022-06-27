@@ -45,7 +45,7 @@ func NewBatchConfig() (*BatchConfig, error) {
 	}
 
 	checkpoints := historyarchive.NewCheckpointManager(0)
-	if checkpoints.IsCheckpoint(uint32(firstCheckpoint) - 1) {
+	if !checkpoints.IsCheckpoint(uint32(firstCheckpoint - 1)) {
 		return nil, fmt.Errorf(
 			"%s (%d) must be the first ledger in a checkpoint range",
 			firstCheckpointEnv, firstCheckpoint)

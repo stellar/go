@@ -74,7 +74,7 @@ func TestMap(t *testing.T) {
 
 	// Then, build the *same* indices using the single-process tester.
 	t.Logf("Building baseline for ledger range [%d, %d]", startLedger, endLedger)
-	hashes, participants := CreateBaselineIndices(t, txmetaSource, startLedger, endLedger)
+	hashes, participants := IndexLedgerRange(t, txmetaSource, startLedger, endLedger)
 	require.NotNil(t, hashes)
 	require.NotNil(t, participants)
 
@@ -96,7 +96,7 @@ func TestMap(t *testing.T) {
 		t.Logf("Connected to index #%d at %s", i+1, indexUrl)
 	}
 
-	assertParticipantsEqual(t, keys(participants), stores)
+	assertParticipantsEqual(t, keysU32(participants), stores)
 	for account, checkpoints := range participants {
 		assertParticipantCheckpointsEqual(t, account, checkpoints, stores)
 	}
@@ -119,7 +119,7 @@ func assertParticipantsEqual(t *testing.T,
 	assert.Lenf(t, indexGroupAccountSet, len(expectedAccountSet),
 		"quantity of accounts across indices doesn't match")
 
-	mappedAccountSet := keys(indexGroupAccountSet)
+	mappedAccountSet := keysSet(indexGroupAccountSet)
 	require.ElementsMatch(t, expectedAccountSet, mappedAccountSet)
 }
 
@@ -161,7 +161,15 @@ func assertParticipantCheckpointsEqual(t *testing.T,
 	}
 }
 
-func keys[T any](dict map[string]T) []string {
+func keysU32(dict map[string][]uint32) []string {
+	result := make([]string, 0, len(dict))
+	for key := range dict {
+		result = append(result, key)
+	}
+	return result
+}
+
+func keysSet(dict map[string]struct{}) []string {
 	result := make([]string, 0, len(dict))
 	for key := range dict {
 		result = append(result, key)

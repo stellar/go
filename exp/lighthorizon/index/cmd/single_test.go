@@ -95,8 +95,7 @@ func testSingleProcess(t *testing.T, ledgerRange historyarchive.Range) {
 	)
 	require.NoError(t, err)
 
-	hashes, participants := CreateBaselineIndices(t,
-		txmetaSource, firstLedger, lastLedger)
+	hashes, participants := IndexLedgerRange(t, txmetaSource, firstLedger, lastLedger)
 
 	store, err := index.Connect(tmpDir)
 	require.NoError(t, err)
@@ -164,16 +163,16 @@ func AssertParticipantsEqual(t *testing.T, expected map[string][]uint32, actual 
 	}
 }
 
-// CreateBaselineIndices will connect to a dump of ledger txmeta for the given
-// ledger range and build two maps from scratch (i.e. without using the indexer)
-// by ingesting them manually:
+// IndexLedgerRange will connect to a dump of ledger txmeta for the given ledger
+// range and build two maps from scratch (i.e. without using the indexer) by
+// ingesting them manually:
 //
 //  - a map of tx hashes to TOIDs
 //  - a map of accounts to a list of checkpoints they were active in
 //
 // These should be used as a baseline comparison of the indexer, ensuring that
 // all of the data is identical.
-func CreateBaselineIndices(
+func IndexLedgerRange(
 	t *testing.T,
 	txmetaSource string,
 	startLedger, endLedger uint32, // inclusive
