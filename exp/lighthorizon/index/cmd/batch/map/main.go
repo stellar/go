@@ -66,7 +66,7 @@ func NewBatchConfig() (*BatchConfig, error) {
 	}
 
 	firstLedger := uint32(firstCheckpoint + batchSize*jobIndex)
-	lastLedger := firstLedger + uint32(batchSize)
+	lastLedger := firstLedger + uint32(batchSize) - 1
 	return &BatchConfig{
 		Range:           historyarchive.Range{Low: firstLedger, High: lastLedger},
 		TxMetaSourceUrl: txmetaSourceUrl,

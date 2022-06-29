@@ -41,14 +41,17 @@ func TestMap(t *testing.T) {
 	if !checkpointMgr.IsCheckpoint(startLedger - 1) {
 		startLedger = checkpointMgr.NextCheckpoint(startLedger-1) + 1
 	}
-	if !checkpointMgr.IsCheckpoint(endLedger) {
-		endLedger = checkpointMgr.PrevCheckpoint(endLedger - batchSize)
+	if (endLedger-startLedger)%batchSize != 0 {
+		endLedger = checkpointMgr.PrevCheckpoint((endLedger / batchSize) * batchSize)
 	}
 
 	require.Greaterf(t, endLedger, startLedger,
 		"not enough fixtures for batchSize=%d", batchSize)
 
 	batchCount := (endLedger - startLedger + batchSize) / batchSize // ceil(ledgerCount / batchSize)
+
+	t.Logf("Using %d batches to process ledger range [%d, %d]",
+		batchCount, startLedger, endLedger)
 
 	require.Truef(t,
 		batchCount == 1 || checkpointMgr.IsCheckpoint(startLedger+batchSize-1),
