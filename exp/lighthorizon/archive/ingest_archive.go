@@ -10,8 +10,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LightHorizon Archive implementation that uses the existing horizon ingestion backend. 
-
+// This is an implementation of LightHorizon Archive that uses the existing horizon ingestion backend.
 type ingestArchive struct {
 	*ledgerbackend.HistoryArchiveBackend
 }
