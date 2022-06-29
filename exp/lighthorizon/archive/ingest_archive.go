@@ -10,6 +10,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// LightHorizon Archive implementation that uses the existing horizon ingestion backend. 
+
 type ingestArchive struct {
 	*ledgerbackend.HistoryArchiveBackend
 }
@@ -44,7 +46,6 @@ func (adaptation *ingestTransactionReaderAdaption) Read() (LedgerTransaction, er
 	return tx, nil
 }
 
-// LightHorizon Archive adaptation based on existing horizon ingest package
 func NewIngestArchive(sourceUrl string, networkPassphrase string) (Archive, error) {
 	// Simple file os access
 	source, err := historyarchive.ConnectBackend(
