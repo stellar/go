@@ -63,9 +63,10 @@ export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.stellar.
 export DATABASE_URL="postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable"
 export CAPTIVE_CORE_USE_DB="true"
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg" 
-export STELLAR_CORE_BINARY_PATH="stellar-core"
+export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
 export ENABLE_CAPTIVE_CORE_INGESTION="true"
 export CAPTIVE_CORE_STORAGE_PATH="/cc"
+export CAPTIVE_CORE_REUSE_STORAGE_PATH="true"
 export LOG_LEVEL="DEBUG"
 
 cd stellar-go
@@ -99,9 +100,10 @@ function alter_tables_unlogged() {
 }
 
 /usr/local/go/bin/go build -v ./services/horizon
-./horizon db migrate up
+cd /cc
+/stellar-go/horizon db migrate up
 alter_tables_unlogged
-./horizon ingest verify-range --from $FROM --to $TO --verify-state
+/stellar-go/horizon ingest verify-range --from $FROM --to $TO --verify-state
 
 function compare() {
   local expected="old_$1"
