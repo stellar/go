@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -101,7 +102,6 @@ func BuildIndices(
 			chunk.High = min(chunk.High, ledgerRange.High)
 			chunk.Low = max(chunk.Low, ledgerRange.Low)
 
-			fmt.Printf("Submitted [%d, %d] for work\n", chunk.Low, chunk.High)
 			ch <- chunk
 		}
 
@@ -164,7 +164,9 @@ type IndexBuilder struct {
 	store             Store
 	ledgerBackend     ledgerbackend.LedgerBackend
 	networkPassphrase string
-	lastBuiltLedger   uint32
+
+	lastBuiltLedgerWriteLock sync.Mutex
+	lastBuiltLedger          uint32
 
 	modules []Module
 }
@@ -237,20 +239,23 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 		}
 	}
 
+	builder.lastBuiltLedgerWriteLock.Lock()
 	builder.lastBuiltLedger = max(builder.lastBuiltLedger, ledgerRange.High)
+	builder.lastBuiltLedgerWriteLock.Unlock()
+
 	return nil
 }
 
-func (b *IndexBuilder) Watch(ctx context.Context) error {
-	latestLedger, err := b.ledgerBackend.GetLatestLedgerSequence(ctx)
+func (builder *IndexBuilder) Watch(ctx context.Context) error {
+	latestLedger, err := builder.ledgerBackend.GetLatestLedgerSequence(ctx)
 	if err != nil {
 		log.Errorf("Failed to retrieve latest ledger: %v", err)
 		return err
 	}
-	nextLedger := b.lastBuiltLedger + 1
+	nextLedger := builder.lastBuiltLedger + 1
 
 	log.Infof("Catching up to latest ledger: (%d, %d]", nextLedger, latestLedger)
-	if err = b.Build(ctx, historyarchive.Range{
+	if err = builder.Build(ctx, historyarchive.Range{
 		Low:  nextLedger,
 		High: latestLedger,
 	}); err != nil {
@@ -258,7 +263,7 @@ func (b *IndexBuilder) Watch(ctx context.Context) error {
 	}
 
 	for {
-		nextLedger = b.lastBuiltLedger + 1
+		nextLedger = builder.lastBuiltLedger + 1
 		log.Infof("Awaiting next ledger (%d)", nextLedger)
 
 		// To keep the MVP simple, let's just naively poll the backend until the
@@ -287,7 +292,7 @@ func (b *IndexBuilder) Watch(ctx context.Context) error {
 				return errors.Wrap(timedCtx.Err(), "awaiting next ledger failed")
 
 			default:
-				buildErr := b.Build(timedCtx, historyarchive.Range{
+				buildErr := builder.Build(timedCtx, historyarchive.Range{
 					Low:  nextLedger,
 					High: nextLedger,
 				})
