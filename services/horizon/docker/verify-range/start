@@ -68,9 +68,6 @@ export ENABLE_CAPTIVE_CORE_INGESTION="true"
 export CAPTIVE_CORE_STORAGE_PATH="/cc"
 export CAPTIVE_CORE_REUSE_STORAGE_PATH="true"
 export LOG_LEVEL="DEBUG"
-export PROTOCOL_VERSION=19                              
-export CORE_IMAGE=stellar/stellar-core:19               
-export STELLAR_CORE_VERSION=19.2.0-966.d18d54aa3.focal  
 
 cd stellar-go
 git pull origin

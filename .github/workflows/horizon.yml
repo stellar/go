@@ -96,6 +96,8 @@ jobs:
   verify-range:
     name: Test (and push) verify-range image
     runs-on: ubuntu-latest
+    env:
+      STELLAR_CORE_VERSION: 19.2.0-966.d18d54aa3.focal 
     steps:
     - uses: actions/checkout@v3
       with:
