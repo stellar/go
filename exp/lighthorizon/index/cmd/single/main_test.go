@@ -49,7 +49,7 @@ func TestSingleProcess(tt *testing.T) {
 				t.Logf("Storing indices in %s", tmpDir)
 
 				ctx := context.Background()
-				_, err := index.BuildIndices(
+				_, indexErr := index.BuildIndices(
 					ctx,
 					txmetaSource,
 					tmpDir,
@@ -62,9 +62,9 @@ func TestSingleProcess(tt *testing.T) {
 					},
 					workerCount,
 				)
-				require.NoError(t, err)
+				require.NoError(t, indexErr)
 
-				backend, err := historyarchive.ConnectBackend(
+				backend, backendErr := historyarchive.ConnectBackend(
 					txmetaSource,
 					historyarchive.ConnectOptions{
 						Context:           ctx,
@@ -72,7 +72,7 @@ func TestSingleProcess(tt *testing.T) {
 						S3Region:          "us-east-1",
 					},
 				)
-				require.NoError(t, err)
+				require.NoError(t, backendErr)
 				ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(backend)
 				defer ledgerBackend.Close()
 

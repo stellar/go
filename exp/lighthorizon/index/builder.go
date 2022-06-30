@@ -35,14 +35,14 @@ func BuildIndices(
 
 	L := log.Ctx(ctx)
 
-	indexStore, err := Connect(targetUrl)
-	if err != nil {
-		return nil, err
+	indexStore, indexErr := Connect(targetUrl)
+	if indexErr != nil {
+		return nil, indexErr
 	}
 
 	// We use historyarchive as a backend here just to abstract away dealing
 	// with the filesystem directly.
-	source, err := historyarchive.ConnectBackend(
+	source, backendErr := historyarchive.ConnectBackend(
 		sourceUrl,
 		historyarchive.ConnectOptions{
 			Context:           ctx,
@@ -50,14 +50,15 @@ func BuildIndices(
 			S3Region:          "us-east-1",
 		},
 	)
-	if err != nil {
-		return nil, err
+	if backendErr != nil {
+		return nil, backendErr
 	}
 
 	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
 	defer ledgerBackend.Close()
 
 	if endLedger == 0 {
+
 		latest, err := ledgerBackend.GetLatestLedgerSequence(ctx)
 		if err != nil {
 			return nil, err
@@ -126,7 +127,7 @@ func BuildIndices(
 				L.Debugf("Working on checkpoint range [%d, %d]",
 					ledgerRange.Low, ledgerRange.High)
 
-				if err = indexBuilder.Build(ctx, ledgerRange); err != nil {
+				if err := indexBuilder.Build(ctx, ledgerRange); err != nil {
 					return errors.Wrap(err, "building indices failed")
 				}
 
@@ -255,10 +256,10 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 }
 
 func (b *IndexBuilder) Watch(ctx context.Context) error {
-	latestLedger, err := b.ledgerBackend.GetLatestLedgerSequence(ctx)
-	if err != nil {
-		log.Errorf("Failed to retrieve latest ledger: %v", err)
-		return err
+	latestLedger, seqErr := b.ledgerBackend.GetLatestLedgerSequence(ctx)
+	if seqErr != nil {
+		log.Errorf("Failed to retrieve latest ledger: %v", seqErr)
+		return seqErr
 	}
 
 	nextLedger := b.lastBuiltLedger + 1
@@ -317,7 +318,7 @@ func (b *IndexBuilder) Watch(ctx context.Context) error {
 					continue
 				}
 
-				return errors.Wrap(err, "awaiting next ledger failed")
+				return errors.Wrap(buildErr, "awaiting next ledger failed")
 			}
 		}
 	}

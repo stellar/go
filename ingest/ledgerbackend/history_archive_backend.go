@@ -31,7 +31,7 @@ func (b *HistoryArchiveBackend) GetLatestLedgerSequence(ctx context.Context) (ui
 	}
 	defer r.Close()
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
+	if _, err = io.Copy(&buf, r); err != nil {
 		return 0, errors.Wrap(err, "could not read latest ledger")
 	}
 	parsed, err := strconv.ParseUint(buf.String(), 10, 32)
@@ -59,7 +59,7 @@ func (b *HistoryArchiveBackend) GetLedger(ctx context.Context, sequence uint32) 
 	}
 	defer r.Close()
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
+	if _, err = io.Copy(&buf, r); err != nil {
 		return ledger, err
 	}
 	if err = ledger.UnmarshalBinary(buf.Bytes()); err != nil {

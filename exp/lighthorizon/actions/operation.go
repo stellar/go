@@ -1,11 +1,9 @@
 package actions
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/stellar/go/support/log"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
@@ -26,80 +24,66 @@ func Operations(archiveWrapper archive.Wrapper, indexStore index.Store) func(htt
 			return
 		}
 
-		query, err := url.ParseQuery(r.URL.RawQuery)
+		paginate, err := Paging(r)
 		if err != nil {
-			fmt.Fprintf(w, "Error: %v", err)
+			sendErrorResponse(w, http.StatusBadRequest, string(InvalidPagingParameters))
 			return
 		}
 
-		var cursor int64
-		if query.Get("cursor") == "" {
-			cursor = toid.New(1, 1, 1).ToInt64()
-		} else {
-			cursor, err = strconv.ParseInt(query.Get("cursor"), 10, 64)
-			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
-				return
-			}
+		if paginate.Cursor < 1 {
+			paginate.Cursor = toid.New(1, 1, 1).ToInt64()
 		}
 
-		var limit int64
-		if query.Get("limit") == "" {
-			limit = 10
-		} else {
-			limit, err = strconv.ParseInt(query.Get("limit"), 10, 64)
-			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
-				return
-			}
-		}
-
-		if limit == 0 || limit > 200 {
-			limit = 10
+		if paginate.Limit < 1 || paginate.Limit > 200 {
+			paginate.Limit = 10
 		}
 
 		page := hal.Page{
-			Cursor: query.Get("cursor"),
-			Order:  "asc",
-			Limit:  uint64(limit),
+			Cursor: strconv.FormatInt(paginate.Cursor, 10),
+			Order:  string(paginate.Order),
+			Limit:  uint64(paginate.Limit),
 		}
 		page.Init()
 		page.FullURL = r.URL
 
 		// For now, use a query param for now to avoid dragging in chi-router. Not
 		// really the point of the experiment yet.
-		account := query.Get("account")
+		account, err := RequestUnaryParam(r, "account")
+		if err != nil {
+			log.Error(err)
+			sendErrorResponse(w, http.StatusInternalServerError, "")
+			return
+		}
+
 		if account != "" {
 			// Skip the cursor ahead to the next active checkpoint for this account
-			checkpoint, err := indexStore.NextActive(account, "all_all", uint32(toid.Parse(cursor).LedgerSequence/64))
+			var checkpoint uint32
+			checkpoint, err = indexStore.NextActive(account, "all/all", uint32(toid.Parse(paginate.Cursor).LedgerSequence/64))
 			if err == io.EOF {
 				// never active. No results.
 				page.PopulateLinks()
-
-				encoder := json.NewEncoder(w)
-				encoder.SetIndent("", "  ")
-				err = encoder.Encode(page)
-				if err != nil {
-					fmt.Fprintf(w, "Error: %v", err)
-					return
-				}
+				sendPageResponse(w, page)
 				return
 			} else if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
+				log.Error(err)
+				sendErrorResponse(w, http.StatusInternalServerError, "")
 				return
 			}
 			ledger := int32(checkpoint * 64)
 			if ledger < 0 {
 				// Check we don't overflow going from uint32 -> int32
-				fmt.Fprintf(w, "Error: Ledger overflow")
+				log.Error(err)
+				sendErrorResponse(w, http.StatusInternalServerError, "")
 				return
 			}
-			cursor = toid.New(ledger, 1, 1).ToInt64()
+			paginate.Cursor = toid.New(ledger, 1, 1).ToInt64()
 		}
 
-		ops, err := archiveWrapper.GetOperations(cursor, limit)
+		//TODO - implement paginate.Order(asc/desc)
+		ops, err := archiveWrapper.GetOperations(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
-			fmt.Fprintf(w, "Error: %v", err)
+			log.Error(err)
+			sendErrorResponse(w, http.StatusInternalServerError, "")
 			return
 		}
 
@@ -107,7 +91,8 @@ func Operations(archiveWrapper archive.Wrapper, indexStore index.Store) func(htt
 			var response operations.Operation
 			response, err = adapters.PopulateOperation(r, &op)
 			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
+				log.Error(err)
+				sendErrorResponse(w, http.StatusInternalServerError, "")
 				return
 			}
 
@@ -115,13 +100,6 @@ func Operations(archiveWrapper archive.Wrapper, indexStore index.Store) func(htt
 		}
 
 		page.PopulateLinks()
-
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		err = encoder.Encode(page)
-		if err != nil {
-			fmt.Fprintf(w, "Error: %v", err)
-			return
-		}
+		sendPageResponse(w, page)
 	}
 }

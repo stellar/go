@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/stellar/go/exp/lighthorizon/common"
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/toid"
@@ -19,11 +18,27 @@ import (
 // have to download many ledgers until it's able to fill the list completely.
 // This can be solved by keeping an index/list of empty ledgers.
 // TODO: make this configurable.
+//lint:ignore U1000 Ignore unused temporarily
 const checkpointsToLookup = 1
 
-// Archive here only has the methods we care about, to make caching/wrapping easier
+// LightHorizon data model
+type LedgerTransaction struct {
+	Index      uint32
+	Envelope   xdr.TransactionEnvelope
+	Result     xdr.TransactionResultPair
+	FeeChanges xdr.LedgerEntryChanges
+	UnsafeMeta xdr.TransactionMeta
+}
+
+type LedgerTransactionReader interface {
+	Read() (LedgerTransaction, error)
+}
+
+// Archive here only has the methods LightHorizon cares about, to make caching/wrapping easier
 type Archive interface {
 	GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
+	Close() error
+	NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (LedgerTransactionReader, error)
 }
 
 type Wrapper struct {
@@ -31,7 +46,7 @@ type Wrapper struct {
 	Passphrase string
 }
 
-func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, error) {
+func (a *Wrapper) GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
 	if ledgerSequence < 2 {
@@ -43,16 +58,15 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 
 	ops := []common.Operation{}
 	appending := false
-	ctx := context.Background()
 
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
 		ledger, err := a.GetLedger(ctx, ledgerSequence)
 		if err != nil {
-			return nil, err
+			return ops, nil
 		}
 
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
+		reader, err := a.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error in ledger %d", ledgerSequence)
 		}
@@ -67,8 +81,9 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 				return nil, err
 			}
 
+			transactionOrder++
 			for operationOrder := range tx.Envelope.Operations() {
-				currID := toid.New(int32(ledgerSequence), transactionOrder+1, int32(operationOrder+1)).ToInt64()
+				currID := toid.New(int32(ledgerSequence), transactionOrder, int32(operationOrder+1)).ToInt64()
 
 				if currID >= cursor {
 					appending = true
@@ -83,7 +98,7 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 						TransactionResult:   &tx.Result.Result,
 						// TODO: Use a method to get the header
 						LedgerHeader: &ledger.V0.LedgerHeader.Header,
-						OpIndex:      int32(operationOrder),
+						OpIndex:      int32(operationOrder + 1),
 						TxIndex:      int32(transactionOrder),
 					})
 				}
@@ -92,37 +107,34 @@ func (a *Wrapper) GetOperations(cursor int64, limit int64) ([]common.Operation, 
 					return ops, nil
 				}
 			}
-
-			transactionOrder++
 		}
 
 		ledgerSequence++
 	}
 }
 
-func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transaction, error) {
+func (a *Wrapper) GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
 	if ledgerSequence < 2 {
 		ledgerSequence = 2
 	}
 
-	log.Debugf("Searching tx %d", cursor)
+	log.Debugf("Searching tx %d starting at", cursor)
 	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
 
 	txns := []common.Transaction{}
 	appending := false
 
-	ctx := context.Background()
-
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
 		ledger, err := a.GetLedger(ctx, ledgerSequence)
 		if err != nil {
-			return nil, err
+			// no 'NotFound' distinction on err, treat all as not found.
+			return txns, nil
 		}
 
-		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
+		reader, err := a.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +149,8 @@ func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transacti
 				return nil, err
 			}
 
-			currID := toid.New(int32(ledgerSequence), transactionOrder+1, 1).ToInt64()
+			transactionOrder++
+			currID := toid.New(int32(ledgerSequence), transactionOrder, 1).ToInt64()
 
 			if currID >= cursor {
 				appending = true
@@ -160,7 +173,9 @@ func (a *Wrapper) GetTransactions(cursor int64, limit int64) ([]common.Transacti
 				return txns, nil
 			}
 
-			transactionOrder++
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 		}
 
 		ledgerSequence++
