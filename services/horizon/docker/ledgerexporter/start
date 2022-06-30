@@ -1,0 +1,49 @@
+#! /usr/bin/env bash
+set -e
+
+FROM="${FROM:=2}"
+TO="${TO:=4294967295}"
+# Writing to /latest is disabled by default to avoid race conditions between parallel container runs
+WRITE_LATEST_PATH="${WRITE_LATEST_PATH:=false}"
+
+if [ -z "$ARCHIVE_TARGET" ]; then
+  echo "error: undefined ARCHIVE_TARGET env variable"
+  exit 1
+fi
+
+# Calculate params for AWS Batch
+if [ ! -z "$AWS_BATCH_JOB_ARRAY_INDEX" ]; then
+	# The batch should have three env variables:
+	# * BATCH_START_LEDGER - start ledger of the job, must be equal 1 or a
+	#   checkpoint ledger (i + 1) % 64 == 0.
+	# * BATCH_SIZE - size of the batch in ledgers, must be multiple of 64!
+	# * BRANCH - git branch to build
+	#
+	# Ex: BATCH_START_LEDGER=63, BATCH_SIZE=64 will create the following ranges:
+	# AWS_BATCH_JOB_ARRAY_INDEX=0: [63, 127]
+	# AWS_BATCH_JOB_ARRAY_INDEX=1: [127, 191]
+	# AWS_BATCH_JOB_ARRAY_INDEX=2: [191, 255]
+	# AWS_BATCH_JOB_ARRAY_INDEX=3: [255, 319]
+	# ...
+
+	if [ $BATCH_START_LEDGER -eq 1 ]; then
+		export FROM=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" - "2"`
+		export TO=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE" - "2"`
+		if [ $FROM -eq -1 ]; then
+			export FROM="1"
+		fi
+	else
+		export FROM=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER"`
+		export TO=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE"`
+	fi
+fi
+
+echo "FROM: $FROM TO: $TO"
+
+export TRACY_NO_INVARIANT_CHECK=1
+/ledgerexporter --target $ARCHIVE_TARGET \
+                --captive-core-toml-path /captive-core-pubnet.cfg \
+                --history-archive-urls 'https://history.stellar.org/prd/core-live/core_live_001' --network-passphrase 'Public Global Stellar Network ; September 2015' \
+                --write-latest-path "$WRITE_LATEST_PATH" --start-ledger "$FROM" --end-ledger "$TO"
+
+echo "OK"

@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -25,7 +26,9 @@ func main() {
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
 	historyArchiveUrls := flag.String("history-archive-urls", "https://history.stellar.org/prd/core-testnet/core_testnet_001", "comma-separated list of history archive urls to read from")
 	captiveCoreTomlPath := flag.String("captive-core-toml-path", os.Getenv("CAPTIVE_CORE_TOML_PATH"), "path to load captive core toml file from")
-	startingLedger := flag.Int("start-ledger", 0, "ledger to start export from")
+	startingLedger := flag.Uint("start-ledger", 0, "ledger to start export from")
+	endingLedger := flag.Uint("end-ledger", math.MaxUint32, "ledger at which to stop the export")
+	writeLatestPath := flag.Bool("write-latest-path", true, "update the value of the /latest path on the target")
 	flag.Parse()
 
 	logger.SetLevel(supportlog.InfoLevel)
@@ -36,6 +39,11 @@ func main() {
 	}
 	if *captiveCoreTomlPath == "" {
 		logger.Fatal("Missing -captive-core-toml-path flag")
+	}
+	startLedger := uint32(*startingLedger)
+	endLedger := uint32(*endingLedger)
+	if endLedger < startLedger {
+		logger.Fatalf("--end-ledger must be >= --start-ledger")
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(*captiveCoreTomlPath, params)
@@ -66,7 +74,6 @@ func main() {
 
 	// Build the appropriate range for the given backend state.
 	var ledgerRange ledgerbackend.Range
-	startLedger := uint32(*startingLedger)
 	if startLedger == 0 {
 		ledgerRange = ledgerbackend.UnboundedRange(latestLedger)
 	} else if startLedger > 0 && latestLedger == 2 {
@@ -88,8 +95,7 @@ func main() {
 
 	logger.Infof("Unpacking ledger range [%d, %d]", *startingLedger, latestLedger)
 
-	nextLedger := latestLedger
-	for {
+	for nextLedger := latestLedger; nextLedger < endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
 			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)
@@ -104,8 +110,10 @@ func main() {
 			continue
 		}
 
-		if err = writeLatestLedger(target, nextLedger); err != nil {
-			logger.WithError(err).Warnf("could not write latest ledger %v", nextLedger)
+		if *writeLatestPath {
+			if err = writeLatestLedger(target, nextLedger); err != nil {
+				logger.WithError(err).Warnf("could not write latest ledger %v", nextLedger)
+			}
 		}
 
 		nextLedger++

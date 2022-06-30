@@ -108,6 +108,7 @@ jobs:
         # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
         docker run -e BRANCH=$(git rev-parse HEAD) -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
 
+
     # Push image
     - if: github.ref == 'refs/heads/master'
       name: Login to DockerHub
@@ -119,3 +120,32 @@ jobs:
     - if: github.ref == 'refs/heads/master'
       name: Push to DockerHub
       run: docker push stellar/horizon-verify-range:latest
+
+
+  ledgerexporter:
+    name: Test (and push) ledgerexporter image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # For pull requests, build and test the PR head not a merge of the PR with the destination.
+          ref:  ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Build and test the Verify Range Docker image
+        run: |
+          docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -f services/horizon/docker/ledgerexporter/Dockerfile -t stellar/horizon-ledgerexporter services/horizon/docker/ledgerexporter/
+          # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
+          docker run -e ARCHIVE_TARGET=file:///ledgerexport-test -e FROM=10000063 -e TO=10000127 stellar/horizon-ledgerexporter
+      
+
+      # Push image
+      - if: github.ref == 'refs/heads/master'
+        name: Login to DockerHub
+        uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - if: github.ref == 'refs/heads/master'
+        name: Push to DockerHub
+        run: docker push stellar/horizon-ledgerexporter:latest
