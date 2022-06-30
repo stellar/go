@@ -2,17 +2,17 @@ package actions
 
 import (
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
+	"github.com/stellar/go/support/log"
 	"io"
 	"net/http"
-	"net/url"
+	"strconv"
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/toid"
 )
 
 func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(http.ResponseWriter, *http.Request) {
@@ -22,75 +22,81 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 		r.URL.Host = "localhost:8080"
 
 		if r.Method != "GET" {
+			sendErrorResponse(w, http.StatusMethodNotAllowed, "")
 			return
 		}
 
-		query, err := url.ParseQuery(r.URL.RawQuery)
+		paginate, err := Paging(r)
 		if err != nil {
-			fmt.Fprintf(w, "Error: %v", err)
+			sendErrorResponse(w, http.StatusBadRequest, string(InvalidPagingParameters))
 			return
 		}
 
-		page := hal.Page{}
+		if paginate.Cursor < 1 {
+			paginate.Cursor = toid.New(1, 1, 1).ToInt64()
+		}
+
+		if paginate.Limit < 1 {
+			paginate.Limit = 10
+		}
+
+		page := hal.Page{
+			Cursor: strconv.FormatInt(paginate.Cursor, 10),
+			Order:  string(paginate.Order),
+			Limit:  uint64(paginate.Limit),
+		}
 		page.Init()
 		page.FullURL = r.URL
 
 		// For now, use a query param for now to avoid dragging in chi-router. Not
 		// really the point of the experiment yet.
-		id := query.Get("id")
-		var cursor int64
-		if id != "" {
-			b, err := hex.DecodeString(id)
+		txId, err := RequestUnaryParam(r, "id")
+		if err != nil {
+			log.Error(err)
+			sendErrorResponse(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		if txId != "" {
+			// if 'id' is on request, it overrides any paging cursor that may be on request.
+			var b []byte
+			b, err = hex.DecodeString(txId)
 			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
+				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter, not valid hex encoding")
 				return
 			}
 			if len(b) != 32 {
-				fmt.Fprintf(w, "Error: invalid hash")
+				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter, the encoded hex value must decode to length of 32 bytes")
 				return
 			}
 			var hash [32]byte
 			copy(hash[:], b)
-			// Skip the cursor ahead to the next active checkpoint for this account
-			txnToid, err := indexStore.TransactionTOID(hash)
-			if err == io.EOF {
-				// never active. No results.
-				page.PopulateLinks()
 
-				encoder := json.NewEncoder(w)
-				encoder.SetIndent("", "  ")
-				err = encoder.Encode(page)
-				if err != nil {
-					fmt.Fprintf(w, "Error: %v", err)
-					return
-				}
-				return
-			} else if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
+			if paginate.Cursor, err = indexStore.TransactionTOID(hash); err != nil {
+				log.Error(err)
+				sendErrorResponse(w, http.StatusInternalServerError, "")
+			}
+			if err == io.EOF {
+				page.PopulateLinks()
+				sendPageResponse(w, page)
 				return
 			}
-			cursor = txnToid
 		}
 
-		txns, err := archiveWrapper.GetTransactions(cursor, 1)
+		//TODO - implement paginate.Order(asc/desc)
+		txns, err := archiveWrapper.GetTransactions(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
-			fmt.Fprintf(w, "Error: %v", err)
+			log.Error(err)
+			sendErrorResponse(w, http.StatusInternalServerError, "")
 			return
 		}
 
 		for _, txn := range txns {
-			hash, err := txn.TransactionHash()
-			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
-				return
-			}
-			if id != "" && hash != id {
-				continue
-			}
 			var response hProtocol.Transaction
 			response, err = adapters.PopulateTransaction(r, &txn)
 			if err != nil {
-				fmt.Fprintf(w, "Error: %v", err)
+				log.Error(err)
+				sendErrorResponse(w, http.StatusInternalServerError, "")
 				return
 			}
 
@@ -98,13 +104,6 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 		}
 
 		page.PopulateLinks()
-
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		err = encoder.Encode(page)
-		if err != nil {
-			fmt.Fprintf(w, "Error: %v", err)
-			return
-		}
+		sendPageResponse(w, page)
 	}
 }

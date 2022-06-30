@@ -116,7 +116,7 @@ func BuildIndices(
 				L.Debugf("Working on checkpoint range [%d, %d] (%d ledgers)",
 					ledgerRange.Low, ledgerRange.High, count)
 
-				if err = indexBuilder.Build(ctx, ledgerRange); err != nil {
+				if err := indexBuilder.Build(ctx, ledgerRange); err != nil {
 					return errors.Wrap(err, "building indices failed")
 				}
 
@@ -242,10 +242,10 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 }
 
 func (b *IndexBuilder) Watch(ctx context.Context) error {
-	latestLedger, err := b.ledgerBackend.GetLatestLedgerSequence(ctx)
-	if err != nil {
-		log.Errorf("Failed to retrieve latest ledger: %v", err)
-		return err
+	latestLedger, seqErr := b.ledgerBackend.GetLatestLedgerSequence(ctx)
+	if seqErr != nil {
+		log.Errorf("Failed to retrieve latest ledger: %v", seqErr)
+		return seqErr
 	}
 
 	nextLedger := b.lastBuiltLedger + 1
@@ -304,7 +304,7 @@ func (b *IndexBuilder) Watch(ctx context.Context) error {
 					continue
 				}
 
-				return errors.Wrap(err, "awaiting next ledger failed")
+				return errors.Wrap(buildErr, "awaiting next ledger failed")
 			}
 		}
 	}

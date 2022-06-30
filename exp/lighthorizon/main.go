@@ -1,15 +1,13 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"net/http"
 
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
-	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/ledgerbackend"
+
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 )
@@ -28,22 +26,16 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	log.Info("Starting lighthorizon!")
 
-	// Simple file os access
-	source, err := historyarchive.ConnectBackend(
-		*sourceUrl,
-		historyarchive.ConnectOptions{
-			Context:           context.Background(),
-			NetworkPassphrase: *networkPassphrase,
-		},
-	)
+	ingestArchive, err := archive.NewIngestArchive(*sourceUrl, *networkPassphrase)
 	if err != nil {
 		panic(err)
 	}
-	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
-	defer ledgerBackend.Close()
-	archiveWrapper := archive.Wrapper{Archive: ledgerBackend, Passphrase: *networkPassphrase}
+	defer ingestArchive.Close()
+
+	archiveWrapper := archive.Wrapper{Archive: ingestArchive, Passphrase: *networkPassphrase}
 	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
 	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
+	http.HandleFunc("/", actions.ApiDocs())
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
