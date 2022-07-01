@@ -65,9 +65,10 @@ export CAPTIVE_CORE_USE_DB="true"
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg" 
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
 export ENABLE_CAPTIVE_CORE_INGESTION="true"
-export CAPTIVE_CORE_STORAGE_PATH="/cc"
+if [ -z "${CAPTIVE_CORE_STORAGE_PATH}" ]; then
+    export CAPTIVE_CORE_STORAGE_PATH="/cc"
+fi	
 export CAPTIVE_CORE_REUSE_STORAGE_PATH="true"
-export LOG_LEVEL="DEBUG"
 
 cd stellar-go
 git pull origin
@@ -100,7 +101,7 @@ function alter_tables_unlogged() {
 }
 
 /usr/local/go/bin/go build -v ./services/horizon
-cd /cc
+cd $CAPTIVE_CORE_STORAGE_PATH
 /stellar-go/horizon db migrate up
 alter_tables_unlogged
 /stellar-go/horizon ingest verify-range --from $FROM --to $TO --verify-state
