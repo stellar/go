@@ -28,7 +28,7 @@ func main() {
 	captiveCoreTomlPath := flag.String("captive-core-toml-path", os.Getenv("CAPTIVE_CORE_TOML_PATH"), "path to load captive core toml file from")
 	startingLedger := flag.Uint("start-ledger", 0, "ledger to start export from")
 	continueFromLatestLedger := flag.Bool("continue", false, "start export from the last exported ledger (as indicated in the target's /latest path)")
-	endingLedger := flag.Uint("end-ledger", 0, "ledger at which to stop the export, 0 means no ending")
+	endingLedger := flag.Uint("end-ledger", 0, "ledger at which to stop the export (must be a closed ledger), 0 means no ending")
 	writeLatestPath := flag.Bool("write-latest-path", true, "update the value of the /latest path on the target")
 	flag.Parse()
 
