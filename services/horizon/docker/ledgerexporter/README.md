@@ -1,22 +1,20 @@
-# `stellar/expingest-verify-range`
+# `stellar/horizon-ledgerexporter`
 
-This docker image allows running multiple instances of `horizon ingest verify-command` on a single machine or running it in [AWS Batch](https://aws.amazon.com/batch/).
+This docker image allows running multiple instances of `ledgerexporter` on a single machine or running it in [AWS Batch](https://aws.amazon.com/batch/).
 
 ## Env variables
 
 ### Running locally
 
-| Name     | Description                                           |
-|----------|-------------------------------------------------------|
-| `BRANCH` | Git branch to build (useful for testing PRs)          |
-| `FROM`   | First ledger of the range (must be checkpoint ledger) |
-| `TO`     | Last ledger of the range (must be checkpoint ledger)  |
+| Name    | Description            |
+|---------|------------------------|
+| `START` | First ledger to export |
+| `END`   | Last ledger to export  |
 
 ### Running in AWS Batch
 
 | Name                 | Description                                                          |
 |----------------------|----------------------------------------------------------------------|
-| `BRANCH`             | Git branch to build (useful for testing PRs)                         |
 | `BATCH_START_LEDGER` | First ledger of the AWS Batch Job, must be a checkpoint ledger or 1. |
 | `BATCH_SIZE`         | Size of the batch, must be multiple of 64.                           |
 

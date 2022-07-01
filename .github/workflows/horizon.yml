@@ -131,7 +131,7 @@ jobs:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
 
-      - name: Build and test the Verify Range Docker image
+      - name: Build and test the Ledger Exporter Docker image
         run: |
           docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -f services/horizon/docker/ledgerexporter/Dockerfile -t stellar/horizon-ledgerexporter services/horizon/docker/ledgerexporter/
           # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
