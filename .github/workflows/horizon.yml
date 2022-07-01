@@ -135,7 +135,7 @@ jobs:
         run: |
           docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -f services/horizon/docker/ledgerexporter/Dockerfile -t stellar/horizon-ledgerexporter services/horizon/docker/ledgerexporter/
           # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-          docker run -e ARCHIVE_TARGET=file:///ledgerexport-test -e FROM=10000063 -e TO=10000127 stellar/horizon-ledgerexporter
+          docker run -e ARCHIVE_TARGET=file:///ledgerexport-test -e START=10000063 -e END=10000127 stellar/horizon-ledgerexporter
       
 
       # Push image

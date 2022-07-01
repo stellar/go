@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -82,14 +83,18 @@ func main() {
 	if startLedger > lowerBound {
 		lowerBound = startLedger
 	}
+	rightInterval := ""
 	if endLedger == 0 {
+		rightInterval = "∞)"
 		ledgerRange = ledgerbackend.UnboundedRange(lowerBound)
 	} else {
+		rightInterval = fmt.Sprintf("%d]", endLedger)
 		ledgerRange = ledgerbackend.BoundedRange(lowerBound, endLedger)
 	}
 
+	logger.Infof("preparing to export [%d,%s", lowerBound, rightInterval)
 	err = core.PrepareRange(context.Background(), ledgerRange)
-	logFatalIf(err, "could not prepare range [%d, %d]", lowerBound, endLedger)
+	logFatalIf(err, "could not prepare range")
 
 	for nextLedger := lowerBound; nextLedger < endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
