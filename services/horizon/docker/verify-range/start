@@ -65,10 +65,15 @@ export CAPTIVE_CORE_USE_DB="true"
 export CAPTIVE_CORE_CONFIG_APPEND_PATH="/captive-core-pubnet.cfg" 
 export STELLAR_CORE_BINARY_PATH="/usr/bin/stellar-core"
 export ENABLE_CAPTIVE_CORE_INGESTION="true"
+
+# CAPTIVE_CORE_STORAGE_PATH will store the archive files that core downloads
+# /cc path in this vm will have the sqlite3://stellar.db file which captive core will use for on-disk 
+# do a docker volume mount on /cc if the main disk storage devivce won't have at least 3k IOPS and 256GB
+# which is required by core for the i/o it will do against sqlite3:///cc/stellardb  
 if [ -z "${CAPTIVE_CORE_STORAGE_PATH}" ]; then
     export CAPTIVE_CORE_STORAGE_PATH="/cc"
 fi	
-export CAPTIVE_CORE_REUSE_STORAGE_PATH="true"
+export CAPTIVE_CORE_REUSE_STORAGE_PATH="false"
 
 cd stellar-go
 git pull origin
