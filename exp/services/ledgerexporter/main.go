@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -27,7 +26,8 @@ func main() {
 	historyArchiveUrls := flag.String("history-archive-urls", "https://history.stellar.org/prd/core-testnet/core_testnet_001", "comma-separated list of history archive urls to read from")
 	captiveCoreTomlPath := flag.String("captive-core-toml-path", os.Getenv("CAPTIVE_CORE_TOML_PATH"), "path to load captive core toml file from")
 	startingLedger := flag.Uint("start-ledger", 0, "ledger to start export from")
-	endingLedger := flag.Uint("end-ledger", math.MaxUint32, "ledger at which to stop the export")
+	continueFromLatestLedger := flag.Bool("continue", false, "start export from the last exported ledger (as indicated in the target's /latest path)")
+	endingLedger := flag.Uint("end-ledger", 0, "ledger at which to stop the export, 0 means no ending")
 	writeLatestPath := flag.Bool("write-latest-path", true, "update the value of the /latest path on the target")
 	flag.Parse()
 
@@ -38,12 +38,7 @@ func main() {
 		HistoryArchiveURLs: strings.Split(*historyArchiveUrls, ","),
 	}
 	if *captiveCoreTomlPath == "" {
-		logger.Fatal("Missing -captive-core-toml-path flag")
-	}
-	startLedger := uint32(*startingLedger)
-	endLedger := uint32(*endingLedger)
-	if endLedger < startLedger {
-		logger.Fatalf("--end-ledger must be >= --start-ledger")
+		logger.Fatal("Missing --captive-core-toml-path flag")
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(*captiveCoreTomlPath, params)
@@ -70,32 +65,33 @@ func main() {
 	logFatalIf(err, "Could not connect to target")
 	defer target.Close()
 
-	latestLedger := readLatestLedger(target)
-
 	// Build the appropriate range for the given backend state.
-	var ledgerRange ledgerbackend.Range
-	if startLedger == 0 {
-		ledgerRange = ledgerbackend.UnboundedRange(latestLedger)
-	} else if startLedger > 0 && latestLedger == 2 {
-		// Special case: if the starting ledger is set but there's no ledger in
-		// the backend (i.e. it's 2), the starting ledger becomes an unbounded
-		// the lower bound
-		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
-		latestLedger = startLedger
-	} else {
-		if startLedger >= latestLedger {
-			logger.Fatalf("Invalid ledger range: %d >= %d",
-				startLedger, latestLedger)
+	startLedger := uint32(*startingLedger)
+	endLedger := uint32(*endingLedger)
+	if endLedger != 0 && endLedger < startLedger {
+		logger.Fatalf("--end-ledger must be >= --start-ledger")
+	}
+	if *continueFromLatestLedger {
+		if startLedger != 0 {
+			logger.Fatalf("--start-ledger and --continue cannot both be set")
 		}
-		ledgerRange = ledgerbackend.BoundedRange(startLedger, latestLedger)
+		startLedger = readLatestLedger(target)
+	}
+	var ledgerRange ledgerbackend.Range
+	lowerBound := uint32(2)
+	if startLedger > lowerBound {
+		lowerBound = startLedger
+	}
+	if endLedger == 0 {
+		ledgerRange = ledgerbackend.UnboundedRange(lowerBound)
+	} else {
+		ledgerRange = ledgerbackend.BoundedRange(lowerBound, endLedger)
 	}
 
 	err = core.PrepareRange(context.Background(), ledgerRange)
-	logFatalIf(err, "could not prepare unbounded range %v", latestLedger)
+	logFatalIf(err, "could not prepare range [%d, %d]", lowerBound, endLedger)
 
-	logger.Infof("Unpacking ledger range [%d, %d]", *startingLedger, latestLedger)
-
-	for nextLedger := latestLedger; nextLedger < endLedger; {
+	for nextLedger := lowerBound; nextLedger < endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
 			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)
