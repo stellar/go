@@ -1,7 +1,17 @@
 #! /usr/bin/env bash
 set -e
 
-service postgresql start
+# configure postgres
+if [ -z "${PGDATA}" ]; then
+    export PGDATA="/data"
+fi
+rm -rf "$PGDATA"/* 
+sudo chown -R postgres "$PGDATA"
+sudo chmod -R 775 "$PGDATA"
+sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/12/bin/initdb
+sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/12/bin/pg_ctl start
+sudo -u postgres createdb horizon
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 
 # Calculate params for AWS Batch
 if [ ! -z "$AWS_BATCH_JOB_ARRAY_INDEX" ]; then
