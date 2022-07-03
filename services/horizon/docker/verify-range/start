@@ -122,8 +122,8 @@ alter_tables_unlogged
 /stellar-go/horizon ingest verify-range --from $FROM --to $TO --verify-state
 
 function compare() {
-  local expected="old_$1"
-  local actual="new_$1"
+  local expected="/data/compare/old_$1"
+  local actual="/data/compare/new_$1"
 
   # Files can be very large, leading to `diff` running out of memory.
   # As a workaround, since files are expected to be identical,
