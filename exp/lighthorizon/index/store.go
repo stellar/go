@@ -13,16 +13,21 @@ import (
 
 type Store interface {
 	NextActive(account, index string, afterCheckpoint uint32) (uint32, error)
-	AddTransactionToIndexes(txnTOID int64, hash [32]byte) error
 	TransactionTOID(hash [32]byte) (int64, error)
+
+	AddTransactionToIndexes(txnTOID int64, hash [32]byte) error
 	AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error
 	AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error
 	AddParticipantToIndexesNoBackend(participant string, indexes types.NamedIndices)
+
 	Flush() error
 	FlushAccounts() error
+	ClearMemory(bool)
+
 	Read(account string) (types.NamedIndices, error)
 	ReadAccounts() ([]string, error)
 	ReadTransactions(prefix string) (*types.TrieIndex, error)
+
 	MergeTransactions(prefix string, other *types.TrieIndex) error
 }
 
@@ -31,6 +36,8 @@ type store struct {
 	indexes   map[string]types.NamedIndices
 	txIndexes map[string]*types.TrieIndex
 	backend   backend.Backend
+
+	clearMemoryOnFlush bool
 }
 
 func NewStore(backend backend.Backend) (Store, error) {
@@ -38,6 +45,8 @@ func NewStore(backend backend.Backend) (Store, error) {
 		indexes:   map[string]types.NamedIndices{},
 		txIndexes: map[string]*types.TrieIndex{},
 		backend:   backend,
+
+		clearMemoryOnFlush: true,
 	}, nil
 }
 
@@ -92,17 +101,21 @@ func (s *store) Flush() error {
 
 	if err := s.backend.FlushAccounts(s.accounts()); err != nil {
 		return err
+	} else if s.clearMemoryOnFlush {
+		s.indexes = map[string]types.NamedIndices{}
 	}
-
-	// clear indexes to save memory
-	s.indexes = map[string]types.NamedIndices{}
 
 	if err := s.backend.FlushTransactions(s.txIndexes); err != nil {
 		return err
+	} else if s.clearMemoryOnFlush {
+		s.txIndexes = map[string]*types.TrieIndex{}
 	}
-	s.txIndexes = map[string]*types.TrieIndex{}
 
 	return nil
+}
+
+func (s *store) ClearMemory(doClear bool) {
+	s.clearMemoryOnFlush = doClear
 }
 
 func (s *store) AddTransactionToIndexes(txnTOID int64, hash [32]byte) error {
@@ -130,15 +143,16 @@ func (s *store) TransactionTOID(hash [32]byte) (int64, error) {
 	return int64(binary.BigEndian.Uint64(value)), nil
 }
 
-// AddParticipantsToIndexesNoBackend is a temp version of AddParticipantsToIndexes that
-// skips backend downloads and it used in AWS Batch. Refactoring required to make it better.
+// AddParticipantsToIndexesNoBackend is a temp version of
+// AddParticipantsToIndexes that skips backend downloads and it used in AWS
+// Batch. Refactoring required to make it better.
 func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	var err error
 	for _, participant := range participants {
-		_, ok := s.indexes[participant]
-		if !ok {
+		if _, ok := s.indexes[participant]; !ok {
 			s.indexes[participant] = map[string]*types.CheckpointIndex{}
 		}
 
@@ -148,13 +162,13 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 			s.indexes[participant][index] = ind
 		}
 
-		err := ind.SetActive(checkpoint)
-		if err != nil {
-			return err
+		if innerErr := ind.SetActive(checkpoint); innerErr != nil {
+			err = innerErr
 		}
+		// don't break early, instead try to save as many participants as we can
 	}
 
-	return nil
+	return err
 }
 
 func (s *store) AddParticipantToIndexesNoBackend(participant string, indexes types.NamedIndices) {

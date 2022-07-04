@@ -49,6 +49,7 @@ func (b *GCSArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	r, err := b.bucket.Object(pth).NewReader(context.Background())
 	if err == storage.ErrObjectNotExist {
 		// TODO: Check this is right
+		//lint:ignore SA4006 Ignore unused function temporarily
 		err = os.ErrNotExist
 	}
 	return r, nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -15,7 +16,7 @@ import (
 
 type BatchConfig struct {
 	historyarchive.Range
-	TxMetaSourceUrl, TargetUrl string
+	TxMetaSourceUrl, IndexTargetUrl string
 }
 
 const (
@@ -24,27 +25,12 @@ const (
 	firstCheckpointEnv = "FIRST_CHECKPOINT"
 	txmetaSourceUrlEnv = "TXMETA_SOURCE"
 	indexTargetUrlEnv  = "INDEX_TARGET"
-
-	s3BucketName = "sdf-txmeta-pubnet"
+	workerCountEnv     = "WORKER_COUNT"
 )
 
-func NewS3BatchConfig() (*BatchConfig, error) {
-	jobIndex, err := strconv.ParseUint(os.Getenv(jobIndexEnv), 10, 32)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid parameter "+jobIndexEnv)
-	}
-
-	url := fmt.Sprintf("s3://%s/job_%d?region=%s", s3BucketName, jobIndex, "us-east-1")
-	if err := os.Setenv(indexTargetUrlEnv, url); err != nil {
-		return nil, err
-	}
-
-	return NewBatchConfig()
-}
-
 func NewBatchConfig() (*BatchConfig, error) {
-	targetUrl := os.Getenv(indexTargetUrlEnv)
-	if targetUrl == "" {
+	indexTargetRootUrl := os.Getenv(indexTargetUrlEnv)
+	if indexTargetRootUrl == "" {
 		return nil, errors.New("required parameter: " + indexTargetUrlEnv)
 	}
 
@@ -57,54 +43,73 @@ func NewBatchConfig() (*BatchConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+firstCheckpointEnv)
 	}
-	if (firstCheckpoint+1)%64 != 0 {
-		return nil, fmt.Errorf("invalid checkpoint: %d", firstCheckpoint)
+
+	checkpoints := historyarchive.NewCheckpointManager(0)
+	if !checkpoints.IsCheckpoint(uint32(firstCheckpoint - 1)) {
+		return nil, fmt.Errorf(
+			"%s (%d) must be the first ledger in a checkpoint range",
+			firstCheckpointEnv, firstCheckpoint)
 	}
 
 	batchSize, err := strconv.ParseUint(os.Getenv(batchSizeEnv), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+batchSizeEnv)
+	} else if batchSize%uint64(checkpoints.GetCheckpointFrequency()) != 0 {
+		return nil, fmt.Errorf(
+			"%s (%d) must be a multiple of checkpoint frequency (%d)",
+			batchSizeEnv, batchSize, checkpoints.GetCheckpointFrequency())
 	}
 
-	sourceUrl := os.Getenv(txmetaSourceUrlEnv)
-	if sourceUrl == "" {
+	txmetaSourceUrl := os.Getenv(txmetaSourceUrlEnv)
+	if txmetaSourceUrl == "" {
 		return nil, errors.New("required parameter " + txmetaSourceUrlEnv)
 	}
 
-	log.Debugf("%s: %d", batchSizeEnv, batchSize)
-	log.Debugf("%s: %d", jobIndexEnv, jobIndex)
-	log.Debugf("%s: %d", firstCheckpointEnv, firstCheckpoint)
-	log.Debugf("%s: %v", txmetaSourceUrlEnv, sourceUrl)
-
-	startCheckpoint := uint32(firstCheckpoint + batchSize*jobIndex)
-	endCheckpoint := startCheckpoint + uint32(batchSize) - 1
+	firstLedger := uint32(firstCheckpoint + batchSize*jobIndex)
+	lastLedger := firstLedger + uint32(batchSize) - 1
 	return &BatchConfig{
-		Range:           historyarchive.Range{Low: startCheckpoint, High: endCheckpoint},
-		TxMetaSourceUrl: sourceUrl,
-		TargetUrl:       targetUrl,
+		Range:           historyarchive.Range{Low: firstLedger, High: lastLedger},
+		TxMetaSourceUrl: txmetaSourceUrl,
+		IndexTargetUrl:  fmt.Sprintf("%s%cjob_%d", indexTargetRootUrl, os.PathSeparator, jobIndex),
 	}, nil
 }
 
 func main() {
-	// log.SetLevel(log.DebugLevel)
 	log.SetLevel(log.InfoLevel)
+	// log.SetLevel(log.DebugLevel)
 
 	batch, err := NewBatchConfig()
 	if err != nil {
 		panic(err)
 	}
 
+	var workerCount int
+	workerCountStr := os.Getenv(workerCountEnv)
+	if workerCountStr == "" {
+		workerCount = runtime.NumCPU()
+	} else {
+		workerCountParsed, innerErr := strconv.ParseUint(workerCountStr, 10, 8)
+		if innerErr != nil {
+			panic(errors.Wrapf(innerErr,
+				"invalid worker count parameter (%s)", workerCountStr))
+		}
+		workerCount = int(workerCountParsed)
+	}
+
 	log.Infof("Uploading ledger range [%d, %d] to %s",
-		batch.Range.Low, batch.Range.High, batch.TargetUrl)
+		batch.Range.Low, batch.Range.High, batch.IndexTargetUrl)
 
 	if _, err := index.BuildIndices(
 		context.Background(),
 		batch.TxMetaSourceUrl,
-		batch.TargetUrl,
+		batch.IndexTargetUrl,
 		network.TestNetworkPassphrase,
-		batch.Low, batch.High,
-		[]string{"transactions", "accounts_unbacked"},
-		1,
+		batch.Range,
+		[]string{
+			"accounts_unbacked",
+			"transactions",
+		},
+		workerCount,
 	); err != nil {
 		panic(err)
 	}
