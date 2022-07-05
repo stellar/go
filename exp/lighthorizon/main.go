@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -33,6 +34,10 @@ func main() {
 	defer ingestArchive.Close()
 
 	archiveWrapper := archive.Wrapper{Archive: ingestArchive, Passphrase: *networkPassphrase}
+
+	router := chi.NewMux()
+    router.Method(http.MethodGet, "/accounts/{account_id}/transactions", actions.TxByAccount(archiveWrapper, indexStore))
+	router.Method(http.MethodGet, "/accounts/{account_id}/operations", actions.OpsByAccount(archiveWrapper, indexStore))
 	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
 	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
 	http.HandleFunc("/", actions.ApiDocs())

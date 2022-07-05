@@ -66,7 +66,7 @@ paths:
                     - pIZMxQAAAEDNJwYToiBR6bzElRL4ORJdXXZYO9cE3-ishQLC_fWGrPGhWrW7_UkPJWvxWdQDJBjVOHuA1Jjc94NSe91hSwEL
       summary: Get Transactions by paged list
       operationId: GetTransactions
-      description: Retrieve transactcions by paged listing.
+      description: Retrieve transactions by paged listing.
       tags: []
       parameters: 
         - $ref: '#/components/parameters/CursorParam'
@@ -136,7 +136,7 @@ paths:
         - $ref: '#/components/parameters/CursorParam'
         - $ref: '#/components/parameters/LimitParam'
         - in: query
-          name: account
+          name: account_id
           required: false
           schema:
             type: string

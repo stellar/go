@@ -26,9 +26,9 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 			return
 		}
 
-		paginate, err := Paging(r)
+		paginate, err := paging(r)
 		if err != nil {
-			sendErrorResponse(w, http.StatusBadRequest, string(InvalidPagingParameters))
+			sendErrorResponse(w, http.StatusBadRequest, string(invalidPagingParameters))
 			return
 		}
 
@@ -50,7 +50,7 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 
 		// For now, use a query param for now to avoid dragging in chi-router. Not
 		// really the point of the experiment yet.
-		txId, err := RequestUnaryParam(r, "id")
+		txId, err := requestUnaryParam(r, "id")
 		if err != nil {
 			log.Error(err)
 			sendErrorResponse(w, http.StatusInternalServerError, "")

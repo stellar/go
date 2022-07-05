@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/go-chi/chi"
+	"github.com/gorilla/schema"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 )
@@ -16,23 +18,23 @@ var (
 	staticFiles embed.FS
 )
 
-type Order string
-type ErrorMessage string
+type order string
+type errorMessage string
 
 const (
-	OrderAsc  Order = "asc"
-	OrderDesc Order = "desc"
+	orderAsc  order = "asc"
+	orderDesc order = "desc"
 )
 
 const (
-	ServerError             ErrorMessage = "Error: A problem occurred on the server while processing request"
-	InvalidPagingParameters ErrorMessage = "Error: Invalid paging parameters"
+	serverError             errorMessage = "Error: A problem occurred on the server while processing request"
+	invalidPagingParameters errorMessage = "Error: Invalid paging parameters"
 )
 
-type Pagination struct {
+type pagination struct {
 	Limit  int64
 	Cursor int64
-	Order
+	Order order
 }
 
 func sendPageResponse(w http.ResponseWriter, page hal.Page) {
@@ -49,11 +51,11 @@ func sendErrorResponse(w http.ResponseWriter, errorCode int, errorMsg string) {
 	if errorMsg != "" {
 		http.Error(w, errorMsg, errorCode)
 	} else {
-		http.Error(w, string(ServerError), errorCode)
+		http.Error(w, string(serverError), errorCode)
 	}
 }
 
-func RequestUnaryParam(r *http.Request, paramName string) (string, error) {
+func requestUnaryParam(r *http.Request, paramName string) (string, error) {
 	query, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		return "", err
@@ -61,34 +63,55 @@ func RequestUnaryParam(r *http.Request, paramName string) (string, error) {
 	return query.Get(paramName), nil
 }
 
-func Paging(r *http.Request) (Pagination, error) {
-	paginate := Pagination{
-		Order: OrderAsc,
+func paging(r *http.Request) (pagination, error) {
+	paginate := pagination{
+		Order: orderAsc,
 	}
 
-	if cursorRequested, err := RequestUnaryParam(r, "cursor"); err != nil {
-		return Pagination{}, err
+	if cursorRequested, err := requestUnaryParam(r, "cursor"); err != nil {
+		return pagination{}, err
 	} else if cursorRequested != "" {
 		paginate.Cursor, err = strconv.ParseInt(cursorRequested, 10, 64)
 		if err != nil {
-			return Pagination{}, err
+			return pagination{}, err
 		}
 	}
 
-	if limitRequested, err := RequestUnaryParam(r, "limit"); err != nil {
-		return Pagination{}, err
+	if limitRequested, err := requestUnaryParam(r, "limit"); err != nil {
+		return pagination{}, err
 	} else if limitRequested != "" {
 		paginate.Limit, err = strconv.ParseInt(limitRequested, 10, 64)
 		if err != nil {
-			return Pagination{}, err
+			return pagination{}, err
 		}
 	}
 
-	if orderRequested, err := RequestUnaryParam(r, "order"); err != nil {
-		return Pagination{}, err
-	} else if orderRequested != "" && orderRequested == string(OrderDesc) {
-		paginate.Order = OrderDesc
+	if orderRequested, err := requestUnaryParam(r, "order"); err != nil {
+		return pagination{}, err
+	} else if orderRequested != "" && orderRequested == string(orderDesc) {
+		paginate.Order = orderDesc
 	}
 
 	return paginate, nil
+}
+
+var decoder = schema.NewDecoder()
+func getURLParam(r *http.Request, key string) (string, bool) {
+     rctx := chi.RouteContext(r.Context())
+
+     if rctx == nil {
+        return "", false
+     }
+
+     if len(rctx.URLParams.Keys) != len(rctx.URLParams.Values) {
+        return "", false
+     }
+
+     for k := len(rctx.URLParams.Keys) - 1; k >= 0; k-- {
+		if rctx.URLParams.Keys[k] == key {
+			return rctx.URLParams.Values[k], true
+		}
+     }
+
+     return "", false
 }
