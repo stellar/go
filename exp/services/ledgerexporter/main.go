@@ -143,10 +143,10 @@ func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
 func writeLedger(backend historyarchive.ArchiveBackend, ledger xdr.LedgerCloseMeta) error {
 	blob, err := ledger.MarshalBinary()
 	logFatalIf(err, "could not serialize ledger %v", ledger.LedgerSequence())
-
+	var versionHeader = [...]byte{ledgerbackend.CurrentLedgerFileVersion}
 	return backend.PutFile(
 		"ledgers/"+strconv.FormatUint(uint64(ledger.LedgerSequence()), 10),
-		io.NopCloser(bytes.NewReader(blob)),
+		io.NopCloser(io.MultiReader(bytes.NewReader(versionHeader[:]), bytes.NewReader(blob))),
 	)
 }
 

@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -11,6 +12,8 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/xdr"
 )
+
+const CurrentLedgerFileVersion = 0x01
 
 type HistoryArchiveBackend struct {
 	historyarchive.ArchiveBackend
@@ -59,6 +62,16 @@ func (b *HistoryArchiveBackend) GetLedger(ctx context.Context, sequence uint32) 
 	}
 	defer r.Close()
 	var buf bytes.Buffer
+	// read and check version header
+	var version [1]byte
+	l, err := r.Read(version[:])
+	if err != nil {
+		return xdr.LedgerCloseMeta{}, err
+	}
+	if l != 1 || version[0] != CurrentLedgerFileVersion {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("unexpected ledger header version number (0x%x)", version[0])
+	}
+
 	if _, err = io.Copy(&buf, r); err != nil {
 		return ledger, err
 	}
