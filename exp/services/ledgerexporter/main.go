@@ -39,7 +39,7 @@ func main() {
 		HistoryArchiveURLs: strings.Split(*historyArchiveUrls, ","),
 	}
 	if *captiveCoreTomlPath == "" {
-		logger.Fatal("Missing --captive-core-toml-path flag")
+		logger.Fatal("Missing -captive-core-toml-path flag")
 	}
 
 	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(*captiveCoreTomlPath, params)
@@ -70,7 +70,7 @@ func main() {
 	startLedger := uint32(*startingLedger)
 	endLedger := uint32(*endingLedger)
 	if endLedger != 0 && endLedger < startLedger {
-		logger.Fatalf("--end-ledger must be >= --start-ledger")
+		logger.Fatalf("-end-ledger must be >= -start-ledger")
 	}
 	if *continueFromLatestLedger {
 		if startLedger != 0 {
@@ -96,7 +96,7 @@ func main() {
 	err = core.PrepareRange(context.Background(), ledgerRange)
 	logFatalIf(err, "could not prepare range")
 
-	for nextLedger := lowerBound; nextLedger < endLedger; {
+	for nextLedger := lowerBound; nextLedger <= endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
 			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)

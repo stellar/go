@@ -1,9 +1,8 @@
 FROM golang:1.18 AS builder
 
 ARG GIT_COMMIT
-# TODO: update when merged into stellar/go
 WORKDIR /
-RUN git clone https://github.com/2opremio/go-2.git stellar-go
+RUN git clone https://github.com/stellar/go.git stellar-go
 WORKDIR /stellar-go
 
 # By default "git fetch" only fetches refs/<branchname>
