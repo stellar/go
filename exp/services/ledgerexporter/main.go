@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"flag"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -26,7 +25,7 @@ func main() {
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
 	historyArchiveUrls := flag.String("history-archive-urls", "https://history.stellar.org/prd/core-testnet/core_testnet_001", "comma-separated list of history archive urls to read from")
 	captiveCoreTomlPath := flag.String("captive-core-toml-path", os.Getenv("CAPTIVE_CORE_TOML_PATH"), "path to load captive core toml file from")
-	startingLedger := flag.Uint("start-ledger", 0, "ledger to start export from")
+	startingLedger := flag.Uint("start-ledger", 2, "ledger to start export from")
 	continueFromLatestLedger := flag.Bool("continue", false, "start export from the last exported ledger (as indicated in the target's /latest path)")
 	endingLedger := flag.Uint("end-ledger", 0, "ledger at which to stop the export (must be a closed ledger), 0 means no ending")
 	writeLatestPath := flag.Bool("write-latest-path", true, "update the value of the /latest path on the target")
@@ -69,34 +68,30 @@ func main() {
 	// Build the appropriate range for the given backend state.
 	startLedger := uint32(*startingLedger)
 	endLedger := uint32(*endingLedger)
+	if startLedger < 2 {
+		logger.Fatalf("-start-ledger must be >= 2")
+	}
 	if endLedger != 0 && endLedger < startLedger {
 		logger.Fatalf("-end-ledger must be >= -start-ledger")
 	}
 	if *continueFromLatestLedger {
 		if startLedger != 0 {
-			logger.Fatalf("--start-ledger and --continue cannot both be set")
+			logger.Fatalf("-start-ledger and -continue cannot both be set")
 		}
 		startLedger = readLatestLedger(target)
 	}
 	var ledgerRange ledgerbackend.Range
-	lowerBound := uint32(2)
-	if startLedger > lowerBound {
-		lowerBound = startLedger
-	}
-	rightInterval := ""
 	if endLedger == 0 {
-		rightInterval = "∞)"
-		ledgerRange = ledgerbackend.UnboundedRange(lowerBound)
+		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
 	} else {
-		rightInterval = fmt.Sprintf("%d]", endLedger)
-		ledgerRange = ledgerbackend.BoundedRange(lowerBound, endLedger)
+		ledgerRange = ledgerbackend.BoundedRange(startLedger, endLedger)
 	}
 
-	logger.Infof("preparing to export [%d,%s", lowerBound, rightInterval)
+	logger.Infof("preparing to export %s", ledgerRange)
 	err = core.PrepareRange(context.Background(), ledgerRange)
 	logFatalIf(err, "could not prepare range")
 
-	for nextLedger := lowerBound; nextLedger <= endLedger; {
+	for nextLedger := startLedger; nextLedger <= endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
 			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)
