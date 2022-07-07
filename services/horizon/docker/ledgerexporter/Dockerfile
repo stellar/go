@@ -31,6 +31,9 @@ ADD captive-core-pubnet.cfg /
 ADD start /
 RUN ["chmod", "+x", "start"]
 
+# for the captive core sqlite database
+RUN mkdir -p /cc
+
 COPY --from=builder /stellar-go/ledgerexporter ./
 
 ENTRYPOINT ["/start"]
