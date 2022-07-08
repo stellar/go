@@ -37,9 +37,9 @@ func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64
 		ledgerSequence := startingCheckPointLedger
 
 		for (ledgerSequence - startingCheckPointLedger) < 64 {
-			ledger, findErr := lh.Archive.GetLedger(ctx, ledgerSequence)
-			if findErr != nil {
-				return nil, errors.Wrap(findErr, "indexing state is invalid, missing ledgers from checkpoint")
+			ledger, ledgerErr := lh.Archive.GetLedger(ctx, ledgerSequence)
+			if ledgerErr != nil {
+				return nil, errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", ledgerSequence, ledgerSequence/64)
 			}
 
 			reader, readerErr := lh.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(lh.Passphrase, ledger)
@@ -120,7 +120,7 @@ func (lh *LightHorizon) GetTransactionsByAccount(ctx context.Context, cursor int
 		for (ledgerSequence - startingCheckPointLedger) < 64 {
 			ledger, ledgerErr := lh.Archive.GetLedger(ctx, ledgerSequence)
 			if ledgerErr != nil {
-				return nil, errors.Wrap(ledgerErr, "indexing state is invalid, missing ledgers from checkpoint")
+				return nil, errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", ledgerSequence, ledgerSequence/64)
 			}
 
 			reader, readerErr := lh.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(lh.Passphrase, ledger)

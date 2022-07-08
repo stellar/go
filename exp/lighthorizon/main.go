@@ -2,29 +2,19 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/exp/lighthorizon/services"
-	"github.com/stellar/go/toid"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 )
 
 func main() {
-
-	os.Args = append(os.Args, "-source=file:///Users/sreuland/workspace/txmeta-live-archive")
-	os.Args = append(os.Args, "-indexes=file:///Users/sreuland/workspace/txmeta-live-archive")
-
-	cursor := toid.New(1586111, 1, 1).ToInt64()
-	fmt.Printf("\nthe cursor %v\n", cursor)
-
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	indexesUrl := flag.String("indexes", "file://indexes", "url of the indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
