@@ -9,12 +9,11 @@ servers:
 paths:
   /accounts/{account_id}/operations:
     get:
-      operationId: getOperationsByAccountId
+      operationId: GetOperationsByAccountId
       parameters:
         - $ref: '#/components/parameters/CursorParam'
         - $ref: '#/components/parameters/LimitParam'
         - $ref: '#/components/parameters/AccountIDParam'
-          required: true
       responses:
         '200':
           description: OK
@@ -57,17 +56,15 @@ paths:
                     selling_asset_issuer: GAXXMQMTDUQ4YEPXJMKFBGN3GETPJNEXEUHFCQJKGJDVI3XQCNBU3OZI
                     offer_id: '425531'
       summary: Get Operations by Account ID and Paged list
-      operationId: GetOperationsByAccountID
       description: Get Operations by Account ID and Paged list
       tags: [] 
   /accounts/{account_id}/transactions:
     get:
-      operationId: getTransactionsByAccountId
+      operationId: GetTransactionsByAccountId
       parameters:
         - $ref: '#/components/parameters/CursorParam'
         - $ref: '#/components/parameters/LimitParam'
         - $ref: '#/components/parameters/AccountIDParam'
-          required: true
       responses:
         '200':
           description: OK
@@ -110,7 +107,6 @@ paths:
                     signatures:
                     - pIZMxQAAAEDNJwYToiBR6bzElRL4ORJdXXZYO9cE3-ishQLC_fWGrPGhWrW7_UkPJWvxWdQDJBjVOHuA1Jjc94NSe91hSwEL
       summary: Get Transactions by Account ID and Paged list
-      operationId: GetTransactionsByAccountID
       description: Get Transactions by Account ID and Paged list
       tags: [] 
   /transactions:
@@ -163,8 +159,6 @@ paths:
       parameters: 
         - $ref: '#/components/parameters/CursorParam'
         - $ref: '#/components/parameters/LimitParam'
-        - $ref: '#/components/parameters/TransactionIDParam'
-          required: false  
   /operations:
     get:
       responses:
@@ -236,8 +230,7 @@ components:
     AccountIDParam:
       name: account_id
       in: path
-      description: Account ID
-      required: false
+      required: true
       description: The strkey encoded Account ID
       schema:
         type: string
@@ -245,8 +238,7 @@ components:
     TransactionIDParam:
       name: tx_id
       in: path
-      description: Transaction ID
-      required: false
+      required: true
       description: The Transaction hash, it's id.
       schema:
         type: string
