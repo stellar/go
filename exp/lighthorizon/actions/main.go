@@ -34,7 +34,7 @@ const (
 type pagination struct {
 	Limit  int64
 	Cursor int64
-	Order order
+	Order  order
 }
 
 func sendPageResponse(w http.ResponseWriter, page hal.Page) {
@@ -96,22 +96,23 @@ func paging(r *http.Request) (pagination, error) {
 }
 
 var decoder = schema.NewDecoder()
+
 func getURLParam(r *http.Request, key string) (string, bool) {
-     rctx := chi.RouteContext(r.Context())
+	rctx := chi.RouteContext(r.Context())
 
-     if rctx == nil {
-        return "", false
-     }
+	if rctx == nil {
+		return "", false
+	}
 
-     if len(rctx.URLParams.Keys) != len(rctx.URLParams.Values) {
-        return "", false
-     }
+	if len(rctx.URLParams.Keys) != len(rctx.URLParams.Values) {
+		return "", false
+	}
 
-     for k := len(rctx.URLParams.Keys) - 1; k >= 0; k-- {
+	for k := len(rctx.URLParams.Keys) - 1; k >= 0; k-- {
 		if rctx.URLParams.Keys[k] == key {
 			return rctx.URLParams.Values[k], true
 		}
-     }
+	}
 
-     return "", false
+	return "", false
 }

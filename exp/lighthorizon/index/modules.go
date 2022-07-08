@@ -25,7 +25,7 @@ func ProcessAccounts(
 	tx ingest.LedgerTransaction,
 ) error {
 	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := GetParticipants(tx)
+	allParticipants, err := GetTransactionParticipants(tx)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func ProcessAccountsWithoutBackend(
 	tx ingest.LedgerTransaction,
 ) error {
 	checkpoint := (ledger.LedgerSequence() / 64) + 1
-	allParticipants, err := GetParticipants(tx)
+	allParticipants, err := GetTransactionParticipants(tx)
 	if err != nil {
 		return err
 	}
@@ -105,133 +105,137 @@ func GetPaymentParticipants(transaction ingest.LedgerTransaction) ([]string, err
 	return participantsForOperations(transaction, true)
 }
 
-func GetParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
+func GetTransactionParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
 	return participantsForOperations(transaction, false)
+}
+
+func GetOperationParticipants(transaction ingest.LedgerTransaction, operation xdr.Operation, opIndex int) ([]string, error) {
+	return participantsForOperation(transaction, operation, opIndex, false)
 }
 
 func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayments bool) ([]string, error) {
 	var participants []string
 
 	for opindex, operation := range transaction.Envelope.Operations() {
-		opSource := operation.SourceAccount
-		if opSource == nil {
-			txSource := transaction.Envelope.SourceAccount()
-			opSource = &txSource
+		opParticipants, err := participantsForOperation(transaction, operation, opindex, onlyPayments)
+		if err != nil {
+			return []string{}, err
 		}
-
-		switch operation.Body.Type {
-		case xdr.OperationTypeCreateAccount,
-			xdr.OperationTypePayment,
-			xdr.OperationTypePathPaymentStrictReceive,
-			xdr.OperationTypePathPaymentStrictSend,
-			xdr.OperationTypeAccountMerge:
-			participants = append(participants, opSource.Address())
-
-		default:
-			if onlyPayments {
-				continue
-			}
-			participants = append(participants, opSource.Address())
-		}
-
-		switch operation.Body.Type {
-		case xdr.OperationTypeCreateAccount:
-			participants = append(participants, operation.Body.MustCreateAccountOp().Destination.Address())
-
-		case xdr.OperationTypePayment:
-			participants = append(participants, operation.Body.MustPaymentOp().Destination.ToAccountId().Address())
-
-		case xdr.OperationTypePathPaymentStrictReceive:
-			participants = append(participants, operation.Body.MustPathPaymentStrictReceiveOp().Destination.ToAccountId().Address())
-
-		case xdr.OperationTypePathPaymentStrictSend:
-			participants = append(participants, operation.Body.MustPathPaymentStrictSendOp().Destination.ToAccountId().Address())
-
-		case xdr.OperationTypeAllowTrust:
-			participants = append(participants, operation.Body.MustAllowTrustOp().Trustor.Address())
-
-		case xdr.OperationTypeAccountMerge:
-			participants = append(participants, operation.Body.MustDestination().ToAccountId().Address())
-
-		case xdr.OperationTypeCreateClaimableBalance:
-			for _, c := range operation.Body.MustCreateClaimableBalanceOp().Claimants {
-				participants = append(participants, c.MustV0().Destination.Address())
-			}
-
-		case xdr.OperationTypeBeginSponsoringFutureReserves:
-			participants = append(participants, operation.Body.MustBeginSponsoringFutureReservesOp().SponsoredId.Address())
-
-		case xdr.OperationTypeEndSponsoringFutureReserves:
-			// Failed transactions may not have a compliant sandwich structure
-			// we can rely on (e.g. invalid nesting or a being operation with
-			// the wrong sponsoree ID) and thus we bail out since we could
-			// return incorrect information.
-			if transaction.Result.Successful() {
-				sponsoree := transaction.Envelope.SourceAccount().ToAccountId().Address()
-				if operation.SourceAccount != nil {
-					sponsoree = operation.SourceAccount.Address()
-				}
-				operations := transaction.Envelope.Operations()
-				for i := int(opindex) - 1; i >= 0; i-- {
-					if beginOp, ok := operations[i].Body.GetBeginSponsoringFutureReservesOp(); ok &&
-						beginOp.SponsoredId.Address() == sponsoree {
-						participants = append(participants, beginOp.SponsoredId.Address())
-					}
-				}
-			}
-
-		case xdr.OperationTypeRevokeSponsorship:
-			op := operation.Body.MustRevokeSponsorshipOp()
-			switch op.Type {
-			case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-				participants = append(participants, getLedgerKeyParticipants(*op.LedgerKey)...)
-
-			case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
-				participants = append(participants, op.Signer.AccountId.Address())
-				// We don't add signer as a participant because a signer can be
-				// arbitrary account. This can spam successful operations
-				// history of any account.
-			}
-
-		case xdr.OperationTypeClawback:
-			op := operation.Body.MustClawbackOp()
-			participants = append(participants, op.From.ToAccountId().Address())
-
-		case xdr.OperationTypeSetTrustLineFlags:
-			op := operation.Body.MustSetTrustLineFlagsOp()
-			participants = append(participants, op.Trustor.Address())
-
-		// for the following, the only direct participant is the source_account
-		case xdr.OperationTypeManageBuyOffer:
-		case xdr.OperationTypeManageSellOffer:
-		case xdr.OperationTypeCreatePassiveSellOffer:
-		case xdr.OperationTypeSetOptions:
-		case xdr.OperationTypeChangeTrust:
-		case xdr.OperationTypeInflation:
-		case xdr.OperationTypeManageData:
-		case xdr.OperationTypeBumpSequence:
-		case xdr.OperationTypeClaimClaimableBalance:
-		case xdr.OperationTypeClawbackClaimableBalance:
-		case xdr.OperationTypeLiquidityPoolDeposit:
-		case xdr.OperationTypeLiquidityPoolWithdraw:
-
-		default:
-			return nil, fmt.Errorf("unknown operation type: %s", operation.Body.Type)
-		}
-
-		// Requires meta
-		// sponsor, err := operation.getSponsor()
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// if sponsor != nil {
-		// 	otherParticipants = append(otherParticipants, *sponsor)
-		// }
+		participants = append(participants, opParticipants...)
 	}
 
 	// FIXME: Can/Should we make this a set? It may mean less superfluous
 	// insertions into the index if there's a lot of activity by this
 	// account in this transaction.
+	return participants, nil
+}
+
+func participantsForOperation(transaction ingest.LedgerTransaction, operation xdr.Operation, opIndex int, onlyPayments bool) ([]string, error) {
+	participants := []string{}
+	opSource := operation.SourceAccount
+	if opSource == nil {
+		txSource := transaction.Envelope.SourceAccount()
+		opSource = &txSource
+	}
+	switch operation.Body.Type {
+	case xdr.OperationTypeCreateAccount,
+		xdr.OperationTypePayment,
+		xdr.OperationTypePathPaymentStrictReceive,
+		xdr.OperationTypePathPaymentStrictSend,
+		xdr.OperationTypeAccountMerge:
+		participants = append(participants, opSource.Address())
+
+	default:
+		if onlyPayments {
+			return participants, nil
+		}
+		participants = append(participants, opSource.Address())
+	}
+
+	switch operation.Body.Type {
+	case xdr.OperationTypeCreateAccount:
+		participants = append(participants, operation.Body.MustCreateAccountOp().Destination.Address())
+
+	case xdr.OperationTypePayment:
+		participants = append(participants, operation.Body.MustPaymentOp().Destination.ToAccountId().Address())
+
+	case xdr.OperationTypePathPaymentStrictReceive:
+		participants = append(participants, operation.Body.MustPathPaymentStrictReceiveOp().Destination.ToAccountId().Address())
+
+	case xdr.OperationTypePathPaymentStrictSend:
+		participants = append(participants, operation.Body.MustPathPaymentStrictSendOp().Destination.ToAccountId().Address())
+
+	case xdr.OperationTypeAllowTrust:
+		participants = append(participants, operation.Body.MustAllowTrustOp().Trustor.Address())
+
+	case xdr.OperationTypeAccountMerge:
+		participants = append(participants, operation.Body.MustDestination().ToAccountId().Address())
+
+	case xdr.OperationTypeCreateClaimableBalance:
+		for _, c := range operation.Body.MustCreateClaimableBalanceOp().Claimants {
+			participants = append(participants, c.MustV0().Destination.Address())
+		}
+
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		participants = append(participants, operation.Body.MustBeginSponsoringFutureReservesOp().SponsoredId.Address())
+
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		// Failed transactions may not have a compliant sandwich structure
+		// we can rely on (e.g. invalid nesting or a being operation with
+		// the wrong sponsoree ID) and thus we bail out since we could
+		// return incorrect information.
+		if transaction.Result.Successful() {
+			sponsoree := transaction.Envelope.SourceAccount().ToAccountId().Address()
+			if operation.SourceAccount != nil {
+				sponsoree = operation.SourceAccount.Address()
+			}
+			operations := transaction.Envelope.Operations()
+			for i := opIndex - 1; i >= 0; i-- {
+				if beginOp, ok := operations[i].Body.GetBeginSponsoringFutureReservesOp(); ok &&
+					beginOp.SponsoredId.Address() == sponsoree {
+					participants = append(participants, beginOp.SponsoredId.Address())
+				}
+			}
+		}
+
+	case xdr.OperationTypeRevokeSponsorship:
+		op := operation.Body.MustRevokeSponsorshipOp()
+		switch op.Type {
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
+			participants = append(participants, getLedgerKeyParticipants(*op.LedgerKey)...)
+
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
+			participants = append(participants, op.Signer.AccountId.Address())
+			// We don't add signer as a participant because a signer can be
+			// arbitrary account. This can spam successful operations
+			// history of any account.
+		}
+
+	case xdr.OperationTypeClawback:
+		op := operation.Body.MustClawbackOp()
+		participants = append(participants, op.From.ToAccountId().Address())
+
+	case xdr.OperationTypeSetTrustLineFlags:
+		op := operation.Body.MustSetTrustLineFlagsOp()
+		participants = append(participants, op.Trustor.Address())
+
+	// for the following, the only direct participant is the source_account
+	case xdr.OperationTypeManageBuyOffer:
+	case xdr.OperationTypeManageSellOffer:
+	case xdr.OperationTypeCreatePassiveSellOffer:
+	case xdr.OperationTypeSetOptions:
+	case xdr.OperationTypeChangeTrust:
+	case xdr.OperationTypeInflation:
+	case xdr.OperationTypeManageData:
+	case xdr.OperationTypeBumpSequence:
+	case xdr.OperationTypeClaimClaimableBalance:
+	case xdr.OperationTypeClawbackClaimableBalance:
+	case xdr.OperationTypeLiquidityPoolDeposit:
+	case xdr.OperationTypeLiquidityPoolWithdraw:
+
+	default:
+		return nil, fmt.Errorf("unknown operation type: %s", operation.Body.Type)
+	}
 	return participants, nil
 }
 

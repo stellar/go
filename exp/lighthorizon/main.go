@@ -2,18 +2,29 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/exp/lighthorizon/services"
+	"github.com/stellar/go/toid"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 )
 
 func main() {
+
+	os.Args = append(os.Args, "-source=file:///Users/sreuland/workspace/txmeta-live-archive")
+	os.Args = append(os.Args, "-indexes=file:///Users/sreuland/workspace/txmeta-live-archive")
+
+	cursor := toid.New(1586111, 1, 1).ToInt64()
+	fmt.Printf("\nthe cursor %v\n", cursor)
+
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	indexesUrl := flag.String("indexes", "file://indexes", "url of the indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
@@ -33,14 +44,21 @@ func main() {
 	}
 	defer ingestArchive.Close()
 
-	archiveWrapper := archive.Wrapper{Archive: ingestArchive, Passphrase: *networkPassphrase}
+	lightHorizon := services.LightHorizon{
+		Archive:    ingestArchive,
+		Passphrase: *networkPassphrase,
+		IndexStore: indexStore,
+	}
 
 	router := chi.NewMux()
-    router.Method(http.MethodGet, "/accounts/{account_id}/transactions", actions.TxByAccount(archiveWrapper, indexStore))
-	router.Method(http.MethodGet, "/accounts/{account_id}/operations", actions.OpsByAccount(archiveWrapper, indexStore))
-	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
-	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
-	http.HandleFunc("/", actions.ApiDocs())
+	router.Route("/accounts/{account_id}", func(r chi.Router) {
+		r.MethodFunc(http.MethodGet, "/transactions", actions.NewTXByAccountHandler(lightHorizon))
+		r.MethodFunc(http.MethodGet, "/operations", actions.NewOpsByAccountHandler(lightHorizon))
+	})
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router.MethodFunc(http.MethodGet, "/operations", actions.Operations(lightHorizon))
+	router.MethodFunc(http.MethodGet, "/transactions", actions.Transactions(lightHorizon))
+	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
+
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
