@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
-	"github.com/gorilla/schema"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 )
@@ -94,8 +93,6 @@ func paging(r *http.Request) (pagination, error) {
 
 	return paginate, nil
 }
-
-var decoder = schema.NewDecoder()
 
 func getURLParam(r *http.Request, key string) (string, bool) {
 	rctx := chi.RouteContext(r.Context())

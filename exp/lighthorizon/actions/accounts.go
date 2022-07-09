@@ -22,7 +22,7 @@ func accountRequestParams(w http.ResponseWriter, r *http.Request) (string, pagin
 	var accountId string
 	var accountErr bool
 
-	if accountId, accountErr = getURLParam(r, urlAccountId); accountErr != true {
+	if accountId, accountErr = getURLParam(r, urlAccountId); !accountErr {
 		sendErrorResponse(w, http.StatusBadRequest, "")
 		return "", pagination{}
 	}
