@@ -15,9 +15,21 @@ import (
 )
 
 type LightHorizon struct {
-	Archive    archive.Archive
+	AccountService,
+	TransactionService,
+	Archive archive.Archive
 	Passphrase string
 	IndexStore index.Store
+}
+
+type AccountService interface {
+	GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error)
+	GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error)
+}
+
+type TransactionService interface {
+	GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error)
+	GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error)
 }
 
 func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error) {
