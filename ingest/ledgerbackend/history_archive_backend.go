@@ -13,8 +13,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const CurrentLedgerFileVersion = 0x01
-
 type HistoryArchiveBackend struct {
 	historyarchive.ArchiveBackend
 }
@@ -55,28 +53,22 @@ func (b *HistoryArchiveBackend) IsPrepared(ctx context.Context, ledgerRange Rang
 }
 
 func (b *HistoryArchiveBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
-	var ledger xdr.LedgerCloseMeta
+	var ledger xdr.SerializedLedgerCloseMeta
 	r, err := b.GetFile("ledgers/" + strconv.FormatUint(uint64(sequence), 10))
-	if err != nil {
-		return ledger, err
-	}
-	defer r.Close()
-	var buf bytes.Buffer
-	// read and check version header
-	var version [1]byte
-	l, err := r.Read(version[:])
 	if err != nil {
 		return xdr.LedgerCloseMeta{}, err
 	}
-	if l != 1 || version[0] != CurrentLedgerFileVersion {
-		return xdr.LedgerCloseMeta{}, fmt.Errorf("unexpected ledger header version number (0x%x)", version[0])
-	}
-
+	defer r.Close()
+	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
-		return ledger, err
+		return xdr.LedgerCloseMeta{}, err
 	}
 	if err = ledger.UnmarshalBinary(buf.Bytes()); err != nil {
-		return ledger, err
+		return xdr.LedgerCloseMeta{}, err
 	}
-	return ledger, nil
+	output, isV0 := ledger.GetV0()
+	if !isV0 {
+		fmt.Errorf("unexpected serialized ledger version number (0x%x)", ledger.V)
+	}
+	return output, nil
 }
