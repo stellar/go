@@ -11,41 +11,47 @@ import (
 )
 
 func Connect(backendUrl string) (Store, error) {
-	parsed, err := url.Parse(backendUrl)
+	return ConnectWithConfig(StoreConfig{Url: backendUrl})
+}
+
+func ConnectWithConfig(config StoreConfig) (Store, error) {
+	parsed, err := url.Parse(config.Url)
 	if err != nil {
 		return nil, err
 	}
 	switch parsed.Scheme {
 	case "s3":
-		config := &aws.Config{}
+		awsConfig := &aws.Config{}
 		query := parsed.Query()
 		if region := query.Get("region"); region != "" {
-			config.Region = aws.String(region)
+			awsConfig.Region = aws.String(region)
 		}
 
-		return NewS3Store(config, parsed.Path, 20)
+		config.Url = parsed.Path
+		return NewS3Store(awsConfig, config)
 
 	case "file":
-		return NewFileStore(filepath.Join(parsed.Host, parsed.Path), 20)
+		config.Url = filepath.Join(parsed.Host, parsed.Path)
+		return NewFileStore(config)
 
 	default:
 		return nil, fmt.Errorf("unknown URL scheme: '%s' (from %s)",
-			parsed.Scheme, backendUrl)
+			parsed.Scheme, config.Url)
 	}
 }
 
-func NewFileStore(dir string, parallel uint32) (Store, error) {
-	backend, err := backend.NewFileBackend(dir, parallel)
+func NewFileStore(config StoreConfig) (Store, error) {
+	backend, err := backend.NewFileBackend(config.Url, config.Workers)
 	if err != nil {
 		return nil, err
 	}
-	return NewStore(backend)
+	return NewStore(backend, config)
 }
 
-func NewS3Store(awsConfig *aws.Config, prefix string, parallel uint32) (Store, error) {
-	backend, err := backend.NewS3Backend(awsConfig, prefix, parallel)
+func NewS3Store(awsConfig *aws.Config, indexConfig StoreConfig) (Store, error) {
+	backend, err := backend.NewS3Backend(awsConfig, indexConfig.Url, indexConfig.Workers)
 	if err != nil {
 		return nil, err
 	}
-	return NewStore(backend)
+	return NewStore(backend, indexConfig)
 }

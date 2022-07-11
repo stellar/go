@@ -192,7 +192,7 @@ func (index *TrieIndex) Get(key []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (index *TrieIndex) iterate(f func(key, value []byte)) {
+func (index *TrieIndex) Iterate(f func(key, value []byte)) {
 	index.RLock()
 	defer index.RUnlock()
 	if index.Root != nil {
@@ -218,7 +218,7 @@ func (i *TrieIndex) Merge(other *TrieIndex) error {
 	i.Lock()
 	defer i.Unlock()
 
-	other.iterate(func(key, value []byte) {
+	other.Iterate(func(key, value []byte) {
 		i.doUpsert(key, value)
 	})
 

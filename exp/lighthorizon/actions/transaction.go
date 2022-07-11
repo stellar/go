@@ -2,10 +2,15 @@ package actions
 
 import (
 	"encoding/hex"
-	"github.com/stellar/go/support/log"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
 	"github.com/stellar/go/exp/lighthorizon/archive"
@@ -15,8 +20,30 @@ import (
 	"github.com/stellar/go/toid"
 )
 
+var (
+	requestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "horizon_lite_request_count",
+		Help: "How many requests have occurred?",
+	})
+	requestTime = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "horizon_lite_request_duration",
+		Help: "How long do requests take?",
+		Buckets: append(
+			prometheus.LinearBuckets(0, 50, 20),
+			prometheus.LinearBuckets(1000, 1000, 8)...,
+		),
+	})
+)
+
 func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		defer func() {
+			duration := time.Since(start)
+			requestTime.Observe(float64(duration.Milliseconds()))
+		}()
+		requestCount.Inc()
+
 		// For _links rendering, imitate horizon.stellar.org links for horizon-cmp
 		r.URL.Scheme = "http"
 		r.URL.Host = "localhost:8080"
@@ -58,29 +85,37 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 		}
 
 		if txId != "" {
-			// if 'id' is on request, it overrides any paging cursor that may be on request.
+			// if 'id' is on request, it overrides any paging parameters on the request.
 			var b []byte
 			b, err = hex.DecodeString(txId)
 			if err != nil {
-				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter, not valid hex encoding")
+				sendErrorResponse(w, http.StatusBadRequest,
+					"Invalid transaction id request parameter, not valid hex encoding")
 				return
 			}
 			if len(b) != 32 {
-				sendErrorResponse(w, http.StatusBadRequest, "Invalid transaction id request parameter, the encoded hex value must decode to length of 32 bytes")
+				sendErrorResponse(w, http.StatusBadRequest,
+					"Invalid transaction id request parameter, the encoded hex value must decode to length of 32 bytes")
 				return
 			}
 			var hash [32]byte
 			copy(hash[:], b)
 
-			if paginate.Cursor, err = indexStore.TransactionTOID(hash); err != nil {
+			var foundTOID int64
+			foundTOID, err = indexStore.TransactionTOID(hash)
+			if err == io.EOF {
+				log.Error(err)
+				sendErrorResponse(w, http.StatusNotFound,
+					fmt.Sprintf("Transaction with ID %x does not exist", hash))
+				return
+			} else if err != nil {
 				log.Error(err)
 				sendErrorResponse(w, http.StatusInternalServerError, "")
-			}
-			if err == io.EOF {
-				page.PopulateLinks()
-				sendPageResponse(w, page)
 				return
 			}
+
+			paginate.Cursor = foundTOID
+			paginate.Limit = 1
 		}
 
 		//TODO - implement paginate.Order(asc/desc)
@@ -93,6 +128,7 @@ func Transactions(archiveWrapper archive.Wrapper, indexStore index.Store) func(h
 
 		for _, txn := range txns {
 			var response hProtocol.Transaction
+			txn.NetworkPassphrase = archiveWrapper.Passphrase
 			response, err = adapters.PopulateTransaction(r, &txn)
 			if err != nil {
 				log.Error(err)

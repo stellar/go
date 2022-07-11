@@ -6,9 +6,12 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	backend "github.com/stellar/go/exp/lighthorizon/index/backend"
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
+	"github.com/stellar/go/support/log"
 )
 
 type Store interface {
@@ -29,25 +32,53 @@ type Store interface {
 	ReadTransactions(prefix string) (*types.TrieIndex, error)
 
 	MergeTransactions(prefix string, other *types.TrieIndex) error
+
+	RegisterMetrics(registry *prometheus.Registry)
+}
+
+type StoreConfig struct {
+	// init time config
+	Url     string
+	Workers uint32
+
+	// runtime config
+	ClearMemoryOnFlush bool
+
+	// logging & metrics
+	Log     *log.Entry // TODO: unused for now
+	Metrics *prometheus.Registry
 }
 
 type store struct {
-	mutex     sync.RWMutex
+	mutex  sync.RWMutex
+	config StoreConfig
+
+	// data
 	indexes   map[string]types.NamedIndices
 	txIndexes map[string]*types.TrieIndex
 	backend   backend.Backend
 
-	clearMemoryOnFlush bool
+	// metrics
+	indexWorkingSet     prometheus.Gauge
+	indexWorkingSetTime prometheus.Gauge // to check if the above takes too long lmao
 }
 
-func NewStore(backend backend.Backend) (Store, error) {
-	return &store{
+func NewStore(backend backend.Backend, config StoreConfig) (Store, error) {
+	result := &store{
 		indexes:   map[string]types.NamedIndices{},
 		txIndexes: map[string]*types.TrieIndex{},
 		backend:   backend,
 
-		clearMemoryOnFlush: true,
-	}, nil
+		config: config,
+
+		indexWorkingSet: newHorizonLiteGauge("working_set",
+			"Approximately how much memory (kiB) are indices using?"),
+		indexWorkingSetTime: newHorizonLiteGauge("working_set_time",
+			"How long did it take (μs) to calculate the working set size?"),
+	}
+	result.RegisterMetrics(config.Metrics)
+
+	return result, nil
 }
 
 func (s *store) accounts() []string {
@@ -77,6 +108,8 @@ func (s *store) ReadTransactions(prefix string) (*types.TrieIndex, error) {
 }
 
 func (s *store) MergeTransactions(prefix string, other *types.TrieIndex) error {
+	defer s.approximateWorkingSet()
+
 	index, err := s.getCreateTrieIndex(prefix)
 	if err != nil {
 		return err
@@ -91,9 +124,43 @@ func (s *store) MergeTransactions(prefix string, other *types.TrieIndex) error {
 	return nil
 }
 
+func (s *store) approximateWorkingSet() {
+	if s.config.Metrics == nil {
+		return
+	}
+
+	start := time.Now()
+	approx := float64(0)
+
+	for _, indices := range s.indexes {
+		firstIndexSize := 0
+		for _, index := range indices {
+			firstIndexSize = index.Size()
+			break
+		}
+
+		// There may be multiple indices for each account, but we can do a rough
+		// approximation for now by just assuming they're all around the same
+		// size.
+		approx += float64(len(indices) * firstIndexSize)
+	}
+
+	for _, trie := range s.txIndexes {
+		// FIXME: Is this too slow? We probably want a TrieIndex.Size() method,
+		// but that's not trivial to determine for a trie.
+		trie.Iterate(func(key, value []byte) {
+			approx += float64(len(key) + len(value))
+		})
+	}
+
+	s.indexWorkingSet.Set(approx / 1024)                                 // kiB
+	s.indexWorkingSetTime.Set(float64(time.Since(start).Microseconds())) // μs
+}
+
 func (s *store) Flush() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer s.approximateWorkingSet()
 
 	if err := s.backend.Flush(s.indexes); err != nil {
 		return err
@@ -101,13 +168,13 @@ func (s *store) Flush() error {
 
 	if err := s.backend.FlushAccounts(s.accounts()); err != nil {
 		return err
-	} else if s.clearMemoryOnFlush {
+	} else if s.config.ClearMemoryOnFlush {
 		s.indexes = map[string]types.NamedIndices{}
 	}
 
 	if err := s.backend.FlushTransactions(s.txIndexes); err != nil {
 		return err
-	} else if s.clearMemoryOnFlush {
+	} else if s.config.ClearMemoryOnFlush {
 		s.txIndexes = map[string]*types.TrieIndex{}
 	}
 
@@ -115,7 +182,7 @@ func (s *store) Flush() error {
 }
 
 func (s *store) ClearMemory(doClear bool) {
-	s.clearMemoryOnFlush = doClear
+	s.config.ClearMemoryOnFlush = doClear
 }
 
 func (s *store) AddTransactionToIndexes(txnTOID int64, hash [32]byte) error {
@@ -126,7 +193,12 @@ func (s *store) AddTransactionToIndexes(txnTOID int64, hash [32]byte) error {
 
 	value := make([]byte, 8)
 	binary.BigEndian.PutUint64(value, uint64(txnTOID))
-	index.Upsert(hash[1:], value)
+
+	// We don't have to re-calculate the whole working set size for metrics
+	// since we're adding a known size.
+	if _, replaced := index.Upsert(hash[1:], value); !replaced {
+		s.indexWorkingSet.Add(float64(len(hash) - 1 + len(value)))
+	}
 
 	return nil
 }
@@ -136,6 +208,7 @@ func (s *store) TransactionTOID(hash [32]byte) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	value, ok := index.Get(hash[1:])
 	if !ok {
 		return 0, io.EOF
@@ -149,6 +222,7 @@ func (s *store) TransactionTOID(hash [32]byte) (int64, error) {
 func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index string, participants []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer s.approximateWorkingSet()
 
 	var err error
 	for _, participant := range participants {
@@ -174,10 +248,14 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 func (s *store) AddParticipantToIndexesNoBackend(participant string, indexes types.NamedIndices) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer s.approximateWorkingSet()
+
 	s.indexes[participant] = indexes
 }
 
 func (s *store) AddParticipantsToIndexes(checkpoint uint32, index string, participants []string) error {
+	defer s.approximateWorkingSet()
+
 	for _, participant := range participants {
 		ind, err := s.getCreateIndex(participant, index)
 		if err != nil {
@@ -194,6 +272,7 @@ func (s *store) AddParticipantsToIndexes(checkpoint uint32, index string, partic
 func (s *store) getCreateIndex(account, id string) (*types.CheckpointIndex, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer s.approximateWorkingSet()
 
 	// Check if we already have it loaded
 	accountIndexes, ok := s.indexes[account]
@@ -238,6 +317,8 @@ func (s *store) getCreateIndex(account, id string) (*types.CheckpointIndex, erro
 }
 
 func (s *store) NextActive(account, indexId string, afterCheckpoint uint32) (uint32, error) {
+	defer s.approximateWorkingSet()
+
 	ind, err := s.getCreateIndex(account, indexId)
 	if err != nil {
 		return 0, err
@@ -248,6 +329,7 @@ func (s *store) NextActive(account, indexId string, afterCheckpoint uint32) (uin
 func (s *store) getCreateTrieIndex(prefix string) (*types.TrieIndex, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	defer s.approximateWorkingSet()
 
 	// Check if we already have it loaded
 	index, ok := s.txIndexes[prefix]
@@ -271,4 +353,22 @@ func (s *store) getCreateTrieIndex(prefix string) (*types.TrieIndex, error) {
 	}
 
 	return index, nil
+}
+
+func (s *store) RegisterMetrics(registry *prometheus.Registry) {
+	s.config.Metrics = registry
+
+	if registry != nil {
+		registry.Register(s.indexWorkingSet)
+		registry.Register(s.indexWorkingSetTime)
+	}
+}
+
+func newHorizonLiteGauge(name, help string) prometheus.Gauge {
+	return prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon_lite",
+		Subsystem: "index_store",
+		Name:      name,
+		Help:      help,
+	})
 }

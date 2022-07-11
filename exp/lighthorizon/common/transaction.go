@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/hex"
+	"errors"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/toid"
@@ -13,10 +14,16 @@ type Transaction struct {
 	TransactionResult   *xdr.TransactionResult
 	LedgerHeader        *xdr.LedgerHeader
 	TxIndex             int32
+
+	NetworkPassphrase string
 }
 
 func (o *Transaction) TransactionHash() (string, error) {
-	hash, err := network.HashTransactionInEnvelope(*o.TransactionEnvelope, network.PublicNetworkPassphrase)
+	if o.NetworkPassphrase == "" {
+		return "", errors.New("network passphrase unspecified")
+	}
+
+	hash, err := network.HashTransactionInEnvelope(*o.TransactionEnvelope, o.NetworkPassphrase)
 	if err != nil {
 		return "", err
 	}
