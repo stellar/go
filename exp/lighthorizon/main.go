@@ -35,9 +35,16 @@ func main() {
 	defer ingestArchive.Close()
 
 	lightHorizon := services.LightHorizon{
-		Archive:    ingestArchive,
-		Passphrase: *networkPassphrase,
-		IndexStore: indexStore,
+		Transactions: services.TransactionsService{
+			Archive:    ingestArchive,
+			Passphrase: *networkPassphrase,
+			IndexStore: indexStore,
+		},
+		Operations: services.OperationsService{
+			Archive:    ingestArchive,
+			Passphrase: *networkPassphrase,
+			IndexStore: indexStore,
+		},
 	}
 
 	router := chi.NewMux()

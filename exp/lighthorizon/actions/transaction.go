@@ -38,7 +38,7 @@ func Transactions(lh services.LightHorizon) func(http.ResponseWriter, *http.Requ
 		page.FullURL = r.URL
 
 		//TODO - implement paginate.Order(asc/desc)
-		txns, err := lh.GetTransactions(r.Context(), paginate.Cursor, paginate.Limit)
+		txns, err := lh.Transactions.GetTransactions(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
 			log.Error(err)
 			sendErrorResponse(w, http.StatusInternalServerError, "")

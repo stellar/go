@@ -38,7 +38,7 @@ func Operations(lh services.LightHorizon) func(http.ResponseWriter, *http.Reques
 		page.FullURL = r.URL
 
 		//TODO - implement paginate.Order(asc/desc)
-		ops, err := lh.GetOperations(r.Context(), paginate.Cursor, paginate.Limit)
+		ops, err := lh.Operations.GetOperations(r.Context(), paginate.Cursor, paginate.Limit)
 		if err != nil {
 			log.Error(err)
 			sendErrorResponse(w, http.StatusInternalServerError, "")

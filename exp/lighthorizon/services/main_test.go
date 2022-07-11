@@ -18,8 +18,13 @@ func TestItGetsSequentialOperationsForLimitBeyondEnd(tt *testing.T) {
 	ctx := context.Background()
 	cursor := int64(6812294872829953)
 	passphrase := "Red New England clam chowder"
-	lightHorizon := mockLightHorizonFixture(ctx, passphrase)
-	ops, err := lightHorizon.GetOperations(ctx, cursor, 5)
+	archive := mockArchiveFixture(ctx, passphrase)
+	opsService := OperationsService{
+		Archive:    archive,
+		IndexStore: &index.MockStore{},
+		Passphrase: passphrase,
+	}
+	ops, err := opsService.GetOperations(ctx, cursor, 5)
 	require.NoError(tt, err)
 	require.Len(tt, ops, 3)
 	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586111))
@@ -38,8 +43,13 @@ func TestItGetsSequentialOperationsForLimitBeforeEnd(tt *testing.T) {
 	ctx := context.Background()
 	cursor := int64(6812294872829953)
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixture(ctx, passphrase)
-	ops, err := lightHorizon.GetOperations(ctx, cursor, 2)
+	archive := mockArchiveFixture(ctx, passphrase)
+	opsService := OperationsService{
+		Archive:    archive,
+		IndexStore: &index.MockStore{},
+		Passphrase: passphrase,
+	}
+	ops, err := opsService.GetOperations(ctx, cursor, 2)
 	require.NoError(tt, err)
 	require.Len(tt, ops, 2)
 	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586111))
@@ -55,8 +65,13 @@ func TestItGetsSequentialTransactionsForLimitBeyondEnd(tt *testing.T) {
 	ctx := context.Background()
 	cursor := int64(6812294872829953)
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixture(ctx, passphrase)
-	txs, err := lightHorizon.GetTransactions(ctx, cursor, 5)
+	archive := mockArchiveFixture(ctx, passphrase)
+	txService := TransactionsService{
+		Archive:    archive,
+		IndexStore: &index.MockStore{},
+		Passphrase: passphrase,
+	}
+	txs, err := txService.GetTransactions(ctx, cursor, 5)
 	require.NoError(tt, err)
 	require.Len(tt, txs, 2)
 	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586111))
@@ -70,8 +85,13 @@ func TestItGetsSequentialTransactionsForLimitBeforeEnd(tt *testing.T) {
 	ctx := context.Background()
 	cursor := int64(6812294872829953)
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixture(ctx, passphrase)
-	txs, err := lightHorizon.GetTransactions(ctx, cursor, 1)
+	archive := mockArchiveFixture(ctx, passphrase)
+	txService := TransactionsService{
+		Archive:    archive,
+		IndexStore: &index.MockStore{},
+		Passphrase: passphrase,
+	}
+	txs, err := txService.GetTransactions(ctx, cursor, 1)
 	require.NoError(tt, err)
 	require.Len(tt, txs, 1)
 	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586111))
@@ -84,10 +104,15 @@ func TestItGetsTransactionsByAccount(tt *testing.T) {
 	cursor := int64(6812294872829953)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixtureWithIndexing(ctx, passphrase)
+	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	txService := TransactionsService{
+		Archive:    archive,
+		IndexStore: store,
+		Passphrase: passphrase,
+	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
-	txs, err := lightHorizon.GetTransactionsByAccount(ctx, cursor, 1, accountId)
+	txs, err := txService.GetTransactionsByAccount(ctx, cursor, 1, accountId)
 	require.NoError(tt, err)
 	require.Len(tt, txs, 1)
 	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
@@ -100,10 +125,15 @@ func TestItGetsTransactionsByAccountAndPageLimit(tt *testing.T) {
 	cursor := int64(6812294872829953)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixtureWithIndexing(ctx, passphrase)
+	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	txService := TransactionsService{
+		Archive:    archive,
+		IndexStore: store,
+		Passphrase: passphrase,
+	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
-	txs, err := lightHorizon.GetTransactionsByAccount(ctx, cursor, 5, accountId)
+	txs, err := txService.GetTransactionsByAccount(ctx, cursor, 5, accountId)
 	require.NoError(tt, err)
 	require.Len(tt, txs, 2)
 	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
@@ -118,10 +148,15 @@ func TestItGetsOperationsByAccount(tt *testing.T) {
 	cursor := int64(6812294872829953)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixtureWithIndexing(ctx, passphrase)
+	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	opsService := OperationsService{
+		Archive:    archive,
+		IndexStore: store,
+		Passphrase: passphrase,
+	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
-	ops, err := lightHorizon.GetOperationsByAccount(ctx, cursor, 1, accountId)
+	ops, err := opsService.GetOperationsByAccount(ctx, cursor, 1, accountId)
 	require.NoError(tt, err)
 	require.Len(tt, ops, 1)
 	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
@@ -134,10 +169,15 @@ func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
 	cursor := int64(6812294872829953)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
-	lightHorizon := mockLightHorizonFixtureWithIndexing(ctx, passphrase)
+	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	opsService := OperationsService{
+		Archive:    archive,
+		IndexStore: store,
+		Passphrase: passphrase,
+	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
-	ops, err := lightHorizon.GetOperationsByAccount(ctx, cursor, 5, accountId)
+	ops, err := opsService.GetOperationsByAccount(ctx, cursor, 5, accountId)
 	require.NoError(tt, err)
 	require.Len(tt, ops, 2)
 	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
@@ -146,7 +186,7 @@ func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
 	require.Equal(tt, ops[1].TxIndex, int32(1))
 }
 
-func mockLightHorizonFixture(ctx context.Context, passphrase string) *LightHorizon {
+func mockArchiveFixture(ctx context.Context, passphrase string) archive.Archive {
 
 	mockArchive := &archive.MockArchive{}
 	mockReaderLedger1 := &archive.MockLedgerTransactionReader{}
@@ -171,17 +211,10 @@ func mockLightHorizonFixture(ctx context.Context, passphrase string) *LightHoriz
 	mockReaderLedger2.On("Read").Return(expectedLedger2Transaction1, nil).Once()
 	mockReaderLedger2.On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
 
-	mockStore := &index.MockStore{}
-
-	lightHorizon := &LightHorizon{
-		Archive:    mockArchive,
-		Passphrase: passphrase,
-		IndexStore: mockStore,
-	}
-	return lightHorizon
+	return mockArchive
 }
 
-func mockLightHorizonFixtureWithIndexing(ctx context.Context, passphrase string) *LightHorizon {
+func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archive, index.Store) {
 
 	mockArchive := &archive.MockArchive{}
 	mockReaderLedger1 := &archive.MockLedgerTransactionReader{}
@@ -248,12 +281,7 @@ func mockLightHorizonFixtureWithIndexing(ctx context.Context, passphrase string)
 	mockStore.On("NextActive", "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX", mock.Anything, uint32(24782)).Return(uint32(24783), nil)
 	mockStore.On("NextActive", "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX", mock.Anything, uint32(24783)).Return(uint32(0), io.EOF)
 
-	lightHorizon := &LightHorizon{
-		Archive:    mockArchive,
-		Passphrase: passphrase,
-		IndexStore: mockStore,
-	}
-	return lightHorizon
+	return mockArchive, mockStore
 }
 
 func testLedger(seq int) xdr.LedgerCloseMeta {

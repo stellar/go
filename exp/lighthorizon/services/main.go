@@ -15,27 +15,38 @@ import (
 )
 
 type LightHorizon struct {
-	AccountService,
-	TransactionService,
-	Archive archive.Archive
-	Passphrase string
-	IndexStore index.Store
+	Operations   OperationsService
+	Transactions TransactionsService
 }
 
-type AccountService interface {
+type TransactionsService struct {
+	TransactionRepository,
+	Archive archive.Archive
+	IndexStore index.Store
+	Passphrase string
+}
+
+type OperationsService struct {
+	OperationsRepository,
+	Archive archive.Archive
+	IndexStore index.Store
+	Passphrase string
+}
+
+type OperationsRepository interface {
 	GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error)
 	GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error)
 }
 
-type TransactionService interface {
+type TransactionRepository interface {
 	GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error)
 	GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error)
 }
 
-func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error) {
+func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error) {
 	ops := []common.Operation{}
 	// Skip the cursor ahead to the next active checkpoint for this account
-	nextCheckpoint, err := lh.getAccountNextCheckpointCursor(accountId, cursor)
+	nextCheckpoint, err := getAccountNextCheckpointCursor(accountId, cursor, os.IndexStore)
 	if err != nil {
 		if err == io.EOF {
 			return ops, nil
@@ -49,12 +60,12 @@ func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64
 		ledgerSequence := startingCheckPointLedger
 
 		for (ledgerSequence - startingCheckPointLedger) < 64 {
-			ledger, ledgerErr := lh.Archive.GetLedger(ctx, ledgerSequence)
+			ledger, ledgerErr := os.Archive.GetLedger(ctx, ledgerSequence)
 			if ledgerErr != nil {
 				return nil, errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", ledgerSequence, ledgerSequence/64)
 			}
 
-			reader, readerErr := lh.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(lh.Passphrase, ledger)
+			reader, readerErr := os.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(os.Passphrase, ledger)
 			if readerErr != nil {
 				return nil, readerErr
 			}
@@ -70,14 +81,14 @@ func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64
 				}
 
 				transactionOrder++
-				participants, participantErr := lh.Archive.GetTransactionParticipants(tx)
+				participants, participantErr := os.Archive.GetTransactionParticipants(tx)
 				if participantErr != nil {
 					return nil, participantErr
 				}
 
 				if _, found := participants[accountId]; found {
 					for operationOrder, op := range tx.Envelope.Operations() {
-						opParticipants, opParticipantErr := lh.Archive.GetOperationParticipants(tx, op, operationOrder+1)
+						opParticipants, opParticipantErr := os.Archive.GetOperationParticipants(tx, op, operationOrder+1)
 						if opParticipantErr != nil {
 							return nil, opParticipantErr
 						}
@@ -103,7 +114,7 @@ func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64
 			ledgerSequence++
 		}
 
-		nextCheckpoint, err = lh.getAccountNextCheckpointCursor(accountId, nextCheckpoint)
+		nextCheckpoint, err = getAccountNextCheckpointCursor(accountId, nextCheckpoint, os.IndexStore)
 		if err != nil {
 			if err == io.EOF {
 				return ops, nil
@@ -113,10 +124,10 @@ func (lh *LightHorizon) GetOperationsByAccount(ctx context.Context, cursor int64
 	}
 }
 
-func (lh *LightHorizon) GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error) {
+func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error) {
 	txs := []common.Transaction{}
 	// Skip the cursor ahead to the next active checkpoint for this account
-	nextCheckpoint, err := lh.getAccountNextCheckpointCursor(accountId, cursor)
+	nextCheckpoint, err := getAccountNextCheckpointCursor(accountId, cursor, ts.IndexStore)
 	if err != nil {
 		if err == io.EOF {
 			return txs, nil
@@ -130,12 +141,12 @@ func (lh *LightHorizon) GetTransactionsByAccount(ctx context.Context, cursor int
 		ledgerSequence := startingCheckPointLedger
 
 		for (ledgerSequence - startingCheckPointLedger) < 64 {
-			ledger, ledgerErr := lh.Archive.GetLedger(ctx, ledgerSequence)
+			ledger, ledgerErr := ts.Archive.GetLedger(ctx, ledgerSequence)
 			if ledgerErr != nil {
 				return nil, errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", ledgerSequence, ledgerSequence/64)
 			}
 
-			reader, readerErr := lh.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(lh.Passphrase, ledger)
+			reader, readerErr := ts.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(ts.Passphrase, ledger)
 			if readerErr != nil {
 				return nil, readerErr
 			}
@@ -151,7 +162,7 @@ func (lh *LightHorizon) GetTransactionsByAccount(ctx context.Context, cursor int
 				}
 
 				transactionOrder++
-				participants, participantErr := lh.Archive.GetTransactionParticipants(tx)
+				participants, participantErr := ts.Archive.GetTransactionParticipants(tx)
 				if participantErr != nil {
 					return nil, participantErr
 				}
@@ -175,7 +186,7 @@ func (lh *LightHorizon) GetTransactionsByAccount(ctx context.Context, cursor int
 			ledgerSequence++
 		}
 
-		nextCheckpoint, err = lh.getAccountNextCheckpointCursor(accountId, nextCheckpoint)
+		nextCheckpoint, err = getAccountNextCheckpointCursor(accountId, nextCheckpoint, ts.IndexStore)
 		if err != nil {
 			if err == io.EOF {
 				return txs, nil
@@ -185,7 +196,7 @@ func (lh *LightHorizon) GetTransactionsByAccount(ctx context.Context, cursor int
 	}
 }
 
-func (lh *LightHorizon) GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error) {
+func (os *OperationsService) GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
 	if ledgerSequence < 2 {
@@ -200,13 +211,13 @@ func (lh *LightHorizon) GetOperations(ctx context.Context, cursor int64, limit i
 
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, err := lh.Archive.GetLedger(ctx, ledgerSequence)
+		ledger, err := os.Archive.GetLedger(ctx, ledgerSequence)
 		if err != nil {
 			// no 'NotFound' distinction on err, treat all as not found.
 			return ops, nil
 		}
 
-		reader, err := lh.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(lh.Passphrase, ledger)
+		reader, err := os.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(os.Passphrase, ledger)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error in ledger %d", ledgerSequence)
 		}
@@ -253,7 +264,7 @@ func (lh *LightHorizon) GetOperations(ctx context.Context, cursor int64, limit i
 	}
 }
 
-func (lh *LightHorizon) GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error) {
+func (ts *TransactionsService) GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error) {
 	parsedID := toid.Parse(cursor)
 	ledgerSequence := uint32(parsedID.LedgerSequence)
 	if ledgerSequence < 2 {
@@ -268,13 +279,13 @@ func (lh *LightHorizon) GetTransactions(ctx context.Context, cursor int64, limit
 
 	for {
 		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, err := lh.Archive.GetLedger(ctx, ledgerSequence)
+		ledger, err := ts.Archive.GetLedger(ctx, ledgerSequence)
 		if err != nil {
 			// no 'NotFound' distinction on err, treat all as not found.
 			return txns, nil
 		}
 
-		reader, err := lh.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(lh.Passphrase, ledger)
+		reader, err := ts.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(ts.Passphrase, ledger)
 		if err != nil {
 			return nil, err
 		}
@@ -322,9 +333,9 @@ func (lh *LightHorizon) GetTransactions(ctx context.Context, cursor int64, limit
 	}
 }
 
-func (lh *LightHorizon) getAccountNextCheckpointCursor(accountId string, cursor int64) (int64, error) {
+func getAccountNextCheckpointCursor(accountId string, cursor int64, store index.Store) (int64, error) {
 	var checkpoint uint32
-	checkpoint, err := lh.IndexStore.NextActive(accountId, "all/all", uint32(toid.Parse(cursor).LedgerSequence/64))
+	checkpoint, err := store.NextActive(accountId, "all/all", uint32(toid.Parse(cursor).LedgerSequence/64))
 	if err != nil {
 		return 0, err
 	}
