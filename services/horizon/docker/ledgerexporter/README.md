@@ -1,22 +1,20 @@
-# `stellar/horizon-verify-range`
+# `stellar/horizon-ledgerexporter`
 
-This docker image allows running multiple instances of `horizon ingest verify-command` on a single machine or running it in [AWS Batch](https://aws.amazon.com/batch/).
+This docker image allows running multiple instances of `ledgerexporter` on a single machine or running it in [AWS Batch](https://aws.amazon.com/batch/).
 
 ## Env variables
 
 ### Running locally
 
-| Name     | Description                                           |
-|----------|-------------------------------------------------------|
-| `BRANCH` | Git branch to build (useful for testing PRs)          |
-| `FROM`   | First ledger of the range (must be checkpoint ledger) |
-| `TO`     | Last ledger of the range (must be checkpoint ledger)  |
+| Name    | Description            |
+|---------|------------------------|
+| `START` | First ledger to export |
+| `END`   | Last ledger to export  |
 
 ### Running in AWS Batch
 
 | Name                 | Description                                                          |
 |----------------------|----------------------------------------------------------------------|
-| `BRANCH`             | Git branch to build (useful for testing PRs)                         |
 | `BATCH_START_LEDGER` | First ledger of the AWS Batch Job, must be a checkpoint ledger or 1. |
 | `BATCH_SIZE`         | Size of the batch, must be multiple of 64.                           |
 
@@ -41,4 +39,4 @@ it will run the following ranges:
 * Use spot instances! It's much cheaper and speed of testing will be the same in 99% of cases.
 * You need to publish the image if there are any changes in `Dockerfile` or one of the scripts.
 * When batch processing is over check if instances have been terminated. Sometimes AWS doesn't terminate them.
-* Make sure the job timeout is set to a larger value if you verify larger ranges. Default is just 100 seconds.
+* Make sure the job timeout is set to a larger value if you export larger ranges. Default is just 100 seconds.
