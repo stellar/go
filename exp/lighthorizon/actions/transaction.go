@@ -3,6 +3,7 @@ package actions
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/stellar/go/support/log"
 
@@ -16,6 +17,13 @@ import (
 func Transactions(lh services.LightHorizon) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		paginate, err := paging(r)
+		start := time.Now()
+		defer func() {
+			duration := time.Since(start)
+			requestTime.Observe(float64(duration.Milliseconds()))
+		}()
+		requestCount.Inc()
+
 		if err != nil {
 			sendErrorResponse(w, http.StatusBadRequest, string(invalidPagingParameters))
 			return
@@ -47,6 +55,7 @@ func Transactions(lh services.LightHorizon) func(http.ResponseWriter, *http.Requ
 
 		for _, txn := range txns {
 			var response hProtocol.Transaction
+			txn.NetworkPassphrase = lh.Transactions.Passphrase
 			response, err = adapters.PopulateTransaction(r, &txn)
 			if err != nil {
 				log.Error(err)

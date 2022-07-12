@@ -37,6 +37,10 @@ func NewCheckpointIndexFromXDR(index xdr.CheckpointIndex) *CheckpointIndex {
 	}
 }
 
+func (i *CheckpointIndex) Size() int {
+	return len(i.bitmap)
+}
+
 func (i *CheckpointIndex) SetActive(checkpoint uint32) error {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()

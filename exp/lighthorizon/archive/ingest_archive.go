@@ -97,3 +97,5 @@ func NewIngestArchive(sourceUrl string, networkPassphrase string) (Archive, erro
 	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
 	return ingestArchive{ledgerBackend}, nil
 }
+
+var _ Archive = (*ingestArchive)(nil) // ensure conformity to the interface

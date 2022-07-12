@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 )
@@ -15,6 +17,18 @@ import (
 var (
 	//go:embed static
 	staticFiles embed.FS
+	requestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "horizon_lite_request_count",
+		Help: "How many requests have occurred?",
+	})
+	requestTime = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "horizon_lite_request_duration",
+		Help: "How long do requests take?",
+		Buckets: append(
+			prometheus.LinearBuckets(0, 50, 20),
+			prometheus.LinearBuckets(1000, 1000, 8)...,
+		),
+	})
 )
 
 type order string

@@ -5,6 +5,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -20,13 +23,19 @@ func main() {
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
 	flag.Parse()
 
-	indexStore, err := index.Connect(*indexesUrl)
+	L := log.WithField("service", "horizon-lite")
+	// L.SetLevel(log.DebugLevel)
+	L.Info("Starting lighthorizon!")
+
+	registry := prometheus.NewRegistry()
+	indexStore, err := index.ConnectWithConfig(index.StoreConfig{
+		Url:     *indexesUrl,
+		Metrics: registry,
+		Log:     L.WithField("subservice", "index"),
+	})
 	if err != nil {
 		panic(err)
 	}
-
-	log.SetLevel(log.DebugLevel)
-	log.Info("Starting lighthorizon!")
 
 	ingestArchive, err := archive.NewIngestArchive(*sourceUrl, *networkPassphrase)
 	if err != nil {
@@ -56,6 +65,7 @@ func main() {
 	router.MethodFunc(http.MethodGet, "/operations", actions.Operations(lightHorizon))
 	router.MethodFunc(http.MethodGet, "/transactions", actions.Transactions(lightHorizon))
 	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
+	router.MethodFunc(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

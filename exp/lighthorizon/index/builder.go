@@ -29,9 +29,13 @@ func BuildIndices(
 	modules []string,
 	workerCount int,
 ) (*IndexBuilder, error) {
-	L := log.Ctx(ctx)
+	L := log.Ctx(ctx).WithField("service", "builder")
 
-	indexStore, err := Connect(targetUrl)
+	indexStore, err := ConnectWithConfig(StoreConfig{
+		Url:     targetUrl,
+		Workers: uint32(workerCount),
+		Log:     L.WithField("subservice", "index"),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +103,8 @@ func BuildIndices(
 		checkpoints := historyarchive.NewCheckpointManager(0)
 		for ledger := range ledgerRange.GenerateCheckpoints(checkpoints) {
 			chunk := checkpoints.GetCheckpointRange(ledger)
-			chunk.High = min(chunk.High, ledgerRange.High)
-			chunk.Low = max(chunk.Low, ledgerRange.Low)
+			chunk.High = min(chunk.High, ledgerRange.High) // don't exceed upper bound
+			chunk.Low = max(chunk.Low, ledgerRange.Low)    // nor the lower bound
 
 			ch <- chunk
 		}
@@ -117,11 +121,15 @@ func BuildIndices(
 					ledgerRange.Low, ledgerRange.High, count)
 
 				if err := indexBuilder.Build(ctx, ledgerRange); err != nil {
-					return errors.Wrap(err, "building indices failed")
+					return errors.Wrapf(err,
+						"building indices for ledger range [%d, %d] failed",
+						ledgerRange.Low, ledgerRange.High)
 				}
 
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
-				printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
+				if nprocessed%19 == 0 {
+					printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
+				}
 
 				// Upload indices once per checkpoint to save memory
 				if err := indexStore.Flush(); err != nil {
@@ -136,17 +144,17 @@ func BuildIndices(
 		return indexBuilder, errors.Wrap(err, "one or more workers failed")
 	}
 
-	printProgress("Reading ledgers", uint64(ledgerCount), uint64(ledgerCount), startTime)
-
-	// Assertion for testing
-	if processed != uint64(ledgerCount) {
-		L.Fatalf("processed %d but expected %d", processed, ledgerCount)
-	}
+	printProgress("Reading ledgers", processed, uint64(ledgerCount), startTime)
 
 	L.Infof("Processed %d ledgers via %d workers", processed, parallel)
 	L.Infof("Uploading indices to %s", targetUrl)
 	if err := indexStore.Flush(); err != nil {
 		return indexBuilder, errors.Wrap(err, "flushing indices failed")
+	}
+
+	// Assertion for testing
+	if processed != uint64(ledgerCount) {
+		L.Warnf("processed %d but expected %d", processed, ledgerCount)
 	}
 
 	return indexBuilder, nil
@@ -214,7 +222,7 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 		ledger, err := builder.ledgerBackend.GetLedger(ctx, ledgerSeq)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				log.WithField("error", err).Errorf("error getting ledger %d", ledgerSeq)
+				log.Errorf("error getting ledger %d: %v", ledgerSeq, err)
 			}
 			return err
 		}
@@ -313,13 +321,6 @@ func (builder *IndexBuilder) Watch(ctx context.Context) error {
 }
 
 func printProgress(prefix string, done, total uint64, startTime time.Time) {
-	// This should never happen, more of a runtime assertion for now.
-	// We can remove it when production-ready.
-	if done > total {
-		panic(fmt.Errorf("error for %s: done > total (%d > %d)",
-			prefix, done, total))
-	}
-
 	progress := float64(done) / float64(total)
 	elapsed := time.Since(startTime)
 
