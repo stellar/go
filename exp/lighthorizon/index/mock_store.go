@@ -1,6 +1,7 @@
 package index
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
 	"github.com/stretchr/testify/mock"
 )
@@ -70,4 +71,8 @@ func (m *MockStore) ReadTransactions(prefix string) (*types.TrieIndex, error) {
 func (m *MockStore) MergeTransactions(prefix string, other *types.TrieIndex) error {
 	args := m.Called(prefix, other)
 	return args.Error(0)
+}
+
+func (m *MockStore) RegisterMetrics(registry *prometheus.Registry) {
+	m.Called(registry)
 }

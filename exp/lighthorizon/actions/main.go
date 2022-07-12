@@ -16,7 +16,7 @@ import (
 
 var (
 	//go:embed static
-	staticFiles embed.FS
+	staticFiles  embed.FS
 	requestCount = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "horizon_lite_request_count",
 		Help: "How many requests have occurred?",

@@ -65,7 +65,7 @@ func main() {
 	router.MethodFunc(http.MethodGet, "/operations", actions.Operations(lightHorizon))
 	router.MethodFunc(http.MethodGet, "/transactions", actions.Transactions(lightHorizon))
 	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
-	router.MethodFunc(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
