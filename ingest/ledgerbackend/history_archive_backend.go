@@ -68,7 +68,7 @@ func (b *HistoryArchiveBackend) GetLedger(ctx context.Context, sequence uint32) 
 	}
 	output, isV0 := ledger.GetV0()
 	if !isV0 {
-		fmt.Errorf("unexpected serialized ledger version number (0x%x)", ledger.V)
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("unexpected serialized ledger version number (0x%x)", ledger.V)
 	}
 	return output, nil
 }
