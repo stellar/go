@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/stellar/go/exp/lighthorizon/index/xdr"
+	"github.com/stellar/go/xdr"
 )
 
 const CheckpointIndexVersion = 1
