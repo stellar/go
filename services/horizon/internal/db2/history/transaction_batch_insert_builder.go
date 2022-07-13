@@ -42,6 +42,17 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 	}
 }
 
+// NewTransactionBatchInsertBuilder constructs a new TransactionBatchInsertBuilder instance
+func (q *Q) NewTransactionFilteredTmpBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder {
+	return &transactionBatchInsertBuilder{
+		encodingBuffer: xdr.NewEncodingBuffer(),
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("history_transactions_filtered_tmp"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
 // Add adds a new transaction to the batch
 func (i *transactionBatchInsertBuilder) Add(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32) error {
 	row, err := transactionToRow(transaction, sequence, i.encodingBuffer)

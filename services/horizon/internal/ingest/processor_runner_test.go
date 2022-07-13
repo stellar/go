@@ -291,15 +291,19 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
-	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Twice()
+
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(mockTransactionsBatchInsertBuilder).Twice()
+		Return(mockTransactionsBatchInsertBuilder)
+
+	q.MockQTransactions.On("NewTransactionFilteredTmpBatchInsertBuilder", maxBatchSize).
+		Return(mockTransactionsBatchInsertBuilder)
+
+	q.On("DeleteTransactionsFilteredTmpOlderThan", ctx, mock.AnythingOfType("uint64")).
+		Return(int64(0), nil)
 
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
-
-	q.MockQTxSubmissionResult.On("SetTxSubmissionResults", ctx, []ingest.LedgerTransaction(nil), uint32(0)).
-		Return(int64(0), nil).Once()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,
@@ -353,9 +357,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
-
-	q.MockQTxSubmissionResult.On("SetTxSubmissionResults", ctx, []ingest.LedgerTransaction(nil), uint32(0)).
-		Return(int64(0), nil).Once()
 
 	runner := ProcessorRunner{
 		ctx:      ctx,
