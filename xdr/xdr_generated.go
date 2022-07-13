@@ -9,6 +9,7 @@
 //  xdr/Stellar-overlay.x
 //  xdr/Stellar-transaction.x
 //  xdr/Stellar-types.x
+//  xdr/Stellar-lighthorizon.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
@@ -35863,5 +35864,458 @@ var (
 func (s HmacSha256Mac) xdrType() {}
 
 var _ xdrType = (*HmacSha256Mac)(nil)
+
+// CheckpointIndex is an XDR Struct defines as:
+//
+//   struct CheckpointIndex {
+//        uint32 firstCheckpoint;
+//        uint32 lastCheckpoint;
+//        Value bitmap;
+//    };
+//
+type CheckpointIndex struct {
+	FirstCheckpoint Uint32
+	LastCheckpoint  Uint32
+	Bitmap          Value
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *CheckpointIndex) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.FirstCheckpoint.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LastCheckpoint.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Bitmap.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*CheckpointIndex)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *CheckpointIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.FirstCheckpoint.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.LastCheckpoint.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.Bitmap.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Value: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s CheckpointIndex) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *CheckpointIndex) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*CheckpointIndex)(nil)
+	_ encoding.BinaryUnmarshaler = (*CheckpointIndex)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s CheckpointIndex) xdrType() {}
+
+var _ xdrType = (*CheckpointIndex)(nil)
+
+// TrieIndex is an XDR Struct defines as:
+//
+//   struct TrieIndex {
+//        uint32 version_; // goxdr gives an error if we simply use "version" as an identifier
+//        TrieNode root;
+//    };
+//
+type TrieIndex struct {
+	Version Uint32
+	Root    TrieNode
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TrieIndex) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Version.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Root.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TrieIndex)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TrieIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Version.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.Root.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TrieNode: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrieIndex) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrieIndex) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrieIndex)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrieIndex)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TrieIndex) xdrType() {}
+
+var _ xdrType = (*TrieIndex)(nil)
+
+// TrieNodeChild is an XDR Struct defines as:
+//
+//   struct TrieNodeChild {
+//        opaque key[1];
+//        TrieNode node;
+//    };
+//
+type TrieNodeChild struct {
+	Key  [1]byte `xdrmaxsize:"1"`
+	Node TrieNode
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TrieNodeChild) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeFixedOpaque(s.Key[:]); err != nil {
+		return err
+	}
+	if err = s.Node.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TrieNodeChild)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TrieNodeChild) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = d.DecodeFixedOpaqueInplace(s.Key[:])
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Key: %s", err)
+	}
+	nTmp, err = s.Node.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TrieNode: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrieNodeChild) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrieNodeChild) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrieNodeChild)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrieNodeChild)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TrieNodeChild) xdrType() {}
+
+var _ xdrType = (*TrieNodeChild)(nil)
+
+// TrieNode is an XDR Struct defines as:
+//
+//   struct TrieNode {
+//        Value prefix;
+//        Value value;
+//        TrieNodeChild children<>;
+//    };
+//
+type TrieNode struct {
+	Prefix   Value
+	Value    Value
+	Children []TrieNodeChild
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TrieNode) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Prefix.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Value.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Children))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Children); i++ {
+		if err = s.Children[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TrieNode)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TrieNode) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Prefix.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Value: %s", err)
+	}
+	nTmp, err = s.Value.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Value: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TrieNodeChild: %s", err)
+	}
+	s.Children = nil
+	if l > 0 {
+		s.Children = make([]TrieNodeChild, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Children[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding TrieNodeChild: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TrieNode) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TrieNode) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TrieNode)(nil)
+	_ encoding.BinaryUnmarshaler = (*TrieNode)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TrieNode) xdrType() {}
+
+var _ xdrType = (*TrieNode)(nil)
+
+// SerializedLedgerCloseMeta is an XDR Union defines as:
+//
+//   union SerializedLedgerCloseMeta switch (int v)
+//    {
+//    case 0:
+//        LedgerCloseMeta v0;
+//    };
+//
+type SerializedLedgerCloseMeta struct {
+	V  int32
+	V0 *LedgerCloseMeta
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u SerializedLedgerCloseMeta) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of SerializedLedgerCloseMeta
+func (u SerializedLedgerCloseMeta) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "V0", true
+	}
+	return "-", false
+}
+
+// NewSerializedLedgerCloseMeta creates a new  SerializedLedgerCloseMeta.
+func NewSerializedLedgerCloseMeta(v int32, value interface{}) (result SerializedLedgerCloseMeta, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		tv, ok := value.(LedgerCloseMeta)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerCloseMeta")
+			return
+		}
+		result.V0 = &tv
+	}
+	return
+}
+
+// MustV0 retrieves the V0 value from the union,
+// panicing if the value is not set.
+func (u SerializedLedgerCloseMeta) MustV0() LedgerCloseMeta {
+	val, ok := u.GetV0()
+
+	if !ok {
+		panic("arm V0 is not set")
+	}
+
+	return val
+}
+
+// GetV0 retrieves the V0 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SerializedLedgerCloseMeta) GetV0() (result LedgerCloseMeta, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V0" {
+		result = *u.V0
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u SerializedLedgerCloseMeta) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		if err = (*u.V0).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union SerializedLedgerCloseMeta", u.V)
+}
+
+var _ decoderFrom = (*SerializedLedgerCloseMeta)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *SerializedLedgerCloseMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %s", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		u.V0 = new(LedgerCloseMeta)
+		nTmp, err = (*u.V0).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerCloseMeta: %s", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union SerializedLedgerCloseMeta has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SerializedLedgerCloseMeta) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SerializedLedgerCloseMeta) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SerializedLedgerCloseMeta)(nil)
+	_ encoding.BinaryUnmarshaler = (*SerializedLedgerCloseMeta)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s SerializedLedgerCloseMeta) xdrType() {}
+
+var _ xdrType = (*SerializedLedgerCloseMeta)(nil)
 
 var fmtTest = fmt.Sprint("this is a dummy usage of fmt")

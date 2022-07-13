@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -52,18 +53,22 @@ func (b *HistoryArchiveBackend) IsPrepared(ctx context.Context, ledgerRange Rang
 }
 
 func (b *HistoryArchiveBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
-	var ledger xdr.LedgerCloseMeta
+	var ledger xdr.SerializedLedgerCloseMeta
 	r, err := b.GetFile("ledgers/" + strconv.FormatUint(uint64(sequence), 10))
 	if err != nil {
-		return ledger, err
+		return xdr.LedgerCloseMeta{}, err
 	}
 	defer r.Close()
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
-		return ledger, err
+		return xdr.LedgerCloseMeta{}, err
 	}
 	if err = ledger.UnmarshalBinary(buf.Bytes()); err != nil {
-		return ledger, err
+		return xdr.LedgerCloseMeta{}, err
 	}
-	return ledger, nil
+	output, isV0 := ledger.GetV0()
+	if !isV0 {
+		return xdr.LedgerCloseMeta{}, fmt.Errorf("unexpected serialized ledger version number (0x%x)", ledger.V)
+	}
+	return output, nil
 }

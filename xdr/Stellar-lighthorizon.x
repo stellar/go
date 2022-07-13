@@ -2,11 +2,11 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
+%#include "xdr/Stellar-ledger.h"
+%#include "xdr/Stellar-types.h"
+
 namespace stellar
 {
-
-typedef unsigned int uint32;
-typedef opaque Value<>;
 
 struct CheckpointIndex {
     uint32 firstCheckpoint;
@@ -15,7 +15,7 @@ struct CheckpointIndex {
 };
 
 struct TrieIndex {
-    uint32 version;
+    uint32 version_; // goxdr gives an error if we simply use "version" as an identifier
     TrieNode root;
 };
 
@@ -28,6 +28,12 @@ struct TrieNode {
     Value prefix;
     Value value;
     TrieNodeChild children<>;
+};
+
+union SerializedLedgerCloseMeta switch (int v)
+{
+case 0:
+    LedgerCloseMeta v0;
 };
 
 }

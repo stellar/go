@@ -141,9 +141,12 @@ func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
 // /ledgers/<seqNum> path. If an error is returned, it may be transient so you
 // should attempt to retry.
 func writeLedger(backend historyarchive.ArchiveBackend, ledger xdr.LedgerCloseMeta) error {
-	blob, err := ledger.MarshalBinary()
+	toSerialize := xdr.SerializedLedgerCloseMeta{
+		V:  0,
+		V0: &ledger,
+	}
+	blob, err := toSerialize.MarshalBinary()
 	logFatalIf(err, "could not serialize ledger %v", ledger.LedgerSequence())
-
 	return backend.PutFile(
 		"ledgers/"+strconv.FormatUint(uint64(ledger.LedgerSequence()), 10),
 		io.NopCloser(bytes.NewReader(blob)),
