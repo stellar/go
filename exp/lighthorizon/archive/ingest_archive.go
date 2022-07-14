@@ -2,13 +2,20 @@ package archive
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/xdr"
+)
+
+const (
+	maxLedgersToCache = (60 * 60 * 24) / 6 // 1 day of ledgers @ 6s each
 )
 
 // This is an implementation of LightHorizon Archive that uses the existing horizon ingestion backend.
@@ -82,19 +89,49 @@ func (adaptation *ingestTransactionReaderAdaption) Read() (LedgerTransaction, er
 	return tx, nil
 }
 
-func NewIngestArchive(sourceUrl string, networkPassphrase string) (Archive, error) {
-	// Simple file os access
+type ArchiveConfig struct {
+	SourceUrl         string
+	NetworkPassphrase string
+	CacheDir          string
+}
+
+func NewIngestArchive(config ArchiveConfig) (Archive, error) {
+	// If the source URL is an S3 url and it has a region specified, we should
+	// try to extract it.
+	parsed, err := url.Parse(config.SourceUrl)
+	if err != nil {
+		return nil, errors.Wrapf(err, "%s is not a valid URL", config.SourceUrl)
+	}
+	region := ""
+	if parsed.Scheme == "s3" {
+		region = parsed.Query().Get("region")
+	}
+
+	// Now, set up a simple filesystem-like access to the backend and wrap it in
+	// a local on-disk LRU cache if we can.
 	source, err := historyarchive.ConnectBackend(
-		sourceUrl,
+		config.SourceUrl,
 		historyarchive.ConnectOptions{
 			Context:           context.Background(),
-			NetworkPassphrase: networkPassphrase,
+			NetworkPassphrase: config.NetworkPassphrase,
+			S3Region:          region,
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
-	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
+
+	cache, err := historyarchive.MakeFsCacheBackend(source, config.CacheDir, maxLedgersToCache)
+	if err != nil { // warn but continue w/o cache
+		log.WithField("path", config.CacheDir).
+			WithError(err).
+			Warnf("Failed to create cached ledger backend")
+		cache = source
+	} else {
+		log.WithField("path", config.CacheDir).Infof("On-disk cache configured")
+	}
+
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(cache)
 	return ingestArchive{ledgerBackend}, nil
 }
 

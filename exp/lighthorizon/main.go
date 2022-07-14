@@ -21,10 +21,11 @@ func main() {
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	indexesUrl := flag.String("indexes", "file://indexes", "url of the indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
+	cacheDir := flag.String("ledger-cache", "", "path to cache frequently-used ledgers")
 	flag.Parse()
 
 	L := log.WithField("service", "horizon-lite")
-	// L.SetLevel(log.DebugLevel)
+	L.SetLevel(log.InfoLevel)
 	L.Info("Starting lighthorizon!")
 
 	registry := prometheus.NewRegistry()
@@ -37,7 +38,11 @@ func main() {
 		panic(err)
 	}
 
-	ingestArchive, err := archive.NewIngestArchive(*sourceUrl, *networkPassphrase)
+	ingestArchive, err := archive.NewIngestArchive(archive.ArchiveConfig{
+		SourceUrl:         *sourceUrl,
+		NetworkPassphrase: *networkPassphrase,
+		CacheDir:          *cacheDir,
+	})
 	if err != nil {
 		panic(err)
 	}
