@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/url"
@@ -22,6 +23,44 @@ const (
 )
 
 func TestMap(t *testing.T) {
+	RunMapTest(t)
+}
+
+func TestReduce(t *testing.T) {
+	// First, map the index files like we normally would.
+	startLedger, endLedger, jobRoot := RunMapTest(t)
+	batchCount := (endLedger - startLedger + batchSize) / batchSize // ceil(ledgerCount / batchSize)
+
+	// Now that indices have been "map"ped, reduce them to a single store.
+
+	indexTarget := filepath.Join(t.TempDir(), "final-indices")
+	reduceTestCmd := exec.Command("./reduce.sh", jobRoot, indexTarget)
+	t.Logf("Running %d reduce jobs: %s", batchCount, reduceTestCmd.String())
+	stdout, err := reduceTestCmd.CombinedOutput()
+	t.Logf(string(stdout))
+	require.NoError(t, err)
+
+	// Then, build the *same* indices using the single-process tester.
+
+	t.Logf("Building baseline for ledger range [%d, %d]", startLedger, endLedger)
+	hashes, participants := IndexLedgerRange(t, txmetaSource, startLedger, endLedger)
+
+	// Finally, compare the two to make sure the reduce job did what it's
+	// supposed to do.
+
+	indexStore, err := index.Connect("file://" + indexTarget)
+	require.NoError(t, err)
+	stores := []index.Store{indexStore} // to reuse code: same as array of 1 store
+
+	assertParticipantsEqual(t, keysU32(participants), stores)
+	for account, checkpoints := range participants {
+		assertParticipantCheckpointsEqual(t, account, checkpoints, stores)
+	}
+
+	assertTOIDsEqual(t, hashes, stores)
+}
+
+func RunMapTest(t *testing.T) (uint32, uint32, string) {
 	// Only file:// style URLs for the txmeta source are allowed while testing.
 	parsed, err := url.Parse(txmetaSource)
 	require.NoErrorf(t, err, "%s is not a valid URL", txmetaSource)
@@ -78,8 +117,6 @@ func TestMap(t *testing.T) {
 	// Then, build the *same* indices using the single-process tester.
 	t.Logf("Building baseline for ledger range [%d, %d]", startLedger, endLedger)
 	hashes, participants := IndexLedgerRange(t, txmetaSource, startLedger, endLedger)
-	require.NotNil(t, hashes)
-	require.NotNil(t, participants)
 
 	// Now, walk through the mapped indices and ensure that at least one of the
 	// jobs reported the same indices for tx TOIDs and participation.
@@ -103,6 +140,10 @@ func TestMap(t *testing.T) {
 	for account, checkpoints := range participants {
 		assertParticipantCheckpointsEqual(t, account, checkpoints, stores)
 	}
+
+	assertTOIDsEqual(t, hashes, stores)
+
+	return startLedger, endLedger, tempDir
 }
 
 func assertParticipantsEqual(t *testing.T,
@@ -161,6 +202,31 @@ func assertParticipantCheckpointsEqual(t *testing.T,
 		require.Containsf(t, foundCheckpoints, item,
 			"failed to find %d for %s (found %v)",
 			int(item), account, foundCheckpoints)
+	}
+}
+
+func assertTOIDsEqual(t *testing.T, toids map[string]int64, stores []index.Store) {
+	for hash, toid := range toids {
+		rawHash := [32]byte{}
+		decodedHash, err := hex.DecodeString(hash)
+		require.NoError(t, err)
+		require.Lenf(t, decodedHash, 32, "invalid tx hash length")
+		copy(rawHash[:], decodedHash)
+
+		found := false
+		for i, store := range stores {
+			storeToid, err := store.TransactionTOID(rawHash)
+			if err != nil {
+				require.ErrorIsf(t, err, io.EOF,
+					"only EOF errors are allowed (store %d, hash %s)", i, hash)
+			} else {
+				require.Equalf(t, toid, storeToid,
+					"TOIDs for tx 0x%s don't match (store %d)", hash, i)
+				found = true
+			}
+		}
+
+		require.Truef(t, found, "TOID for tx 0x%s not found in stores", hash)
 	}
 }
 

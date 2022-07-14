@@ -66,7 +66,7 @@ fi
 pids=( )
 for (( i=0; i < $BATCH_COUNT; i++ ))
 do
-    echo -n "Creating job $i... "
+    echo -n "Creating map job $i... "
 
     AWS_BATCH_JOB_ARRAY_INDEX=$i BATCH_SIZE=$BATCH_SIZE FIRST_CHECKPOINT=$FIRST \
     TXMETA_SOURCE=file://$1 INDEX_TARGET=file://$2 WORKER_COUNT=1 \
