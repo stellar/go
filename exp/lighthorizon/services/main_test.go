@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"testing"
 
@@ -21,9 +20,11 @@ func TestItGetsTransactionsByAccount(tt *testing.T) {
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	txService := TransactionsService{
-		Archive:    archive,
-		IndexStore: store,
-		Passphrase: passphrase,
+		Config: Config{
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+		},
 	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
@@ -42,9 +43,11 @@ func TestItGetsTransactionsByAccountAndPageLimit(tt *testing.T) {
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	txService := TransactionsService{
-		Archive:    archive,
-		IndexStore: store,
-		Passphrase: passphrase,
+		Config: Config{
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+		},
 	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
@@ -65,9 +68,11 @@ func TestItGetsOperationsByAccount(tt *testing.T) {
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	opsService := OperationsService{
-		Archive:    archive,
-		IndexStore: store,
-		Passphrase: passphrase,
+		Config: Config{
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+		},
 	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
@@ -86,9 +91,11 @@ func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	opsService := OperationsService{
-		Archive:    archive,
-		IndexStore: store,
-		Passphrase: passphrase,
+		Config: Config{
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+		},
 	}
 	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	// this should start at next checkpoint
@@ -99,34 +106,6 @@ func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
 	require.Equal(tt, ops[0].TxIndex, int32(2))
 	require.Equal(tt, ops[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
 	require.Equal(tt, ops[1].TxIndex, int32(1))
-}
-
-func mockArchiveFixture(ctx context.Context, passphrase string) archive.Archive {
-
-	mockArchive := &archive.MockArchive{}
-	mockReaderLedger1 := &archive.MockLedgerTransactionReader{}
-	mockReaderLedger2 := &archive.MockLedgerTransactionReader{}
-
-	expectedLedger1 := testLedger(1586111)
-	expectedLedger2 := testLedger(1586112)
-	source := xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
-	// assert results iterate sequentially across ops-tx-ledgers
-	expectedLedger1Transaction1 := testLedgerTx(source, 34, 34)
-	expectedLedger1Transaction2 := testLedgerTx(source, 34)
-	expectedLedger2Transaction1 := testLedgerTx(source, 34)
-
-	mockArchive.On("GetLedger", ctx, uint32(1586111)).Return(expectedLedger1, nil)
-	mockArchive.On("GetLedger", ctx, uint32(1586112)).Return(expectedLedger2, nil)
-	mockArchive.On("GetLedger", ctx, uint32(1586113)).Return(xdr.LedgerCloseMeta{}, fmt.Errorf("ledger not found"))
-	mockArchive.On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger1).Return(mockReaderLedger1, nil)
-	mockArchive.On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger2).Return(mockReaderLedger2, nil)
-	mockReaderLedger1.On("Read").Return(expectedLedger1Transaction1, nil).Once()
-	mockReaderLedger1.On("Read").Return(expectedLedger1Transaction2, nil).Once()
-	mockReaderLedger1.On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
-	mockReaderLedger2.On("Read").Return(expectedLedger2Transaction1, nil).Once()
-	mockReaderLedger2.On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
-
-	return mockArchive
 }
 
 func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archive, index.Store) {
@@ -143,12 +122,12 @@ func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archiv
 	source := xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
 	source2 := xdr.MustAddress("GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX")
 	// assert results iterate sequentially across ops-tx-ledgers
-	expectedLedger1Transaction1 := testLedgerTx(source, 34, 34)
-	expectedLedger1Transaction2 := testLedgerTx(source, 34)
-	expectedLedger2Transaction1 := testLedgerTx(source, 34)
-	expectedLedger2Transaction2 := testLedgerTx(source2, 34)
-	expectedLedger3Transaction1 := testLedgerTx(source2, 34)
-	expectedLedger3Transaction2 := testLedgerTx(source, 34)
+	expectedLedger1Transaction1 := testLedgerTx(source, []int{34, 34}, 1)
+	expectedLedger1Transaction2 := testLedgerTx(source, []int{34}, 2)
+	expectedLedger2Transaction1 := testLedgerTx(source, []int{34}, 1)
+	expectedLedger2Transaction2 := testLedgerTx(source2, []int{34}, 2)
+	expectedLedger3Transaction1 := testLedgerTx(source2, []int{34}, 1)
+	expectedLedger3Transaction2 := testLedgerTx(source, []int{34}, 2)
 
 	mockArchive.On("GetLedger", ctx, uint32(1586112)).Return(expectedLedger1, nil)
 	mockArchive.On("GetLedger", ctx, uint32(1586113)).Return(expectedLedger2, nil)
@@ -211,7 +190,7 @@ func testLedger(seq int) xdr.LedgerCloseMeta {
 	}
 }
 
-func testLedgerTx(source xdr.AccountId, bumpTos ...int) archive.LedgerTransaction {
+func testLedgerTx(source xdr.AccountId, bumpTos []int, txIndex uint32) archive.LedgerTransaction {
 
 	ops := []xdr.Operation{}
 	for _, bumpTo := range bumpTos {
@@ -235,6 +214,7 @@ func testLedgerTx(source xdr.AccountId, bumpTos ...int) archive.LedgerTransactio
 				},
 			},
 		},
+		Index: txIndex,
 	}
 
 	return tx

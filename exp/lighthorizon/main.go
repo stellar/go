@@ -43,16 +43,18 @@ func main() {
 	}
 	defer ingestArchive.Close()
 
+	Config := services.Config{
+		Archive:    ingestArchive,
+		Passphrase: *networkPassphrase,
+		IndexStore: indexStore,
+	}
+
 	lightHorizon := services.LightHorizon{
 		Transactions: services.TransactionsService{
-			Archive:    ingestArchive,
-			Passphrase: *networkPassphrase,
-			IndexStore: indexStore,
+			Config: Config,
 		},
 		Operations: services.OperationsService{
-			Archive:    ingestArchive,
-			Passphrase: *networkPassphrase,
-			IndexStore: indexStore,
+			Config: Config,
 		},
 	}
 

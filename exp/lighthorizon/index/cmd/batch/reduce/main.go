@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -41,20 +42,20 @@ func ReduceConfigFromEnvironment() (*ReduceConfig, error) {
 		indexTargetEnv     = "INDEX_TARGET"
 	)
 
-	jobIndex, err := strconv.ParseUint(os.Getenv(jobIndexEnv), 10, 32)
+	jobIndex, err := strconv.ParseUint(strings.TrimSpace(os.Getenv(jobIndexEnv)), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+jobIndexEnv)
 	}
-	mapJobCount, err := strconv.ParseUint(os.Getenv(mapJobsEnv), 10, 32)
+	mapJobCount, err := strconv.ParseUint(strings.TrimSpace(os.Getenv(mapJobsEnv)), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+mapJobsEnv)
 	}
-	reduceJobCount, err := strconv.ParseUint(os.Getenv(reduceJobsEnv), 10, 32)
+	reduceJobCount, err := strconv.ParseUint(strings.TrimSpace(os.Getenv(reduceJobsEnv)), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+reduceJobsEnv)
 	}
 
-	workersStr := os.Getenv(workerCountEnv)
+	workersStr := strings.TrimSpace(os.Getenv(workerCountEnv))
 	if workersStr == "" {
 		workersStr = strconv.FormatUint(DEFAULT_WORKER_COUNT, 10)
 	}
@@ -63,12 +64,12 @@ func ReduceConfigFromEnvironment() (*ReduceConfig, error) {
 		return nil, errors.Wrap(err, "invalid parameter "+workerCountEnv)
 	}
 
-	indexTarget := os.Getenv(indexTargetEnv)
+	indexTarget := strings.TrimSpace(os.Getenv(indexTargetEnv))
 	if indexTarget == "" {
 		return nil, errors.New("required parameter missing " + indexTargetEnv)
 	}
 
-	indexRootSource := os.Getenv(indexRootSourceEnv)
+	indexRootSource := strings.TrimSpace(os.Getenv(indexRootSourceEnv))
 	if indexRootSource == "" {
 		return nil, errors.New("required parameter missing " + indexRootSourceEnv)
 	}
