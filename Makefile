@@ -6,7 +6,8 @@ xdr/Stellar-ledger-entries.x \
 xdr/Stellar-ledger.x \
 xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
-xdr/Stellar-types.x
+xdr/Stellar-types.x \
+xdr/Stellar-lighthorizon.x
 
 XDRGEN_COMMIT=3f6808cd161d72474ffbe9eedbd7013de7f92748
 
