@@ -62,8 +62,6 @@ func main() {
 		r.MethodFunc(http.MethodGet, "/operations", actions.NewOpsByAccountHandler(lightHorizon))
 	})
 
-	router.MethodFunc(http.MethodGet, "/operations", actions.Operations(lightHorizon))
-	router.MethodFunc(http.MethodGet, "/transactions", actions.Transactions(lightHorizon))
 	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
 	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 

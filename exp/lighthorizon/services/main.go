@@ -35,12 +35,10 @@ type OperationsService struct {
 
 type OperationsRepository interface {
 	GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error)
-	GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error)
 }
 
 type TransactionRepository interface {
 	GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error)
-	GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error)
 }
 
 func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error) {
@@ -193,143 +191,6 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 			}
 			return txs, err
 		}
-	}
-}
-
-func (os *OperationsService) GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error) {
-	parsedID := toid.Parse(cursor)
-	ledgerSequence := uint32(parsedID.LedgerSequence)
-	if ledgerSequence < 2 {
-		ledgerSequence = 2
-	}
-
-	log.Debugf("Searching op %d", cursor)
-	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
-
-	ops := []common.Operation{}
-	appending := false
-
-	for {
-		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, err := os.Archive.GetLedger(ctx, ledgerSequence)
-		if err != nil {
-			// no 'NotFound' distinction on err, treat all as not found.
-			return ops, nil
-		}
-
-		reader, err := os.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(os.Passphrase, ledger)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error in ledger %d", ledgerSequence)
-		}
-
-		transactionOrder := int32(0)
-		for {
-			tx, err := reader.Read()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-
-			transactionOrder++
-			for operationOrder := range tx.Envelope.Operations() {
-				currID := toid.New(int32(ledgerSequence), transactionOrder, int32(operationOrder+1)).ToInt64()
-
-				if currID >= cursor {
-					appending = true
-					if currID == cursor {
-						continue
-					}
-				}
-
-				if appending {
-					ops = append(ops, common.Operation{
-						TransactionEnvelope: &tx.Envelope,
-						TransactionResult:   &tx.Result.Result,
-						// TODO: Use a method to get the header
-						LedgerHeader: &ledger.V0.LedgerHeader.Header,
-						OpIndex:      int32(operationOrder + 1),
-						TxIndex:      int32(transactionOrder),
-					})
-				}
-
-				if int64(len(ops)) == limit {
-					return ops, nil
-				}
-			}
-		}
-
-		ledgerSequence++
-	}
-}
-
-func (ts *TransactionsService) GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error) {
-	parsedID := toid.Parse(cursor)
-	ledgerSequence := uint32(parsedID.LedgerSequence)
-	if ledgerSequence < 2 {
-		ledgerSequence = 2
-	}
-
-	log.Debugf("Searching tx %d starting at", cursor)
-	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
-
-	txns := []common.Transaction{}
-	appending := false
-
-	for {
-		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, err := ts.Archive.GetLedger(ctx, ledgerSequence)
-		if err != nil {
-			// no 'NotFound' distinction on err, treat all as not found.
-			return txns, nil
-		}
-
-		reader, err := ts.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(ts.Passphrase, ledger)
-		if err != nil {
-			return nil, err
-		}
-
-		transactionOrder := int32(0)
-		for {
-			tx, err := reader.Read()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-
-			transactionOrder++
-			currID := toid.New(int32(ledgerSequence), transactionOrder, 1).ToInt64()
-
-			if currID >= cursor {
-				appending = true
-				if currID == cursor {
-					continue
-				}
-			}
-
-			if appending {
-				txns = append(txns, common.Transaction{
-					TransactionEnvelope: &tx.Envelope,
-					TransactionResult:   &tx.Result.Result,
-					// TODO: Use a method to get the header
-					LedgerHeader: &ledger.V0.LedgerHeader.Header,
-					TxIndex:      int32(transactionOrder),
-				})
-			}
-
-			if int64(len(txns)) == limit {
-				return txns, nil
-			}
-
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-		}
-
-		ledgerSequence++
 	}
 }
 
