@@ -2,7 +2,7 @@ name: Horizon
 
 on:
   push:
-    branches: [master]
+    branches: [master, lighthorizon]
   pull_request:
 
 jobs:
@@ -146,6 +146,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - if: github.ref == 'refs/heads/master'
+      - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
         name: Push to DockerHub
         run: docker push stellar/horizon-ledgerexporter:latest
