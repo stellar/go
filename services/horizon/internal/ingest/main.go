@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
+	apkg "github.com/stellar/go/support/app"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -210,6 +212,7 @@ func NewSystem(config Config) (System, error) {
 			Context:             ctx,
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
+			UserAgent:           fmt.Sprintf("horizon/%s golang/%s", apkg.Version(), runtime.Version()),
 		},
 	)
 	if err != nil {
@@ -239,6 +242,7 @@ func NewSystem(config Config) (System, error) {
 					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                 logger,
 					Context:             ctx,
+					UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
 				},
 			)
 			if err != nil {
