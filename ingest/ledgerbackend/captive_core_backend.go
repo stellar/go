@@ -103,7 +103,9 @@ type CaptiveCoreConfig struct {
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
-	Toml               *CaptiveCoreToml
+	// UserAgent is the value of `User-Agent` header that will be send along http archive requests.
+	UserAgent string
+	Toml      *CaptiveCoreToml
 
 	// Optional fields
 
