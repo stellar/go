@@ -139,7 +139,7 @@ jobs:
       
 
       # Push image
-      - if: github.ref == 'refs/heads/master'
+      - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
         name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
         with:
