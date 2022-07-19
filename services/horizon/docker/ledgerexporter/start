@@ -26,17 +26,14 @@ if [ ! -z "$AWS_BATCH_JOB_ARRAY_INDEX" ]; then
 	# AWS_BATCH_JOB_ARRAY_INDEX=2: [191, 255]
 	# AWS_BATCH_JOB_ARRAY_INDEX=3: [255, 319]
 	# ...
+	START=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER"`
+	END=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE"`
 
-	if [ $BATCH_START_LEDGER -eq 1 ]; then
-		export START=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" - "2"`
-		export END=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE" - "2"`
-		if [ $START -eq -1 ]; then
-			export START="1"
-		fi
-	else
-		export START=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER"`
-		export END=`expr "$BATCH_SIZE" \* "$AWS_BATCH_JOB_ARRAY_INDEX" + "$BATCH_START_LEDGER" + "$BATCH_SIZE"`
+	if [ "$START" -lt 2 ]; then
+	  # The minimum ledger expected by the ledger exporter is 2
+	  START=2
 	fi
+
 fi
 
 echo "START: $START END: $END"
