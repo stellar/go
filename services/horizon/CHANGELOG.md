@@ -6,6 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Pending
 - Run postgres autovacuum on `history_trades_60000` table more frequently
   ([4412](https://github.com/stellar/go/pull/4412)).
+- Add `User-Agent` header to history archives HTTP requests sent by Horizon ([4463](https://github.com/stellar/go/pull/4463)).
 
 
 ## 2.18.1
