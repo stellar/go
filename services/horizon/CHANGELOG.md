@@ -5,6 +5,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 2.19.0
 
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
 * Run postgres autovacuum on `history_trades_60000` table more frequently. ([4412](https://github.com/stellar/go/pull/4412)).
 * Change `protocols/horizon.Transaction.AccountSequence` to `int64` from `string`. ([4409](https://github.com/stellar/go/pull/4409)).
 * Add missing signer key type names. ([4429](https://github.com/stellar/go/pull/4429)).
