@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # 
 # Combines indices that were built separately in different folders into a single
 # set of indices.
@@ -22,7 +22,7 @@ fi
 
 if [[ ! -d "$2" ]]; then 
     echo "Warning: index dest ('$2') does not exist, creating..."
-    mkdir -p $2
+    mkdir -p "$2"
 fi
 
 MAP_JOB_COUNT=$(ls $1 | grep -E 'job_[0-9]+' | wc -l)
@@ -50,8 +50,8 @@ do
     AWS_BATCH_JOB_ARRAY_INDEX=$i MAP_JOB_COUNT=$MAP_JOB_COUNT \
     REDUCE_JOB_COUNT=$REDUCE_JOB_COUNT WORKER_COUNT=4 \
     INDEX_SOURCE_ROOT=file://$1 INDEX_TARGET=file://$2 \
-        ./reduce &
-    
+        timeout -k 30s 10s ./reduce &
+
     echo "pid=$!"
     pids+=($!)
 done
