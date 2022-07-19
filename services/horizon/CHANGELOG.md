@@ -11,6 +11,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Update core version to 19.2.0. ([4441](https://github.com/stellar/go/pull/4441)).
 * Add `User-Agent` header to history archive HTTP requests. ([4463](https://github.com/stellar/go/pull/4463)).
 
+### DB Schema Migration
+
+The migration makes the following schema changes:
+
+  - tunes the `history_trades_60000` table to run autovacuum more frequently. Migration should be brief, does not incur any data/runtime processing. It does not need a reingestion.
+
+
 ## 2.18.1
 
 * Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
