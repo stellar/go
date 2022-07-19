@@ -3,14 +3,19 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Pending
-- Run postgres autovacuum on `history_trades_60000` table more frequently
-  ([4412](https://github.com/stellar/go/pull/4412)).
+## 2.19.0
 
+* Run postgres autovacuum on `history_trades_60000` table more frequently. ([4412](https://github.com/stellar/go/pull/4412)).
+* Change `protocols/horizon.Transaction.AccountSequence` to `int64` from `string`. ([4409](https://github.com/stellar/go/pull/4409)).
+* Add missing signer key type names. ([4429](https://github.com/stellar/go/pull/4429)).
+* Update core version to 19.2.0. ([4441](https://github.com/stellar/go/pull/4441)).
+* Add `User-Agent` header to history archive HTTP requests. ([4463](https://github.com/stellar/go/pull/4463)).
 
 ## 2.18.1
+
 * Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
 * Optimize the claimable balance SQL query for best index query plan performance([4398](https://github.com/stellar/go/pull/4398))
+
 
 ### DB Schema Migration
 
