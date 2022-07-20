@@ -20,6 +20,10 @@ type FileBackend struct {
 }
 
 func NewFileBackend(dir string, parallel uint32) (*FileBackend, error) {
+	if parallel <= 0 {
+		parallel = 1
+	}
+
 	return &FileBackend{
 		dir:      dir,
 		parallel: parallel,
