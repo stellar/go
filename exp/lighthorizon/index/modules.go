@@ -109,6 +109,9 @@ func GetTransactionParticipants(transaction ingest.LedgerTransaction) ([]string,
 	return participantsForOperations(transaction, false)
 }
 
+// transaction - the ledger transaction
+// operation   - the operation within this transaction
+// opIndex     - the 0 based index of the operation within the transaction
 func GetOperationParticipants(transaction ingest.LedgerTransaction, operation xdr.Operation, opIndex int) ([]string, error) {
 	return participantsForOperation(transaction, operation, opIndex, false)
 }
@@ -130,6 +133,9 @@ func participantsForOperations(transaction ingest.LedgerTransaction, onlyPayment
 	return participants, nil
 }
 
+// transaction - the ledger transaction
+// operation   - the operation within this transaction
+// opIndex     - the 0 based index of the operation within the transaction
 func participantsForOperation(transaction ingest.LedgerTransaction, operation xdr.Operation, opIndex int, onlyPayments bool) ([]string, error) {
 	participants := []string{}
 	opSource := operation.SourceAccount

@@ -49,7 +49,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor 
 	ops := []common.Operation{}
 	opsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
 		for operationOrder, op := range tx.Envelope.Operations() {
-			opParticipants, opParticipantErr := os.Config.Archive.GetOperationParticipants(tx, op, operationOrder+1)
+			opParticipants, opParticipantErr := os.Config.Archive.GetOperationParticipants(tx, op, operationOrder)
 			if opParticipantErr != nil {
 				return false, opParticipantErr
 			}
@@ -59,7 +59,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor 
 					TransactionResult:   &tx.Result.Result,
 					LedgerHeader:        ledgerHeader,
 					TxIndex:             int32(tx.Index),
-					OpIndex:             int32(operationOrder + 1),
+					OpIndex:             int32(operationOrder),
 				})
 				if uint64(len(ops)) == limit {
 					return true, nil
@@ -146,12 +146,10 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 			}
 		}
 		nextCursor := toid.New(int32(nextLedger), 1, 1).ToInt64()
-
 		nextLedger, err = getAccountNextLedgerCursor(accountId, nextCursor, config.IndexStore)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
+		if err == io.EOF {
+			return nil
+		} else if err != nil {
 			return err
 		}
 	}

@@ -30,9 +30,39 @@ type LedgerTransactionReader interface {
 
 // Archive here only has the methods LightHorizon cares about, to make caching/wrapping easier
 type Archive interface {
+
+	//GetLedger - retreive a ledger's meta data
+	//
+	//ctx               - the caller's request context
+	//ledgerCloseMeta   - the sequence number of ledger to fetch
+	//
+	//returns error or meta data for requested ledger
 	GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
+
+	// Close - releases any resources used for this archive instance.
 	Close() error
+
+	// NewLedgerTransactionReaderFromLedgerCloseMeta - get a reader for ledger meta data
+	//
+	// networkPassphrase - the network passphrase
+	// ledgerCloseMeta   - the meta data for a ledger
+	//
+	// returns error or LedgerTransactionReader
 	NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (LedgerTransactionReader, error)
+
+	// GetTransactionParticipants - get set of all participants(accounts) in a transaction
+	//
+	// transaction - the ledger transaction
+	//
+	// returns error or map with keys of participant account id's and value of empty struct
 	GetTransactionParticipants(transaction LedgerTransaction) (map[string]struct{}, error)
+
+	// GetOperationParticipants - get set of all participants(accounts) in a operation
+	//
+	// transaction - the ledger transaction
+	// operation   - the operation within this transaction
+	// opIndex     - the 0 based index of the operation within the transaction
+	//
+	// returns error or map with keys of participant account id's and value of empty struct
 	GetOperationParticipants(transaction LedgerTransaction, operation xdr.Operation, opIndex int) (map[string]struct{}, error)
 }
