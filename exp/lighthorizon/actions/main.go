@@ -45,7 +45,7 @@ const (
 )
 
 type pagination struct {
-	Limit  int64
+	Limit  uint64
 	Cursor int64
 	Order  order
 }
@@ -93,7 +93,7 @@ func paging(r *http.Request) (pagination, error) {
 	if limitRequested, err := requestUnaryParam(r, "limit"); err != nil {
 		return pagination{}, err
 	} else if limitRequested != "" {
-		paginate.Limit, err = strconv.ParseInt(limitRequested, 10, 64)
+		paginate.Limit, err = strconv.ParseUint(limitRequested, 10, 64)
 		if err != nil {
 			return pagination{}, err
 		}

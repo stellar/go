@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/stellar/go/exp/lighthorizon/archive"
@@ -37,16 +36,16 @@ type OperationsService struct {
 }
 
 type OperationsRepository interface {
-	GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error)
+	GetOperationsByAccount(ctx context.Context, cursor int64, limit uint64, accountId string) ([]common.Operation, error)
 }
 
 type TransactionRepository interface {
-	GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error)
+	GetTransactionsByAccount(ctx context.Context, cursor int64, limit uint64, accountId string) ([]common.Transaction, error)
 }
 
 type searchCallback func(archive.LedgerTransaction, *xdr.LedgerHeader) (finished bool, err error)
 
-func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Operation, error) {
+func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor int64, limit uint64, accountId string) ([]common.Operation, error) {
 	ops := []common.Operation{}
 	opsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
 		for operationOrder, op := range tx.Envelope.Operations() {
@@ -62,7 +61,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor 
 					TxIndex:             int32(tx.Index),
 					OpIndex:             int32(operationOrder + 1),
 				})
-				if int64(len(ops)) == limit {
+				if uint64(len(ops)) == limit {
 					return true, nil
 				}
 			}
@@ -77,7 +76,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context, cursor 
 	return ops, nil
 }
 
-func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cursor int64, limit int64, accountId string) ([]common.Transaction, error) {
+func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cursor int64, limit uint64, accountId string) ([]common.Transaction, error) {
 	txs := []common.Transaction{}
 
 	txsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
@@ -87,7 +86,7 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 			LedgerHeader:        ledgerHeader,
 			TxIndex:             int32(tx.Index),
 		})
-		if int64(len(txs)) == limit {
+		if uint64(len(txs)) == limit {
 			return true, nil
 		}
 		return false, nil
@@ -100,63 +99,55 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 }
 
 func searchTxByAccount(ctx context.Context, cursor int64, accountId string, config Config, callback searchCallback) error {
-	// Skip the cursor ahead to the next active checkpoint for this account
-	nextCheckpoint, err := getAccountNextCheckpointCursor(accountId, cursor, config.IndexStore)
+	nextLedger, err := getAccountNextLedgerCursor(accountId, cursor, config.IndexStore)
 	if err != nil {
 		if err == io.EOF {
 			return nil
 		}
 		return err
 	}
-	log.Debugf("Searching index by account %v starting at checkpoint cursor %v", accountId, nextCheckpoint)
+	log.Debugf("Searching index by account %v starting at cursor %v", accountId, nextLedger)
 
 	for {
-		startingCheckPointLedger := cursorLedger(nextCheckpoint)
-		ledgerSequence := startingCheckPointLedger
-
-		for (ledgerSequence - startingCheckPointLedger) < 64 {
-			ledger, ledgerErr := config.Archive.GetLedger(ctx, ledgerSequence)
-			if ledgerErr != nil {
-				return errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", ledgerSequence, ledgerSequence/64)
-			}
-
-			reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
-			if readerErr != nil {
-				return readerErr
-			}
-
-			for {
-				tx, readErr := reader.Read()
-				if readErr != nil {
-					if readErr == io.EOF {
-						break
-					}
-					return readErr
-				}
-
-				participants, participantErr := config.Archive.GetTransactionParticipants(tx)
-				if participantErr != nil {
-					return participantErr
-				}
-
-				if _, found := participants[accountId]; found {
-					if finished, callBackErr := callback(tx, &ledger.V0.LedgerHeader.Header); callBackErr != nil {
-						return callBackErr
-					} else {
-						if finished {
-							return nil
-						}
-					}
-				}
-
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-			}
-			ledgerSequence++
+		ledger, ledgerErr := config.Archive.GetLedger(ctx, uint32(nextLedger))
+		if ledgerErr != nil {
+			return errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", nextLedger, nextLedger/64)
 		}
 
-		nextCheckpoint, err = getAccountNextCheckpointCursor(accountId, nextCheckpoint, config.IndexStore)
+		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
+		if readerErr != nil {
+			return readerErr
+		}
+
+		for {
+			tx, readErr := reader.Read()
+			if readErr != nil {
+				if readErr == io.EOF {
+					break
+				}
+				return readErr
+			}
+
+			participants, participantErr := config.Archive.GetTransactionParticipants(tx)
+			if participantErr != nil {
+				return participantErr
+			}
+
+			if _, found := participants[accountId]; found {
+				if finished, callBackErr := callback(tx, &ledger.V0.LedgerHeader.Header); callBackErr != nil {
+					return callBackErr
+				} else if finished {
+					return nil
+				}
+			}
+
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+		}
+		nextCursor := toid.New(int32(nextLedger), 1, 1).ToInt64()
+
+		nextLedger, err = getAccountNextLedgerCursor(accountId, nextCursor, config.IndexStore)
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -166,27 +157,27 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 	}
 }
 
-func getAccountNextCheckpointCursor(accountId string, cursor int64, store index.Store) (int64, error) {
-	var checkpoint uint32
-	checkpoint, err := store.NextActive(accountId, "all/all", uint32(toid.Parse(cursor).LedgerSequence/64))
+// this deals in ledgers but adapts to the index model, which is currently keyed by checkpoint for now
+func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Store) (uint64, error) {
+	nextLedger := toid.Parse(cursor).LedgerSequence + 1
+	cursorCheckpoint := uint32(nextLedger / 64)
+	queryCheckpoint := cursorCheckpoint
+	if queryCheckpoint > 0 {
+		queryCheckpoint = queryCheckpoint - 1
+	}
+	nextCheckpoint, err := store.NextActive(accountId, "all/all", queryCheckpoint)
+
 	if err != nil {
 		return 0, err
 	}
-	ledger := int32(checkpoint * 64)
-	if ledger < 0 {
-		// Check we don't overflow going from uint32 -> int32
-		return 0, fmt.Errorf("overflowed ledger number")
-	}
-	cursor = toid.New(ledger, 1, 1).ToInt64()
 
-	return cursor, nil
-}
-
-func cursorLedger(cursor int64) uint32 {
-	parsedID := toid.Parse(cursor)
-	ledgerSequence := uint32(parsedID.LedgerSequence)
-	if ledgerSequence < 2 {
-		ledgerSequence = 2
+	if nextCheckpoint == cursorCheckpoint {
+		// querying for a ledger with a derived checkpoint that was active for account in the index
+		// but the ledger is in the same checkpoint as requested cursor is already in
+		// so just return the requested cursor as-is
+		return uint64(nextLedger), nil
 	}
-	return ledgerSequence
+
+	// return the first ledger of the next checkpoint that had account activity after cursor
+	return uint64(nextCheckpoint * 64), nil
 }

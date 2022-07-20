@@ -37,7 +37,7 @@ func accountRequestParams(w http.ResponseWriter, r *http.Request) (string, pagin
 		paginate.Cursor = toid.New(1, 1, 1).ToInt64()
 	}
 
-	if paginate.Limit < 1 {
+	if paginate.Limit == 0 {
 		paginate.Limit = 10
 	}
 
