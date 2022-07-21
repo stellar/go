@@ -21,7 +21,12 @@ func parallelFlush(parallel uint32, allIndexes map[string]types.NamedIndices, f 
 
 	batches := make(chan *batch, parallel)
 
+	wg.Add(1)
 	go func() {
+		// forces this async func to be waited on also, otherwise the outer
+		// method returns before this finishes.
+		defer wg.Done()
+
 		for account, indexes := range allIndexes {
 			batches <- &batch{
 				account: account,
@@ -41,7 +46,7 @@ func parallelFlush(parallel uint32, allIndexes map[string]types.NamedIndices, f 
 			defer wg.Done()
 			for batch := range batches {
 				if err := f(batch); err != nil {
-					log.Error(err)
+					log.Errorf("Error occurred writing batch: %v, retrying...", err)
 					time.Sleep(50 * time.Millisecond)
 					batches <- batch
 					continue
@@ -49,7 +54,9 @@ func parallelFlush(parallel uint32, allIndexes map[string]types.NamedIndices, f 
 
 				nwritten := atomic.AddUint64(&written, 1)
 				if nwritten%1000 == 0 {
-					log.Infof("Writing indexes... %d/%d %.2f%%", nwritten, len(allIndexes), (float64(nwritten)/float64(len(allIndexes)))*100)
+					log.Infof("Writing indexes... %d/%d %.2f%%", nwritten,
+						len(allIndexes),
+						(float64(nwritten)/float64(len(allIndexes)))*100)
 				}
 
 				if nwritten == uint64(len(allIndexes)) {

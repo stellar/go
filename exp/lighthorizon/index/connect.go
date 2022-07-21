@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"runtime"
 
 	"github.com/aws/aws-sdk-go/aws"
 
@@ -17,7 +16,7 @@ func Connect(backendUrl string) (Store, error) {
 
 func ConnectWithConfig(config StoreConfig) (Store, error) {
 	if config.Workers <= 0 {
-		config.Workers = uint32(runtime.NumCPU()) - 1
+		config.Workers = 1
 	}
 
 	parsed, err := url.Parse(config.Url)
