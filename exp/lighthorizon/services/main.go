@@ -101,10 +101,9 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 
 func searchTxByAccount(ctx context.Context, cursor int64, accountId string, config Config, callback searchCallback) error {
 	nextLedger, err := getAccountNextLedgerCursor(accountId, cursor, config.IndexStore, allIndexes)
-	if err != nil {
-		if err == io.EOF {
-			return nil
-		}
+	if err == io.EOF {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	log.Debugf("Searching index by account %v starting at cursor %v", accountId, nextLedger)
@@ -159,24 +158,30 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 // this deals in ledgers but adapts to the index model, which is currently keyed by checkpoint for now
 func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Store, indexName string) (uint64, error) {
 	nextLedger := toid.Parse(cursor).LedgerSequence + 1
-	cursorCheckpoint := uint32(nextLedger / 64)
-	queryCheckpoint := cursorCheckpoint
-	if queryCheckpoint > 0 {
-		queryCheckpoint = queryCheckpoint - 1
+
+	// done for performance reasons, skip reading the index for any requested ledger cursors
+	// only need to read the index when next cursor falls on checkpoint boundary
+	if !isCheckpoint(nextLedger) {
+		return uint64(nextLedger), nil
 	}
-	nextCheckpoint, err := store.NextActive(accountId, indexName, queryCheckpoint)
+
+	nextCheckpoint := uint32(nextLedger / 64)
+	queryStartingCheckpoint := nextCheckpoint
+	if queryStartingCheckpoint > 0 {
+		// the 'NextActive' index query takes a starting checkpoint, from which the index is scanned AFTER that checkpoint, non-inclusive
+		// so, we need to calculate one prior to our starting query
+		queryStartingCheckpoint = queryStartingCheckpoint - 1
+	}
+	indexNextCheckpoint, err := store.NextActive(accountId, indexName, queryStartingCheckpoint)
 
 	if err != nil {
 		return 0, err
 	}
 
-	if nextCheckpoint == cursorCheckpoint {
-		// querying for a ledger with a derived checkpoint that was active for account in the index
-		// but the ledger is in the same checkpoint as requested cursor is already in
-		// so just return the requested cursor as-is
-		return uint64(nextLedger), nil
-	}
-
 	// return the first ledger of the next checkpoint that had account activity after cursor
-	return uint64(nextCheckpoint * 64), nil
+	return uint64(indexNextCheckpoint * 64), nil
+}
+
+func isCheckpoint(ledger int32) bool {
+	return ledger%64 == 0
 }
