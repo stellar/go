@@ -360,17 +360,15 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		}
 
 		if removeStorageDir {
-			err := os.RemoveAll(r.storagePath)
-			if err != nil {
+			if err = os.RemoveAll(r.storagePath); err != nil {
 				return errors.Wrap(err, "error removing existing storage-dir contents")
 			}
 
-			err = createCheckDirectory(r.storagePath)
-			if err != nil {
+			if err = createCheckDirectory(r.storagePath); err != nil {
 				return err
 			}
 
-			if _, err := r.writeConf(); err != nil {
+			if _, err = r.writeConf(); err != nil {
 				return errors.Wrap(err, "error writing configuration")
 			}
 
@@ -381,10 +379,10 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 			// Do a quick catch-up to set the LCL in core to be our expected starting
 			// point.
 			if from > 2 {
-				if err := r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
+				if err = r.createCmd("catchup", fmt.Sprintf("%d/0", from-1)).Run(); err != nil {
 					return errors.Wrap(err, "error runing stellar-core catchup")
 				}
-			} else if err := r.createCmd("catchup", "2/0").Run(); err != nil {
+			} else if err = r.createCmd("catchup", "2/0").Run(); err != nil {
 				return errors.Wrap(err, "error runing stellar-core catchup")
 			}
 		}
