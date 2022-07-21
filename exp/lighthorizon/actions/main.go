@@ -17,10 +17,12 @@ import (
 var (
 	//go:embed static
 	staticFiles  embed.FS
+	//lint:ignore U1000 temporary
 	requestCount = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "horizon_lite_request_count",
 		Help: "How many requests have occurred?",
 	})
+	//lint:ignore U1000 temporary
 	requestTime = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name: "horizon_lite_request_duration",
 		Help: "How long do requests take?",
