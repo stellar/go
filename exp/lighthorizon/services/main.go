@@ -90,10 +90,7 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 			LedgerHeader:        ledgerHeader,
 			TxIndex:             int32(tx.Index),
 		})
-		if uint64(len(txs)) == limit {
-			return true, nil
-		}
-		return false, nil
+		return (uint64(len(txs)) >= limit), nil
 	}
 
 	if err := searchTxByAccount(ctx, cursor, accountId, ts.Config, txsCallback); err != nil {
