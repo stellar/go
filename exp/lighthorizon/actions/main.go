@@ -40,6 +40,7 @@ const (
 )
 
 const (
+	//TODO - refactor to use horizon 'problems' package
 	serverError             errorMessage = "Error: A problem occurred on the server while processing request"
 	invalidPagingParameters errorMessage = "Error: Invalid paging parameters"
 )

@@ -14,6 +14,10 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+const (
+	allIndexes = "all/all"
+)
+
 type LightHorizon struct {
 	Operations   OperationsService
 	Transactions TransactionsService
@@ -99,7 +103,7 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 }
 
 func searchTxByAccount(ctx context.Context, cursor int64, accountId string, config Config, callback searchCallback) error {
-	nextLedger, err := getAccountNextLedgerCursor(accountId, cursor, config.IndexStore)
+	nextLedger, err := getAccountNextLedgerCursor(accountId, cursor, config.IndexStore, allIndexes)
 	if err != nil {
 		if err == io.EOF {
 			return nil
@@ -146,7 +150,7 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 			}
 		}
 		nextCursor := toid.New(int32(nextLedger), 1, 1).ToInt64()
-		nextLedger, err = getAccountNextLedgerCursor(accountId, nextCursor, config.IndexStore)
+		nextLedger, err = getAccountNextLedgerCursor(accountId, nextCursor, config.IndexStore, allIndexes)
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
@@ -156,14 +160,14 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 }
 
 // this deals in ledgers but adapts to the index model, which is currently keyed by checkpoint for now
-func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Store) (uint64, error) {
+func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Store, indexName string) (uint64, error) {
 	nextLedger := toid.Parse(cursor).LedgerSequence + 1
 	cursorCheckpoint := uint32(nextLedger / 64)
 	queryCheckpoint := cursorCheckpoint
 	if queryCheckpoint > 0 {
 		queryCheckpoint = queryCheckpoint - 1
 	}
-	nextCheckpoint, err := store.NextActive(accountId, "all/all", queryCheckpoint)
+	nextCheckpoint, err := store.NextActive(accountId, indexName, queryCheckpoint)
 
 	if err != nil {
 		return 0, err
