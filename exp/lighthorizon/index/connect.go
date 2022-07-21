@@ -15,6 +15,10 @@ func Connect(backendUrl string) (Store, error) {
 }
 
 func ConnectWithConfig(config StoreConfig) (Store, error) {
+	if config.Workers <= 0 {
+		config.Workers = 1
+	}
+
 	parsed, err := url.Parse(config.Url)
 	if err != nil {
 		return nil, err

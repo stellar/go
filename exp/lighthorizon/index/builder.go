@@ -127,7 +127,7 @@ func BuildIndices(
 				}
 
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
-				if nprocessed%19 == 0 {
+				if nprocessed%97 == 0 {
 					printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
 				}
 
