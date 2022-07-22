@@ -2,12 +2,6 @@ package archive
 
 import (
 	"context"
-	"io"
-
-	"github.com/stellar/go/exp/lighthorizon/common"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -36,148 +30,27 @@ type LedgerTransactionReader interface {
 
 // Archive here only has the methods LightHorizon cares about, to make caching/wrapping easier
 type Archive interface {
+
+	// GetLedger - takes a caller context and a sequence number and returns the meta data
+	// for the ledger corresponding to the sequence number. If there is any error, it will
+	// return nil and the error.
 	GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
+
+	// Close - will release any resources used for this archive instance and should be
+	// called at end of usage of archive.
 	Close() error
+
+	// NewLedgerTransactionReaderFromLedgerCloseMeta - takes the passphrase for the blockchain network
+	// and the LedgerCloseMeta(meta data) and returns a reader that can be used to obtain a LedgerTransaction model
+	// from the meta data. If there is any error, it will return nil and the error.
 	NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (LedgerTransactionReader, error)
-}
 
-type Wrapper struct {
-	Archive
-	Passphrase string
-}
+	// GetTransactionParticipants - takes a LedgerTransaction and returns a set of all
+	// participants(accounts) in the transaction. If there is any error, it will return nil and the error.
+	GetTransactionParticipants(transaction LedgerTransaction) (map[string]struct{}, error)
 
-func (a *Wrapper) GetOperations(ctx context.Context, cursor int64, limit int64) ([]common.Operation, error) {
-	parsedID := toid.Parse(cursor)
-	ledgerSequence := uint32(parsedID.LedgerSequence)
-	if ledgerSequence < 2 {
-		ledgerSequence = 2
-	}
-
-	log.Debugf("Searching op %d", cursor)
-	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
-
-	ops := []common.Operation{}
-	appending := false
-
-	for {
-		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, err := a.GetLedger(ctx, ledgerSequence)
-		if err != nil {
-			return ops, nil
-		}
-
-		reader, err := a.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error in ledger %d", ledgerSequence)
-		}
-
-		transactionOrder := int32(0)
-		for {
-			tx, err := reader.Read()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-
-			transactionOrder++
-			for operationOrder := range tx.Envelope.Operations() {
-				currID := toid.New(int32(ledgerSequence), transactionOrder, int32(operationOrder+1)).ToInt64()
-
-				if currID >= cursor {
-					appending = true
-					if currID == cursor {
-						continue
-					}
-				}
-
-				if appending {
-					ops = append(ops, common.Operation{
-						TransactionEnvelope: &tx.Envelope,
-						TransactionResult:   &tx.Result.Result,
-						// TODO: Use a method to get the header
-						LedgerHeader: &ledger.V0.LedgerHeader.Header,
-						OpIndex:      int32(operationOrder + 1),
-						TxIndex:      int32(transactionOrder),
-					})
-				}
-
-				if int64(len(ops)) == limit {
-					return ops, nil
-				}
-			}
-		}
-
-		ledgerSequence++
-	}
-}
-
-func (a *Wrapper) GetTransactions(ctx context.Context, cursor int64, limit int64) ([]common.Transaction, error) {
-	parsedID := toid.Parse(cursor)
-	ledgerSequence := uint32(parsedID.LedgerSequence)
-	if ledgerSequence < 2 {
-		ledgerSequence = 2
-	}
-
-	log.Debugf("Searching tx %d starting at", cursor)
-	log.Debugf("Getting ledgers starting at %d", ledgerSequence)
-
-	txns := []common.Transaction{}
-	appending := false
-
-	for {
-		log.Debugf("Checking ledger %d", ledgerSequence)
-		ledger, err := a.GetLedger(ctx, ledgerSequence)
-		if err != nil {
-			// no 'NotFound' distinction on err, treat all as not found.
-			return txns, nil
-		}
-
-		reader, err := a.NewLedgerTransactionReaderFromLedgerCloseMeta(a.Passphrase, ledger)
-		if err != nil {
-			return nil, err
-		}
-
-		transactionOrder := int32(0)
-		for {
-			tx, err := reader.Read()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-
-			transactionOrder++
-			currID := toid.New(int32(ledgerSequence), transactionOrder, 1).ToInt64()
-
-			if currID >= cursor {
-				appending = true
-				if currID == cursor {
-					continue
-				}
-			}
-
-			if appending {
-				txns = append(txns, common.Transaction{
-					TransactionEnvelope: &tx.Envelope,
-					TransactionResult:   &tx.Result.Result,
-					// TODO: Use a method to get the header
-					LedgerHeader: &ledger.V0.LedgerHeader.Header,
-					TxIndex:      int32(transactionOrder),
-				})
-			}
-
-			if int64(len(txns)) == limit {
-				return txns, nil
-			}
-
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-		}
-
-		ledgerSequence++
-	}
+	// GetOperationParticipants - takes a LedgerTransaction, the Operation within the transaction, and
+	// the 0 based index of the operation within the transaction. It will return a set of all participants(accounts)
+	// in the operation. If there is any error, it will return nil and the error.
+	GetOperationParticipants(transaction LedgerTransaction, operation xdr.Operation, opIndex int) (map[string]struct{}, error)
 }

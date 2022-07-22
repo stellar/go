@@ -34,3 +34,13 @@ func (m *MockArchive) NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassp
 	args := m.Called(networkPassphrase, ledgerCloseMeta)
 	return args.Get(0).(LedgerTransactionReader), args.Error(1)
 }
+
+func (m *MockArchive) GetTransactionParticipants(transaction LedgerTransaction) (map[string]struct{}, error) {
+	args := m.Called(transaction)
+	return args.Get(0).(map[string]struct{}), args.Error(1)
+}
+
+func (m *MockArchive) GetOperationParticipants(transaction LedgerTransaction, operation xdr.Operation, opIndex int) (map[string]struct{}, error) {
+	args := m.Called(transaction, operation, opIndex)
+	return args.Get(0).(map[string]struct{}), args.Error(1)
+}

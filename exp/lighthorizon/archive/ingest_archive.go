@@ -3,6 +3,7 @@ package archive
 import (
 	"context"
 
+	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 
@@ -15,7 +16,7 @@ type ingestArchive struct {
 	*ledgerbackend.HistoryArchiveBackend
 }
 
-func (ingestArchive) NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (LedgerTransactionReader, error) {
+func (a ingestArchive) NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (LedgerTransactionReader, error) {
 	ingestReader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledgerCloseMeta)
 
 	if err != nil {
@@ -23,6 +24,42 @@ func (ingestArchive) NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassph
 	}
 
 	return &ingestTransactionReaderAdaption{ingestReader}, nil
+}
+
+func (a ingestArchive) GetTransactionParticipants(transaction LedgerTransaction) (map[string]struct{}, error) {
+	participants, err := index.GetTransactionParticipants(a.ingestTx(transaction))
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]struct{})
+	exists := struct{}{}
+	for _, participant := range participants {
+		set[participant] = exists
+	}
+	return set, nil
+}
+
+func (a ingestArchive) GetOperationParticipants(transaction LedgerTransaction, operation xdr.Operation, opIndex int) (map[string]struct{}, error) {
+	participants, err := index.GetOperationParticipants(a.ingestTx(transaction), operation, opIndex)
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]struct{})
+	exists := struct{}{}
+	for _, participant := range participants {
+		set[participant] = exists
+	}
+	return set, nil
+}
+
+func (ingestArchive) ingestTx(transaction LedgerTransaction) ingest.LedgerTransaction {
+	tx := ingest.LedgerTransaction{}
+	tx.Index = transaction.Index
+	tx.Envelope = transaction.Envelope
+	tx.Result = transaction.Result
+	tx.FeeChanges = transaction.FeeChanges
+	tx.UnsafeMeta = transaction.UnsafeMeta
+	return tx
 }
 
 type ingestTransactionReaderAdaption struct {

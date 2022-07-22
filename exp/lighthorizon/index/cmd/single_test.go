@@ -212,7 +212,7 @@ func IndexLedgerRange(
 			}
 			require.NoError(t, err)
 
-			participants, err := index.GetParticipants(tx)
+			participants, err := index.GetTransactionParticipants(tx)
 			require.NoError(t, err)
 
 			for _, participant := range participants {

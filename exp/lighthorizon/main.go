@@ -4,12 +4,14 @@ import (
 	"flag"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/exp/lighthorizon/services"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
@@ -41,13 +43,29 @@ func main() {
 	}
 	defer ingestArchive.Close()
 
-	archiveWrapper := archive.Wrapper{Archive: ingestArchive, Passphrase: *networkPassphrase}
+	Config := services.Config{
+		Archive:    ingestArchive,
+		Passphrase: *networkPassphrase,
+		IndexStore: indexStore,
+	}
 
-	http.HandleFunc("/", actions.ApiDocs())
-	http.HandleFunc("/operations", actions.Operations(archiveWrapper, indexStore))
-	http.HandleFunc("/transactions", actions.Transactions(archiveWrapper, indexStore))
+	lightHorizon := services.LightHorizon{
+		Transactions: services.TransactionsService{
+			Config: Config,
+		},
+		Operations: services.OperationsService{
+			Config: Config,
+		},
+	}
 
-	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	router := chi.NewMux()
+	router.Route("/accounts/{account_id}", func(r chi.Router) {
+		r.MethodFunc(http.MethodGet, "/transactions", actions.NewTXByAccountHandler(lightHorizon))
+		r.MethodFunc(http.MethodGet, "/operations", actions.NewOpsByAccountHandler(lightHorizon))
+	})
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
+	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
