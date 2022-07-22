@@ -13,9 +13,10 @@ import (
 )
 
 func TestItGetsTransactionsByAccount(tt *testing.T) {
-	// l=1586111, t=1, o=1
-	// cursor = 6812294872829953, checkpoint=24782
-	cursor := int64(6812294872829953)
+	// l=1586045, t=1, o=1
+	// cursor = 6812011404988417, checkpoint=24781
+
+	cursor := int64(6812011404988417)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
@@ -36,9 +37,10 @@ func TestItGetsTransactionsByAccount(tt *testing.T) {
 }
 
 func TestItGetsTransactionsByAccountAndPageLimit(tt *testing.T) {
-	// l=1586111, t=1, o=1
-	// cursor = 6812294872829953, checkpoint=24782
-	cursor := int64(6812294872829953)
+	// l=1586045, t=1, o=1
+	// cursor = 6812011404988417, checkpoint=24781
+
+	cursor := int64(6812011404988417)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
@@ -61,9 +63,10 @@ func TestItGetsTransactionsByAccountAndPageLimit(tt *testing.T) {
 }
 
 func TestItGetsOperationsByAccount(tt *testing.T) {
-	// l=1586111, t=1, o=1
-	// cursor = 6812294872829953, checkpoint=24782
-	cursor := int64(6812294872829953)
+	// l=1586045, t=1, o=1
+	// cursor = 6812011404988417, checkpoint=24781
+
+	cursor := int64(6812011404988417)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
@@ -84,9 +87,10 @@ func TestItGetsOperationsByAccount(tt *testing.T) {
 }
 
 func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
-	// l=1586111, t=1, o=1
-	// cursor = 6812294872829953, checkpoint=24782
-	cursor := int64(6812294872829953)
+	// l=1586045, t=1, o=1
+	// cursor = 6812011404988417, checkpoint=24781
+
+	cursor := int64(6812011404988417)
 	ctx := context.Background()
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)

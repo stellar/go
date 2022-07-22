@@ -65,7 +65,7 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 		txns, err := lightHorizon.Transactions.GetTransactionsByAccount(ctx, paginate.Cursor, paginate.Limit, accountId)
 		if err != nil {
 			log.Error(err)
-			sendErrorResponse(w, http.StatusInternalServerError, "")
+			sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -74,7 +74,7 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 			response, err = adapters.PopulateTransaction(r, &txn)
 			if err != nil {
 				log.Error(err)
-				sendErrorResponse(w, http.StatusInternalServerError, "")
+				sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 
@@ -107,7 +107,7 @@ func NewOpsByAccountHandler(lightHorizon services.LightHorizon) func(http.Respon
 		ops, err := lightHorizon.Operations.GetOperationsByAccount(ctx, paginate.Cursor, paginate.Limit, accountId)
 		if err != nil {
 			log.Error(err)
-			sendErrorResponse(w, http.StatusInternalServerError, "")
+			sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -116,7 +116,7 @@ func NewOpsByAccountHandler(lightHorizon services.LightHorizon) func(http.Respon
 			response, err = adapters.PopulateOperation(r, &op)
 			if err != nil {
 				log.Error(err)
-				sendErrorResponse(w, http.StatusInternalServerError, "")
+				sendErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 

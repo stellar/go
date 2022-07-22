@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 
@@ -16,6 +17,10 @@ import (
 
 const (
 	allIndexes = "all/all"
+)
+
+var (
+	checkpointManager = historyarchive.NewCheckpointManager(0)
 )
 
 type LightHorizon struct {
@@ -111,7 +116,7 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 	for {
 		ledger, ledgerErr := config.Archive.GetLedger(ctx, uint32(nextLedger))
 		if ledgerErr != nil {
-			return errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", nextLedger, nextLedger/64)
+			return errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", nextLedger, getCheckpointCounter(uint32(nextLedger)))
 		}
 
 		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
@@ -157,21 +162,17 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 
 // this deals in ledgers but adapts to the index model, which is currently keyed by checkpoint for now
 func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Store, indexName string) (uint64, error) {
-	nextLedger := toid.Parse(cursor).LedgerSequence + 1
+	nextLedger := uint32(toid.Parse(cursor).LedgerSequence + 1)
 
 	// done for performance reasons, skip reading the index for any requested ledger cursors
 	// only need to read the index when next cursor falls on checkpoint boundary
-	if !isCheckpoint(nextLedger) {
+	if !checkpointManager.IsCheckpoint(nextLedger) {
 		return uint64(nextLedger), nil
 	}
 
-	nextCheckpoint := uint32(nextLedger / 64)
-	queryStartingCheckpoint := nextCheckpoint
-	if queryStartingCheckpoint > 0 {
-		// the 'NextActive' index query takes a starting checkpoint, from which the index is scanned AFTER that checkpoint, non-inclusive
-		// so, we need to calculate one prior to our starting query
-		queryStartingCheckpoint = queryStartingCheckpoint - 1
-	}
+	// the 'NextActive' index query takes a starting checkpoint, from which the index is scanned AFTER that checkpoint, non-inclusive
+	// use the the currrent checkpoint as the starting point since it represents up to the cursor's ledger
+	queryStartingCheckpoint := getCheckpointCounter(nextLedger)
 	indexNextCheckpoint, err := store.NextActive(accountId, indexName, queryStartingCheckpoint)
 
 	if err != nil {
@@ -179,9 +180,10 @@ func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Stor
 	}
 
 	// return the first ledger of the next checkpoint that had account activity after cursor
-	return uint64(indexNextCheckpoint * 64), nil
+	return uint64(indexNextCheckpoint * checkpointManager.GetCheckpointFrequency()), nil
 }
 
-func isCheckpoint(ledger int32) bool {
-	return ledger%64 == 0
+func getCheckpointCounter(ledger uint32) uint32 {
+	return checkpointManager.GetCheckpoint(uint32(ledger)) /
+		checkpointManager.GetCheckpointFrequency()
 }

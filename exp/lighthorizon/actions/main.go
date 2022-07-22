@@ -3,6 +3,7 @@ package actions
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -65,7 +66,7 @@ func sendPageResponse(w http.ResponseWriter, page hal.Page) {
 
 func sendErrorResponse(w http.ResponseWriter, errorCode int, errorMsg string) {
 	if errorMsg != "" {
-		http.Error(w, errorMsg, errorCode)
+		http.Error(w, fmt.Sprintf("Error: %s", errorMsg), errorCode)
 	} else {
 		http.Error(w, string(serverError), errorCode)
 	}
