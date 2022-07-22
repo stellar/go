@@ -94,6 +94,7 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context, cur
 			TransactionResult:   &tx.Result.Result,
 			LedgerHeader:        ledgerHeader,
 			TxIndex:             int32(tx.Index),
+			NetworkPassphrase:   ts.Config.Passphrase,
 		})
 		return (uint64(len(txs)) >= limit), nil
 	}
@@ -116,7 +117,7 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 	for {
 		ledger, ledgerErr := config.Archive.GetLedger(ctx, uint32(nextLedger))
 		if ledgerErr != nil {
-			return errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", nextLedger, getCheckpointCounter(uint32(nextLedger)))
+			return errors.Wrapf(ledgerErr, "ledger export state is out of sync, missing ledger %v from checkpoint %v", nextLedger, getIndexCheckpointCounter(uint32(nextLedger)))
 		}
 
 		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
@@ -172,18 +173,21 @@ func getAccountNextLedgerCursor(accountId string, cursor int64, store index.Stor
 
 	// the 'NextActive' index query takes a starting checkpoint, from which the index is scanned AFTER that checkpoint, non-inclusive
 	// use the the currrent checkpoint as the starting point since it represents up to the cursor's ledger
-	queryStartingCheckpoint := getCheckpointCounter(nextLedger)
+	queryStartingCheckpoint := getIndexCheckpointCounter(nextLedger)
 	indexNextCheckpoint, err := store.NextActive(accountId, indexName, queryStartingCheckpoint)
 
 	if err != nil {
 		return 0, err
 	}
 
-	// return the first ledger of the next checkpoint that had account activity after cursor
-	return uint64(indexNextCheckpoint * checkpointManager.GetCheckpointFrequency()), nil
+	// return the first ledger of the next index checkpoint that had account activity after cursor
+	// so we need to go back 64 ledgers(one checkpoint's worth) relative to next index checkpoint
+	// to get first ledger, since checkpoint ledgers are the last/greatest ledger in the checkpoint range
+	return uint64((indexNextCheckpoint - 1) * checkpointManager.GetCheckpointFrequency()), nil
 }
 
-func getCheckpointCounter(ledger uint32) uint32 {
-	return checkpointManager.GetCheckpoint(uint32(ledger)) /
-		checkpointManager.GetCheckpointFrequency()
+// derives what checkpoint this ledger would be in the index
+func getIndexCheckpointCounter(ledger uint32) uint32 {
+	return (checkpointManager.GetCheckpoint(uint32(ledger)) /
+		checkpointManager.GetCheckpointFrequency()) + 1
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -12,12 +13,20 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/exp/lighthorizon/services"
+	"github.com/stellar/go/toid"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/log"
 )
 
 func main() {
+
+	xx := toid.New(481836, 1, 1)
+	fmt.Println(xx.String())
+	fmt.Println(xx.ToInt64())
+	xy := toid.Parse(xx.ToInt64())
+	fmt.Println(xy.LedgerSequence)
+
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	indexesUrl := flag.String("indexes", "file://indexes", "url of the indexes")
 	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
