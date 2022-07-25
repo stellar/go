@@ -11,7 +11,7 @@ import (
 )
 
 type ScraperConfig struct {
-	Client *horizonclient.Client
+	Client horizonclient.ClientInterface
 	Logger *hlog.Entry
 	Ctx    *context.Context
 }
