@@ -220,6 +220,7 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 	nextLedger := getLedgerFromCursor(cursor)
 	log.Debugf("Searching %s for account %s starting at ledger %d",
 		allTransactionsIndex, accountId, nextLedger)
+	start := time.Now()
 
 	for {
 		ledger, ledgerErr := config.Archive.GetLedger(ctx, nextLedger)
@@ -227,7 +228,9 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 			return errors.Wrapf(ledgerErr,
 				"ledger export state is out of sync at ledger %d", nextLedger)
 		}
+		fetchDuration := time.Since(start)
 
+		start = time.Now()
 		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
 		if readerErr != nil {
 			return readerErr
@@ -235,13 +238,15 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 
 		for {
 			tx, readErr := reader.Read()
-			if readErr != nil {
-				if readErr == io.EOF {
-					break
-				}
+			if readErr == io.EOF {
+				break
+			} else if readErr != nil {
 				return readErr
 			}
 
+			// Note: If we move to ledger-based indices, we don't need this,
+			// since we have a guarantee that the transaction will contain the
+			// account as a participant.
 			participants, participantErr := config.Archive.GetTransactionParticipants(tx)
 			if participantErr != nil {
 				return participantErr
@@ -259,13 +264,22 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 			}
 		}
 
+		processDuration := time.Since(start)
+
+		start = time.Now()
 		cursor, err = cursorMgr.Advance()
+		nextLedger = getLedgerFromCursor(cursor)
+		indexFetchDuration := time.Since(start)
+
+		log.WithField("ledger-fetch", fetchDuration).
+			WithField("ledger-process", processDuration).
+			WithField("index-lookup", indexFetchDuration).
+			Debugf("Fulfilling request for account %s at cursor %d", accountId, cursor)
+
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
 			return err
 		}
-
-		nextLedger = getLedgerFromCursor(cursor)
 	}
 }
