@@ -135,7 +135,9 @@ func (c *ScraperConfig) FetchAllTrades(since time.Time, limit int) (trades []hPr
 
 	trades, err = c.retrieveTrades(since, limit)
 
-	c.Logger.Info("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
+	if len(trades) > 0 {
+		c.Logger.Info("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
+	}
 	c.Logger.Infof("Fetched: %d trades\n", len(trades))
 	return
 }
