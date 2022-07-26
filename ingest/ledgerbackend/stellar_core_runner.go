@@ -62,7 +62,7 @@ type systemCaller interface {
 	writeFile(filename string, data []byte, perm fs.FileMode) error
 	mkdirAll(path string, perm os.FileMode) error
 	stat(name string) (isDir, error)
-	command(name string, arg ...string) cmd
+	command(name string, arg ...string) cmdI
 }
 
 type realSystemCaller struct{}
@@ -83,12 +83,12 @@ func (realSystemCaller) stat(name string) (isDir, error) {
 	return os.Stat(name)
 }
 
-func (realSystemCaller) command(name string, arg ...string) cmd {
+func (realSystemCaller) command(name string, arg ...string) cmdI {
 	cmd := exec.Command(name, arg...)
 	return &realCmd{cmd}
 }
 
-type cmd interface {
+type cmdI interface {
 	Output() ([]byte, error)
 	Wait() error
 	Start() error
@@ -138,7 +138,7 @@ type stellarCoreRunner struct {
 	executablePath string
 
 	started      bool
-	cmd          cmd
+	cmd          cmdI
 	wg           sync.WaitGroup
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -339,7 +339,7 @@ func (r *stellarCoreRunner) offlineInfo() (stellarcore.InfoResponse, error) {
 	return info, nil
 }
 
-func (r *stellarCoreRunner) createCmd(params ...string) (cmd, error) {
+func (r *stellarCoreRunner) createCmd(params ...string) (cmdI, error) {
 	err := r.createCheckDirectory()
 	if err != nil {
 		return nil, err
@@ -467,7 +467,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 				return errors.Wrap(err, "error removing existing storage-dir contents")
 			}
 
-			var cmd cmd
+			var cmd cmdI
 			cmd, err = r.createCmd("new-db")
 			if err != nil {
 				return errors.Wrap(err, "error creating command")
@@ -607,7 +607,7 @@ func (r *stellarCoreRunner) handleExit() {
 }
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()
-func (r *stellarCoreRunner) closeLogLineWriters(cmd cmd) {
+func (r *stellarCoreRunner) closeLogLineWriters(cmd cmdI) {
 	cmd.getStdout().(*io.PipeWriter).Close()
 	cmd.getStderr().(*io.PipeWriter).Close()
 }

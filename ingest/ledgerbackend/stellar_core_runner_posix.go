@@ -18,7 +18,7 @@ func (c *stellarCoreRunner) getPipeName() string {
 	return "fd:3"
 }
 
-func (c *stellarCoreRunner) start(cmd cmd) (pipe, error) {
+func (c *stellarCoreRunner) start(cmd cmdI) (pipe, error) {
 	// First make an anonymous pipe.
 	// Note io.File objects close-on-finalization.
 	readFile, writeFile, err := os.Pipe()

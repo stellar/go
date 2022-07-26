@@ -37,11 +37,11 @@ func (m *mockSystemCaller) stat(name string) (isDir, error) {
 	return args.Get(0).(isDir), args.Error(1)
 }
 
-func (m *mockSystemCaller) command(name string, arg ...string) cmd {
+func (m *mockSystemCaller) command(name string, arg ...string) cmdI {
 	a := []interface{}{name}
 	for _, ar := range arg {
 		a = append(a, ar)
 	}
 	args := m.Called(a...)
-	return args.Get(0).(cmd)
+	return args.Get(0).(cmdI)
 }
