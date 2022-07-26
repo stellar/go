@@ -62,6 +62,9 @@ func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (Arc
 	return backend, nil
 }
 
+// GetFile retrieves the file contents from the local cache if present.
+// Otherwise, it returns the same result that the wrapped backend returns and
+// adds that result into the local cache, if possible.
 func (b *FsCacheBackend) GetFile(filepath string) (io.ReadCloser, error) {
 	L := b.log.WithField("key", filepath)
 	localPath := path.Join(b.dir, filepath)
@@ -112,6 +115,9 @@ func (b *FsCacheBackend) GetFile(filepath string) (io.ReadCloser, error) {
 	return local, nil
 }
 
+// Exists shortcuts an existence check by checking if it exists in the cache.
+// Otherwise, it returns the same result as the wrapped backend. Note that in
+// the latter case, the cache isn't modified.
 func (b *FsCacheBackend) Exists(filepath string) (bool, error) {
 	localPath := path.Join(b.dir, filepath)
 	b.log.WithField("key", filepath).Debug("checking existence")
@@ -125,6 +131,9 @@ func (b *FsCacheBackend) Exists(filepath string) (bool, error) {
 	return b.ArchiveBackend.Exists(filepath)
 }
 
+// Size will return the size of the file found in the cache if possible.
+// Otherwise, it returns the same result as the wrapped backend. Note that in
+// the latter case, the cache isn't modified.
 func (b *FsCacheBackend) Size(filepath string) (int64, error) {
 	localPath := path.Join(b.dir, filepath)
 	L := b.log.WithField("key", filepath)
@@ -144,6 +153,9 @@ func (b *FsCacheBackend) Size(filepath string) (int64, error) {
 	return b.ArchiveBackend.Size(filepath)
 }
 
+// PutFile writes to the given `filepath` from the given `in` reader, also
+// writing it to the local cache if possible. It returns the same result as the
+// wrapped backend.
 func (b *FsCacheBackend) PutFile(filepath string, in io.ReadCloser) error {
 	L := log.WithField("key", filepath)
 	L.Debug("putting file")
@@ -160,6 +172,7 @@ func (b *FsCacheBackend) PutFile(filepath string, in io.ReadCloser) error {
 	return b.ArchiveBackend.PutFile(filepath, in)
 }
 
+// Close forwards the call to the wrapped backend.
 func (b *FsCacheBackend) Close() error {
 	// This means nothing for the cached side of things unless we start storing
 	// file handles in the cache.
