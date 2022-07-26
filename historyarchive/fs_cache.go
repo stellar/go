@@ -172,12 +172,11 @@ func (b *FsCacheBackend) PutFile(filepath string, in io.ReadCloser) error {
 	return b.ArchiveBackend.PutFile(filepath, in)
 }
 
-// Close forwards the call to the wrapped backend.
+// Close purges the cache, then forwards the call to the wrapped backend.
 func (b *FsCacheBackend) Close() error {
-	// This means nothing for the cached side of things unless we start storing
-	// file handles in the cache.
-	//
-	// TODO: Actually, should we purge the cache here?
+	// We only purge the cache, leaving the filesystem untouched:
+	// https://github.com/stellar/go/pull/4457#discussion_r929352643
+	b.lru.Purge()
 	return b.ArchiveBackend.Close()
 }
 
