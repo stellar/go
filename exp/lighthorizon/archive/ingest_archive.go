@@ -2,6 +2,7 @@ package archive
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -14,25 +15,32 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const (
-	maxLedgersToCache = (60 * 60 * 24) / 6 // 1 day of ledgers @ 6s each
-)
-
 type ArchiveConfig struct {
 	SourceUrl         string
 	NetworkPassphrase string
 	CacheDir          string
+	CacheSize         int
 }
 
 func NewIngestArchive(config ArchiveConfig) (Archive, error) {
-	// If the source URL is an S3 url and it has a region specified, we should
-	// try to extract it.
+	if config.CacheSize <= 0 {
+		return nil, fmt.Errorf("invalid cache size: %d", config.CacheSize)
+	}
+
 	parsed, err := url.Parse(config.SourceUrl)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s is not a valid URL", config.SourceUrl)
 	}
+
 	region := ""
-	if parsed.Scheme == "s3" {
+	needsCache := true
+	switch parsed.Scheme {
+	case "file":
+		// We should only avoid a cache if the ledgers are already local.
+		needsCache = false
+
+	case "s3":
+		// We need to extract the region if it's specified.
 		region = parsed.Query().Get("region")
 	}
 
@@ -50,17 +58,22 @@ func NewIngestArchive(config ArchiveConfig) (Archive, error) {
 		return nil, err
 	}
 
-	cache, err := historyarchive.MakeFsCacheBackend(source, config.CacheDir, maxLedgersToCache)
-	if err != nil { // warn but continue w/o cache
-		log.WithField("path", config.CacheDir).
-			WithError(err).
-			Warnf("Failed to create cached ledger backend")
-		cache = source
-	} else {
-		log.WithField("path", config.CacheDir).Infof("On-disk cache configured")
+	if needsCache {
+		cache, err := historyarchive.MakeFsCacheBackend(source,
+			config.CacheDir, uint(config.CacheSize))
+
+		if err != nil { // warn but continue w/o cache
+			log.WithField("path", config.CacheDir).
+				WithError(err).
+				Warnf("Failed to create cached ledger backend")
+		} else {
+			log.WithField("path", config.CacheDir).
+				Infof("On-disk cache configured")
+			source = cache
+		}
 	}
 
-	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(cache)
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
 	return ingestArchive{ledgerBackend}, nil
 }
 
