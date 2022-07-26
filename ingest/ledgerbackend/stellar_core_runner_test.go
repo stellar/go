@@ -136,7 +136,11 @@ func TestCloseOnlineWithError(t *testing.T) {
 	assert.NoError(t, runner.runFrom(100, "hash"))
 
 	// Wait with calling close until r.processExitError is set to Wait() error
-	for runner.processExitError == nil {
+	for {
+		_, err := runner.getProcessExitError()
+		if err != nil {
+			break
+		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	assert.NoError(t, runner.close())
