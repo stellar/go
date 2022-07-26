@@ -17,27 +17,40 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+const (
+	defaultCacheSize = (60 * 60 * 24) / 6 // 1 day of ledgers @ 6s each
+)
+
 func main() {
 	sourceUrl := flag.String("source", "gcs://horizon-archive-poc", "history archive url to read txmeta files")
 	indexesUrl := flag.String("indexes", "file://indexes", "url of the indexes")
-	networkPassphrase := flag.String("network-passphrase", network.TestNetworkPassphrase, "network passphrase")
+	networkPassphrase := flag.String("network-passphrase", network.PublicNetworkPassphrase, "network passphrase")
+	cacheDir := flag.String("ledger-cache", "", `path to cache frequently-used ledgers;
+if left empty, uses a temporary directory`)
+	cacheSize := flag.Int("ledger-cache-size", defaultCacheSize,
+		"number of ledgers to store in the cache")
 	flag.Parse()
 
 	L := log.WithField("service", "horizon-lite")
-	// L.SetLevel(log.DebugLevel)
+	L.SetLevel(log.InfoLevel)
 	L.Info("Starting lighthorizon!")
 
 	registry := prometheus.NewRegistry()
 	indexStore, err := index.ConnectWithConfig(index.StoreConfig{
 		Url:     *indexesUrl,
-		Metrics: registry,
 		Log:     L.WithField("subservice", "index"),
+		Metrics: registry,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	ingestArchive, err := archive.NewIngestArchive(*sourceUrl, *networkPassphrase)
+	ingestArchive, err := archive.NewIngestArchive(archive.ArchiveConfig{
+		SourceUrl:         *sourceUrl,
+		NetworkPassphrase: *networkPassphrase,
+		CacheDir:          *cacheDir,
+		CacheSize:         *cacheSize,
+	})
 	if err != nil {
 		panic(err)
 	}

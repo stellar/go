@@ -5,24 +5,207 @@
 package historyarchive
 
 import (
-	"container/heap"
 	"io"
 	"os"
 	"path"
-	"time"
 
-	log "github.com/sirupsen/logrus"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/stellar/go/support/log"
 )
 
 // FsCacheBackend fronts another backend with a local filesystem cache
 type FsCacheBackend struct {
 	ArchiveBackend
-	dir string
-	//lint:ignore U1000 Ignore unused temporarily
-	knownFiles lruCache
-	maxFiles   int
-	lru        lruCache
+	dir      string
+	maxFiles int
+	lru      *lru.Cache
+
+	log *log.Entry
 }
+
+// MakeFsCacheBackend wraps an ArchiveBackend with a local filesystem cache in
+// `dir`. If dir is blank, a temporary directory will be created. If `maxFiles`
+// is zero, a default (90 days of ledgers) is used.
+func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (ArchiveBackend, error) {
+	if dir == "" {
+		tmp, err := os.MkdirTemp(os.TempDir(), "stellar-horizon-*")
+		if err != nil {
+			return nil, err
+		}
+		dir = tmp
+	}
+	if maxFiles == 0 {
+		// A guess at a reasonable number of checkpoints. This is 90 days of
+		// ledgers. (90*86_400)/(5*64) = 24_300
+		maxFiles = 24_300
+	}
+
+	backendLog := log.
+		WithField("subservice", "fs-cache").
+		WithField("path", dir).
+		WithField("size", maxFiles)
+	backendLog.Info("Filesystem cache configured")
+
+	backend := &FsCacheBackend{
+		ArchiveBackend: upstream,
+		dir:            dir,
+		maxFiles:       int(maxFiles),
+		log:            backendLog,
+	}
+
+	cache, err := lru.NewWithEvict(int(maxFiles), backend.onEviction)
+	if err != nil {
+		return nil, err
+	}
+
+	backend.lru = cache
+	return backend, nil
+}
+
+// GetFile retrieves the file contents from the local cache if present.
+// Otherwise, it returns the same result that the wrapped backend returns and
+// adds that result into the local cache, if possible.
+func (b *FsCacheBackend) GetFile(filepath string) (io.ReadCloser, error) {
+	L := b.log.WithField("key", filepath)
+	localPath := path.Join(b.dir, filepath)
+
+	if _, ok := b.lru.Get(localPath); !ok {
+		// If it doesn't exist in the cache, it might still exist on the disk if
+		// we've restarted from an existing directory.
+		local, err := os.Open(localPath)
+		if err == nil {
+			L.Debug("found file on disk but not in cache, adding")
+			b.lru.Add(localPath, struct{}{})
+			return local, nil
+		}
+
+		b.log.WithField("key", filepath).
+			Debug("retrieving file from remote backend")
+
+		// Since it's not on-disk, pull it from the remote backend, shove it
+		// into the cache, and write it to disk.
+		remote, err := b.ArchiveBackend.GetFile(filepath)
+		if err != nil {
+			return remote, err
+		}
+
+		local, err = b.createLocal(filepath)
+		if err != nil {
+			// If there's some local FS error, we can still continue with the
+			// remote version, so just log it and continue.
+			L.WithError(err).Error("caching ledger failed")
+
+			return remote, nil
+		}
+
+		return teeReadCloser(remote, local), nil
+	}
+
+	// The cache claims it exists, so just give it a read and send it.
+	local, err := os.Open(localPath)
+	if err != nil {
+		// Uh-oh, the cache and the disk are not in sync somehow? Let's evict
+		// this value and try again (recurse) w/ the remote version.
+		L.WithError(err).Warn("opening cached ledger failed")
+		b.lru.Remove(localPath)
+		return b.GetFile(filepath)
+	}
+
+	L.Debug("Found file in cache")
+	return local, nil
+}
+
+// Exists shortcuts an existence check by checking if it exists in the cache.
+// Otherwise, it returns the same result as the wrapped backend. Note that in
+// the latter case, the cache isn't modified.
+func (b *FsCacheBackend) Exists(filepath string) (bool, error) {
+	localPath := path.Join(b.dir, filepath)
+	b.log.WithField("key", filepath).Debug("checking existence")
+
+	if _, ok := b.lru.Get(localPath); ok {
+		// If the cache says it's there, we can definitively say that this path
+		// exists, even if we'd fail to `os.Stat()/Read()/etc.` it locally.
+		return true, nil
+	}
+
+	return b.ArchiveBackend.Exists(filepath)
+}
+
+// Size will return the size of the file found in the cache if possible.
+// Otherwise, it returns the same result as the wrapped backend. Note that in
+// the latter case, the cache isn't modified.
+func (b *FsCacheBackend) Size(filepath string) (int64, error) {
+	localPath := path.Join(b.dir, filepath)
+	L := b.log.WithField("key", filepath)
+
+	L.Debug("retrieving size")
+	if _, ok := b.lru.Get(localPath); ok {
+		stats, err := os.Stat(localPath)
+		if err == nil {
+			L.Debugf("retrieved cached size: %d", stats.Size())
+			return stats.Size(), nil
+		}
+
+		L.WithError(err).Debug("retrieving size of cached ledger failed")
+		b.lru.Remove(localPath) // stale cache?
+	}
+
+	return b.ArchiveBackend.Size(filepath)
+}
+
+// PutFile writes to the given `filepath` from the given `in` reader, also
+// writing it to the local cache if possible. It returns the same result as the
+// wrapped backend.
+func (b *FsCacheBackend) PutFile(filepath string, in io.ReadCloser) error {
+	L := log.WithField("key", filepath)
+	L.Debug("putting file")
+
+	// Best effort to tee the upload off to the local cache as well
+	local, err := b.createLocal(filepath)
+	if err != nil {
+		L.WithError(err).Error("failed to put file locally")
+	} else {
+		// tee upload data into our local file
+		in = teeReadCloser(in, local)
+	}
+
+	return b.ArchiveBackend.PutFile(filepath, in)
+}
+
+// Close purges the cache, then forwards the call to the wrapped backend.
+func (b *FsCacheBackend) Close() error {
+	// We only purge the cache, leaving the filesystem untouched:
+	// https://github.com/stellar/go/pull/4457#discussion_r929352643
+	b.lru.Purge()
+	return b.ArchiveBackend.Close()
+}
+
+func (b *FsCacheBackend) onEviction(key, value interface{}) {
+	path := key.(string)
+	if err := os.Remove(path); err != nil { // best effort removal
+		b.log.WithError(err).
+			WithField("key", path).
+			Error("removal failed after cache eviction")
+	}
+}
+
+func (b *FsCacheBackend) createLocal(filepath string) (*os.File, error) {
+	localPath := path.Join(b.dir, filepath)
+	if err := os.MkdirAll(path.Dir(localPath), 0755 /* drwxr-xr-x */); err != nil {
+		return nil, err
+	}
+
+	local, err := os.Create(localPath) /* mode -rw-rw-rw- */
+	if err != nil {
+		return nil, err
+	}
+
+	b.lru.Add(localPath, struct{}{}) // just use the cache as an array
+	return local, nil
+}
+
+// The below is a helper interface so that we can use io.TeeReader to write
+// data locally immediately as we read it remotely.
 
 type trc struct {
 	io.Reader
@@ -41,186 +224,4 @@ func teeReadCloser(r io.ReadCloser, w io.WriteCloser) io.ReadCloser {
 			return w.Close()
 		},
 	}
-}
-
-func (b *FsCacheBackend) GetFile(pth string) (r io.ReadCloser, err error) {
-	localPath := path.Join(b.dir, pth)
-	local, err := os.Open(localPath)
-	if err == nil {
-		b.updateLRU(localPath)
-		return local, nil
-	}
-	if !os.IsNotExist(err) {
-		// Some local fs error.. log and continue?
-		log.WithField("path", pth).WithError(err).Error("fs-cache: get file")
-	}
-
-	remote, err := b.ArchiveBackend.GetFile(pth)
-	if err != nil {
-		return remote, err
-	}
-	local, err = b.createLocal(pth)
-	if err != nil {
-		// Some local fs error.. log and continue?
-		log.WithField("path", pth).WithError(err).Error("fs-cache: get file")
-		return remote, nil
-	}
-	return teeReadCloser(remote, local), nil
-}
-
-func (b *FsCacheBackend) createLocal(pth string) (*os.File, error) {
-	localPath := path.Join(b.dir, pth)
-
-	if err := os.MkdirAll(path.Dir(localPath), 0755); err != nil {
-		return nil, err
-	}
-
-	local, err := os.Create(localPath)
-	if err != nil {
-		return nil, err
-	}
-	b.updateLRU(localPath)
-	return local, err
-}
-
-func (b *FsCacheBackend) Exists(pth string) (bool, error) {
-	localPath := path.Join(b.dir, pth)
-	log.WithField("path", pth).Trace("fs-cache: check exists")
-	if _, err := os.Stat(localPath); err == nil {
-		b.updateLRU(localPath)
-		return true, nil
-	}
-	return b.ArchiveBackend.Exists(pth)
-}
-
-func (b *FsCacheBackend) Size(pth string) (int64, error) {
-	localPath := path.Join(b.dir, pth)
-	log.WithField("path", pth).Trace("fs-cache: check exists")
-	fi, err := os.Stat(localPath)
-	if err == nil {
-		log.WithField("path", pth).WithField("size", fi.Size()).Trace("fs-cache: got size")
-		b.updateLRU(localPath)
-		return fi.Size(), nil
-	}
-	log.WithField("path", pth).WithError(err).Error("fs-cache: get size")
-	return b.ArchiveBackend.Size(pth)
-}
-
-func (b *FsCacheBackend) PutFile(pth string, in io.ReadCloser) error {
-	log.WithField("path", pth).Trace("fs-cache: put file")
-	in = b.tryLocalPutFile(pth, in)
-	return b.ArchiveBackend.PutFile(pth, in)
-}
-
-// Best effort to tee the upload off to the local cache as well
-func (b *FsCacheBackend) tryLocalPutFile(pth string, in io.ReadCloser) io.ReadCloser {
-	local, err := b.createLocal(pth)
-	if err != nil {
-		log.WithField("path", pth).WithError(err).Error("fs-cache: put file")
-		return in
-	}
-
-	// tee upload data into our local file
-	return teeReadCloser(in, local)
-}
-
-func (b *FsCacheBackend) updateLRU(pth string) {
-	b.lru.bump(pth)
-	for i := b.lru.Len(); i > b.maxFiles; i-- {
-		item := b.lru.Pop().(*lruCacheItem)
-		if err := os.Remove(item.path); err != nil {
-			log.WithField("path", item.path).WithError(err).Error("fs-cache: evict")
-		}
-	}
-}
-
-func (b *FsCacheBackend) Close() error {
-	return b.ArchiveBackend.Close()
-}
-
-// MakeFsCacheBackend, wraps an ArchiveBackend with a local filesystem cache in
-// `dir`. If dir is blank, a temporary directory will be created.
-func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (ArchiveBackend, error) {
-	if dir == "" {
-		tmp, err := os.MkdirTemp(os.TempDir(), "stellar-horizon-*")
-		if err != nil {
-			return nil, err
-		}
-		dir = tmp
-		log.WithField("dir", dir).Info("fs-cache: temp dir")
-	}
-	if maxFiles == 0 {
-		// A guess at a reasonable number of checkpoints. This is 90 days of
-		// ledgers. (90*86_400)/(5*64) = 24_300
-		maxFiles = 24_300
-	}
-	// Add 10 here, cause we need a bit of spare room for pending evictions.
-	var lru lruCache
-	heap.Init(&lru)
-	return &FsCacheBackend{
-		ArchiveBackend: upstream,
-		dir:            dir,
-		maxFiles:       int(maxFiles),
-		lru:            lru,
-	}, nil
-}
-
-// lruCache is a heap-based LRU cache that we use to limit the on-disk size
-type lruCache []*lruCacheItem
-
-type lruCacheItem struct {
-	path       string
-	lastUsedAt time.Time
-	index      int
-}
-
-func (c lruCache) Len() int { return len(c) }
-
-func (c lruCache) Less(i, j int) bool {
-	// We want Pop to give us the oldest, so we use before than here.
-	return c[i].lastUsedAt.Before(c[j].lastUsedAt)
-}
-
-func (c lruCache) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-	c[i].index = i
-	c[j].index = j
-}
-
-func (c *lruCache) Push(x interface{}) {
-	n := len(*c)
-	item := x.(*lruCacheItem)
-	item.index = n
-	*c = append(*c, item)
-}
-
-func (c *lruCache) Pop() interface{} {
-	old := *c
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil  // avoid memory leak
-	item.index = -1 // for safety
-	*c = old[0 : n-1]
-	return item
-}
-
-func (c *lruCache) bump(pth string) {
-	c.upsert(pth, time.Now())
-}
-
-// upsert modifies the priority and value of an item in the heap, or inserts it.
-func (c *lruCache) upsert(pth string, lastUsedAt time.Time) {
-	// Try to find by path and update
-	for _, item := range *c {
-		if item.path == pth {
-			item.lastUsedAt = lastUsedAt
-			heap.Fix(c, item.index)
-			return
-		}
-	}
-	// not found, add this item
-	heap.Push(c, &lruCacheItem{
-		path:       pth,
-		lastUsedAt: lastUsedAt,
-	})
 }
