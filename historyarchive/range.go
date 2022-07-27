@@ -39,6 +39,7 @@ func (c CheckpointManager) IsCheckpoint(i uint32) bool {
 	return (i+1)%c.checkpointFreq == 0
 }
 
+// PrevCheckpoint returns the checkpoint ledger preceding `i`.
 func (c CheckpointManager) PrevCheckpoint(i uint32) uint32 {
 	freq := c.checkpointFreq
 	if i < freq {
@@ -47,6 +48,7 @@ func (c CheckpointManager) PrevCheckpoint(i uint32) uint32 {
 	return (((i + 1) / freq) * freq) - 1
 }
 
+// NextCheckpoint returns the checkpoint ledger following `i`.
 func (c CheckpointManager) NextCheckpoint(i uint32) uint32 {
 	if i == 0 {
 		return c.checkpointFreq - 1

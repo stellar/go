@@ -3,9 +3,14 @@ package index
 import (
 	"fmt"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
+)
+
+var (
+	checkpointManager = historyarchive.NewCheckpointManager(0)
 )
 
 func ProcessTransaction(
@@ -19,12 +24,19 @@ func ProcessTransaction(
 	)
 }
 
+// GetCheckpointNumber returns the next checkpoint NUMBER (NOT the checkpoint
+// ledger sequence) corresponding to a given ledger sequence.
+func GetCheckpointNumber(ledger uint32) uint32 {
+	return 1 + (ledger / checkpointManager.GetCheckpointFrequency())
+}
+
 func ProcessAccounts(
 	indexStore Store,
 	ledger xdr.LedgerCloseMeta,
 	tx ingest.LedgerTransaction,
 ) error {
-	checkpoint := (ledger.LedgerSequence() / 64) + 1
+	checkpoint := GetCheckpointNumber(ledger.LedgerSequence())
+
 	allParticipants, err := GetTransactionParticipants(tx)
 	if err != nil {
 		return err
@@ -45,17 +57,17 @@ func ProcessAccounts(
 		return err
 	}
 
-	if tx.Result.Successful() {
-		err = indexStore.AddParticipantsToIndexes(checkpoint, "successful/all", allParticipants)
-		if err != nil {
-			return err
-		}
+	// if tx.Result.Successful() {
+	// 	err = indexStore.AddParticipantsToIndexes(checkpoint, "successful/all", allParticipants)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		err = indexStore.AddParticipantsToIndexes(checkpoint, "successful/payments", paymentsParticipants)
-		if err != nil {
-			return err
-		}
-	}
+	// 	err = indexStore.AddParticipantsToIndexes(checkpoint, "successful/payments", paymentsParticipants)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
@@ -65,7 +77,8 @@ func ProcessAccountsWithoutBackend(
 	ledger xdr.LedgerCloseMeta,
 	tx ingest.LedgerTransaction,
 ) error {
-	checkpoint := (ledger.LedgerSequence() / 64) + 1
+	checkpoint := GetCheckpointNumber(ledger.LedgerSequence())
+
 	allParticipants, err := GetTransactionParticipants(tx)
 	if err != nil {
 		return err
@@ -86,17 +99,17 @@ func ProcessAccountsWithoutBackend(
 		return err
 	}
 
-	if tx.Result.Successful() {
-		err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful/all", allParticipants)
-		if err != nil {
-			return err
-		}
+	// if tx.Result.Successful() {
+	// 	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful/all", allParticipants)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful/payments", paymentsParticipants)
-		if err != nil {
-			return err
-		}
-	}
+	// 	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful/payments", paymentsParticipants)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }

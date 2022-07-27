@@ -216,7 +216,7 @@ func IndexLedgerRange(
 			require.NoError(t, err)
 
 			for _, participant := range participants {
-				checkpoint := 1 + (ledger.LedgerSequence() / 64)
+				checkpoint := index.GetCheckpointNumber(ledgerSeq)
 
 				// Track the checkpoint in which activity occurred, keeping the
 				// list duplicate-free.
