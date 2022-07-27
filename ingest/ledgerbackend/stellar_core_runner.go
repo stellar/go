@@ -6,11 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
-	"io/ioutil"
 	"math/rand"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -51,87 +48,6 @@ type pipe struct {
 	// However, only the Stellar Core process will be writing to the pipe. stellarCoreRunner should not
 	// write anything to the named pipe file which is why the type of File is io.Closer.
 	File io.Closer
-}
-
-type isDir interface {
-	IsDir() bool
-}
-
-type systemCaller interface {
-	removeAll(path string) error
-	writeFile(filename string, data []byte, perm fs.FileMode) error
-	mkdirAll(path string, perm os.FileMode) error
-	stat(name string) (isDir, error)
-	command(name string, arg ...string) cmdI
-}
-
-type realSystemCaller struct{}
-
-func (realSystemCaller) removeAll(path string) error {
-	return os.RemoveAll(path)
-}
-
-func (realSystemCaller) writeFile(filename string, data []byte, perm fs.FileMode) error {
-	return ioutil.WriteFile(filename, data, perm)
-}
-
-func (realSystemCaller) mkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
-func (realSystemCaller) stat(name string) (isDir, error) {
-	return os.Stat(name)
-}
-
-func (realSystemCaller) command(name string, arg ...string) cmdI {
-	cmd := exec.Command(name, arg...)
-	return &realCmd{cmd}
-}
-
-type cmdI interface {
-	Output() ([]byte, error)
-	Wait() error
-	Start() error
-	Run() error
-	setDir(dir string)
-	setStdout(stdout io.Writer)
-	getStdout() io.Writer
-	setStderr(stderr io.Writer)
-	getStderr() io.Writer
-	getProcess() *os.Process
-	setExtraFiles([]*os.File)
-}
-
-type realCmd struct {
-	*exec.Cmd
-}
-
-func (r *realCmd) setDir(dir string) {
-	r.Cmd.Dir = dir
-}
-
-func (r *realCmd) setStdout(stdout io.Writer) {
-	r.Cmd.Stdout = stdout
-}
-
-func (r *realCmd) getStdout() io.Writer {
-	return r.Cmd.Stdout
-}
-
-func (r *realCmd) setStderr(stderr io.Writer) {
-	r.Cmd.Stderr = stderr
-}
-
-func (r *realCmd) getStderr() io.Writer {
-	return r.Cmd.Stderr
-}
-
-func (r *realCmd) getProcess() *os.Process {
-	return r.Cmd.Process
-}
-
-func (r *realCmd) setExtraFiles(extraFiles []*os.File) {
-	r.ExtraFiles = extraFiles
 }
 
 type stellarCoreRunner struct {
@@ -212,7 +128,7 @@ func (r *stellarCoreRunner) getFullStoragePath() string {
 	}
 }
 
-func (r *stellarCoreRunner) createCheckDirectory() error {
+func (r *stellarCoreRunner) establishStorageDirectory() error {
 	info, err := r.systemCaller.stat(r.storagePath)
 	if os.IsNotExist(err) {
 		innerErr := r.systemCaller.mkdirAll(r.storagePath, os.FileMode(int(0755))) // rwx|rx|rx
@@ -340,7 +256,7 @@ func (r *stellarCoreRunner) offlineInfo() (stellarcore.InfoResponse, error) {
 }
 
 func (r *stellarCoreRunner) createCmd(params ...string) (cmdI, error) {
-	err := r.createCheckDirectory()
+	err := r.establishStorageDirectory()
 	if err != nil {
 		return nil, err
 	}
