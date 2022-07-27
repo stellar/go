@@ -27,7 +27,7 @@ func ProcessTransaction(
 // GetCheckpointNumber returns the next checkpoint NUMBER (NOT the checkpoint
 // ledger sequence) corresponding to a given ledger sequence.
 func GetCheckpointNumber(ledger uint32) uint32 {
-	return checkpointManager.GetCheckpoint(ledger) / checkpointManager.GetCheckpointFrequency()
+	return 1 + (ledger / checkpointManager.GetCheckpointFrequency())
 }
 
 func ProcessAccounts(
