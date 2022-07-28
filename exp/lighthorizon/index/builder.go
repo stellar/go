@@ -112,6 +112,7 @@ func BuildIndices(
 		close(ch)
 	}()
 
+	chkProcessed := uint64(0)
 	processed := uint64(0)
 	for i := 0; i < parallel; i++ {
 		wg.Go(func() error {
@@ -128,12 +129,14 @@ func BuildIndices(
 
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
 				if nprocessed%97 == 0 {
-					printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
+					PrintProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
 				}
 
-				// Upload indices once per checkpoint to save memory
-				if err := indexStore.Flush(); err != nil {
-					return errors.Wrap(err, "flushing indices failed")
+				// Upload indices once every 10 checkpoints to save memory
+				if atomic.AddUint64(&chkProcessed, uint64(1))%10 == 0 {
+					if err := indexStore.Flush(); err != nil {
+						return errors.Wrap(err, "flushing indices failed")
+					}
 				}
 			}
 			return nil
@@ -144,7 +147,7 @@ func BuildIndices(
 		return indexBuilder, errors.Wrap(err, "one or more workers failed")
 	}
 
-	printProgress("Reading ledgers", processed, uint64(ledgerCount), startTime)
+	PrintProgress("Reading ledgers", processed, uint64(ledgerCount), startTime)
 
 	L.Infof("Processed %d ledgers via %d workers", processed, parallel)
 	L.Infof("Uploading indices to %s", targetUrl)
@@ -248,8 +251,8 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 	}
 
 	builder.lastBuiltLedgerWriteLock.Lock()
+	defer builder.lastBuiltLedgerWriteLock.Unlock()
 	builder.lastBuiltLedger = max(builder.lastBuiltLedger, ledgerRange.High)
-	builder.lastBuiltLedgerWriteLock.Unlock()
 
 	return nil
 }
@@ -320,13 +323,13 @@ func (builder *IndexBuilder) Watch(ctx context.Context) error {
 	}
 }
 
-func printProgress(prefix string, done, total uint64, startTime time.Time) {
+func PrintProgress(prefix string, done, total uint64, startTime time.Time) {
 	progress := float64(done) / float64(total)
 	elapsed := time.Since(startTime)
 
-	// Approximate based on how many ledgers are left and how long this much
+	// Approximate based on how many stuff is left to do and how long this much
 	// progress took, e.g. if 4/10 took 2s then 6/10 will "take" 3s (though this
-	// assumes consistent ledger load).
+	// assumes consistent load).
 	remaining := (float64(elapsed) / float64(done)) * float64(total-done)
 
 	var remainingStr string

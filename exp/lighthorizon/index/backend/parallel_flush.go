@@ -42,7 +42,7 @@ func parallelFlush(parallel uint32, allIndexes map[string]types.NamedIndices, f 
 	written := uint64(0)
 	for i := uint32(0); i < parallel; i++ {
 		wg.Add(1)
-		go func() {
+		go func(workerNum uint32) {
 			defer wg.Done()
 			for batch := range batches {
 				if err := f(batch); err != nil {
@@ -53,17 +53,18 @@ func parallelFlush(parallel uint32, allIndexes map[string]types.NamedIndices, f 
 				}
 
 				nwritten := atomic.AddUint64(&written, 1)
-				if nwritten%1000 == 0 {
-					log.Infof("Writing indexes... %d/%d %.2f%%", nwritten,
-						len(allIndexes),
-						(float64(nwritten)/float64(len(allIndexes)))*100)
+				if nwritten%1234 == 0 {
+					log.WithField("worker", workerNum).
+						Infof("Writing indices... %d/%d (%.2f%%)",
+							nwritten, len(allIndexes),
+							(float64(nwritten)/float64(len(allIndexes)))*100)
 				}
 
 				if nwritten == uint64(len(allIndexes)) {
 					close(batches)
 				}
 			}
-		}()
+		}(i)
 	}
 
 	wg.Wait()
