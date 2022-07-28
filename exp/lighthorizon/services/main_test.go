@@ -7,178 +7,176 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestItGetsTransactionsByAccount(tt *testing.T) {
-	// l=1586045, t=1, o=1
-	// cursor = 6812011404988417, checkpoint=24781
+var (
+	accountId      = "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
+	startLedgerSeq = 1586112
+)
 
-	cursor := int64(6812011404988417)
+func TestItGetsTransactionsByAccount(t *testing.T) {
 	ctx := context.Background()
-	passphrase := "White New England clam chowder"
-	archive, store := mockArchiveAndIndex(ctx, passphrase)
-	txService := TransactionsService{
-		Config: Config{
-			Archive:    archive,
-			IndexStore: store,
-			Passphrase: passphrase,
-		},
-	}
-	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
-	// this should start at next checkpoint
-	txs, err := txService.GetTransactionsByAccount(ctx, cursor, 1, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, txs, 1)
-	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, txs[0].TxIndex, int32(2))
+
+	// this is in the checkpoint range prior to the first active checkpoint
+	ledgerSeq := checkpointMgr.PrevCheckpoint(uint32(startLedgerSeq))
+	cursor := toid.New(int32(ledgerSeq), 1, 1).ToInt64()
+
+	t.Run("first", func(tt *testing.T) {
+		txService := newTransactionService(ctx)
+
+		txs, err := txService.GetTransactionsByAccount(ctx, cursor, 1, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, txs, 1)
+		require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.EqualValues(tt, txs[0].TxIndex, 2)
+	})
+
+	t.Run("without cursor", func(tt *testing.T) {
+		txService := newTransactionService(ctx)
+
+		txs, err := txService.GetTransactionsByAccount(ctx, 0, 1, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, txs, 1)
+		require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.EqualValues(tt, txs[0].TxIndex, 2)
+	})
+
+	t.Run("with limit", func(tt *testing.T) {
+		txService := newTransactionService(ctx)
+
+		txs, err := txService.GetTransactionsByAccount(ctx, cursor, 5, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, txs, 2)
+		require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.EqualValues(tt, txs[0].TxIndex, 2)
+		require.Equal(tt, txs[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
+		require.EqualValues(tt, txs[1].TxIndex, 1)
+	})
 }
 
-func TestItGetsTransactionsByAccountAndPageLimit(tt *testing.T) {
-	// l=1586045, t=1, o=1
-	// cursor = 6812011404988417, checkpoint=24781
-
-	cursor := int64(6812011404988417)
+func TestItGetsOperationsByAccount(t *testing.T) {
 	ctx := context.Background()
-	passphrase := "White New England clam chowder"
-	archive, store := mockArchiveAndIndex(ctx, passphrase)
-	txService := TransactionsService{
-		Config: Config{
-			Archive:    archive,
-			IndexStore: store,
-			Passphrase: passphrase,
-		},
-	}
-	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
-	// this should start at next checkpoint
-	txs, err := txService.GetTransactionsByAccount(ctx, cursor, 5, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, txs, 2)
-	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, txs[0].TxIndex, int32(2))
-	require.Equal(tt, txs[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
-	require.Equal(tt, txs[1].TxIndex, int32(1))
-}
 
-func TestItGetsOperationsByAccount(tt *testing.T) {
-	// l=1586045, t=1, o=1
-	// cursor = 6812011404988417, checkpoint=24781
+	// this is in the checkpoint range prior to the first active checkpoint
+	ledgerSeq := checkpointMgr.PrevCheckpoint(uint32(startLedgerSeq))
+	cursor := toid.New(int32(ledgerSeq), 1, 1).ToInt64()
 
-	cursor := int64(6812011404988417)
-	ctx := context.Background()
-	passphrase := "White New England clam chowder"
-	archive, store := mockArchiveAndIndex(ctx, passphrase)
-	opsService := OperationsService{
-		Config: Config{
-			Archive:    archive,
-			IndexStore: store,
-			Passphrase: passphrase,
-		},
-	}
-	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
-	// this should start at next checkpoint
-	ops, err := opsService.GetOperationsByAccount(ctx, cursor, 1, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, ops, 1)
-	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, ops[0].TxIndex, int32(2))
-}
+	t.Run("first", func(tt *testing.T) {
+		opsService := newOperationService(ctx)
 
-func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
-	// l=1586045, t=1, o=1
-	// cursor = 6812011404988417, checkpoint=24781
+		// this should start at next checkpoint
+		ops, err := opsService.GetOperationsByAccount(ctx, cursor, 1, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, ops, 1)
+		require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.Equal(tt, ops[0].TxIndex, int32(2))
 
-	cursor := int64(6812011404988417)
-	ctx := context.Background()
-	passphrase := "White New England clam chowder"
-	archive, store := mockArchiveAndIndex(ctx, passphrase)
-	opsService := OperationsService{
-		Config: Config{
-			Archive:    archive,
-			IndexStore: store,
-			Passphrase: passphrase,
-		},
-	}
-	accountId := "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
-	// this should start at next checkpoint
-	ops, err := opsService.GetOperationsByAccount(ctx, cursor, 5, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, ops, 2)
-	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, ops[0].TxIndex, int32(2))
-	require.Equal(tt, ops[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
-	require.Equal(tt, ops[1].TxIndex, int32(1))
+	})
+
+	t.Run("with limit", func(tt *testing.T) {
+		opsService := newOperationService(ctx)
+
+		// this should start at next checkpoint
+		ops, err := opsService.GetOperationsByAccount(ctx, cursor, 5, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, ops, 2)
+		require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.Equal(tt, ops[0].TxIndex, int32(2))
+		require.Equal(tt, ops[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
+		require.Equal(tt, ops[1].TxIndex, int32(1))
+	})
 }
 
 func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archive, index.Store) {
-
 	mockArchive := &archive.MockArchive{}
 	mockReaderLedger1 := &archive.MockLedgerTransactionReader{}
 	mockReaderLedger2 := &archive.MockLedgerTransactionReader{}
 	mockReaderLedger3 := &archive.MockLedgerTransactionReader{}
 	mockReaderLedgerTheRest := &archive.MockLedgerTransactionReader{}
 
-	expectedLedger1 := testLedger(1586112)
-	expectedLedger2 := testLedger(1586113)
-	expectedLedger3 := testLedger(1586114)
+	expectedLedger1 := testLedger(startLedgerSeq)
+	expectedLedger2 := testLedger(startLedgerSeq + 1)
+	expectedLedger3 := testLedger(startLedgerSeq + 2)
+
+	// throw an irrelevant account in there to make sure it's filtered
 	source := xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
-	source2 := xdr.MustAddress("GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX")
+	source2 := xdr.MustAddress(accountId)
+
 	// assert results iterate sequentially across ops-tx-ledgers
-	expectedLedger1Transaction1 := testLedgerTx(source, []int{34, 34}, 1)
-	expectedLedger1Transaction2 := testLedgerTx(source, []int{34}, 2)
-	expectedLedger2Transaction1 := testLedgerTx(source, []int{34}, 1)
-	expectedLedger2Transaction2 := testLedgerTx(source2, []int{34}, 2)
-	expectedLedger3Transaction1 := testLedgerTx(source2, []int{34}, 1)
-	expectedLedger3Transaction2 := testLedgerTx(source, []int{34}, 2)
+	expectedLedger1Tx1 := testLedgerTx(source, 1, 34, 35)
+	expectedLedger1Tx2 := testLedgerTx(source, 2, 34)
+	expectedLedger2Tx1 := testLedgerTx(source, 1, 34)
+	expectedLedger2Tx2 := testLedgerTx(source2, 2, 34)
+	expectedLedger3Tx1 := testLedgerTx(source2, 1, 34)
+	expectedLedger3Tx2 := testLedgerTx(source, 2, 34)
 
-	mockArchive.On("GetLedger", ctx, uint32(1586112)).Return(expectedLedger1, nil)
-	mockArchive.On("GetLedger", ctx, uint32(1586113)).Return(expectedLedger2, nil)
-	mockArchive.On("GetLedger", ctx, uint32(1586114)).Return(expectedLedger3, nil)
-	mockArchive.On("GetLedger", ctx, mock.Anything).Return(xdr.LedgerCloseMeta{}, nil)
+	mockArchive.
+		On("GetLedger", ctx, uint32(1586112)).Return(expectedLedger1, nil).
+		On("GetLedger", ctx, uint32(1586113)).Return(expectedLedger2, nil).
+		On("GetLedger", ctx, uint32(1586114)).Return(expectedLedger3, nil).
+		On("GetLedger", ctx, mock.Anything).Return(xdr.LedgerCloseMeta{}, nil)
 
-	mockArchive.On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger1).Return(mockReaderLedger1, nil)
-	mockArchive.On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger2).Return(mockReaderLedger2, nil)
-	mockArchive.On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger3).Return(mockReaderLedger3, nil)
-	mockArchive.On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, mock.Anything).Return(mockReaderLedgerTheRest, nil)
+	mockArchive.
+		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger1).Return(mockReaderLedger1, nil).
+		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger2).Return(mockReaderLedger2, nil).
+		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger3).Return(mockReaderLedger3, nil).
+		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, mock.Anything).Return(mockReaderLedgerTheRest, nil)
 
 	partialParticipants := make(map[string]struct{})
 	partialParticipants[source.Address()] = struct{}{}
+
 	allParticipants := make(map[string]struct{})
 	allParticipants[source.Address()] = struct{}{}
 	allParticipants[source2.Address()] = struct{}{}
 
-	mockArchive.On("GetTransactionParticipants", expectedLedger1Transaction1).Return(partialParticipants, nil)
-	mockArchive.On("GetTransactionParticipants", expectedLedger1Transaction2).Return(partialParticipants, nil)
-	mockArchive.On("GetTransactionParticipants", expectedLedger2Transaction1).Return(partialParticipants, nil)
-	mockArchive.On("GetTransactionParticipants", expectedLedger2Transaction2).Return(allParticipants, nil)
-	mockArchive.On("GetTransactionParticipants", expectedLedger3Transaction1).Return(allParticipants, nil)
-	mockArchive.On("GetTransactionParticipants", expectedLedger3Transaction2).Return(partialParticipants, nil)
+	mockArchive.
+		On("GetTransactionParticipants", expectedLedger1Tx1).Return(partialParticipants, nil).
+		On("GetTransactionParticipants", expectedLedger1Tx2).Return(partialParticipants, nil).
+		On("GetTransactionParticipants", expectedLedger2Tx1).Return(partialParticipants, nil).
+		On("GetTransactionParticipants", expectedLedger2Tx2).Return(allParticipants, nil).
+		On("GetTransactionParticipants", expectedLedger3Tx1).Return(allParticipants, nil).
+		On("GetTransactionParticipants", expectedLedger3Tx2).Return(partialParticipants, nil)
 
-	mockArchive.On("GetOperationParticipants", expectedLedger1Transaction1, mock.Anything, int(0)).Return(partialParticipants, nil)
-	mockArchive.On("GetOperationParticipants", expectedLedger1Transaction1, mock.Anything, int(1)).Return(partialParticipants, nil)
-	mockArchive.On("GetOperationParticipants", expectedLedger1Transaction2, mock.Anything, int(0)).Return(partialParticipants, nil)
-	mockArchive.On("GetOperationParticipants", expectedLedger2Transaction1, mock.Anything, int(0)).Return(partialParticipants, nil)
-	mockArchive.On("GetOperationParticipants", expectedLedger2Transaction2, mock.Anything, int(0)).Return(allParticipants, nil)
-	mockArchive.On("GetOperationParticipants", expectedLedger3Transaction1, mock.Anything, int(0)).Return(allParticipants, nil)
-	mockArchive.On("GetOperationParticipants", expectedLedger3Transaction2, mock.Anything, int(0)).Return(partialParticipants, nil)
+	mockArchive.
+		On("GetOperationParticipants", expectedLedger1Tx1, mock.Anything, int(0)).Return(partialParticipants, nil).
+		On("GetOperationParticipants", expectedLedger1Tx1, mock.Anything, int(1)).Return(partialParticipants, nil).
+		On("GetOperationParticipants", expectedLedger1Tx2, mock.Anything, int(0)).Return(partialParticipants, nil).
+		On("GetOperationParticipants", expectedLedger2Tx1, mock.Anything, int(0)).Return(partialParticipants, nil).
+		On("GetOperationParticipants", expectedLedger2Tx2, mock.Anything, int(0)).Return(allParticipants, nil).
+		On("GetOperationParticipants", expectedLedger3Tx1, mock.Anything, int(0)).Return(allParticipants, nil).
+		On("GetOperationParticipants", expectedLedger3Tx2, mock.Anything, int(0)).Return(partialParticipants, nil)
 
-	mockReaderLedger1.On("Read").Return(expectedLedger1Transaction1, nil).Once()
-	mockReaderLedger1.On("Read").Return(expectedLedger1Transaction2, nil).Once()
-	mockReaderLedger1.On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
-	mockReaderLedger2.On("Read").Return(expectedLedger2Transaction1, nil).Once()
-	mockReaderLedger2.On("Read").Return(expectedLedger2Transaction2, nil).Once()
-	mockReaderLedger2.On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
-	mockReaderLedger3.On("Read").Return(expectedLedger3Transaction1, nil).Once()
-	mockReaderLedger3.On("Read").Return(expectedLedger3Transaction2, nil).Once()
-	mockReaderLedger3.On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
-	mockReaderLedgerTheRest.On("Read").Return(archive.LedgerTransaction{}, io.EOF)
+	mockReaderLedger1.
+		On("Read").Return(expectedLedger1Tx1, nil).Once().
+		On("Read").Return(expectedLedger1Tx2, nil).Once().
+		On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
 
+	mockReaderLedger2.
+		On("Read").Return(expectedLedger2Tx1, nil).Once().
+		On("Read").Return(expectedLedger2Tx2, nil).Once().
+		On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
+
+	mockReaderLedger3.
+		On("Read").Return(expectedLedger3Tx1, nil).Once().
+		On("Read").Return(expectedLedger3Tx2, nil).Once().
+		On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
+
+	mockReaderLedgerTheRest.
+		On("Read").Return(archive.LedgerTransaction{}, io.EOF)
+
+	// should be 24784
+	firstActiveChk := uint32(index.GetCheckpointNumber(uint32(startLedgerSeq)))
 	mockStore := &index.MockStore{}
-	mockStore.On("NextActive", "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX", mock.Anything, uint32(24782)).Return(uint32(24783), nil)
-	mockStore.On("NextActive", "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX", mock.Anything, uint32(24783)).Return(uint32(24784), nil)
-	mockStore.On("NextActive", "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX", mock.Anything, uint32(24784)).Return(uint32(0), io.EOF)
+	mockStore.
+		On("NextActive", accountId, mock.Anything, uint32(0)).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk-1).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk+1).Return(firstActiveChk+1, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk+2).Return(uint32(0), io.EOF)
 
 	return mockArchive, mockStore
 }
@@ -195,8 +193,7 @@ func testLedger(seq int) xdr.LedgerCloseMeta {
 	}
 }
 
-func testLedgerTx(source xdr.AccountId, bumpTos []int, txIndex uint32) archive.LedgerTransaction {
-
+func testLedgerTx(source xdr.AccountId, txIndex uint32, bumpTos ...int) archive.LedgerTransaction {
 	ops := []xdr.Operation{}
 	for _, bumpTo := range bumpTos {
 		ops = append(ops, xdr.Operation{
@@ -223,4 +220,28 @@ func testLedgerTx(source xdr.AccountId, bumpTos []int, txIndex uint32) archive.L
 	}
 
 	return tx
+}
+
+func newTransactionService(ctx context.Context) TransactionsService {
+	passphrase := "White New England clam chowder"
+	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	return TransactionsService{
+		Config: Config{
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+		},
+	}
+}
+
+func newOperationService(ctx context.Context) OperationsService {
+	passphrase := "White New England clam chowder"
+	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	return OperationsService{
+		Config: Config{
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+		},
+	}
 }
