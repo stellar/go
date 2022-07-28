@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/support/errors"
@@ -80,7 +79,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
 					OpIndex:             int32(operationOrder),
 				})
 
-				if uint64(len(ops)) >= limit {
+				if uint64(len(ops)) == limit {
 					return true, nil
 				}
 			}
@@ -111,7 +110,7 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context,
 			NetworkPassphrase:   ts.Config.Passphrase,
 		})
 
-		return (uint64(len(txs)) >= limit), nil
+		return uint64(len(txs)) == limit, nil
 	}
 
 	if err := searchTxByAccount(ctx, cursor, accountId, ts.Config, txsCallback); err != nil {
@@ -180,8 +179,4 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 
 		nextLedger = getLedgerFromCursor(cursor)
 	}
-}
-
-func getLedgerFromCursor(cursor int64) uint32 {
-	return uint32(toid.Parse(cursor).LedgerSequence)
 }

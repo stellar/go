@@ -166,7 +166,9 @@ func (i *CheckpointIndex) Merge(other *CheckpointIndex) error {
 	return err
 }
 
-// NextActive returns the next checkpoint (inclusive) where this index is active.
+// NextActive returns the next checkpoint (inclusive) where this index is
+// active. "Inclusive" means that if the index is active at `checkpoint`, this
+// returns `checkpoint`.
 func (i *CheckpointIndex) NextActive(checkpoint uint32) (uint32, error) {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()

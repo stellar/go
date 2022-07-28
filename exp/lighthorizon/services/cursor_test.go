@@ -27,9 +27,7 @@ func TestAccountTransactionCursorManager(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	for _, checkpoint := range []uint32{
-		1, 5, 10,
-	} {
+	for _, checkpoint := range []uint32{1, 5, 10} {
 		require.NoError(t, store.AddParticipantsToIndexes(
 			checkpoint, allTransactionsIndex, []string{accountId}))
 	}
@@ -39,15 +37,18 @@ func TestAccountTransactionCursorManager(t *testing.T) {
 	cursor := toid.New(1, 1, 1)
 	var nextCursor int64
 
+	// first checkpoint works
 	nextCursor, err = cursorMgr.Begin(cursor.ToInt64())
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, getLedgerFromCursor(nextCursor))
 
+	// cursor is preserved if mid-active-range
 	cursor.LedgerSequence = freq / 2
 	nextCursor, err = cursorMgr.Begin(cursor.ToInt64())
 	require.NoError(t, err)
 	assert.EqualValues(t, cursor.LedgerSequence, getLedgerFromCursor(nextCursor))
 
+	// cursor jumps ahead if not active
 	cursor.LedgerSequence = 2 * freq
 	nextCursor, err = cursorMgr.Begin(cursor.ToInt64())
 	require.NoError(t, err)
@@ -59,16 +60,19 @@ func TestAccountTransactionCursorManager(t *testing.T) {
 		assert.EqualValues(t, 4*freq+i, getLedgerFromCursor(nextCursor))
 	}
 
+	// cursor jumps to next active checkpoint
 	nextCursor, err = cursorMgr.Advance()
 	require.NoError(t, err)
 	assert.EqualValues(t, 9*freq, getLedgerFromCursor(nextCursor))
 
+	// cursor increments
 	for i := int32(1); i < freq; i++ {
 		nextCursor, err = cursorMgr.Advance()
 		require.NoError(t, err)
 		assert.EqualValues(t, 9*freq+i, getLedgerFromCursor(nextCursor))
 	}
 
+	// cursor stops when no more actives
 	_, err = cursorMgr.Advance()
 	assert.ErrorIs(t, err, io.EOF)
 }
