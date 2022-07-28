@@ -21,7 +21,7 @@ func Example_ledgerentrieshistoryarchive() {
 		archiveURL,
 		historyarchive.ArchiveOptions{
 			ConnectOptions: storage.ConnectOptions{
-				Context: context.TODO()
+				Context: context.TODO(),
 			},
 		},
 	)
