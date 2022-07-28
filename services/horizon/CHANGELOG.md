@@ -7,6 +7,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
+### Breaking Changes
+
+* Update core version to 19.3.0 ([4485](https://github.com/stellar/go/pull/4485)).
+* Pass `--console` to captive core. This is due to a breaking change in stellar-core 19.3.0 ([4487](https://github.com/stellar/go/pull/4487)).
+
+### Changes
+
 * Run postgres autovacuum on `history_trades_60000` table more frequently. ([4412](https://github.com/stellar/go/pull/4412)).
 * Change `protocols/horizon.Transaction.AccountSequence` to `int64` from `string`. ([4409](https://github.com/stellar/go/pull/4409)).
 * Add missing signer key type names. ([4429](https://github.com/stellar/go/pull/4429)).
