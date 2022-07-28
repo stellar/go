@@ -7,7 +7,6 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
@@ -16,78 +15,80 @@ import (
 
 var (
 	accountId      = "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
-	checkpointFreq = int32(historyarchive.DefaultCheckpointFrequency)
+	startLedgerSeq = 1586112
 )
 
-func TestItGetsTransactionsByAccount(tt *testing.T) {
+func TestItGetsTransactionsByAccount(t *testing.T) {
 	ctx := context.Background()
-	txService := newTransactionService(ctx)
 
-	// l=1586045, t=1, o=1
-	// cursor = 6812011404988417, checkpoint=24781
-	ledgerSeq := uint32(1586045)
+	// this is in the checkpoint range prior to the first active checkpoint
+	ledgerSeq := checkpointMgr.PrevCheckpoint(uint32(startLedgerSeq))
 	cursor := toid.New(int32(ledgerSeq), 1, 1).ToInt64()
-	require.Equal(tt, 24782, int(index.GetCheckpointNumber(ledgerSeq))) // sanity
-	require.Equal(tt, int64(6812011404988417), cursor)                  // sanity
 
-	// this should start at next checkpoint
-	txs, err := txService.GetTransactionsByAccount(ctx, cursor, 1, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, txs, 1)
-	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, txs[0].TxIndex, int32(2))
+	t.Run("first", func(tt *testing.T) {
+		txService := newTransactionService(ctx)
+
+		txs, err := txService.GetTransactionsByAccount(ctx, cursor, 1, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, txs, 1)
+		require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.EqualValues(tt, txs[0].TxIndex, 2)
+	})
+
+	t.Run("without cursor", func(tt *testing.T) {
+		txService := newTransactionService(ctx)
+
+		txs, err := txService.GetTransactionsByAccount(ctx, 0, 1, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, txs, 1)
+		require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.EqualValues(tt, txs[0].TxIndex, 2)
+	})
+
+	t.Run("with limit", func(tt *testing.T) {
+		txService := newTransactionService(ctx)
+
+		txs, err := txService.GetTransactionsByAccount(ctx, cursor, 5, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, txs, 2)
+		require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.EqualValues(tt, txs[0].TxIndex, 2)
+		require.Equal(tt, txs[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
+		require.EqualValues(tt, txs[1].TxIndex, 1)
+	})
 }
 
-func TestItGetsTransactionsByAccountAndPageLimit(tt *testing.T) {
+func TestItGetsOperationsByAccount(t *testing.T) {
 	ctx := context.Background()
-	txService := newTransactionService(ctx)
 
-	checkpoint := int32(24781)
-	cursor := toid.New(checkpoint*checkpointFreq, 1, 1).ToInt64()
-	require.Equal(tt, int64(6812011404988417), cursor)
+	// this is in the checkpoint range prior to the first active checkpoint
+	ledgerSeq := checkpointMgr.PrevCheckpoint(uint32(startLedgerSeq))
+	cursor := toid.New(int32(ledgerSeq), 1, 1).ToInt64()
 
-	// this should start at next checkpoint
-	txs, err := txService.GetTransactionsByAccount(ctx, cursor, 5, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, txs, 2)
-	require.Equal(tt, txs[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, txs[0].TxIndex, int32(2))
-	require.Equal(tt, txs[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
-	require.Equal(tt, txs[1].TxIndex, int32(1))
-}
+	t.Run("first", func(tt *testing.T) {
+		opsService := newOperationService(ctx)
 
-func TestItGetsOperationsByAccount(tt *testing.T) {
-	ctx := context.Background()
-	opsService := newOperationService(ctx)
+		// this should start at next checkpoint
+		ops, err := opsService.GetOperationsByAccount(ctx, cursor, 1, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, ops, 1)
+		require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.Equal(tt, ops[0].TxIndex, int32(2))
 
-	// l=1586045, t=1, o=1
-	// cursor = 6812011404988417, checkpoint=24781
-	cursor := int64(6812011404988417)
+	})
 
-	// this should start at next checkpoint
-	ops, err := opsService.GetOperationsByAccount(ctx, cursor, 1, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, ops, 1)
-	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, ops[0].TxIndex, int32(2))
-}
+	t.Run("with limit", func(tt *testing.T) {
+		opsService := newOperationService(ctx)
 
-func TestItGetsOperationsByAccountAndPageLimit(tt *testing.T) {
-	ctx := context.Background()
-	opsService := newOperationService(ctx)
-
-	// cursor = 6812011404988417, checkpoint=24781
-	cursor := toid.New(1586045, 1, 1).ToInt64()
-	require.Equal(tt, int64(6812011404988417), cursor)
-
-	// this should start at next checkpoint
-	ops, err := opsService.GetOperationsByAccount(ctx, cursor, 5, accountId)
-	require.NoError(tt, err)
-	require.Len(tt, ops, 2)
-	require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
-	require.Equal(tt, ops[0].TxIndex, int32(2))
-	require.Equal(tt, ops[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
-	require.Equal(tt, ops[1].TxIndex, int32(1))
+		// this should start at next checkpoint
+		ops, err := opsService.GetOperationsByAccount(ctx, cursor, 5, accountId)
+		require.NoError(tt, err)
+		require.Len(tt, ops, 2)
+		require.Equal(tt, ops[0].LedgerHeader.LedgerSeq, xdr.Uint32(1586113))
+		require.Equal(tt, ops[0].TxIndex, int32(2))
+		require.Equal(tt, ops[1].LedgerHeader.LedgerSeq, xdr.Uint32(1586114))
+		require.Equal(tt, ops[1].TxIndex, int32(1))
+	})
 }
 
 func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archive, index.Store) {
@@ -97,10 +98,9 @@ func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archiv
 	mockReaderLedger3 := &archive.MockLedgerTransactionReader{}
 	mockReaderLedgerTheRest := &archive.MockLedgerTransactionReader{}
 
-	ledgerSeq := 1586112
-	expectedLedger1 := testLedger(ledgerSeq)
-	expectedLedger2 := testLedger(ledgerSeq + 1)
-	expectedLedger3 := testLedger(ledgerSeq + 2)
+	expectedLedger1 := testLedger(startLedgerSeq)
+	expectedLedger2 := testLedger(startLedgerSeq + 1)
+	expectedLedger3 := testLedger(startLedgerSeq + 2)
 
 	// throw an irrelevant account in there to make sure it's filtered
 	source := xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
@@ -168,12 +168,16 @@ func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archiv
 	mockReaderLedgerTheRest.
 		On("Read").Return(archive.LedgerTransaction{}, io.EOF)
 
-	checkpoint := index.GetCheckpointNumber(uint32(ledgerSeq))
+	// should be 24784
+	firstActiveChk := uint32(index.GetCheckpointNumber(uint32(startLedgerSeq)))
 	mockStore := &index.MockStore{}
 	mockStore.
-		On("NextActive", accountId, mock.Anything, uint32(checkpoint)).Return(uint32(checkpoint+1), nil).
-		On("NextActive", accountId, mock.Anything, uint32(checkpoint+1)).Return(uint32(checkpoint+2), nil).
-		On("NextActive", accountId, mock.Anything, uint32(checkpoint+2)).Return(uint32(0), io.EOF)
+		On("NextActive", accountId, mock.Anything, uint32(0)).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk-2).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk-1).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk).Return(firstActiveChk+1, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk+1).Return(firstActiveChk+2, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk+2).Return(0, io.EOF)
 
 	return mockArchive, mockStore
 }
