@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-START="${START:=0}"
+START="${START:=2}"
 END="${END:=0}"
 CONTINUE="${CONTINUE:=false}"
 # Writing to /latest is disabled by default to avoid race conditions between parallel container runs
