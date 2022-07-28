@@ -2,6 +2,7 @@ package filters
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -13,8 +14,21 @@ var (
 
 	// the filter config cache will be checked against latest from db at most once per each of this interval.
 	//lint:ignore ST1011, don't need the linter warn on literal assignment
-	FilterConfigCheckIntervalSeconds time.Duration = 100
+	filterConfigCheckIntervalSeconds     time.Duration = 100
+	filterConfigCheckIntervalSecondsLock sync.RWMutex
 )
+
+func GetFilterConfigCheckIntervalSeconds() time.Duration {
+	filterConfigCheckIntervalSecondsLock.RLock()
+	defer filterConfigCheckIntervalSecondsLock.RUnlock()
+	return filterConfigCheckIntervalSeconds
+}
+
+func SetFilterConfigCheckIntervalSeconds(t time.Duration) {
+	filterConfigCheckIntervalSecondsLock.Lock()
+	defer filterConfigCheckIntervalSecondsLock.Unlock()
+	filterConfigCheckIntervalSeconds = t
+}
 
 var (
 	LOG = log.WithFields(log.F{
@@ -43,7 +57,7 @@ func NewFilters() Filters {
 // rebuild the list on expiration time interval. Method is NOT thread-safe.
 func (f *filtersCache) GetFilters(filterQ history.QFilter, ctx context.Context) []processors.LedgerTransactionFilterer {
 	// only attempt to refresh filter config cache state at configured interval limit
-	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + int64(FilterConfigCheckIntervalSeconds.Seconds())) {
+	if time.Now().Unix() < (f.lastFilterConfigCheckUnixEpoch + int64(GetFilterConfigCheckIntervalSeconds().Seconds())) {
 		return f.convertCacheToList()
 	}
 
