@@ -4,11 +4,7 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/exp/lighthorizon/services"
@@ -71,14 +67,5 @@ if left empty, uses a temporary directory`)
 		},
 	}
 
-	router := chi.NewMux()
-	router.Route("/accounts/{account_id}", func(r chi.Router) {
-		r.MethodFunc(http.MethodGet, "/transactions", actions.NewTXByAccountHandler(lightHorizon))
-		r.MethodFunc(http.MethodGet, "/operations", actions.NewOpsByAccountHandler(lightHorizon))
-	})
-
-	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
-	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
-
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":8080", lightHorizonHTTPHandler(registry, lightHorizon)))
 }
