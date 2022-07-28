@@ -1,8 +1,4 @@
-// Copyright 2016 Stellar Development Foundation and contributors. Licensed
-// under the Apache License, Version 2.0. See the COPYING file at the root
-// of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
-
-package historyarchive
+package storage
 
 import (
 	"io"
@@ -13,9 +9,9 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-// FsCacheBackend fronts another backend with a local filesystem cache
-type FsCacheBackend struct {
-	ArchiveBackend
+// OnDiskCache fronts another storage with a local filesystem cache
+type OnDiskCache struct {
+	Storage
 	dir      string
 	maxFiles int
 	lru      *lru.Cache
@@ -23,10 +19,10 @@ type FsCacheBackend struct {
 	log *log.Entry
 }
 
-// MakeFsCacheBackend wraps an ArchiveBackend with a local filesystem cache in
+// MakeOnDiskCache wraps an Storage with a local filesystem cache in
 // `dir`. If dir is blank, a temporary directory will be created. If `maxFiles`
 // is zero, a default (90 days of ledgers) is used.
-func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (ArchiveBackend, error) {
+func MakeOnDiskCache(upstream Storage, dir string, maxFiles uint) (Storage, error) {
 	if dir == "" {
 		tmp, err := os.MkdirTemp(os.TempDir(), "stellar-horizon-*")
 		if err != nil {
@@ -46,11 +42,11 @@ func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (Arc
 		WithField("size", maxFiles)
 	backendLog.Info("Filesystem cache configured")
 
-	backend := &FsCacheBackend{
-		ArchiveBackend: upstream,
-		dir:            dir,
-		maxFiles:       int(maxFiles),
-		log:            backendLog,
+	backend := &OnDiskCache{
+		Storage:  upstream,
+		dir:      dir,
+		maxFiles: int(maxFiles),
+		log:      backendLog,
 	}
 
 	cache, err := lru.NewWithEvict(int(maxFiles), backend.onEviction)
@@ -65,7 +61,7 @@ func MakeFsCacheBackend(upstream ArchiveBackend, dir string, maxFiles uint) (Arc
 // GetFile retrieves the file contents from the local cache if present.
 // Otherwise, it returns the same result that the wrapped backend returns and
 // adds that result into the local cache, if possible.
-func (b *FsCacheBackend) GetFile(filepath string) (io.ReadCloser, error) {
+func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 	L := b.log.WithField("key", filepath)
 	localPath := path.Join(b.dir, filepath)
 
@@ -84,7 +80,7 @@ func (b *FsCacheBackend) GetFile(filepath string) (io.ReadCloser, error) {
 
 		// Since it's not on-disk, pull it from the remote backend, shove it
 		// into the cache, and write it to disk.
-		remote, err := b.ArchiveBackend.GetFile(filepath)
+		remote, err := b.Storage.GetFile(filepath)
 		if err != nil {
 			return remote, err
 		}
@@ -118,7 +114,7 @@ func (b *FsCacheBackend) GetFile(filepath string) (io.ReadCloser, error) {
 // Exists shortcuts an existence check by checking if it exists in the cache.
 // Otherwise, it returns the same result as the wrapped backend. Note that in
 // the latter case, the cache isn't modified.
-func (b *FsCacheBackend) Exists(filepath string) (bool, error) {
+func (b *OnDiskCache) Exists(filepath string) (bool, error) {
 	localPath := path.Join(b.dir, filepath)
 	b.log.WithField("key", filepath).Debug("checking existence")
 
@@ -128,13 +124,13 @@ func (b *FsCacheBackend) Exists(filepath string) (bool, error) {
 		return true, nil
 	}
 
-	return b.ArchiveBackend.Exists(filepath)
+	return b.Storage.Exists(filepath)
 }
 
 // Size will return the size of the file found in the cache if possible.
 // Otherwise, it returns the same result as the wrapped backend. Note that in
 // the latter case, the cache isn't modified.
-func (b *FsCacheBackend) Size(filepath string) (int64, error) {
+func (b *OnDiskCache) Size(filepath string) (int64, error) {
 	localPath := path.Join(b.dir, filepath)
 	L := b.log.WithField("key", filepath)
 
@@ -150,13 +146,13 @@ func (b *FsCacheBackend) Size(filepath string) (int64, error) {
 		b.lru.Remove(localPath) // stale cache?
 	}
 
-	return b.ArchiveBackend.Size(filepath)
+	return b.Storage.Size(filepath)
 }
 
 // PutFile writes to the given `filepath` from the given `in` reader, also
 // writing it to the local cache if possible. It returns the same result as the
 // wrapped backend.
-func (b *FsCacheBackend) PutFile(filepath string, in io.ReadCloser) error {
+func (b *OnDiskCache) PutFile(filepath string, in io.ReadCloser) error {
 	L := log.WithField("key", filepath)
 	L.Debug("putting file")
 
@@ -169,18 +165,18 @@ func (b *FsCacheBackend) PutFile(filepath string, in io.ReadCloser) error {
 		in = teeReadCloser(in, local)
 	}
 
-	return b.ArchiveBackend.PutFile(filepath, in)
+	return b.Storage.PutFile(filepath, in)
 }
 
 // Close purges the cache, then forwards the call to the wrapped backend.
-func (b *FsCacheBackend) Close() error {
+func (b *OnDiskCache) Close() error {
 	// We only purge the cache, leaving the filesystem untouched:
 	// https://github.com/stellar/go/pull/4457#discussion_r929352643
 	b.lru.Purge()
-	return b.ArchiveBackend.Close()
+	return b.Storage.Close()
 }
 
-func (b *FsCacheBackend) onEviction(key, value interface{}) {
+func (b *OnDiskCache) onEviction(key, value interface{}) {
 	path := key.(string)
 	if err := os.Remove(path); err != nil { // best effort removal
 		b.log.WithError(err).
@@ -189,7 +185,7 @@ func (b *FsCacheBackend) onEviction(key, value interface{}) {
 	}
 }
 
-func (b *FsCacheBackend) createLocal(filepath string) (*os.File, error) {
+func (b *OnDiskCache) createLocal(filepath string) (*os.File, error) {
 	localPath := path.Join(b.dir, filepath)
 	if err := os.MkdirAll(path.Dir(localPath), 0755 /* drwxr-xr-x */); err != nil {
 		return nil, err

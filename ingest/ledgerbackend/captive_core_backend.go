@@ -11,6 +11,7 @@ import (
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -154,10 +155,12 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	archivePool, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
-		historyarchive.ConnectOptions{
+		historyarchive.ArchiveOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
-			Context:             config.Context,
+			ConnectOptions: storage.ConnectOptions{
+				Context: config.Context,
+			},
 		},
 	)
 

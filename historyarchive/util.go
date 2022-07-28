@@ -7,10 +7,11 @@ package historyarchive
 import (
 	"bufio"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"path"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func makeTicker(onTick func(uint)) chan bool {

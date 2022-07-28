@@ -21,7 +21,7 @@ type ArchivePool []ArchiveInterface
 // If none of the archives work, this returns the error message of the last
 // failed archive. Note that the errors for each individual archive are hard to
 // track if there's success overall.
-func NewArchivePool(archiveURLs []string, config ConnectOptions) (ArchivePool, error) {
+func NewArchivePool(archiveURLs []string, opts ArchiveOptions) (ArchivePool, error) {
 	if len(archiveURLs) <= 0 {
 		return nil, errors.New("No history archives provided")
 	}
@@ -33,11 +33,7 @@ func NewArchivePool(archiveURLs []string, config ConnectOptions) (ArchivePool, e
 	for _, url := range archiveURLs {
 		archive, err := Connect(
 			url,
-			ConnectOptions{
-				NetworkPassphrase:   config.NetworkPassphrase,
-				CheckpointFrequency: config.CheckpointFrequency,
-				Context:             config.Context,
-			},
+			opts,
 		)
 
 		if err != nil {
