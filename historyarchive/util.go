@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net/http"
 	"path"
 
 	log "github.com/sirupsen/logrus"
@@ -137,24 +136,4 @@ func drainErrors(errs chan error) uint32 {
 		count += noteError(e)
 	}
 	return count
-}
-
-func logReq(r *http.Request) {
-	if r == nil {
-		return
-	}
-	logFields := log.Fields{"method": r.Method, "url": r.URL.String()}
-	log.WithFields(logFields).Trace("http: Req")
-}
-
-func logResp(r *http.Response) {
-	if r == nil || r.Request == nil {
-		return
-	}
-	logFields := log.Fields{"method": r.Request.Method, "status": r.Status, "url": r.Request.URL.String()}
-	if r.StatusCode >= 200 && r.StatusCode < 400 {
-		log.WithFields(logFields).Trace("http: OK")
-	} else {
-		log.WithFields(logFields).Warn("http: Bad")
-	}
 }
