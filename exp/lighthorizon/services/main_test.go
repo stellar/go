@@ -173,11 +173,10 @@ func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archiv
 	mockStore := &index.MockStore{}
 	mockStore.
 		On("NextActive", accountId, mock.Anything, uint32(0)).Return(firstActiveChk, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk-2).Return(firstActiveChk, nil).
 		On("NextActive", accountId, mock.Anything, firstActiveChk-1).Return(firstActiveChk, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk).Return(firstActiveChk+1, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk+1).Return(firstActiveChk+2, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk+2).Return(0, io.EOF)
+		On("NextActive", accountId, mock.Anything, firstActiveChk).Return(firstActiveChk, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk+1).Return(firstActiveChk+1, nil).
+		On("NextActive", accountId, mock.Anything, firstActiveChk+2).Return(uint32(0), io.EOF)
 
 	return mockArchive, mockStore
 }
