@@ -235,7 +235,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 }
 
 func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
-	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
+	allParams := append([]string{"--conf", r.getConfFileName(), "--console"}, params...)
 	cmd := exec.Command(r.executablePath, allParams...)
 	cmd.Dir = r.storagePath
 	cmd.Stdout = r.getLogLineWriter()
