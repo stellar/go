@@ -363,6 +363,7 @@ CREATE TABLE history_operation_claimable_balances (
 
 CREATE UNIQUE INDEX "index_history_operation_claimable_balances_on_ids" ON history_operation_claimable_balances USING btree (history_operation_id , history_claimable_balance_id);
 CREATE INDEX "index_history_operation_claimable_balances_on_operation_id" ON history_operation_claimable_balances USING btree (history_operation_id);
+CREATE INDEX "index_history_operation_claimable_balances_on_id" ON history_operation_claimable_balances USING btree (history_claimable_balance_id);
 
 CREATE TABLE history_transaction_claimable_balances (
     history_transaction_id bigint NOT NULL,
@@ -371,6 +372,7 @@ CREATE TABLE history_transaction_claimable_balances (
 
 CREATE UNIQUE INDEX "index_history_transaction_claimable_balances_on_ids" ON history_transaction_claimable_balances USING btree (history_transaction_id , history_claimable_balance_id);
 CREATE INDEX "index_history_transaction_claimable_balances_on_transaction_id" ON history_transaction_claimable_balances USING btree (history_transaction_id);
+CREATE INDEX "index_history_transaction_claimable_balances_on_id" ON history_transaction_claimable_balances USING btree (history_claimable_balance_id);
 
 
 INSERT INTO history_claimable_balances VALUES (1, '00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9');
@@ -1503,6 +1505,7 @@ CREATE TABLE history_operation_liquidity_pools (
 
 CREATE UNIQUE INDEX index_history_operation_liquidity_pools_on_ids ON history_operation_liquidity_pools USING btree (history_operation_id , history_liquidity_pool_id);
 CREATE INDEX index_history_operation_liquidity_pools_on_operation_id ON history_operation_liquidity_pools USING btree (history_operation_id);
+CREATE INDEX index_history_operation_liquidity_pools_on_id ON history_operation_liquidity_pools USING btree (history_liquidity_pool_id);
 
 CREATE TABLE history_transaction_liquidity_pools (
     history_transaction_id bigint NOT NULL,
@@ -1511,6 +1514,7 @@ CREATE TABLE history_transaction_liquidity_pools (
 
 CREATE UNIQUE INDEX index_history_transaction_liquidity_pools_on_ids ON history_transaction_liquidity_pools USING btree (history_transaction_id , history_liquidity_pool_id);
 CREATE INDEX index_history_transaction_liquidity_pools_on_transaction_id ON history_transaction_liquidity_pools USING btree (history_transaction_id);
+CREATE INDEX index_history_transaction_liquidity_pools_on_id ON history_transaction_liquidity_pools USING btree (history_liquidity_pool_id);
 
 ALTER TABLE trust_lines ADD liquidity_pool_id text;
 CREATE INDEX trust_lines_by_liquidity_pool_id ON trust_lines USING BTREE(liquidity_pool_id);
