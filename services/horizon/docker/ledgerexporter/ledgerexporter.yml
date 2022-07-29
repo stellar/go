@@ -36,7 +36,7 @@ type: Opaque
 data:
   AWS_REGION: <base64 encoded value here>
   AWS_ACCESS_KEY_ID: <base64 encoded value here>
-  AWS_SECRET_ACCESS_KEY: <base64 encoded value here>=  
+  AWS_SECRET_ACCESS_KEY: <base64 encoded value here>  
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -56,6 +56,8 @@ spec:
     metadata:
       annotations:
         fluxcd.io/ignore: "true"
+        # if we expect to add metrics at some point to ledgerexporter
+        # this just needs to be set to true
         prometheus.io/port: "6060"
         prometheus.io/scrape: "false"
       labels:
