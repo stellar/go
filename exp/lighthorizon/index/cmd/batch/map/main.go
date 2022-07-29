@@ -71,15 +71,15 @@ func NewBatchConfig() (*BatchConfig, error) {
 	networkPassphrase := os.Getenv(networkPassphraseEnv)
 	switch networkPassphrase {
 	case "":
-		log.Warnf("%s not specified, defaulting to 'pubnet'", networkPassphraseEnv)
+		log.Warnf("%s not specified, defaulting to 'testnet'", networkPassphraseEnv)
 		fallthrough
-	case "pubnet":
-		networkPassphrase = network.PublicNetworkPassphrase
 	case "testnet":
 		networkPassphrase = network.TestNetworkPassphrase
+	case "pubnet":
+		networkPassphrase = network.PublicNetworkPassphrase
 	default:
-		return nil, fmt.Errorf("%s must be 'pubnet' or 'testnet', got '%s'",
-			networkPassphraseEnv, networkPassphrase)
+		log.Warnf("%s is not a recognized shortcut ('pubnet' or 'testnet')",
+			networkPassphraseEnv)
 	}
 	log.Infof("Using network passphrase '%s'", networkPassphrase)
 
