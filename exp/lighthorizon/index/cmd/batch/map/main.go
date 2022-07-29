@@ -16,16 +16,19 @@ import (
 
 type BatchConfig struct {
 	historyarchive.Range
-	TxMetaSourceUrl, IndexTargetUrl string
+	TxMetaSourceUrl   string
+	IndexTargetUrl    string
+	NetworkPassphrase string
 }
 
 const (
-	batchSizeEnv       = "BATCH_SIZE"
-	jobIndexEnv        = "AWS_BATCH_JOB_ARRAY_INDEX"
-	firstCheckpointEnv = "FIRST_CHECKPOINT"
-	txmetaSourceUrlEnv = "TXMETA_SOURCE"
-	indexTargetUrlEnv  = "INDEX_TARGET"
-	workerCountEnv     = "WORKER_COUNT"
+	batchSizeEnv         = "BATCH_SIZE"
+	jobIndexEnv          = "AWS_BATCH_JOB_ARRAY_INDEX"
+	firstCheckpointEnv   = "FIRST_CHECKPOINT"
+	txmetaSourceUrlEnv   = "TXMETA_SOURCE"
+	indexTargetUrlEnv    = "INDEX_TARGET"
+	workerCountEnv       = "WORKER_COUNT"
+	networkPassphraseEnv = "NETWORK_PASSPHRASE"
 )
 
 func NewBatchConfig() (*BatchConfig, error) {
@@ -65,12 +68,28 @@ func NewBatchConfig() (*BatchConfig, error) {
 		return nil, errors.New("required parameter " + txmetaSourceUrlEnv)
 	}
 
+	networkPassphrase := os.Getenv(networkPassphraseEnv)
+	switch networkPassphrase {
+	case "":
+		log.Warnf("%s not specified, defaulting to 'testnet'", networkPassphraseEnv)
+		fallthrough
+	case "testnet":
+		networkPassphrase = network.TestNetworkPassphrase
+	case "pubnet":
+		networkPassphrase = network.PublicNetworkPassphrase
+	default:
+		log.Warnf("%s is not a recognized shortcut ('pubnet' or 'testnet')",
+			networkPassphraseEnv)
+	}
+	log.Infof("Using network passphrase '%s'", networkPassphrase)
+
 	firstLedger := uint32(firstCheckpoint + batchSize*jobIndex)
 	lastLedger := firstLedger + uint32(batchSize) - 1
 	return &BatchConfig{
-		Range:           historyarchive.Range{Low: firstLedger, High: lastLedger},
-		TxMetaSourceUrl: txmetaSourceUrl,
-		IndexTargetUrl:  fmt.Sprintf("%s%cjob_%d", indexTargetRootUrl, os.PathSeparator, jobIndex),
+		Range:             historyarchive.Range{Low: firstLedger, High: lastLedger},
+		TxMetaSourceUrl:   txmetaSourceUrl,
+		IndexTargetUrl:    fmt.Sprintf("%s%cjob_%d", indexTargetRootUrl, os.PathSeparator, jobIndex),
+		NetworkPassphrase: networkPassphrase,
 	}, nil
 }
 
@@ -103,7 +122,7 @@ func main() {
 		context.Background(),
 		batch.TxMetaSourceUrl,
 		batch.IndexTargetUrl,
-		network.TestNetworkPassphrase,
+		batch.NetworkPassphrase,
 		batch.Range,
 		[]string{
 			"accounts_unbacked",

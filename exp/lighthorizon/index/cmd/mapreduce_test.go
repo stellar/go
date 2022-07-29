@@ -14,6 +14,7 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -106,7 +107,8 @@ func RunMapTest(t *testing.T) (uint32, uint32, string) {
 	mapTestCmd.Env = append(os.Environ(),
 		fmt.Sprintf("BATCH_SIZE=%d", batchSize),
 		fmt.Sprintf("FIRST_LEDGER=%d", startLedger),
-		fmt.Sprintf("LAST_LEDGER=%d", endLedger))
+		fmt.Sprintf("LAST_LEDGER=%d", endLedger),
+		fmt.Sprintf("NETWORK_PASSPHRASE='%s'", network.TestNetworkPassphrase))
 	t.Logf("Running %d map jobs: %s", batchCount, mapTestCmd.String())
 	stdout, err := mapTestCmd.CombinedOutput()
 
