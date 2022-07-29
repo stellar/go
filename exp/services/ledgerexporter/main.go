@@ -29,6 +29,7 @@ func main() {
 	continueFromLatestLedger := flag.Bool("continue", false, "start export from the last exported ledger (as indicated in the target's /latest path)")
 	endingLedger := flag.Uint("end-ledger", 0, "ledger at which to stop the export (must be a closed ledger), 0 means no ending")
 	writeLatestPath := flag.Bool("write-latest-path", true, "update the value of the /latest path on the target")
+	captiveCoreUseDb := flag.Bool("captive-core-use-db", true, "configure captive core to store database on disk in working directory rather than in memory")
 	flag.Parse()
 
 	logger.SetLevel(supportlog.InfoLevel)
@@ -51,6 +52,7 @@ func main() {
 		CheckpointFrequency: 64,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
+		UseDB:               *captiveCoreUseDb,
 	}
 	core, err := ledgerbackend.NewCaptive(captiveConfig)
 	logFatalIf(err, "Could not create captive core instance")
@@ -91,7 +93,7 @@ func main() {
 	err = core.PrepareRange(context.Background(), ledgerRange)
 	logFatalIf(err, "could not prepare range")
 
-	for nextLedger := startLedger; nextLedger <= endLedger; {
+	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
 			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)

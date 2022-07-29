@@ -121,7 +121,6 @@ func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
-		ACL:    aws.String(s3.ObjectCannedACLPublicRead),
 		Body:   bytes.NewReader(buf.Bytes()),
 	}
 	req, _ := b.svc.PutObjectRequest(params)

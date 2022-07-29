@@ -8,7 +8,7 @@ CONTINUE="${CONTINUE:=false}"
 WRITE_LATEST_PATH="${WRITE_LATEST_PATH:=false}"
 NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
 HISTORY_ARCHIVE_URLS="${HISTORY_ARCHIVE_URLS:=https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001}"
-CAPTIVE_CORE_CONFIG="/captive-core-pubnet.cfg"
+CAPTIVE_CORE_CONFIG="${CAPTIVE_CORE_CONFIG:=/captive-core-pubnet.cfg}"
 
 if [ -z "$ARCHIVE_TARGET" ]; then
   echo "error: undefined ARCHIVE_TARGET env variable"
