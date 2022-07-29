@@ -9,6 +9,7 @@ WRITE_LATEST_PATH="${WRITE_LATEST_PATH:=false}"
 NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
 HISTORY_ARCHIVE_URLS="${HISTORY_ARCHIVE_URLS:=https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001}"
 CAPTIVE_CORE_CONFIG="${CAPTIVE_CORE_CONFIG:=/captive-core-pubnet.cfg}"
+CAPTIVE_CORE_USE_DB="${CAPTIVE_CORE_USE_DB:=true}"
 
 if [ -z "$ARCHIVE_TARGET" ]; then
   echo "error: undefined ARCHIVE_TARGET env variable"
@@ -49,6 +50,7 @@ export TRACY_NO_INVARIANT_CHECK=1
 /ledgerexporter --target "$ARCHIVE_TARGET" \
                 --captive-core-toml-path "$CAPTIVE_CORE_CONFIG" \
                 --history-archive-urls "$HISTORY_ARCHIVE_URLS" --network-passphrase "$NETWORK_PASSPHRASE" \
-                --continue="$CONTINUE" --write-latest-path="$WRITE_LATEST_PATH" --start-ledger "$START" --end-ledger "$END"
+                --continue="$CONTINUE" --write-latest-path="$WRITE_LATEST_PATH" \
+				--start-ledger "$START" --end-ledger "$END" --captive-core-use-db "$CAPTIVE_CORE_USE_DB"
 
 echo "OK"
