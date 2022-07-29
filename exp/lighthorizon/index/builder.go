@@ -99,8 +99,8 @@ func BuildIndices(
 
 	// Submit the work to the channels, breaking up the range into individual
 	// checkpoint ranges.
+	checkpoints := historyarchive.NewCheckpointManager(0)
 	go func() {
-		checkpoints := historyarchive.NewCheckpointManager(0)
 		for ledger := range ledgerRange.GenerateCheckpoints(checkpoints) {
 			chunk := checkpoints.GetCheckpointRange(ledger)
 			chunk.High = min(chunk.High, ledgerRange.High) // don't exceed upper bound
@@ -112,7 +112,6 @@ func BuildIndices(
 		close(ch)
 	}()
 
-	chkProcessed := uint64(0)
 	processed := uint64(0)
 	for i := 0; i < parallel; i++ {
 		wg.Go(func() error {
@@ -128,12 +127,12 @@ func BuildIndices(
 				}
 
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
-				if nprocessed%97 == 0 {
+				if nprocessed%1234 == 0 {
 					PrintProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
 				}
 
 				// Upload indices once every 10 checkpoints to save memory
-				if atomic.AddUint64(&chkProcessed, uint64(1))%10 == 0 {
+				if nprocessed%(10*uint64(checkpoints.GetCheckpointFrequency())) == 0 {
 					if err := indexStore.Flush(); err != nil {
 						return errors.Wrap(err, "flushing indices failed")
 					}
