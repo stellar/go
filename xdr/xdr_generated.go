@@ -25541,7 +25541,10 @@ var _ xdrType = (*CreateAccountResultCode)(nil)
 //    {
 //    case CREATE_ACCOUNT_SUCCESS:
 //        void;
-//    default:
+//    case CREATE_ACCOUNT_MALFORMED:
+//    case CREATE_ACCOUNT_UNDERFUNDED:
+//    case CREATE_ACCOUNT_LOW_RESERVE:
+//    case CREATE_ACCOUNT_ALREADY_EXIST:
 //        void;
 //    };
 //
@@ -25561,9 +25564,16 @@ func (u CreateAccountResult) ArmForSwitch(sw int32) (string, bool) {
 	switch CreateAccountResultCode(sw) {
 	case CreateAccountResultCodeCreateAccountSuccess:
 		return "", true
-	default:
+	case CreateAccountResultCodeCreateAccountMalformed:
+		return "", true
+	case CreateAccountResultCodeCreateAccountUnderfunded:
+		return "", true
+	case CreateAccountResultCodeCreateAccountLowReserve:
+		return "", true
+	case CreateAccountResultCodeCreateAccountAlreadyExist:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewCreateAccountResult creates a new  CreateAccountResult.
@@ -25572,7 +25582,13 @@ func NewCreateAccountResult(code CreateAccountResultCode, value interface{}) (re
 	switch CreateAccountResultCode(code) {
 	case CreateAccountResultCodeCreateAccountSuccess:
 		// void
-	default:
+	case CreateAccountResultCodeCreateAccountMalformed:
+		// void
+	case CreateAccountResultCodeCreateAccountUnderfunded:
+		// void
+	case CreateAccountResultCodeCreateAccountLowReserve:
+		// void
+	case CreateAccountResultCodeCreateAccountAlreadyExist:
 		// void
 	}
 	return
@@ -25588,10 +25604,20 @@ func (u CreateAccountResult) EncodeTo(e *xdr.Encoder) error {
 	case CreateAccountResultCodeCreateAccountSuccess:
 		// Void
 		return nil
-	default:
+	case CreateAccountResultCodeCreateAccountMalformed:
+		// Void
+		return nil
+	case CreateAccountResultCodeCreateAccountUnderfunded:
+		// Void
+		return nil
+	case CreateAccountResultCodeCreateAccountLowReserve:
+		// Void
+		return nil
+	case CreateAccountResultCodeCreateAccountAlreadyExist:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (CreateAccountResultCode) switch value '%d' is not valid for union CreateAccountResult", u.Code)
 }
 
 var _ decoderFrom = (*CreateAccountResult)(nil)
@@ -25609,10 +25635,20 @@ func (u *CreateAccountResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case CreateAccountResultCodeCreateAccountSuccess:
 		// Void
 		return n, nil
-	default:
+	case CreateAccountResultCodeCreateAccountMalformed:
+		// Void
+		return n, nil
+	case CreateAccountResultCodeCreateAccountUnderfunded:
+		// Void
+		return n, nil
+	case CreateAccountResultCodeCreateAccountLowReserve:
+		// Void
+		return n, nil
+	case CreateAccountResultCodeCreateAccountAlreadyExist:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union CreateAccountResult has invalid Code (CreateAccountResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25759,7 +25795,15 @@ var _ xdrType = (*PaymentResultCode)(nil)
 //    {
 //    case PAYMENT_SUCCESS:
 //        void;
-//    default:
+//    case PAYMENT_MALFORMED:
+//    case PAYMENT_UNDERFUNDED:
+//    case PAYMENT_SRC_NO_TRUST:
+//    case PAYMENT_SRC_NOT_AUTHORIZED:
+//    case PAYMENT_NO_DESTINATION:
+//    case PAYMENT_NO_TRUST:
+//    case PAYMENT_NOT_AUTHORIZED:
+//    case PAYMENT_LINE_FULL:
+//    case PAYMENT_NO_ISSUER:
 //        void;
 //    };
 //
@@ -25779,9 +25823,26 @@ func (u PaymentResult) ArmForSwitch(sw int32) (string, bool) {
 	switch PaymentResultCode(sw) {
 	case PaymentResultCodePaymentSuccess:
 		return "", true
-	default:
+	case PaymentResultCodePaymentMalformed:
+		return "", true
+	case PaymentResultCodePaymentUnderfunded:
+		return "", true
+	case PaymentResultCodePaymentSrcNoTrust:
+		return "", true
+	case PaymentResultCodePaymentSrcNotAuthorized:
+		return "", true
+	case PaymentResultCodePaymentNoDestination:
+		return "", true
+	case PaymentResultCodePaymentNoTrust:
+		return "", true
+	case PaymentResultCodePaymentNotAuthorized:
+		return "", true
+	case PaymentResultCodePaymentLineFull:
+		return "", true
+	case PaymentResultCodePaymentNoIssuer:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewPaymentResult creates a new  PaymentResult.
@@ -25790,7 +25851,23 @@ func NewPaymentResult(code PaymentResultCode, value interface{}) (result Payment
 	switch PaymentResultCode(code) {
 	case PaymentResultCodePaymentSuccess:
 		// void
-	default:
+	case PaymentResultCodePaymentMalformed:
+		// void
+	case PaymentResultCodePaymentUnderfunded:
+		// void
+	case PaymentResultCodePaymentSrcNoTrust:
+		// void
+	case PaymentResultCodePaymentSrcNotAuthorized:
+		// void
+	case PaymentResultCodePaymentNoDestination:
+		// void
+	case PaymentResultCodePaymentNoTrust:
+		// void
+	case PaymentResultCodePaymentNotAuthorized:
+		// void
+	case PaymentResultCodePaymentLineFull:
+		// void
+	case PaymentResultCodePaymentNoIssuer:
 		// void
 	}
 	return
@@ -25806,10 +25883,35 @@ func (u PaymentResult) EncodeTo(e *xdr.Encoder) error {
 	case PaymentResultCodePaymentSuccess:
 		// Void
 		return nil
-	default:
+	case PaymentResultCodePaymentMalformed:
+		// Void
+		return nil
+	case PaymentResultCodePaymentUnderfunded:
+		// Void
+		return nil
+	case PaymentResultCodePaymentSrcNoTrust:
+		// Void
+		return nil
+	case PaymentResultCodePaymentSrcNotAuthorized:
+		// Void
+		return nil
+	case PaymentResultCodePaymentNoDestination:
+		// Void
+		return nil
+	case PaymentResultCodePaymentNoTrust:
+		// Void
+		return nil
+	case PaymentResultCodePaymentNotAuthorized:
+		// Void
+		return nil
+	case PaymentResultCodePaymentLineFull:
+		// Void
+		return nil
+	case PaymentResultCodePaymentNoIssuer:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (PaymentResultCode) switch value '%d' is not valid for union PaymentResult", u.Code)
 }
 
 var _ decoderFrom = (*PaymentResult)(nil)
@@ -25827,10 +25929,35 @@ func (u *PaymentResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case PaymentResultCodePaymentSuccess:
 		// Void
 		return n, nil
-	default:
+	case PaymentResultCodePaymentMalformed:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentUnderfunded:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentSrcNoTrust:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentSrcNotAuthorized:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentNoDestination:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentNoTrust:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentNotAuthorized:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentLineFull:
+		// Void
+		return n, nil
+	case PaymentResultCodePaymentNoIssuer:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union PaymentResult has invalid Code (PaymentResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26169,9 +26296,20 @@ var _ xdrType = (*PathPaymentStrictReceiveResultSuccess)(nil)
 //            ClaimAtom offers<>;
 //            SimplePaymentResult last;
 //        } success;
+//    case PATH_PAYMENT_STRICT_RECEIVE_MALFORMED:
+//    case PATH_PAYMENT_STRICT_RECEIVE_UNDERFUNDED:
+//    case PATH_PAYMENT_STRICT_RECEIVE_SRC_NO_TRUST:
+//    case PATH_PAYMENT_STRICT_RECEIVE_SRC_NOT_AUTHORIZED:
+//    case PATH_PAYMENT_STRICT_RECEIVE_NO_DESTINATION:
+//    case PATH_PAYMENT_STRICT_RECEIVE_NO_TRUST:
+//    case PATH_PAYMENT_STRICT_RECEIVE_NOT_AUTHORIZED:
+//    case PATH_PAYMENT_STRICT_RECEIVE_LINE_FULL:
+//        void;
 //    case PATH_PAYMENT_STRICT_RECEIVE_NO_ISSUER:
 //        Asset noIssuer; // the asset that caused the error
-//    default:
+//    case PATH_PAYMENT_STRICT_RECEIVE_TOO_FEW_OFFERS:
+//    case PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF:
+//    case PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX:
 //        void;
 //    };
 //
@@ -26193,11 +26331,32 @@ func (u PathPaymentStrictReceiveResult) ArmForSwitch(sw int32) (string, bool) {
 	switch PathPaymentStrictReceiveResultCode(sw) {
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSuccess:
 		return "Success", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveMalformed:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveUnderfunded:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNoTrust:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNotAuthorized:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoDestination:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoTrust:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNotAuthorized:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveLineFull:
+		return "", true
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoIssuer:
 		return "NoIssuer", true
-	default:
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveTooFewOffers:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOfferCrossSelf:
+		return "", true
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOverSendmax:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewPathPaymentStrictReceiveResult creates a new  PathPaymentStrictReceiveResult.
@@ -26211,6 +26370,22 @@ func NewPathPaymentStrictReceiveResult(code PathPaymentStrictReceiveResultCode, 
 			return
 		}
 		result.Success = &tv
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveMalformed:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveUnderfunded:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNoTrust:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNotAuthorized:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoDestination:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoTrust:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNotAuthorized:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveLineFull:
+		// void
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoIssuer:
 		tv, ok := value.(Asset)
 		if !ok {
@@ -26218,7 +26393,11 @@ func NewPathPaymentStrictReceiveResult(code PathPaymentStrictReceiveResultCode, 
 			return
 		}
 		result.NoIssuer = &tv
-	default:
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveTooFewOffers:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOfferCrossSelf:
+		// void
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOverSendmax:
 		// void
 	}
 	return
@@ -26286,15 +26465,46 @@ func (u PathPaymentStrictReceiveResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveMalformed:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveUnderfunded:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNoTrust:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNotAuthorized:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoDestination:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoTrust:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNotAuthorized:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveLineFull:
+		// Void
+		return nil
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoIssuer:
 		if err = (*u.NoIssuer).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	default:
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveTooFewOffers:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOfferCrossSelf:
+		// Void
+		return nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOverSendmax:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (PathPaymentStrictReceiveResultCode) switch value '%d' is not valid for union PathPaymentStrictReceiveResult", u.Code)
 }
 
 var _ decoderFrom = (*PathPaymentStrictReceiveResult)(nil)
@@ -26317,6 +26527,30 @@ func (u *PathPaymentStrictReceiveResult) DecodeFrom(d *xdr.Decoder) (int, error)
 			return n, fmt.Errorf("decoding PathPaymentStrictReceiveResultSuccess: %s", err)
 		}
 		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveMalformed:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveUnderfunded:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNoTrust:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveSrcNotAuthorized:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoDestination:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoTrust:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNotAuthorized:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveLineFull:
+		// Void
+		return n, nil
 	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveNoIssuer:
 		u.NoIssuer = new(Asset)
 		nTmp, err = (*u.NoIssuer).DecodeFrom(d)
@@ -26325,10 +26559,17 @@ func (u *PathPaymentStrictReceiveResult) DecodeFrom(d *xdr.Decoder) (int, error)
 			return n, fmt.Errorf("decoding Asset: %s", err)
 		}
 		return n, nil
-	default:
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveTooFewOffers:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOfferCrossSelf:
+		// Void
+		return n, nil
+	case PathPaymentStrictReceiveResultCodePathPaymentStrictReceiveOverSendmax:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union PathPaymentStrictReceiveResult has invalid Code (PathPaymentStrictReceiveResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26584,9 +26825,20 @@ var _ xdrType = (*PathPaymentStrictSendResultSuccess)(nil)
 //            ClaimAtom offers<>;
 //            SimplePaymentResult last;
 //        } success;
+//    case PATH_PAYMENT_STRICT_SEND_MALFORMED:
+//    case PATH_PAYMENT_STRICT_SEND_UNDERFUNDED:
+//    case PATH_PAYMENT_STRICT_SEND_SRC_NO_TRUST:
+//    case PATH_PAYMENT_STRICT_SEND_SRC_NOT_AUTHORIZED:
+//    case PATH_PAYMENT_STRICT_SEND_NO_DESTINATION:
+//    case PATH_PAYMENT_STRICT_SEND_NO_TRUST:
+//    case PATH_PAYMENT_STRICT_SEND_NOT_AUTHORIZED:
+//    case PATH_PAYMENT_STRICT_SEND_LINE_FULL:
+//        void;
 //    case PATH_PAYMENT_STRICT_SEND_NO_ISSUER:
 //        Asset noIssuer; // the asset that caused the error
-//    default:
+//    case PATH_PAYMENT_STRICT_SEND_TOO_FEW_OFFERS:
+//    case PATH_PAYMENT_STRICT_SEND_OFFER_CROSS_SELF:
+//    case PATH_PAYMENT_STRICT_SEND_UNDER_DESTMIN:
 //        void;
 //    };
 //
@@ -26608,11 +26860,32 @@ func (u PathPaymentStrictSendResult) ArmForSwitch(sw int32) (string, bool) {
 	switch PathPaymentStrictSendResultCode(sw) {
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendSuccess:
 		return "Success", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendMalformed:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderfunded:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNoTrust:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNotAuthorized:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoDestination:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoTrust:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNotAuthorized:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendLineFull:
+		return "", true
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoIssuer:
 		return "NoIssuer", true
-	default:
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendTooFewOffers:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendOfferCrossSelf:
+		return "", true
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderDestmin:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewPathPaymentStrictSendResult creates a new  PathPaymentStrictSendResult.
@@ -26626,6 +26899,22 @@ func NewPathPaymentStrictSendResult(code PathPaymentStrictSendResultCode, value 
 			return
 		}
 		result.Success = &tv
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendMalformed:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderfunded:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNoTrust:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNotAuthorized:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoDestination:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoTrust:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNotAuthorized:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendLineFull:
+		// void
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoIssuer:
 		tv, ok := value.(Asset)
 		if !ok {
@@ -26633,7 +26922,11 @@ func NewPathPaymentStrictSendResult(code PathPaymentStrictSendResultCode, value 
 			return
 		}
 		result.NoIssuer = &tv
-	default:
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendTooFewOffers:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendOfferCrossSelf:
+		// void
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderDestmin:
 		// void
 	}
 	return
@@ -26701,15 +26994,46 @@ func (u PathPaymentStrictSendResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendMalformed:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderfunded:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNoTrust:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNotAuthorized:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoDestination:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoTrust:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNotAuthorized:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendLineFull:
+		// Void
+		return nil
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoIssuer:
 		if err = (*u.NoIssuer).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	default:
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendTooFewOffers:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendOfferCrossSelf:
+		// Void
+		return nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderDestmin:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (PathPaymentStrictSendResultCode) switch value '%d' is not valid for union PathPaymentStrictSendResult", u.Code)
 }
 
 var _ decoderFrom = (*PathPaymentStrictSendResult)(nil)
@@ -26732,6 +27056,30 @@ func (u *PathPaymentStrictSendResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding PathPaymentStrictSendResultSuccess: %s", err)
 		}
 		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendMalformed:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderfunded:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNoTrust:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendSrcNotAuthorized:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoDestination:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoTrust:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendNotAuthorized:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendLineFull:
+		// Void
+		return n, nil
 	case PathPaymentStrictSendResultCodePathPaymentStrictSendNoIssuer:
 		u.NoIssuer = new(Asset)
 		nTmp, err = (*u.NoIssuer).DecodeFrom(d)
@@ -26740,10 +27088,17 @@ func (u *PathPaymentStrictSendResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Asset: %s", err)
 		}
 		return n, nil
-	default:
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendTooFewOffers:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendOfferCrossSelf:
+		// Void
+		return n, nil
+	case PathPaymentStrictSendResultCodePathPaymentStrictSendUnderDestmin:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union PathPaymentStrictSendResult has invalid Code (PathPaymentStrictSendResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -26994,7 +27349,7 @@ var _ xdrType = (*ManageOfferEffect)(nil)
 //        case MANAGE_OFFER_CREATED:
 //        case MANAGE_OFFER_UPDATED:
 //            OfferEntry offer;
-//        default:
+//        case MANAGE_OFFER_DELETED:
 //            void;
 //        }
 //
@@ -27017,9 +27372,10 @@ func (u ManageOfferSuccessResultOffer) ArmForSwitch(sw int32) (string, bool) {
 		return "Offer", true
 	case ManageOfferEffectManageOfferUpdated:
 		return "Offer", true
-	default:
+	case ManageOfferEffectManageOfferDeleted:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewManageOfferSuccessResultOffer creates a new  ManageOfferSuccessResultOffer.
@@ -27040,7 +27396,7 @@ func NewManageOfferSuccessResultOffer(effect ManageOfferEffect, value interface{
 			return
 		}
 		result.Offer = &tv
-	default:
+	case ManageOfferEffectManageOfferDeleted:
 		// void
 	}
 	return
@@ -27088,10 +27444,11 @@ func (u ManageOfferSuccessResultOffer) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	default:
+	case ManageOfferEffectManageOfferDeleted:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Effect (ManageOfferEffect) switch value '%d' is not valid for union ManageOfferSuccessResultOffer", u.Effect)
 }
 
 var _ decoderFrom = (*ManageOfferSuccessResultOffer)(nil)
@@ -27122,10 +27479,11 @@ func (u *ManageOfferSuccessResultOffer) DecodeFrom(d *xdr.Decoder) (int, error) 
 			return n, fmt.Errorf("decoding OfferEntry: %s", err)
 		}
 		return n, nil
-	default:
+	case ManageOfferEffectManageOfferDeleted:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ManageOfferSuccessResultOffer has invalid Effect (ManageOfferEffect) switch value '%d'", u.Effect)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -27167,7 +27525,7 @@ var _ xdrType = (*ManageOfferSuccessResultOffer)(nil)
 //        case MANAGE_OFFER_CREATED:
 //        case MANAGE_OFFER_UPDATED:
 //            OfferEntry offer;
-//        default:
+//        case MANAGE_OFFER_DELETED:
 //            void;
 //        }
 //        offer;
@@ -27259,7 +27617,18 @@ var _ xdrType = (*ManageOfferSuccessResult)(nil)
 //    {
 //    case MANAGE_SELL_OFFER_SUCCESS:
 //        ManageOfferSuccessResult success;
-//    default:
+//    case MANAGE_SELL_OFFER_MALFORMED:
+//    case MANAGE_SELL_OFFER_SELL_NO_TRUST:
+//    case MANAGE_SELL_OFFER_BUY_NO_TRUST:
+//    case MANAGE_SELL_OFFER_SELL_NOT_AUTHORIZED:
+//    case MANAGE_SELL_OFFER_BUY_NOT_AUTHORIZED:
+//    case MANAGE_SELL_OFFER_LINE_FULL:
+//    case MANAGE_SELL_OFFER_UNDERFUNDED:
+//    case MANAGE_SELL_OFFER_CROSS_SELF:
+//    case MANAGE_SELL_OFFER_SELL_NO_ISSUER:
+//    case MANAGE_SELL_OFFER_BUY_NO_ISSUER:
+//    case MANAGE_SELL_OFFER_NOT_FOUND:
+//    case MANAGE_SELL_OFFER_LOW_RESERVE:
 //        void;
 //    };
 //
@@ -27280,9 +27649,32 @@ func (u ManageSellOfferResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ManageSellOfferResultCode(sw) {
 	case ManageSellOfferResultCodeManageSellOfferSuccess:
 		return "Success", true
-	default:
+	case ManageSellOfferResultCodeManageSellOfferMalformed:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferSellNoTrust:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferBuyNoTrust:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferSellNotAuthorized:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferLineFull:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferUnderfunded:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferCrossSelf:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferSellNoIssuer:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferBuyNoIssuer:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferNotFound:
+		return "", true
+	case ManageSellOfferResultCodeManageSellOfferLowReserve:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewManageSellOfferResult creates a new  ManageSellOfferResult.
@@ -27296,7 +27688,29 @@ func NewManageSellOfferResult(code ManageSellOfferResultCode, value interface{})
 			return
 		}
 		result.Success = &tv
-	default:
+	case ManageSellOfferResultCodeManageSellOfferMalformed:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferSellNoTrust:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferBuyNoTrust:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferSellNotAuthorized:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferLineFull:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferUnderfunded:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferCrossSelf:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferSellNoIssuer:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferBuyNoIssuer:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferNotFound:
+		// void
+	case ManageSellOfferResultCodeManageSellOfferLowReserve:
 		// void
 	}
 	return
@@ -27339,10 +27753,44 @@ func (u ManageSellOfferResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	default:
+	case ManageSellOfferResultCodeManageSellOfferMalformed:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferSellNoTrust:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferBuyNoTrust:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferSellNotAuthorized:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferLineFull:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferUnderfunded:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferCrossSelf:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferSellNoIssuer:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferBuyNoIssuer:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferNotFound:
+		// Void
+		return nil
+	case ManageSellOfferResultCodeManageSellOfferLowReserve:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ManageSellOfferResultCode) switch value '%d' is not valid for union ManageSellOfferResult", u.Code)
 }
 
 var _ decoderFrom = (*ManageSellOfferResult)(nil)
@@ -27365,10 +27813,44 @@ func (u *ManageSellOfferResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ManageOfferSuccessResult: %s", err)
 		}
 		return n, nil
-	default:
+	case ManageSellOfferResultCodeManageSellOfferMalformed:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferSellNoTrust:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferBuyNoTrust:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferSellNotAuthorized:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferBuyNotAuthorized:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferLineFull:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferUnderfunded:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferCrossSelf:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferSellNoIssuer:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferBuyNoIssuer:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferNotFound:
+		// Void
+		return n, nil
+	case ManageSellOfferResultCodeManageSellOfferLowReserve:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ManageSellOfferResult has invalid Code (ManageSellOfferResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -27528,7 +28010,18 @@ var _ xdrType = (*ManageBuyOfferResultCode)(nil)
 //    {
 //    case MANAGE_BUY_OFFER_SUCCESS:
 //        ManageOfferSuccessResult success;
-//    default:
+//    case MANAGE_BUY_OFFER_MALFORMED:
+//    case MANAGE_BUY_OFFER_SELL_NO_TRUST:
+//    case MANAGE_BUY_OFFER_BUY_NO_TRUST:
+//    case MANAGE_BUY_OFFER_SELL_NOT_AUTHORIZED:
+//    case MANAGE_BUY_OFFER_BUY_NOT_AUTHORIZED:
+//    case MANAGE_BUY_OFFER_LINE_FULL:
+//    case MANAGE_BUY_OFFER_UNDERFUNDED:
+//    case MANAGE_BUY_OFFER_CROSS_SELF:
+//    case MANAGE_BUY_OFFER_SELL_NO_ISSUER:
+//    case MANAGE_BUY_OFFER_BUY_NO_ISSUER:
+//    case MANAGE_BUY_OFFER_NOT_FOUND:
+//    case MANAGE_BUY_OFFER_LOW_RESERVE:
 //        void;
 //    };
 //
@@ -27549,9 +28042,32 @@ func (u ManageBuyOfferResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ManageBuyOfferResultCode(sw) {
 	case ManageBuyOfferResultCodeManageBuyOfferSuccess:
 		return "Success", true
-	default:
+	case ManageBuyOfferResultCodeManageBuyOfferMalformed:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoTrust:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferLineFull:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferUnderfunded:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferCrossSelf:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferNotFound:
+		return "", true
+	case ManageBuyOfferResultCodeManageBuyOfferLowReserve:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewManageBuyOfferResult creates a new  ManageBuyOfferResult.
@@ -27565,7 +28081,29 @@ func NewManageBuyOfferResult(code ManageBuyOfferResultCode, value interface{}) (
 			return
 		}
 		result.Success = &tv
-	default:
+	case ManageBuyOfferResultCodeManageBuyOfferMalformed:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoTrust:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferLineFull:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferUnderfunded:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferCrossSelf:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferNotFound:
+		// void
+	case ManageBuyOfferResultCodeManageBuyOfferLowReserve:
 		// void
 	}
 	return
@@ -27608,10 +28146,44 @@ func (u ManageBuyOfferResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	default:
+	case ManageBuyOfferResultCodeManageBuyOfferMalformed:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoTrust:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferLineFull:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferUnderfunded:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferCrossSelf:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferNotFound:
+		// Void
+		return nil
+	case ManageBuyOfferResultCodeManageBuyOfferLowReserve:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ManageBuyOfferResultCode) switch value '%d' is not valid for union ManageBuyOfferResult", u.Code)
 }
 
 var _ decoderFrom = (*ManageBuyOfferResult)(nil)
@@ -27634,10 +28206,44 @@ func (u *ManageBuyOfferResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ManageOfferSuccessResult: %s", err)
 		}
 		return n, nil
-	default:
+	case ManageBuyOfferResultCodeManageBuyOfferMalformed:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoTrust:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoTrust:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferSellNotAuthorized:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNotAuthorized:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferLineFull:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferUnderfunded:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferCrossSelf:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferSellNoIssuer:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferBuyNoIssuer:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferNotFound:
+		// Void
+		return n, nil
+	case ManageBuyOfferResultCodeManageBuyOfferLowReserve:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ManageBuyOfferResult has invalid Code (ManageBuyOfferResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -27787,7 +28393,16 @@ var _ xdrType = (*SetOptionsResultCode)(nil)
 //    {
 //    case SET_OPTIONS_SUCCESS:
 //        void;
-//    default:
+//    case SET_OPTIONS_LOW_RESERVE:
+//    case SET_OPTIONS_TOO_MANY_SIGNERS:
+//    case SET_OPTIONS_BAD_FLAGS:
+//    case SET_OPTIONS_INVALID_INFLATION:
+//    case SET_OPTIONS_CANT_CHANGE:
+//    case SET_OPTIONS_UNKNOWN_FLAG:
+//    case SET_OPTIONS_THRESHOLD_OUT_OF_RANGE:
+//    case SET_OPTIONS_BAD_SIGNER:
+//    case SET_OPTIONS_INVALID_HOME_DOMAIN:
+//    case SET_OPTIONS_AUTH_REVOCABLE_REQUIRED:
 //        void;
 //    };
 //
@@ -27807,9 +28422,28 @@ func (u SetOptionsResult) ArmForSwitch(sw int32) (string, bool) {
 	switch SetOptionsResultCode(sw) {
 	case SetOptionsResultCodeSetOptionsSuccess:
 		return "", true
-	default:
+	case SetOptionsResultCodeSetOptionsLowReserve:
+		return "", true
+	case SetOptionsResultCodeSetOptionsTooManySigners:
+		return "", true
+	case SetOptionsResultCodeSetOptionsBadFlags:
+		return "", true
+	case SetOptionsResultCodeSetOptionsInvalidInflation:
+		return "", true
+	case SetOptionsResultCodeSetOptionsCantChange:
+		return "", true
+	case SetOptionsResultCodeSetOptionsUnknownFlag:
+		return "", true
+	case SetOptionsResultCodeSetOptionsThresholdOutOfRange:
+		return "", true
+	case SetOptionsResultCodeSetOptionsBadSigner:
+		return "", true
+	case SetOptionsResultCodeSetOptionsInvalidHomeDomain:
+		return "", true
+	case SetOptionsResultCodeSetOptionsAuthRevocableRequired:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewSetOptionsResult creates a new  SetOptionsResult.
@@ -27818,7 +28452,25 @@ func NewSetOptionsResult(code SetOptionsResultCode, value interface{}) (result S
 	switch SetOptionsResultCode(code) {
 	case SetOptionsResultCodeSetOptionsSuccess:
 		// void
-	default:
+	case SetOptionsResultCodeSetOptionsLowReserve:
+		// void
+	case SetOptionsResultCodeSetOptionsTooManySigners:
+		// void
+	case SetOptionsResultCodeSetOptionsBadFlags:
+		// void
+	case SetOptionsResultCodeSetOptionsInvalidInflation:
+		// void
+	case SetOptionsResultCodeSetOptionsCantChange:
+		// void
+	case SetOptionsResultCodeSetOptionsUnknownFlag:
+		// void
+	case SetOptionsResultCodeSetOptionsThresholdOutOfRange:
+		// void
+	case SetOptionsResultCodeSetOptionsBadSigner:
+		// void
+	case SetOptionsResultCodeSetOptionsInvalidHomeDomain:
+		// void
+	case SetOptionsResultCodeSetOptionsAuthRevocableRequired:
 		// void
 	}
 	return
@@ -27834,10 +28486,38 @@ func (u SetOptionsResult) EncodeTo(e *xdr.Encoder) error {
 	case SetOptionsResultCodeSetOptionsSuccess:
 		// Void
 		return nil
-	default:
+	case SetOptionsResultCodeSetOptionsLowReserve:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsTooManySigners:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsBadFlags:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsInvalidInflation:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsCantChange:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsUnknownFlag:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsThresholdOutOfRange:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsBadSigner:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsInvalidHomeDomain:
+		// Void
+		return nil
+	case SetOptionsResultCodeSetOptionsAuthRevocableRequired:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (SetOptionsResultCode) switch value '%d' is not valid for union SetOptionsResult", u.Code)
 }
 
 var _ decoderFrom = (*SetOptionsResult)(nil)
@@ -27855,10 +28535,38 @@ func (u *SetOptionsResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case SetOptionsResultCodeSetOptionsSuccess:
 		// Void
 		return n, nil
-	default:
+	case SetOptionsResultCodeSetOptionsLowReserve:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsTooManySigners:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsBadFlags:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsInvalidInflation:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsCantChange:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsUnknownFlag:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsThresholdOutOfRange:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsBadSigner:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsInvalidHomeDomain:
+		// Void
+		return n, nil
+	case SetOptionsResultCodeSetOptionsAuthRevocableRequired:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union SetOptionsResult has invalid Code (SetOptionsResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -28005,7 +28713,14 @@ var _ xdrType = (*ChangeTrustResultCode)(nil)
 //    {
 //    case CHANGE_TRUST_SUCCESS:
 //        void;
-//    default:
+//    case CHANGE_TRUST_MALFORMED:
+//    case CHANGE_TRUST_NO_ISSUER:
+//    case CHANGE_TRUST_INVALID_LIMIT:
+//    case CHANGE_TRUST_LOW_RESERVE:
+//    case CHANGE_TRUST_SELF_NOT_ALLOWED:
+//    case CHANGE_TRUST_TRUST_LINE_MISSING:
+//    case CHANGE_TRUST_CANNOT_DELETE:
+//    case CHANGE_TRUST_NOT_AUTH_MAINTAIN_LIABILITIES:
 //        void;
 //    };
 //
@@ -28025,9 +28740,24 @@ func (u ChangeTrustResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ChangeTrustResultCode(sw) {
 	case ChangeTrustResultCodeChangeTrustSuccess:
 		return "", true
-	default:
+	case ChangeTrustResultCodeChangeTrustMalformed:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustNoIssuer:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustInvalidLimit:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustLowReserve:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustSelfNotAllowed:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustTrustLineMissing:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustCannotDelete:
+		return "", true
+	case ChangeTrustResultCodeChangeTrustNotAuthMaintainLiabilities:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewChangeTrustResult creates a new  ChangeTrustResult.
@@ -28036,7 +28766,21 @@ func NewChangeTrustResult(code ChangeTrustResultCode, value interface{}) (result
 	switch ChangeTrustResultCode(code) {
 	case ChangeTrustResultCodeChangeTrustSuccess:
 		// void
-	default:
+	case ChangeTrustResultCodeChangeTrustMalformed:
+		// void
+	case ChangeTrustResultCodeChangeTrustNoIssuer:
+		// void
+	case ChangeTrustResultCodeChangeTrustInvalidLimit:
+		// void
+	case ChangeTrustResultCodeChangeTrustLowReserve:
+		// void
+	case ChangeTrustResultCodeChangeTrustSelfNotAllowed:
+		// void
+	case ChangeTrustResultCodeChangeTrustTrustLineMissing:
+		// void
+	case ChangeTrustResultCodeChangeTrustCannotDelete:
+		// void
+	case ChangeTrustResultCodeChangeTrustNotAuthMaintainLiabilities:
 		// void
 	}
 	return
@@ -28052,10 +28796,32 @@ func (u ChangeTrustResult) EncodeTo(e *xdr.Encoder) error {
 	case ChangeTrustResultCodeChangeTrustSuccess:
 		// Void
 		return nil
-	default:
+	case ChangeTrustResultCodeChangeTrustMalformed:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustNoIssuer:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustInvalidLimit:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustLowReserve:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustSelfNotAllowed:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustTrustLineMissing:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustCannotDelete:
+		// Void
+		return nil
+	case ChangeTrustResultCodeChangeTrustNotAuthMaintainLiabilities:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ChangeTrustResultCode) switch value '%d' is not valid for union ChangeTrustResult", u.Code)
 }
 
 var _ decoderFrom = (*ChangeTrustResult)(nil)
@@ -28073,10 +28839,32 @@ func (u *ChangeTrustResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ChangeTrustResultCodeChangeTrustSuccess:
 		// Void
 		return n, nil
-	default:
+	case ChangeTrustResultCodeChangeTrustMalformed:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustNoIssuer:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustInvalidLimit:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustLowReserve:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustSelfNotAllowed:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustTrustLineMissing:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustCannotDelete:
+		// Void
+		return n, nil
+	case ChangeTrustResultCodeChangeTrustNotAuthMaintainLiabilities:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ChangeTrustResult has invalid Code (ChangeTrustResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -28215,7 +29003,12 @@ var _ xdrType = (*AllowTrustResultCode)(nil)
 //    {
 //    case ALLOW_TRUST_SUCCESS:
 //        void;
-//    default:
+//    case ALLOW_TRUST_MALFORMED:
+//    case ALLOW_TRUST_NO_TRUST_LINE:
+//    case ALLOW_TRUST_TRUST_NOT_REQUIRED:
+//    case ALLOW_TRUST_CANT_REVOKE:
+//    case ALLOW_TRUST_SELF_NOT_ALLOWED:
+//    case ALLOW_TRUST_LOW_RESERVE:
 //        void;
 //    };
 //
@@ -28235,9 +29028,20 @@ func (u AllowTrustResult) ArmForSwitch(sw int32) (string, bool) {
 	switch AllowTrustResultCode(sw) {
 	case AllowTrustResultCodeAllowTrustSuccess:
 		return "", true
-	default:
+	case AllowTrustResultCodeAllowTrustMalformed:
+		return "", true
+	case AllowTrustResultCodeAllowTrustNoTrustLine:
+		return "", true
+	case AllowTrustResultCodeAllowTrustTrustNotRequired:
+		return "", true
+	case AllowTrustResultCodeAllowTrustCantRevoke:
+		return "", true
+	case AllowTrustResultCodeAllowTrustSelfNotAllowed:
+		return "", true
+	case AllowTrustResultCodeAllowTrustLowReserve:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewAllowTrustResult creates a new  AllowTrustResult.
@@ -28246,7 +29050,17 @@ func NewAllowTrustResult(code AllowTrustResultCode, value interface{}) (result A
 	switch AllowTrustResultCode(code) {
 	case AllowTrustResultCodeAllowTrustSuccess:
 		// void
-	default:
+	case AllowTrustResultCodeAllowTrustMalformed:
+		// void
+	case AllowTrustResultCodeAllowTrustNoTrustLine:
+		// void
+	case AllowTrustResultCodeAllowTrustTrustNotRequired:
+		// void
+	case AllowTrustResultCodeAllowTrustCantRevoke:
+		// void
+	case AllowTrustResultCodeAllowTrustSelfNotAllowed:
+		// void
+	case AllowTrustResultCodeAllowTrustLowReserve:
 		// void
 	}
 	return
@@ -28262,10 +29076,26 @@ func (u AllowTrustResult) EncodeTo(e *xdr.Encoder) error {
 	case AllowTrustResultCodeAllowTrustSuccess:
 		// Void
 		return nil
-	default:
+	case AllowTrustResultCodeAllowTrustMalformed:
+		// Void
+		return nil
+	case AllowTrustResultCodeAllowTrustNoTrustLine:
+		// Void
+		return nil
+	case AllowTrustResultCodeAllowTrustTrustNotRequired:
+		// Void
+		return nil
+	case AllowTrustResultCodeAllowTrustCantRevoke:
+		// Void
+		return nil
+	case AllowTrustResultCodeAllowTrustSelfNotAllowed:
+		// Void
+		return nil
+	case AllowTrustResultCodeAllowTrustLowReserve:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (AllowTrustResultCode) switch value '%d' is not valid for union AllowTrustResult", u.Code)
 }
 
 var _ decoderFrom = (*AllowTrustResult)(nil)
@@ -28283,10 +29113,26 @@ func (u *AllowTrustResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case AllowTrustResultCodeAllowTrustSuccess:
 		// Void
 		return n, nil
-	default:
+	case AllowTrustResultCodeAllowTrustMalformed:
+		// Void
+		return n, nil
+	case AllowTrustResultCodeAllowTrustNoTrustLine:
+		// Void
+		return n, nil
+	case AllowTrustResultCodeAllowTrustTrustNotRequired:
+		// Void
+		return n, nil
+	case AllowTrustResultCodeAllowTrustCantRevoke:
+		// Void
+		return n, nil
+	case AllowTrustResultCodeAllowTrustSelfNotAllowed:
+		// Void
+		return n, nil
+	case AllowTrustResultCodeAllowTrustLowReserve:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union AllowTrustResult has invalid Code (AllowTrustResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -28427,7 +29273,13 @@ var _ xdrType = (*AccountMergeResultCode)(nil)
 //    {
 //    case ACCOUNT_MERGE_SUCCESS:
 //        int64 sourceAccountBalance; // how much got transferred from source account
-//    default:
+//    case ACCOUNT_MERGE_MALFORMED:
+//    case ACCOUNT_MERGE_NO_ACCOUNT:
+//    case ACCOUNT_MERGE_IMMUTABLE_SET:
+//    case ACCOUNT_MERGE_HAS_SUB_ENTRIES:
+//    case ACCOUNT_MERGE_SEQNUM_TOO_FAR:
+//    case ACCOUNT_MERGE_DEST_FULL:
+//    case ACCOUNT_MERGE_IS_SPONSOR:
 //        void;
 //    };
 //
@@ -28448,9 +29300,22 @@ func (u AccountMergeResult) ArmForSwitch(sw int32) (string, bool) {
 	switch AccountMergeResultCode(sw) {
 	case AccountMergeResultCodeAccountMergeSuccess:
 		return "SourceAccountBalance", true
-	default:
+	case AccountMergeResultCodeAccountMergeMalformed:
+		return "", true
+	case AccountMergeResultCodeAccountMergeNoAccount:
+		return "", true
+	case AccountMergeResultCodeAccountMergeImmutableSet:
+		return "", true
+	case AccountMergeResultCodeAccountMergeHasSubEntries:
+		return "", true
+	case AccountMergeResultCodeAccountMergeSeqnumTooFar:
+		return "", true
+	case AccountMergeResultCodeAccountMergeDestFull:
+		return "", true
+	case AccountMergeResultCodeAccountMergeIsSponsor:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewAccountMergeResult creates a new  AccountMergeResult.
@@ -28464,7 +29329,19 @@ func NewAccountMergeResult(code AccountMergeResultCode, value interface{}) (resu
 			return
 		}
 		result.SourceAccountBalance = &tv
-	default:
+	case AccountMergeResultCodeAccountMergeMalformed:
+		// void
+	case AccountMergeResultCodeAccountMergeNoAccount:
+		// void
+	case AccountMergeResultCodeAccountMergeImmutableSet:
+		// void
+	case AccountMergeResultCodeAccountMergeHasSubEntries:
+		// void
+	case AccountMergeResultCodeAccountMergeSeqnumTooFar:
+		// void
+	case AccountMergeResultCodeAccountMergeDestFull:
+		// void
+	case AccountMergeResultCodeAccountMergeIsSponsor:
 		// void
 	}
 	return
@@ -28507,10 +29384,29 @@ func (u AccountMergeResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	default:
+	case AccountMergeResultCodeAccountMergeMalformed:
+		// Void
+		return nil
+	case AccountMergeResultCodeAccountMergeNoAccount:
+		// Void
+		return nil
+	case AccountMergeResultCodeAccountMergeImmutableSet:
+		// Void
+		return nil
+	case AccountMergeResultCodeAccountMergeHasSubEntries:
+		// Void
+		return nil
+	case AccountMergeResultCodeAccountMergeSeqnumTooFar:
+		// Void
+		return nil
+	case AccountMergeResultCodeAccountMergeDestFull:
+		// Void
+		return nil
+	case AccountMergeResultCodeAccountMergeIsSponsor:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (AccountMergeResultCode) switch value '%d' is not valid for union AccountMergeResult", u.Code)
 }
 
 var _ decoderFrom = (*AccountMergeResult)(nil)
@@ -28533,10 +29429,29 @@ func (u *AccountMergeResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Int64: %s", err)
 		}
 		return n, nil
-	default:
+	case AccountMergeResultCodeAccountMergeMalformed:
+		// Void
+		return n, nil
+	case AccountMergeResultCodeAccountMergeNoAccount:
+		// Void
+		return n, nil
+	case AccountMergeResultCodeAccountMergeImmutableSet:
+		// Void
+		return n, nil
+	case AccountMergeResultCodeAccountMergeHasSubEntries:
+		// Void
+		return n, nil
+	case AccountMergeResultCodeAccountMergeSeqnumTooFar:
+		// Void
+		return n, nil
+	case AccountMergeResultCodeAccountMergeDestFull:
+		// Void
+		return n, nil
+	case AccountMergeResultCodeAccountMergeIsSponsor:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union AccountMergeResult has invalid Code (AccountMergeResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -28729,7 +29644,7 @@ var _ xdrType = (*InflationPayout)(nil)
 //    {
 //    case INFLATION_SUCCESS:
 //        InflationPayout payouts<>;
-//    default:
+//    case INFLATION_NOT_TIME:
 //        void;
 //    };
 //
@@ -28750,9 +29665,10 @@ func (u InflationResult) ArmForSwitch(sw int32) (string, bool) {
 	switch InflationResultCode(sw) {
 	case InflationResultCodeInflationSuccess:
 		return "Payouts", true
-	default:
+	case InflationResultCodeInflationNotTime:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewInflationResult creates a new  InflationResult.
@@ -28766,7 +29682,7 @@ func NewInflationResult(code InflationResultCode, value interface{}) (result Inf
 			return
 		}
 		result.Payouts = &tv
-	default:
+	case InflationResultCodeInflationNotTime:
 		// void
 	}
 	return
@@ -28814,10 +29730,11 @@ func (u InflationResult) EncodeTo(e *xdr.Encoder) error {
 			}
 		}
 		return nil
-	default:
+	case InflationResultCodeInflationNotTime:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (InflationResultCode) switch value '%d' is not valid for union InflationResult", u.Code)
 }
 
 var _ decoderFrom = (*InflationResult)(nil)
@@ -28852,10 +29769,11 @@ func (u *InflationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			}
 		}
 		return n, nil
-	default:
+	case InflationResultCodeInflationNotTime:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union InflationResult has invalid Code (InflationResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -28988,7 +29906,10 @@ var _ xdrType = (*ManageDataResultCode)(nil)
 //    {
 //    case MANAGE_DATA_SUCCESS:
 //        void;
-//    default:
+//    case MANAGE_DATA_NOT_SUPPORTED_YET:
+//    case MANAGE_DATA_NAME_NOT_FOUND:
+//    case MANAGE_DATA_LOW_RESERVE:
+//    case MANAGE_DATA_INVALID_NAME:
 //        void;
 //    };
 //
@@ -29008,9 +29929,16 @@ func (u ManageDataResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ManageDataResultCode(sw) {
 	case ManageDataResultCodeManageDataSuccess:
 		return "", true
-	default:
+	case ManageDataResultCodeManageDataNotSupportedYet:
+		return "", true
+	case ManageDataResultCodeManageDataNameNotFound:
+		return "", true
+	case ManageDataResultCodeManageDataLowReserve:
+		return "", true
+	case ManageDataResultCodeManageDataInvalidName:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewManageDataResult creates a new  ManageDataResult.
@@ -29019,7 +29947,13 @@ func NewManageDataResult(code ManageDataResultCode, value interface{}) (result M
 	switch ManageDataResultCode(code) {
 	case ManageDataResultCodeManageDataSuccess:
 		// void
-	default:
+	case ManageDataResultCodeManageDataNotSupportedYet:
+		// void
+	case ManageDataResultCodeManageDataNameNotFound:
+		// void
+	case ManageDataResultCodeManageDataLowReserve:
+		// void
+	case ManageDataResultCodeManageDataInvalidName:
 		// void
 	}
 	return
@@ -29035,10 +29969,20 @@ func (u ManageDataResult) EncodeTo(e *xdr.Encoder) error {
 	case ManageDataResultCodeManageDataSuccess:
 		// Void
 		return nil
-	default:
+	case ManageDataResultCodeManageDataNotSupportedYet:
+		// Void
+		return nil
+	case ManageDataResultCodeManageDataNameNotFound:
+		// Void
+		return nil
+	case ManageDataResultCodeManageDataLowReserve:
+		// Void
+		return nil
+	case ManageDataResultCodeManageDataInvalidName:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ManageDataResultCode) switch value '%d' is not valid for union ManageDataResult", u.Code)
 }
 
 var _ decoderFrom = (*ManageDataResult)(nil)
@@ -29056,10 +30000,20 @@ func (u *ManageDataResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ManageDataResultCodeManageDataSuccess:
 		// Void
 		return n, nil
-	default:
+	case ManageDataResultCodeManageDataNotSupportedYet:
+		// Void
+		return n, nil
+	case ManageDataResultCodeManageDataNameNotFound:
+		// Void
+		return n, nil
+	case ManageDataResultCodeManageDataLowReserve:
+		// Void
+		return n, nil
+	case ManageDataResultCodeManageDataInvalidName:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ManageDataResult has invalid Code (ManageDataResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -29181,7 +30135,7 @@ var _ xdrType = (*BumpSequenceResultCode)(nil)
 //    {
 //    case BUMP_SEQUENCE_SUCCESS:
 //        void;
-//    default:
+//    case BUMP_SEQUENCE_BAD_SEQ:
 //        void;
 //    };
 //
@@ -29201,9 +30155,10 @@ func (u BumpSequenceResult) ArmForSwitch(sw int32) (string, bool) {
 	switch BumpSequenceResultCode(sw) {
 	case BumpSequenceResultCodeBumpSequenceSuccess:
 		return "", true
-	default:
+	case BumpSequenceResultCodeBumpSequenceBadSeq:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewBumpSequenceResult creates a new  BumpSequenceResult.
@@ -29212,7 +30167,7 @@ func NewBumpSequenceResult(code BumpSequenceResultCode, value interface{}) (resu
 	switch BumpSequenceResultCode(code) {
 	case BumpSequenceResultCodeBumpSequenceSuccess:
 		// void
-	default:
+	case BumpSequenceResultCodeBumpSequenceBadSeq:
 		// void
 	}
 	return
@@ -29228,10 +30183,11 @@ func (u BumpSequenceResult) EncodeTo(e *xdr.Encoder) error {
 	case BumpSequenceResultCodeBumpSequenceSuccess:
 		// Void
 		return nil
-	default:
+	case BumpSequenceResultCodeBumpSequenceBadSeq:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (BumpSequenceResultCode) switch value '%d' is not valid for union BumpSequenceResult", u.Code)
 }
 
 var _ decoderFrom = (*BumpSequenceResult)(nil)
@@ -29249,10 +30205,11 @@ func (u *BumpSequenceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case BumpSequenceResultCodeBumpSequenceSuccess:
 		// Void
 		return n, nil
-	default:
+	case BumpSequenceResultCodeBumpSequenceBadSeq:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union BumpSequenceResult has invalid Code (BumpSequenceResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -29385,7 +30342,11 @@ var _ xdrType = (*CreateClaimableBalanceResultCode)(nil)
 //    {
 //    case CREATE_CLAIMABLE_BALANCE_SUCCESS:
 //        ClaimableBalanceID balanceID;
-//    default:
+//    case CREATE_CLAIMABLE_BALANCE_MALFORMED:
+//    case CREATE_CLAIMABLE_BALANCE_LOW_RESERVE:
+//    case CREATE_CLAIMABLE_BALANCE_NO_TRUST:
+//    case CREATE_CLAIMABLE_BALANCE_NOT_AUTHORIZED:
+//    case CREATE_CLAIMABLE_BALANCE_UNDERFUNDED:
 //        void;
 //    };
 //
@@ -29406,9 +30367,18 @@ func (u CreateClaimableBalanceResult) ArmForSwitch(sw int32) (string, bool) {
 	switch CreateClaimableBalanceResultCode(sw) {
 	case CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess:
 		return "BalanceId", true
-	default:
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceMalformed:
+		return "", true
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceLowReserve:
+		return "", true
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNoTrust:
+		return "", true
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNotAuthorized:
+		return "", true
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceUnderfunded:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewCreateClaimableBalanceResult creates a new  CreateClaimableBalanceResult.
@@ -29422,7 +30392,15 @@ func NewCreateClaimableBalanceResult(code CreateClaimableBalanceResultCode, valu
 			return
 		}
 		result.BalanceId = &tv
-	default:
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceMalformed:
+		// void
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceLowReserve:
+		// void
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNoTrust:
+		// void
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNotAuthorized:
+		// void
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceUnderfunded:
 		// void
 	}
 	return
@@ -29465,10 +30443,23 @@ func (u CreateClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	default:
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceMalformed:
+		// Void
+		return nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceLowReserve:
+		// Void
+		return nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNoTrust:
+		// Void
+		return nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNotAuthorized:
+		// Void
+		return nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceUnderfunded:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (CreateClaimableBalanceResultCode) switch value '%d' is not valid for union CreateClaimableBalanceResult", u.Code)
 }
 
 var _ decoderFrom = (*CreateClaimableBalanceResult)(nil)
@@ -29491,10 +30482,23 @@ func (u *CreateClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ClaimableBalanceId: %s", err)
 		}
 		return n, nil
-	default:
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceMalformed:
+		// Void
+		return n, nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceLowReserve:
+		// Void
+		return n, nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNoTrust:
+		// Void
+		return n, nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceNotAuthorized:
+		// Void
+		return n, nil
+	case CreateClaimableBalanceResultCodeCreateClaimableBalanceUnderfunded:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union CreateClaimableBalanceResult has invalid Code (CreateClaimableBalanceResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -29534,7 +30538,6 @@ var _ xdrType = (*CreateClaimableBalanceResult)(nil)
 //        CLAIM_CLAIMABLE_BALANCE_LINE_FULL = -3,
 //        CLAIM_CLAIMABLE_BALANCE_NO_TRUST = -4,
 //        CLAIM_CLAIMABLE_BALANCE_NOT_AUTHORIZED = -5
-//
 //    };
 //
 type ClaimClaimableBalanceResultCode int32
@@ -29627,7 +30630,11 @@ var _ xdrType = (*ClaimClaimableBalanceResultCode)(nil)
 //    {
 //    case CLAIM_CLAIMABLE_BALANCE_SUCCESS:
 //        void;
-//    default:
+//    case CLAIM_CLAIMABLE_BALANCE_DOES_NOT_EXIST:
+//    case CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM:
+//    case CLAIM_CLAIMABLE_BALANCE_LINE_FULL:
+//    case CLAIM_CLAIMABLE_BALANCE_NO_TRUST:
+//    case CLAIM_CLAIMABLE_BALANCE_NOT_AUTHORIZED:
 //        void;
 //    };
 //
@@ -29647,9 +30654,18 @@ func (u ClaimClaimableBalanceResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ClaimClaimableBalanceResultCode(sw) {
 	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess:
 		return "", true
-	default:
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist:
+		return "", true
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim:
+		return "", true
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceLineFull:
+		return "", true
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNoTrust:
+		return "", true
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNotAuthorized:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewClaimClaimableBalanceResult creates a new  ClaimClaimableBalanceResult.
@@ -29658,7 +30674,15 @@ func NewClaimClaimableBalanceResult(code ClaimClaimableBalanceResultCode, value 
 	switch ClaimClaimableBalanceResultCode(code) {
 	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess:
 		// void
-	default:
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist:
+		// void
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim:
+		// void
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceLineFull:
+		// void
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNoTrust:
+		// void
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNotAuthorized:
 		// void
 	}
 	return
@@ -29674,10 +30698,23 @@ func (u ClaimClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
 	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess:
 		// Void
 		return nil
-	default:
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist:
+		// Void
+		return nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim:
+		// Void
+		return nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceLineFull:
+		// Void
+		return nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNoTrust:
+		// Void
+		return nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNotAuthorized:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ClaimClaimableBalanceResultCode) switch value '%d' is not valid for union ClaimClaimableBalanceResult", u.Code)
 }
 
 var _ decoderFrom = (*ClaimClaimableBalanceResult)(nil)
@@ -29695,10 +30732,23 @@ func (u *ClaimClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess:
 		// Void
 		return n, nil
-	default:
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist:
+		// Void
+		return n, nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim:
+		// Void
+		return n, nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceLineFull:
+		// Void
+		return n, nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNoTrust:
+		// Void
+		return n, nil
+	case ClaimClaimableBalanceResultCodeClaimClaimableBalanceNotAuthorized:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ClaimClaimableBalanceResult has invalid Code (ClaimClaimableBalanceResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -29828,7 +30878,9 @@ var _ xdrType = (*BeginSponsoringFutureReservesResultCode)(nil)
 //    {
 //    case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
-//    default:
+//    case BEGIN_SPONSORING_FUTURE_RESERVES_MALFORMED:
+//    case BEGIN_SPONSORING_FUTURE_RESERVES_ALREADY_SPONSORED:
+//    case BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE:
 //        void;
 //    };
 //
@@ -29848,9 +30900,14 @@ func (u BeginSponsoringFutureReservesResult) ArmForSwitch(sw int32) (string, boo
 	switch BeginSponsoringFutureReservesResultCode(sw) {
 	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		return "", true
-	default:
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesMalformed:
+		return "", true
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesAlreadySponsored:
+		return "", true
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesRecursive:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewBeginSponsoringFutureReservesResult creates a new  BeginSponsoringFutureReservesResult.
@@ -29859,7 +30916,11 @@ func NewBeginSponsoringFutureReservesResult(code BeginSponsoringFutureReservesRe
 	switch BeginSponsoringFutureReservesResultCode(code) {
 	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		// void
-	default:
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesMalformed:
+		// void
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesAlreadySponsored:
+		// void
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesRecursive:
 		// void
 	}
 	return
@@ -29875,10 +30936,17 @@ func (u BeginSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
 	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		// Void
 		return nil
-	default:
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesMalformed:
+		// Void
+		return nil
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesAlreadySponsored:
+		// Void
+		return nil
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesRecursive:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (BeginSponsoringFutureReservesResultCode) switch value '%d' is not valid for union BeginSponsoringFutureReservesResult", u.Code)
 }
 
 var _ decoderFrom = (*BeginSponsoringFutureReservesResult)(nil)
@@ -29896,10 +30964,17 @@ func (u *BeginSponsoringFutureReservesResult) DecodeFrom(d *xdr.Decoder) (int, e
 	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		// Void
 		return n, nil
-	default:
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesMalformed:
+		// Void
+		return n, nil
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesAlreadySponsored:
+		// Void
+		return n, nil
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesRecursive:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union BeginSponsoringFutureReservesResult has invalid Code (BeginSponsoringFutureReservesResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -30023,7 +31098,7 @@ var _ xdrType = (*EndSponsoringFutureReservesResultCode)(nil)
 //    {
 //    case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
-//    default:
+//    case END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED:
 //        void;
 //    };
 //
@@ -30043,9 +31118,10 @@ func (u EndSponsoringFutureReservesResult) ArmForSwitch(sw int32) (string, bool)
 	switch EndSponsoringFutureReservesResultCode(sw) {
 	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		return "", true
-	default:
+	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesNotSponsored:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewEndSponsoringFutureReservesResult creates a new  EndSponsoringFutureReservesResult.
@@ -30054,7 +31130,7 @@ func NewEndSponsoringFutureReservesResult(code EndSponsoringFutureReservesResult
 	switch EndSponsoringFutureReservesResultCode(code) {
 	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		// void
-	default:
+	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesNotSponsored:
 		// void
 	}
 	return
@@ -30070,10 +31146,11 @@ func (u EndSponsoringFutureReservesResult) EncodeTo(e *xdr.Encoder) error {
 	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		// Void
 		return nil
-	default:
+	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesNotSponsored:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (EndSponsoringFutureReservesResultCode) switch value '%d' is not valid for union EndSponsoringFutureReservesResult", u.Code)
 }
 
 var _ decoderFrom = (*EndSponsoringFutureReservesResult)(nil)
@@ -30091,10 +31168,11 @@ func (u *EndSponsoringFutureReservesResult) DecodeFrom(d *xdr.Decoder) (int, err
 	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		// Void
 		return n, nil
-	default:
+	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesNotSponsored:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union EndSponsoringFutureReservesResult has invalid Code (EndSponsoringFutureReservesResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -30229,7 +31307,11 @@ var _ xdrType = (*RevokeSponsorshipResultCode)(nil)
 //    {
 //    case REVOKE_SPONSORSHIP_SUCCESS:
 //        void;
-//    default:
+//    case REVOKE_SPONSORSHIP_DOES_NOT_EXIST:
+//    case REVOKE_SPONSORSHIP_NOT_SPONSOR:
+//    case REVOKE_SPONSORSHIP_LOW_RESERVE:
+//    case REVOKE_SPONSORSHIP_ONLY_TRANSFERABLE:
+//    case REVOKE_SPONSORSHIP_MALFORMED:
 //        void;
 //    };
 //
@@ -30249,9 +31331,18 @@ func (u RevokeSponsorshipResult) ArmForSwitch(sw int32) (string, bool) {
 	switch RevokeSponsorshipResultCode(sw) {
 	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		return "", true
-	default:
+	case RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist:
+		return "", true
+	case RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor:
+		return "", true
+	case RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve:
+		return "", true
+	case RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable:
+		return "", true
+	case RevokeSponsorshipResultCodeRevokeSponsorshipMalformed:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewRevokeSponsorshipResult creates a new  RevokeSponsorshipResult.
@@ -30260,7 +31351,15 @@ func NewRevokeSponsorshipResult(code RevokeSponsorshipResultCode, value interfac
 	switch RevokeSponsorshipResultCode(code) {
 	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		// void
-	default:
+	case RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist:
+		// void
+	case RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor:
+		// void
+	case RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve:
+		// void
+	case RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable:
+		// void
+	case RevokeSponsorshipResultCodeRevokeSponsorshipMalformed:
 		// void
 	}
 	return
@@ -30276,10 +31375,23 @@ func (u RevokeSponsorshipResult) EncodeTo(e *xdr.Encoder) error {
 	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		// Void
 		return nil
-	default:
+	case RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist:
+		// Void
+		return nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor:
+		// Void
+		return nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve:
+		// Void
+		return nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable:
+		// Void
+		return nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipMalformed:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (RevokeSponsorshipResultCode) switch value '%d' is not valid for union RevokeSponsorshipResult", u.Code)
 }
 
 var _ decoderFrom = (*RevokeSponsorshipResult)(nil)
@@ -30297,10 +31409,23 @@ func (u *RevokeSponsorshipResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		// Void
 		return n, nil
-	default:
+	case RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist:
+		// Void
+		return n, nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor:
+		// Void
+		return n, nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve:
+		// Void
+		return n, nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable:
+		// Void
+		return n, nil
+	case RevokeSponsorshipResultCodeRevokeSponsorshipMalformed:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union RevokeSponsorshipResult has invalid Code (RevokeSponsorshipResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -30432,7 +31557,10 @@ var _ xdrType = (*ClawbackResultCode)(nil)
 //    {
 //    case CLAWBACK_SUCCESS:
 //        void;
-//    default:
+//    case CLAWBACK_MALFORMED:
+//    case CLAWBACK_NOT_CLAWBACK_ENABLED:
+//    case CLAWBACK_NO_TRUST:
+//    case CLAWBACK_UNDERFUNDED:
 //        void;
 //    };
 //
@@ -30452,9 +31580,16 @@ func (u ClawbackResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ClawbackResultCode(sw) {
 	case ClawbackResultCodeClawbackSuccess:
 		return "", true
-	default:
+	case ClawbackResultCodeClawbackMalformed:
+		return "", true
+	case ClawbackResultCodeClawbackNotClawbackEnabled:
+		return "", true
+	case ClawbackResultCodeClawbackNoTrust:
+		return "", true
+	case ClawbackResultCodeClawbackUnderfunded:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewClawbackResult creates a new  ClawbackResult.
@@ -30463,7 +31598,13 @@ func NewClawbackResult(code ClawbackResultCode, value interface{}) (result Clawb
 	switch ClawbackResultCode(code) {
 	case ClawbackResultCodeClawbackSuccess:
 		// void
-	default:
+	case ClawbackResultCodeClawbackMalformed:
+		// void
+	case ClawbackResultCodeClawbackNotClawbackEnabled:
+		// void
+	case ClawbackResultCodeClawbackNoTrust:
+		// void
+	case ClawbackResultCodeClawbackUnderfunded:
 		// void
 	}
 	return
@@ -30479,10 +31620,20 @@ func (u ClawbackResult) EncodeTo(e *xdr.Encoder) error {
 	case ClawbackResultCodeClawbackSuccess:
 		// Void
 		return nil
-	default:
+	case ClawbackResultCodeClawbackMalformed:
+		// Void
+		return nil
+	case ClawbackResultCodeClawbackNotClawbackEnabled:
+		// Void
+		return nil
+	case ClawbackResultCodeClawbackNoTrust:
+		// Void
+		return nil
+	case ClawbackResultCodeClawbackUnderfunded:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ClawbackResultCode) switch value '%d' is not valid for union ClawbackResult", u.Code)
 }
 
 var _ decoderFrom = (*ClawbackResult)(nil)
@@ -30500,10 +31651,20 @@ func (u *ClawbackResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ClawbackResultCodeClawbackSuccess:
 		// Void
 		return n, nil
-	default:
+	case ClawbackResultCodeClawbackMalformed:
+		// Void
+		return n, nil
+	case ClawbackResultCodeClawbackNotClawbackEnabled:
+		// Void
+		return n, nil
+	case ClawbackResultCodeClawbackNoTrust:
+		// Void
+		return n, nil
+	case ClawbackResultCodeClawbackUnderfunded:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ClawbackResult has invalid Code (ClawbackResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -30633,7 +31794,9 @@ var _ xdrType = (*ClawbackClaimableBalanceResultCode)(nil)
 //    {
 //    case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
 //        void;
-//    default:
+//    case CLAWBACK_CLAIMABLE_BALANCE_DOES_NOT_EXIST:
+//    case CLAWBACK_CLAIMABLE_BALANCE_NOT_ISSUER:
+//    case CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED:
 //        void;
 //    };
 //
@@ -30653,9 +31816,14 @@ func (u ClawbackClaimableBalanceResult) ArmForSwitch(sw int32) (string, bool) {
 	switch ClawbackClaimableBalanceResultCode(sw) {
 	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceSuccess:
 		return "", true
-	default:
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceDoesNotExist:
+		return "", true
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotIssuer:
+		return "", true
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotClawbackEnabled:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewClawbackClaimableBalanceResult creates a new  ClawbackClaimableBalanceResult.
@@ -30664,7 +31832,11 @@ func NewClawbackClaimableBalanceResult(code ClawbackClaimableBalanceResultCode, 
 	switch ClawbackClaimableBalanceResultCode(code) {
 	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceSuccess:
 		// void
-	default:
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceDoesNotExist:
+		// void
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotIssuer:
+		// void
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotClawbackEnabled:
 		// void
 	}
 	return
@@ -30680,10 +31852,17 @@ func (u ClawbackClaimableBalanceResult) EncodeTo(e *xdr.Encoder) error {
 	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceSuccess:
 		// Void
 		return nil
-	default:
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceDoesNotExist:
+		// Void
+		return nil
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotIssuer:
+		// Void
+		return nil
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotClawbackEnabled:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (ClawbackClaimableBalanceResultCode) switch value '%d' is not valid for union ClawbackClaimableBalanceResult", u.Code)
 }
 
 var _ decoderFrom = (*ClawbackClaimableBalanceResult)(nil)
@@ -30701,10 +31880,17 @@ func (u *ClawbackClaimableBalanceResult) DecodeFrom(d *xdr.Decoder) (int, error)
 	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceSuccess:
 		// Void
 		return n, nil
-	default:
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceDoesNotExist:
+		// Void
+		return n, nil
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotIssuer:
+		// Void
+		return n, nil
+	case ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotClawbackEnabled:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union ClawbackClaimableBalanceResult has invalid Code (ClawbackClaimableBalanceResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -30840,7 +32026,11 @@ var _ xdrType = (*SetTrustLineFlagsResultCode)(nil)
 //    {
 //    case SET_TRUST_LINE_FLAGS_SUCCESS:
 //        void;
-//    default:
+//    case SET_TRUST_LINE_FLAGS_MALFORMED:
+//    case SET_TRUST_LINE_FLAGS_NO_TRUST_LINE:
+//    case SET_TRUST_LINE_FLAGS_CANT_REVOKE:
+//    case SET_TRUST_LINE_FLAGS_INVALID_STATE:
+//    case SET_TRUST_LINE_FLAGS_LOW_RESERVE:
 //        void;
 //    };
 //
@@ -30860,9 +32050,18 @@ func (u SetTrustLineFlagsResult) ArmForSwitch(sw int32) (string, bool) {
 	switch SetTrustLineFlagsResultCode(sw) {
 	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
 		return "", true
-	default:
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed:
+		return "", true
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine:
+		return "", true
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke:
+		return "", true
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState:
+		return "", true
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewSetTrustLineFlagsResult creates a new  SetTrustLineFlagsResult.
@@ -30871,7 +32070,15 @@ func NewSetTrustLineFlagsResult(code SetTrustLineFlagsResultCode, value interfac
 	switch SetTrustLineFlagsResultCode(code) {
 	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
 		// void
-	default:
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed:
+		// void
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine:
+		// void
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke:
+		// void
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState:
+		// void
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve:
 		// void
 	}
 	return
@@ -30887,10 +32094,23 @@ func (u SetTrustLineFlagsResult) EncodeTo(e *xdr.Encoder) error {
 	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
 		// Void
 		return nil
-	default:
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed:
+		// Void
+		return nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine:
+		// Void
+		return nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke:
+		// Void
+		return nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState:
+		// Void
+		return nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (SetTrustLineFlagsResultCode) switch value '%d' is not valid for union SetTrustLineFlagsResult", u.Code)
 }
 
 var _ decoderFrom = (*SetTrustLineFlagsResult)(nil)
@@ -30908,10 +32128,23 @@ func (u *SetTrustLineFlagsResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
 		// Void
 		return n, nil
-	default:
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed:
+		// Void
+		return n, nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine:
+		// Void
+		return n, nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke:
+		// Void
+		return n, nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState:
+		// Void
+		return n, nil
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsLowReserve:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union SetTrustLineFlagsResult has invalid Code (SetTrustLineFlagsResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -31056,7 +32289,13 @@ var _ xdrType = (*LiquidityPoolDepositResultCode)(nil)
 //    {
 //    case LIQUIDITY_POOL_DEPOSIT_SUCCESS:
 //        void;
-//    default:
+//    case LIQUIDITY_POOL_DEPOSIT_MALFORMED:
+//    case LIQUIDITY_POOL_DEPOSIT_NO_TRUST:
+//    case LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED:
+//    case LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED:
+//    case LIQUIDITY_POOL_DEPOSIT_LINE_FULL:
+//    case LIQUIDITY_POOL_DEPOSIT_BAD_PRICE:
+//    case LIQUIDITY_POOL_DEPOSIT_POOL_FULL:
 //        void;
 //    };
 //
@@ -31076,9 +32315,22 @@ func (u LiquidityPoolDepositResult) ArmForSwitch(sw int32) (string, bool) {
 	switch LiquidityPoolDepositResultCode(sw) {
 	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
 		return "", true
-	default:
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed:
+		return "", true
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust:
+		return "", true
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized:
+		return "", true
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded:
+		return "", true
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull:
+		return "", true
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice:
+		return "", true
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewLiquidityPoolDepositResult creates a new  LiquidityPoolDepositResult.
@@ -31087,7 +32339,19 @@ func NewLiquidityPoolDepositResult(code LiquidityPoolDepositResultCode, value in
 	switch LiquidityPoolDepositResultCode(code) {
 	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
 		// void
-	default:
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed:
+		// void
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust:
+		// void
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized:
+		// void
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded:
+		// void
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull:
+		// void
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice:
+		// void
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull:
 		// void
 	}
 	return
@@ -31103,10 +32367,29 @@ func (u LiquidityPoolDepositResult) EncodeTo(e *xdr.Encoder) error {
 	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
 		// Void
 		return nil
-	default:
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed:
+		// Void
+		return nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust:
+		// Void
+		return nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized:
+		// Void
+		return nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded:
+		// Void
+		return nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull:
+		// Void
+		return nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice:
+		// Void
+		return nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (LiquidityPoolDepositResultCode) switch value '%d' is not valid for union LiquidityPoolDepositResult", u.Code)
 }
 
 var _ decoderFrom = (*LiquidityPoolDepositResult)(nil)
@@ -31124,10 +32407,29 @@ func (u *LiquidityPoolDepositResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case LiquidityPoolDepositResultCodeLiquidityPoolDepositSuccess:
 		// Void
 		return n, nil
-	default:
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositMalformed:
+		// Void
+		return n, nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNoTrust:
+		// Void
+		return n, nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositNotAuthorized:
+		// Void
+		return n, nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositUnderfunded:
+		// Void
+		return n, nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositLineFull:
+		// Void
+		return n, nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositBadPrice:
+		// Void
+		return n, nil
+	case LiquidityPoolDepositResultCodeLiquidityPoolDepositPoolFull:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union LiquidityPoolDepositResult has invalid Code (LiquidityPoolDepositResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -31265,7 +32567,11 @@ var _ xdrType = (*LiquidityPoolWithdrawResultCode)(nil)
 //    {
 //    case LIQUIDITY_POOL_WITHDRAW_SUCCESS:
 //        void;
-//    default:
+//    case LIQUIDITY_POOL_WITHDRAW_MALFORMED:
+//    case LIQUIDITY_POOL_WITHDRAW_NO_TRUST:
+//    case LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED:
+//    case LIQUIDITY_POOL_WITHDRAW_LINE_FULL:
+//    case LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM:
 //        void;
 //    };
 //
@@ -31285,9 +32591,18 @@ func (u LiquidityPoolWithdrawResult) ArmForSwitch(sw int32) (string, bool) {
 	switch LiquidityPoolWithdrawResultCode(sw) {
 	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
 		return "", true
-	default:
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed:
+		return "", true
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust:
+		return "", true
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded:
+		return "", true
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull:
+		return "", true
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewLiquidityPoolWithdrawResult creates a new  LiquidityPoolWithdrawResult.
@@ -31296,7 +32611,15 @@ func NewLiquidityPoolWithdrawResult(code LiquidityPoolWithdrawResultCode, value 
 	switch LiquidityPoolWithdrawResultCode(code) {
 	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
 		// void
-	default:
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed:
+		// void
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust:
+		// void
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded:
+		// void
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull:
+		// void
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
 		// void
 	}
 	return
@@ -31312,10 +32635,23 @@ func (u LiquidityPoolWithdrawResult) EncodeTo(e *xdr.Encoder) error {
 	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
 		// Void
 		return nil
-	default:
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed:
+		// Void
+		return nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust:
+		// Void
+		return nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded:
+		// Void
+		return nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull:
+		// Void
+		return nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (LiquidityPoolWithdrawResultCode) switch value '%d' is not valid for union LiquidityPoolWithdrawResult", u.Code)
 }
 
 var _ decoderFrom = (*LiquidityPoolWithdrawResult)(nil)
@@ -31333,10 +32669,23 @@ func (u *LiquidityPoolWithdrawResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawSuccess:
 		// Void
 		return n, nil
-	default:
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawMalformed:
+		// Void
+		return n, nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawNoTrust:
+		// Void
+		return n, nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderfunded:
+		// Void
+		return n, nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawLineFull:
+		// Void
+		return n, nil
+	case LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union LiquidityPoolWithdrawResult has invalid Code (LiquidityPoolWithdrawResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -32809,7 +34158,12 @@ var _ xdrType = (*OperationResultTr)(nil)
 //            LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
 //        }
 //        tr;
-//    default:
+//    case opBAD_AUTH:
+//    case opNO_ACCOUNT:
+//    case opNOT_SUPPORTED:
+//    case opTOO_MANY_SUBENTRIES:
+//    case opEXCEEDED_WORK_LIMIT:
+//    case opTOO_MANY_SPONSORING:
 //        void;
 //    };
 //
@@ -32830,9 +34184,20 @@ func (u OperationResult) ArmForSwitch(sw int32) (string, bool) {
 	switch OperationResultCode(sw) {
 	case OperationResultCodeOpInner:
 		return "Tr", true
-	default:
+	case OperationResultCodeOpBadAuth:
+		return "", true
+	case OperationResultCodeOpNoAccount:
+		return "", true
+	case OperationResultCodeOpNotSupported:
+		return "", true
+	case OperationResultCodeOpTooManySubentries:
+		return "", true
+	case OperationResultCodeOpExceededWorkLimit:
+		return "", true
+	case OperationResultCodeOpTooManySponsoring:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewOperationResult creates a new  OperationResult.
@@ -32846,7 +34211,17 @@ func NewOperationResult(code OperationResultCode, value interface{}) (result Ope
 			return
 		}
 		result.Tr = &tv
-	default:
+	case OperationResultCodeOpBadAuth:
+		// void
+	case OperationResultCodeOpNoAccount:
+		// void
+	case OperationResultCodeOpNotSupported:
+		// void
+	case OperationResultCodeOpTooManySubentries:
+		// void
+	case OperationResultCodeOpExceededWorkLimit:
+		// void
+	case OperationResultCodeOpTooManySponsoring:
 		// void
 	}
 	return
@@ -32889,10 +34264,26 @@ func (u OperationResult) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	default:
+	case OperationResultCodeOpBadAuth:
+		// Void
+		return nil
+	case OperationResultCodeOpNoAccount:
+		// Void
+		return nil
+	case OperationResultCodeOpNotSupported:
+		// Void
+		return nil
+	case OperationResultCodeOpTooManySubentries:
+		// Void
+		return nil
+	case OperationResultCodeOpExceededWorkLimit:
+		// Void
+		return nil
+	case OperationResultCodeOpTooManySponsoring:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (OperationResultCode) switch value '%d' is not valid for union OperationResult", u.Code)
 }
 
 var _ decoderFrom = (*OperationResult)(nil)
@@ -32915,10 +34306,26 @@ func (u *OperationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding OperationResultTr: %s", err)
 		}
 		return n, nil
-	default:
+	case OperationResultCodeOpBadAuth:
+		// Void
+		return n, nil
+	case OperationResultCodeOpNoAccount:
+		// Void
+		return n, nil
+	case OperationResultCodeOpNotSupported:
+		// Void
+		return n, nil
+	case OperationResultCodeOpTooManySubentries:
+		// Void
+		return n, nil
+	case OperationResultCodeOpExceededWorkLimit:
+		// Void
+		return n, nil
+	case OperationResultCodeOpTooManySponsoring:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union OperationResult has invalid Code (OperationResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -33727,7 +35134,21 @@ var _ xdrType = (*InnerTransactionResultPair)(nil)
 //        case txSUCCESS:
 //        case txFAILED:
 //            OperationResult results<>;
-//        default:
+//        case txTOO_EARLY:
+//        case txTOO_LATE:
+//        case txMISSING_OPERATION:
+//        case txBAD_SEQ:
+//        case txBAD_AUTH:
+//        case txINSUFFICIENT_BALANCE:
+//        case txNO_ACCOUNT:
+//        case txINSUFFICIENT_FEE:
+//        case txBAD_AUTH_EXTRA:
+//        case txINTERNAL_ERROR:
+//        case txNOT_SUPPORTED:
+//        // case txFEE_BUMP_INNER_FAILED: handled above
+//        case txBAD_SPONSORSHIP:
+//        case txBAD_MIN_SEQ_AGE_OR_GAP:
+//        case txMALFORMED:
 //            void;
 //        }
 //
@@ -33755,9 +35176,36 @@ func (u TransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 		return "Results", true
 	case TransactionResultCodeTxFailed:
 		return "Results", true
-	default:
+	case TransactionResultCodeTxTooEarly:
+		return "", true
+	case TransactionResultCodeTxTooLate:
+		return "", true
+	case TransactionResultCodeTxMissingOperation:
+		return "", true
+	case TransactionResultCodeTxBadSeq:
+		return "", true
+	case TransactionResultCodeTxBadAuth:
+		return "", true
+	case TransactionResultCodeTxInsufficientBalance:
+		return "", true
+	case TransactionResultCodeTxNoAccount:
+		return "", true
+	case TransactionResultCodeTxInsufficientFee:
+		return "", true
+	case TransactionResultCodeTxBadAuthExtra:
+		return "", true
+	case TransactionResultCodeTxInternalError:
+		return "", true
+	case TransactionResultCodeTxNotSupported:
+		return "", true
+	case TransactionResultCodeTxBadSponsorship:
+		return "", true
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		return "", true
+	case TransactionResultCodeTxMalformed:
 		return "", true
 	}
+	return "-", false
 }
 
 // NewTransactionResultResult creates a new  TransactionResultResult.
@@ -33792,7 +35240,33 @@ func NewTransactionResultResult(code TransactionResultCode, value interface{}) (
 			return
 		}
 		result.Results = &tv
-	default:
+	case TransactionResultCodeTxTooEarly:
+		// void
+	case TransactionResultCodeTxTooLate:
+		// void
+	case TransactionResultCodeTxMissingOperation:
+		// void
+	case TransactionResultCodeTxBadSeq:
+		// void
+	case TransactionResultCodeTxBadAuth:
+		// void
+	case TransactionResultCodeTxInsufficientBalance:
+		// void
+	case TransactionResultCodeTxNoAccount:
+		// void
+	case TransactionResultCodeTxInsufficientFee:
+		// void
+	case TransactionResultCodeTxBadAuthExtra:
+		// void
+	case TransactionResultCodeTxInternalError:
+		// void
+	case TransactionResultCodeTxNotSupported:
+		// void
+	case TransactionResultCodeTxBadSponsorship:
+		// void
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		// void
+	case TransactionResultCodeTxMalformed:
 		// void
 	}
 	return
@@ -33885,10 +35359,50 @@ func (u TransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 			}
 		}
 		return nil
-	default:
+	case TransactionResultCodeTxTooEarly:
+		// Void
+		return nil
+	case TransactionResultCodeTxTooLate:
+		// Void
+		return nil
+	case TransactionResultCodeTxMissingOperation:
+		// Void
+		return nil
+	case TransactionResultCodeTxBadSeq:
+		// Void
+		return nil
+	case TransactionResultCodeTxBadAuth:
+		// Void
+		return nil
+	case TransactionResultCodeTxInsufficientBalance:
+		// Void
+		return nil
+	case TransactionResultCodeTxNoAccount:
+		// Void
+		return nil
+	case TransactionResultCodeTxInsufficientFee:
+		// Void
+		return nil
+	case TransactionResultCodeTxBadAuthExtra:
+		// Void
+		return nil
+	case TransactionResultCodeTxInternalError:
+		// Void
+		return nil
+	case TransactionResultCodeTxNotSupported:
+		// Void
+		return nil
+	case TransactionResultCodeTxBadSponsorship:
+		// Void
+		return nil
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		// Void
+		return nil
+	case TransactionResultCodeTxMalformed:
 		// Void
 		return nil
 	}
+	return fmt.Errorf("Code (TransactionResultCode) switch value '%d' is not valid for union TransactionResultResult", u.Code)
 }
 
 var _ decoderFrom = (*TransactionResultResult)(nil)
@@ -33959,10 +35473,50 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 			}
 		}
 		return n, nil
-	default:
+	case TransactionResultCodeTxTooEarly:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxTooLate:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxMissingOperation:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadSeq:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadAuth:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxInsufficientBalance:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxNoAccount:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxInsufficientFee:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadAuthExtra:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxInternalError:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxNotSupported:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadSponsorship:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxBadMinSeqAgeOrGap:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxMalformed:
 		// Void
 		return n, nil
 	}
+	return n, fmt.Errorf("union TransactionResultResult has invalid Code (TransactionResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -34104,7 +35658,21 @@ var _ xdrType = (*TransactionResultExt)(nil)
 //        case txSUCCESS:
 //        case txFAILED:
 //            OperationResult results<>;
-//        default:
+//        case txTOO_EARLY:
+//        case txTOO_LATE:
+//        case txMISSING_OPERATION:
+//        case txBAD_SEQ:
+//        case txBAD_AUTH:
+//        case txINSUFFICIENT_BALANCE:
+//        case txNO_ACCOUNT:
+//        case txINSUFFICIENT_FEE:
+//        case txBAD_AUTH_EXTRA:
+//        case txINTERNAL_ERROR:
+//        case txNOT_SUPPORTED:
+//        // case txFEE_BUMP_INNER_FAILED: handled above
+//        case txBAD_SPONSORSHIP:
+//        case txBAD_MIN_SEQ_AGE_OR_GAP:
+//        case txMALFORMED:
 //            void;
 //        }
 //        result;

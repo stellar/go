@@ -35,7 +35,7 @@ gxdr/xdr_generated.go: $(XDRS)
 	go fmt $@
 
 xdr/%.x:
-	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-core/master/src/$@
+	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-core/master/src/protocol-curr/$@
 
 xdr/xdr_generated.go: $(XDRS)
 	docker run -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\

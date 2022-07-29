@@ -4,14 +4,37 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Pending
-- Run postgres autovacuum on `history_trades_60000` table more frequently
-  ([4412](https://github.com/stellar/go/pull/4412)).
 - Added indexes by id for claimable balance and liquidity pool id's in the respective tx/ops tables ([4455](https://github.com/stellar/go/pull/4477))
 - Improve restart time of Captive-Core when started with `--captive-core-use-db` flag. The solution does not work on Windows. ([4471)](https://github.com/stellar/go/pull/4471))
 
+## 2.19.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### Breaking Changes
+
+* Update core version to 19.3.0 ([4485](https://github.com/stellar/go/pull/4485)).
+* Pass `--console` to captive core. This is due to a breaking change in stellar-core 19.3.0 ([4487](https://github.com/stellar/go/pull/4487)).
+
+### Changes
+
+* Run postgres autovacuum on `history_trades_60000` table more frequently. ([4412](https://github.com/stellar/go/pull/4412)).
+* Change `protocols/horizon.Transaction.AccountSequence` to `int64` from `string`. ([4409](https://github.com/stellar/go/pull/4409)).
+* Add missing signer key type names. ([4429](https://github.com/stellar/go/pull/4429)).
+* Update core version to 19.2.0. ([4441](https://github.com/stellar/go/pull/4441)).
+* Add `User-Agent` header to history archive HTTP requests. ([4463](https://github.com/stellar/go/pull/4463)).
+
+### DB Schema Migration
+
+The migration makes the following schema changes:
+
+  - tunes the `history_trades_60000` table to run autovacuum more frequently. Migration should be brief, does not incur any data/runtime processing. It does not need a reingestion.
+
 ## 2.18.1
+
 * Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
 * Optimize the claimable balance SQL query for best index query plan performance([4398](https://github.com/stellar/go/pull/4398))
+
 
 ### DB Schema Migration
 

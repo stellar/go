@@ -267,7 +267,7 @@ func (r *stellarCoreRunner) createCmd(params ...string) (cmdI, error) {
 		r.log.Debugf("captive core config file contents:\n%s", conf)
 	}
 
-	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
+	allParams := append([]string{"--conf", r.getConfFileName(), "--console"}, params...)
 	cmd := r.systemCaller.command(r.executablePath, allParams...)
 	cmd.setDir(r.storagePath)
 	cmd.setStdout(r.getLogLineWriter())
