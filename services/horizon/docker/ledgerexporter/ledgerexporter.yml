@@ -1,0 +1,90 @@
+# this file contains the ledgerexporter deployment and it's config artifacts.
+# when importing the manifest with kubectl, will only create, skips any that already exist.
+#
+# make sure to include namespace destination, the manifest does not specify, 
+# otherwise it'll go in your current kubectl context.
+#
+# if defining the secrets for first time, substitue <base64 encoded value here> placeholders.
+#
+# $ kubectl create -f ledgerexporter.yml -n horizon-dev
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+  labels:
+    app: ledgerexporter
+  name: ledgerexporter-pubnet-env
+data:
+  START: "2"
+  END: "0"
+  # can only have CONTINUE or START set, not both.
+  #CONTINUE: "true"
+  WRITE_LATEST_PATH: "true"
+  CAPTIVE_CORE_USE_DB: "true"
+  HISTORY_ARCHIVE_URLS: "https://history.stellar.org/prd/core-live/core_live_001,https://history.stellar.org/prd/core-live/core_live_002,https://history.stellar.org/prd/core-live/core_live_003"
+  NETWORK_PASSPHRASE: "Public Global Stellar Network ; September 2015"
+  ARCHIVE_TARGET: "s3://horizon-ledgermeta-pubnet"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: ledgerexporter
+  name: ledgerexporter-pubnet-secret
+type: Opaque
+data:
+  AWS_REGION: <base64 encoded value here>
+  AWS_ACCESS_KEY_ID: <base64 encoded value here>
+  AWS_SECRET_ACCESS_KEY: <base64 encoded value here>=  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+    deployment.kubernetes.io/revision: "3"
+  labels:
+    app: ledgerexporter
+  name: ledgerexporter-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ledgerexporter
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        fluxcd.io/ignore: "true"
+        prometheus.io/port: "6060"
+        prometheus.io/scrape: "false"
+      labels:
+        app: ledgerexporter
+    spec:
+      containers:
+      - envFrom:
+        - secretRef:
+            name: ledgerexporter-pubnet-secret
+        - configMapRef:
+            name: ledgerexporter-pubnet-env
+        image: stellar/horizon-ledgerexporter:latest
+        imagePullPolicy: Always
+        name: ledgerexporter
+        resources:  
+          limits:
+            cpu:     1
+            memory:  4Gi
+          requests:
+            cpu:      250m
+            memory:   500m
+        volumeMounts:
+        - mountPath: /cc
+          name: tempfs-volume
+      dnsPolicy: ClusterFirst
+      volumes:
+      - name: tempfs-volume
+        emptyDir: 
+          medium: Memory
+
+
+ 
