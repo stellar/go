@@ -83,7 +83,7 @@ type CaptiveStellarCore struct {
 	stellarCoreLock sync.RWMutex
 
 	// For testing
-	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error)
+	stellarCoreRunnerFactory func() stellarCoreRunnerInterface
 
 	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
 	cachedMeta *xdr.LedgerCloseMeta
@@ -175,8 +175,8 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
-	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-		return newStellarCoreRunner(config, mode)
+	c.stellarCoreRunnerFactory = func() stellarCoreRunnerInterface {
+		return newStellarCoreRunner(config)
 	}
 	return c, nil
 }
@@ -212,15 +212,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		)
 	}
 
-	var runner stellarCoreRunnerInterface
-	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline); err != nil {
-		return errors.Wrap(err, "error creating stellar-core runner")
-	} else {
-		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
-		// see https://golang.org/doc/faq#nil_error
-		c.stellarCoreRunner = runner
-	}
-
+	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
@@ -256,12 +248,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 		)
 	}
 
-	var runner stellarCoreRunnerInterface
-	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
-		return errors.Wrap(err, "error creating stellar-core runner")
-	}
-	c.stellarCoreRunner = runner
-
+	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
 	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
 	if err != nil {
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")

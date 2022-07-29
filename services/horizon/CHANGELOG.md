@@ -6,9 +6,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Pending
 - Run postgres autovacuum on `history_trades_60000` table more frequently
   ([4412](https://github.com/stellar/go/pull/4412)).
-
 - Added indexes by id for claimable balance and liquidity pool id's in the respective tx/ops tables ([4455](https://github.com/stellar/go/pull/4477))
-  
+- Improve restart time of Captive-Core when started with `--captive-core-use-db` flag. The solution does not work on Windows. ([4471)](https://github.com/stellar/go/pull/4471))
 
 ## 2.18.1
 * Enabled txsub system to work if/when underlying horizon db connection is read only. ([4418](https://github.com/stellar/go/pull/4418))
