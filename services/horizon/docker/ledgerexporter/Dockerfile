@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 RUN apt-get clean
 
 ADD captive-core-pubnet.cfg /
+ADD captive-core-testnet.cfg /
 
 ADD start /
 RUN ["chmod", "+x", "start"]

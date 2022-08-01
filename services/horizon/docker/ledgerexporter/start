@@ -6,18 +6,17 @@ END="${END:=0}"
 CONTINUE="${CONTINUE:=false}"
 # Writing to /latest is disabled by default to avoid race conditions between parallel container runs
 WRITE_LATEST_PATH="${WRITE_LATEST_PATH:=false}"
+
+# config defaults to pubnet core, any other network requires setting all 3 of these in container env
 NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
 HISTORY_ARCHIVE_URLS="${HISTORY_ARCHIVE_URLS:=https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001}"
 CAPTIVE_CORE_CONFIG="${CAPTIVE_CORE_CONFIG:=/captive-core-pubnet.cfg}"
+
 CAPTIVE_CORE_USE_DB="${CAPTIVE_CORE_USE_DB:=true}"
 
 if [ -z "$ARCHIVE_TARGET" ]; then
   echo "error: undefined ARCHIVE_TARGET env variable"
   exit 1
-fi
-
-if [ "$NETWORK_PASSPHRASE" = "Test SDF Network ; September 2015" ]; then
-  CAPTIVE_CORE_CONFIG="/captive-core-testnet.cfg"
 fi
 
 # Calculate params for AWS Batch

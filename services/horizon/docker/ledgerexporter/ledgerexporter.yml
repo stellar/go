@@ -20,12 +20,28 @@ data:
   # and stop process with error that ledger 3 is not <= expected ledger of 2.    
   START: "3"
   END: "0"
+
   # can only have CONTINUE or START set, not both.
   #CONTINUE: "true"
   WRITE_LATEST_PATH: "true"
   CAPTIVE_CORE_USE_DB: "true"
+
+  # configure the network to export
   HISTORY_ARCHIVE_URLS: "https://history.stellar.org/prd/core-live/core_live_001,https://history.stellar.org/prd/core-live/core_live_002,https://history.stellar.org/prd/core-live/core_live_003"
   NETWORK_PASSPHRASE: "Public Global Stellar Network ; September 2015"
+  # can refer to canned cfg's for pubnet and testnet which are included on the image 
+  # `/captive-core-pubnet.cfg` or `/captive-core-testnet.cfg`. 
+  # If exporting a standalone network, then mount a volume to the pod container with your standalone core's .cfg,
+  # and set full path to that volume here
+  CAPTIVE_CORE_CONFIG: "/captive-core-pubnet.cfg"
+  
+  # example of testnet network config. 
+  # HISTORY_ARCHIVE_URLS: "https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002"
+  # NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
+  # CAPTIVE_CORE_CONFIG: "/captive-core-testnet.cfg"
+
+  # provide the url for the external s3 bucket to be populated
+  # update the ledgerexporter-pubnet-secret to have correct aws key/secret for access to the bucket
   ARCHIVE_TARGET: "s3://horizon-ledgermeta-pubnet"
 ---
 apiVersion: v1
