@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/exp/lighthorizon/services"
@@ -53,9 +54,10 @@ if left empty, uses a temporary directory`)
 	defer ingestArchive.Close()
 
 	Config := services.Config{
-		Archive:    ingestArchive,
-		Passphrase: *networkPassphrase,
-		IndexStore: indexStore,
+		Archive:              ingestArchive,
+		Passphrase:           *networkPassphrase,
+		IndexStore:           indexStore,
+		ResponseAgeHistogram: services.NewResponseAgeHistogramMetric(registry),
 	}
 
 	lightHorizon := services.LightHorizon{

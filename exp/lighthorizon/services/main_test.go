@@ -5,6 +5,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/toid"
@@ -227,9 +229,10 @@ func newTransactionService(ctx context.Context) TransactionsService {
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	return TransactionsService{
 		Config: Config{
-			Archive:    archive,
-			IndexStore: store,
-			Passphrase: passphrase,
+			Archive:              archive,
+			IndexStore:           store,
+			Passphrase:           passphrase,
+			ResponseAgeHistogram: NewResponseAgeHistogramMetric(prometheus.NewRegistry()),
 		},
 	}
 }
@@ -239,9 +242,10 @@ func newOperationService(ctx context.Context) OperationsService {
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	return OperationsService{
 		Config: Config{
-			Archive:    archive,
-			IndexStore: store,
-			Passphrase: passphrase,
+			Archive:              archive,
+			IndexStore:           store,
+			Passphrase:           passphrase,
+			ResponseAgeHistogram: NewResponseAgeHistogramMetric(prometheus.NewRegistry()),
 		},
 	}
 }
