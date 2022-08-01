@@ -1,12 +1,11 @@
 # this file contains the ledgerexporter deployment and it's config artifacts.
-# when importing the manifest with kubectl, will only create, skips any that already exist.
 #
-# make sure to include namespace destination, the manifest does not specify, 
-# otherwise it'll go in your current kubectl context.
+# when applying the manifest on a cluster, make sure to include namespace destination, 
+# as the manifest does not specify namespace, otherwise it'll go in your current kubectl context.
 #
-# if defining the secrets for first time, substitue <base64 encoded value here> placeholders.
+# make sure to set the secrets values, substitue <base64 encoded value here> placeholders.
 #
-# $ kubectl create -f ledgerexporter.yml -n horizon-dev
+# $ kubectl apply -f ledgerexporter.yml -n horizon-dev
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,7 +15,10 @@ metadata:
     app: ledgerexporter
   name: ledgerexporter-pubnet-env
 data:
-  START: "2"
+  # when using core 'on disk', the earliest ledger to get streamed out after catchup to 2, is 3
+  # whereas on in-memory it streas out 2, adjusted here, otherwise horizon ingest will abort
+  # and stop process with error that ledger 3 is not <= expected ledger of 2.    
+  START: "3"
   END: "0"
   # can only have CONTINUE or START set, not both.
   #CONTINUE: "true"
@@ -36,7 +38,7 @@ type: Opaque
 data:
   AWS_REGION: <base64 encoded value here>
   AWS_ACCESS_KEY_ID: <base64 encoded value here>
-  AWS_SECRET_ACCESS_KEY: <base64 encoded value here>  
+  AWS_SECRET_ACCESS_KEY: <base64 encoded value here> 
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -74,8 +76,8 @@ spec:
         name: ledgerexporter
         resources:  
           limits:
-            cpu:     1
-            memory:  4Gi
+            cpu:     3
+            memory:  8Gi
           requests:
             cpu:      250m
             memory:   500m
