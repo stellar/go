@@ -118,7 +118,7 @@ func main() {
 
 	parsedModules := []string{}
 	if modules := os.Getenv(modulesEnv); modules == "" {
-		parsedModules = []string{"accounts_unbacked", "transactions"}
+		parsedModules = []string{"accounts_unbacked"}
 	} else {
 		parsedModules = strings.Split(modulesEnv, ",")
 	}
