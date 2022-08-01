@@ -1,8 +1,4 @@
-// Copyright 2016 Stellar Development Foundation and contributors. Licensed
-// under the Apache License, Version 2.0. See the COPYING file at the root
-// of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
-
-package historyarchive
+package storage
 
 import (
 	"context"
@@ -15,10 +11,17 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-type HttpArchiveBackend struct {
+type HttpStorage struct {
 	ctx    context.Context
 	client http.Client
 	base   url.URL
+}
+
+func NewHttpStorage(ctx context.Context, base *url.URL) Storage {
+	return &HttpStorage{
+		ctx:  ctx,
+		base: *base,
+	}
 }
 
 func checkResp(r *http.Response) error {
@@ -30,7 +33,7 @@ func checkResp(r *http.Response) error {
 	}
 }
 
-func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
+func (b *HttpStorage) GetFile(pth string) (io.ReadCloser, error) {
 	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
 	req, err := http.NewRequest("GET", derived.String(), nil)
@@ -57,7 +60,7 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
+func (b *HttpStorage) Head(pth string) (*http.Response, error) {
 	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
 	req, err := http.NewRequest("HEAD", derived.String(), nil)
@@ -79,7 +82,7 @@ func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
 	return resp, nil
 }
 
-func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
+func (b *HttpStorage) Exists(pth string) (bool, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return false, err
@@ -93,7 +96,7 @@ func (b *HttpArchiveBackend) Exists(pth string) (bool, error) {
 	}
 }
 
-func (b *HttpArchiveBackend) Size(pth string) (int64, error) {
+func (b *HttpStorage) Size(pth string) (int64, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return 0, err
@@ -107,12 +110,12 @@ func (b *HttpArchiveBackend) Size(pth string) (int64, error) {
 	}
 }
 
-func (b *HttpArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
+func (b *HttpStorage) PutFile(pth string, in io.ReadCloser) error {
 	in.Close()
 	return errors.New("PutFile not available over HTTP")
 }
 
-func (b *HttpArchiveBackend) ListFiles(pth string) (chan string, chan error) {
+func (b *HttpStorage) ListFiles(pth string) (chan string, chan error) {
 	ch := make(chan string)
 	er := make(chan error)
 	close(ch)
@@ -121,17 +124,10 @@ func (b *HttpArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	return ch, er
 }
 
-func (b *HttpArchiveBackend) CanListFiles() bool {
+func (b *HttpStorage) CanListFiles() bool {
 	return false
 }
 
-func (b *HttpArchiveBackend) Close() error {
+func (b *HttpStorage) Close() error {
 	return nil
-}
-
-func makeHttpBackend(base *url.URL, opts ConnectOptions) ArchiveBackend {
-	return &HttpArchiveBackend{
-		ctx:  opts.Context,
-		base: *base,
-	}
 }

@@ -461,7 +461,7 @@ func TestReingestDB(t *testing.T) {
 	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
 	// recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
-	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ConnectOptions{
+	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ArchiveOptions{
 		NetworkPassphrase:   horizonConfig.NetworkPassphrase,
 		CheckpointFrequency: horizonConfig.CheckpointFrequency,
 	})
@@ -558,7 +558,7 @@ func TestFillGaps(t *testing.T) {
 	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
 	// recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
-	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ConnectOptions{
+	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ArchiveOptions{
 		NetworkPassphrase:   horizonConfig.NetworkPassphrase,
 		CheckpointFrequency: horizonConfig.CheckpointFrequency,
 	})

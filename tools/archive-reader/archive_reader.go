@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/storage"
 )
 
 func main() {
@@ -64,9 +65,11 @@ func main() {
 func archive() (*historyarchive.Archive, error) {
 	return historyarchive.Connect(
 		fmt.Sprintf("s3://history.stellar.org/prd/core-live/core_live_001/"),
-		historyarchive.ConnectOptions{
-			S3Region:         "eu-west-1",
-			UnsignedRequests: true,
+		historyarchive.ArchiveOptions{
+			ConnectOptions: storage.ConnectOptions{
+				S3Region:         "eu-west-1",
+				UnsignedRequests: true,
+			},
 		},
 	)
 }

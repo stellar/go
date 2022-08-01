@@ -21,6 +21,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 )
 
 const (
@@ -206,10 +207,12 @@ func NewSystem(config Config) (System, error) {
 
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURL,
-		historyarchive.ConnectOptions{
-			Context:             ctx,
+		historyarchive.ArchiveOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
+			ConnectOptions: storage.ConnectOptions{
+				Context: ctx,
+			},
 		},
 	)
 	if err != nil {

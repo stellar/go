@@ -13,7 +13,9 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/metaarchive"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/toid"
 	"github.com/stretchr/testify/require"
 
@@ -183,14 +185,16 @@ func IndexLedgerRange(
 	ctx := context.Background()
 	backend, err := historyarchive.ConnectBackend(
 		txmetaSource,
-		historyarchive.ConnectOptions{
-			Context:           ctx,
-			NetworkPassphrase: network.TestNetworkPassphrase,
-			S3Region:          "us-east-1",
+		storage.ConnectOptions{
+			Context:  ctx,
+			S3Region: "us-east-1",
 		},
 	)
 	require.NoError(t, err)
-	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(backend)
+
+	metaArchive := metaarchive.NewMetaArchive(backend)
+
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(metaArchive)
 	defer ledgerBackend.Close()
 
 	participation := make(map[string][]uint32)

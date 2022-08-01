@@ -15,8 +15,10 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/metaarchive"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -44,18 +46,18 @@ func BuildIndices(
 	// with the filesystem directly.
 	source, err := historyarchive.ConnectBackend(
 		sourceUrl,
-		historyarchive.ConnectOptions{
-			Context:           ctx,
-			NetworkPassphrase: networkPassphrase,
-			S3Region:          "us-east-1",
+		storage.ConnectOptions{
+			Context:  ctx,
+			S3Region: "us-east-1",
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
-	defer ledgerBackend.Close()
+	metaArchive := metaarchive.NewMetaArchive(source)
+
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(metaArchive)
 
 	if ledgerRange.High == 0 {
 		var backendErr error
@@ -82,7 +84,7 @@ func BuildIndices(
 	wg, ctx := errgroup.WithContext(ctx)
 	ch := make(chan historyarchive.Range, parallel)
 
-	indexBuilder := NewIndexBuilder(indexStore, ledgerBackend, networkPassphrase)
+	indexBuilder := NewIndexBuilder(indexStore, *metaArchive, networkPassphrase)
 	for _, part := range modules {
 		switch part {
 		case "transactions":
@@ -99,8 +101,8 @@ func BuildIndices(
 
 	// Submit the work to the channels, breaking up the range into individual
 	// checkpoint ranges.
+	checkpoints := historyarchive.NewCheckpointManager(0)
 	go func() {
-		checkpoints := historyarchive.NewCheckpointManager(0)
 		for ledger := range ledgerRange.GenerateCheckpoints(checkpoints) {
 			chunk := checkpoints.GetCheckpointRange(ledger)
 			chunk.High = min(chunk.High, ledgerRange.High) // don't exceed upper bound
@@ -127,13 +129,15 @@ func BuildIndices(
 				}
 
 				nprocessed := atomic.AddUint64(&processed, uint64(count))
-				if nprocessed%97 == 0 {
-					printProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
+				if nprocessed%1234 == 0 {
+					PrintProgress("Reading ledgers", nprocessed, uint64(ledgerCount), startTime)
 				}
 
-				// Upload indices once per checkpoint to save memory
-				if err := indexStore.Flush(); err != nil {
-					return errors.Wrap(err, "flushing indices failed")
+				// Upload indices once every 10 checkpoints to save memory
+				if nprocessed%(10*uint64(checkpoints.GetCheckpointFrequency())) == 0 {
+					if err := indexStore.Flush(); err != nil {
+						return errors.Wrap(err, "flushing indices failed")
+					}
 				}
 			}
 			return nil
@@ -144,7 +148,7 @@ func BuildIndices(
 		return indexBuilder, errors.Wrap(err, "one or more workers failed")
 	}
 
-	printProgress("Reading ledgers", processed, uint64(ledgerCount), startTime)
+	PrintProgress("Reading ledgers", processed, uint64(ledgerCount), startTime)
 
 	L.Infof("Processed %d ledgers via %d workers", processed, parallel)
 	L.Infof("Uploading indices to %s", targetUrl)
@@ -170,7 +174,7 @@ type Module func(
 // IndexBuilder contains everything needed to build indices from ledger ranges.
 type IndexBuilder struct {
 	store             Store
-	ledgerBackend     ledgerbackend.LedgerBackend
+	metaArchive       metaarchive.MetaArchive
 	networkPassphrase string
 
 	lastBuiltLedgerWriteLock sync.Mutex
@@ -181,12 +185,12 @@ type IndexBuilder struct {
 
 func NewIndexBuilder(
 	indexStore Store,
-	backend ledgerbackend.LedgerBackend,
+	metaArchive metaarchive.MetaArchive,
 	networkPassphrase string,
 ) *IndexBuilder {
 	return &IndexBuilder{
 		store:             indexStore,
-		ledgerBackend:     backend,
+		metaArchive:       metaArchive,
 		networkPassphrase: networkPassphrase,
 	}
 }
@@ -219,7 +223,7 @@ func (builder *IndexBuilder) RunModules(
 // portion.
 func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchive.Range) error {
 	for ledgerSeq := ledgerRange.Low; ledgerSeq <= ledgerRange.High; ledgerSeq++ {
-		ledger, err := builder.ledgerBackend.GetLedger(ctx, ledgerSeq)
+		ledger, err := builder.metaArchive.GetLedger(ctx, ledgerSeq)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				log.Errorf("error getting ledger %d: %v", ledgerSeq, err)
@@ -228,7 +232,7 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 		}
 
 		reader, err := ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(
-			builder.networkPassphrase, ledger)
+			builder.networkPassphrase, *ledger.V0)
 		if err != nil {
 			return err
 		}
@@ -241,21 +245,21 @@ func (builder *IndexBuilder) Build(ctx context.Context, ledgerRange historyarchi
 				return err
 			}
 
-			if err := builder.RunModules(ledger, tx); err != nil {
+			if err := builder.RunModules(*ledger.V0, tx); err != nil {
 				return err
 			}
 		}
 	}
 
 	builder.lastBuiltLedgerWriteLock.Lock()
+	defer builder.lastBuiltLedgerWriteLock.Unlock()
 	builder.lastBuiltLedger = max(builder.lastBuiltLedger, ledgerRange.High)
-	builder.lastBuiltLedgerWriteLock.Unlock()
 
 	return nil
 }
 
 func (builder *IndexBuilder) Watch(ctx context.Context) error {
-	latestLedger, err := builder.ledgerBackend.GetLatestLedgerSequence(ctx)
+	latestLedger, err := builder.metaArchive.GetLatestLedgerSequence(ctx)
 	if err != nil {
 		log.Errorf("Failed to retrieve latest ledger: %v", err)
 		return err
@@ -320,13 +324,13 @@ func (builder *IndexBuilder) Watch(ctx context.Context) error {
 	}
 }
 
-func printProgress(prefix string, done, total uint64, startTime time.Time) {
+func PrintProgress(prefix string, done, total uint64, startTime time.Time) {
 	progress := float64(done) / float64(total)
 	elapsed := time.Since(startTime)
 
-	// Approximate based on how many ledgers are left and how long this much
+	// Approximate based on how many stuff is left to do and how long this much
 	// progress took, e.g. if 4/10 took 2s then 6/10 will "take" 3s (though this
-	// assumes consistent ledger load).
+	// assumes consistent load).
 	remaining := (float64(elapsed) / float64(done)) * float64(total-done)
 
 	var remainingStr string

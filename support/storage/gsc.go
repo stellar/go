@@ -1,8 +1,4 @@
-// Copyright 2016 Stellar Development Foundation and contributors. Licensed
-// under the Apache License, Version 2.0. See the COPYING file at the root
-// of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
-
-package historyarchive
+package storage
 
 import (
 	"context"
@@ -17,20 +13,57 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-type GCSArchiveBackend struct {
+type GCSStorage struct {
 	ctx    context.Context
 	client *storage.Client
 	bucket *storage.BucketHandle
 	prefix string
 }
 
-func (b *GCSArchiveBackend) Exists(pth string) (bool, error) {
+func NewGCSBackend(
+	ctx context.Context,
+	bucketName string,
+	prefix string,
+	endpoint string,
+) (Storage, error) {
+	log.WithFields(log.Fields{
+		"bucket":   bucketName,
+		"prefix":   prefix,
+		"endpoint": endpoint,
+	}).Debug("gcs: making backend")
+
+	var options []option.ClientOption
+	if endpoint != "" {
+		options = append(options, option.WithEndpoint(endpoint))
+	}
+
+	client, err := storage.NewClient(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check the bucket exists
+	bucket := client.Bucket(bucketName)
+	if _, err := bucket.Attrs(ctx); err != nil {
+		return nil, err
+	}
+
+	backend := GCSStorage{
+		ctx:    ctx,
+		client: client,
+		bucket: bucket,
+		prefix: prefix,
+	}
+	return &backend, nil
+}
+
+func (b *GCSStorage) Exists(pth string) (bool, error) {
 	log.WithField("path", path.Join(b.prefix, pth)).Trace("gcs: check exists")
 	_, err := b.Size(pth)
 	return err == nil, err
 }
 
-func (b *GCSArchiveBackend) Size(pth string) (int64, error) {
+func (b *GCSStorage) Size(pth string) (int64, error) {
 	pth = path.Join(b.prefix, pth)
 	log.WithField("path", pth).Trace("gcs: get size")
 	attrs, err := b.bucket.Object(pth).Attrs(context.Background())
@@ -43,7 +76,7 @@ func (b *GCSArchiveBackend) Size(pth string) (int64, error) {
 	return attrs.Size, nil
 }
 
-func (b *GCSArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
+func (b *GCSStorage) GetFile(pth string) (io.ReadCloser, error) {
 	pth = path.Join(b.prefix, pth)
 	log.WithField("path", pth).Trace("gcs: get file")
 	r, err := b.bucket.Object(pth).NewReader(context.Background())
@@ -55,7 +88,7 @@ func (b *GCSArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return r, nil
 }
 
-func (b *GCSArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
+func (b *GCSStorage) PutFile(pth string, in io.ReadCloser) error {
 	pth = path.Join(b.prefix, pth)
 	log.WithField("path", pth).Trace("gcs: get file")
 	w := b.bucket.Object(pth).NewWriter(context.Background())
@@ -66,7 +99,7 @@ func (b *GCSArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	return w.Close()
 }
 
-func (b *GCSArchiveBackend) ListFiles(pth string) (chan string, chan error) {
+func (b *GCSStorage) ListFiles(pth string) (chan string, chan error) {
 	prefix := path.Join(b.prefix, pth)
 	ch := make(chan string)
 	errs := make(chan error)
@@ -93,44 +126,12 @@ func (b *GCSArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	return ch, errs
 }
 
-func (b *GCSArchiveBackend) CanListFiles() bool {
+func (b *GCSStorage) CanListFiles() bool {
 	log.Trace("gcs: can list files")
 	return true
 }
 
-func (b *GCSArchiveBackend) Close() error {
+func (b *GCSStorage) Close() error {
 	log.Trace("gcs: close")
 	return b.client.Close()
-}
-
-func makeGCSBackend(bucketName string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {
-	log.WithFields(log.Fields{
-		"bucket":   bucketName,
-		"prefix":   prefix,
-		"endpoint": opts.GCSEndpoint,
-	}).Debug("gcs: making backend")
-
-	var options []option.ClientOption
-	if opts.GCSEndpoint != "" {
-		options = append(options, option.WithEndpoint(opts.GCSEndpoint))
-	}
-
-	client, err := storage.NewClient(opts.Context, options...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check the bucket exists
-	bucket := client.Bucket(bucketName)
-	if _, err := bucket.Attrs(opts.Context); err != nil {
-		return nil, err
-	}
-
-	backend := GCSArchiveBackend{
-		ctx:    opts.Context,
-		client: client,
-		bucket: bucket,
-		prefix: prefix,
-	}
-	return &backend, nil
 }

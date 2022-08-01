@@ -21,6 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -37,38 +38,22 @@ type CommandOptions struct {
 	SkipOptional bool
 }
 
-type ConnectOptions struct {
-	Context context.Context
+type ArchiveOptions struct {
 	// NetworkPassphrase defines the expected network of history archive. It is
 	// checked when getting HAS. If network passphrase does not match, error is
 	// returned.
 	NetworkPassphrase string
-	S3Region          string
-	S3Endpoint        string
-	UnsignedRequests  bool
-	GCSEndpoint       string
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
 
-	// Wrap the archivebackend after connection. For example, to add a caching or introspection layer.
-	Wrap func(ArchiveBackend) (ArchiveBackend, error)
+	storage.ConnectOptions
 }
 
 type Ledger struct {
 	Header            xdr.LedgerHeaderHistoryEntry
 	Transaction       xdr.TransactionHistoryEntry
 	TransactionResult xdr.TransactionHistoryResultEntry
-}
-
-type ArchiveBackend interface {
-	Exists(path string) (bool, error)
-	Size(path string) (int64, error)
-	GetFile(path string) (io.ReadCloser, error)
-	PutFile(path string, in io.ReadCloser) error
-	ListFiles(path string) (chan string, chan error)
-	CanListFiles() bool
-	Close() error
 }
 
 type ArchiveInterface interface {
@@ -117,7 +102,7 @@ type Archive struct {
 
 	checkpointManager CheckpointManager
 
-	backend ArchiveBackend
+	backend storage.Storage
 }
 
 func (arch *Archive) GetCheckpointManager() CheckpointManager {
@@ -381,7 +366,7 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 	return NewXdrGzStream(rdr)
 }
 
-func Connect(u string, opts ConnectOptions) (*Archive, error) {
+func Connect(u string, opts ArchiveOptions) (*Archive, error) {
 	arch := Archive{
 		networkPassphrase:       opts.NetworkPassphrase,
 		checkpointFiles:         make(map[string](map[uint32]bool)),
@@ -399,16 +384,16 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)
 	}
 
-	if opts.Context == nil {
-		opts.Context = context.Background()
+	if opts.ConnectOptions.Context == nil {
+		opts.ConnectOptions.Context = context.Background()
 	}
 
 	var err error
-	arch.backend, err = ConnectBackend(u, opts)
+	arch.backend, err = ConnectBackend(u, opts.ConnectOptions)
 	return &arch, err
 }
 
-func ConnectBackend(u string, opts ConnectOptions) (ArchiveBackend, error) {
+func ConnectBackend(u string, opts storage.ConnectOptions) (storage.Storage, error) {
 	if u == "" {
 		return nil, errors.New("URL is empty")
 	}
@@ -418,43 +403,17 @@ func ConnectBackend(u string, opts ConnectOptions) (ArchiveBackend, error) {
 		return nil, err
 	}
 
-	if opts.Context == nil {
-		opts.Context = context.Background()
+	var backend storage.Storage
+	if parsed.Scheme == "mock" {
+		backend = makeMockBackend()
+	} else {
+		backend, err = storage.ConnectBackend(u, opts)
 	}
 
-	pth := parsed.Path
-	var backend ArchiveBackend
-	switch parsed.Scheme {
-	case "s3":
-		// Inside s3, all paths start _without_ the leading /
-		pth = strings.TrimPrefix(pth, "/")
-		backend, err = makeS3Backend(parsed.Host, pth, opts)
-
-	case "gcs":
-		// Inside gcs, all paths start _without_ the leading /
-		pth = strings.TrimPrefix(pth, "/")
-		backend, err = makeGCSBackend(parsed.Host, pth, opts)
-
-	case "file":
-		pth = path.Join(parsed.Host, pth)
-		backend = makeFsBackend(pth, opts)
-
-	case "http", "https":
-		backend = makeHttpBackend(parsed, opts)
-
-	case "mock":
-		backend = makeMockBackend(opts)
-
-	default:
-		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
-	}
-	if err == nil && opts.Wrap != nil {
-		backend, err = opts.Wrap(backend)
-	}
 	return backend, err
 }
 
-func MustConnect(u string, opts ConnectOptions) *Archive {
+func MustConnect(u string, opts ArchiveOptions) *Archive {
 	arch, err := Connect(u, opts)
 	if err != nil {
 		log.Fatal(err)

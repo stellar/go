@@ -1,8 +1,4 @@
-// Copyright 2016 Stellar Development Foundation and contributors. Licensed
-// under the Apache License, Version 2.0. See the COPYING file at the root
-// of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
-
-package historyarchive
+package storage
 
 import (
 	"io"
@@ -13,15 +9,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type FsArchiveBackend struct {
+type Filesystem struct {
 	prefix string
 }
 
-func (b *FsArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
+func NewFilesystemStorage(pth string) Storage {
+	return &Filesystem{
+		prefix: pth,
+	}
+}
+
+func (b *Filesystem) GetFile(pth string) (io.ReadCloser, error) {
 	return os.Open(path.Join(b.prefix, pth))
 }
 
-func (b *FsArchiveBackend) Exists(pth string) (bool, error) {
+func (b *Filesystem) Exists(pth string) (bool, error) {
 	pth = path.Join(b.prefix, pth)
 	log.WithField("path", pth).Trace("fs: check exists")
 	_, err := os.Stat(pth)
@@ -38,7 +40,7 @@ func (b *FsArchiveBackend) Exists(pth string) (bool, error) {
 	return true, nil
 }
 
-func (b *FsArchiveBackend) Size(pth string) (int64, error) {
+func (b *Filesystem) Size(pth string) (int64, error) {
 	pth = path.Join(b.prefix, pth)
 	log.WithField("path", pth).Trace("fs: get size")
 	fi, err := os.Stat(pth)
@@ -55,7 +57,7 @@ func (b *FsArchiveBackend) Size(pth string) (int64, error) {
 	return fi.Size(), nil
 }
 
-func (b *FsArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
+func (b *Filesystem) PutFile(pth string, in io.ReadCloser) error {
 	dir := path.Join(b.prefix, path.Dir(pth))
 	log.WithField("path", pth).Trace("fs: put file")
 	exists, err := b.Exists(dir)
@@ -86,7 +88,7 @@ func (b *FsArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	return e
 }
 
-func (b *FsArchiveBackend) ListFiles(pth string) (chan string, chan error) {
+func (b *Filesystem) ListFiles(pth string) (chan string, chan error) {
 	ch := make(chan string)
 	errs := make(chan error)
 	go func() {
@@ -117,16 +119,10 @@ func (b *FsArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	return ch, errs
 }
 
-func (b *FsArchiveBackend) CanListFiles() bool {
+func (b *Filesystem) CanListFiles() bool {
 	return true
 }
 
-func (b *FsArchiveBackend) Close() error {
+func (b *Filesystem) Close() error {
 	return nil
-}
-
-func makeFsBackend(pth string, opts ConnectOptions) ArchiveBackend {
-	return &FsArchiveBackend{
-		prefix: pth,
-	}
 }
