@@ -1,8 +1,4 @@
-// Copyright 2016 Stellar Development Foundation and contributors. Licensed
-// under the Apache License, Version 2.0. See the COPYING file at the root
-// of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
-
-package historyarchive
+package storage
 
 import (
 	"bytes"
@@ -19,7 +15,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-type S3ArchiveBackend struct {
+type S3Storage struct {
 	ctx              context.Context
 	svc              *s3.S3
 	bucket           string
@@ -27,7 +23,40 @@ type S3ArchiveBackend struct {
 	unsignedRequests bool
 }
 
-func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
+func NewS3Storage(
+	ctx context.Context,
+	bucket string,
+	prefix string,
+	region string,
+	endpoint string,
+	unsignedRequests bool,
+) (Storage, error) {
+	log.WithFields(log.Fields{"bucket": bucket,
+		"prefix":   prefix,
+		"region":   region,
+		"endpoint": endpoint}).Debug("s3: making backend")
+	cfg := &aws.Config{
+		Region:   aws.String(region),
+		Endpoint: aws.String(endpoint),
+	}
+	cfg = cfg.WithS3ForcePathStyle(true)
+
+	sess, err := session.NewSession(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	backend := S3Storage{
+		ctx:              ctx,
+		svc:              s3.New(sess),
+		bucket:           bucket,
+		prefix:           prefix,
+		unsignedRequests: unsignedRequests,
+	}
+	return &backend, nil
+}
+
+func (b *S3Storage) GetFile(pth string) (io.ReadCloser, error) {
 	key := path.Join(b.prefix, pth)
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(b.bucket),
@@ -49,7 +78,7 @@ func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (b *S3ArchiveBackend) Head(pth string) (*http.Response, error) {
+func (b *S3Storage) Head(pth string) (*http.Response, error) {
 	key := path.Join(b.prefix, pth)
 	params := &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
@@ -82,7 +111,7 @@ func (b *S3ArchiveBackend) Head(pth string) (*http.Response, error) {
 	return req.HTTPResponse, nil
 }
 
-func (b *S3ArchiveBackend) Exists(pth string) (bool, error) {
+func (b *S3Storage) Exists(pth string) (bool, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return false, err
@@ -96,7 +125,7 @@ func (b *S3ArchiveBackend) Exists(pth string) (bool, error) {
 	}
 }
 
-func (b *S3ArchiveBackend) Size(pth string) (int64, error) {
+func (b *S3Storage) Size(pth string) (int64, error) {
 	resp, err := b.Head(pth)
 	if err != nil {
 		return 0, err
@@ -110,7 +139,7 @@ func (b *S3ArchiveBackend) Size(pth string) (int64, error) {
 	}
 }
 
-func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
+func (b *S3Storage) PutFile(pth string, in io.ReadCloser) error {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(in)
 	in.Close()
@@ -137,7 +166,7 @@ func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	return err
 }
 
-func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
+func (b *S3Storage) ListFiles(pth string) (chan string, chan error) {
 	prefix := path.Join(b.prefix, pth)
 	ch := make(chan string)
 	errs := make(chan error)
@@ -190,36 +219,10 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 	return ch, errs
 }
 
-func (b *S3ArchiveBackend) CanListFiles() bool {
+func (b *S3Storage) CanListFiles() bool {
 	return true
 }
 
-func (b *S3ArchiveBackend) Close() error {
+func (b *S3Storage) Close() error {
 	return nil
-}
-
-func makeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {
-	log.WithFields(log.Fields{"bucket": bucket,
-		"prefix":   prefix,
-		"region":   opts.S3Region,
-		"endpoint": opts.S3Endpoint}).Debug("s3: making backend")
-	cfg := &aws.Config{
-		Region:   aws.String(opts.S3Region),
-		Endpoint: aws.String(opts.S3Endpoint),
-	}
-	cfg = cfg.WithS3ForcePathStyle(true)
-
-	sess, err := session.NewSession(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	backend := S3ArchiveBackend{
-		ctx:              opts.Context,
-		svc:              s3.New(sess),
-		bucket:           bucket,
-		prefix:           prefix,
-		unsignedRequests: opts.UnsignedRequests,
-	}
-	return &backend, nil
 }

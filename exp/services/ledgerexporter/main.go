@@ -14,6 +14,7 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	supportlog "github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -57,9 +58,8 @@ func main() {
 
 	target, err := historyarchive.ConnectBackend(
 		*targetUrl,
-		historyarchive.ConnectOptions{
-			Context:           context.Background(),
-			NetworkPassphrase: params.NetworkPassphrase,
+		storage.ConnectOptions{
+			Context: context.Background(),
 		},
 	)
 	logFatalIf(err, "Could not connect to target")
@@ -119,7 +119,7 @@ func main() {
 
 // readLatestLedger determines the latest ledger in the given backend (at the
 // /latest path), defaulting to Ledger #2 if one doesn't exist
-func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
+func readLatestLedger(backend storage.Storage) uint32 {
 	r, err := backend.GetFile("latest")
 	if os.IsNotExist(err) {
 		return 2
@@ -140,7 +140,7 @@ func readLatestLedger(backend historyarchive.ArchiveBackend) uint32 {
 // writeLedger stores the given LedgerCloseMeta instance as a raw binary at the
 // /ledgers/<seqNum> path. If an error is returned, it may be transient so you
 // should attempt to retry.
-func writeLedger(backend historyarchive.ArchiveBackend, ledger xdr.LedgerCloseMeta) error {
+func writeLedger(backend storage.Storage, ledger xdr.LedgerCloseMeta) error {
 	toSerialize := xdr.SerializedLedgerCloseMeta{
 		V:  0,
 		V0: &ledger,
@@ -153,7 +153,7 @@ func writeLedger(backend historyarchive.ArchiveBackend, ledger xdr.LedgerCloseMe
 	)
 }
 
-func writeLatestLedger(backend historyarchive.ArchiveBackend, ledger uint32) error {
+func writeLatestLedger(backend storage.Storage, ledger uint32) error {
 	return backend.PutFile(
 		"latest",
 		io.NopCloser(

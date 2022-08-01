@@ -8,8 +8,10 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/metaarchive"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/xdr"
@@ -48,10 +50,9 @@ func NewIngestArchive(config ArchiveConfig) (Archive, error) {
 	// a local on-disk LRU cache if we can.
 	source, err := historyarchive.ConnectBackend(
 		config.SourceUrl,
-		historyarchive.ConnectOptions{
-			Context:           context.Background(),
-			NetworkPassphrase: config.NetworkPassphrase,
-			S3Region:          region,
+		storage.ConnectOptions{
+			Context:  context.Background(),
+			S3Region: region,
 		},
 	)
 	if err != nil {
@@ -59,7 +60,7 @@ func NewIngestArchive(config ArchiveConfig) (Archive, error) {
 	}
 
 	if needsCache {
-		cache, err := historyarchive.MakeFsCacheBackend(source,
+		cache, err := storage.MakeOnDiskCache(source,
 			config.CacheDir, uint(config.CacheSize))
 
 		if err != nil { // warn but continue w/o cache
@@ -73,7 +74,9 @@ func NewIngestArchive(config ArchiveConfig) (Archive, error) {
 		}
 	}
 
-	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(source)
+	metaArchive := metaarchive.NewMetaArchive(source)
+
+	ledgerBackend := ledgerbackend.NewHistoryArchiveBackend(metaArchive)
 	return ingestArchive{ledgerBackend}, nil
 }
 

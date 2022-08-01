@@ -109,12 +109,12 @@ func archive(testnet bool) (*historyarchive.Archive, error) {
 	if testnet {
 		return historyarchive.Connect(
 			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
-			historyarchive.ConnectOptions{},
+			historyarchive.ArchiveOptions{},
 		)
 	}
 
 	return historyarchive.Connect(
 		fmt.Sprintf("https://history.stellar.org/prd/core-live/core_live_001/"),
-		historyarchive.ConnectOptions{},
+		historyarchive.ArchiveOptions{},
 	)
 }

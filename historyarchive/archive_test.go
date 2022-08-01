@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,11 +36,17 @@ func GetTestS3Archive() *Archive {
 	if env_region := os.Getenv("ARCHIVIST_TEST_S3_REGION"); env_region != "" {
 		region = env_region
 	}
-	return MustConnect(bucket, ConnectOptions{S3Region: region, CheckpointFrequency: 64})
+	return MustConnect(
+		bucket,
+		ArchiveOptions{
+			CheckpointFrequency: DefaultCheckpointFrequency,
+			ConnectOptions:      storage.ConnectOptions{S3Region: region},
+		},
+	)
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", ConnectOptions{CheckpointFrequency: 64})
+	return MustConnect("mock://test", ArchiveOptions{CheckpointFrequency: DefaultCheckpointFrequency})
 }
 
 var tmpdirs []string
@@ -54,7 +61,7 @@ func GetTestFileArchive() *Archive {
 	} else {
 		tmpdirs = append(tmpdirs, d)
 	}
-	return MustConnect("file://"+d, ConnectOptions{CheckpointFrequency: 64})
+	return MustConnect("file://"+d, ArchiveOptions{CheckpointFrequency: DefaultCheckpointFrequency})
 }
 
 func cleanup() {
@@ -381,16 +388,16 @@ func TestNetworkPassphrase(t *testing.T) {
 	}
 
 	// No network passphrase set in options
-	archive := MustConnect("mock://test", ConnectOptions{CheckpointFrequency: 64})
+	archive := MustConnect("mock://test", ArchiveOptions{CheckpointFrequency: DefaultCheckpointFrequency})
 	err := archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)
 	_, err = archive.GetPathHAS("has.json")
 	assert.NoError(t, err)
 
 	// No network passphrase set in HAS
-	archive = MustConnect("mock://test", ConnectOptions{
+	archive = MustConnect("mock://test", ArchiveOptions{
 		NetworkPassphrase:   "Public Global Stellar Network ; September 2015",
-		CheckpointFrequency: 64,
+		CheckpointFrequency: DefaultCheckpointFrequency,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReaderNoNetwork())
 	assert.NoError(t, err)
@@ -398,9 +405,9 @@ func TestNetworkPassphrase(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Correct network passphrase set in options
-	archive = MustConnect("mock://test", ConnectOptions{
+	archive = MustConnect("mock://test", ArchiveOptions{
 		NetworkPassphrase:   "Public Global Stellar Network ; September 2015",
-		CheckpointFrequency: 64,
+		CheckpointFrequency: DefaultCheckpointFrequency,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)
@@ -408,9 +415,9 @@ func TestNetworkPassphrase(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Incorrect network passphrase set in options
-	archive = MustConnect("mock://test", ConnectOptions{
+	archive = MustConnect("mock://test", ArchiveOptions{
 		NetworkPassphrase:   "Test SDF Network ; September 2015",
-		CheckpointFrequency: 64,
+		CheckpointFrequency: DefaultCheckpointFrequency,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)
@@ -500,7 +507,7 @@ type xdrEntry interface {
 	MarshalBinary() ([]byte, error)
 }
 
-func writeCategoryFile(t *testing.T, backend ArchiveBackend, path string, entries []xdrEntry) {
+func writeCategoryFile(t *testing.T, backend storage.Storage, path string, entries []xdrEntry) {
 	file := &bytes.Buffer{}
 	writer := gzip.NewWriter(file)
 
