@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
@@ -61,7 +62,8 @@ func main() {
 	target, err := historyarchive.ConnectBackend(
 		*targetUrl,
 		storage.ConnectOptions{
-			Context: context.Background(),
+			Context:    context.Background(),
+			S3WriteACL: s3.ObjectCannedACLBucketOwnerFullControl,
 		},
 	)
 	logFatalIf(err, "Could not connect to target")

@@ -12,15 +12,17 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/stellar/go/support/errors"
 )
 
 type S3Storage struct {
 	ctx              context.Context
-	svc              *s3.S3
+	svc              s3iface.S3API
 	bucket           string
 	prefix           string
 	unsignedRequests bool
+	writeACLrule     string
 }
 
 func NewS3Storage(
@@ -30,6 +32,7 @@ func NewS3Storage(
 	region string,
 	endpoint string,
 	unsignedRequests bool,
+	writeACLrule string,
 ) (Storage, error) {
 	log.WithFields(log.Fields{"bucket": bucket,
 		"prefix":   prefix,
@@ -52,6 +55,7 @@ func NewS3Storage(
 		bucket:           bucket,
 		prefix:           prefix,
 		unsignedRequests: unsignedRequests,
+		writeACLrule:     writeACLrule,
 	}
 	return &backend, nil
 }
@@ -139,6 +143,13 @@ func (b *S3Storage) Size(pth string) (int64, error) {
 	}
 }
 
+func (b *S3Storage) GetACLWriteRule() string {
+	if b.writeACLrule == "" {
+		return s3.ObjectCannedACLPublicRead
+	}
+	return b.writeACLrule
+}
+
 func (b *S3Storage) PutFile(pth string, in io.ReadCloser) error {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(in)
@@ -150,6 +161,7 @@ func (b *S3Storage) PutFile(pth string, in io.ReadCloser) error {
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(key),
+		ACL:    aws.String(b.GetACLWriteRule()),
 		Body:   bytes.NewReader(buf.Bytes()),
 	}
 	req, _ := b.svc.PutObjectRequest(params)
