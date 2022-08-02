@@ -50,6 +50,6 @@ export TRACY_NO_INVARIANT_CHECK=1
                 --captive-core-toml-path "$CAPTIVE_CORE_CONFIG" \
                 --history-archive-urls "$HISTORY_ARCHIVE_URLS" --network-passphrase "$NETWORK_PASSPHRASE" \
                 --continue="$CONTINUE" --write-latest-path="$WRITE_LATEST_PATH" \
-				--start-ledger "$START" --end-ledger "$END" --captive-core-use-db "$CAPTIVE_CORE_USE_DB"
+				--start-ledger "$START" --end-ledger "$END" --captive-core-use-db="$CAPTIVE_CORE_USE_DB"
 
 echo "OK"

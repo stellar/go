@@ -56,6 +56,21 @@ data:
   AWS_ACCESS_KEY_ID: <base64 encoded value here>
   AWS_SECRET_ACCESS_KEY: <base64 encoded value here> 
 ---
+# running captive core with on-disk mode limits RAM to around 2G usage, but 
+# requires some dedicated disk storage space that has at least 3k IOPS for read/write.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ledgerexporter-core-storage
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: default
+  volumeMode: Filesystem
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -95,16 +110,16 @@ spec:
             cpu:     3
             memory:  8Gi
           requests:
-            cpu:      250m
-            memory:   500m
+            cpu:      500m
+            memory:   2Gi
         volumeMounts:
         - mountPath: /cc
-          name: tempfs-volume
+          name: core-storage
       dnsPolicy: ClusterFirst
       volumes:
-      - name: tempfs-volume
-        emptyDir: 
-          medium: Memory
+      - name: core-storage
+        persistentVolumeClaim:
+          claimName: ledgerexporter-core-storage 
 
 
  
