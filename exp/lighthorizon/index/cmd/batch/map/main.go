@@ -118,9 +118,9 @@ func main() {
 
 	parsedModules := []string{}
 	if modules := os.Getenv(modulesEnv); modules == "" {
-		parsedModules = []string{"accounts_unbacked"}
+		parsedModules = append(parsedModules, "accounts_unbacked")
 	} else {
-		parsedModules = strings.Split(modulesEnv, ",")
+		parsedModules = append(parsedModules, strings.Split(modules, ",")...)
 	}
 
 	log.Infof("Uploading ledger range [%d, %d] to %s",
