@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
@@ -29,6 +30,7 @@ const (
 	indexTargetUrlEnv    = "INDEX_TARGET"
 	workerCountEnv       = "WORKER_COUNT"
 	networkPassphraseEnv = "NETWORK_PASSPHRASE"
+	modulesEnv           = "MODULES"
 )
 
 func NewBatchConfig() (*BatchConfig, error) {
@@ -68,28 +70,12 @@ func NewBatchConfig() (*BatchConfig, error) {
 		return nil, errors.New("required parameter " + txmetaSourceUrlEnv)
 	}
 
-	networkPassphrase := os.Getenv(networkPassphraseEnv)
-	switch networkPassphrase {
-	case "":
-		log.Warnf("%s not specified, defaulting to 'testnet'", networkPassphraseEnv)
-		fallthrough
-	case "testnet":
-		networkPassphrase = network.TestNetworkPassphrase
-	case "pubnet":
-		networkPassphrase = network.PublicNetworkPassphrase
-	default:
-		log.Warnf("%s is not a recognized shortcut ('pubnet' or 'testnet')",
-			networkPassphraseEnv)
-	}
-	log.Infof("Using network passphrase '%s'", networkPassphrase)
-
 	firstLedger := uint32(firstCheckpoint + batchSize*jobIndex)
 	lastLedger := firstLedger + uint32(batchSize) - 1
 	return &BatchConfig{
-		Range:             historyarchive.Range{Low: firstLedger, High: lastLedger},
-		TxMetaSourceUrl:   txmetaSourceUrl,
-		IndexTargetUrl:    fmt.Sprintf("%s%cjob_%d", indexTargetRootUrl, os.PathSeparator, jobIndex),
-		NetworkPassphrase: networkPassphrase,
+		Range:           historyarchive.Range{Low: firstLedger, High: lastLedger},
+		TxMetaSourceUrl: txmetaSourceUrl,
+		IndexTargetUrl:  fmt.Sprintf("%s%cjob_%d", indexTargetRootUrl, os.PathSeparator, jobIndex),
 	}, nil
 }
 
@@ -115,6 +101,28 @@ func main() {
 		workerCount = int(workerCountParsed)
 	}
 
+	networkPassphrase := os.Getenv(networkPassphraseEnv)
+	switch networkPassphrase {
+	case "":
+		log.Warnf("%s not specified, defaulting to 'testnet'", networkPassphraseEnv)
+		fallthrough
+	case "testnet":
+		networkPassphrase = network.TestNetworkPassphrase
+	case "pubnet":
+		networkPassphrase = network.PublicNetworkPassphrase
+	default:
+		log.Warnf("%s is not a recognized shortcut ('pubnet' or 'testnet')",
+			networkPassphraseEnv)
+	}
+	log.Infof("Using network passphrase '%s'", networkPassphrase)
+
+	parsedModules := []string{}
+	if modules := os.Getenv(modulesEnv); modules == "" {
+		parsedModules = append(parsedModules, "accounts_unbacked")
+	} else {
+		parsedModules = append(parsedModules, strings.Split(modules, ",")...)
+	}
+
 	log.Infof("Uploading ledger range [%d, %d] to %s",
 		batch.Range.Low, batch.Range.High, batch.IndexTargetUrl)
 
@@ -122,12 +130,9 @@ func main() {
 		context.Background(),
 		batch.TxMetaSourceUrl,
 		batch.IndexTargetUrl,
-		batch.NetworkPassphrase,
+		networkPassphrase,
 		batch.Range,
-		[]string{
-			"accounts_unbacked",
-			"transactions",
-		},
+		parsedModules,
 		workerCount,
 	); err != nil {
 		panic(err)

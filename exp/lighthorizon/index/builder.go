@@ -90,9 +90,14 @@ func BuildIndices(
 		case "transactions":
 			indexBuilder.RegisterModule(ProcessTransaction)
 		case "accounts":
-			indexBuilder.RegisterModule(ProcessAccounts)
+			indexBuilder.RegisterModule(ProcessAccountsByCheckpoint)
+		case "accounts_by_ledger":
+			indexBuilder.RegisterModule(ProcessAccountsByLedger)
 		case "accounts_unbacked":
-			indexBuilder.RegisterModule(ProcessAccountsWithoutBackend)
+			indexBuilder.RegisterModule(ProcessAccountsByCheckpointWithoutBackend)
+			indexStore.ClearMemory(false)
+		case "accounts_by_ledger_unbacked":
+			indexBuilder.RegisterModule(ProcessAccountsByLedgerWithoutBackend)
 			indexStore.ClearMemory(false)
 		default:
 			return indexBuilder, fmt.Errorf("unknown module '%s'", part)

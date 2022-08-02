@@ -13,6 +13,13 @@ var (
 	checkpointManager = historyarchive.NewCheckpointManager(0)
 )
 
+const (
+	ByCheckpoint = iota
+	ByLedger     = iota
+)
+
+type AccountIndexMode int
+
 func ProcessTransaction(
 	indexStore Store,
 	ledger xdr.LedgerCloseMeta,
@@ -24,25 +31,39 @@ func ProcessTransaction(
 	)
 }
 
-// GetCheckpointNumber returns the next checkpoint NUMBER (NOT the checkpoint
-// ledger sequence) corresponding to a given ledger sequence.
-func GetCheckpointNumber(ledger uint32) uint32 {
-	return 1 + (ledger / checkpointManager.GetCheckpointFrequency())
+func ProcessAccountsByCheckpoint(
+	indexStore Store,
+	ledger xdr.LedgerCloseMeta,
+	tx ingest.LedgerTransaction,
+) error {
+	return ProcessAccounts(indexStore, ledger, tx, ByCheckpoint)
+}
+
+func ProcessAccountsByLedger(
+	indexStore Store,
+	ledger xdr.LedgerCloseMeta,
+	tx ingest.LedgerTransaction,
+) error {
+	return ProcessAccounts(indexStore, ledger, tx, ByLedger)
 }
 
 func ProcessAccounts(
 	indexStore Store,
 	ledger xdr.LedgerCloseMeta,
 	tx ingest.LedgerTransaction,
+	mode AccountIndexMode,
 ) error {
-	checkpoint := GetCheckpointNumber(ledger.LedgerSequence())
+	index := getIndex(ledger, mode)
+	if index == 0 {
+		return fmt.Errorf("Invalid account indexing mode: %d", mode)
+	}
 
 	allParticipants, err := GetTransactionParticipants(tx)
 	if err != nil {
 		return err
 	}
 
-	err = indexStore.AddParticipantsToIndexes(checkpoint, "all/all", allParticipants)
+	err = indexStore.AddParticipantsToIndexes(index, "all/all", allParticipants)
 	if err != nil {
 		return err
 	}
@@ -52,39 +73,48 @@ func ProcessAccounts(
 		return err
 	}
 
-	err = indexStore.AddParticipantsToIndexes(checkpoint, "all/payments", paymentsParticipants)
+	err = indexStore.AddParticipantsToIndexes(index, "all/payments", paymentsParticipants)
 	if err != nil {
 		return err
 	}
 
-	// if tx.Result.Successful() {
-	// 	err = indexStore.AddParticipantsToIndexes(checkpoint, "successful/all", allParticipants)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = indexStore.AddParticipantsToIndexes(checkpoint, "successful/payments", paymentsParticipants)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
 	return nil
+}
+
+func ProcessAccountsByCheckpointWithoutBackend(
+	indexStore Store,
+	ledger xdr.LedgerCloseMeta,
+	tx ingest.LedgerTransaction,
+) error {
+	return ProcessAccountsWithoutBackend(indexStore, ledger, tx, ByCheckpoint)
+}
+
+func ProcessAccountsByLedgerWithoutBackend(
+	indexStore Store,
+	ledger xdr.LedgerCloseMeta,
+	tx ingest.LedgerTransaction,
+) error {
+	return ProcessAccountsWithoutBackend(indexStore, ledger, tx, ByLedger)
+
 }
 
 func ProcessAccountsWithoutBackend(
 	indexStore Store,
 	ledger xdr.LedgerCloseMeta,
 	tx ingest.LedgerTransaction,
+	mode AccountIndexMode,
 ) error {
-	checkpoint := GetCheckpointNumber(ledger.LedgerSequence())
+	index := getIndex(ledger, mode)
+	if index == 0 {
+		return fmt.Errorf("Invalid account indexing mode: %d", mode)
+	}
 
 	allParticipants, err := GetTransactionParticipants(tx)
 	if err != nil {
 		return err
 	}
 
-	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "all/all", allParticipants)
+	err = indexStore.AddParticipantsToIndexesNoBackend(index, "all/all", allParticipants)
 	if err != nil {
 		return err
 	}
@@ -94,24 +124,18 @@ func ProcessAccountsWithoutBackend(
 		return err
 	}
 
-	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "all/payments", paymentsParticipants)
+	err = indexStore.AddParticipantsToIndexesNoBackend(index, "all/payments", paymentsParticipants)
 	if err != nil {
 		return err
 	}
 
-	// if tx.Result.Successful() {
-	// 	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful/all", allParticipants)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = indexStore.AddParticipantsToIndexesNoBackend(checkpoint, "successful/payments", paymentsParticipants)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
 	return nil
+}
+
+// GetCheckpointNumber returns the next checkpoint NUMBER (NOT the checkpoint
+// ledger sequence) corresponding to a given ledger sequence.
+func GetCheckpointNumber(ledger uint32) uint32 {
+	return 1 + (ledger / checkpointManager.GetCheckpointFrequency())
 }
 
 func GetPaymentParticipants(transaction ingest.LedgerTransaction) ([]string, error) {
@@ -276,4 +300,15 @@ func getLedgerKeyParticipants(ledgerKey xdr.LedgerKey) []string {
 		// nothing to do
 	}
 	return []string{}
+}
+
+func getIndex(ledger xdr.LedgerCloseMeta, mode AccountIndexMode) uint32 {
+	switch mode {
+	case ByCheckpoint:
+		return GetCheckpointNumber(ledger.LedgerSequence())
+	case ByLedger:
+		return ledger.LedgerSequence()
+	default:
+		return 0
+	}
 }
