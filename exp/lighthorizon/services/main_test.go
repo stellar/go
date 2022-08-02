@@ -229,10 +229,10 @@ func newTransactionService(ctx context.Context) TransactionsService {
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	return TransactionsService{
 		Config: Config{
-			Archive:              archive,
-			IndexStore:           store,
-			Passphrase:           passphrase,
-			ResponseAgeHistogram: NewResponseAgeHistogramMetric(prometheus.NewRegistry()),
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+			Metrics:    NewMetrics(prometheus.NewRegistry()),
 		},
 	}
 }
@@ -242,10 +242,10 @@ func newOperationService(ctx context.Context) OperationsService {
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
 	return OperationsService{
 		Config: Config{
-			Archive:              archive,
-			IndexStore:           store,
-			Passphrase:           passphrase,
-			ResponseAgeHistogram: NewResponseAgeHistogramMetric(prometheus.NewRegistry()),
+			Archive:    archive,
+			IndexStore: store,
+			Passphrase: passphrase,
+			Metrics:    NewMetrics(prometheus.NewRegistry()),
 		},
 	}
 }

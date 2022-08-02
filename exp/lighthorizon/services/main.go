@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,9 +27,9 @@ var (
 	checkpointManager = historyarchive.NewCheckpointManager(0)
 )
 
-// NewResponseAgeHistogramMetric creates a new prometheus histogram metric to measure
-// the age of response for a service.
-func NewResponseAgeHistogramMetric(registry *prometheus.Registry) *prometheus.HistogramVec {
+// NewMetrics returns a Metrics instance containing all the prometheus
+// metrics necessary for running light horizon services.
+func NewMetrics(registry *prometheus.Registry) Metrics {
 	const minute = 60
 	const day = 24 * 60 * minute
 	responseAgeHistogram := prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -50,7 +51,9 @@ func NewResponseAgeHistogramMetric(registry *prometheus.Registry) *prometheus.Hi
 		[]string{"request", "successful"},
 	)
 	registry.MustRegister(responseAgeHistogram)
-	return responseAgeHistogram
+	return Metrics{
+		ResponseAgeHistogram: responseAgeHistogram,
+	}
 }
 
 type LightHorizon struct {
@@ -58,11 +61,15 @@ type LightHorizon struct {
 	Transactions TransactionsService
 }
 
-type Config struct {
-	Archive              archive.Archive
-	IndexStore           index.Store
-	Passphrase           string
+type Metrics struct {
 	ResponseAgeHistogram *prometheus.HistogramVec
+}
+
+type Config struct {
+	Archive    archive.Archive
+	IndexStore index.Store
+	Passphrase string
+	Metrics    Metrics
 }
 
 type TransactionsService struct {
@@ -92,7 +99,15 @@ func operationsResponseAgeSeconds(ops []common.Operation) float64 {
 	if len(ops) == 0 {
 		return -1
 	}
-	lastCloseTime := time.Unix(int64(ops[len(ops)-1].LedgerHeader.ScpValue.CloseTime), 0).UTC()
+
+	oldest := ops[0].LedgerHeader.ScpValue.CloseTime
+	for i := 1; i < len(ops); i++ {
+		if closeTime := ops[i].LedgerHeader.ScpValue.CloseTime; closeTime > oldest {
+			oldest = closeTime
+		}
+	}
+
+	lastCloseTime := time.Unix(int64(oldest), 0).UTC()
 	now := time.Now().UTC()
 	if now.Before(lastCloseTime) {
 		log.Errorf("current time %v is before oldest operation close time %v", now, lastCloseTime)
@@ -132,30 +147,30 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
 		return false, nil
 	}
 
-	if err := searchTxByAccount(ctx, cursor, accountId, os.Config, opsCallback); err != nil {
-		if age := operationsResponseAgeSeconds(ops); age >= 0 {
-			os.Config.ResponseAgeHistogram.With(prometheus.Labels{
-				"request":    "GetOperationsByAccount",
-				"successful": "false",
-			}).Observe(age)
-		}
-		return nil, err
-	}
-
+	err := searchTxByAccount(ctx, cursor, accountId, os.Config, opsCallback)
 	if age := operationsResponseAgeSeconds(ops); age >= 0 {
-		os.Config.ResponseAgeHistogram.With(prometheus.Labels{
+		os.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
 			"request":    "GetOperationsByAccount",
-			"successful": "true",
+			"successful": strconv.FormatBool(err == nil),
 		}).Observe(age)
 	}
-	return ops, nil
+
+	return ops, err
 }
 
 func transactionsResponseAgeSeconds(txs []common.Transaction) float64 {
 	if len(txs) == 0 {
 		return -1
 	}
-	lastCloseTime := time.Unix(int64(txs[len(txs)-1].LedgerHeader.ScpValue.CloseTime), 0).UTC()
+
+	oldest := txs[0].LedgerHeader.ScpValue.CloseTime
+	for i := 1; i < len(txs); i++ {
+		if closeTime := txs[i].LedgerHeader.ScpValue.CloseTime; closeTime > oldest {
+			oldest = closeTime
+		}
+	}
+
+	lastCloseTime := time.Unix(int64(oldest), 0).UTC()
 	now := time.Now().UTC()
 	if now.Before(lastCloseTime) {
 		log.Errorf("current time %v is before oldest transaction close time %v", now, lastCloseTime)
@@ -182,23 +197,15 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context,
 		return uint64(len(txs)) == limit, nil
 	}
 
-	if err := searchTxByAccount(ctx, cursor, accountId, ts.Config, txsCallback); err != nil {
-		if age := transactionsResponseAgeSeconds(txs); age >= 0 {
-			ts.Config.ResponseAgeHistogram.With(prometheus.Labels{
-				"request":    "GetTransactionsByAccount",
-				"successful": "false",
-			}).Observe(age)
-		}
-		return nil, err
-	}
-
+	err := searchTxByAccount(ctx, cursor, accountId, ts.Config, txsCallback)
 	if age := transactionsResponseAgeSeconds(txs); age >= 0 {
-		ts.Config.ResponseAgeHistogram.With(prometheus.Labels{
+		ts.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
 			"request":    "GetTransactionsByAccount",
-			"successful": "true",
+			"successful": strconv.FormatBool(err == nil),
 		}).Observe(age)
 	}
-	return txs, nil
+
+	return txs, err
 }
 
 func searchTxByAccount(ctx context.Context, cursor int64, accountId string, config Config, callback searchCallback) error {

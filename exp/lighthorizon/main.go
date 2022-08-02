@@ -54,10 +54,10 @@ if left empty, uses a temporary directory`)
 	defer ingestArchive.Close()
 
 	Config := services.Config{
-		Archive:              ingestArchive,
-		Passphrase:           *networkPassphrase,
-		IndexStore:           indexStore,
-		ResponseAgeHistogram: services.NewResponseAgeHistogramMetric(registry),
+		Archive:    ingestArchive,
+		Passphrase: *networkPassphrase,
+		IndexStore: indexStore,
+		Metrics:    services.NewMetrics(registry),
 	}
 
 	lightHorizon := services.LightHorizon{
