@@ -102,7 +102,7 @@ func operationsResponseAgeSeconds(ops []common.Operation) float64 {
 
 	oldest := ops[0].LedgerHeader.ScpValue.CloseTime
 	for i := 1; i < len(ops); i++ {
-		if closeTime := ops[i].LedgerHeader.ScpValue.CloseTime; closeTime > oldest {
+		if closeTime := ops[i].LedgerHeader.ScpValue.CloseTime; closeTime < oldest {
 			oldest = closeTime
 		}
 	}
@@ -165,7 +165,7 @@ func transactionsResponseAgeSeconds(txs []common.Transaction) float64 {
 
 	oldest := txs[0].LedgerHeader.ScpValue.CloseTime
 	for i := 1; i < len(txs); i++ {
-		if closeTime := txs[i].LedgerHeader.ScpValue.CloseTime; closeTime > oldest {
+		if closeTime := txs[i].LedgerHeader.ScpValue.CloseTime; closeTime < oldest {
 			oldest = closeTime
 		}
 	}
