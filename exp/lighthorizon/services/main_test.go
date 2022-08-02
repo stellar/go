@@ -5,6 +5,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/toid"
@@ -230,6 +232,7 @@ func newTransactionService(ctx context.Context) TransactionsService {
 			Archive:    archive,
 			IndexStore: store,
 			Passphrase: passphrase,
+			Metrics:    NewMetrics(prometheus.NewRegistry()),
 		},
 	}
 }
@@ -242,6 +245,7 @@ func newOperationService(ctx context.Context) OperationsService {
 			Archive:    archive,
 			IndexStore: store,
 			Passphrase: passphrase,
+			Metrics:    NewMetrics(prometheus.NewRegistry()),
 		},
 	}
 }

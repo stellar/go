@@ -4,12 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -24,6 +22,7 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/support/db"
 	supportErrors "github.com/stellar/go/support/errors"
+	supportHttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -130,51 +129,8 @@ func getClientData(r *http.Request, headerName string) string {
 	return value
 }
 
-var routeRegexp = regexp.MustCompile("{([^:}]*):[^}]*}")
-
-// https://prometheus.io/docs/instrumenting/exposition_formats/
-// label_value can be any sequence of UTF-8 characters, but the backslash (\),
-// double-quote ("), and line feed (\n) characters have to be escaped as \\,
-// \", and \n, respectively.
-func sanitizeMetricRoute(routePattern string) string {
-	route := routeRegexp.ReplaceAllString(routePattern, "{$1}")
-	route = strings.ReplaceAll(route, "\\", "\\\\")
-	route = strings.ReplaceAll(route, "\"", "\\\"")
-	route = strings.ReplaceAll(route, "\n", "\\n")
-	if route == "" {
-		// Can be empty when request did not reach the final route (ex. blocked by
-		// a middleware). More info: https://github.com/go-chi/chi/issues/270
-		return "undefined"
-	}
-	return route
-}
-
-// Author: https://github.com/rliebz
-// From: https://github.com/go-chi/chi/issues/270#issuecomment-479184559
-// https://github.com/go-chi/chi/blob/master/LICENSE
-func getRoutePattern(r *http.Request) string {
-	rctx := chi.RouteContext(r.Context())
-	if pattern := rctx.RoutePattern(); pattern != "" {
-		// Pattern is already available
-		return pattern
-	}
-
-	routePath := r.URL.Path
-	if r.URL.RawPath != "" {
-		routePath = r.URL.RawPath
-	}
-
-	tctx := chi.NewRouteContext()
-	if !rctx.Routes.Match(tctx, r.Method, routePath) {
-		return ""
-	}
-
-	// tctx has the updated pattern, since Match mutates it
-	return tctx.RoutePattern()
-}
-
 func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
-	route := sanitizeMetricRoute(getRoutePattern(r))
+	route := supportHttp.GetChiRoutePattern(r)
 
 	referer := r.Referer()
 	if referer == "" {
@@ -237,9 +193,8 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			chiRoute := chi.RouteContext(ctx)
-			if chiRoute != nil {
-				ctx = context.WithValue(ctx, &db.RouteContextKey, sanitizeMetricRoute(chiRoute.RoutePattern()))
+			if routePattern := supportHttp.GetChiRoutePattern(r); routePattern != "" {
+				ctx = context.WithValue(ctx, &db.RouteContextKey, routePattern)
 			}
 			if staleThreshold > 0 {
 				ls := ledgerState.CurrentStatus()
@@ -309,9 +264,8 @@ func ingestionStatus(ctx context.Context, q *history.Q) (uint32, bool, error) {
 func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		chiRoute := chi.RouteContext(ctx)
-		if chiRoute != nil {
-			ctx = context.WithValue(ctx, &db.RouteContextKey, sanitizeMetricRoute(chiRoute.RoutePattern()))
+		if routePattern := supportHttp.GetChiRoutePattern(r); routePattern != "" {
+			ctx = context.WithValue(ctx, &db.RouteContextKey, routePattern)
 		}
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}

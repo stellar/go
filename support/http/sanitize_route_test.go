@@ -1,12 +1,11 @@
-package httpx
+package http
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func TestMiddlewareSanitizesRoutesForPrometheus(t *testing.T) {
+func TestSanitizesRoutesForPrometheus(t *testing.T) {
 	for _, setup := range []struct {
 		name     string
 		route    string
