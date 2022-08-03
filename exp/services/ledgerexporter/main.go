@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
@@ -30,6 +31,7 @@ func main() {
 	continueFromLatestLedger := flag.Bool("continue", false, "start export from the last exported ledger (as indicated in the target's /latest path)")
 	endingLedger := flag.Uint("end-ledger", 0, "ledger at which to stop the export (must be a closed ledger), 0 means no ending")
 	writeLatestPath := flag.Bool("write-latest-path", true, "update the value of the /latest path on the target")
+	captiveCoreUseDb := flag.Bool("captive-core-use-db", true, "configure captive core to store database on disk in working directory rather than in memory")
 	flag.Parse()
 
 	logger.SetLevel(supportlog.InfoLevel)
@@ -52,6 +54,7 @@ func main() {
 		CheckpointFrequency: 64,
 		Log:                 logger.WithField("subservice", "stellar-core"),
 		Toml:                captiveCoreToml,
+		UseDB:               *captiveCoreUseDb,
 	}
 	core, err := ledgerbackend.NewCaptive(captiveConfig)
 	logFatalIf(err, "Could not create captive core instance")
@@ -59,7 +62,8 @@ func main() {
 	target, err := historyarchive.ConnectBackend(
 		*targetUrl,
 		storage.ConnectOptions{
-			Context: context.Background(),
+			Context:    context.Background(),
+			S3WriteACL: s3.ObjectCannedACLBucketOwnerFullControl,
 		},
 	)
 	logFatalIf(err, "Could not connect to target")
@@ -68,18 +72,23 @@ func main() {
 	// Build the appropriate range for the given backend state.
 	startLedger := uint32(*startingLedger)
 	endLedger := uint32(*endingLedger)
+
+	logger.Infof("processing requested range of -start-ledger=%v, -end-ledger=%v", startLedger, endLedger)
+	if *continueFromLatestLedger {
+		if startLedger != 0 {
+			logger.Fatalf("-start-ledger and -continue cannot both be set")
+		}
+		startLedger = readLatestLedger(target)
+		logger.Infof("continue flag was enabled, next ledger found was %v", startLedger)
+	}
+
 	if startLedger < 2 {
 		logger.Fatalf("-start-ledger must be >= 2")
 	}
 	if endLedger != 0 && endLedger < startLedger {
 		logger.Fatalf("-end-ledger must be >= -start-ledger")
 	}
-	if *continueFromLatestLedger {
-		if startLedger != 0 {
-			logger.Fatalf("-start-ledger and -continue cannot both be set")
-		}
-		startLedger = readLatestLedger(target)
-	}
+
 	var ledgerRange ledgerbackend.Range
 	if endLedger == 0 {
 		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
@@ -91,7 +100,7 @@ func main() {
 	err = core.PrepareRange(context.Background(), ledgerRange)
 	logFatalIf(err, "could not prepare range")
 
-	for nextLedger := startLedger; nextLedger <= endLedger; {
+	for nextLedger := startLedger; endLedger < 1 || nextLedger <= endLedger; {
 		ledger, err := core.GetLedger(context.Background(), nextLedger)
 		if err != nil {
 			logger.WithError(err).Warnf("could not fetch ledger %v, retrying", nextLedger)

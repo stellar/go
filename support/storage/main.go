@@ -31,6 +31,9 @@ type ConnectOptions struct {
 
 	// Wrap the Storage after connection. For example, to add a caching or introspection layer.
 	Wrap func(Storage) (Storage, error)
+
+	// When putting file object to s3 bucket, specify the ACL for the object.
+	S3WriteACL string
 }
 
 func ConnectBackend(u string, opts ConnectOptions) (Storage, error) {
@@ -60,6 +63,7 @@ func ConnectBackend(u string, opts ConnectOptions) (Storage, error) {
 			opts.S3Region,
 			opts.S3Endpoint,
 			opts.UnsignedRequests,
+			opts.S3WriteACL,
 		)
 
 	case "gcs":

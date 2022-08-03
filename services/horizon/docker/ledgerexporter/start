@@ -1,11 +1,18 @@
 #! /usr/bin/env bash
 set -e
 
-START="${START:=0}"
+START="${START:=2}"
 END="${END:=0}"
 CONTINUE="${CONTINUE:=false}"
 # Writing to /latest is disabled by default to avoid race conditions between parallel container runs
 WRITE_LATEST_PATH="${WRITE_LATEST_PATH:=false}"
+
+# config defaults to pubnet core, any other network requires setting all 3 of these in container env
+NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
+HISTORY_ARCHIVE_URLS="${HISTORY_ARCHIVE_URLS:=https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001}"
+CAPTIVE_CORE_CONFIG="${CAPTIVE_CORE_CONFIG:=/captive-core-pubnet.cfg}"
+
+CAPTIVE_CORE_USE_DB="${CAPTIVE_CORE_USE_DB:=true}"
 
 if [ -z "$ARCHIVE_TARGET" ]; then
   echo "error: undefined ARCHIVE_TARGET env variable"
@@ -39,9 +46,10 @@ fi
 echo "START: $START END: $END"
 
 export TRACY_NO_INVARIANT_CHECK=1
-/ledgerexporter --target $ARCHIVE_TARGET \
-                --captive-core-toml-path /captive-core-pubnet.cfg \
-                --history-archive-urls 'https://history.stellar.org/prd/core-live/core_live_001' --network-passphrase 'Public Global Stellar Network ; September 2015' \
-                --continue="$CONTINUE" --write-latest-path="$WRITE_LATEST_PATH" --start-ledger "$START" --end-ledger "$END"
+/ledgerexporter --target "$ARCHIVE_TARGET" \
+                --captive-core-toml-path "$CAPTIVE_CORE_CONFIG" \
+                --history-archive-urls "$HISTORY_ARCHIVE_URLS" --network-passphrase "$NETWORK_PASSPHRASE" \
+                --continue="$CONTINUE" --write-latest-path="$WRITE_LATEST_PATH" \
+				--start-ledger "$START" --end-ledger "$END" --captive-core-use-db="$CAPTIVE_CORE_USE_DB"
 
 echo "OK"
