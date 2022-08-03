@@ -78,7 +78,7 @@ type TransactionsService struct {
 }
 
 type OperationsService struct {
-	OperationsRepository,
+	OperationsRepository
 	Config Config
 }
 
@@ -147,7 +147,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
 		return false, nil
 	}
 
-	err := searchTxByAccount(ctx, cursor, accountId, os.Config, opsCallback)
+	err := searchAccountTransactions(ctx, cursor, accountId, os.Config, opsCallback)
 	if age := operationsResponseAgeSeconds(ops); age >= 0 {
 		os.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
 			"request":    "GetOperationsByAccount",
@@ -197,7 +197,7 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context,
 		return uint64(len(txs)) == limit, nil
 	}
 
-	err := searchTxByAccount(ctx, cursor, accountId, ts.Config, txsCallback)
+	err := searchAccountTransactions(ctx, cursor, accountId, ts.Config, txsCallback)
 	if age := transactionsResponseAgeSeconds(txs); age >= 0 {
 		ts.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
 			"request":    "GetTransactionsByAccount",
@@ -208,7 +208,12 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context,
 	return txs, err
 }
 
-func searchTxByAccount(ctx context.Context, cursor int64, accountId string, config Config, callback searchCallback) error {
+func searchAccountTransactions(ctx context.Context,
+	cursor int64,
+	accountId string,
+	config Config,
+	callback searchCallback,
+) error {
 	cursorMgr := NewCursorManagerForAccountActivity(config.IndexStore, accountId)
 	cursor, err := cursorMgr.Begin(cursor)
 	if err == io.EOF {
@@ -220,15 +225,34 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 	nextLedger := getLedgerFromCursor(cursor)
 	log.Debugf("Searching %s for account %s starting at ledger %d",
 		allTransactionsIndex, accountId, nextLedger)
-	start := time.Now()
+
+	avgFetchDuration := time.Duration(0)
+	avgProcessDuration := time.Duration(0)
+	avgIndexFetchDuration := time.Duration(0)
+	count := int64(0)
+
+	defer func() {
+		log.WithField("ledger-fetch", avgFetchDuration.String()).
+			WithField("ledger-process", avgProcessDuration.String()).
+			WithField("index-fetch", avgIndexFetchDuration.String()).
+			WithField("ledgers", count).
+			Infof("Fulfilled request for account %s at cursor %d", accountId, cursor)
+	}()
 
 	for {
+		count++
+		start := time.Now()
 		ledger, ledgerErr := config.Archive.GetLedger(ctx, nextLedger)
 		if ledgerErr != nil {
 			return errors.Wrapf(ledgerErr,
 				"ledger export state is out of sync at ledger %d", nextLedger)
 		}
 		fetchDuration := time.Since(start)
+		if fetchDuration > time.Second {
+			log.WithField("duration", fetchDuration).
+				Warnf("Fetching ledger %d was really slow", nextLedger)
+		}
+		avgFetchDuration = incrementAverage(avgFetchDuration, fetchDuration, count)
 
 		start = time.Now()
 		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
@@ -254,8 +278,11 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 
 			if _, found := participants[accountId]; found {
 				finished, callBackErr := callback(tx, &ledger.V0.LedgerHeader.Header)
-				if finished || callBackErr != nil {
+				if callBackErr != nil {
 					return callBackErr
+				} else if finished {
+					avgProcessDuration = incrementAverage(avgProcessDuration, time.Since(start), count)
+					return nil
 				}
 			}
 
@@ -264,17 +291,12 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 			}
 		}
 
-		processDuration := time.Since(start)
+		avgProcessDuration = incrementAverage(avgProcessDuration, time.Since(start), count)
 
 		start = time.Now()
 		cursor, err = cursorMgr.Advance()
 		nextLedger = getLedgerFromCursor(cursor)
-		indexFetchDuration := time.Since(start)
-
-		log.WithField("ledger-fetch", fetchDuration).
-			WithField("ledger-process", processDuration).
-			WithField("index-lookup", indexFetchDuration).
-			Debugf("Fulfilling request for account %s at cursor %d", accountId, cursor)
+		avgIndexFetchDuration = incrementAverage(avgIndexFetchDuration, time.Since(start), count)
 
 		if err == io.EOF {
 			return nil
@@ -282,4 +304,14 @@ func searchTxByAccount(ctx context.Context, cursor int64, accountId string, conf
 			return err
 		}
 	}
+}
+
+// This calculates the average by incorporating a new value into an existing
+// average. Note that `newCount` should represent the *new* total number of
+// values incorporated into the average.
+//
+// Reference: https://math.stackexchange.com/a/106720
+func incrementAverage(prevAverage, latest time.Duration, newCount int64) time.Duration {
+	increment := int64(latest-prevAverage) / newCount
+	return prevAverage + time.Duration(increment)
 }
