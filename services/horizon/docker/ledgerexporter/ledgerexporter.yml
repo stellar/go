@@ -18,7 +18,7 @@ data:
   # when using core 'on disk', the earliest ledger to get streamed out after catchup to 2, is 3
   # whereas on in-memory it streas out 2, adjusted here, otherwise horizon ingest will abort
   # and stop process with error that ledger 3 is not <= expected ledger of 2.    
-  #START: "3"
+  START: "0"
   END: "0"
 
   # can only have CONTINUE or START set, not both.

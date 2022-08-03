@@ -72,18 +72,23 @@ func main() {
 	// Build the appropriate range for the given backend state.
 	startLedger := uint32(*startingLedger)
 	endLedger := uint32(*endingLedger)
+
+	logger.Infof("processing requested range of -start-ledger=%v, -end-ledger=%v", startLedger, endLedger)
+	if *continueFromLatestLedger {
+		if startLedger != 0 {
+			logger.Fatalf("-start-ledger and -continue cannot both be set")
+		}
+		startLedger = readLatestLedger(target)
+		logger.Infof("continue flag was enabled, next ledger found was %v", startLedger)
+	}
+
 	if startLedger < 2 {
 		logger.Fatalf("-start-ledger must be >= 2")
 	}
 	if endLedger != 0 && endLedger < startLedger {
 		logger.Fatalf("-end-ledger must be >= -start-ledger")
 	}
-	if *continueFromLatestLedger {
-		if startLedger != 0 {
-			logger.Fatalf("-start-ledger and -continue cannot both be set")
-		}
-		startLedger = readLatestLedger(target)
-	}
+
 	var ledgerRange ledgerbackend.Range
 	if endLedger == 0 {
 		ledgerRange = ledgerbackend.UnboundedRange(startLedger)
