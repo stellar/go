@@ -12,21 +12,16 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type OperationsService struct {
-	OperationsRepository
-	Config Config
-}
-
 type OperationsRepository interface {
 	GetOperationsByAccount(ctx context.Context,
 		cursor int64, limit uint64,
 		accountId string,
 	) ([]common.Operation, error)
+}
 
-	GetPaymentsByAccount(ctx context.Context,
-		cursor int64, limit uint64,
-		accountId string,
-	) ([]common.Operation, error)
+type OperationsService struct {
+	OperationsRepository
+	Config Config
 }
 
 func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
@@ -91,3 +86,5 @@ func operationsResponseAgeSeconds(ops []common.Operation) float64 {
 	}
 	return now.Sub(lastCloseTime).Seconds()
 }
+
+var _ OperationsRepository = (*OperationsService)(nil) // ensure conformity to the interface

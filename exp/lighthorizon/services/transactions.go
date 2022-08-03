@@ -73,3 +73,5 @@ func transactionsResponseAgeSeconds(txs []common.Transaction) float64 {
 	}
 	return now.Sub(lastCloseTime).Seconds()
 }
+
+var _ TransactionRepository = (*TransactionsService)(nil) // ensure conformity to the interface
