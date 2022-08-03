@@ -18,11 +18,11 @@ data:
   # when using core 'on disk', the earliest ledger to get streamed out after catchup to 2, is 3
   # whereas on in-memory it streas out 2, adjusted here, otherwise horizon ingest will abort
   # and stop process with error that ledger 3 is not <= expected ledger of 2.    
-  START: "3"
+  #START: "3"
   END: "0"
 
   # can only have CONTINUE or START set, not both.
-  #CONTINUE: "true"
+  CONTINUE: "true"
   WRITE_LATEST_PATH: "true"
   CAPTIVE_CORE_USE_DB: "true"
 
@@ -42,7 +42,7 @@ data:
 
   # provide the url for the external s3 bucket to be populated
   # update the ledgerexporter-pubnet-secret to have correct aws key/secret for access to the bucket
-  ARCHIVE_TARGET: "s3://horizon-ledgermeta-pubnet"
+  ARCHIVE_TARGET: "s3://horizon-ledgermeta-prodnet-test"
 ---
 apiVersion: v1
 kind: Secret
