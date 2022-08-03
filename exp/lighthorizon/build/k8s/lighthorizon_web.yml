@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+  labels:
+    app: lighthorizon-pubnet-web
+  name: lighthorizon-pubnet-web-env
+data:
+  TXMETA_SOURCE: "s3://horizon-ledgermeta-prodnet-test"
+  INDEXES_SOURCE: "s3://horizon-index-prodnet-test"
+  NETWORK_PASSPHRASE: "Public Global Stellar Network ; September 2015"
+  CACHE_PATH: "/ledgercache"
+---  
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: lighthorizon-pubnet-web
+  name: lighthorizon-pubnet-web-secret
+type: Opaque
+data:
+  AWS_REGION: <base64 encoded here>
+  AWS_ACCESS_KEY_ID: <base64 encoded here>
+  AWS_SECRET_ACCESS_KEY: <base64 encoded here>  
+---  
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+  labels:
+    app: lighthorizon-pubnet-web
+  name: lighthorizon-pubnet-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lighthorizon-pubnet-web
+  template:
+    metadata:
+      annotations:
+        fluxcd.io/ignore: "true"
+        prometheus.io/port: "6060"
+        prometheus.io/scrape: "false"
+      creationTimestamp: null
+      labels:
+        app: lighthorizon-pubnet-web
+    spec:
+      containers:
+      - envFrom:
+        - secretRef:
+            name: lighthorizon-pubnet-web-secret
+        - configMapRef:
+            name: lighthorizon-pubnet-web-env
+        image: stellar/lighthorizon-web:latest
+        imagePullPolicy: Always
+        name: web
+        ports:
+        - containerPort: 8080
+          name: web
+          protocol: TCP
+        - containerPort: 6060
+          name: metrics
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 2
+            memory: 4Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /ledgercache
+          name: cache-storage    
+      volumes:
+      - name: cache-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lighthorizon-pubnet-web
+  name: lighthorizon-pubnet-web
+spec:
+  ports:
+  - name: http
+    port: 8000
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: lighthorizon-pubnet-web
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: default
+    ingress.kubernetes.io/ssl-redirect: "true"
+    kubernetes.io/ingress.class: public
+  name: lighthorizon-pubnet-web
+spec:
+  rules:
+  - host: lighthorizon-pubnet.prototypes.kube001.services.stellar-ops.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: lighthorizon-pubnet-web
+            port:
+              number: 8000
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - lighthorizon-pubnet.prototypes.kube001.services.stellar-ops.com
+    secretName: lighthorizon-pubnet-web-cert
+
+
