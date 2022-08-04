@@ -21,10 +21,13 @@ func TestAccountTransactionCursorManager(t *testing.T) {
 	accountId := keypair.MustRandom().Address()
 
 	// Create an index and fill it with some checkpoint details.
-	store, err := index.NewFileStore(index.StoreConfig{
-		Url:     "file://" + t.TempDir(),
-		Workers: 4,
-	})
+	tmp := t.TempDir()
+	store, err := index.NewFileStore(tmp,
+		index.StoreConfig{
+			URL:     "file://" + tmp,
+			Workers: 4,
+		},
+	)
 	require.NoError(t, err)
 
 	for _, checkpoint := range []uint32{1, 5, 10} {

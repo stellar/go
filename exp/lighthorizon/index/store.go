@@ -38,7 +38,7 @@ type Store interface {
 
 type StoreConfig struct {
 	// init time config
-	Url     string
+	URL     string
 	Workers uint32
 
 	// runtime config
