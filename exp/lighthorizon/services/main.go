@@ -226,16 +226,18 @@ func searchAccountTransactions(ctx context.Context,
 	log.Debugf("Searching %s for account %s starting at ledger %d",
 		allTransactionsIndex, accountId, nextLedger)
 
+	fullStart := time.Now()
 	avgFetchDuration := time.Duration(0)
 	avgProcessDuration := time.Duration(0)
 	avgIndexFetchDuration := time.Duration(0)
 	count := int64(0)
 
 	defer func() {
-		log.WithField("ledger-fetch", avgFetchDuration.String()).
+		log.WithField("ledgers", count).
+			WithField("ledger-fetch", avgFetchDuration.String()).
 			WithField("ledger-process", avgProcessDuration.String()).
 			WithField("index-fetch", avgIndexFetchDuration.String()).
-			WithField("ledgers", count).
+			WithField("total", time.Since(fullStart)).
 			Infof("Fulfilled request for account %s at cursor %d", accountId, cursor)
 	}()
 
