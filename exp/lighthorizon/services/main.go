@@ -297,13 +297,14 @@ func searchAccountTransactions(ctx context.Context,
 
 		start = time.Now()
 		cursor, err = cursorMgr.Advance()
+		if err != nil && err != io.EOF {
+			return err
+		}
+
 		nextLedger = getLedgerFromCursor(cursor)
 		incrementAverage(&avgIndexFetchDuration, time.Since(start), count)
-
 		if err == io.EOF {
 			return nil
-		} else if err != nil {
-			return err
 		}
 	}
 }
