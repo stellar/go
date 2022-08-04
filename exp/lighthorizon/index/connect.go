@@ -6,12 +6,11 @@ import (
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
-
 	backend "github.com/stellar/go/exp/lighthorizon/index/backend"
 )
 
 func Connect(backendUrl string) (Store, error) {
-	return ConnectWithConfig(StoreConfig{Url: backendUrl})
+	return ConnectWithConfig(StoreConfig{URL: backendUrl})
 }
 
 func ConnectWithConfig(config StoreConfig) (Store, error) {
@@ -19,7 +18,7 @@ func ConnectWithConfig(config StoreConfig) (Store, error) {
 		config.Workers = 1
 	}
 
-	parsed, err := url.Parse(config.Url)
+	parsed, err := url.Parse(config.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -31,29 +30,27 @@ func ConnectWithConfig(config StoreConfig) (Store, error) {
 			awsConfig.Region = aws.String(region)
 		}
 
-		config.Url = parsed.Path
-		return NewS3Store(awsConfig, config)
+		return NewS3Store(awsConfig, parsed.Host, parsed.Path, config)
 
 	case "file":
-		config.Url = filepath.Join(parsed.Host, parsed.Path)
-		return NewFileStore(config)
+		return NewFileStore(filepath.Join(parsed.Host, parsed.Path), config)
 
 	default:
 		return nil, fmt.Errorf("unknown URL scheme: '%s' (from %s)",
-			parsed.Scheme, config.Url)
+			parsed.Scheme, config.URL)
 	}
 }
 
-func NewFileStore(config StoreConfig) (Store, error) {
-	backend, err := backend.NewFileBackend(config.Url, config.Workers)
+func NewFileStore(prefix string, config StoreConfig) (Store, error) {
+	backend, err := backend.NewFileBackend(prefix, config.Workers)
 	if err != nil {
 		return nil, err
 	}
 	return NewStore(backend, config)
 }
 
-func NewS3Store(awsConfig *aws.Config, indexConfig StoreConfig) (Store, error) {
-	backend, err := backend.NewS3Backend(awsConfig, indexConfig.Url, indexConfig.Workers)
+func NewS3Store(awsConfig *aws.Config, bucket string, prefix string, indexConfig StoreConfig) (Store, error) {
+	backend, err := backend.NewS3Backend(awsConfig, bucket, prefix, indexConfig.Workers)
 	if err != nil {
 		return nil, err
 	}

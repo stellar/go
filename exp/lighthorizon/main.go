@@ -34,7 +34,7 @@ if left empty, uses a temporary directory`)
 
 	registry := prometheus.NewRegistry()
 	indexStore, err := index.ConnectWithConfig(index.StoreConfig{
-		Url:     *indexesUrl,
+		URL:     *indexesUrl,
 		Log:     L.WithField("subservice", "index"),
 		Metrics: registry,
 	})

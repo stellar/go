@@ -19,17 +19,16 @@ import (
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
 )
 
-const BUCKET = "horizon-index"
-
 type S3Backend struct {
 	s3Session  *session.Session
 	downloader *s3manager.Downloader
 	uploader   *s3manager.Uploader
 	parallel   uint32
-	prefix     string
+	pathPrefix string
+	bucket     string
 }
 
-func NewS3Backend(awsConfig *aws.Config, prefix string, parallel uint32) (*S3Backend, error) {
+func NewS3Backend(awsConfig *aws.Config, bucket string, pathPrefix string, parallel uint32) (*S3Backend, error) {
 	s3Session, err := session.NewSession(awsConfig)
 	if err != nil {
 		return nil, err
@@ -40,7 +39,8 @@ func NewS3Backend(awsConfig *aws.Config, prefix string, parallel uint32) (*S3Bac
 		downloader: s3manager.NewDownloader(s3Session),
 		uploader:   s3manager.NewUploader(s3Session),
 		parallel:   parallel,
-		prefix:     prefix,
+		pathPrefix: pathPrefix,
+		bucket:     bucket,
 	}, nil
 }
 
@@ -52,10 +52,10 @@ func (s *S3Backend) FlushAccounts(accounts []string) error {
 		return err
 	}
 
-	path := filepath.Join(s.prefix, "accounts")
+	path := filepath.Join(s.pathPrefix, "accounts")
 
 	_, err = s.uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(BUCKET),
+		Bucket: aws.String(s.bucket),
 		Key:    aws.String(path),
 		Body:   &buf,
 	})
@@ -81,7 +81,7 @@ func (s *S3Backend) writeBatch(b *batch) error {
 	path := s.path(b.account)
 
 	_, err := s.uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(BUCKET),
+		Bucket: aws.String(s.bucket),
 		Key:    aws.String(path),
 		Body:   &buf,
 	})
@@ -97,7 +97,7 @@ func (s *S3Backend) FlushTransactions(indexes map[string]*types.TrieIndex) error
 	var buf bytes.Buffer
 	for key, index := range indexes {
 		buf.Reset()
-		path := filepath.Join(s.prefix, "tx", key)
+		path := filepath.Join(s.pathPrefix, "tx", key)
 
 		zw := gzip.NewWriter(&buf)
 		if _, err := index.WriteTo(zw); err != nil {
@@ -111,7 +111,7 @@ func (s *S3Backend) FlushTransactions(indexes map[string]*types.TrieIndex) error
 		}
 
 		_, err := s.uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(BUCKET),
+			Bucket: aws.String(s.bucket),
 			Key:    aws.String(path),
 			Body:   &buf,
 		})
@@ -127,9 +127,9 @@ func (s *S3Backend) FlushTransactions(indexes map[string]*types.TrieIndex) error
 func (s *S3Backend) ReadAccounts() ([]string, error) {
 	log.Debugf("Downloading accounts list")
 	b := &aws.WriteAtBuffer{}
-	path := filepath.Join(s.prefix, "accounts")
+	path := filepath.Join(s.pathPrefix, "accounts")
 	n, err := s.downloader.Download(b, &s3.GetObjectInput{
-		Bucket: aws.String(BUCKET),
+		Bucket: aws.String(s.bucket),
 		Key:    aws.String(path),
 	})
 	if err != nil {
@@ -147,7 +147,7 @@ func (s *S3Backend) ReadAccounts() ([]string, error) {
 }
 
 func (s *S3Backend) path(account string) string {
-	return filepath.Join(s.prefix, account[:10], account)
+	return filepath.Join(s.pathPrefix, account[:10], account)
 }
 
 func (s *S3Backend) Read(account string) (types.NamedIndices, error) {
@@ -159,7 +159,7 @@ func (s *S3Backend) Read(account string) (types.NamedIndices, error) {
 		path := s.path(account)
 		var n int64
 		n, err = s.downloader.Download(b, &s3.GetObjectInput{
-			Bucket: aws.String(BUCKET),
+			Bucket: aws.String(s.bucket),
 			Key:    aws.String(path),
 		})
 		if err != nil {
@@ -189,9 +189,9 @@ func (s *S3Backend) ReadTransactions(prefix string) (*types.TrieIndex, error) {
 	// Check if index exists in S3
 	log.Debugf("Downloading index: %s", prefix)
 	b := &aws.WriteAtBuffer{}
-	path := filepath.Join(s.prefix, "tx", prefix)
+	path := filepath.Join(s.pathPrefix, "tx", prefix)
 	n, err := s.downloader.Download(b, &s3.GetObjectInput{
-		Bucket: aws.String(BUCKET),
+		Bucket: aws.String(s.bucket),
 		Key:    aws.String(path),
 	})
 	if err != nil {
