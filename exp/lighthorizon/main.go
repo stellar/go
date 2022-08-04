@@ -30,6 +30,7 @@ if left empty, uses a temporary directory`)
 
 	L := log.WithField("service", "horizon-lite")
 	L.SetLevel(log.InfoLevel)
+	L.SetLevel(log.DebugLevel)
 	L.Info("Starting lighthorizon!")
 
 	registry := prometheus.NewRegistry()

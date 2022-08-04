@@ -254,7 +254,7 @@ func searchAccountTransactions(ctx context.Context,
 			log.WithField("duration", fetchDuration).
 				Warnf("Fetching ledger %d was really slow", nextLedger)
 		}
-		avgFetchDuration = incrementAverage(avgFetchDuration, fetchDuration, count)
+		incrementAverage(&avgFetchDuration, fetchDuration, count)
 
 		start = time.Now()
 		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
@@ -283,7 +283,7 @@ func searchAccountTransactions(ctx context.Context,
 				if callBackErr != nil {
 					return callBackErr
 				} else if finished {
-					avgProcessDuration = incrementAverage(avgProcessDuration, time.Since(start), count)
+					incrementAverage(&avgProcessDuration, time.Since(start), count)
 					return nil
 				}
 			}
@@ -293,12 +293,12 @@ func searchAccountTransactions(ctx context.Context,
 			}
 		}
 
-		avgProcessDuration = incrementAverage(avgProcessDuration, time.Since(start), count)
+		incrementAverage(&avgProcessDuration, time.Since(start), count)
 
 		start = time.Now()
 		cursor, err = cursorMgr.Advance()
 		nextLedger = getLedgerFromCursor(cursor)
-		avgIndexFetchDuration = incrementAverage(avgIndexFetchDuration, time.Since(start), count)
+		incrementAverage(&avgIndexFetchDuration, time.Since(start), count)
 
 		if err == io.EOF {
 			return nil
@@ -309,11 +309,11 @@ func searchAccountTransactions(ctx context.Context,
 }
 
 // This calculates the average by incorporating a new value into an existing
-// average. Note that `newCount` should represent the *new* total number of
-// values incorporated into the average.
+// average in place. Note that `newCount` should represent the *new* total
+// number of values incorporated into the average.
 //
 // Reference: https://math.stackexchange.com/a/106720
-func incrementAverage(prevAverage, latest time.Duration, newCount int64) time.Duration {
-	increment := int64(latest-prevAverage) / newCount
-	return prevAverage + time.Duration(increment)
+func incrementAverage(prevAverage *time.Duration, latest time.Duration, newCount int64) {
+	increment := int64(latest-*prevAverage) / newCount
+	*prevAverage = *prevAverage + time.Duration(increment)
 }
