@@ -61,6 +61,8 @@ func sendPageResponse(w http.ResponseWriter, page hal.Page) {
 	if err != nil {
 		log.Error(err)
 		sendErrorResponse(w, http.StatusInternalServerError, "")
+	} else {
+		w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
 	}
 }
 
