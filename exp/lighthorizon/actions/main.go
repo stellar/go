@@ -55,23 +55,24 @@ type pagination struct {
 }
 
 func sendPageResponse(w http.ResponseWriter, page hal.Page) {
+	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(page)
 	if err != nil {
 		log.Error(err)
 		sendErrorResponse(w, http.StatusInternalServerError, "")
-	} else {
-		w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
 	}
 }
 
 func sendErrorResponse(w http.ResponseWriter, errorCode int, errorMsg string) {
-	if errorMsg != "" {
-		http.Error(w, fmt.Sprintf("Error: %s", errorMsg), errorCode)
-	} else {
-		http.Error(w, string(serverError), errorCode)
+	if errorMsg == "" {
+		errorMsg = string(serverError)
 	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(errorCode)
+	w.Write([]byte(fmt.Sprintf("{'error': '%s', 'status': %d}", errorMsg, errorCode)))
 }
 
 func requestUnaryParam(r *http.Request, paramName string) (string, error) {
