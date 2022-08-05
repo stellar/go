@@ -62,7 +62,7 @@ func sendPageResponse(w http.ResponseWriter, page hal.Page) {
 		log.Error(err)
 		sendErrorResponse(w, http.StatusInternalServerError, "")
 	} else {
-		w.Header().Set("Content-Type", "application/openapi+yaml")
+		w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
 	}
 }
 
