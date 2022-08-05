@@ -173,7 +173,7 @@ func (s *S3Backend) Read(account string) (types.NamedIndices, error) {
 		if n == 0 {
 			return nil, os.ErrNotExist
 		}
-		var indexes map[string]*types.CheckpointIndex
+		var indexes map[string]*types.BitmapIndex
 		indexes, _, err = readGzippedFrom(bytes.NewReader(b.Bytes()))
 		if err != nil {
 			log.Errorf("Unable to parse %s: %v", account, err)

@@ -35865,27 +35865,27 @@ func (s HmacSha256Mac) xdrType() {}
 
 var _ xdrType = (*HmacSha256Mac)(nil)
 
-// CheckpointIndex is an XDR Struct defines as:
+// BitmapIndex is an XDR Struct defines as:
 //
-//   struct CheckpointIndex {
-//        uint32 firstCheckpoint;
-//        uint32 lastCheckpoint;
+//   struct BitmapIndex {
+//        uint32 firstBit;
+//        uint32 lastBit;
 //        Value bitmap;
 //    };
 //
-type CheckpointIndex struct {
-	FirstCheckpoint Uint32
-	LastCheckpoint  Uint32
-	Bitmap          Value
+type BitmapIndex struct {
+	FirstBit Uint32
+	LastBit  Uint32
+	Bitmap   Value
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s *CheckpointIndex) EncodeTo(e *xdr.Encoder) error {
+func (s *BitmapIndex) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.FirstCheckpoint.EncodeTo(e); err != nil {
+	if err = s.FirstBit.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.LastCheckpoint.EncodeTo(e); err != nil {
+	if err = s.LastBit.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.Bitmap.EncodeTo(e); err != nil {
@@ -35894,18 +35894,18 @@ func (s *CheckpointIndex) EncodeTo(e *xdr.Encoder) error {
 	return nil
 }
 
-var _ decoderFrom = (*CheckpointIndex)(nil)
+var _ decoderFrom = (*BitmapIndex)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *CheckpointIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *BitmapIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.FirstCheckpoint.DecodeFrom(d)
+	nTmp, err = s.FirstBit.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.LastCheckpoint.DecodeFrom(d)
+	nTmp, err = s.LastBit.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -35919,7 +35919,7 @@ func (s *CheckpointIndex) DecodeFrom(d *xdr.Decoder) (int, error) {
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s CheckpointIndex) MarshalBinary() ([]byte, error) {
+func (s BitmapIndex) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -35927,7 +35927,7 @@ func (s CheckpointIndex) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *CheckpointIndex) UnmarshalBinary(inp []byte) error {
+func (s *BitmapIndex) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -35935,15 +35935,15 @@ func (s *CheckpointIndex) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*CheckpointIndex)(nil)
-	_ encoding.BinaryUnmarshaler = (*CheckpointIndex)(nil)
+	_ encoding.BinaryMarshaler   = (*BitmapIndex)(nil)
+	_ encoding.BinaryUnmarshaler = (*BitmapIndex)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s CheckpointIndex) xdrType() {}
+func (s BitmapIndex) xdrType() {}
 
-var _ xdrType = (*CheckpointIndex)(nil)
+var _ xdrType = (*BitmapIndex)(nil)
 
 // TrieIndex is an XDR Struct defines as:
 //
