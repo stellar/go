@@ -137,7 +137,7 @@ func (i *BitmapIndex) iterate(f func(index uint32)) error {
 
 	for {
 		var err error
-		curr, err = i.nextActive(curr + 1)
+		curr, err = i.nextActiveBit(curr + 1)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -166,16 +166,16 @@ func (i *BitmapIndex) Merge(other *BitmapIndex) error {
 	return err
 }
 
-// NextActive returns the next checkpoint (inclusive) where this index is
+// NextActiveBit returns the next checkpoint (inclusive) where this index is
 // active. "Inclusive" means that if the index is active at `checkpoint`, this
 // returns `checkpoint`.
-func (i *BitmapIndex) NextActive(index uint32) (uint32, error) {
+func (i *BitmapIndex) NextActiveBit(index uint32) (uint32, error) {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
-	return i.nextActive(index)
+	return i.nextActiveBit(index)
 }
 
-func (i *BitmapIndex) nextActive(index uint32) (uint32, error) {
+func (i *BitmapIndex) nextActiveBit(index uint32) (uint32, error) {
 	if i.firstBit == 0 || index > i.lastBit {
 		// We're past the end.
 		// TODO: Should this be an error? or how should we signal NONE here?

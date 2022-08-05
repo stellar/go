@@ -323,7 +323,7 @@ func (s *store) NextActive(account, indexId string, afterCheckpoint uint32) (uin
 	if err != nil {
 		return 0, err
 	}
-	return ind.NextActive(afterCheckpoint)
+	return ind.NextActiveBit(afterCheckpoint)
 }
 
 func (s *store) getCreateTrieIndex(prefix string) (*types.TrieIndex, error) {

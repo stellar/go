@@ -131,7 +131,7 @@ func TestNextActive(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		index := &BitmapIndex{}
 
-		i, err := index.NextActive(0)
+		i, err := index.NextActiveBit(0)
 		assert.Equal(t, uint32(0), i)
 		assert.EqualError(t, err, io.EOF.Error())
 	})
@@ -142,7 +142,7 @@ func TestNextActive(t *testing.T) {
 			index.SetActive(3)
 
 			// 16 is well-past the end
-			i, err := index.NextActive(16)
+			i, err := index.NextActiveBit(16)
 			assert.Equal(t, uint32(0), i)
 			assert.EqualError(t, err, io.EOF.Error())
 		})
@@ -151,7 +151,7 @@ func TestNextActive(t *testing.T) {
 			index := &BitmapIndex{}
 			index.SetActive(1)
 
-			i, err := index.NextActive(1)
+			i, err := index.NextActiveBit(1)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(1), i)
 		})
@@ -160,7 +160,7 @@ func TestNextActive(t *testing.T) {
 			index := &BitmapIndex{}
 			index.SetActive(9)
 
-			i, err := index.NextActive(1)
+			i, err := index.NextActiveBit(1)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(9), i)
 		})
@@ -170,19 +170,19 @@ func TestNextActive(t *testing.T) {
 		severalSet.SetActive(11)
 
 		t.Run("several bits set (first)", func(t *testing.T) {
-			i, err := severalSet.NextActive(9)
+			i, err := severalSet.NextActiveBit(9)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(9), i)
 		})
 
 		t.Run("several bits set (second)", func(t *testing.T) {
-			i, err := severalSet.NextActive(10)
+			i, err := severalSet.NextActiveBit(10)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(11), i)
 		})
 
 		t.Run("several bits set (second, inclusive)", func(t *testing.T) {
-			i, err := severalSet.NextActive(11)
+			i, err := severalSet.NextActiveBit(11)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(11), i)
 		})
@@ -194,27 +194,27 @@ func TestNextActive(t *testing.T) {
 		index.SetActive(129)
 
 		// Before the first
-		i, err := index.NextActive(8)
+		i, err := index.NextActiveBit(8)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(9), i)
 
 		// at the first
-		i, err = index.NextActive(9)
+		i, err = index.NextActiveBit(9)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(9), i)
 
 		// In the middle
-		i, err = index.NextActive(11)
+		i, err = index.NextActiveBit(11)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(129), i)
 
 		// At the end
-		i, err = index.NextActive(129)
+		i, err = index.NextActiveBit(129)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(129), i)
 
 		// after the end
-		i, err = index.NextActive(130)
+		i, err = index.NextActiveBit(130)
 		assert.EqualError(t, err, io.EOF.Error())
 		assert.Equal(t, uint32(0), i)
 	})
