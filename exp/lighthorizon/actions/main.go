@@ -3,7 +3,6 @@ package actions
 import (
 	"embed"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -71,8 +70,22 @@ func sendErrorResponse(w http.ResponseWriter, errorCode int, errorMsg string) {
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(errorCode)
-	w.Write([]byte(fmt.Sprintf("{'error': '%s', 'status': %d}", errorMsg, errorCode)))
+
+	// TODO: Use Horizon's existing Problem
+	errBlob := struct {
+		Message string `json:"error"`
+		Status  int    `json:"status"`
+	}{
+		Message: errorMsg,
+		Status:  errorCode,
+	}
+
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(errBlob); err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func requestUnaryParam(r *http.Request, paramName string) (string, error) {
