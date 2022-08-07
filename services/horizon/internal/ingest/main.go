@@ -127,6 +127,10 @@ type Metrics struct {
 	// duration of rebuilding trade aggregation buckets.
 	LedgerIngestionTradeAggregationDuration prometheus.Summary
 
+	// LedgerIngestionReapLookupTablesDuration exposes timing metrics about the rate and
+	// duration of reaping lookup tables.
+	LedgerIngestionReapLookupTablesDuration prometheus.Summary
+
 	// StateVerifyDuration exposes timing metrics about the rate and
 	// duration of state verification.
 	StateVerifyDuration prometheus.Summary
@@ -201,6 +205,8 @@ type system struct {
 	disableStateVerification bool
 
 	checkpointManager historyarchive.CheckpointManager
+
+	reapOffsets map[string]int64
 }
 
 func NewSystem(config Config) (System, error) {
@@ -629,6 +635,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
+		return
 	}
 
 	// Run verification routine only when...
@@ -661,6 +668,44 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 			}
 		}()
 	}
+}
+
+func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
+	// Check if lastIngestedLedger is the last one available in the backend
+	sequence, err := s.ledgerBackend.GetLatestLedgerSequence(s.ctx)
+	if err != nil {
+		log.WithField("err", err).Error("Error getting latest ledger sequence from backend")
+		return
+	}
+
+	if sequence != lastIngestedLedger {
+		// Catching up - skip reaping tables in this cycle.
+		return
+	}
+
+	// If so block ingestion in the cluster to reap tables
+	_, err = s.historyQ.GetLastLedgerIngest(s.ctx)
+	if err != nil {
+		log.WithField("err", err).Error(getLastIngestedErrMsg)
+		return
+	}
+
+	defer s.historyQ.Rollback()
+
+	// Make sure reaping will not take more than 5s, which is average ledger
+	// closing time.
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+
+	reapStart := time.Now()
+	newOffsets, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
+	if err != nil {
+		log.WithField("err", err).Warn("Error reaping lookup tables")
+		return
+	}
+	s.reapOffsets = newOffsets
+	reapDuration := time.Since(reapStart).Seconds()
+	s.Metrics().LedgerIngestionReapLookupTablesDuration.Observe(float64(reapDuration))
 }
 
 func (s *system) incrementStateVerificationErrors() int {

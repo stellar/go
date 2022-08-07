@@ -523,6 +523,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	localLog.Info("Processed ledger")
 
 	s.maybeVerifyState(ingestLedger)
+	s.maybeReapLookupTables(ingestLedger)
 
 	return resumeImmediately(ingestLedger), nil
 }
