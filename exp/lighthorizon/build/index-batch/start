@@ -5,36 +5,12 @@ set -e
 
 export TRACY_NO_INVARIANT_CHECK=1
 NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
-WORKER_COUNT="${WORKER_COUNT:=5}"
 
 if [ "$RUN_MODE" == "reduce" ]; then
-    # reduce depends on following env variables to be set on container
-	if [ -z "$MAP_JOB_COUNT" ] || 
-	   [ -z "$REDUCE_JOB_COUNT" ] ||
-	   [ -z "$WORKER_COUNT" ] ||
-	   [ -z "$AWS_BATCH_JOB_ARRAY_INDEX" ] ||
-	   [ -z "$INDEX_TARGET" ] ||
-	   [ -z "$INDEX_SOURCE_ROOT" ]; then 
-	   echo "error: required variables for reduce are - MAP_JOB_COUNT, REDUCE_JOB_COUNT, "\
-	        "WORKER_COUNT, AWS_BATCH_JOB_ARRAY_INDEX, INDEX_TARGET, INDEX_SOURCE_ROOT"
-       exit 1
-	fi   
-    echo "Running Reduce, Workers: $WORKER_COUNT REDUCE JOBS: $REDUCE_JOB_COUNT MAP JOBS: $MAP_JOB_COUNT TARGET INDEX: $INDEX_TARGET"
+    echo "Running Reduce, REDUCE JOBS: $REDUCE_JOB_COUNT MAP JOBS: $MAP_JOB_COUNT TARGET INDEX: $INDEX_TARGET"
     /reduce 
 elif [ "$RUN_MODE" == "map" ]; then
-    # reduce depends on following env variables to be set on container
-	if [ -z "$INDEX_TARGET" ] || 
-	   [ -z "$WORKER_COUNT" ] ||
-	   [ -z "$BATCH_SIZE" ] ||
-	   [ -z "$AWS_BATCH_JOB_ARRAY_INDEX" ] ||
-	   [ -z "$TXMETA_SOURCE" ] ||
-	   [ -z "$NETWORK_PASSPHRASE" ] ||
-	   [ -z "$FIRST_CHECKPOINT" ]; then 
-	   echo "error: required variables for map are - INDEX_TARGET, WORKER_COUNT, BATCH_SIZE"\
-	        "AWS_BATCH_JOB_ARRAY_INDEX, TXMETA_SOURCE, NETWORK_PASSPHRASE, FIRST_CHECKPOINT"
-       exit 1
-	fi   
-    echo "Running Map, Workers: $WORKER_COUNT TARGET INDEX: $INDEX_TARGET FIRST CHECKPOINT: $FIRST_CHECKPOINT"
+    echo "Running Map, TARGET INDEX: $INDEX_TARGET FIRST CHECKPOINT: $FIRST_CHECKPOINT"
     /map 
 else
     echo "error: undefined RUN_MODE env variable, must be map or reduce"
