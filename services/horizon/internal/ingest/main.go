@@ -689,6 +689,13 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		return
 	}
 
+	err = s.historyQ.Begin()
+	if err != nil {
+		log.WithField("err", err).Error("Error starting a transaction")
+		return
+	}
+	defer s.historyQ.Commit()
+
 	// If so block ingestion in the cluster to reap tables
 	_, err = s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
