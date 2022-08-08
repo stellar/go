@@ -826,6 +826,14 @@ func (q *Q) CloneIngestionQ() IngestionQ {
 	return &Q{q.Clone()}
 }
 
+type tableObjectFieldPair struct {
+	// name is a table name of history table
+	name string
+	// objectField is a name of object field in history table which uses
+	// the lookup table.
+	objectField string
+}
+
 // ReapLookupTables removes rows from lookup tables like history_claimable_balances
 // which aren't used (orphaned), i.e. history entries for them were reaped.
 // This method must be executed inside ingestion transaction. Otherwise it may
@@ -841,53 +849,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 		offsets = make(map[string]int64)
 	}
 
-	for table, historyTables := range map[string][]struct {
-		// name is a table name of history table
-		name string
-		// objectField is a name of object field in history table which uses
-		// the lookup table.
-		objectField string
-	}{
-		"history_accounts": {
-			{
-				name:        "history_effects",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_operation_participants",
-				objectField: "history_account_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "base_account_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "counter_account_id",
-			},
-			{
-				name:        "history_transaction_participants",
-				objectField: "history_account_id",
-			},
-		},
-		"history_assets": {
-			{
-				name:        "history_trades",
-				objectField: "base_asset_id",
-			},
-			{
-				name:        "history_trades",
-				objectField: "counter_asset_id",
-			},
-			{
-				name:        "history_trades_60000",
-				objectField: "base_asset_id",
-			},
-			{
-				name:        "history_trades_60000",
-				objectField: "counter_asset_id",
-			},
-		},
+	for table, historyTables := range map[string][]tableObjectFieldPair{
 		"history_claimable_balances": {
 			{
 				name:        "history_operation_claimable_balances",
@@ -909,71 +871,17 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 			},
 		},
 	} {
-		// The code below create a query like (using history_claimable_balances as an example):
-		//
-		// delete from history_claimable_balances where id in
-		//    (select id,
-		// 		(select count(*) from history_operation_claimable_balances
-		// 		 where history_claimable_balance_id = hcb.id) as c1,
-		// 		(select count(*) from history_transaction_claimable_balances
-		// 		 where history_claimable_balance_id = hcb.id) as c2,
-		//		1 as cx,
-		//      from history_claimable_balances hcb limit 100 offset 1000)
-		//  as sub where c1 = 0 and c2 = 0 and 1=1;
-		//
-		// In short it checks the 100 rows omiting 1000 row of history_claimable_balances
-		// and counts occurences of each row in corresponding history tables.
-		// If there are no history rows for a given id, the row in
-		// history_claimable_balances is removed.
-		//
-		// The offset param should be increased before each execution. Given that
-		// some rows will be removed and some will be added by ingestion it's
-		// possible that rows will be skipped from deletion. But offset is reset
-		// when it reaches the table size so eventually all orphaned rows are
-		// deleted.
-		var sb strings.Builder
-		var err error
-		_, err = fmt.Fprintf(&sb, "delete from %s where id IN (select id, ", table)
+		query, err := constructReapLookupTablesQuery(table, historyTables, batchSize, offsets[table])
 		if err != nil {
-			return nil, err
-		}
-
-		for i, historyTable := range historyTables {
-			_, err = fmt.Fprintf(
-				&sb,
-				`(select count(*) from %s where %s = hcb.id) as c%d, `,
-				historyTable.name,
-				historyTable.objectField,
-				i,
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb order by id limit %d offset %d) as sub where ", table, batchSize, offsets[table])
-		if err != nil {
-			return nil, err
-		}
-
-		for i, _ := range historyTables {
-			_, err = fmt.Fprintf(&sb, "c%d = 0 and ", i)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		_, err = sb.WriteString("and 1=1;")
-		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "error constructing a query")
 		}
 
 		_, err = q.ExecRaw(
 			context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
-			sb.String(),
+			query,
 		)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error running query: %s", sb.String())
+			return nil, errors.Wrapf(err, "error running query: %s", query)
 		}
 
 		offsets[table] += batchSize
@@ -990,6 +898,69 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 		}
 	}
 	return offsets, nil
+}
+
+func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize, offset int64) (string, error) {
+	// The code below create a query like (using history_claimable_balances as an example):
+	//
+	// delete from history_claimable_balances where id in
+	//    (select id,
+	// 		(select count(*) from history_operation_claimable_balances
+	// 		 where history_claimable_balance_id = hcb.id) as c1,
+	// 		(select count(*) from history_transaction_claimable_balances
+	// 		 where history_claimable_balance_id = hcb.id) as c2,
+	//		1 as cx,
+	//      from history_claimable_balances hcb limit 100 offset 1000)
+	//  as sub where c1 = 0 and c2 = 0 and 1=1;
+	//
+	// In short it checks the 100 rows omiting 1000 row of history_claimable_balances
+	// and counts occurences of each row in corresponding history tables.
+	// If there are no history rows for a given id, the row in
+	// history_claimable_balances is removed.
+	//
+	// The offset param should be increased before each execution. Given that
+	// some rows will be removed and some will be added by ingestion it's
+	// possible that rows will be skipped from deletion. But offset is reset
+	// when it reaches the table size so eventually all orphaned rows are
+	// deleted.
+	var sb strings.Builder
+	var err error
+	_, err = fmt.Fprintf(&sb, "delete from %s where id IN (select id from (select id, ", table)
+	if err != nil {
+		return "", err
+	}
+
+	for i, historyTable := range historyTables {
+		_, err = fmt.Fprintf(
+			&sb,
+			`(select count(*) from %s where %s = hcb.id) as c%d, `,
+			historyTable.name,
+			historyTable.objectField,
+			i,
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb order by id limit %d offset %d) as sub where ", table, batchSize, offset)
+	if err != nil {
+		return "", err
+	}
+
+	for i, _ := range historyTables {
+		_, err = fmt.Fprintf(&sb, "c%d = 0 and ", i)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	_, err = sb.WriteString("1=1);")
+	if err != nil {
+		return "", err
+	}
+
+	return sb.String(), nil
 }
 
 // DeleteRangeAll deletes a range of rows from all history tables between
