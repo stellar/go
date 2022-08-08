@@ -53,7 +53,7 @@ func readGzippedFrom(r io.Reader) (types.NamedIndices, int64, error) {
 			return nil, n, err
 		}
 
-		ind, err := types.NewCheckpointIndex(buf.Bytes())
+		ind, err := types.NewBitmapIndex(buf.Bytes())
 		if err != nil {
 			return nil, n, err
 		}

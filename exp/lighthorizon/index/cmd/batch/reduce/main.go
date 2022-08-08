@@ -354,7 +354,7 @@ func (cfg *ReduceConfig) shouldProcessTx(txPrefix byte, routineIndex uint32) boo
 
 // For every index that exists in `dest`, finds the corresponding index in
 // `source` and merges it into `dest`'s version.
-func mergeIndices(dest, source map[string]*types.CheckpointIndex) error {
+func mergeIndices(dest, source map[string]*types.BitmapIndex) error {
 	for name, index := range dest {
 		// The source doesn't contain this particular index.
 		//

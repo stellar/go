@@ -3088,10 +3088,10 @@ type HmacSha256Mac struct {
 	Mac [32]byte
 }
 
-type CheckpointIndex struct {
-	FirstCheckpoint Uint32
-	LastCheckpoint  Uint32
-	Bitmap          Value
+type BitmapIndex struct {
+	FirstBit Uint32
+	LastBit  Uint32
+	Bitmap   Value
 }
 
 type TrieIndex struct {
@@ -19522,21 +19522,21 @@ func (v *HmacSha256Mac) XdrRecurse(x XDR, name string) {
 }
 func XDR_HmacSha256Mac(v *HmacSha256Mac) *HmacSha256Mac { return v }
 
-type XdrType_CheckpointIndex = *CheckpointIndex
+type XdrType_BitmapIndex = *BitmapIndex
 
-func (v *CheckpointIndex) XdrPointer() interface{}       { return v }
-func (CheckpointIndex) XdrTypeName() string              { return "CheckpointIndex" }
-func (v CheckpointIndex) XdrValue() interface{}          { return v }
-func (v *CheckpointIndex) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *CheckpointIndex) XdrRecurse(x XDR, name string) {
+func (v *BitmapIndex) XdrPointer() interface{}       { return v }
+func (BitmapIndex) XdrTypeName() string              { return "BitmapIndex" }
+func (v BitmapIndex) XdrValue() interface{}          { return v }
+func (v *BitmapIndex) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *BitmapIndex) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sfirstCheckpoint", name), XDR_Uint32(&v.FirstCheckpoint))
-	x.Marshal(x.Sprintf("%slastCheckpoint", name), XDR_Uint32(&v.LastCheckpoint))
+	x.Marshal(x.Sprintf("%sfirstBit", name), XDR_Uint32(&v.FirstBit))
+	x.Marshal(x.Sprintf("%slastBit", name), XDR_Uint32(&v.LastBit))
 	x.Marshal(x.Sprintf("%sbitmap", name), XDR_Value(&v.Bitmap))
 }
-func XDR_CheckpointIndex(v *CheckpointIndex) *CheckpointIndex { return v }
+func XDR_BitmapIndex(v *BitmapIndex) *BitmapIndex { return v }
 
 type XdrType_TrieIndex = *TrieIndex
 
