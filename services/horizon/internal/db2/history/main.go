@@ -973,7 +973,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 			sb.String(),
 		)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "error running query: %s", sb.String())
 		}
 
 		offsets[table] += batchSize
