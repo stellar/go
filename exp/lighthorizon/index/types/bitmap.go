@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const CheckpointIndexVersion = 1
+const BitmapIndexVersion = 1
 
 type BitmapIndex struct {
 	mutex    sync.RWMutex
@@ -19,17 +19,17 @@ type BitmapIndex struct {
 
 type NamedIndices map[string]*BitmapIndex
 
-func NewCheckpointIndex(b []byte) (*BitmapIndex, error) {
-	xdrCheckpoint := xdr.BitmapIndex{}
-	err := xdrCheckpoint.UnmarshalBinary(b)
+func NewBitmapIndex(b []byte) (*BitmapIndex, error) {
+	xdrBitmap := xdr.BitmapIndex{}
+	err := xdrBitmap.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewCheckpointIndexFromXDR(xdrCheckpoint), nil
+	return NewBitmapIndexFromXDR(xdrBitmap), nil
 }
 
-func NewCheckpointIndexFromXDR(index xdr.BitmapIndex) *BitmapIndex {
+func NewBitmapIndexFromXDR(index xdr.BitmapIndex) *BitmapIndex {
 	return &BitmapIndex{
 		bitmap:   index.Bitmap[:],
 		firstBit: uint32(index.FirstBit),
@@ -166,31 +166,31 @@ func (i *BitmapIndex) Merge(other *BitmapIndex) error {
 	return err
 }
 
-// NextActiveBit returns the next checkpoint (inclusive) where this index is
-// active. "Inclusive" means that if the index is active at `checkpoint`, this
-// returns `checkpoint`.
-func (i *BitmapIndex) NextActiveBit(index uint32) (uint32, error) {
+// NextActiveBit returns the next bit position (inclusive) where this index is
+// active. "Inclusive" means that if it's already active at `position`, this
+// returns `position`.
+func (i *BitmapIndex) NextActiveBit(position uint32) (uint32, error) {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
-	return i.nextActiveBit(index)
+	return i.nextActiveBit(position)
 }
 
-func (i *BitmapIndex) nextActiveBit(index uint32) (uint32, error) {
-	if i.firstBit == 0 || index > i.lastBit {
+func (i *BitmapIndex) nextActiveBit(position uint32) (uint32, error) {
+	if i.firstBit == 0 || position > i.lastBit {
 		// We're past the end.
 		// TODO: Should this be an error? or how should we signal NONE here?
 		return 0, io.EOF
 	}
 
-	if index < i.firstBit {
-		index = i.firstBit
+	if position < i.firstBit {
+		position = i.firstBit
 	}
 
 	// Must be within the range, find the first non-zero after our start
-	loc := (index - i.rangeFirstBit()) / 8
+	loc := (position - i.rangeFirstBit()) / 8
 
 	// Is it in the same byte?
-	if shift, ok := maxBitAfter(i.bitmap[loc], (index-1)%8); ok {
+	if shift, ok := maxBitAfter(i.bitmap[loc], (position-1)%8); ok {
 		return i.rangeFirstBit() + (loc * 8) + shift, nil
 	}
 
@@ -238,8 +238,8 @@ func (i *BitmapIndex) Buffer() *bytes.Buffer {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
-	xdrCheckpoint := i.ToXDR()
-	b, err := xdrCheckpoint.MarshalBinary()
+	xdrBitmap := i.ToXDR()
+	b, err := xdrBitmap.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}

@@ -15,7 +15,7 @@ func TestNewFromBytes(t *testing.T) {
 			index := &BitmapIndex{}
 			index.SetActive(i)
 			b := index.Flush()
-			newIndex, err := NewCheckpointIndex(b)
+			newIndex, err := NewBitmapIndex(b)
 			require.NoError(t, err)
 			assert.Equal(t, index.firstBit, newIndex.firstBit)
 			assert.Equal(t, index.lastBit, newIndex.lastBit)
