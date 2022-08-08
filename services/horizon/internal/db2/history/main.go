@@ -893,7 +893,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 			return nil, err
 		}
 
-		if count > offsets[table] {
+		if offsets[table] > count {
 			offsets[table] = 0
 		}
 	}
@@ -950,7 +950,7 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 		return "", err
 	}
 
-	for i, _ := range historyTables {
+	for i := range historyTables {
 		_, err = fmt.Fprintf(&sb, "c%d = 0 and ", i)
 		if err != nil {
 			return "", err
