@@ -900,29 +900,31 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 	return offsets, nil
 }
 
+// constructReapLookupTablesQuery creates a query like (using history_claimable_balances
+// as an example):
+//
+// delete from history_claimable_balances where id in
+//  (select id from
+//    (select id,
+// 		(select count(*) from history_operation_claimable_balances
+// 		 where history_claimable_balance_id = hcb.id) as c1,
+// 		(select count(*) from history_transaction_claimable_balances
+// 		 where history_claimable_balance_id = hcb.id) as c2,
+//		1 as cx,
+//      from history_claimable_balances hcb order by id limit 100 offset 1000)
+//  as sub where c1 = 0 and c2 = 0 and 1=1);
+//
+// In short it checks the 100 rows omiting 1000 row of history_claimable_balances
+// and counts occurences of each row in corresponding history tables.
+// If there are no history rows for a given id, the row in
+// history_claimable_balances is removed.
+//
+// The offset param should be increased before each execution. Given that
+// some rows will be removed and some will be added by ingestion it's
+// possible that rows will be skipped from deletion. But offset is reset
+// when it reaches the table size so eventually all orphaned rows are
+// deleted.
 func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize, offset int64) (string, error) {
-	// The code below create a query like (using history_claimable_balances as an example):
-	//
-	// delete from history_claimable_balances where id in
-	//    (select id,
-	// 		(select count(*) from history_operation_claimable_balances
-	// 		 where history_claimable_balance_id = hcb.id) as c1,
-	// 		(select count(*) from history_transaction_claimable_balances
-	// 		 where history_claimable_balance_id = hcb.id) as c2,
-	//		1 as cx,
-	//      from history_claimable_balances hcb limit 100 offset 1000)
-	//  as sub where c1 = 0 and c2 = 0 and 1=1;
-	//
-	// In short it checks the 100 rows omiting 1000 row of history_claimable_balances
-	// and counts occurences of each row in corresponding history tables.
-	// If there are no history rows for a given id, the row in
-	// history_claimable_balances is removed.
-	//
-	// The offset param should be increased before each execution. Given that
-	// some rows will be removed and some will be added by ingestion it's
-	// possible that rows will be skipped from deletion. But offset is reset
-	// when it reaches the table size so eventually all orphaned rows are
-	// deleted.
 	var sb strings.Builder
 	var err error
 	_, err = fmt.Fprintf(&sb, "delete from %s where id IN (select id from (select id, ", table)

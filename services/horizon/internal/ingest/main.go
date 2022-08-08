@@ -694,7 +694,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		log.WithField("err", err).Error("Error starting a transaction")
 		return
 	}
-	defer s.historyQ.Commit()
+	defer s.historyQ.Rollback()
 
 	// If so block ingestion in the cluster to reap tables
 	_, err = s.historyQ.GetLastLedgerIngest(s.ctx)
@@ -702,8 +702,6 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		log.WithField("err", err).Error(getLastIngestedErrMsg)
 		return
 	}
-
-	defer s.historyQ.Rollback()
 
 	// Make sure reaping will not take more than 5s, which is average ledger
 	// closing time.
@@ -716,6 +714,13 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		log.WithField("err", err).Warn("Error reaping lookup tables")
 		return
 	}
+
+	err = s.historyQ.Commit()
+	if err != nil {
+		log.WithField("err", err).Error("Error commiting a transaction")
+		return
+	}
+
 	s.reapOffsets = newOffsets
 	reapDuration := time.Since(reapStart).Seconds()
 	s.Metrics().LedgerIngestionReapLookupTablesDuration.Observe(float64(reapDuration))

@@ -94,13 +94,13 @@ func TestConstructReapLookupTablesQuery(t *testing.T) {
 				objectField: "history_account_id",
 			},
 		},
-		30,
+		10,
 		0,
 	)
 
 	require.NoError(t, err)
 	assert.Equal(t,
-		"delte from history_accounts where id IN "+
+		"delete from history_accounts where id IN "+
 			"(select id from "+
 			"(select id, (select count(*) from history_effects where history_account_id = hcb.id) as c0, "+
 			"(select count(*) from history_operation_participants where history_account_id = hcb.id) as c1, "+
