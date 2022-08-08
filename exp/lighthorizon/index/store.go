@@ -227,12 +227,12 @@ func (s *store) AddParticipantsToIndexesNoBackend(checkpoint uint32, index strin
 	var err error
 	for _, participant := range participants {
 		if _, ok := s.indexes[participant]; !ok {
-			s.indexes[participant] = map[string]*types.CheckpointIndex{}
+			s.indexes[participant] = map[string]*types.BitmapIndex{}
 		}
 
 		ind, ok := s.indexes[participant][index]
 		if !ok {
-			ind = &types.CheckpointIndex{}
+			ind = &types.BitmapIndex{}
 			s.indexes[participant][index] = ind
 		}
 
@@ -269,7 +269,7 @@ func (s *store) AddParticipantsToIndexes(checkpoint uint32, index string, partic
 	return nil
 }
 
-func (s *store) getCreateIndex(account, id string) (*types.CheckpointIndex, error) {
+func (s *store) getCreateIndex(account, id string) (*types.BitmapIndex, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	defer s.approximateWorkingSet()
@@ -295,7 +295,7 @@ func (s *store) getCreateIndex(account, id string) (*types.CheckpointIndex, erro
 	ind, ok = accountIndexes[id]
 	if !ok {
 		// Not found anywhere, make a new one.
-		ind = &types.CheckpointIndex{}
+		ind = &types.BitmapIndex{}
 		accountIndexes[id] = ind
 	}
 
@@ -323,7 +323,7 @@ func (s *store) NextActive(account, indexId string, afterCheckpoint uint32) (uin
 	if err != nil {
 		return 0, err
 	}
-	return ind.NextActive(afterCheckpoint)
+	return ind.NextActiveBit(afterCheckpoint)
 }
 
 func (s *store) getCreateTrieIndex(prefix string) (*types.TrieIndex, error) {

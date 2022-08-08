@@ -13,8 +13,8 @@ import (
 )
 
 func TestGzipRoundtrip(t *testing.T) {
-	index := &types.CheckpointIndex{}
-	anotherIndex := &types.CheckpointIndex{}
+	index := &types.BitmapIndex{}
+	anotherIndex := &types.BitmapIndex{}
 	for i := 0; i < 100+rand.Intn(1000); i++ {
 		index.SetActive(uint32(rand.Intn(10_000)))
 		anotherIndex.SetActive(uint32(rand.Intn(10_000)))

@@ -12,13 +12,13 @@ import (
 func TestNewFromBytes(t *testing.T) {
 	for i := uint32(1); i < 200; i++ {
 		t.Run(fmt.Sprintf("New%d", i), func(t *testing.T) {
-			index := &CheckpointIndex{}
+			index := &BitmapIndex{}
 			index.SetActive(i)
 			b := index.Flush()
-			newIndex, err := NewCheckpointIndex(b)
+			newIndex, err := NewBitmapIndex(b)
 			require.NoError(t, err)
-			assert.Equal(t, index.firstCheckpoint, newIndex.firstCheckpoint)
-			assert.Equal(t, index.lastCheckpoint, newIndex.lastCheckpoint)
+			assert.Equal(t, index.firstBit, newIndex.firstBit)
+			assert.Equal(t, index.lastBit, newIndex.lastBit)
 			assert.Equal(t, index.bitmap, newIndex.bitmap)
 		})
 	}
@@ -51,170 +51,170 @@ func TestSetActive(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(fmt.Sprintf("init_%d", tt.checkpoint), func(t *testing.T) {
-			index := &CheckpointIndex{}
+			index := &BitmapIndex{}
 			index.SetActive(tt.checkpoint)
 
 			assert.Equal(t, tt.bitmap, index.bitmap)
-			assert.Equal(t, tt.rangeFirstCheckpoint, index.rangeFirstCheckpoint())
-			assert.Equal(t, tt.checkpoint, index.firstCheckpoint)
-			assert.Equal(t, tt.checkpoint, index.lastCheckpoint)
+			assert.Equal(t, tt.rangeFirstCheckpoint, index.rangeFirstBit())
+			assert.Equal(t, tt.checkpoint, index.firstBit)
+			assert.Equal(t, tt.checkpoint, index.lastBit)
 		})
 	}
 
 	// Update current bitmap right
-	index := &CheckpointIndex{}
+	index := &BitmapIndex{}
 	index.SetActive(1)
-	assert.Equal(t, uint32(1), index.firstCheckpoint)
-	assert.Equal(t, uint32(1), index.lastCheckpoint)
+	assert.Equal(t, uint32(1), index.firstBit)
+	assert.Equal(t, uint32(1), index.lastBit)
 	index.SetActive(8)
 	assert.Equal(t, []byte{0b1000_0001}, index.bitmap)
-	assert.Equal(t, uint32(1), index.firstCheckpoint)
-	assert.Equal(t, uint32(8), index.lastCheckpoint)
+	assert.Equal(t, uint32(1), index.firstBit)
+	assert.Equal(t, uint32(8), index.lastBit)
 
 	// Update current bitmap left
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(8)
-	assert.Equal(t, uint32(8), index.firstCheckpoint)
-	assert.Equal(t, uint32(8), index.lastCheckpoint)
+	assert.Equal(t, uint32(8), index.firstBit)
+	assert.Equal(t, uint32(8), index.lastBit)
 	index.SetActive(1)
 	assert.Equal(t, []byte{0b1000_0001}, index.bitmap)
-	assert.Equal(t, uint32(1), index.firstCheckpoint)
-	assert.Equal(t, uint32(8), index.lastCheckpoint)
+	assert.Equal(t, uint32(1), index.firstBit)
+	assert.Equal(t, uint32(8), index.lastBit)
 
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(10)
 	index.SetActive(9)
 	index.SetActive(16)
 	assert.Equal(t, []byte{0b1100_0001}, index.bitmap)
-	assert.Equal(t, uint32(9), index.firstCheckpoint)
-	assert.Equal(t, uint32(16), index.lastCheckpoint)
+	assert.Equal(t, uint32(9), index.firstBit)
+	assert.Equal(t, uint32(16), index.lastBit)
 
 	// Expand bitmap to the left
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(10)
 	index.SetActive(1)
 	assert.Equal(t, []byte{0b1000_0000, 0b0100_0000}, index.bitmap)
-	assert.Equal(t, uint32(1), index.firstCheckpoint)
-	assert.Equal(t, uint32(10), index.lastCheckpoint)
+	assert.Equal(t, uint32(1), index.firstBit)
+	assert.Equal(t, uint32(10), index.lastBit)
 
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(17)
 	index.SetActive(2)
 	assert.Equal(t, []byte{0b0100_0000, 0b0000_0000, 0b1000_0000}, index.bitmap)
-	assert.Equal(t, uint32(2), index.firstCheckpoint)
-	assert.Equal(t, uint32(17), index.lastCheckpoint)
+	assert.Equal(t, uint32(2), index.firstBit)
+	assert.Equal(t, uint32(17), index.lastBit)
 
 	// Expand bitmap to the right
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(1)
 	index.SetActive(10)
 	assert.Equal(t, []byte{0b1000_0000, 0b0100_0000}, index.bitmap)
-	assert.Equal(t, uint32(1), index.firstCheckpoint)
-	assert.Equal(t, uint32(10), index.lastCheckpoint)
+	assert.Equal(t, uint32(1), index.firstBit)
+	assert.Equal(t, uint32(10), index.lastBit)
 
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(2)
 	index.SetActive(17)
 	assert.Equal(t, []byte{0b0100_0000, 0b0000_0000, 0b1000_0000}, index.bitmap)
-	assert.Equal(t, uint32(2), index.firstCheckpoint)
-	assert.Equal(t, uint32(17), index.lastCheckpoint)
+	assert.Equal(t, uint32(2), index.firstBit)
+	assert.Equal(t, uint32(17), index.lastBit)
 
-	index = &CheckpointIndex{}
+	index = &BitmapIndex{}
 	index.SetActive(17)
 	index.SetActive(26)
 	assert.Equal(t, []byte{0b1000_0000, 0b0100_0000}, index.bitmap)
-	assert.Equal(t, uint32(17), index.firstCheckpoint)
-	assert.Equal(t, uint32(26), index.lastCheckpoint)
+	assert.Equal(t, uint32(17), index.firstBit)
+	assert.Equal(t, uint32(26), index.lastBit)
 }
 
 func TestNextActive(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
-		index := &CheckpointIndex{}
+		index := &BitmapIndex{}
 
-		i, err := index.NextActive(0)
+		i, err := index.NextActiveBit(0)
 		assert.Equal(t, uint32(0), i)
 		assert.EqualError(t, err, io.EOF.Error())
 	})
 
 	t.Run("one byte", func(t *testing.T) {
 		t.Run("after last", func(t *testing.T) {
-			index := &CheckpointIndex{}
+			index := &BitmapIndex{}
 			index.SetActive(3)
 
 			// 16 is well-past the end
-			i, err := index.NextActive(16)
+			i, err := index.NextActiveBit(16)
 			assert.Equal(t, uint32(0), i)
 			assert.EqualError(t, err, io.EOF.Error())
 		})
 
 		t.Run("only one bit in the byte", func(t *testing.T) {
-			index := &CheckpointIndex{}
+			index := &BitmapIndex{}
 			index.SetActive(1)
 
-			i, err := index.NextActive(1)
+			i, err := index.NextActiveBit(1)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(1), i)
 		})
 
 		t.Run("only one bit in the byte (offset)", func(t *testing.T) {
-			index := &CheckpointIndex{}
+			index := &BitmapIndex{}
 			index.SetActive(9)
 
-			i, err := index.NextActive(1)
+			i, err := index.NextActiveBit(1)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(9), i)
 		})
 
-		severalSet := &CheckpointIndex{}
+		severalSet := &BitmapIndex{}
 		severalSet.SetActive(9)
 		severalSet.SetActive(11)
 
 		t.Run("several bits set (first)", func(t *testing.T) {
-			i, err := severalSet.NextActive(9)
+			i, err := severalSet.NextActiveBit(9)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(9), i)
 		})
 
 		t.Run("several bits set (second)", func(t *testing.T) {
-			i, err := severalSet.NextActive(10)
+			i, err := severalSet.NextActiveBit(10)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(11), i)
 		})
 
 		t.Run("several bits set (second, inclusive)", func(t *testing.T) {
-			i, err := severalSet.NextActive(11)
+			i, err := severalSet.NextActiveBit(11)
 			assert.NoError(t, err)
 			assert.Equal(t, uint32(11), i)
 		})
 	})
 
 	t.Run("many bytes", func(t *testing.T) {
-		index := &CheckpointIndex{}
+		index := &BitmapIndex{}
 		index.SetActive(9)
 		index.SetActive(129)
 
 		// Before the first
-		i, err := index.NextActive(8)
+		i, err := index.NextActiveBit(8)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(9), i)
 
 		// at the first
-		i, err = index.NextActive(9)
+		i, err = index.NextActiveBit(9)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(9), i)
 
 		// In the middle
-		i, err = index.NextActive(11)
+		i, err = index.NextActiveBit(11)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(129), i)
 
 		// At the end
-		i, err = index.NextActive(129)
+		i, err = index.NextActiveBit(129)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(129), i)
 
 		// after the end
-		i, err = index.NextActive(130)
+		i, err = index.NextActiveBit(130)
 		assert.EqualError(t, err, io.EOF.Error())
 		assert.Equal(t, uint32(0), i)
 	})
@@ -248,11 +248,11 @@ func TestMaxBitAfter(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
-	a := &CheckpointIndex{}
+	a := &BitmapIndex{}
 	require.NoError(t, a.SetActive(9))
 	require.NoError(t, a.SetActive(129))
 
-	b := &CheckpointIndex{}
+	b := &BitmapIndex{}
 	require.NoError(t, b.SetActive(900))
 	require.NoError(t, b.SetActive(1000))
 

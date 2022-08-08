@@ -8,9 +8,9 @@
 namespace stellar
 {
 
-struct CheckpointIndex {
-    uint32 firstCheckpoint;
-    uint32 lastCheckpoint;
+struct BitmapIndex {
+    uint32 firstBit;
+    uint32 lastBit;
     Value bitmap;
 };
 
