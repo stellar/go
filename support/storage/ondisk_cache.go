@@ -176,12 +176,19 @@ func (b *OnDiskCache) Close() error {
 	return b.Storage.Close()
 }
 
+// Evict removes a file from the cache and the filesystem, but does not affect
+// the upstream backend. It isn't part of the `Storage` interface.
+func (b *OnDiskCache) Evict(filepath string) {
+	log.WithField("key", filepath).Debug("evicting file")
+	b.lru.Remove(path.Join(b.dir, filepath))
+}
+
 func (b *OnDiskCache) onEviction(key, value interface{}) {
 	path := key.(string)
 	if err := os.Remove(path); err != nil { // best effort removal
 		b.log.WithError(err).
 			WithField("key", path).
-			Error("removal failed after cache eviction")
+			Warn("removal failed after cache eviction")
 	}
 }
 
