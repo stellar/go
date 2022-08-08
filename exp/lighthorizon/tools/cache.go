@@ -16,10 +16,6 @@ import (
 	"github.com/stellar/go/support/storage"
 )
 
-var (
-	s3Region = "us-east-1"
-)
-
 const (
 	defaultCacheCount = (60 * 60 * 24) / 5 // ~24hrs worth of ledgers
 )
@@ -113,14 +109,12 @@ purge /tmp/example 1000 1005    # purge a ledger range`,
 				cmd.Println("--count should be a positive integer")
 				return cmd.Usage()
 			}
-			s3Region, _ = cmd.Flags().GetString("region")
 			repair, _ := cmd.Flags().GetBool("repair")
 			return BuildCache(args[0], args[1], start, count, repair)
 		},
 	}
 
 	build.Flags().Bool("repair", false, "attempt to purge the cache and retry ledgers that error")
-	build.Flags().String("region", s3Region, "if using S3, the AWS region of the 'source'")
 	build.Flags().Uint32("start", 0, "first ledger to cache (required)")
 	build.Flags().Uint("count", defaultCacheCount, "number of ledgers to cache")
 
@@ -136,8 +130,7 @@ func BuildCache(ledgerSource, cacheDir string, start uint32, count uint, repair 
 
 	ctx := context.Background()
 	store, err := storage.ConnectBackend(ledgerSource, storage.ConnectOptions{
-		Context:  ctx,
-		S3Region: s3Region,
+		Context: ctx,
 		Wrap: func(store storage.Storage) (storage.Storage, error) {
 			return storage.MakeOnDiskCache(store, cacheDir, count)
 		},
