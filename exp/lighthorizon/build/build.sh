@@ -6,46 +6,50 @@ cd "$DIR/../../.."
 # module name is the sub-folder name under ./build
 MODULE=$1
 DOCKER_REPO_PREFIX=$2
-DOCKER_PUSH=$3
+DOCKER_TAG=$3
+DOCKER_PUSH=$4
 
-if [ ! -z "$DOCKER_REPO_PREFIX" ]; then
-   DOCKER_REPO_PREFIX="$DOCKER_REPO_PREFIX/" 
+if [ -z "$MODULE" ] ||\
+   [ -z "$DOCKER_REPO_PREFIX" ] ||\
+   [ -z "$DOCKER_TAG" ] ||\
+   [ -z "$DOCKER_PUSH" ]; then
+   echo "invalid parameters, requires './build.sh <service_name> <tag_name> <dockerhub_registry_name> <push_to_repo[true|false]>'"
+   exit 1
 fi
 
 build_target () { 
-    DOCKER_TAG="$DOCKER_REPO_PREFIX"lighthorizon-"$MODULE_NAME"
-    docker build --tag $DOCKER_TAG --platform linux/amd64 -f "exp/lighthorizon/build/$MODULE_NAME/Dockerfile" . 
+    DOCKER_LABEL="$DOCKER_REPO_PREFIX"/lighthorizon-"$MODULE":"$DOCKER_TAG"
+    docker build --tag $DOCKER_LABEL --platform linux/amd64 -f "exp/lighthorizon/build/$MODULE/Dockerfile" . 
     if [ "$DOCKER_PUSH" == "true" ]; then
-        docker push $DOCKER_TAG
+        docker push $DOCKER_LABEL
     fi
 }
 
-MODULE_NAME=$MODULE
 case $MODULE in
-index_batch)
+index-batch)
     build_target
     ;;
 ledgerexporter)
     build_target
     ;;
-index_single)
+index-single)
     build_target
     ;;
 web)
     build_target
     ;;
 all)
-    MODULE_NAME=index-batch
+    MODULE=index-batch
     build_target
-    MODULE_NAME=web
+    MODULE=web
     build_target
-    MODULE_NAME=index-single
+    MODULE=index-single
     build_target
-    MODULE_NAME=ledgerexporter
+    MODULE=ledgerexporter
     build_target
     ;;  
 *)
-    echo -n "unknown MODULE build parameter, must be one of all|index_batch|web|index_single|ledgerexporter"
+    echo "unknown MODULE build parameter ('$MODULE'), must be one of all|index-batch|web|index-single|ledgerexporter"
     exit 1
     ;;
 esac

@@ -13,7 +13,7 @@ data:
   START: "41809728"
   END: "0"
   WATCH: "true"
-  MODULES: "transactions,accounts"
+  MODULES: "accounts"
   WORKERS: "3"
 ---  
 apiVersion: v1

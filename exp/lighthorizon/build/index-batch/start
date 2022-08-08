@@ -13,6 +13,6 @@ elif [ "$RUN_MODE" == "map" ]; then
     echo "Running Map, TARGET INDEX: $INDEX_TARGET FIRST CHECKPOINT: $FIRST_CHECKPOINT"
     /map 
 else
-    echo "error: undefined RUN_MODE env variable, must be map or reduce"
+    echo "error: undefined RUN_MODE env variable ('$RUN_MODE'), must be 'map' or 'reduce'"
     exit 1
 fi

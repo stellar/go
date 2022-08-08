@@ -34,6 +34,7 @@ if left empty, uses a temporary directory`)
 	L := log.WithField("service", "horizon-lite")
 	logLevel, err := logrus.ParseLevel(*logLevelParam)
 	if err != nil {
+		log.Warnf("Failed to parse -log-level '%s', defaulting to 'info'.", *logLevelParam)
 		logLevel = log.InfoLevel
 	}
 
