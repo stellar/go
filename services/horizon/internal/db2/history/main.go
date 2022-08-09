@@ -876,15 +876,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 			return nil, errors.Wrap(err, "error constructing a query")
 		}
 
-		_, err = q.ExecRaw(
-			context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
-			query,
-		)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error running query: %s", query)
-		}
-
-		// Find new offset
+		// Find new offset before removing the rows
 		var newOffset int64
 		err = q.GetRaw(ctx, &newOffset, fmt.Sprintf("SELECT id FROM %s where id >= %d limit 1 offset %d", table, offsets[table], batchSize))
 		if err != nil {
@@ -893,6 +885,14 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 			} else {
 				return nil, err
 			}
+		}
+
+		_, err = q.ExecRaw(
+			context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
+			query,
+		)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error running query: %s", query)
 		}
 
 		offsets[table] = newOffset
