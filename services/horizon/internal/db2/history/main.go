@@ -906,13 +906,13 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 // delete from history_claimable_balances where id in
 //  (select id from
 //    (select id,
-// 		(select count(*) from history_operation_claimable_balances
-// 		 where history_claimable_balance_id = hcb.id) as c1,
-// 		(select count(*) from history_transaction_claimable_balances
-// 		 where history_claimable_balance_id = hcb.id) as c2,
+// 		(select 1 from history_operation_claimable_balances
+// 		 where history_claimable_balance_id = hcb.id limit 1) as c1,
+// 		(select 1 from history_transaction_claimable_balances
+// 		 where history_claimable_balance_id = hcb.id limit 1) as c2,
 //		1 as cx,
 //      from history_claimable_balances hcb where id > 1000 order by id limit 100)
-//  as sub where c1 = 0 and c2 = 0 and 1=1);
+//  as sub where c1 IS NULL and c2 IS NULL and 1=1);
 //
 // In short it checks the 100 rows omiting 1000 row of history_claimable_balances
 // and counts occurences of each row in corresponding history tables.
@@ -935,7 +935,7 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 	for i, historyTable := range historyTables {
 		_, err = fmt.Fprintf(
 			&sb,
-			`(select count(*) from %s where %s = hcb.id) as c%d, `,
+			`(select 1 from %s where %s = hcb.id limit 1) as c%d, `,
 			historyTable.name,
 			historyTable.objectField,
 			i,
@@ -951,7 +951,7 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 	}
 
 	for i := range historyTables {
-		_, err = fmt.Fprintf(&sb, "c%d = 0 and ", i)
+		_, err = fmt.Fprintf(&sb, "c%d IS NULL and ", i)
 		if err != nil {
 			return "", err
 		}
