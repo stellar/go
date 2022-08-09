@@ -21,6 +21,8 @@ func TestReapLookupTables(t *testing.T) {
 
 	var (
 		prevLedgers, curLedgers                     int
+		prevAccounts, curAccounts                   int
+		prevAssets, curAssets                       int
 		prevClaimableBalances, curClaimableBalances int
 		prevLiquidityPools, curLiquidityPools       int
 	)
@@ -28,6 +30,10 @@ func TestReapLookupTables(t *testing.T) {
 	// Prev
 	{
 		err := db.GetRaw(tt.Ctx, &prevLedgers, `SELECT COUNT(*) FROM history_ledgers`)
+		tt.Require.NoError(err)
+		err = db.GetRaw(tt.Ctx, &prevAccounts, `SELECT COUNT(*) FROM history_accounts`)
+		tt.Require.NoError(err)
+		err = db.GetRaw(tt.Ctx, &prevAssets, `SELECT COUNT(*) FROM history_assets`)
 		tt.Require.NoError(err)
 		err = db.GetRaw(tt.Ctx, &prevClaimableBalances, `SELECT COUNT(*) FROM history_claimable_balances`)
 		tt.Require.NoError(err)
@@ -55,6 +61,10 @@ func TestReapLookupTables(t *testing.T) {
 	{
 		err := db.GetRaw(tt.Ctx, &curLedgers, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)
+		err = db.GetRaw(tt.Ctx, &curAccounts, `SELECT COUNT(*) FROM history_accounts`)
+		tt.Require.NoError(err)
+		err = db.GetRaw(tt.Ctx, &curAssets, `SELECT COUNT(*) FROM history_assets`)
+		tt.Require.NoError(err)
 		err = db.GetRaw(tt.Ctx, &curClaimableBalances, `SELECT COUNT(*) FROM history_claimable_balances`)
 		tt.Require.NoError(err)
 		err = db.GetRaw(tt.Ctx, &curLiquidityPools, `SELECT COUNT(*) FROM history_liquidity_pools`)
@@ -63,12 +73,18 @@ func TestReapLookupTables(t *testing.T) {
 
 	tt.Assert.Equal(61, prevLedgers, "prevLedgers")
 	tt.Assert.Equal(1, curLedgers, "curLedgers")
+	tt.Assert.Equal(25, prevAccounts, "prevAccounts")
+	tt.Assert.Equal(1, curAccounts, "curAccounts")
+	tt.Assert.Equal(7, prevAssets, "prevAssets")
+	tt.Assert.Equal(0, curAssets, "curAssets")
 	tt.Assert.Equal(1, prevClaimableBalances, "prevClaimableBalances")
 	tt.Assert.Equal(0, curClaimableBalances, "curClaimableBalances")
 	tt.Assert.Equal(1, prevLiquidityPools, "prevLiquidityPools")
 	tt.Assert.Equal(0, curLiquidityPools, "curLiquidityPools")
 
-	tt.Assert.Len(newOffsets, 2)
+	tt.Assert.Len(newOffsets, 4)
+	tt.Assert.Equal(int64(0), newOffsets["history_accounts"])
+	tt.Assert.Equal(int64(0), newOffsets["history_assets"])
 	tt.Assert.Equal(int64(0), newOffsets["history_claimable_balances"])
 	tt.Assert.Equal(int64(0), newOffsets["history_liquidity_pools"])
 }
