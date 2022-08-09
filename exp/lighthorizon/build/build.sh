@@ -13,7 +13,7 @@ if [ -z "$MODULE" ] ||\
    [ -z "$DOCKER_REPO_PREFIX" ] ||\
    [ -z "$DOCKER_TAG" ] ||\
    [ -z "$DOCKER_PUSH" ]; then
-   echo "invalid parameters, requires './build.sh <service_name> <tag_name> <dockerhub_registry_name> <push_to_repo[true|false]>'"
+   echo "invalid parameters, requires './build.sh <service_name> <dockerhub_repo_name> <tag_name> <push_to_repo[true|false]>'"
    exit 1
 fi
 
