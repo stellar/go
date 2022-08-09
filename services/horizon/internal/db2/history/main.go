@@ -884,18 +884,18 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 			return nil, errors.Wrapf(err, "error running query: %s", query)
 		}
 
-		offsets[table] += batchSize
-
-		// Check if offset exceeds table size and then reset it
-		var count int64
-		err = q.GetRaw(ctx, &count, fmt.Sprintf("SELECT COUNT(*) FROM %s", table))
+		// Find new offset
+		var newOffset int64
+		err = q.GetRaw(ctx, &newOffset, fmt.Sprintf("SELECT id FROM %s where id >= %d limit 1 offset %d", table, offsets[table], batchSize))
 		if err != nil {
-			return nil, err
+			if q.NoRows(err) {
+				newOffset = 0
+			} else {
+				return nil, err
+			}
 		}
 
-		if offsets[table] > count {
-			offsets[table] = 0
-		}
+		offsets[table] = newOffset
 	}
 	return offsets, nil
 }
@@ -911,7 +911,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 // 		(select count(*) from history_transaction_claimable_balances
 // 		 where history_claimable_balance_id = hcb.id) as c2,
 //		1 as cx,
-//      from history_claimable_balances hcb order by id limit 100 offset 1000)
+//      from history_claimable_balances hcb where id > 1000 order by id limit 100)
 //  as sub where c1 = 0 and c2 = 0 and 1=1);
 //
 // In short it checks the 100 rows omiting 1000 row of history_claimable_balances
@@ -945,7 +945,7 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 		}
 	}
 
-	_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb order by id limit %d offset %d) as sub where ", table, batchSize, offset)
+	_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb where id >= %d order by id limit %d) as sub where ", table, offset, batchSize)
 	if err != nil {
 		return "", err
 	}

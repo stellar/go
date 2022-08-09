@@ -107,6 +107,6 @@ func TestConstructReapLookupTablesQuery(t *testing.T) {
 			"(select count(*) from history_trades where base_account_id = hcb.id) as c2, "+
 			"(select count(*) from history_trades where counter_account_id = hcb.id) as c3, "+
 			"(select count(*) from history_transaction_participants where history_account_id = hcb.id) as c4, "+
-			"1 as cx from history_accounts hcb order by id limit 10 offset 0) as sub "+
+			"1 as cx from history_accounts hcb where id >= 0 order by id limit 10) as sub "+
 			"where c0 = 0 and c1 = 0 and c2 = 0 and c3 = 0 and c4 = 0 and 1=1);", query)
 }
