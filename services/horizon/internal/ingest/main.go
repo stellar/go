@@ -488,14 +488,15 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 // Finally, 1a and 1b are tricky because we need to keep the latest version
 // of order book graph in memory of each Horizon instance. To solve this:
 // * For state init:
-//   * If instance is a leader, we update the order book graph by running state
+//   - If instance is a leader, we update the order book graph by running state
 //     pipeline normally.
-//   * If instance is NOT a leader, we build a graph from offers present in a
+//   - If instance is NOT a leader, we build a graph from offers present in a
 //     database. We completely omit state pipeline in this case.
+//
 // * For resuming:
-//   * If instances is a leader, it runs full ledger pipeline, including updating
+//   - If instances is a leader, it runs full ledger pipeline, including updating
 //     a database.
-//   * If instances is a NOT leader, it runs ledger pipeline without updating a
+//   - If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
 func (s *system) Run() {
 	s.runStateMachine(startState{})

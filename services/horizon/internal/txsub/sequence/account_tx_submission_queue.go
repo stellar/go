@@ -12,7 +12,6 @@ import (
 // AccountTxSubmissionQueue maintains a priority queue of pending submissions, and when updated
 // (via the NotifyLastAccountSequence() method) with the current sequence number of the account
 // being managed, queued submissions that can be acted upon will be unblocked.
-//
 type AccountTxSubmissionQueue struct {
 	lastActiveAt            time.Time
 	timeout                 time.Duration
@@ -50,10 +49,10 @@ func (q *AccountTxSubmissionQueue) Size() int {
 // the same as the provided sequence, to keep internal complexity much lower.
 // Given that, the recommended usage pattern is:
 //
-// 1. Push the submission onto the queue
-// 2. Load the current sequence number for the source account from the DB
-// 3. Call NotifyLastAccountSequence() with the result from step 2 to trigger the submission if
-//		possible
+//  1. Push the submission onto the queue
+//  2. Load the current sequence number for the source account from the DB
+//  3. Call NotifyLastAccountSequence() with the result from step 2 to trigger the submission if
+//     possible
 func (q *AccountTxSubmissionQueue) Push(sequence uint64, minSeqNum *uint64) <-chan error {
 	// From CAP 21: If minSeqNum is nil, the txToSubmit is only valid when sourceAccount's sequence number is seqNum - 1.
 	// Otherwise, valid when sourceAccount's sequence number n satisfies minSeqNum <= n < txToSubmit.seqNum.

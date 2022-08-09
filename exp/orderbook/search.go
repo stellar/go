@@ -237,11 +237,11 @@ func search(
 // edges in `graph.edgesForSellingAsset` are traversed.
 //
 // The DFS maintains the following invariants:
-//  - no node is repeated
-//  - no offers are consumed from the `ignoreOffersFrom` account
-//  - each payment path must begin with an asset in `targetAssets`
-//  - also, the required source asset amount cannot exceed the balance in
-//    `targetAssets`
+//   - no node is repeated
+//   - no offers are consumed from the `ignoreOffersFrom` account
+//   - each payment path must begin with an asset in `targetAssets`
+//   - also, the required source asset amount cannot exceed the balance in
+//     `targetAssets`
 type sellingGraphSearchState struct {
 	graph                  *OrderBookGraph
 	destinationAssetString string
@@ -339,10 +339,10 @@ func (state *sellingGraphSearchState) consumePool(
 // edges in `graph.edgesForBuyingAsset` are traversed.
 //
 // The DFS maintains the following invariants:
-//  - no node is repeated
-//  - no offers are consumed from the `ignoreOffersFrom` account
-//  - each payment path must terminate with an asset in `targetAssets`
-//  - each payment path must begin with `sourceAsset`
+//   - no node is repeated
+//   - no offers are consumed from the `ignoreOffersFrom` account
+//   - each payment path must terminate with an asset in `targetAssets`
+//   - each payment path must begin with `sourceAsset`
 type buyingGraphSearchState struct {
 	graph             *OrderBookGraph
 	sourceAssetString string
