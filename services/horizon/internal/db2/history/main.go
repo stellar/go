@@ -843,7 +843,7 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 		return nil, errors.New("cannot be called outside of an ingestion transaction")
 	}
 
-	const batchSize = 10000
+	const batchSize = 1000
 
 	if offsets == nil {
 		offsets = make(map[string]int64)
