@@ -639,8 +639,11 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 
 func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
-	if err != nil && !isCancelledError(err) {
-		log.WithField("err", err).Error("Error getting state invalid value")
+	if err != nil {
+		if !isCancelledError(err) {
+			log.WithField("err", err).Error("Error getting state invalid value")
+		}
+		return
 	}
 
 	// Run verification routine only when...
