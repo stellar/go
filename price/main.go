@@ -122,7 +122,7 @@ func floor(n *big.Rat) *big.Rat {
 	return f
 }
 
-//StringFromFloat64 will format a float64 to decimal representation with 7 digits after the decimal point
+// StringFromFloat64 will format a float64 to decimal representation with 7 digits after the decimal point
 func StringFromFloat64(v float64) string {
 	return strconv.FormatFloat(v, 'f', 7, 64)
 }
@@ -131,17 +131,17 @@ func StringFromFloat64(v float64) string {
 // the price and returns (buyingUnits, sellingUnits) that can be taken from the
 // offer
 //
-//     offerSellingBound = (offer.price.n > offer.price.d)
-//         ? offer.amount
-//         : ceil(floor(offer.amount * offer.price) / offer.price)
-//     pathPaymentAmountBought = min(offerSellingBound, pathPaymentBuyingBound)
-//     pathPaymentAmountSold = ceil(pathPaymentAmountBought * offer.price)
+//	offerSellingBound = (offer.price.n > offer.price.d)
+//	    ? offer.amount
+//	    : ceil(floor(offer.amount * offer.price) / offer.price)
+//	pathPaymentAmountBought = min(offerSellingBound, pathPaymentBuyingBound)
+//	pathPaymentAmountSold = ceil(pathPaymentAmountBought * offer.price)
 //
-//     offer.amount = amount selling
-//     offerSellingBound = roundingCorrectedOffer
-//     pathPaymentBuyingBound = needed
-//     pathPaymentAmountBought = what we are consuming from offer
-//     pathPaymentAmountSold = amount we are giving to the buyer
+//	offer.amount = amount selling
+//	offerSellingBound = roundingCorrectedOffer
+//	pathPaymentBuyingBound = needed
+//	pathPaymentAmountBought = what we are consuming from offer
+//	pathPaymentAmountSold = amount we are giving to the buyer
 //
 // Sell units = pathPaymentAmountSold and buy units = pathPaymentAmountBought
 //

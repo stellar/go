@@ -284,13 +284,13 @@ type XdrAnon_AccountEntryExtensionV1_Ext struct {
 	_u interface{}
 }
 
-/* AccountEntry
+/*
+AccountEntry
 
-   Main entry representing a user in Stellar. All transactions are
-   performed using an account.
+	Main entry representing a user in Stellar. All transactions are
+	performed using an account.
 
-   Other ledger entries created require an account.
-
+	Other ledger entries created require an account.
 */
 type AccountEntry struct {
 	// master public key for this account
@@ -427,12 +427,13 @@ const (
 // Mask for OfferEntry flags
 const MASK_OFFERENTRY_FLAGS = 1
 
-/* OfferEntry
-   An offer is the building block of the offer book, they are automatically
-   claimed by payments when the price set by the owner is met.
+/*
+OfferEntry
 
-   For example an Offer is selling 10A where 1A is priced at 1.5B
+	An offer is the building block of the offer book, they are automatically
+	claimed by payments when the price set by the owner is met.
 
+	For example an Offer is selling 10A where 1A is priced at 1.5B
 */
 type OfferEntry struct {
 	SellerID AccountID
@@ -463,8 +464,10 @@ type XdrAnon_OfferEntry_Ext struct {
 	_u interface{}
 }
 
-/* DataEntry
-   Data can be attached to accounts.
+/*
+DataEntry
+
+	Data can be attached to accounts.
 */
 type DataEntry struct {
 	// account this data belongs to
@@ -837,7 +840,9 @@ type XdrAnon_LedgerHeader_Ext struct {
 	_u interface{}
 }
 
-/* Ledger upgrades
+/*
+	Ledger upgrades
+
 note that the `upgrades` field from StellarValue is normalized such that
 it only contains one entry per LedgerUpgradeType, and entries are sorted
 in ascending order
@@ -1375,13 +1380,14 @@ const (
 	LIQUIDITY_POOL_WITHDRAW          OperationType = 23
 )
 
-/* CreateAccount
+/*
+	CreateAccount
+
 Creates and funds a new account with the specified starting balance.
 
 Threshold: med
 
 Result: CreateAccountResult
-
 */
 type CreateAccountOp struct {
 	// account to create
@@ -1390,13 +1396,14 @@ type CreateAccountOp struct {
 	StartingBalance Int64
 }
 
-/* Payment
+/*
+Payment
 
-   Send an amount in specified asset to a destination account.
+	Send an amount in specified asset to a destination account.
 
-   Threshold: med
+	Threshold: med
 
-   Result: PaymentResult
+	Result: PaymentResult
 */
 type PaymentOp struct {
 	// recipient of the payment
@@ -1407,7 +1414,8 @@ type PaymentOp struct {
 	Amount Int64
 }
 
-/* PathPaymentStrictReceive
+/*
+	PathPaymentStrictReceive
 
 send an amount to a destination account through a path.
 (up to sendMax, sendAsset)
@@ -1433,7 +1441,8 @@ type PathPaymentStrictReceiveOp struct {
 	Path []Asset // bound 5
 }
 
-/* PathPaymentStrictSend
+/*
+	PathPaymentStrictSend
 
 send an amount to a destination account through a path.
 (sendMax, sendAsset)
@@ -1459,12 +1468,12 @@ type PathPaymentStrictSendOp struct {
 	Path []Asset // bound 5
 }
 
-/* Creates, updates or deletes an offer
+/*
+	Creates, updates or deletes an offer
 
 Threshold: med
 
 Result: ManageSellOfferResult
-
 */
 type ManageSellOfferOp struct {
 	Selling Asset
@@ -1477,12 +1486,12 @@ type ManageSellOfferOp struct {
 	OfferID Int64
 }
 
-/* Creates, updates or deletes an offer with amount in terms of buying asset
+/*
+	Creates, updates or deletes an offer with amount in terms of buying asset
 
 Threshold: med
 
 Result: ManageBuyOfferResult
-
 */
 type ManageBuyOfferOp struct {
 	Selling Asset
@@ -1495,12 +1504,12 @@ type ManageBuyOfferOp struct {
 	OfferID Int64
 }
 
-/* Creates an offer that doesn't take offers of the same price
+/*
+	Creates an offer that doesn't take offers of the same price
 
 Threshold: med
 
 Result: CreatePassiveSellOfferResult
-
 */
 type CreatePassiveSellOfferOp struct {
 	// A
@@ -1513,14 +1522,15 @@ type CreatePassiveSellOfferOp struct {
 	Price Price
 }
 
-/* Set Account Options
+/*
+Set Account Options
 
-   updates "AccountEntry" fields.
-   note: updating thresholds or signers requires high threshold
+	updates "AccountEntry" fields.
+	note: updating thresholds or signers requires high threshold
 
-   Threshold: med or high
+	Threshold: med or high
 
-   Result: SetOptionsResult
+	Result: SetOptionsResult
 */
 type SetOptionsOp struct {
 	// sets the inflation destination
@@ -1555,12 +1565,12 @@ type ChangeTrustAsset struct {
 	_u   interface{}
 }
 
-/* Creates, updates or deletes a trust line
+/*
+Creates, updates or deletes a trust line
 
-   Threshold: med
+	Threshold: med
 
-   Result: ChangeTrustResult
-
+	Result: ChangeTrustResult
 */
 type ChangeTrustOp struct {
 	Line ChangeTrustAsset
@@ -1568,14 +1578,16 @@ type ChangeTrustOp struct {
 	Limit Int64
 }
 
-/* Updates the "authorized" flag of an existing trust line
-   this is called by the issuer of the related asset.
+/*
+Updates the "authorized" flag of an existing trust line
 
-   note that authorize can only be set (and not cleared) if
-   the issuer account does not have the AUTH_REVOCABLE_FLAG set
-   Threshold: low
+	this is called by the issuer of the related asset.
 
-   Result: AllowTrustResult
+	note that authorize can only be set (and not cleared) if
+	the issuer account does not have the AUTH_REVOCABLE_FLAG set
+	Threshold: low
+
+	Result: AllowTrustResult
 */
 type AllowTrustOp struct {
 	Trustor AccountID
@@ -1584,13 +1596,15 @@ type AllowTrustOp struct {
 	Authorize Uint32
 }
 
-/* ManageData
-   Adds, Updates, or Deletes a key value pair associated with a particular
-       account.
+/*
+ManageData
 
-   Threshold: med
+	Adds, Updates, or Deletes a key value pair associated with a particular
+	    account.
 
-   Result: ManageDataResult
+	Threshold: med
+
+	Result: ManageDataResult
 */
 type ManageDataOp struct {
 	DataName String64
@@ -1598,23 +1612,25 @@ type ManageDataOp struct {
 	DataValue *DataValue
 }
 
-/* Bump Sequence
+/*
+Bump Sequence
 
-   increases the sequence to a given level
+	increases the sequence to a given level
 
-   Threshold: low
+	Threshold: low
 
-   Result: BumpSequenceResult
+	Result: BumpSequenceResult
 */
 type BumpSequenceOp struct {
 	BumpTo SequenceNumber
 }
 
-/* Creates a claimable balance entry
+/*
+Creates a claimable balance entry
 
-   Threshold: med
+	Threshold: med
 
-   Result: CreateClaimableBalanceResult
+	Result: CreateClaimableBalanceResult
 */
 type CreateClaimableBalanceOp struct {
 	Asset     Asset
@@ -1622,39 +1638,42 @@ type CreateClaimableBalanceOp struct {
 	Claimants []Claimant // bound 10
 }
 
-/* Claims a claimable balance entry
+/*
+Claims a claimable balance entry
 
-   Threshold: low
+	Threshold: low
 
-   Result: ClaimClaimableBalanceResult
+	Result: ClaimClaimableBalanceResult
 */
 type ClaimClaimableBalanceOp struct {
 	BalanceID ClaimableBalanceID
 }
 
-/* BeginSponsoringFutureReserves
+/*
+BeginSponsoringFutureReserves
 
-   Establishes the is-sponsoring-future-reserves-for relationship between
-   the source account and sponsoredID
+	Establishes the is-sponsoring-future-reserves-for relationship between
+	the source account and sponsoredID
 
-   Threshold: med
+	Threshold: med
 
-   Result: BeginSponsoringFutureReservesResult
+	Result: BeginSponsoringFutureReservesResult
 */
 type BeginSponsoringFutureReservesOp struct {
 	SponsoredID AccountID
 }
 
-/* RevokeSponsorship
+/*
+RevokeSponsorship
 
-   If source account is not sponsored or is sponsored by the owner of the
-   specified entry or sub-entry, then attempt to revoke the sponsorship.
-   If source account is sponsored, then attempt to transfer the sponsorship
-   to the sponsor of source account.
+	If source account is not sponsored or is sponsored by the owner of the
+	specified entry or sub-entry, then attempt to revoke the sponsorship.
+	If source account is sponsored, then attempt to transfer the sponsorship
+	to the sponsor of source account.
 
-   Threshold: med
+	Threshold: med
 
-   Result: RevokeSponsorshipResult
+	Result: RevokeSponsorshipResult
 */
 type RevokeSponsorshipType int32
 
@@ -1677,11 +1696,12 @@ type XdrAnon_RevokeSponsorshipOp_Signer struct {
 	SignerKey SignerKey
 }
 
-/* Claws back an amount of an asset from an account
+/*
+Claws back an amount of an asset from an account
 
-   Threshold: med
+	Threshold: med
 
-   Result: ClawbackResult
+	Result: ClawbackResult
 */
 type ClawbackOp struct {
 	Asset  Asset
@@ -1689,24 +1709,26 @@ type ClawbackOp struct {
 	Amount Int64
 }
 
-/* Claws back a claimable balance
+/*
+Claws back a claimable balance
 
-   Threshold: med
+	Threshold: med
 
-   Result: ClawbackClaimableBalanceResult
+	Result: ClawbackClaimableBalanceResult
 */
 type ClawbackClaimableBalanceOp struct {
 	BalanceID ClaimableBalanceID
 }
 
-/* SetTrustLineFlagsOp
+/*
+SetTrustLineFlagsOp
 
-   Updates the flags of an existing trust line.
-   This is called by the issuer of the related asset.
+	Updates the flags of an existing trust line.
+	This is called by the issuer of the related asset.
 
-   Threshold: low
+	Threshold: low
 
-   Result: SetTrustLineFlagsResult
+	Result: SetTrustLineFlagsResult
 */
 type SetTrustLineFlagsOp struct {
 	Trustor AccountID
@@ -1719,11 +1741,12 @@ type SetTrustLineFlagsOp struct {
 
 const LIQUIDITY_POOL_FEE_V18 = 30
 
-/* Deposit assets into a liquidity pool
+/*
+Deposit assets into a liquidity pool
 
-   Threshold: med
+	Threshold: med
 
-   Result: LiquidityPoolDepositResult
+	Result: LiquidityPoolDepositResult
 */
 type LiquidityPoolDepositOp struct {
 	LiquidityPoolID PoolID
@@ -1737,11 +1760,12 @@ type LiquidityPoolDepositOp struct {
 	MaxPrice Price
 }
 
-/* Withdraw assets from a liquidity pool
+/*
+Withdraw assets from a liquidity pool
 
-   Threshold: med
+	Threshold: med
 
-   Result: LiquidityPoolWithdrawResult
+	Result: LiquidityPoolWithdrawResult
 */
 type LiquidityPoolWithdrawOp struct {
 	LiquidityPoolID PoolID
@@ -1955,12 +1979,13 @@ type TransactionV0Envelope struct {
 	Signatures []DecoratedSignature // bound 20
 }
 
-/* a transaction is a container for a set of operations
-   - is executed by an account
-   - fees are collected from the account
-   - operations are executed in order as one ACID transaction
-         either all operations are applied or none are
-         if any returns a failing code
+/*
+a transaction is a container for a set of operations
+  - is executed by an account
+  - fees are collected from the account
+  - operations are executed in order as one ACID transaction
+    either all operations are applied or none are
+    if any returns a failing code
 */
 type Transaction struct {
 	// account used to run the transaction
@@ -2094,8 +2119,10 @@ type ClaimLiquidityAtom struct {
 	AmountBought Int64
 }
 
-/* This result is used when offers are taken or liquidity is exchanged with a
-   liquidity pool during an operation
+/*
+This result is used when offers are taken or liquidity is exchanged with a
+
+	liquidity pool during an operation
 */
 type ClaimAtom struct {
 	// The union discriminant Type selects among the following arms:
