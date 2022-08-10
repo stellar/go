@@ -413,7 +413,7 @@ func (s *ResumeTestTestSuite) TestErrorReapingObjectsIgnored() {
 	s.ledgerBackend.On("GetLatestLedgerSequence", s.ctx).Return(uint32(101), nil)
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
-	s.historyQ.On("ReapLookupTables", mock.AnythingOfType("*context.timerCtx"), mock.Anything).Return(nil, errors.New("error reaping objects")).Once()
+	s.historyQ.On("ReapLookupTables", mock.AnythingOfType("*context.timerCtx"), mock.Anything).Return(nil, nil, errors.New("error reaping objects")).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)

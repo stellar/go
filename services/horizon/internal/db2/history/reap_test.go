@@ -48,7 +48,7 @@ func TestReapLookupTables(t *testing.T) {
 	err = q.Begin()
 	tt.Require.NoError(err)
 
-	newOffsets, err := q.ReapLookupTables(tt.Ctx, nil)
+	deletedCount, newOffsets, err := q.ReapLookupTables(tt.Ctx, nil)
 	tt.Require.NoError(err)
 
 	err = q.Commit()
@@ -68,12 +68,18 @@ func TestReapLookupTables(t *testing.T) {
 
 	tt.Assert.Equal(61, prevLedgers, "prevLedgers")
 	tt.Assert.Equal(1, curLedgers, "curLedgers")
+
 	tt.Assert.Equal(25, prevAccounts, "prevAccounts")
 	tt.Assert.Equal(1, curAccounts, "curAccounts")
+	tt.Assert.Equal(int64(24), deletedCount["history_accounts"], `deletedCount["history_accounts"]`)
+
 	tt.Assert.Equal(1, prevClaimableBalances, "prevClaimableBalances")
 	tt.Assert.Equal(0, curClaimableBalances, "curClaimableBalances")
+	tt.Assert.Equal(int64(1), deletedCount["history_claimable_balances"], `deletedCount["history_claimable_balances"]`)
+
 	tt.Assert.Equal(1, prevLiquidityPools, "prevLiquidityPools")
 	tt.Assert.Equal(0, curLiquidityPools, "curLiquidityPools")
+	tt.Assert.Equal(int64(1), deletedCount["history_liquidity_pools"], `deletedCount["history_liquidity_pools"]`)
 
 	tt.Assert.Len(newOffsets, 3)
 	tt.Assert.Equal(int64(0), newOffsets["history_accounts"])
