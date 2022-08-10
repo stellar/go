@@ -363,6 +363,7 @@ CREATE TABLE history_operation_claimable_balances (
 
 CREATE UNIQUE INDEX "index_history_operation_claimable_balances_on_ids" ON history_operation_claimable_balances USING btree (history_operation_id , history_claimable_balance_id);
 CREATE INDEX "index_history_operation_claimable_balances_on_operation_id" ON history_operation_claimable_balances USING btree (history_operation_id);
+CREATE INDEX "index_history_operation_claimable_balances_on_id" ON history_operation_claimable_balances USING btree (history_claimable_balance_id);
 
 CREATE TABLE history_transaction_claimable_balances (
     history_transaction_id bigint NOT NULL,
@@ -371,6 +372,7 @@ CREATE TABLE history_transaction_claimable_balances (
 
 CREATE UNIQUE INDEX "index_history_transaction_claimable_balances_on_ids" ON history_transaction_claimable_balances USING btree (history_transaction_id , history_claimable_balance_id);
 CREATE INDEX "index_history_transaction_claimable_balances_on_transaction_id" ON history_transaction_claimable_balances USING btree (history_transaction_id);
+CREATE INDEX "index_history_transaction_claimable_balances_on_id" ON history_transaction_claimable_balances USING btree (history_claimable_balance_id);
 
 
 INSERT INTO history_claimable_balances VALUES (1, '00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9');
@@ -780,6 +782,7 @@ INSERT INTO gorp_migrations VALUES ('52_add_trade_type_index.sql', '2021-12-02 0
 INSERT INTO gorp_migrations VALUES ('53_add_trades_rounding_slippage.sql', '2021-12-02 01:33:33.47903+00');
 INSERT INTO gorp_migrations VALUES ('54_tx_preconditions_and_account_fields.sql', '2021-12-02 01:33:33.47903+00');
 INSERT INTO gorp_migrations VALUES ('55_filter_rules.sql', '2022-01-02 01:33:33.47903+00');
+INSERT INTO gorp_migrations VALUES ('56_txsub_read_only.sql', '2022-01-02 01:33:33.47903+00');
 
 
 --
@@ -1502,6 +1505,7 @@ CREATE TABLE history_operation_liquidity_pools (
 
 CREATE UNIQUE INDEX index_history_operation_liquidity_pools_on_ids ON history_operation_liquidity_pools USING btree (history_operation_id , history_liquidity_pool_id);
 CREATE INDEX index_history_operation_liquidity_pools_on_operation_id ON history_operation_liquidity_pools USING btree (history_operation_id);
+CREATE INDEX index_history_operation_liquidity_pools_on_id ON history_operation_liquidity_pools USING btree (history_liquidity_pool_id);
 
 CREATE TABLE history_transaction_liquidity_pools (
     history_transaction_id bigint NOT NULL,
@@ -1510,6 +1514,7 @@ CREATE TABLE history_transaction_liquidity_pools (
 
 CREATE UNIQUE INDEX index_history_transaction_liquidity_pools_on_ids ON history_transaction_liquidity_pools USING btree (history_transaction_id , history_liquidity_pool_id);
 CREATE INDEX index_history_transaction_liquidity_pools_on_transaction_id ON history_transaction_liquidity_pools USING btree (history_transaction_id);
+CREATE INDEX index_history_transaction_liquidity_pools_on_id ON history_transaction_liquidity_pools USING btree (history_liquidity_pool_id);
 
 ALTER TABLE trust_lines ADD liquidity_pool_id text;
 CREATE INDEX trust_lines_by_liquidity_pool_id ON trust_lines USING BTREE(liquidity_pool_id);
@@ -1563,19 +1568,13 @@ CREATE TABLE asset_filter_rules (
 INSERT INTO account_filter_rules VALUES (false, '{}', 0);
 INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
 
-CREATE TABLE txsub_results (
-    transaction_hash       varchar(64) NOT NULL UNIQUE,
-    inner_transaction_hash varchar(64),
-    tx_result              text, -- serialized history.Transaction
-    submitted_at           timestamp NOT NULL DEFAULT NOW()
-);
+-- migration 57
 
-INSERT INTO txsub_results
-VALUES (
-    '2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d',
-    NULL,
-    '{ "TxResult": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=" }',
-    '2019-06-03 18:28:47.032496+02');
+CREATE TABLE history_transactions_filtered_tmp AS 
+  select * FROM history_transactions
+  WHERE ledger_sequence IS NULL;
+
+INSERT INTO history_transactions_filtered_tmp VALUES ('2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d', 2, 1, 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', 1, 100, 1, '2019-10-31 13:19:49.409714', '2019-10-31 13:19:49.409714', 8589938688, 'AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML', 'AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=', 'AAAAAQAAAAAAAAABAAAAAwAAAAMAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/7UAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrNryTTUAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msoAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', 'AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==', '{g86r5EAUKDQCYnz0Vw6C4b7cnE95RTwkOdYJHbBR2gTVsNOUv1YVtF4JK9AgTxODWhVdipnLN2cC5om+E0azCw==}', 'none', NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, 100);
 
 --
 -- PostgreSQL database dump complete

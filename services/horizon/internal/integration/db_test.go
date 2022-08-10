@@ -363,12 +363,10 @@ func submitAccountOps(itest *integration.Test, tt *assert.Assertions) (submitted
 	allOps := ops
 	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
 	account := itest.MustGetAccount(accountPair)
-	seq, err := strconv.ParseInt(account.Sequence, 10, 64)
-	tt.NoError(err)
 	domain := "www.example.com"
 	ops = []txnbuild.Operation{
 		&txnbuild.BumpSequence{
-			BumpTo: seq + 1000,
+			BumpTo: account.Sequence + 1000,
 		},
 		&txnbuild.SetOptions{
 			HomeDomain: &domain,
@@ -444,7 +442,7 @@ func TestReingestDB(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
 
-	horizonConfig := itest.GetHorizonConfig()
+	horizonConfig := itest.GetHorizonIngestConfig()
 	t.Run("validate parallel range", func(t *testing.T) {
 		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
 			"db",
@@ -458,13 +456,15 @@ func TestReingestDB(t *testing.T) {
 		assert.EqualError(t, horizoncmd.RootCmd.Execute(), "Invalid range: {10 2} from > to")
 	})
 
-	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
-	// recent checkpoint ledger when using captive core
+	// cap reachedLedger to the nearest checkpoint ledger because reingest range
+	// cannot ingest past the most recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
-	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ArchiveOptions{
-		NetworkPassphrase:   horizonConfig.NetworkPassphrase,
-		CheckpointFrequency: horizonConfig.CheckpointFrequency,
-	})
+	archive, err := historyarchive.Connect(
+		horizonConfig.HistoryArchiveURLs[0],
+		historyarchive.ArchiveOptions{
+			NetworkPassphrase:   horizonConfig.NetworkPassphrase,
+			CheckpointFrequency: horizonConfig.CheckpointFrequency,
+		})
 	tt.NoError(err)
 
 	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
@@ -537,11 +537,8 @@ func TestFillGaps(t *testing.T) {
 
 	// Create a fresh Horizon database
 	newDB := dbtest.Postgres(t)
-	// TODO: Unfortunately Horizon's ingestion System leaves open sessions behind,leading to
-	//       a "database  is being accessed by other users" error when trying to drop it
-	// defer newDB.Close()
 	freshHorizonPostgresURL := newDB.DSN
-	horizonConfig := itest.GetHorizonConfig()
+	horizonConfig := itest.GetHorizonIngestConfig()
 	horizonConfig.DatabaseURL = freshHorizonPostgresURL
 	// Initialize the DB schema
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
@@ -558,10 +555,12 @@ func TestFillGaps(t *testing.T) {
 	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
 	// recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
-	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ArchiveOptions{
-		NetworkPassphrase:   horizonConfig.NetworkPassphrase,
-		CheckpointFrequency: horizonConfig.CheckpointFrequency,
-	})
+	archive, err := historyarchive.Connect(
+		horizonConfig.HistoryArchiveURLs[0],
+		historyarchive.ArchiveOptions{
+			NetworkPassphrase:   horizonConfig.NetworkPassphrase,
+			CheckpointFrequency: horizonConfig.CheckpointFrequency,
+		})
 	tt.NoError(err)
 
 	t.Run("validate parallel range", func(t *testing.T) {

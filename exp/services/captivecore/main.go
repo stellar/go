@@ -139,6 +139,7 @@ func main() {
 				CheckpointFrequency: checkpointFrequency,
 				Log:                 logger.WithField("subservice", "stellar-core"),
 				Toml:                captiveCoreToml,
+				UserAgent:           "captivecore",
 			}
 
 			var dbConn *db.Session

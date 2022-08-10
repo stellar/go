@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/csv"
 	"flag"
-	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -16,6 +15,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -307,13 +307,21 @@ func archive(testnet bool) (*historyarchive.Archive, error) {
 	if testnet {
 		return historyarchive.Connect(
 			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
-			historyarchive.ArchiveOptions{},
+			historyarchive.ArchiveOptions{
+				ConnectOptions: storage.ConnectOptions{
+					UserAgent: "dump-ledger-state",
+				},
+			},
 		)
 	}
 
 	return historyarchive.Connect(
-		fmt.Sprintf("https://history.stellar.org/prd/core-live/core_live_001/"),
-		historyarchive.ArchiveOptions{},
+		"https://history.stellar.org/prd/core-live/core_live_001/",
+		historyarchive.ArchiveOptions{
+			ConnectOptions: storage.ConnectOptions{
+				UserAgent: "dump-ledger-state",
+			},
+		},
 	)
 }
 

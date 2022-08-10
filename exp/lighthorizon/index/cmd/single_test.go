@@ -169,8 +169,8 @@ func AssertParticipantsEqual(t *testing.T, expected map[string][]uint32, actual 
 // range and build two maps from scratch (i.e. without using the indexer) by
 // ingesting them manually:
 //
-//  - a map of tx hashes to TOIDs
-//  - a map of accounts to a list of checkpoints they were active in
+//   - a map of tx hashes to TOIDs
+//   - a map of accounts to a list of checkpoints they were active in
 //
 // These should be used as a baseline comparison of the indexer, ensuring that
 // all of the data is identical.
@@ -250,8 +250,8 @@ func IndexLedgerRange(
 // fixture data. It's *essentially* equivalent to (but better than, since it
 // handles the existence of non-integer files):
 //
-//     LOW=$(ls $txmetaSource/ledgers | sort -n | head -n1)
-//     HIGH=$(ls $txmetaSource/ledgers | sort -n | tail -n1)
+//	LOW=$(ls $txmetaSource/ledgers | sort -n | head -n1)
+//	HIGH=$(ls $txmetaSource/ledgers | sort -n | tail -n1)
 func GetFixtureLedgerRange(t *testing.T) (low uint32, high uint32) {
 	txmetaSourceDir := strings.Replace(
 		txmetaSource,

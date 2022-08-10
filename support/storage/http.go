@@ -12,15 +12,17 @@ import (
 )
 
 type HttpStorage struct {
-	ctx    context.Context
-	client http.Client
-	base   url.URL
+	ctx       context.Context
+	client    http.Client
+	base      url.URL
+	userAgent string
 }
 
-func NewHttpStorage(ctx context.Context, base *url.URL) Storage {
+func NewHttpStorage(ctx context.Context, base *url.URL, userAgent string) Storage {
 	return &HttpStorage{
-		ctx:  ctx,
-		base: *base,
+		ctx:       ctx,
+		base:      *base,
+		userAgent: userAgent,
 	}
 }
 
@@ -36,14 +38,7 @@ func checkResp(r *http.Response) error {
 func (b *HttpStorage) GetFile(pth string) (io.ReadCloser, error) {
 	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
-	req, err := http.NewRequest("GET", derived.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(b.ctx)
-	logReq(req)
-	resp, err := b.client.Do(req)
-	logResp(resp)
+	resp, err := b.makeSendRequest("GET", derived.String())
 	if err != nil {
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
@@ -63,14 +58,7 @@ func (b *HttpStorage) GetFile(pth string) (io.ReadCloser, error) {
 func (b *HttpStorage) Head(pth string) (*http.Response, error) {
 	derived := b.base
 	derived.Path = path.Join(derived.Path, pth)
-	req, err := http.NewRequest("HEAD", derived.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(b.ctx)
-	logReq(req)
-	resp, err := b.client.Do(req)
-	logResp(resp)
+	resp, err := b.makeSendRequest("HEAD", derived.String())
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +114,21 @@ func (b *HttpStorage) ListFiles(pth string) (chan string, chan error) {
 
 func (b *HttpStorage) CanListFiles() bool {
 	return false
+}
+
+func (b *HttpStorage) makeSendRequest(method, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(b.ctx)
+	logReq(req)
+	if b.userAgent != "" {
+		req.Header.Set("User-Agent", b.userAgent)
+	}
+	resp, err := b.client.Do(req)
+	logResp(resp)
+	return resp, err
 }
 
 func (b *HttpStorage) Close() error {

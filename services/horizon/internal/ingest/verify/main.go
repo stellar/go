@@ -23,14 +23,15 @@ type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry x
 // StateVerifier verifies if ledger entries provided by Add method are the same
 // as in the checkpoint ledger entries provided by CheckpointChangeReader.
 // The algorithm works in the following way:
-//   0. Develop `transformFunction`. It should remove all fields and objects not
-//      stored in your app. For example, if you only store accounts, all other
-//      ledger entry types should be ignored (return ignore = true).
-//   1. In a loop, get entries from history archive by calling GetEntries()
-//      and Write() your version of entries found in the batch (in any order).
-//   2. When GetEntries() return no more entries, call Verify with a number of
-//      entries in your storage (to find if some extra entires exist in your
-//      storage).
+//  0. Develop `transformFunction`. It should remove all fields and objects not
+//     stored in your app. For example, if you only store accounts, all other
+//     ledger entry types should be ignored (return ignore = true).
+//  1. In a loop, get entries from history archive by calling GetEntries()
+//     and Write() your version of entries found in the batch (in any order).
+//  2. When GetEntries() return no more entries, call Verify with a number of
+//     entries in your storage (to find if some extra entires exist in your
+//     storage).
+//
 // Functions will return StateError type if state is found to be incorrect.
 // It's user responsibility to call `stateReader.Close()` when reading is done.
 // Check Horizon for an example how to use this tool.
@@ -157,7 +158,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 
 	if !bytes.Equal(actualEntryMarshaled, expectedEntryMarshaled) {
 		return ingest.NewStateError(errors.Errorf(
-			"Entry does not match the fetched entry. Expected: %s (pretransform = %s), actual: %s",
+			"Entry does not match the fetched entry. Expected (history archive): %s (pretransform = %s), actual (horizon): %s",
 			base64.StdEncoding.EncodeToString(expectedEntryMarshaled),
 			base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
@@ -170,10 +171,11 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 // Verify should be run after all GetEntries/Write calls. If there were no errors
 // so far it means that all entries present in history buckets matches the entries
 // in application storage. However, it's still possible that state is invalid when:
-//   * Not all entries have been read from history buckets (ex. due to a bug).
-//   * Some entries were not compared using Write.
-//   * There are some extra entries in application storage not present in history
+//   - Not all entries have been read from history buckets (ex. due to a bug).
+//   - Some entries were not compared using Write.
+//   - There are some extra entries in application storage not present in history
 //     buckets.
+//
 // Any `StateError` returned by this method indicates invalid state!
 func (v *StateVerifier) Verify(countAll int) error {
 	err := v.checkUnreadEntries()

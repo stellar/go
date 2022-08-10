@@ -1,5 +1,5 @@
-//Package codes is a helper package to help convert to transaction and operation result codes
-//to strings used in horizon.
+// Package codes is a helper package to help convert to transaction and operation result codes
+// to strings used in horizon.
 package codes
 
 import (
@@ -37,7 +37,7 @@ const (
 	OpDoesNotExist = "op_does_not_exist"
 )
 
-//String returns the appropriate string representation of the provided result code
+// String returns the appropriate string representation of the provided result code
 func String(code interface{}) (string, error) {
 	switch code := code.(type) {
 	case xdr.TransactionResultCode:

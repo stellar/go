@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 
@@ -64,10 +63,11 @@ func main() {
 
 func archive() (*historyarchive.Archive, error) {
 	return historyarchive.Connect(
-		fmt.Sprintf("s3://history.stellar.org/prd/core-live/core_live_001/"),
+		"s3://history.stellar.org/prd/core-live/core_live_001/",
 		historyarchive.ArchiveOptions{
 			ConnectOptions: storage.ConnectOptions{
 				S3Region:         "eu-west-1",
+				UserAgent:        "archive-reader",
 				UnsignedRequests: true,
 			},
 		},

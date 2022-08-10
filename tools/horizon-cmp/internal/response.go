@@ -129,6 +129,7 @@ func NewResponse(domain, path string, stream bool) *Response {
 		resp.StatusCode != http.StatusNotAcceptable &&
 		resp.StatusCode != http.StatusBadRequest &&
 		resp.StatusCode != http.StatusGatewayTimeout &&
+		resp.StatusCode != http.StatusBadGateway &&
 		resp.StatusCode != http.StatusGone &&
 		resp.StatusCode != http.StatusServiceUnavailable {
 		panic(fmt.Errorf("%d for GET %s", resp.StatusCode, domain+path))

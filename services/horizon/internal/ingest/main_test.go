@@ -162,7 +162,7 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 	assert.EqualError(t, err, "invalid range: [0, 0]")
 }
 
-func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
+func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
 		historyQ:          historyQ,
@@ -180,13 +180,21 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	defer func() { log = oldLogger }()
 
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, db.ErrCancelled).Once()
-	system.maybeVerifyState(0)
+	system.maybeVerifyState(63)
+	system.wg.Wait()
 
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, context.Canceled).Once()
-	system.maybeVerifyState(0)
+	system.maybeVerifyState(63)
+	system.wg.Wait()
 
 	logged := done()
 	assert.Len(t, logged, 0)
+
+	// Ensure state verifier does not start also for any other error
+	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, errors.New("my error")).Once()
+	system.maybeVerifyState(63)
+	system.wg.Wait()
+
 	historyQ.AssertExpectations(t)
 }
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
@@ -367,6 +375,14 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder(maxBatchSize int) history.TradeBatc
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
+func (m *mockDBQ) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, error) {
+	args := m.Called(ctx, offsets)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]int64), args.Error(1)
+}
+
 func (m *mockDBQ) RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error {
 	args := m.Called(ctx, from, to, roundingSlippageFilter)
 	return args.Error(0)
@@ -380,6 +396,11 @@ func (m *mockDBQ) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger
 func (m *mockDBQ) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]history.Asset, error) {
 	args := m.Called(ctx, assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
+}
+
+func (m *mockDBQ) DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
+	args := m.Called(ctx, howOldInSeconds)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 type mockLedgerBackend struct {

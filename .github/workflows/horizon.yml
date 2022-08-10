@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.18]
+        go: [1.18, 1.19]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
         protocol-version: [18, 19]
@@ -34,10 +34,10 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.0.1-923.2b38097cb.focal
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.0.1-923.2b38097cb.focal
-      PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 19.0.1-923.2b38097cb.focal
-      PROTOCOL_18_CORE_DOCKER_IMG: stellar/stellar-core:19.0.1-923.2b38097cb.focal
+      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.3.0-1006.9ce6dc4e9.focal
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.3.0-1006.9ce6dc4e9.focal
+      PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 19.3.0-1006.9ce6dc4e9.focal
+      PROTOCOL_18_CORE_DOCKER_IMG: stellar/stellar-core:19.3.0-1006.9ce6dc4e9.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -96,6 +96,9 @@ jobs:
   verify-range:
     name: Test (and push) verify-range image
     runs-on: ubuntu-latest
+    env:
+      STELLAR_CORE_VERSION: 19.3.0-1006.9ce6dc4e9.focal
+      CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
     - uses: actions/checkout@v3
       with:
@@ -108,7 +111,6 @@ jobs:
         # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
         docker run -e BRANCH=$(git rev-parse HEAD) -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
 
-
     # Push image
     - if: github.ref == 'refs/heads/master'
       name: Login to DockerHub
@@ -120,7 +122,6 @@ jobs:
     - if: github.ref == 'refs/heads/master'
       name: Push to DockerHub
       run: docker push stellar/horizon-verify-range:latest
-
 
   ledgerexporter:
     name: Test (and push) ledgerexporter image

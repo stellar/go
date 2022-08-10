@@ -17,9 +17,9 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 	tt := assert.New(t)
 	const adminPort uint16 = 6000
 	itest := integration.NewTest(t, integration.Config{
-		HorizonParameters: map[string]string{
-			"admin-port":                 strconv.Itoa(int(adminPort)),
-			"enable-ingestion-filtering": "true",
+		HorizonIngestParameters: map[string]string{
+			"admin-port":                     strconv.Itoa(int(adminPort)),
+			"exp-enable-ingestion-filtering": "true",
 		},
 	})
 
@@ -48,7 +48,7 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 	tt.NoError(err)
 
 	// Setup a whitelisted account rule, force refresh of filter configs to be quick
-	filters.FilterConfigCheckIntervalSeconds = 1
+	filters.SetFilterConfigCheckIntervalSeconds(1)
 
 	expectedAccountFilter := hProtocol.AccountFilterConfig{
 		Whitelist: []string{whitelistedAccount.GetAccountID()},
@@ -64,7 +64,7 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 	tt.Equal(expectedAccountFilter.Enabled, accountFilter.Enabled)
 
 	// Ensure the latest filter configs are reloaded by the ingestion state machine processor
-	time.Sleep(time.Duration(filters.FilterConfigCheckIntervalSeconds) * time.Second)
+	time.Sleep(time.Duration(filters.GetFilterConfigCheckIntervalSeconds()) * time.Second)
 
 	// Make sure that when using a non-whitelisted account, the transaction is not stored
 	txResp = itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
@@ -93,9 +93,9 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	tt := assert.New(t)
 	const adminPort uint16 = 6000
 	itest := integration.NewTest(t, integration.Config{
-		HorizonParameters: map[string]string{
-			"admin-port":                 strconv.Itoa(int(adminPort)),
-			"enable-ingestion-filtering": "true",
+		HorizonIngestParameters: map[string]string{
+			"admin-port":                     strconv.Itoa(int(adminPort)),
+			"exp-enable-ingestion-filtering": "true",
 		},
 	})
 
@@ -123,7 +123,7 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	tt.NoError(err)
 
 	// Setup a whitelisted asset rule, force refresh of filters to be quick
-	filters.FilterConfigCheckIntervalSeconds = 1
+	filters.SetFilterConfigCheckIntervalSeconds(1)
 
 	asset, err := whitelistedAsset.ToXDR()
 	tt.NoError(err)
@@ -141,7 +141,7 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	tt.Equal(expectedAssetFilter.Enabled, assetFilter.Enabled)
 
 	// Ensure the latest filter configs are reloaded by the ingestion state machine processor
-	time.Sleep(time.Duration(filters.FilterConfigCheckIntervalSeconds) * time.Second)
+	time.Sleep(time.Duration(filters.GetFilterConfigCheckIntervalSeconds()) * time.Second)
 
 	// Make sure that when using a non-whitelisted asset, the transaction is not stored
 	txResp = itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
