@@ -57,8 +57,6 @@ require github.com/andybalholm/brotli v1.0.4 // indirect
 
 require (
 	cloud.google.com/go v0.84.0 // indirect
-	cloud.google.com/go/firestore v1.5.0 // indirect
-	cloud.google.com/go/storage v1.10.0 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
