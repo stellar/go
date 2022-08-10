@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +23,7 @@ import (
 // Horizon Classic, the data goes from Captive Core -> DB -> JSON. In our case,
 // there's no DB intermediary, so we need to directly translate.
 func PopulateTransaction(
-	r *http.Request,
+	baseUrl *url.URL,
 	tx *common.Transaction,
 	encoder *xdr.EncodingBuffer,
 ) (dest protocol.Transaction, err error) {
@@ -137,20 +137,6 @@ func PopulateTransaction(
 		}
 		innerHash := hex.EncodeToString(rawInnerHash[:])
 
-		// innerHash := transaction.Result.InnerHash()
-		// t.InnerTransactionHash = null.StringFrom(hex.EncodeToString(innerHash[:]))
-		// feeBumpAccount := transaction.Envelope.FeeBumpAccount()
-		// feeAccount := feeBumpAccount.ToAccountId()
-		// var feeAccountMuxed null.String
-		// if feeBumpAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-		// 	feeAccountMuxed = null.StringFrom(feeBumpAccount.Address())
-		// }
-		// t.FeeAccount = null.StringFrom(feeAccount.Address())
-		// t.FeeAccountMuxed = feeAccountMuxed
-		// t.NewMaxFee = null.IntFrom(transaction.Envelope.FeeBumpFee())
-		// t.InnerSignatures = signatures(transaction.Envelope.Signatures())
-		// t.Signatures = signatures(transaction.Envelope.FeeBumpSignatures())
-
 		feeAccountMuxed := tx.Envelope.FeeBumpAccount()
 		dest.FeeAccount = feeAccountMuxed.ToAccountId().Address()
 		if _, ok := feeAccountMuxed.GetMed25519(); ok {
@@ -167,14 +153,14 @@ func PopulateTransaction(
 		dest.MaxFee = tx.Envelope.FeeBumpFee()
 		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
 			Hash:       txHash,
-			Signatures: signatures(tx.Envelope.FeeBump.Signatures),
+			Signatures: signatures(tx.Envelope.FeeBumpSignatures()),
 		}
 		dest.InnerTransaction = &protocol.InnerTransaction{
 			Hash:       innerHash,
 			MaxFee:     int64(innerTx.Tx.Fee),
-			Signatures: signatures(tx.Envelope.FeeBump.Signatures),
+			Signatures: signatures(tx.Envelope.Signatures()),
 		}
-		// TODO: Wtf?
+		// TODO: Figure out what this means? Maybe @tamirms knows.
 		// if transactionHash != row.TransactionHash {
 		// 	dest.Signatures = dest.InnerTransaction.Signatures
 		// }
@@ -186,7 +172,8 @@ func PopulateTransaction(
 	}
 	dest.FeeCharged = int64(tx.Result.Result.FeeCharged)
 
-	lb := hal.LinkBuilder{Base: r.URL}
+	lb := hal.LinkBuilder{Base: baseUrl}
+	dest.PT = strconv.FormatUint(uint64(tx.TOID()), 10)
 	dest.Links.Account = lb.Link("/accounts", dest.Account)
 	dest.Links.Ledger = lb.Link("/ledgers", fmt.Sprint(dest.Ledger))
 	dest.Links.Operations = lb.PagedLink("/transactions", dest.ID, "operations")
@@ -195,7 +182,6 @@ func PopulateTransaction(
 	dest.Links.Transaction = dest.Links.Self
 	dest.Links.Succeeds = lb.Linkf("/transactions?order=desc&cursor=%s", dest.PT)
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
-	dest.PT = strconv.FormatUint(uint64(tx.TOID()), 10)
 
 	// If we didn't need the structure, drop it.
 	if !tx.HasPreconditions() {
@@ -297,12 +283,7 @@ func scrub(in string) string {
 
 	for len(left) > 0 {
 		r, n := utf8.DecodeRune(left)
-
-		_, err := result.WriteRune(r)
-		if err != nil {
-			panic(err)
-		}
-
+		result.WriteRune(r) // never errors, only panics
 		left = left[n:]
 	}
 

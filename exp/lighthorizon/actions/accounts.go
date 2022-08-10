@@ -76,7 +76,7 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 		encoder := xdr.NewEncodingBuffer()
 		for _, txn := range txns {
 			var response hProtocol.Transaction
-			response, err = adapters.PopulateTransaction(r, &txn, encoder)
+			response, err = adapters.PopulateTransaction(r.URL, &txn, encoder)
 			if err != nil {
 				log.Error(err)
 				sendErrorResponse(r.Context(), w, supportProblem.ServerError)
