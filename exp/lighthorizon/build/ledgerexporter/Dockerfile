@@ -1,16 +1,9 @@
 FROM golang:1.18 AS builder
 
-ARG GIT_COMMIT
-WORKDIR /
-RUN git clone https://github.com/stellar/go.git stellar-go
-WORKDIR /stellar-go
-
-# By default "git fetch" only fetches refs/<branchname>
-# Below ensures we also fetch PR refs
-RUN git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
-RUN git fetch --force --quiet origin
-RUN if [ -n "${GIT_COMMIT}" ]; then git checkout "${GIT_COMMIT}"; fi
-RUN go build -v ./exp/services/ledgerexporter
+WORKDIR /go/src/github.com/stellar/go
+COPY . ./
+RUN go mod download
+RUN go install github.com/stellar/go/exp/services/ledgerexporter
 
 FROM ubuntu:20.04
 ARG STELLAR_CORE_VERSION
@@ -26,15 +19,15 @@ RUN echo "deb https://apt.stellar.org focal unstable" >/etc/apt/sources.list.d/S
 RUN apt-get update && apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 RUN apt-get clean
 
-ADD captive-core-pubnet.cfg /
-ADD captive-core-testnet.cfg /
+COPY --from=builder /go/src/github.com/stellar/go/exp/lighthorizon/build/ledgerexporter/captive-core-pubnet.cfg /
+COPY --from=builder /go/src/github.com/stellar/go/exp/lighthorizon/build/ledgerexporter/captive-core-testnet.cfg /
+COPY --from=builder /go/src/github.com/stellar/go/exp/lighthorizon/build/ledgerexporter/start /
 
-ADD start /
-RUN ["chmod", "+x", "start"]
+RUN ["chmod", "+x", "/start"]
 
 # for the captive core sqlite database
 RUN mkdir -p /cc
 
-COPY --from=builder /stellar-go/ledgerexporter ./
+COPY --from=builder /go/bin/ledgerexporter ./
 
 ENTRYPOINT ["/start"]

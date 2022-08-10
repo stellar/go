@@ -102,7 +102,7 @@ spec:
             name: ledgerexporter-pubnet-secret
         - configMapRef:
             name: ledgerexporter-pubnet-env
-        image: stellar/horizon-ledgerexporter:latest
+        image: stellar/lighthorizon-ledgerexporter:latest
         imagePullPolicy: Always
         name: ledgerexporter-pubnet
         resources:  
