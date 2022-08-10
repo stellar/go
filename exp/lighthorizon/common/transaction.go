@@ -43,8 +43,10 @@ func (o *Transaction) SourceAccount() xdr.MuxedAccount {
 func (tx *Transaction) TOID() int64 {
 	return toid.New(
 		int32(tx.LedgerHeader.LedgerSeq),
+		// TOID indexing is 1-based, so the 1st tx comes at position 1,
 		tx.TxIndex+1,
-		1,
+		// but the TOID of a transaction comes BEFORE any operation
+		0,
 	).ToInt64()
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/common"
 	"github.com/stellar/go/network"
 	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -39,6 +41,10 @@ func TestTransactionAdapter(t *testing.T) {
 	require.NoError(t, decoder.Decode(&page))
 	require.Len(t, page.Embedded.Records, 1)
 	expectedTx := page.Embedded.Records[0]
+
+	parsedToid, err := strconv.ParseInt(expectedTx.PagingToken(), 10, 64)
+	require.NoError(t, err)
+	expectedTxIndex := toid.Parse(parsedToid).TransactionOrder
 
 	txEnv := xdr.TransactionEnvelope{}
 	txResult := xdr.TransactionResult{}
@@ -69,7 +75,7 @@ func TestTransactionAdapter(t *testing.T) {
 				CloseTime: xdr.TimePoint(closeTimestamp),
 			},
 		},
-		TxIndex:           0,
+		TxIndex:           expectedTxIndex - 1, // TOIDs have a 1-based index
 		NetworkPassphrase: network.PublicNetworkPassphrase,
 	}
 
