@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  go-complete:
+  complete:
     if: always()
     needs: [check, build, test]
     runs-on: ubuntu-latest
