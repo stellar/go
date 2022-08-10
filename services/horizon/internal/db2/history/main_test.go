@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLatestLedger(t *testing.T) {
@@ -65,4 +67,46 @@ func TestElderLedger(t *testing.T) {
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal(1, seq)
 	}
+}
+
+func TestConstructReapLookupTablesQuery(t *testing.T) {
+	query, err := constructReapLookupTablesQuery(
+		"history_accounts",
+		[]tableObjectFieldPair{
+			{
+				name:        "history_effects",
+				objectField: "history_account_id",
+			},
+			{
+				name:        "history_operation_participants",
+				objectField: "history_account_id",
+			},
+			{
+				name:        "history_trades",
+				objectField: "base_account_id",
+			},
+			{
+				name:        "history_trades",
+				objectField: "counter_account_id",
+			},
+			{
+				name:        "history_transaction_participants",
+				objectField: "history_account_id",
+			},
+		},
+		10,
+		0,
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t,
+		"delete from history_accounts where id IN "+
+			"(select id from "+
+			"(select id, (select count(*) from history_effects where history_account_id = hcb.id) as c0, "+
+			"(select count(*) from history_operation_participants where history_account_id = hcb.id) as c1, "+
+			"(select count(*) from history_trades where base_account_id = hcb.id) as c2, "+
+			"(select count(*) from history_trades where counter_account_id = hcb.id) as c3, "+
+			"(select count(*) from history_transaction_participants where history_account_id = hcb.id) as c4, "+
+			"1 as cx from history_accounts hcb order by id limit 10 offset 0) as sub "+
+			"where c0 = 0 and c1 = 0 and c2 = 0 and c3 = 0 and c4 = 0 and 1=1);", query)
 }
