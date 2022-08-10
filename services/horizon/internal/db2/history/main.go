@@ -265,7 +265,6 @@ type IngestionQ interface {
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
-	QTxSubmissionResult
 
 	Begin() error
 	BeginTx(*sql.TxOptions) error
