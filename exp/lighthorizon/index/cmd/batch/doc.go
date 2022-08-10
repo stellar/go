@@ -8,16 +8,16 @@
 // indexes and all accounts seen in a given range (FlushAccounts method) to a
 // job folder (job_X, X = 0, 1, 2, 3, ...) in S3.
 //
-//                   network history split into chunks:
-//    [  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  ]
-//                      ----
-//                     /    \
-//                    /      \
-//                   /        \
-//                  [..........] <- each chunk consists of checkpoints
-//                       |
-//                       . - each checkpoint is processed by a free
-//                           worker (go routine)
+//	               network history split into chunks:
+//	[  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  ]
+//	                  ----
+//	                 /    \
+//	                /      \
+//	               /        \
+//	              [..........] <- each chunk consists of checkpoints
+//	                   |
+//	                   . - each checkpoint is processed by a free
+//	                       worker (go routine)
 //
 // reduce step is responsible for merging all indexes created in map step into a
 // final indexes for each account and for entire network history. Each reduce
@@ -33,21 +33,20 @@
 // parallel workers is equal the worker index then the account is processed.
 // Otherwise it's skipped (and will be picked by another (job, worker) pair).
 //
-//                 map step results saved in S3:
-//     x x x x x x x x x x x x x x x x x x x x x x x x x x x x
-//     |
-//     ㄴ job0/accounts  <- each job results contains a list of accounts
-//     |                   processed by a given job...
-//     |
-//     ㄴ job0/...       <- ...and partial indexes
+//	            map step results saved in S3:
+//	x x x x x x x x x x x x x x x x x x x x x x x x x x x x
+//	|
+//	ㄴ job0/accounts  <- each job results contains a list of accounts
+//	|                   processed by a given job...
+//	|
+//	ㄴ job0/...       <- ...and partial indexes
 //
-//     hash(account_id) => XXXX YYYY <-  64 bit hash of account id is calculated
+//	hash(account_id) => XXXX YYYY <-  64 bit hash of account id is calculated
 //
-//     if XXXX % REDUCE_JOBS == JOB_ID and YYYY % WORKERS_COUNT = WORKER_ID
-//     then process a given account by merging all indexes of a given account
-//     in all map step results, then mark account as done so if the account
-//     is seen again it will be skiped,
+//	if XXXX % REDUCE_JOBS == JOB_ID and YYYY % WORKERS_COUNT = WORKER_ID
+//	then process a given account by merging all indexes of a given account
+//	in all map step results, then mark account as done so if the account
+//	is seen again it will be skiped,
 //
-//     else: skip the account.
-//
+//	else: skip the account.
 package batch

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Type of `AccountSequence` field in `protocols/horizon.Account` was changed to `int64`.
+
+## [v10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v10.0.0) - 2022-04-18
+
+**This release adds support for Protocol 19:**
+
+* The library is updated to align with breaking changes to `txnbuild`.
+
 
 ## [v10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v10.0.0) - 2022-04-18
 

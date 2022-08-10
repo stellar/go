@@ -13,6 +13,7 @@ import (
 // have to download many ledgers until it's able to fill the list completely.
 // This can be solved by keeping an index/list of empty ledgers.
 // TODO: make this configurable.
+//
 //lint:ignore U1000 Ignore unused temporarily
 const checkpointsToLookup = 1
 

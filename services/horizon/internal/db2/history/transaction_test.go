@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -348,7 +349,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -385,7 +386,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -422,7 +423,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       123,
 					OperationCount:   1,
@@ -459,7 +460,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					// set max fee to a value larger than MAX_INT32 but less than or equal to MAX_UINT32
 					MaxFee:          2500000000,
 					FeeCharged:      int64(1 << 33),
@@ -497,7 +498,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -534,7 +535,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -571,7 +572,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -608,7 +609,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "78621794419880145",
+					AccountSequence:  78621794419880145,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -646,7 +647,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "123456",
+					AccountSequence:  123456,
 					MaxFee:           100,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -683,7 +684,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "123456",
+					AccountSequence:  123456,
 					MaxFee:           100,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -720,7 +721,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "123456",
+					AccountSequence:  123456,
 					MaxFee:           100,
 					FeeCharged:       300,
 					OperationCount:   1,
@@ -760,7 +761,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:              ledger.Sequence,
 					ApplicationOrder:            1,
 					Account:                     "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
-					AccountSequence:             "1",
+					AccountSequence:             1,
 					MaxFee:                      100,
 					FeeCharged:                  300,
 					OperationCount:              1,
@@ -800,7 +801,7 @@ func TestInsertTransaction(t *testing.T) {
 					LedgerSequence:   ledger.Sequence,
 					ApplicationOrder: 1,
 					Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					AccountSequence:  "123456",
+					AccountSequence:  123456,
 					MaxFee:           200,
 					FeeCharged:       300,
 					OperationCount:   2,
@@ -890,4 +891,25 @@ func TestFetchFeeBumpTransaction(t *testing.T) {
 	err = q.Effects().ForTransaction(tt.Ctx, fixture.InnerHash).Select(tt.Ctx, &innerEffects)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(outerEffects, innerEffects)
+}
+
+func TestHistoryTransactionSchemasMatch(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	db := tt.HorizonSession()
+	type column struct {
+		Name     string `db:"column_name"`
+		DataType string `db:"data_type"`
+	}
+	query := `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ?`
+	var txColumns []column
+	err := db.SelectRaw(context.Background(), &txColumns, query, "history_transactions")
+	tt.Assert.NoError(err)
+
+	var txTmpFilteredTmpColumns []column
+	err = db.SelectRaw(context.Background(), &txTmpFilteredTmpColumns, query, "history_transactions_filtered_tmp")
+	tt.Assert.NoError(err)
+
+	tt.Assert.ElementsMatch(txColumns, txTmpFilteredTmpColumns)
 }

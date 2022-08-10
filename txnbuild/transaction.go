@@ -1236,11 +1236,11 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 // provided. If it does not match the function will return an error.
 //
 // Errors will be raised if:
-//  - The transaction is invalid according to ReadChallengeTx.
-//  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the
-//    server account or one of the signers provided in the arguments.
-//  - The signatures are all valid but do not meet the threshold.
+//   - The transaction is invalid according to ReadChallengeTx.
+//   - No client signatures are found on the transaction.
+//   - One or more signatures in the transaction are not identifiable as the
+//     server account or one of the signers provided in the arguments.
+//   - The signatures are all valid but do not meet the threshold.
 func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
@@ -1282,10 +1282,10 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDo
 // provided. If it does not match the function will return an error.
 //
 // Errors will be raised if:
-//  - The transaction is invalid according to ReadChallengeTx.
-//  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the
-//    server account or one of the signers provided in the arguments.
+//   - The transaction is invalid according to ReadChallengeTx.
+//   - No client signatures are found on the transaction.
+//   - One or more signatures in the transaction are not identifiable as the
+//     server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
 	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)

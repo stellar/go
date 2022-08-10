@@ -21,10 +21,12 @@ import (
 // KeyTypeNames maps from strkey version bytes into json string values to use in
 // horizon responses.
 var KeyTypeNames = map[strkey.VersionByte]string{
-	strkey.VersionByteAccountID: "ed25519_public_key",
-	strkey.VersionByteSeed:      "ed25519_secret_seed",
-	strkey.VersionByteHashX:     "sha256_hash",
-	strkey.VersionByteHashTx:    "preauth_tx",
+	strkey.VersionByteAccountID:     "ed25519_public_key",
+	strkey.VersionByteSeed:          "ed25519_secret_seed",
+	strkey.VersionByteMuxedAccount:  "muxed_account",
+	strkey.VersionByteHashTx:        "preauth_tx",
+	strkey.VersionByteHashX:         "sha256_hash",
+	strkey.VersionByteSignedPayload: "ed25519_signed_payload",
 }
 
 // Account is the summary of an account
@@ -42,7 +44,7 @@ type Account struct {
 
 	ID                   string            `json:"id"`
 	AccountID            string            `json:"account_id"`
-	Sequence             string            `json:"sequence"`
+	Sequence             int64             `json:"sequence,string"`
 	SequenceLedger       uint32            `json:"sequence_ledger,omitempty"`
 	SequenceTime         string            `json:"sequence_time,omitempty"`
 	SubentryCount        int32             `json:"subentry_count"`
@@ -96,29 +98,20 @@ func (a Account) GetCreditBalance(code string, issuer string) string {
 
 // GetSequenceNumber returns the sequence number of the account,
 // and returns it as a 64-bit integer.
+// TODO: since Account.Sequence was changed to int64, error is no longer needed.
 func (a Account) GetSequenceNumber() (int64, error) {
-	seqNum, err := strconv.ParseInt(a.Sequence, 10, 64)
-	if err != nil {
-		return 0, errors.Wrap(err, "Failed to parse account sequence number")
-	}
-
-	return seqNum, nil
+	return a.Sequence, nil
 }
 
 // IncrementSequenceNumber increments the internal record of the account's sequence
 // number by 1. This is typically used after a transaction build so that the next
 // transaction to be built will be valid.
 func (a *Account) IncrementSequenceNumber() (int64, error) {
-	seqNum, err := a.GetSequenceNumber()
-	if err != nil {
-		return 0, err
-	}
-	if seqNum == math.MaxInt64 {
+	if a.Sequence == math.MaxInt64 {
 		return 0, fmt.Errorf("sequence cannot be increased, it already reached MaxInt64 (%d)", int64(math.MaxInt64))
 	}
-	seqNum++
-	a.Sequence = strconv.FormatInt(seqNum, 10)
-	return seqNum, nil
+	a.Sequence++
+	return a.Sequence, nil
 }
 
 // MustGetData returns decoded value for a given key. If the key does
@@ -511,7 +504,7 @@ type Transaction struct {
 	Account           string    `json:"source_account"`
 	AccountMuxed      string    `json:"account_muxed,omitempty"`
 	AccountMuxedID    uint64    `json:"account_muxed_id,omitempty,string"`
-	AccountSequence   string    `json:"source_account_sequence"`
+	AccountSequence   int64     `json:"source_account_sequence,string"`
 	FeeAccount        string    `json:"fee_account"`
 	FeeAccountMuxed   string    `json:"fee_account_muxed,omitempty"`
 	FeeAccountMuxedID uint64    `json:"fee_account_muxed_id,omitempty,string"`

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -16,10 +17,11 @@ import (
 type ingestionSource int
 
 const (
-	_                    = iota
-	historyArchiveSource = ingestionSource(iota)
-	ledgerSource         = ingestionSource(iota)
-	logFrequency         = 50000
+	_                               = iota
+	historyArchiveSource            = ingestionSource(iota)
+	ledgerSource                    = ingestionSource(iota)
+	logFrequency                    = 50000
+	transactionsFilteredTmpGCPeriod = 5 * time.Minute
 )
 
 type horizonChangeProcessor interface {
@@ -83,11 +85,12 @@ var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
 type ProcessorRunner struct {
 	config Config
 
-	ctx            context.Context
-	historyQ       history.IngestionQ
-	historyAdapter historyArchiveAdapterInterface
-	logMemoryStats bool
-	filters        filters.Filters
+	ctx                   context.Context
+	historyQ              history.IngestionQ
+	historyAdapter        historyArchiveAdapterInterface
+	logMemoryStats        bool
+	filters               filters.Filters
+	lastTransactionsTmpGC time.Time
 }
 
 func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
@@ -158,11 +161,11 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	return newGroupTransactionFilterers(f)
 }
 
-func (s *ProcessorRunner) buildUnfilteredProcessor(ledger xdr.LedgerHeaderHistoryEntry) *groupTransactionProcessors {
+func (s *ProcessorRunner) buildFilteredOutProcessor(ledger xdr.LedgerHeaderHistoryEntry) *groupTransactionProcessors {
 	// when in online mode, the submission result processor must always run (regardless of filtering)
 	var p []horizonTransactionProcessor
-	if !s.config.ReingestEnabled {
-		txSubProc := processors.NewTxSubmissionResultProcessor(s.historyQ, ledger)
+	if s.config.EnableIngestionFiltering {
+		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ, uint32(ledger.Header.LedgerSeq))
 		p = append(p, txSubProc)
 	}
 
@@ -314,12 +317,12 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	}
 	header := transactionReader.GetHeader()
 	groupTransactionFilterers := s.buildTransactionFilterer()
-	groupUnfilteredProcessors := s.buildUnfilteredProcessor(header)
+	groupFilteredOutProcessors := s.buildFilteredOutProcessor(header)
 	groupTransactionProcessors := s.buildTransactionProcessor(
 		&ledgerTransactionStats, &tradeProcessor, header)
 	err = processors.StreamLedgerTransactions(s.ctx,
 		groupTransactionFilterers,
-		groupUnfilteredProcessors,
+		groupFilteredOutProcessors,
 		groupTransactionProcessors,
 		transactionReader,
 	)
@@ -328,10 +331,15 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 		return
 	}
 
-	err = groupUnfilteredProcessors.Commit(s.ctx)
-	if err != nil {
-		err = errors.Wrap(err, "Error committing unfiltered changes from processor")
-		return
+	if s.config.EnableIngestionFiltering {
+		err = groupFilteredOutProcessors.Commit(s.ctx)
+		if err != nil {
+			err = errors.Wrap(err, "Error committing filtered changes from processor")
+			return
+		}
+		if time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
+			s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds()))
+		}
 	}
 
 	err = groupTransactionProcessors.Commit(s.ctx)
@@ -343,7 +351,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
-	for key, duration := range groupUnfilteredProcessors.processorsRunDurations {
+	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
 		transactionDurations[key] = duration
 	}
 	for key, duration := range groupTransactionFilterers.processorsRunDurations {

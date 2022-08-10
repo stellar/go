@@ -1,6 +1,6 @@
 module github.com/stellar/go
 
-go 1.17
+go 1.18
 
 require (
 	cloud.google.com/go/firestore v1.5.0 // indirect

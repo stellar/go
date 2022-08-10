@@ -261,10 +261,10 @@ type IngestionQ interface {
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
+	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, error)
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
-	QTxSubmissionResult
 
 	Begin() error
 	BeginTx(*sql.TxOptions) error
@@ -282,6 +282,7 @@ type IngestionQ interface {
 	GetLiquidityPoolCompactionSequence(context.Context) (uint32, error)
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
+	DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
 }
 
 // QAccounts defines account related queries.
@@ -719,6 +720,12 @@ type Transaction struct {
 	TransactionWithoutLedger
 }
 
+// Transaction is a row of data from the `history_transactions_filtered_tmp` table
+type TransactionFilteredTmp struct {
+	CreatedAt time.Time `db:"created_at"`
+	TransactionWithoutLedger
+}
+
 func (t *Transaction) HasPreconditions() bool {
 	return !t.TimeBounds.Null ||
 		!t.LedgerBounds.Null ||
@@ -819,6 +826,146 @@ func (q *Q) CloneIngestionQ() IngestionQ {
 	return &Q{q.Clone()}
 }
 
+type tableObjectFieldPair struct {
+	// name is a table name of history table
+	name string
+	// objectField is a name of object field in history table which uses
+	// the lookup table.
+	objectField string
+}
+
+// ReapLookupTables removes rows from lookup tables like history_claimable_balances
+// which aren't used (orphaned), i.e. history entries for them were reaped.
+// This method must be executed inside ingestion transaction. Otherwise it may
+// create invalid state in lookup and history tables.
+func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, error) {
+	if q.GetTx() == nil {
+		return nil, errors.New("cannot be called outside of an ingestion transaction")
+	}
+
+	const batchSize = 10000
+
+	if offsets == nil {
+		offsets = make(map[string]int64)
+	}
+
+	for table, historyTables := range map[string][]tableObjectFieldPair{
+		"history_claimable_balances": {
+			{
+				name:        "history_operation_claimable_balances",
+				objectField: "history_claimable_balance_id",
+			},
+			{
+				name:        "history_transaction_claimable_balances",
+				objectField: "history_claimable_balance_id",
+			},
+		},
+		"history_liquidity_pools": {
+			{
+				name:        "history_operation_liquidity_pools",
+				objectField: "history_liquidity_pool_id",
+			},
+			{
+				name:        "history_transaction_liquidity_pools",
+				objectField: "history_liquidity_pool_id",
+			},
+		},
+	} {
+		query, err := constructReapLookupTablesQuery(table, historyTables, batchSize, offsets[table])
+		if err != nil {
+			return nil, errors.Wrap(err, "error constructing a query")
+		}
+
+		_, err = q.ExecRaw(
+			context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
+			query,
+		)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error running query: %s", query)
+		}
+
+		offsets[table] += batchSize
+
+		// Check if offset exceeds table size and then reset it
+		var count int64
+		err = q.GetRaw(ctx, &count, fmt.Sprintf("SELECT COUNT(*) FROM %s", table))
+		if err != nil {
+			return nil, err
+		}
+
+		if offsets[table] > count {
+			offsets[table] = 0
+		}
+	}
+	return offsets, nil
+}
+
+// constructReapLookupTablesQuery creates a query like (using history_claimable_balances
+// as an example):
+//
+// delete from history_claimable_balances where id in
+//
+//	 (select id from
+//	   (select id,
+//			(select count(*) from history_operation_claimable_balances
+//			 where history_claimable_balance_id = hcb.id) as c1,
+//			(select count(*) from history_transaction_claimable_balances
+//			 where history_claimable_balance_id = hcb.id) as c2,
+//			1 as cx,
+//	     from history_claimable_balances hcb order by id limit 100 offset 1000)
+//	 as sub where c1 = 0 and c2 = 0 and 1=1);
+//
+// In short it checks the 100 rows omiting 1000 row of history_claimable_balances
+// and counts occurences of each row in corresponding history tables.
+// If there are no history rows for a given id, the row in
+// history_claimable_balances is removed.
+//
+// The offset param should be increased before each execution. Given that
+// some rows will be removed and some will be added by ingestion it's
+// possible that rows will be skipped from deletion. But offset is reset
+// when it reaches the table size so eventually all orphaned rows are
+// deleted.
+func constructReapLookupTablesQuery(table string, historyTables []tableObjectFieldPair, batchSize, offset int64) (string, error) {
+	var sb strings.Builder
+	var err error
+	_, err = fmt.Fprintf(&sb, "delete from %s where id IN (select id from (select id, ", table)
+	if err != nil {
+		return "", err
+	}
+
+	for i, historyTable := range historyTables {
+		_, err = fmt.Fprintf(
+			&sb,
+			`(select count(*) from %s where %s = hcb.id) as c%d, `,
+			historyTable.name,
+			historyTable.objectField,
+			i,
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb order by id limit %d offset %d) as sub where ", table, batchSize, offset)
+	if err != nil {
+		return "", err
+	}
+
+	for i := range historyTables {
+		_, err = fmt.Fprintf(&sb, "c%d = 0 and ", i)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	_, err = sb.WriteString("1=1);")
+	if err != nil {
+		return "", err
+	}
+
+	return sb.String(), nil
+}
+
 // DeleteRangeAll deletes a range of rows from all history tables between
 // `start` and `end` (exclusive).
 func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
@@ -848,23 +995,24 @@ func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 // to a given table. The final query is of form:
 //
 // WITH r AS
-// 		(SELECT
+//
+//		(SELECT
 //			/* unnestPart */
-// 			unnest(?::type1[]), /* field1 */
-// 			unnest(?::type2[]), /* field2 */
+//			unnest(?::type1[]), /* field1 */
+//			unnest(?::type2[]), /* field2 */
 //			...
-// 		)
-// 	INSERT INTO table (
+//		)
+//	INSERT INTO table (
 //		/* insertFieldsPart */
-// 		field1,
-// 		field2,
+//		field1,
+//		field2,
 //		...
-// 	)
-// 	SELECT * from r
-// 	ON CONFLICT (conflictField) DO UPDATE SET
+//	)
+//	SELECT * from r
+//	ON CONFLICT (conflictField) DO UPDATE SET
 //		/* onConflictPart */
-// 		field1 = excluded.field1,
-// 		field2 = excluded.field2,
+//		field1 = excluded.field1,
+//		field2 = excluded.field2,
 //		...
 func (q *Q) upsertRows(ctx context.Context, table string, conflictField string, fields []upsertField) error {
 	unnestPart := make([]string, 0, len(fields))

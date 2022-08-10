@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +37,17 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 		encodingBuffer: xdr.NewEncodingBuffer(),
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("history_transactions"),
+			MaxBatchSize: maxBatchSize,
+		},
+	}
+}
+
+// NewTransactionBatchInsertBuilder constructs a new TransactionBatchInsertBuilder instance
+func (q *Q) NewTransactionFilteredTmpBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder {
+	return &transactionBatchInsertBuilder{
+		encodingBuffer: xdr.NewEncodingBuffer(),
+		builder: db.BatchInsertBuilder{
+			Table:        q.GetTable("history_transactions_filtered_tmp"),
 			MaxBatchSize: maxBatchSize,
 		},
 	}
@@ -121,7 +131,7 @@ type TransactionWithoutLedger struct {
 	ApplicationOrder            int32          `db:"application_order"`
 	Account                     string         `db:"account"`
 	AccountMuxed                null.String    `db:"account_muxed"`
-	AccountSequence             string         `db:"account_sequence"`
+	AccountSequence             int64          `db:"account_sequence"`
 	MaxFee                      int64          `db:"max_fee"`
 	FeeCharged                  int64          `db:"fee_charged"`
 	OperationCount              int32          `db:"operation_count"`
@@ -179,7 +189,7 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32, enc
 		ApplicationOrder:            int32(transaction.Index),
 		Account:                     account.Address(),
 		AccountMuxed:                accountMuxed,
-		AccountSequence:             strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		AccountSequence:             transaction.Envelope.SeqNum(),
 		MaxFee:                      int64(transaction.Envelope.Fee()),
 		FeeCharged:                  int64(transaction.Result.Result.FeeCharged),
 		OperationCount:              int32(len(transaction.Envelope.Operations())),

@@ -29,11 +29,16 @@ type ConnectOptions struct {
 	UnsignedRequests bool
 	GCSEndpoint      string
 
-	// Wrap the Storage after connection. For example, to add a caching or introspection layer.
-	Wrap func(Storage) (Storage, error)
-
 	// When putting file object to s3 bucket, specify the ACL for the object.
 	S3WriteACL string
+
+	// UserAgent is the value of `User-Agent` header. Applicable only for HTTP
+	// client.
+	UserAgent string
+
+	// Wrap the Storage after connection. For example, to add a caching or
+	// introspection layer.
+	Wrap func(Storage) (Storage, error)
 }
 
 func ConnectBackend(u string, opts ConnectOptions) (Storage, error) {
@@ -81,7 +86,7 @@ func ConnectBackend(u string, opts ConnectOptions) (Storage, error) {
 		backend = NewFilesystemStorage(pth)
 
 	case "http", "https":
-		backend = NewHttpStorage(opts.Context, parsed)
+		backend = NewHttpStorage(opts.Context, parsed, opts.UserAgent)
 
 	default:
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
