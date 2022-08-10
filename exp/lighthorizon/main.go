@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
@@ -26,10 +27,18 @@ func main() {
 if left empty, uses a temporary directory`)
 	cacheSize := flag.Int("ledger-cache-size", defaultCacheSize,
 		"number of ledgers to store in the cache")
+	logLevelParam := flag.String("log-level", "info",
+		"logging level, info, debug, warn, error, panic, fatal, trace, default is info")
 	flag.Parse()
 
 	L := log.WithField("service", "horizon-lite")
-	L.SetLevel(log.InfoLevel)
+	logLevel, err := logrus.ParseLevel(*logLevelParam)
+	if err != nil {
+		log.Warnf("Failed to parse -log-level '%s', defaulting to 'info'.", *logLevelParam)
+		logLevel = log.InfoLevel
+	}
+
+	L.SetLevel(logLevel)
 	L.Info("Starting lighthorizon!")
 
 	registry := prometheus.NewRegistry()

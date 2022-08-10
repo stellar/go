@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+  labels:
+    app: lighthorizon-pubnet-index
+  name: lighthorizon-pubnet-index-env
+data:
+  TXMETA_SOURCE: "s3://horizon-ledgermeta-prodnet-test"
+  INDEXES_SOURCE: "s3://horizon-index-prodnet-test"
+  NETWORK_PASSPHRASE: "Public Global Stellar Network ; September 2015"
+  START: "41809728"
+  END: "0"
+  WATCH: "true"
+  MODULES: "accounts"
+  WORKERS: "3"
+---  
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: lighthorizon-pubnet-index
+  name: lighthorizon-pubnet-index-secret
+type: Opaque
+data:
+  AWS_REGION: <base64 encoded here>
+  AWS_ACCESS_KEY_ID: <base64 encoded here>
+  AWS_SECRET_ACCESS_KEY: <base64 encoded here>  
+---  
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    fluxcd.io/ignore: "true"
+  labels:
+    app: lighthorizon-pubnet-index
+  name: lighthorizon-pubnet-index
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lighthorizon-pubnet-index
+  template:
+    metadata:
+      annotations:
+        fluxcd.io/ignore: "true"
+        prometheus.io/port: "6060"
+        prometheus.io/scrape: "false"
+      creationTimestamp: null
+      labels:
+        app: lighthorizon-pubnet-index
+    spec:
+      containers:
+      - envFrom:
+        - secretRef:
+            name: lighthorizon-pubnet-index-secret
+        - configMapRef:
+            name: lighthorizon-pubnet-index-env
+        image: stellar/lighthorizon-index-single:latest
+        imagePullPolicy: Always
+        name: index
+        ports:
+        - containerPort: 6060
+          name: metrics
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 3
+            memory: 6Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        
+          

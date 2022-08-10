@@ -1,0 +1,18 @@
+#! /usr/bin/env bash
+set -e
+
+# RUN_MODE must be set to 'map' or 'reduce'
+
+export TRACY_NO_INVARIANT_CHECK=1
+NETWORK_PASSPHRASE="${NETWORK_PASSPHRASE:=Public Global Stellar Network ; September 2015}"
+
+if [ "$RUN_MODE" == "reduce" ]; then
+    echo "Running Reduce, REDUCE JOBS: $REDUCE_JOB_COUNT MAP JOBS: $MAP_JOB_COUNT TARGET INDEX: $INDEX_TARGET"
+    /reduce 
+elif [ "$RUN_MODE" == "map" ]; then
+    echo "Running Map, TARGET INDEX: $INDEX_TARGET FIRST CHECKPOINT: $FIRST_CHECKPOINT"
+    /map 
+else
+    echo "error: undefined RUN_MODE env variable ('$RUN_MODE'), must be 'map' or 'reduce'"
+    exit 1
+fi

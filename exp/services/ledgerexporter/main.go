@@ -39,6 +39,7 @@ func main() {
 	params := ledgerbackend.CaptiveCoreTomlParams{
 		NetworkPassphrase:  *networkPassphrase,
 		HistoryArchiveURLs: strings.Split(*historyArchiveUrls, ","),
+		UseDB:              *captiveCoreUseDb,
 	}
 	if *captiveCoreTomlPath == "" {
 		logger.Fatal("Missing -captive-core-toml-path flag")

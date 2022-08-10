@@ -122,24 +122,27 @@ jobs:
     - if: github.ref == 'refs/heads/master'
       name: Push to DockerHub
       run: docker push stellar/horizon-verify-range:latest
-
-  ledgerexporter:
-    name: Test (and push) ledgerexporter image
+  horizon-light:
+    name: Test and Push the horizon light images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           # For pull requests, build and test the PR head not a merge of the PR with the destination.
           ref:  ${{ github.event.pull_request.head.sha || github.ref }}
-
-      - name: Build and test the Ledger Exporter Docker image
+      - name: Build and test Horizon Light images
+        # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
         run: |
-          docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) -f services/horizon/docker/ledgerexporter/Dockerfile -t stellar/horizon-ledgerexporter services/horizon/docker/ledgerexporter/
-          # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
-          docker run -e ARCHIVE_TARGET=file:///ledgerexport-test -e START=10000063 -e END=10000127 stellar/horizon-ledgerexporter
-      
-
-      # Push image
+          chmod 755 ./exp/lighthorizon/build/build.sh
+          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest false
+          docker run -e ARCHIVE_TARGET=file:///ledgerexport-test\
+                     -e START=5\
+                     -e END=50\
+                     -e NETWORK_PASSPHRASE="Test SDF Network ; September 2015"\
+                     -e CAPTIVE_CORE_CONFIG="/captive-core-testnet.cfg"\
+                     -e HISTORY_ARCHIVE_URLS="https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002"\
+                     stellar/lighthorizon-ledgerexporter
+      # Push images
       - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
         name: Login to DockerHub
         uses: docker/login-action@bb984efc561711aaa26e433c32c3521176eae55b
@@ -149,4 +152,6 @@ jobs:
 
       - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
         name: Push to DockerHub
-        run: docker push stellar/horizon-ledgerexporter:latest
+        run: | 
+          chmod 755 ./exp/lighthorizon/build/build.sh
+          ./exp/lighthorizon/build/build.sh all stellar latest true        
