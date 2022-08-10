@@ -724,8 +724,6 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	}
 
 	s.reapOffsets = newOffsets
-	// Remove before merging
-	log.WithField("offsets", newOffsets).Info("New offsets")
 	reapDuration := time.Since(reapStart).Seconds()
 	s.Metrics().LedgerIngestionReapLookupTablesDuration.Observe(float64(reapDuration))
 }
