@@ -2,9 +2,10 @@ package horizon
 
 import (
 	"context"
-	"github.com/stellar/go/services/horizon/internal/paths"
 	"net/http"
 	"runtime"
+
+	"github.com/stellar/go/services/horizon/internal/paths"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -116,6 +117,7 @@ func initIngester(app *App) {
 		RemoteCaptiveCoreURL:         app.config.RemoteCaptiveCoreURL,
 		EnableCaptiveCore:            app.config.EnableCaptiveCoreIngestion,
 		DisableStateVerification:     app.config.IngestDisableStateVerification,
+		EnableReapLookupTables:       app.config.HistoryRetentionCount > 0,
 		EnableExtendedLogLedgerStats: app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:       app.config.RoundingSlippageFilter,
 		EnableIngestionFiltering:     app.config.EnableIngestionFiltering,

@@ -85,6 +85,7 @@ type Config struct {
 	HistoryArchiveURL string
 
 	DisableStateVerification     bool
+	EnableReapLookupTables       bool
 	EnableExtendedLogLedgerStats bool
 
 	ReingestEnabled             bool
@@ -679,6 +680,10 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 }
 
 func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
+	if !s.config.EnableReapLookupTables {
+		return
+	}
+
 	// Check if lastIngestedLedger is the last one available in the backend
 	sequence, err := s.ledgerBackend.GetLatestLedgerSequence(s.ctx)
 	if err != nil {
