@@ -3,12 +3,12 @@ package filters
 import (
 	"context"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
-
-	"github.com/stellar/go/ingest"
 )
 
 var (
@@ -18,7 +18,7 @@ var (
 )
 
 type assetFilter struct {
-	canonicalAssetsLookup map[string]struct{}
+	canonicalAssetsLookup set.Set[string]
 	lastModified          int64
 	enabled               bool
 }
@@ -30,7 +30,7 @@ type AssetFilter interface {
 
 func NewAssetFilter() AssetFilter {
 	return &assetFilter{
-		canonicalAssetsLookup: map[string]struct{}{},
+		canonicalAssetsLookup: set.Set[string]{},
 	}
 }
 
@@ -40,7 +40,7 @@ func (filter *assetFilter) RefreshAssetFilter(filterConfig *history.AssetFilterC
 	if filterConfig.LastModified > filter.lastModified {
 		logger.Infof("New Asset Filter config detected, reloading new config %v ", *filterConfig)
 		filter.enabled = filterConfig.Enabled
-		filter.canonicalAssetsLookup = listToMap(filterConfig.Whitelist)
+		filter.canonicalAssetsLookup = listToSet(filterConfig.Whitelist)
 		filter.lastModified = filterConfig.LastModified
 	}
 
@@ -130,14 +130,13 @@ func (f assetFilter) filterChangeTrustMatched(operation xdr.Operation) bool {
 }
 
 func (f *assetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
-	_, found := f.canonicalAssetsLookup[asset.StringCanonical()]
-	return found
+	return f.canonicalAssetsLookup.Contains(asset.StringCanonical())
 }
 
-func listToMap(list []string) map[string]struct{} {
-	set := make(map[string]struct{}, len(list))
+func listToSet(list []string) set.Set[string] {
+	set := set.NewSet[string](len(list))
 	for i := 0; i < len(list); i++ {
-		set[list[i]] = struct{}{}
+		set.Add(list[i])
 	}
 	return set
 }

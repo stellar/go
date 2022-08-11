@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/keypair"
-	horizon "github.com/stellar/go/services/horizon/internal"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/xdr"
-
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/keypair"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
+	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 func submitLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
@@ -417,9 +417,9 @@ func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reached
 	submittedOps = append(submittedOps, ops...)
 
 	// Make sure all possible operations are covered by reingestion
-	allOpTypes := map[xdr.OperationType]struct{}{}
+	allOpTypes := set.Set[xdr.OperationType]{}
 	for typ := range xdr.OperationTypeToStringMap {
-		allOpTypes[xdr.OperationType(typ)] = struct{}{}
+		allOpTypes.Add(xdr.OperationType(typ))
 	}
 	// Inflation is not supported
 	delete(allOpTypes, xdr.OperationTypeInflation)

@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -1236,11 +1237,11 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 // provided. If it does not match the function will return an error.
 //
 // Errors will be raised if:
-//  - The transaction is invalid according to ReadChallengeTx.
-//  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the
-//    server account or one of the signers provided in the arguments.
-//  - The signatures are all valid but do not meet the threshold.
+//   - The transaction is invalid according to ReadChallengeTx.
+//   - No client signatures are found on the transaction.
+//   - One or more signatures in the transaction are not identifiable as the
+//     server account or one of the signers provided in the arguments.
+//   - The signatures are all valid but do not meet the threshold.
 func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
@@ -1282,10 +1283,10 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDo
 // provided. If it does not match the function will return an error.
 //
 // Errors will be raised if:
-//  - The transaction is invalid according to ReadChallengeTx.
-//  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the
-//    server account or one of the signers provided in the arguments.
+//   - The transaction is invalid according to ReadChallengeTx.
+//   - No client signatures are found on the transaction.
+//   - One or more signatures in the transaction are not identifiable as the
+//     server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
 	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
@@ -1302,7 +1303,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 	// Deduplicate the client signers and ensure the server is not included
 	// anywhere we check or output the list of signers.
 	clientSigners := []string{}
-	clientSignersSeen := map[string]struct{}{}
+	clientSignersSeen := set.Set[string]{}
 	for _, signer := range signers {
 		// Ignore the server signer if it is in the signers list. It's
 		// important when verifying signers of a challenge transaction that we
@@ -1313,7 +1314,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 			continue
 		}
 		// Deduplicate.
-		if _, seen := clientSignersSeen[signer]; seen {
+		if clientSignersSeen.Contains(signer) {
 			continue
 		}
 		// Ignore non-G... account/address signers.
@@ -1325,7 +1326,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 			continue
 		}
 		clientSigners = append(clientSigners, signer)
-		clientSignersSeen[signer] = struct{}{}
+		clientSignersSeen.Add(signer)
 	}
 
 	// Don't continue if none of the signers provided are in the final list.
@@ -1392,7 +1393,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 
 	// find and verify signatures
 	signatureUsed := map[int]bool{}
-	signersFound := map[string]struct{}{}
+	signersFound := set.Set[string]{}
 	for _, signer := range signers {
 		kp, err := keypair.ParseAddress(signer)
 		if err != nil {
@@ -1409,7 +1410,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 			err := kp.Verify(txHash[:], decSig.Signature)
 			if err == nil {
 				signatureUsed[i] = true
-				signersFound[signer] = struct{}{}
+				signersFound.Add(signer)
 				break
 			}
 		}
@@ -1417,7 +1418,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 
 	signersFoundList := make([]string, 0, len(signersFound))
 	for _, signer := range signers {
-		if _, ok := signersFound[signer]; ok {
+		if signersFound.Contains(signer) {
 			signersFoundList = append(signersFoundList, signer)
 			delete(signersFound, signer)
 		}

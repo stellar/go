@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	set "github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -30,22 +31,22 @@ func NewParticipantsProcessor(participantsQ history.QParticipants, sequence uint
 
 type participant struct {
 	accountID      int64
-	transactionSet map[int64]struct{}
-	operationSet   map[int64]struct{}
+	transactionSet set.Set[int64]
+	operationSet   set.Set[int64]
 }
 
 func (p *participant) addTransactionID(id int64) {
 	if p.transactionSet == nil {
-		p.transactionSet = map[int64]struct{}{}
+		p.transactionSet = set.Set[int64]{}
 	}
-	p.transactionSet[id] = struct{}{}
+	p.transactionSet.Add(id)
 }
 
 func (p *participant) addOperationID(id int64) {
 	if p.operationSet == nil {
-		p.operationSet = map[int64]struct{}{}
+		p.operationSet = set.Set[int64]{}
 	}
-	p.operationSet[id] = struct{}{}
+	p.operationSet.Add(id)
 }
 
 func (p *ParticipantsProcessor) loadAccountIDs(ctx context.Context, participantSet map[string]participant) error {

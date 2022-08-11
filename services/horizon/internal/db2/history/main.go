@@ -19,6 +19,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
@@ -580,7 +581,7 @@ type LedgerCache struct {
 	Records map[int32]Ledger
 
 	lock   sync.Mutex
-	queued map[int32]struct{}
+	queued set.Set[int32]
 }
 
 type LedgerRange struct {
@@ -938,15 +939,16 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 // as an example):
 //
 // delete from history_claimable_balances where id in
-//  (select id from
-//    (select id,
-// 		(select 1 from history_operation_claimable_balances
-// 		 where history_claimable_balance_id = hcb.id limit 1) as c1,
-// 		(select 1 from history_transaction_claimable_balances
-// 		 where history_claimable_balance_id = hcb.id limit 1) as c2,
-//		1 as cx,
-//      from history_claimable_balances hcb where id > 1000 order by id limit 100)
-//  as sub where c1 IS NULL and c2 IS NULL and 1=1);
+//
+//	 (select id from
+//	   (select id,
+//			(select 1 from history_operation_claimable_balances
+//			 where history_claimable_balance_id = hcb.id limit 1) as c1,
+//			(select 1 from history_transaction_claimable_balances
+//			 where history_claimable_balance_id = hcb.id limit 1) as c2,
+//			1 as cx,
+//	     from history_claimable_balances hcb where id > 1000 order by id limit 100)
+//	 as sub where c1 IS NULL and c2 IS NULL and 1=1);
 //
 // In short it checks the 100 rows omiting 1000 row of history_claimable_balances
 // and counts occurences of each row in corresponding history tables.
@@ -1028,23 +1030,24 @@ func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 // to a given table. The final query is of form:
 //
 // WITH r AS
-// 		(SELECT
+//
+//		(SELECT
 //			/* unnestPart */
-// 			unnest(?::type1[]), /* field1 */
-// 			unnest(?::type2[]), /* field2 */
+//			unnest(?::type1[]), /* field1 */
+//			unnest(?::type2[]), /* field2 */
 //			...
-// 		)
-// 	INSERT INTO table (
+//		)
+//	INSERT INTO table (
 //		/* insertFieldsPart */
-// 		field1,
-// 		field2,
+//		field1,
+//		field2,
 //		...
-// 	)
-// 	SELECT * from r
-// 	ON CONFLICT (conflictField) DO UPDATE SET
+//	)
+//	SELECT * from r
+//	ON CONFLICT (conflictField) DO UPDATE SET
 //		/* onConflictPart */
-// 		field1 = excluded.field1,
-// 		field2 = excluded.field2,
+//		field1 = excluded.field1,
+//		field2 = excluded.field2,
 //		...
 func (q *Q) upsertRows(ctx context.Context, table string, conflictField string, fields []upsertField) error {
 	unnestPart := make([]string, 0, len(fields))

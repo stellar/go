@@ -6,10 +6,11 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/collections/set"
 )
 
 type accountFilter struct {
-	whitelistedAccountsSet map[string]struct{}
+	whitelistedAccountsSet set.Set[string]
 	lastModified           int64
 	enabled                bool
 }
@@ -21,7 +22,7 @@ type AccountFilter interface {
 
 func NewAccountFilter() AccountFilter {
 	return &accountFilter{
-		whitelistedAccountsSet: map[string]struct{}{},
+		whitelistedAccountsSet: set.Set[string]{},
 	}
 }
 
@@ -32,7 +33,7 @@ func (filter *accountFilter) RefreshAccountFilter(filterConfig *history.AccountF
 		logger.Infof("New Account Filter config detected, reloading new config %v ", *filterConfig)
 
 		filter.enabled = filterConfig.Enabled
-		filter.whitelistedAccountsSet = listToMap(filterConfig.Whitelist)
+		filter.whitelistedAccountsSet = listToSet(filterConfig.Whitelist)
 		filter.lastModified = filterConfig.LastModified
 	}
 
@@ -53,7 +54,7 @@ func (f *accountFilter) FilterTransaction(ctx context.Context, transaction inges
 	// NOTE: this assumes that the participant list has a small memory footprint
 	//       otherwise, we should be doing the filtering on the DB side
 	for _, p := range participants {
-		if _, ok := f.whitelistedAccountsSet[p.Address()]; ok {
+		if f.whitelistedAccountsSet.Contains(p.Address()) {
 			return true, nil
 		}
 	}

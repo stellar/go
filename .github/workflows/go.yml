@@ -6,12 +6,19 @@ on:
   pull_request:
 
 jobs:
+  complete:
+    if: always()
+    needs: [check, build, test]
+    runs-on: ubuntu-latest
+    steps:
+    - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+      run: exit 1
 
   check:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.18]
+        go: [1.19]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -31,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.18]
+        go: [1.18, 1.19]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -47,7 +54,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.17, 1.18]
+        go: [1.18, 1.19]
         pg: [9.6.5, 10]
     runs-on: ${{ matrix.os }}
     services:
