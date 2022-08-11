@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
-	lib "github.com/stellar/go/support/generics"
+	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
@@ -164,7 +164,7 @@ func ConvertToBuyingUnits(sellingOfferAmount int64, sellingUnitsNeeded int64, pr
 	}
 
 	// pathPaymentAmountBought
-	result = lib.Min(result, sellingUnitsNeeded)
+	result = ordered.Min(result, sellingUnitsNeeded)
 	sellingUnitsExtracted := result
 
 	// pathPaymentAmountSold

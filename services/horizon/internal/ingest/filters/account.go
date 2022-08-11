@@ -6,11 +6,11 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	lib "github.com/stellar/go/support/generics"
+	"github.com/stellar/go/support/set"
 )
 
 type accountFilter struct {
-	whitelistedAccountsSet lib.Set[string]
+	whitelistedAccountsSet set.Set[string]
 	lastModified           int64
 	enabled                bool
 }
@@ -22,7 +22,7 @@ type AccountFilter interface {
 
 func NewAccountFilter() AccountFilter {
 	return &accountFilter{
-		whitelistedAccountsSet: lib.Set[string]{},
+		whitelistedAccountsSet: set.Set[string]{},
 	}
 }
 

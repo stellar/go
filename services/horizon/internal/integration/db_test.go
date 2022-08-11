@@ -21,7 +21,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/db/dbtest"
-	lib "github.com/stellar/go/support/generics"
+	"github.com/stellar/go/support/set"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -417,7 +417,7 @@ func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reached
 	submittedOps = append(submittedOps, ops...)
 
 	// Make sure all possible operations are covered by reingestion
-	allOpTypes := lib.Set[xdr.OperationType]{}
+	allOpTypes := set.Set[xdr.OperationType]{}
 	for typ := range xdr.OperationTypeToStringMap {
 		allOpTypes.Add(xdr.OperationType(typ))
 	}

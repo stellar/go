@@ -1,4 +1,4 @@
-package generics
+package ordered
 
 import (
 	"golang.org/x/exp/constraints"

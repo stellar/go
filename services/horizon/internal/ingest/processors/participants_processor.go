@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
-	lib "github.com/stellar/go/support/generics"
+	set "github.com/stellar/go/support/set"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
@@ -31,20 +31,20 @@ func NewParticipantsProcessor(participantsQ history.QParticipants, sequence uint
 
 type participant struct {
 	accountID      int64
-	transactionSet lib.Set[int64]
-	operationSet   lib.Set[int64]
+	transactionSet set.Set[int64]
+	operationSet   set.Set[int64]
 }
 
 func (p *participant) addTransactionID(id int64) {
 	if p.transactionSet == nil {
-		p.transactionSet = lib.Set[int64]{}
+		p.transactionSet = set.Set[int64]{}
 	}
 	p.transactionSet.Add(id)
 }
 
 func (p *participant) addOperationID(id int64) {
 	if p.operationSet == nil {
-		p.operationSet = lib.Set[int64]{}
+		p.operationSet = set.Set[int64]{}
 	}
 	p.operationSet.Add(id)
 }

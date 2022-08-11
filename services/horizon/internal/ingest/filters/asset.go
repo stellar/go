@@ -6,8 +6,8 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
-	lib "github.com/stellar/go/support/generics"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/set"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,7 +18,7 @@ var (
 )
 
 type assetFilter struct {
-	canonicalAssetsLookup lib.Set[string]
+	canonicalAssetsLookup set.Set[string]
 	lastModified          int64
 	enabled               bool
 }
@@ -30,7 +30,7 @@ type AssetFilter interface {
 
 func NewAssetFilter() AssetFilter {
 	return &assetFilter{
-		canonicalAssetsLookup: lib.Set[string]{},
+		canonicalAssetsLookup: set.Set[string]{},
 	}
 }
 
@@ -133,8 +133,8 @@ func (f *assetFilter) assetMatchedFilter(asset *xdr.Asset) bool {
 	return f.canonicalAssetsLookup.Contains(asset.StringCanonical())
 }
 
-func listToSet(list []string) lib.Set[string] {
-	set := lib.NewSet[string](len(list))
+func listToSet(list []string) set.Set[string] {
+	set := set.NewSet[string](len(list))
 	for i := 0; i < len(list); i++ {
 		set.Add(list[i])
 	}

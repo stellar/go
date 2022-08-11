@@ -25,7 +25,7 @@ import (
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
-	lib "github.com/stellar/go/support/generics"
+	"github.com/stellar/go/support/set"
 	"github.com/stellar/go/xdr"
 )
 
@@ -1303,7 +1303,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 	// Deduplicate the client signers and ensure the server is not included
 	// anywhere we check or output the list of signers.
 	clientSigners := []string{}
-	clientSignersSeen := lib.Set[string]{}
+	clientSignersSeen := set.Set[string]{}
 	for _, signer := range signers {
 		// Ignore the server signer if it is in the signers list. It's
 		// important when verifying signers of a challenge transaction that we
@@ -1393,7 +1393,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 
 	// find and verify signatures
 	signatureUsed := map[int]bool{}
-	signersFound := lib.Set[string]{}
+	signersFound := set.Set[string]{}
 	for _, signer := range signers {
 		kp, err := keypair.ParseAddress(signer)
 		if err != nil {
