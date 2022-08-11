@@ -15,6 +15,8 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/collections/maps"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +55,7 @@ func TestReduce(t *testing.T) {
 	require.NoError(t, err)
 	stores := []index.Store{indexStore} // to reuse code: same as array of 1 store
 
-	assertParticipantsEqual(t, keysU32(participants), stores)
+	assertParticipantsEqual(t, maps.Keys(participants), stores)
 	for account, checkpoints := range participants {
 		assertParticipantCheckpointsEqual(t, account, checkpoints, stores)
 	}
@@ -138,7 +140,7 @@ func RunMapTest(t *testing.T) (uint32, uint32, string) {
 		t.Logf("Connected to index #%d at %s", i+1, indexUrl)
 	}
 
-	assertParticipantsEqual(t, keysU32(participants), stores)
+	assertParticipantsEqual(t, maps.Keys(participants), stores)
 	for account, checkpoints := range participants {
 		assertParticipantCheckpointsEqual(t, account, checkpoints, stores)
 	}
@@ -152,20 +154,17 @@ func assertParticipantsEqual(t *testing.T,
 	expectedAccountSet []string,
 	indexGroup []index.Store,
 ) {
-	indexGroupAccountSet := make(map[string]struct{}, len(expectedAccountSet))
+	indexGroupAccountSet := set.NewSet[string](len(expectedAccountSet))
 	for _, store := range indexGroup {
 		accounts, err := store.ReadAccounts()
 		require.NoError(t, err)
-
-		for _, account := range accounts {
-			indexGroupAccountSet[account] = struct{}{}
-		}
+		indexGroupAccountSet.AddSlice(accounts)
 	}
 
 	assert.Lenf(t, indexGroupAccountSet, len(expectedAccountSet),
 		"quantity of accounts across indices doesn't match")
 
-	mappedAccountSet := keysSet(indexGroupAccountSet)
+	mappedAccountSet := maps.Keys(indexGroupAccountSet)
 	require.ElementsMatch(t, expectedAccountSet, mappedAccountSet)
 }
 
@@ -177,7 +176,7 @@ func assertParticipantCheckpointsEqual(t *testing.T,
 	// Ensure that all of the active checkpoints reported by the index match
 	// the ones we tracked while ingesting the range ourselves.
 
-	foundCheckpoints := make(map[uint32]struct{}, len(expected))
+	foundCheckpoints := set.NewSet[uint32](len(expected))
 	for _, store := range indexGroup {
 		var err error
 		var lastActiveCheckpoint uint32 = 0
@@ -188,7 +187,7 @@ func assertParticipantCheckpointsEqual(t *testing.T,
 			}
 			require.NoError(t, err) // still an error since it shouldn't happen
 
-			foundCheckpoints[lastActiveCheckpoint] = struct{}{}
+			foundCheckpoints.Add(lastActiveCheckpoint)
 			lastActiveCheckpoint += 1 // hit next active one
 		}
 	}
@@ -230,20 +229,4 @@ func assertTOIDsEqual(t *testing.T, toids map[string]int64, stores []index.Store
 
 		require.Truef(t, found, "TOID for tx 0x%s not found in stores", hash)
 	}
-}
-
-func keysU32(dict map[string][]uint32) []string {
-	result := make([]string, 0, len(dict))
-	for key := range dict {
-		result = append(result, key)
-	}
-	return result
-}
-
-func keysSet(dict map[string]struct{}) []string {
-	result := make([]string, 0, len(dict))
-	for key := range dict {
-		result = append(result, key)
-	}
-	return result
 }

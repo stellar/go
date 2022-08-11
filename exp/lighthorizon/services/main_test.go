@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
@@ -128,12 +129,12 @@ func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archiv
 		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger3).Return(mockReaderLedger3, nil).
 		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, mock.Anything).Return(mockReaderLedgerTheRest, nil)
 
-	partialParticipants := make(map[string]struct{})
-	partialParticipants[source.Address()] = struct{}{}
+	partialParticipants := set.Set[string]{}
+	partialParticipants.Add(source.Address())
 
-	allParticipants := make(map[string]struct{})
-	allParticipants[source.Address()] = struct{}{}
-	allParticipants[source2.Address()] = struct{}{}
+	allParticipants := set.Set[string]{}
+	allParticipants.Add(source.Address())
+	allParticipants.Add(source2.Address())
 
 	mockArchive.
 		On("GetTransactionParticipants", expectedLedger1Tx1).Return(partialParticipants, nil).
