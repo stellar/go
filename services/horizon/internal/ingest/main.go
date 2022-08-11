@@ -85,6 +85,7 @@ type Config struct {
 	HistoryArchiveURL string
 
 	DisableStateVerification     bool
+	EnableReapLookupTables       bool
 	EnableExtendedLogLedgerStats bool
 
 	ReingestEnabled             bool
@@ -680,6 +681,10 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 }
 
 func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
+	if !s.config.EnableReapLookupTables {
+		return
+	}
+
 	// Check if lastIngestedLedger is the last one available in the backend
 	sequence, err := s.ledgerBackend.GetLatestLedgerSequence(s.ctx)
 	if err != nil {
@@ -712,7 +717,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	defer cancel()
 
 	reapStart := time.Now()
-	newOffsets, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
+	deletedCount, newOffsets, err := s.historyQ.ReapLookupTables(ctx, s.reapOffsets)
 	if err != nil {
 		log.WithField("err", err).Warn("Error reaping lookup tables")
 		return
@@ -722,6 +727,17 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 	if err != nil {
 		log.WithField("err", err).Error("Error commiting a transaction")
 		return
+	}
+
+	totalDeleted := int64(0)
+	reapLog := log
+	for table, c := range deletedCount {
+		totalDeleted += c
+		reapLog = reapLog.WithField(table, c)
+	}
+
+	if totalDeleted > 0 {
+		reapLog.Info("Reaper deleted rows from lookup tables")
 	}
 
 	s.reapOffsets = newOffsets
