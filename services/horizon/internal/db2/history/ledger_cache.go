@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/generics"
 )
 
 // Queue adds `seq` to the load queue for the cache.
@@ -11,10 +12,10 @@ func (lc *LedgerCache) Queue(seq int32) {
 	lc.lock.Lock()
 
 	if lc.queued == nil {
-		lc.queued = map[int32]struct{}{}
+		lc.queued = generics.Set[int32]{}
 	}
 
-	lc.queued[seq] = struct{}{}
+	lc.queued.Add(seq)
 	lc.lock.Unlock()
 }
 
