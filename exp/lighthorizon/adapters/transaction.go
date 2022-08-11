@@ -50,7 +50,7 @@ func PopulateTransaction(
 			return
 		}
 	}
-	dest.AccountSequence = strconv.FormatUint(uint64(tx.Envelope.SeqNum()), 10)
+	dest.AccountSequence = tx.Envelope.SeqNum()
 
 	envelopeBase64, err := encoder.MarshalBase64(tx.Envelope)
 	if err != nil {
