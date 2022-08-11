@@ -19,6 +19,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
@@ -580,7 +581,7 @@ type LedgerCache struct {
 	Records map[int32]Ledger
 
 	lock   sync.Mutex
-	queued map[int32]struct{}
+	queued set.Set[int32]
 }
 
 type LedgerRange struct {
