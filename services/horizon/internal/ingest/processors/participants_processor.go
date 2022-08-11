@@ -7,8 +7,8 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	set "github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
-	set "github.com/stellar/go/support/set"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )

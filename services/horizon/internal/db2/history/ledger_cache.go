@@ -3,8 +3,8 @@ package history
 import (
 	"context"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/set"
 )
 
 // Queue adds `seq` to the load queue for the cache.

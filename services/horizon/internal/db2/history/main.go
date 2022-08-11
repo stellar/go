@@ -19,9 +19,9 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/set"
 	strtime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )

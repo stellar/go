@@ -24,8 +24,8 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/set"
 	"github.com/stellar/go/xdr"
 )
 

@@ -19,9 +19,9 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/db/dbtest"
-	"github.com/stellar/go/support/set"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
