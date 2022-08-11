@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
@@ -163,7 +164,7 @@ func ConvertToBuyingUnits(sellingOfferAmount int64, sellingUnitsNeeded int64, pr
 	}
 
 	// pathPaymentAmountBought
-	result = min(result, sellingUnitsNeeded)
+	result = ordered.Min(result, sellingUnitsNeeded)
 	sellingUnitsExtracted := result
 
 	// pathPaymentAmountSold
@@ -217,12 +218,4 @@ func mulFractionRoundUp(x int64, n int64, d int64) (int64, error) {
 	}
 
 	return int64(q), nil
-}
-
-// min impl for int64
-func min(x int64, y int64) int64 {
-	if x <= y {
-		return x
-	}
-	return y
 }

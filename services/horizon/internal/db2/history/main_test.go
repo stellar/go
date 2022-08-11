@@ -102,11 +102,11 @@ func TestConstructReapLookupTablesQuery(t *testing.T) {
 	assert.Equal(t,
 		"delete from history_accounts where id IN "+
 			"(select id from "+
-			"(select id, (select count(*) from history_effects where history_account_id = hcb.id) as c0, "+
-			"(select count(*) from history_operation_participants where history_account_id = hcb.id) as c1, "+
-			"(select count(*) from history_trades where base_account_id = hcb.id) as c2, "+
-			"(select count(*) from history_trades where counter_account_id = hcb.id) as c3, "+
-			"(select count(*) from history_transaction_participants where history_account_id = hcb.id) as c4, "+
-			"1 as cx from history_accounts hcb order by id limit 10 offset 0) as sub "+
-			"where c0 = 0 and c1 = 0 and c2 = 0 and c3 = 0 and c4 = 0 and 1=1);", query)
+			"(select id, (select 1 from history_effects where history_account_id = hcb.id limit 1) as c0, "+
+			"(select 1 from history_operation_participants where history_account_id = hcb.id limit 1) as c1, "+
+			"(select 1 from history_trades where base_account_id = hcb.id limit 1) as c2, "+
+			"(select 1 from history_trades where counter_account_id = hcb.id limit 1) as c3, "+
+			"(select 1 from history_transaction_participants where history_account_id = hcb.id limit 1) as c4, "+
+			"1 as cx from history_accounts hcb where id >= 0 order by id limit 10) as sub "+
+			"where c0 IS NULL and c1 IS NULL and c2 IS NULL and c3 IS NULL and c4 IS NULL and 1=1);", query)
 }
