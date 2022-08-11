@@ -17,6 +17,7 @@ import (
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
+	"golang.org/x/exp/constraints"
 )
 
 // PopulateTransaction converts between ingested XDR and RESTful JSON. In
@@ -86,8 +87,6 @@ func PopulateTransaction(
 			}
 		}
 	}
-	// dest.CreatedAt = time.Now().UTC()
-	// dest.UpdatedAt = time.Now().UTC()
 
 	dest.Signatures = signatures(tx.Envelope.Signatures())
 
@@ -97,15 +96,16 @@ func PopulateTransaction(
 
 	if tb := tx.Envelope.Preconditions().TimeBounds; tb != nil {
 		dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{
-			MaxTime: timestampString(tb.MaxTime),
-			MinTime: timestampString(tb.MinTime),
+			MaxTime: formatTime(tb.MaxTime),
+			MinTime: formatTime(tb.MinTime),
 		}
 	}
 
 	if lb := tx.Envelope.LedgerBounds(); lb != nil {
-		dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{}
-		dest.Preconditions.LedgerBounds.MinLedger = uint32(lb.MinLedger)
-		dest.Preconditions.LedgerBounds.MaxLedger = uint32(lb.MaxLedger)
+		dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{
+			MinLedger: uint32(lb.MinLedger),
+			MaxLedger: uint32(lb.MaxLedger),
+		}
 	}
 
 	if minSeq := tx.Envelope.MinSeqNum(); minSeq != nil {
@@ -113,7 +113,7 @@ func PopulateTransaction(
 	}
 
 	if minSeqAge := tx.Envelope.MinSeqAge(); minSeqAge != nil && *minSeqAge > 0 {
-		dest.Preconditions.MinAccountSequenceAge = durationString(*minSeqAge)
+		dest.Preconditions.MinAccountSequenceAge = formatTime(*minSeqAge)
 	}
 
 	if minSeqGap := tx.Envelope.MinSeqLedgerGap(); minSeqGap != nil {
@@ -290,10 +290,6 @@ func scrub(in string) string {
 	return result.String()
 }
 
-func timestampString(tp xdr.TimePoint) string {
-	return strconv.FormatUint(uint64(tp), 10)
-}
-
-func durationString(d xdr.Duration) string {
-	return strconv.FormatUint(uint64(d), 10)
+func formatTime[T constraints.Integer](t T) string {
+	return strconv.FormatUint(uint64(t), 10)
 }
