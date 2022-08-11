@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/stellar/go/price"
+	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
@@ -399,7 +400,7 @@ func (state *buyingGraphSearchState) consumeOffers(
 ) (xdr.Int64, error) {
 	nextAmount, err := consumeOffersForBuyingAsset(offers, currentAssetAmount)
 
-	return max(nextAmount, currentBestAmount), err
+	return ordered.Max(nextAmount, currentBestAmount), err
 }
 
 func (state *buyingGraphSearchState) considerPools() bool {

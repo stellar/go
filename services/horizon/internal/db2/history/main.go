@@ -19,6 +19,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
@@ -261,7 +262,7 @@ type IngestionQ interface {
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error
-	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, error)
+	ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error)
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
@@ -580,7 +581,7 @@ type LedgerCache struct {
 	Records map[int32]Ledger
 
 	lock   sync.Mutex
-	queued map[int32]struct{}
+	queued set.Set[int32]
 }
 
 type LedgerRange struct {
@@ -838,18 +839,46 @@ type tableObjectFieldPair struct {
 // which aren't used (orphaned), i.e. history entries for them were reaped.
 // This method must be executed inside ingestion transaction. Otherwise it may
 // create invalid state in lookup and history tables.
-func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, error) {
+func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
+	map[string]int64, // deleted rows count
+	map[string]int64, // new offsets
+	error,
+) {
 	if q.GetTx() == nil {
-		return nil, errors.New("cannot be called outside of an ingestion transaction")
+		return nil, nil, errors.New("cannot be called outside of an ingestion transaction")
 	}
 
-	const batchSize = 10000
+	const batchSize = 1000
+
+	deletedCount := make(map[string]int64)
 
 	if offsets == nil {
 		offsets = make(map[string]int64)
 	}
 
 	for table, historyTables := range map[string][]tableObjectFieldPair{
+		"history_accounts": {
+			{
+				name:        "history_effects",
+				objectField: "history_account_id",
+			},
+			{
+				name:        "history_operation_participants",
+				objectField: "history_account_id",
+			},
+			{
+				name:        "history_trades",
+				objectField: "base_account_id",
+			},
+			{
+				name:        "history_trades",
+				objectField: "counter_account_id",
+			},
+			{
+				name:        "history_transaction_participants",
+				objectField: "history_account_id",
+			},
+		},
 		"history_claimable_balances": {
 			{
 				name:        "history_operation_claimable_balances",
@@ -873,31 +902,37 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 	} {
 		query, err := constructReapLookupTablesQuery(table, historyTables, batchSize, offsets[table])
 		if err != nil {
-			return nil, errors.Wrap(err, "error constructing a query")
+			return nil, nil, errors.Wrap(err, "error constructing a query")
 		}
 
-		_, err = q.ExecRaw(
+		// Find new offset before removing the rows
+		var newOffset int64
+		err = q.GetRaw(ctx, &newOffset, fmt.Sprintf("SELECT id FROM %s where id >= %d limit 1 offset %d", table, offsets[table], batchSize))
+		if err != nil {
+			if q.NoRows(err) {
+				newOffset = 0
+			} else {
+				return nil, nil, err
+			}
+		}
+
+		res, err := q.ExecRaw(
 			context.WithValue(ctx, &db.QueryTypeContextKey, db.DeleteQueryType),
 			query,
 		)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error running query: %s", query)
+			return nil, nil, errors.Wrapf(err, "error running query: %s", query)
 		}
 
-		offsets[table] += batchSize
-
-		// Check if offset exceeds table size and then reset it
-		var count int64
-		err = q.GetRaw(ctx, &count, fmt.Sprintf("SELECT COUNT(*) FROM %s", table))
+		rows, err := res.RowsAffected()
 		if err != nil {
-			return nil, err
+			return nil, nil, errors.Wrapf(err, "error running RowsAffected after query: %s", query)
 		}
 
-		if offsets[table] > count {
-			offsets[table] = 0
-		}
+		deletedCount[table] = rows
+		offsets[table] = newOffset
 	}
-	return offsets, nil
+	return deletedCount, offsets, nil
 }
 
 // constructReapLookupTablesQuery creates a query like (using history_claimable_balances
@@ -907,13 +942,13 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[
 //
 //	 (select id from
 //	   (select id,
-//			(select count(*) from history_operation_claimable_balances
-//			 where history_claimable_balance_id = hcb.id) as c1,
-//			(select count(*) from history_transaction_claimable_balances
-//			 where history_claimable_balance_id = hcb.id) as c2,
+//			(select 1 from history_operation_claimable_balances
+//			 where history_claimable_balance_id = hcb.id limit 1) as c1,
+//			(select 1 from history_transaction_claimable_balances
+//			 where history_claimable_balance_id = hcb.id limit 1) as c2,
 //			1 as cx,
-//	     from history_claimable_balances hcb order by id limit 100 offset 1000)
-//	 as sub where c1 = 0 and c2 = 0 and 1=1);
+//	     from history_claimable_balances hcb where id > 1000 order by id limit 100)
+//	 as sub where c1 IS NULL and c2 IS NULL and 1=1);
 //
 // In short it checks the 100 rows omiting 1000 row of history_claimable_balances
 // and counts occurences of each row in corresponding history tables.
@@ -936,7 +971,7 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 	for i, historyTable := range historyTables {
 		_, err = fmt.Fprintf(
 			&sb,
-			`(select count(*) from %s where %s = hcb.id) as c%d, `,
+			`(select 1 from %s where %s = hcb.id limit 1) as c%d, `,
 			historyTable.name,
 			historyTable.objectField,
 			i,
@@ -946,13 +981,13 @@ func constructReapLookupTablesQuery(table string, historyTables []tableObjectFie
 		}
 	}
 
-	_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb order by id limit %d offset %d) as sub where ", table, batchSize, offset)
+	_, err = fmt.Fprintf(&sb, "1 as cx from %s hcb where id >= %d order by id limit %d) as sub where ", table, offset, batchSize)
 	if err != nil {
 		return "", err
 	}
 
 	for i := range historyTables {
-		_, err = fmt.Fprintf(&sb, "c%d = 0 and ", i)
+		_, err = fmt.Fprintf(&sb, "c%d IS NULL and ", i)
 		if err != nil {
 			return "", err
 		}

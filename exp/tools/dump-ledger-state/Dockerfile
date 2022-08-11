@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils
 RUN wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true apt-key add -
 RUN echo "deb https://apt.stellar.org focal stable" >/etc/apt/sources.list.d/SDF.list
-RUN echo "deb https://apt.stellar.org focal unstable" >/etc/apt/sources.list.d/SDF-unstable.list
+# RUN echo "deb https://apt.stellar.org focal unstable" >/etc/apt/sources.list.d/SDF-unstable.list
 RUN apt-get update -y
 
 RUN apt-get install -y stellar-core=${STELLAR_CORE_VERSION} jq
