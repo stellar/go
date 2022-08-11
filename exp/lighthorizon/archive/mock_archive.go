@@ -3,6 +3,7 @@ package archive
 import (
 	"context"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -35,12 +36,12 @@ func (m *MockArchive) NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassp
 	return args.Get(0).(LedgerTransactionReader), args.Error(1)
 }
 
-func (m *MockArchive) GetTransactionParticipants(transaction LedgerTransaction) (map[string]struct{}, error) {
-	args := m.Called(transaction)
-	return args.Get(0).(map[string]struct{}), args.Error(1)
+func (m *MockArchive) GetTransactionParticipants(tx LedgerTransaction) (set.Set[string], error) {
+	args := m.Called(tx)
+	return args.Get(0).(set.Set[string]), args.Error(1)
 }
 
-func (m *MockArchive) GetOperationParticipants(transaction LedgerTransaction, operation xdr.Operation, opIndex int) (map[string]struct{}, error) {
-	args := m.Called(transaction, operation, opIndex)
-	return args.Get(0).(map[string]struct{}), args.Error(1)
+func (m *MockArchive) GetOperationParticipants(tx LedgerTransaction, op xdr.Operation, opIndex int) (set.Set[string], error) {
+	args := m.Called(tx, op, opIndex)
+	return args.Get(0).(set.Set[string]), args.Error(1)
 }
