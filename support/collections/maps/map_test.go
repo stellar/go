@@ -9,8 +9,10 @@ import (
 
 func TestSanity(t *testing.T) {
 	m := map[int]float32{1: 10, 2: 20, 3: 30}
-	require.Equal(t, []int{1, 2, 3}, Keys(m))
-	require.Equal(t, []float32{10, 20, 30}, Values(m))
+	for k, v := range m {
+		require.Contains(t, Keys(m), k)
+		require.Contains(t, Values(m), v)
+	}
 
 	// compatibility with collections/set.Set
 	s := set.Set[float32]{}
@@ -18,5 +20,7 @@ func TestSanity(t *testing.T) {
 	s.Add(2)
 	s.Add(3)
 
-	require.Equal(t, []float32{1, 2, 3}, Keys(s))
+	for item := range s {
+		require.Contains(t, Keys(s), item)
+	}
 }
