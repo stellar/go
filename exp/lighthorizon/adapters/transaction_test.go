@@ -2,8 +2,9 @@ package adapters
 
 import (
 	"encoding/json"
-	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -22,26 +23,18 @@ import (
 // transaction to JSON by actually pulling a transaction from the
 // known-to-be-true horizon.stellar.org, turning it into an "ingested"
 // transaction, and serializing it.
-//
-// TODO: Instead of making an unreliable network request, we should just create
-// a "known" transaction on-the-fly. We could just hard-code the fields from
-// Horizon, anyway.
 func TestTransactionAdapter(t *testing.T) {
-	const URL = "https://horizon.stellar.org/accounts/GBFHFINUD6NVGSX33PY25DDRCABN3H2JTDMLUEXAUEJVV22HTXVGLEZD/transactions?cursor=179530990183178241&limit=1&order=desc"
-
-	parsed, err := url.Parse(URL)
-	require.NoError(t, err)
-
-	resp, err := http.Get(URL)
-	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
+	f, err := os.Open(filepath.Join("./fixtures", "transactions.json"))
+	require.NoErrorf(t, err, "are fixtures missing?")
 
 	page := protocol.TransactionsPage{}
-	decoder := json.NewDecoder(resp.Body)
+	decoder := json.NewDecoder(f)
 	require.NoError(t, decoder.Decode(&page))
 	require.Len(t, page.Embedded.Records, 1)
 	expectedTx := page.Embedded.Records[0]
 
+	parsedUrl, err := url.Parse(page.Links.Self.Href)
+	require.NoError(t, err)
 	parsedToid, err := strconv.ParseInt(expectedTx.PagingToken(), 10, 64)
 	require.NoError(t, err)
 	expectedTxIndex := toid.Parse(parsedToid).TransactionOrder
@@ -79,7 +72,7 @@ func TestTransactionAdapter(t *testing.T) {
 		NetworkPassphrase: network.PublicNetworkPassphrase,
 	}
 
-	result, err := PopulateTransaction(parsed, &tx, xdr.NewEncodingBuffer())
+	result, err := PopulateTransaction(parsedUrl, &tx, xdr.NewEncodingBuffer())
 	require.NoError(t, err)
 	assert.Equal(t, expectedTx, result)
 }
