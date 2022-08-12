@@ -10,6 +10,7 @@ import (
 
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -157,7 +158,7 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 		// Note that this will never be too large, but may be too small.
 		preallocationSize = int(info.Size()) / (gAddressSize + 1) // +1 for \n
 	}
-	accountMap := make(map[string]struct{}, preallocationSize)
+	accountMap := set.NewSet[string](preallocationSize)
 	accounts := make([]string, 0, preallocationSize)
 
 	reader := bufio.NewReaderSize(f, 100*gAddressSize) // reasonable buffer size
@@ -173,8 +174,8 @@ func (s *FileBackend) ReadAccounts() ([]string, error) {
 
 		// The account list is very unlikely to be unique (especially if it was made
 		// w/ parallel flushes), so let's ensure that that's the case.
-		if _, ok := accountMap[account]; !ok {
-			accountMap[account] = struct{}{}
+		if !accountMap.Contains(account) {
+			accountMap.Add(account)
 			accounts = append(accounts, account)
 		}
 	}

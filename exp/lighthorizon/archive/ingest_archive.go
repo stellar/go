@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/metaarchive"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
@@ -95,30 +96,26 @@ func (a ingestArchive) NewLedgerTransactionReaderFromLedgerCloseMeta(networkPass
 	return &ingestTransactionReaderAdaption{ingestReader}, nil
 }
 
-func (a ingestArchive) GetTransactionParticipants(transaction LedgerTransaction) (map[string]struct{}, error) {
-	participants, err := index.GetTransactionParticipants(a.ingestTx(transaction))
+func (a ingestArchive) GetTransactionParticipants(tx LedgerTransaction) (set.Set[string], error) {
+	participants, err := index.GetTransactionParticipants(a.ingestTx(tx))
 	if err != nil {
 		return nil, err
 	}
-	set := make(map[string]struct{})
-	exists := struct{}{}
-	for _, participant := range participants {
-		set[participant] = exists
-	}
-	return set, nil
+
+	s := set.NewSet[string](len(participants))
+	s.AddSlice(participants)
+	return s, nil
 }
 
-func (a ingestArchive) GetOperationParticipants(transaction LedgerTransaction, operation xdr.Operation, opIndex int) (map[string]struct{}, error) {
-	participants, err := index.GetOperationParticipants(a.ingestTx(transaction), operation, opIndex)
+func (a ingestArchive) GetOperationParticipants(tx LedgerTransaction, op xdr.Operation, opIndex int) (set.Set[string], error) {
+	participants, err := index.GetOperationParticipants(a.ingestTx(tx), op, opIndex)
 	if err != nil {
 		return nil, err
 	}
-	set := make(map[string]struct{})
-	exists := struct{}{}
-	for _, participant := range participants {
-		set[participant] = exists
-	}
-	return set, nil
+
+	s := set.NewSet[string](len(participants))
+	s.AddSlice(participants)
+	return s, nil
 }
 
 func (ingestArchive) ingestTx(transaction LedgerTransaction) ingest.LedgerTransaction {
