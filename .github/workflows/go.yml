@@ -33,8 +33,6 @@ jobs:
     - run: ./gogenerate.sh
     - run: ./govet.sh
     - run: ./staticcheck.sh
-    - name: Build binaries
-      run: go run ./support/scripts/build_release_artifacts/main.go
 
   build:
     strategy:
@@ -50,7 +48,8 @@ jobs:
     - uses: ./.github/actions/setup-go
       with:
         go-version: ${{ matrix.go }}
-    - run: go build ./...
+    - name: Build binaries
+      run: go run ./support/scripts/build_release_artifacts/main.go
 
   test:
     strategy:
