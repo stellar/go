@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/exp/lighthorizon/actions"
 	"github.com/stellar/go/exp/lighthorizon/services"
 	supportHttp "github.com/stellar/go/support/http"
+	"github.com/stellar/go/support/render/problem"
 )
 
 func newWrapResponseWriter(w http.ResponseWriter, r *http.Request) middleware.WrapResponseWriter {
@@ -63,6 +64,11 @@ func lightHorizonHTTPHandler(registry *prometheus.Registry, lightHorizon service
 
 	router.MethodFunc(http.MethodGet, "/", actions.ApiDocs())
 	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+
+	problem.RegisterHost("")
+	router.NotFound(func(w http.ResponseWriter, request *http.Request) {
+		problem.Render(request.Context(), w, problem.NotFound)
+	})
 
 	return router
 }

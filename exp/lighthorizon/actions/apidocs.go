@@ -1,6 +1,7 @@
 package actions
 
 import (
+	supportProblem "github.com/stellar/go/support/render/problem"
 	"net/http"
 )
 
@@ -10,7 +11,7 @@ func ApiDocs() func(http.ResponseWriter, *http.Request) {
 		r.URL.Host = "localhost:8080"
 
 		if r.Method != "GET" {
-			sendErrorResponse(w, http.StatusMethodNotAllowed, "")
+			sendErrorResponse(r.Context(), w, supportProblem.BadRequest)
 			return
 		}
 

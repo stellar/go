@@ -70,10 +70,10 @@ if left empty, uses a temporary directory`)
 	}
 
 	lightHorizon := services.LightHorizon{
-		Transactions: services.TransactionsService{
+		Transactions: &services.TransactionRepository{
 			Config: Config,
 		},
-		Operations: services.OperationsService{
+		Operations: &services.OperationRepository{
 			Config: Config,
 		},
 	}

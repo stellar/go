@@ -12,19 +12,19 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type OperationsRepository interface {
+type OperationService interface {
 	GetOperationsByAccount(ctx context.Context,
 		cursor int64, limit uint64,
 		accountId string,
 	) ([]common.Operation, error)
 }
 
-type OperationsService struct {
-	OperationsRepository
+type OperationRepository struct {
+	OperationService
 	Config Config
 }
 
-func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
+func (or *OperationRepository) GetOperationsByAccount(ctx context.Context,
 	cursor int64, limit uint64,
 	accountId string,
 ) ([]common.Operation, error) {
@@ -32,7 +32,7 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
 
 	opsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
 		for operationOrder, op := range tx.Envelope.Operations() {
-			opParticipants, err := os.Config.Archive.GetOperationParticipants(tx, op, operationOrder)
+			opParticipants, err := or.Config.Archive.GetOperationParticipants(tx, op, operationOrder)
 			if err != nil {
 				return false, err
 			}
@@ -55,9 +55,9 @@ func (os *OperationsService) GetOperationsByAccount(ctx context.Context,
 		return false, nil
 	}
 
-	err := searchAccountTransactions(ctx, cursor, accountId, os.Config, opsCallback)
+	err := searchAccountTransactions(ctx, cursor, accountId, or.Config, opsCallback)
 	if age := operationsResponseAgeSeconds(ops); age >= 0 {
-		os.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
+		or.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
 			"request":    "GetOperationsByAccount",
 			"successful": strconv.FormatBool(err == nil),
 		}).Observe(age)
@@ -87,4 +87,4 @@ func operationsResponseAgeSeconds(ops []common.Operation) float64 {
 	return now.Sub(lastCloseTime).Seconds()
 }
 
-var _ OperationsRepository = (*OperationsService)(nil) // ensure conformity to the interface
+var _ OperationService = (*OperationRepository)(nil) // ensure conformity to the interface

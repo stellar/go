@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/support/render/hal"
+	supportProblem "github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/toid"
 )
 
@@ -18,19 +20,17 @@ const (
 	urlAccountId = "account_id"
 )
 
-func accountRequestParams(w http.ResponseWriter, r *http.Request) (string, pagination) {
+func accountRequestParams(w http.ResponseWriter, r *http.Request) (string, pagination, error) {
 	var accountId string
 	var accountErr bool
 
 	if accountId, accountErr = getURLParam(r, urlAccountId); !accountErr {
-		sendErrorResponse(w, http.StatusBadRequest, "")
-		return "", pagination{}
+		return "", pagination{}, errors.New("unable to find account_id in url path")
 	}
 
 	paginate, err := paging(r)
 	if err != nil {
-		sendErrorResponse(w, http.StatusBadRequest, string(invalidPagingParameters))
-		return "", pagination{}
+		return "", pagination{}, err
 	}
 
 	if paginate.Cursor < 1 {
@@ -41,7 +41,7 @@ func accountRequestParams(w http.ResponseWriter, r *http.Request) (string, pagin
 		paginate.Limit = 10
 	}
 
-	return accountId, paginate
+	return accountId, paginate, nil
 }
 
 func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.ResponseWriter, *http.Request) {
@@ -49,8 +49,11 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 		ctx := r.Context()
 		var accountId string
 		var paginate pagination
+		var err error
 
-		if accountId, paginate = accountRequestParams(w, r); accountId == "" {
+		if accountId, paginate, err = accountRequestParams(w, r); err != nil {
+			errorMsg := supportProblem.MakeInvalidFieldProblem("account_id", err)
+			sendErrorResponse(r.Context(), w, *errorMsg)
 			return
 		}
 
@@ -65,7 +68,7 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 		txns, err := lightHorizon.Transactions.GetTransactionsByAccount(ctx, paginate.Cursor, paginate.Limit, accountId)
 		if err != nil {
 			log.Error(err)
-			sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+			sendErrorResponse(r.Context(), w, supportProblem.ServerError)
 			return
 		}
 
@@ -74,7 +77,7 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 			response, err = adapters.PopulateTransaction(r, &txn)
 			if err != nil {
 				log.Error(err)
-				sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+				sendErrorResponse(r.Context(), w, supportProblem.ServerError)
 				return
 			}
 
@@ -82,7 +85,7 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 		}
 
 		page.PopulateLinks()
-		sendPageResponse(w, page)
+		sendPageResponse(r.Context(), w, page)
 	}
 }
 
@@ -91,8 +94,11 @@ func NewOpsByAccountHandler(lightHorizon services.LightHorizon) func(http.Respon
 		ctx := r.Context()
 		var accountId string
 		var paginate pagination
+		var err error
 
-		if accountId, paginate = accountRequestParams(w, r); accountId == "" {
+		if accountId, paginate, err = accountRequestParams(w, r); err != nil {
+			errorMsg := supportProblem.MakeInvalidFieldProblem("account_id", err)
+			sendErrorResponse(r.Context(), w, *errorMsg)
 			return
 		}
 
@@ -107,7 +113,7 @@ func NewOpsByAccountHandler(lightHorizon services.LightHorizon) func(http.Respon
 		ops, err := lightHorizon.Operations.GetOperationsByAccount(ctx, paginate.Cursor, paginate.Limit, accountId)
 		if err != nil {
 			log.Error(err)
-			sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+			sendErrorResponse(r.Context(), w, supportProblem.ServerError)
 			return
 		}
 
@@ -116,7 +122,7 @@ func NewOpsByAccountHandler(lightHorizon services.LightHorizon) func(http.Respon
 			response, err = adapters.PopulateOperation(r, &op)
 			if err != nil {
 				log.Error(err)
-				sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+				sendErrorResponse(r.Context(), w, supportProblem.ServerError)
 				return
 			}
 
@@ -124,6 +130,6 @@ func NewOpsByAccountHandler(lightHorizon services.LightHorizon) func(http.Respon
 		}
 
 		page.PopulateLinks()
-		sendPageResponse(w, page)
+		sendPageResponse(r.Context(), w, page)
 	}
 }

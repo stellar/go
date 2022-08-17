@@ -225,10 +225,10 @@ func testLedgerTx(source xdr.AccountId, txIndex uint32, bumpTos ...int) archive.
 	return tx
 }
 
-func newTransactionService(ctx context.Context) TransactionsService {
+func newTransactionService(ctx context.Context) TransactionService {
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
-	return TransactionsService{
+	return &TransactionRepository{
 		Config: Config{
 			Archive:    archive,
 			IndexStore: store,
@@ -238,10 +238,10 @@ func newTransactionService(ctx context.Context) TransactionsService {
 	}
 }
 
-func newOperationService(ctx context.Context) OperationsService {
+func newOperationService(ctx context.Context) OperationService {
 	passphrase := "White New England clam chowder"
 	archive, store := mockArchiveAndIndex(ctx, passphrase)
-	return OperationsService{
+	return &OperationRepository{
 		Config: Config{
 			Archive:    archive,
 			IndexStore: store,

@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
+	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
 var (
@@ -34,17 +36,10 @@ var (
 )
 
 type order string
-type errorMessage string
 
 const (
 	orderAsc  order = "asc"
 	orderDesc order = "desc"
-)
-
-const (
-	//TODO - refactor to use horizon 'problems' package
-	serverError             errorMessage = "Error: A problem occurred on the server while processing request"
-	invalidPagingParameters errorMessage = "Error: Invalid paging parameters"
 )
 
 type pagination struct {
@@ -53,39 +48,19 @@ type pagination struct {
 	Order  order
 }
 
-func sendPageResponse(w http.ResponseWriter, page hal.Page) {
+func sendPageResponse(ctx context.Context, w http.ResponseWriter, page hal.Page) {
 	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(page)
 	if err != nil {
 		log.Error(err)
-		sendErrorResponse(w, http.StatusInternalServerError, "")
+		sendErrorResponse(ctx, w, supportProblem.ServerError)
 	}
 }
 
-func sendErrorResponse(w http.ResponseWriter, errorCode int, errorMsg string) {
-	if errorMsg == "" {
-		errorMsg = string(serverError)
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	// TODO: Use Horizon's existing Problem
-	errBlob := struct {
-		Message string `json:"error"`
-		Status  int    `json:"status"`
-	}{
-		Message: errorMsg,
-		Status:  errorCode,
-	}
-
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(errBlob); err != nil {
-		log.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+func sendErrorResponse(ctx context.Context, w http.ResponseWriter, problem supportProblem.P) {
+	supportProblem.Render(ctx, w, problem)
 }
 
 func requestUnaryParam(r *http.Request, paramName string) (string, error) {

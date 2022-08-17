@@ -55,8 +55,8 @@ func NewMetrics(registry *prometheus.Registry) Metrics {
 }
 
 type LightHorizon struct {
-	Operations   OperationsService
-	Transactions TransactionsService
+	Operations   OperationService
+	Transactions TransactionService
 }
 
 type Metrics struct {

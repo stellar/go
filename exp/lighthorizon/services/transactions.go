@@ -12,19 +12,19 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type TransactionsService struct {
-	TransactionRepository
+type TransactionRepository struct {
+	TransactionService
 	Config Config
 }
 
-type TransactionRepository interface {
+type TransactionService interface {
 	GetTransactionsByAccount(ctx context.Context,
 		cursor int64, limit uint64,
 		accountId string,
 	) ([]common.Transaction, error)
 }
 
-func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context,
+func (tr *TransactionRepository) GetTransactionsByAccount(ctx context.Context,
 	cursor int64, limit uint64,
 	accountId string,
 ) ([]common.Transaction, error) {
@@ -36,15 +36,15 @@ func (ts *TransactionsService) GetTransactionsByAccount(ctx context.Context,
 			TransactionResult:   &tx.Result.Result,
 			LedgerHeader:        ledgerHeader,
 			TxIndex:             int32(tx.Index),
-			NetworkPassphrase:   ts.Config.Passphrase,
+			NetworkPassphrase:   tr.Config.Passphrase,
 		})
 
 		return uint64(len(txs)) == limit, nil
 	}
 
-	err := searchAccountTransactions(ctx, cursor, accountId, ts.Config, txsCallback)
+	err := searchAccountTransactions(ctx, cursor, accountId, tr.Config, txsCallback)
 	if age := transactionsResponseAgeSeconds(txs); age >= 0 {
-		ts.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
+		tr.Config.Metrics.ResponseAgeHistogram.With(prometheus.Labels{
 			"request":    "GetTransactionsByAccount",
 			"successful": strconv.FormatBool(err == nil),
 		}).Observe(age)
@@ -74,4 +74,4 @@ func transactionsResponseAgeSeconds(txs []common.Transaction) float64 {
 	return now.Sub(lastCloseTime).Seconds()
 }
 
-var _ TransactionRepository = (*TransactionsService)(nil) // ensure conformity to the interface
+var _ TransactionService = (*TransactionRepository)(nil) // ensure conformity to the interface
