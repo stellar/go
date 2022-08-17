@@ -3,9 +3,19 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Pending
-- Added indexes by id for claimable balance and liquidity pool id's in the respective tx/ops tables ([4455](https://github.com/stellar/go/pull/4477))
-- Improve restart time of Captive-Core when started with `--captive-core-use-db` flag. The solution does not work on Windows. ([4471)](https://github.com/stellar/go/pull/4471))
+## 2.20.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### DB Schema Migration
+
+- Added indexes by id for claimable balance and liquidity pool id's in the respective tx/ops tables. Ingestion will stop while the migration is being applied. ([4455](https://github.com/stellar/go/pull/4477))
+
+### Changes
+
+- Orphaned rows in lookup tables (`history_accounts`, `history_claimable_balances` and `history_liquidity_pools`) are removed in small batches after each ledger if `--history-retention-count` is set. ([4518](https://github.com/stellar/go/pull/4518), [4525](https://github.com/stellar/go/pull/4525))
+- Improve restart time of Captive-Core when started with `--captive-core-use-db` flag. The solution does not work on Windows. ([4471](https://github.com/stellar/go/pull/4471))
+- Fix a bug in which state verifier would run if condition checking DB query fails. ([4523](https://github.com/stellar/go/pull/4523))
 
 ## 2.19.0
 
