@@ -20,9 +20,17 @@ type FileBackend struct {
 	parallel uint32
 }
 
+// NewFileBackend connects to indices stored at `dir`, creating the directory if one doesn't
+// exist, and uses `parallel` to control how many workers to use when flushing to disk.
 func NewFileBackend(dir string, parallel uint32) (*FileBackend, error) {
 	if parallel <= 0 {
 		parallel = 1
+	}
+
+	err := os.MkdirAll(dir, fs.ModeDir|0755)
+	if err != nil {
+		log.Errorf("Unable to mkdir %s, %v", dir, err)
+		return nil, err
 	}
 
 	return &FileBackend{

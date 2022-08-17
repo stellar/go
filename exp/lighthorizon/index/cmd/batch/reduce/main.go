@@ -37,10 +37,15 @@ func ReduceConfigFromEnvironment() (*ReduceConfig, error) {
 		mapJobsEnv         = "MAP_JOB_COUNT"
 		reduceJobsEnv      = "REDUCE_JOB_COUNT"
 		workerCountEnv     = "WORKER_COUNT"
-		jobIndexEnv        = "AWS_BATCH_JOB_ARRAY_INDEX"
+		jobIndexEnvName    = "JOB_INDEX_ENV"
 		indexRootSourceEnv = "INDEX_SOURCE_ROOT"
 		indexTargetEnv     = "INDEX_TARGET"
 	)
+
+	jobIndexEnv := os.Getenv(jobIndexEnvName)
+	if jobIndexEnv == "" {
+		return nil, errors.New("env variable can't be empty " + jobIndexEnvName)
+	}
 
 	jobIndex, err := strconv.ParseUint(strings.TrimSpace(os.Getenv(jobIndexEnv)), 10, 32)
 	if err != nil {

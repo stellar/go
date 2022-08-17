@@ -47,7 +47,7 @@ for (( i=0; i < $REDUCE_JOB_COUNT; i++ ))
 do
     echo -n "Creating reduce job $i... "
 
-    AWS_BATCH_JOB_ARRAY_INDEX=$i MAP_JOB_COUNT=$MAP_JOB_COUNT \
+    AWS_BATCH_JOB_ARRAY_INDEX=$i JOB_INDEX_ENV="AWS_BATCH_JOB_ARRAY_INDEX" MAP_JOB_COUNT=$MAP_JOB_COUNT \
     REDUCE_JOB_COUNT=$REDUCE_JOB_COUNT WORKER_COUNT=4 \
     INDEX_SOURCE_ROOT=file://$1 INDEX_TARGET=file://$2 \
         timeout -k 30s 10s ./reduce &

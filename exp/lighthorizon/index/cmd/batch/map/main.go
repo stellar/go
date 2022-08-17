@@ -24,7 +24,7 @@ type BatchConfig struct {
 
 const (
 	batchSizeEnv         = "BATCH_SIZE"
-	jobIndexEnv          = "AWS_BATCH_JOB_ARRAY_INDEX"
+	jobIndexEnvName      = "JOB_INDEX_ENV"
 	firstCheckpointEnv   = "FIRST_CHECKPOINT"
 	txmetaSourceUrlEnv   = "TXMETA_SOURCE"
 	indexTargetUrlEnv    = "INDEX_TARGET"
@@ -39,6 +39,10 @@ func NewBatchConfig() (*BatchConfig, error) {
 		return nil, errors.New("required parameter: " + indexTargetUrlEnv)
 	}
 
+	jobIndexEnv := os.Getenv(jobIndexEnvName)
+	if jobIndexEnv == "" {
+		return nil, errors.New("env variable can't be empty " + jobIndexEnvName)
+	}
 	jobIndex, err := strconv.ParseUint(os.Getenv(jobIndexEnv), 10, 32)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid parameter "+jobIndexEnv)

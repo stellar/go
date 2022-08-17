@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: 'batch-reduce-job'
+spec:
+  completions: 52
+  parallelism: 10
+  completionMode: Indexed
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: 'worker'
+        image: 'stellar/lighthorizon-index-batch'
+        imagePullPolicy: Always
+        envFrom:
+        - secretRef:
+            name: <reference to secret name here if needed for source/target>
+        env:
+        - name: RUN_MODE
+          value: "reduce" 
+        - name: MAP_JOB_COUNT
+          value: 52
+        - name: REDUCE_JOB_COUNT
+          value: 52   
+        - name: WORKER_COUNT
+          value: 8   
+        - name: INDEX_SOURCE_ROOT
+          value: "<url of index location>"
+        - name: JOB_INDEX_ENV
+          value: JOB_COMPLETION_INDEX   
+        - name: INDEX_TARGET
+          value: "<url of index location>"
+        resources:
+          limits:
+            cpu:     4
+            memory:  5Gi
+          requests:
+            cpu:     500m
+            memory:  500Mi
+        
+        

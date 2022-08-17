@@ -134,14 +134,27 @@ jobs:
         # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
         run: |
           chmod 755 ./exp/lighthorizon/build/build.sh
-          ./exp/lighthorizon/build/build.sh ledgerexporter stellar latest false
-          docker run -e ARCHIVE_TARGET=file:///ledgerexport-test\
+          mkdir $PWD/ledgerexport
+          mkdir $PWD/index
+
+          ./exp/lighthorizon/build/build.sh all stellar latest false
+          docker run -e ARCHIVE_TARGET=file:///ledgerexport\
                      -e START=5\
-                     -e END=50\
+                     -e END=150\
                      -e NETWORK_PASSPHRASE="Test SDF Network ; September 2015"\
                      -e CAPTIVE_CORE_CONFIG="/captive-core-testnet.cfg"\
                      -e HISTORY_ARCHIVE_URLS="https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002"\
+                     -v $PWD/ledgerexport:/ledgerexport\
                      stellar/lighthorizon-ledgerexporter
+          
+          # run map job
+          docker run -e NETWORK_PASSPHRASE='testnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e BATCH_SIZE=64 -e FIRST_CHECKPOINT=64 \
+                     -e WORKER_COUNT=1 -e RUN_MODE=map -v $PWD/ledgerexport:/ledgermeta -e TXMETA_SOURCE=file:///ledgermeta -v $PWD/index:/index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
+
+          # run reduce job
+          docker run -e NETWORK_PASSPHRASE='testnet' -e JOB_INDEX_ENV=AWS_BATCH_JOB_ARRAY_INDEX -e AWS_BATCH_JOB_ARRAY_INDEX=0 -e MAP_JOB_COUNT=1 -e REDUCE_JOB_COUNT=1 \
+                     -e WORKER_COUNT=1 -e RUN_MODE=reduce -v $PWD/index:/index -e INDEX_SOURCE_ROOT=file:///index -e INDEX_TARGET=file:///index stellar/lighthorizon-index-batch
+                     
       # Push images
       - if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/lighthorizon'
         name: Login to DockerHub
