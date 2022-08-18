@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	txmetaSource = "file://./fixtures/"
+	txmetaSource = "file://./testdata/"
 )
 
 /**

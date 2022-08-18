@@ -24,7 +24,7 @@ import (
 // known-to-be-true horizon.stellar.org, turning it into an "ingested"
 // transaction, and serializing it.
 func TestTransactionAdapter(t *testing.T) {
-	f, err := os.Open(filepath.Join("./fixtures", "transactions.json"))
+	f, err := os.Open(filepath.Join("./testdata", "transactions.json"))
 	require.NoErrorf(t, err, "are fixtures missing?")
 
 	page := protocol.TransactionsPage{}
