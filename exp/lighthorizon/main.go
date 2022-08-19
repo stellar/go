@@ -37,7 +37,6 @@ if left empty, uses a temporary directory`)
 		log.Warnf("Failed to parse -log-level '%s', defaulting to 'info'.", *logLevelParam)
 		logLevel = log.InfoLevel
 	}
-
 	L.SetLevel(logLevel)
 	L.Info("Starting lighthorizon!")
 

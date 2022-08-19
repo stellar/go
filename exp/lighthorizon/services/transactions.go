@@ -32,11 +32,10 @@ func (tr *TransactionRepository) GetTransactionsByAccount(ctx context.Context,
 
 	txsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
 		txs = append(txs, common.Transaction{
-			TransactionEnvelope: &tx.Envelope,
-			TransactionResult:   &tx.Result.Result,
-			LedgerHeader:        ledgerHeader,
-			TxIndex:             int32(tx.Index),
-			NetworkPassphrase:   tr.Config.Passphrase,
+			LedgerTransaction: &tx,
+			LedgerHeader:      ledgerHeader,
+			TxIndex:           int32(tx.Index),
+			NetworkPassphrase: tr.Config.Passphrase,
 		})
 
 		return uint64(len(txs)) == limit, nil

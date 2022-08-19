@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/exp/lighthorizon/adapters"
 	"github.com/stellar/go/exp/lighthorizon/services"
@@ -72,9 +73,10 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 			return
 		}
 
+		encoder := xdr.NewEncodingBuffer()
 		for _, txn := range txns {
 			var response hProtocol.Transaction
-			response, err = adapters.PopulateTransaction(r, &txn)
+			response, err = adapters.PopulateTransaction(r.URL, &txn, encoder)
 			if err != nil {
 				log.Error(err)
 				sendErrorResponse(r.Context(), w, supportProblem.ServerError)
