@@ -100,7 +100,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ./horizon
-        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}
+        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./services/horizon/**/*_test.go') }}
 
     - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
       run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
