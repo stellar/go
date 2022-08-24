@@ -93,7 +93,7 @@ jobs:
 
     - name: Build Horizon reproducible build
       run: |
-        go build -v -buildvcs=false ./services/horizon
+        go build -v -trimpath -buildvcs=false ./services/horizon
 
     - name: Save Horizon binary and integration tests source hash to cache
       id: horizon_binary_tests_hash
