@@ -91,7 +91,20 @@ jobs:
       name: Setup Captive Core Remote Storage
       run: echo 'HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB=true' >> $GITHUB_ENV
 
-    - run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
+    - name: Build Horizon reproducible build
+      run: |
+        go build -v -trimpath -buildvcs=false ./services/horizon
+        touch empty
+
+    - name: Save Horizon binary and integration tests source hash to cache
+      id: horizon_binary_tests_hash
+      uses: actions/cache@v3
+      with:
+        path: ./empty
+        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_18_CORE_DOCKER_IMG }}
+
+    - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
+      run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
   verify-range:
     name: Test (and push) verify-range image
