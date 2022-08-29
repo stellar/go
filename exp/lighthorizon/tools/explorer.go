@@ -63,7 +63,7 @@ index stats file:///tmp/indices`,
 			// SIGINT.
 			//
 			// https://pace.dev/blog/2020/02/17/repond-to-ctrl-c-interrupt-signals-gracefully-with-context-in-golang-by-mat-ryer.html
-			c := make(chan os.Signal)
+			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
