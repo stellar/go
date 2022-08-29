@@ -24,3 +24,11 @@ func (set Set[T]) Contains(item T) bool {
 	_, ok := set[item]
 	return ok
 }
+
+func (set Set[T]) Slice() []T {
+	slice := make([]T, 0, len(set))
+	for key := range set {
+		slice = append(slice, key)
+	}
+	return slice
+}
