@@ -38,8 +38,8 @@ func MaxSlice[T constraints.Ordered](slice []T) T {
 	var largest T
 
 	for i := 0; i < len(slice); i++ {
-		if i == 0 || slice[i] > largest  {
-			largest  = slice[i]
+		if i == 0 || slice[i] > largest {
+			largest = slice[i]
 		}
 	}
 
