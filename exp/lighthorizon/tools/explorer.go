@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 
 	"github.com/stellar/go/exp/lighthorizon/index"
 	"github.com/stellar/go/historyarchive"
@@ -234,6 +233,7 @@ func getIndex(path, account, indexName string, limit uint) map[uint32][]string {
 	log.Infof("Checkpoint range: [%d, %d]",
 		ordered.MinSlice(maps.Keys(activity)),
 		ordered.MaxSlice(maps.Keys(activity)))
+	log.Infof("All discovered indices: %s", strings.Join(indexNames, ", "))
 
 	return activity
 }
@@ -260,18 +260,4 @@ func showAccounts(path string, limit uint) []string {
 	}
 
 	return accounts
-}
-
-func slicesHaveSameElements(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	copyA, copyB := make([]string, len(a)), make([]string, len(b))
-	copy(copyA, a)
-	copy(copyB, b)
-	slices.Sort(copyA)
-	slices.Sort(copyB)
-
-	return slices.Equal(copyA, copyB)
 }
