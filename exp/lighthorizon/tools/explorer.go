@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -50,6 +51,7 @@ index stats file:///tmp/indices`,
 			}
 
 			path := args[0]
+			start := time.Now()
 			log.Infof("Analyzing indices at %s", path)
 
 			allCheckpoints := set.Set[uint32]{}
@@ -61,20 +63,15 @@ index stats file:///tmp/indices`,
 			// this handles that by setting up a context that gets cancelled on
 			// SIGINT.
 			//
-			// https://pace.dev/blog/2020/02/17/repond-to-ctrl-c-interrupt-signals-gracefully-with-context-in-golang-by-mat-ryer.html
-			c := make(chan os.Signal, 1)
-			signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			// https://millhouse.dev/posts/graceful-shutdowns-in-golang-with-signal-notify-context
+			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+			defer stop()
 			go func() {
-				select {
-				case <-c:
-					cancel()
-				case <-ctx.Done():
-				}
-
-				<-c
-				os.Exit(1)
+				<-ctx.Done()
+				stop()
+				log.WithField("error", ctx.Err()).
+					Warn("Received interrupt, shutting down gracefully & summarizing findings...")
+				log.Warn("Press Ctrl+C again to abort.")
 			}()
 
 			mostActiveAccountChk := 0
@@ -96,13 +93,12 @@ index stats file:///tmp/indices`,
 				}
 			}
 
-			log.WithField("error", ctx.Err()).
-				Info("Done analyzing indices, summarizing...")
-
 			ledgerCount := len(allCheckpoints) * int(checkpointMgr.GetCheckpointFrequency())
 
+			log.Info("Done analyzing indices, summarizing...")
 			log.Infof("")
 			log.Infof("=== Final Summary ===")
+			log.Infof("Analysis took %s.", time.Since(start))
 			log.Infof("Path:     %s", path)
 			log.Infof("Accounts: %d", len(accounts))
 			log.Infof("Smallest checkpoint: %d", ordered.MinSlice(allCheckpoints.Slice()))
