@@ -78,6 +78,8 @@ index stats file:///tmp/indices`,
 				os.Exit(1)
 			}()
 
+			mostActiveAccountChk := 0
+			mostActiveAccount := ""
 			for _, account := range accounts {
 				if ctx.Err() != nil {
 					break
@@ -87,6 +89,11 @@ index stats file:///tmp/indices`,
 				allCheckpoints.AddSlice(maps.Keys(activity))
 				for _, names := range activity {
 					allIndexNames.AddSlice(names)
+				}
+
+				if len(activity) > mostActiveAccountChk {
+					mostActiveAccount = account
+					mostActiveAccountChk = len(activity)
 				}
 			}
 
@@ -105,6 +112,8 @@ index stats file:///tmp/indices`,
 				len(allCheckpoints), ledgerCount,
 				float64(ledgerCount)/(float64(60*60*24)/6.0) /* approx. ledgers per day */)
 			log.Infof("Index names: %s", strings.Join(allIndexNames.Slice(), ", "))
+			log.Infof("Most active account: %s (%d checkpoints)",
+				mostActiveAccount, mostActiveAccountChk)
 
 			return nil
 		},
@@ -222,6 +231,9 @@ func getIndex(path, account, indexName string, limit uint) map[uint32][]string {
 
 	log.Infof("Summary: %d active checkpoints, %d possible active ledgers",
 		len(activity), len(activity)*int(freq))
+	log.Infof("Checkpoint range: [%d, %d]",
+		ordered.MinSlice(maps.Keys(activity)),
+		ordered.MaxSlice(maps.Keys(activity)))
 
 	return activity
 }
