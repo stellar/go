@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"github.com/stellar/go/metaarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/storage"
@@ -20,9 +21,7 @@ const (
 	defaultCacheCount = (60 * 60 * 24) / 5 // ~24hrs worth of ledgers
 )
 
-func main() {
-	log.SetLevel(log.InfoLevel)
-
+func addCacheCommands(parent *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "cache",
 		Long: "Manages the on-disk cache of ledgers.",
@@ -31,11 +30,11 @@ cache build --start 1234 --count 1000 s3://txmeta /tmp/example
 cache purge /tmp/example 1234 1300
 cache show /tmp/example`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// require a subcommand for now - eventually this will live under
-			// the lighthorizon command
+			// require a subcommand - this is just a "category"
 			return cmd.Help()
 		},
 	}
+
 	purge := &cobra.Command{
 		Use:  "purge [flags] path <start> <end>",
 		Long: "Purges individual ledgers (or ranges) from the cache, or the entire cache.",
@@ -119,7 +118,12 @@ purge /tmp/example 1000 1005    # purge a ledger range`,
 	build.Flags().Uint("count", defaultCacheCount, "number of ledgers to cache")
 
 	cmd.AddCommand(build, purge, show)
-	cmd.Execute()
+	if parent == nil {
+		return cmd
+	}
+
+	parent.AddCommand(cmd)
+	return parent
 }
 
 func BuildCache(ledgerSource, cacheDir string, start uint32, count uint, repair bool) error {
