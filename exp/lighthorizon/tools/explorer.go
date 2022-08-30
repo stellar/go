@@ -61,7 +61,7 @@ index stats file:///tmp/indices`,
 
 			// We want to summarize as much as possible on a Ctrl+C event, so
 			// this handles that by setting up a context that gets cancelled on
-			// SIGINT.
+			// SIGINT. A second Ctrl+C will kill the process as usual.
 			//
 			// https://millhouse.dev/posts/graceful-shutdowns-in-golang-with-signal-notify-context
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
