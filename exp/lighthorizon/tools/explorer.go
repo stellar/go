@@ -124,9 +124,9 @@ index stats file:///tmp/indices`,
 		Long: "View the accounts in an index source or view the " +
 			"checkpoints specific account(s) are active in.",
 		Example: `view s3://indices
-view s3://indices GAXLQGKIUAIIUHAX4GJO3J7HFGLBCNF6ZCZSTLJE7EKO5IUHGLQLMXZO
+view s3:///indices GAXLQGKIUAIIUHAX4GJO3J7HFGLBCNF6ZCZSTLJE7EKO5IUHGLQLMXZO
 view file:///tmp/indices --limit=0 GAXLQGKIUAIIUHAX4GJO3J7HFGLBCNF6ZCZSTLJE7EKO5IUHGLQLMXZO
-view gcs://indices GAXLQGKIUAIIUHAX4GJO3J7HFGLBCNF6ZCZSTLJE7EKO5IUHGLQLMXZO,GBUUWQDVEEXBJCUF5UL24YGXKJIP5EMM7KFWIAR33KQRJR34GN6HEDPV,GBYETUYNBK2ZO5MSYBJKSLDEA2ZHIXLCFL3MMWU6RHFVAUBKEWQORYKS`,
+view gcs://indices --limit=10 GAXLQGKIUAIIUHAX4GJO3J7HFGLBCNF6ZCZSTLJE7EKO5IUHGLQLMXZO,GBUUWQDVEEXBJCUF5UL24YGXKJIP5EMM7KFWIAR33KQRJR34GN6HEDPV,GBYETUYNBK2ZO5MSYBJKSLDEA2ZHIXLCFL3MMWU6RHFVAUBKEWQORYKS`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 2 {
 				return cmd.Usage()
@@ -241,12 +241,14 @@ func getIndex(path, account, indexName string, limit uint) map[uint32][]string {
 func showAccounts(path string, limit uint) []string {
 	store, err := index.Connect(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to index store at %s: %v", path, err)
+		return nil
 	}
 
 	accounts, err := store.ReadAccounts()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed read accounts from index store at %s: %v", path, err)
+		return nil
 	}
 
 	if limit == 0 {
