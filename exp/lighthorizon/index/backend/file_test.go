@@ -15,7 +15,7 @@ func TestSimpleFileStore(t *testing.T) {
 	// Create a large (beyond a single chunk) list of arbitrary accounts, some
 	// regular and some muxed.
 	accountList := make([]string, 123)
-	for i, _ := range accountList {
+	for i := range accountList {
 		var err error
 		var muxed xdr.MuxedAccount
 		address := keypair.MustRandom().Address()

@@ -47,7 +47,6 @@ spec:
         fluxcd.io/ignore: "true"
         prometheus.io/port: "6060"
         prometheus.io/scrape: "false"
-      creationTimestamp: null
       labels:
         app: lighthorizon-pubnet-index
     spec:

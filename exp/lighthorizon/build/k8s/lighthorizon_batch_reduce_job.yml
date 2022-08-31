@@ -20,11 +20,11 @@ spec:
         - name: RUN_MODE
           value: "reduce" 
         - name: MAP_JOB_COUNT
-          value: 52
+          value: "52"
         - name: REDUCE_JOB_COUNT
-          value: 52   
+          value: "52"   
         - name: WORKER_COUNT
-          value: 8   
+          value: "8"   
         - name: INDEX_SOURCE_ROOT
           value: "<url of index location>"
         - name: JOB_INDEX_ENV

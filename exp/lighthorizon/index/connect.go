@@ -24,6 +24,11 @@ func ConnectWithConfig(config StoreConfig) (Store, error) {
 	}
 	switch parsed.Scheme {
 	case "s3":
+		s3Url := fmt.Sprintf("%s/%s", config.URL, config.URLSubPath)
+		parsed, err = url.Parse(s3Url)
+		if err != nil {
+			return nil, err
+		}
 		awsConfig := &aws.Config{}
 		query := parsed.Query()
 		if region := query.Get("region"); region != "" {
@@ -33,6 +38,11 @@ func ConnectWithConfig(config StoreConfig) (Store, error) {
 		return NewS3Store(awsConfig, parsed.Host, parsed.Path, config)
 
 	case "file":
+		fileUrl := filepath.Join(config.URL, config.URLSubPath)
+		parsed, err = url.Parse(fileUrl)
+		if err != nil {
+			return nil, err
+		}
 		return NewFileStore(filepath.Join(parsed.Host, parsed.Path), config)
 
 	default:

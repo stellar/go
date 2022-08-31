@@ -38,8 +38,11 @@ type Store interface {
 
 type StoreConfig struct {
 	// init time config
-	URL     string
-	Workers uint32
+	// the base url for the store resource
+	URL string
+	// optional url path to append to the base url to realize the complete url
+	URLSubPath string
+	Workers    uint32
 
 	// runtime config
 	ClearMemoryOnFlush bool

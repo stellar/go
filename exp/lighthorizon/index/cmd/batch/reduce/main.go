@@ -2,10 +2,8 @@ package main
 
 import (
 	"encoding/hex"
-	"fmt"
 	"hash/fnv"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,7 +40,7 @@ func ReduceConfigFromEnvironment() (*ReduceConfig, error) {
 		indexTargetEnv     = "INDEX_TARGET"
 	)
 
-	jobIndexEnv := os.Getenv(jobIndexEnvName)
+	jobIndexEnv := strings.TrimSpace(os.Getenv(jobIndexEnvName))
 	if jobIndexEnv == "" {
 		return nil, errors.New("env variable can't be empty " + jobIndexEnvName)
 	}
@@ -114,12 +112,15 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 	for i := uint32(0); i < config.MapJobCount; i++ {
 		jobLogger := log.WithField("job", i)
 
-		url := filepath.Join(config.IndexRootSource, "job_"+strconv.FormatUint(uint64(i), 10))
-		jobLogger.Infof("Connecting to %s", url)
+		jobSubPath := "job_" + strconv.FormatUint(uint64(i), 10)
+		jobLogger.Infof("Connecting to url %s, sub-path %s", config.IndexRootSource, jobSubPath)
+		outerJobStore, err := index.ConnectWithConfig(index.StoreConfig{
+			URL:        config.IndexRootSource,
+			URLSubPath: jobSubPath,
+		})
 
-		outerJobStore, err := index.Connect(url)
 		if err != nil {
-			return errors.Wrapf(err, "failed to connect to indices at %s", url)
+			return errors.Wrapf(err, "failed to connect to indices at %s, sub-path %s", config.IndexRootSource, jobSubPath)
 		}
 
 		accounts, err := outerJobStore.ReadAccounts()
@@ -201,16 +202,20 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 					// indices from all jobs that touched this account.
 					for k := uint32(0); k < config.MapJobCount; k++ {
 						var jobErr error
-						url := filepath.Join(config.IndexRootSource, fmt.Sprintf("job_%d", k))
 
 						// FIXME: This could probably come from a pool. Every
 						// worker needs to have a connection to every index
 						// store, so there's no reason to re-open these for each
 						// inner loop.
-						innerJobStore, jobErr := index.Connect(url)
+						innerJobSubPath := "job_" + strconv.FormatUint(uint64(k), 10)
+						innerJobStore, jobErr := index.ConnectWithConfig(index.StoreConfig{
+							URL:        config.IndexRootSource,
+							URLSubPath: innerJobSubPath,
+						})
+
 						if jobErr != nil {
 							accountLog.WithError(jobErr).
-								Errorf("Failed to open index at %s", url)
+								Errorf("Failed to open index at %s, sub-path %s", config.IndexRootSource, innerJobSubPath)
 							panic(jobErr)
 						}
 
@@ -227,7 +232,7 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 
 						if jobErr = mergeIndices(mergedIndices, jobIndices); jobErr != nil {
 							accountLog.WithError(jobErr).
-								Errorf("Merge failure for index at %s", url)
+								Errorf("Merge failure for index at %s, sub-path %s", config.IndexRootSource, innerJobSubPath)
 							panic(jobErr)
 						}
 					}
@@ -281,12 +286,15 @@ func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
 
 					prefix := hex.EncodeToString([]byte{b})
 					for k := uint32(0); k < config.MapJobCount; k++ {
-						url := filepath.Join(config.IndexRootSource, fmt.Sprintf("job_%d", k))
 						var innerErr error
+						innerJobSubPath := "job_" + strconv.FormatUint(uint64(k), 10)
+						innerJobStore, innerErr := index.ConnectWithConfig(index.StoreConfig{
+							URL:        config.IndexRootSource,
+							URLSubPath: innerJobSubPath,
+						})
 
-						innerJobStore, innerErr := index.Connect(url)
 						if innerErr != nil {
-							txLog.WithError(innerErr).Errorf("Failed to open index at %s", url)
+							txLog.WithError(innerErr).Errorf("Failed to open index at %s, sub-path %s", config.IndexRootSource, innerJobSubPath)
 							panic(innerErr)
 						}
 
