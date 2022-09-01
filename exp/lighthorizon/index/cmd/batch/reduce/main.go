@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/exp/lighthorizon/index"
 	types "github.com/stellar/go/exp/lighthorizon/index/types"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -110,7 +111,7 @@ func main() {
 }
 
 func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
-	doneAccounts := NewSafeStringSet()
+	doneAccounts := set.SafeSet[string]{}
 	for i := uint32(0); i < config.MapJobCount; i++ {
 		jobLogger := log.WithField("job", i)
 
