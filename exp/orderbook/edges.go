@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/stellar/go/xdr"
+	"golang.org/x/exp/slices"
 )
 
 // edgeSet maintains a mapping of assets to a set of venues, which
@@ -35,17 +36,12 @@ func (e edgeSet) addOffer(key int32, offer xdr.OfferEntry) edgeSet {
 	}
 
 	offers := e[i].value.offers
-	// find the smallest i such that Price of offers[i] >  Price of offer
+	// find the smallest i such that Price of offers[i] > Price of offer
 	insertIndex := sort.Search(len(offers), func(j int) bool {
 		return offer.Price.Cheaper(offers[j].Price)
 	})
 
-	// then insert it into the slice (taken from Method 2 at
-	// https://github.com/golang/go/wiki/SliceTricks#insert).
-	offers = append(offers, xdr.OfferEntry{})          // add to end
-	copy(offers[insertIndex+1:], offers[insertIndex:]) // shift right by 1
-	offers[insertIndex] = offer                        // insert
-
+	offers = slices.Insert(offers, insertIndex, offer)
 	e[i].value = Venues{offers: offers, pool: e[i].value.pool}
 	return e
 }
@@ -76,9 +72,7 @@ func (e edgeSet) removeOffer(key int32, offerID xdr.Int64) (edgeSet, bool) {
 			continue
 		}
 
-		// remove the entry in the slice at this location (taken from
-		// https://github.com/golang/go/wiki/SliceTricks#cut).
-		updatedOffers = append(offers[:i], offers[i+1:]...)
+		updatedOffers = slices.Delete(offers, i, i+1)
 		contains = true
 		break
 	}
@@ -88,7 +82,7 @@ func (e edgeSet) removeOffer(key int32, offerID xdr.Int64) (edgeSet, bool) {
 	}
 
 	if len(updatedOffers) == 0 && e[i].value.pool.Body.ConstantProduct == nil {
-		return append(e[:i], e[i+1:]...), true
+		return slices.Delete(e, i, i+1), true
 	}
 	e[i].value.offers = updatedOffers
 	return e, true
@@ -101,7 +95,7 @@ func (e edgeSet) removePool(key int32) edgeSet {
 	}
 
 	if len(e[i].value.offers) == 0 {
-		return append(e[:i], e[i+1:]...)
+		return slices.Delete(e, i, i+1)
 	}
 
 	e[i].value = Venues{offers: e[i].value.offers}
