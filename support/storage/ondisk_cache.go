@@ -66,9 +66,9 @@ func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 	localPath := path.Join(b.dir, filepath)
 
 	// If the lockfile exists, we should defer to the remote source.
-	_, err := os.Stat(nameLockfile(localPath))
+	_, statErr := os.Stat(nameLockfile(localPath))
 
-	if _, ok := b.lru.Get(localPath); !ok || err == nil {
+	if _, ok := b.lru.Get(localPath); !ok || statErr == nil {
 		// If it doesn't exist in the cache, it might still exist on the disk if
 		// we've restarted from an existing directory.
 		local, err := os.Open(localPath)
