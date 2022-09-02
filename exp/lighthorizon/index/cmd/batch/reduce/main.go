@@ -111,7 +111,7 @@ func main() {
 }
 
 func mergeAllIndices(finalIndexStore index.Store, config *ReduceConfig) error {
-	doneAccounts := set.SafeSet[string]{}
+	doneAccounts := set.NewSafeSet[string](512)
 	for i := uint32(0); i < config.MapJobCount; i++ {
 		jobLogger := log.WithField("job", i)
 

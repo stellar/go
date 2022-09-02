@@ -12,3 +12,10 @@ func TestSet(t *testing.T) {
 	require.True(t, s.Contains("sanity"))
 	require.False(t, s.Contains("check"))
 }
+
+func TestSafeSet(t *testing.T) {
+	s := NewSafeSet[string](0)
+	s.Add("sanity")
+	require.True(t, s.Contains("sanity"))
+	require.False(t, s.Contains("check"))
+}
