@@ -6,7 +6,11 @@ xdr/Stellar-ledger-entries.x \
 xdr/Stellar-ledger.x \
 xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
-xdr/Stellar-types.x
+xdr/Stellar-types.x \
+xdr/Stellar-contract-env-meta.x \
+xdr/Stellar-contract-spec.x \
+xdr/Stellar-contract.x \
+xdr/Stellar-internal.x
 
 XDRGEN_COMMIT=fons/xdrgen-fixes
 
