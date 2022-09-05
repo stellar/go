@@ -38,6 +38,7 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeSetTrustLineFlags:             "set_trust_line_flags",
 	xdr.OperationTypeLiquidityPoolDeposit:          "liquidity_pool_deposit",
 	xdr.OperationTypeLiquidityPoolWithdraw:         "liquidity_pool_withdraw",
+	xdr.OperationTypeInvokeHostFunction:            "invoke_host_function",
 }
 
 // Base represents the common attributes of an operation resource
@@ -566,6 +567,13 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		}
 		ops = op
 	case xdr.OperationTypeLiquidityPoolWithdraw:
+		var op LiquidityPoolWithdraw
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeInvokeHostFunction:
+		// TODO:
 		var op LiquidityPoolWithdraw
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return

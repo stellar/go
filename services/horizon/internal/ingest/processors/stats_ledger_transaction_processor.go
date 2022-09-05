@@ -115,6 +115,9 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context
 			p.results.OperationsLiquidityPoolDeposit++
 		case xdr.OperationTypeLiquidityPoolWithdraw:
 			p.results.OperationsLiquidityPoolWithdraw++
+		case xdr.OperationTypeInvokeHostFunction:
+			// TODO
+			return nil
 		default:
 			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
 		}
