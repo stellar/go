@@ -8,7 +8,7 @@ xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
 xdr/Stellar-types.x
 
-XDRGEN_COMMIT=3f6808cd161d72474ffbe9eedbd7013de7f92748
+XDRGEN_COMMIT=fons/xdrgen-fixes
 
 .PHONY: xdr xdr-clean xdr-update
 
