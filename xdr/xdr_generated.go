@@ -3,16 +3,16 @@
 
 // Package xdr is generated from:
 //
-//  xdr/Stellar-SCP.x
-//  xdr/Stellar-contract-env-meta.x
-//  xdr/Stellar-contract-spec.x
-//  xdr/Stellar-contract.x
-//  xdr/Stellar-internal.x
-//  xdr/Stellar-ledger-entries.x
-//  xdr/Stellar-ledger.x
-//  xdr/Stellar-overlay.x
-//  xdr/Stellar-transaction.x
-//  xdr/Stellar-types.x
+//	xdr/Stellar-SCP.x
+//	xdr/Stellar-contract-env-meta.x
+//	xdr/Stellar-contract-spec.x
+//	xdr/Stellar-contract.x
+//	xdr/Stellar-internal.x
+//	xdr/Stellar-ledger-entries.x
+//	xdr/Stellar-ledger.x
+//	xdr/Stellar-overlay.x
+//	xdr/Stellar-transaction.x
+//	xdr/Stellar-types.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
@@ -75,8 +75,7 @@ func Marshal(w io.Writer, v interface{}) (int, error) {
 
 // Value is an XDR Typedef defines as:
 //
-//   typedef opaque Value<>;
-//
+//	typedef opaque Value<>;
 type Value []byte
 
 // EncodeTo encodes this value using the Encoder.
@@ -131,12 +130,11 @@ var _ xdrType = (*Value)(nil)
 
 // ScpBallot is an XDR Struct defines as:
 //
-//   struct SCPBallot
-//    {
-//        uint32 counter; // n
-//        Value value;    // x
-//    };
-//
+//	struct SCPBallot
+//	 {
+//	     uint32 counter; // n
+//	     Value value;    // x
+//	 };
 type ScpBallot struct {
 	Counter Uint32
 	Value   Value
@@ -202,14 +200,13 @@ var _ xdrType = (*ScpBallot)(nil)
 
 // ScpStatementType is an XDR Enum defines as:
 //
-//   enum SCPStatementType
-//    {
-//        SCP_ST_PREPARE = 0,
-//        SCP_ST_CONFIRM = 1,
-//        SCP_ST_EXTERNALIZE = 2,
-//        SCP_ST_NOMINATE = 3
-//    };
-//
+//	enum SCPStatementType
+//	 {
+//	     SCP_ST_PREPARE = 0,
+//	     SCP_ST_CONFIRM = 1,
+//	     SCP_ST_EXTERNALIZE = 2,
+//	     SCP_ST_NOMINATE = 3
+//	 };
 type ScpStatementType int32
 
 const (
@@ -292,13 +289,12 @@ var _ xdrType = (*ScpStatementType)(nil)
 
 // ScpNomination is an XDR Struct defines as:
 //
-//   struct SCPNomination
-//    {
-//        Hash quorumSetHash; // D
-//        Value votes<>;      // X
-//        Value accepted<>;   // Y
-//    };
-//
+//	struct SCPNomination
+//	 {
+//	     Hash quorumSetHash; // D
+//	     Value votes<>;      // X
+//	     Value accepted<>;   // Y
+//	 };
 type ScpNomination struct {
 	QuorumSetHash Hash
 	Votes         []Value
@@ -406,16 +402,15 @@ var _ xdrType = (*ScpNomination)(nil)
 
 // ScpStatementPrepare is an XDR NestedStruct defines as:
 //
-//   struct
-//            {
-//                Hash quorumSetHash;       // D
-//                SCPBallot ballot;         // b
-//                SCPBallot* prepared;      // p
-//                SCPBallot* preparedPrime; // p'
-//                uint32 nC;                // c.n
-//                uint32 nH;                // h.n
-//            }
-//
+//	struct
+//	         {
+//	             Hash quorumSetHash;       // D
+//	             SCPBallot ballot;         // b
+//	             SCPBallot* prepared;      // p
+//	             SCPBallot* preparedPrime; // p'
+//	             uint32 nC;                // c.n
+//	             uint32 nH;                // h.n
+//	         }
 type ScpStatementPrepare struct {
 	QuorumSetHash Hash
 	Ballot        ScpBallot
@@ -546,15 +541,14 @@ var _ xdrType = (*ScpStatementPrepare)(nil)
 
 // ScpStatementConfirm is an XDR NestedStruct defines as:
 //
-//   struct
-//            {
-//                SCPBallot ballot;   // b
-//                uint32 nPrepared;   // p.n
-//                uint32 nCommit;     // c.n
-//                uint32 nH;          // h.n
-//                Hash quorumSetHash; // D
-//            }
-//
+//	struct
+//	         {
+//	             SCPBallot ballot;   // b
+//	             uint32 nPrepared;   // p.n
+//	             uint32 nCommit;     // c.n
+//	             uint32 nH;          // h.n
+//	             Hash quorumSetHash; // D
+//	         }
 type ScpStatementConfirm struct {
 	Ballot        ScpBallot
 	NPrepared     Uint32
@@ -647,13 +641,12 @@ var _ xdrType = (*ScpStatementConfirm)(nil)
 
 // ScpStatementExternalize is an XDR NestedStruct defines as:
 //
-//   struct
-//            {
-//                SCPBallot commit;         // c
-//                uint32 nH;                // h.n
-//                Hash commitQuorumSetHash; // D used before EXTERNALIZE
-//            }
-//
+//	struct
+//	         {
+//	             SCPBallot commit;         // c
+//	             uint32 nH;                // h.n
+//	             Hash commitQuorumSetHash; // D used before EXTERNALIZE
+//	         }
 type ScpStatementExternalize struct {
 	Commit              ScpBallot
 	NH                  Uint32
@@ -728,38 +721,37 @@ var _ xdrType = (*ScpStatementExternalize)(nil)
 
 // ScpStatementPledges is an XDR NestedUnion defines as:
 //
-//   union switch (SCPStatementType type)
-//        {
-//        case SCP_ST_PREPARE:
-//            struct
-//            {
-//                Hash quorumSetHash;       // D
-//                SCPBallot ballot;         // b
-//                SCPBallot* prepared;      // p
-//                SCPBallot* preparedPrime; // p'
-//                uint32 nC;                // c.n
-//                uint32 nH;                // h.n
-//            } prepare;
-//        case SCP_ST_CONFIRM:
-//            struct
-//            {
-//                SCPBallot ballot;   // b
-//                uint32 nPrepared;   // p.n
-//                uint32 nCommit;     // c.n
-//                uint32 nH;          // h.n
-//                Hash quorumSetHash; // D
-//            } confirm;
-//        case SCP_ST_EXTERNALIZE:
-//            struct
-//            {
-//                SCPBallot commit;         // c
-//                uint32 nH;                // h.n
-//                Hash commitQuorumSetHash; // D used before EXTERNALIZE
-//            } externalize;
-//        case SCP_ST_NOMINATE:
-//            SCPNomination nominate;
-//        }
-//
+//	union switch (SCPStatementType type)
+//	     {
+//	     case SCP_ST_PREPARE:
+//	         struct
+//	         {
+//	             Hash quorumSetHash;       // D
+//	             SCPBallot ballot;         // b
+//	             SCPBallot* prepared;      // p
+//	             SCPBallot* preparedPrime; // p'
+//	             uint32 nC;                // c.n
+//	             uint32 nH;                // h.n
+//	         } prepare;
+//	     case SCP_ST_CONFIRM:
+//	         struct
+//	         {
+//	             SCPBallot ballot;   // b
+//	             uint32 nPrepared;   // p.n
+//	             uint32 nCommit;     // c.n
+//	             uint32 nH;          // h.n
+//	             Hash quorumSetHash; // D
+//	         } confirm;
+//	     case SCP_ST_EXTERNALIZE:
+//	         struct
+//	         {
+//	             SCPBallot commit;         // c
+//	             uint32 nH;                // h.n
+//	             Hash commitQuorumSetHash; // D used before EXTERNALIZE
+//	         } externalize;
+//	     case SCP_ST_NOMINATE:
+//	         SCPNomination nominate;
+//	     }
 type ScpStatementPledges struct {
 	Type        ScpStatementType
 	Prepare     *ScpStatementPrepare
@@ -1034,45 +1026,44 @@ var _ xdrType = (*ScpStatementPledges)(nil)
 
 // ScpStatement is an XDR Struct defines as:
 //
-//   struct SCPStatement
-//    {
-//        NodeID nodeID;    // v
-//        uint64 slotIndex; // i
+//	struct SCPStatement
+//	 {
+//	     NodeID nodeID;    // v
+//	     uint64 slotIndex; // i
 //
-//        union switch (SCPStatementType type)
-//        {
-//        case SCP_ST_PREPARE:
-//            struct
-//            {
-//                Hash quorumSetHash;       // D
-//                SCPBallot ballot;         // b
-//                SCPBallot* prepared;      // p
-//                SCPBallot* preparedPrime; // p'
-//                uint32 nC;                // c.n
-//                uint32 nH;                // h.n
-//            } prepare;
-//        case SCP_ST_CONFIRM:
-//            struct
-//            {
-//                SCPBallot ballot;   // b
-//                uint32 nPrepared;   // p.n
-//                uint32 nCommit;     // c.n
-//                uint32 nH;          // h.n
-//                Hash quorumSetHash; // D
-//            } confirm;
-//        case SCP_ST_EXTERNALIZE:
-//            struct
-//            {
-//                SCPBallot commit;         // c
-//                uint32 nH;                // h.n
-//                Hash commitQuorumSetHash; // D used before EXTERNALIZE
-//            } externalize;
-//        case SCP_ST_NOMINATE:
-//            SCPNomination nominate;
-//        }
-//        pledges;
-//    };
-//
+//	     union switch (SCPStatementType type)
+//	     {
+//	     case SCP_ST_PREPARE:
+//	         struct
+//	         {
+//	             Hash quorumSetHash;       // D
+//	             SCPBallot ballot;         // b
+//	             SCPBallot* prepared;      // p
+//	             SCPBallot* preparedPrime; // p'
+//	             uint32 nC;                // c.n
+//	             uint32 nH;                // h.n
+//	         } prepare;
+//	     case SCP_ST_CONFIRM:
+//	         struct
+//	         {
+//	             SCPBallot ballot;   // b
+//	             uint32 nPrepared;   // p.n
+//	             uint32 nCommit;     // c.n
+//	             uint32 nH;          // h.n
+//	             Hash quorumSetHash; // D
+//	         } confirm;
+//	     case SCP_ST_EXTERNALIZE:
+//	         struct
+//	         {
+//	             SCPBallot commit;         // c
+//	             uint32 nH;                // h.n
+//	             Hash commitQuorumSetHash; // D used before EXTERNALIZE
+//	         } externalize;
+//	     case SCP_ST_NOMINATE:
+//	         SCPNomination nominate;
+//	     }
+//	     pledges;
+//	 };
 type ScpStatement struct {
 	NodeId    NodeId
 	SlotIndex Uint64
@@ -1147,12 +1138,11 @@ var _ xdrType = (*ScpStatement)(nil)
 
 // ScpEnvelope is an XDR Struct defines as:
 //
-//   struct SCPEnvelope
-//    {
-//        SCPStatement statement;
-//        Signature signature;
-//    };
-//
+//	struct SCPEnvelope
+//	 {
+//	     SCPStatement statement;
+//	     Signature signature;
+//	 };
 type ScpEnvelope struct {
 	Statement ScpStatement
 	Signature Signature
@@ -1218,13 +1208,12 @@ var _ xdrType = (*ScpEnvelope)(nil)
 
 // ScpQuorumSet is an XDR Struct defines as:
 //
-//   struct SCPQuorumSet
-//    {
-//        uint32 threshold;
-//        NodeID validators<>;
-//        SCPQuorumSet innerSets<>;
-//    };
-//
+//	struct SCPQuorumSet
+//	 {
+//	     uint32 threshold;
+//	     NodeID validators<>;
+//	     SCPQuorumSet innerSets<>;
+//	 };
 type ScpQuorumSet struct {
 	Threshold  Uint32
 	Validators []NodeId
@@ -1332,8 +1321,7 @@ var _ xdrType = (*ScpQuorumSet)(nil)
 
 // AccountId is an XDR Typedef defines as:
 //
-//   typedef PublicKey AccountID;
-//
+//	typedef PublicKey AccountID;
 type AccountId PublicKey
 
 // SwitchFieldName returns the field name in which this union's
@@ -1419,8 +1407,7 @@ var _ xdrType = (*AccountId)(nil)
 
 // Thresholds is an XDR Typedef defines as:
 //
-//   typedef opaque Thresholds[4];
-//
+//	typedef opaque Thresholds[4];
 type Thresholds [4]byte
 
 // XDRMaxSize implements the Sized interface for Thresholds
@@ -1480,8 +1467,7 @@ var _ xdrType = (*Thresholds)(nil)
 
 // String32 is an XDR Typedef defines as:
 //
-//   typedef string string32<32>;
-//
+//	typedef string string32<32>;
 type String32 string
 
 // XDRMaxSize implements the Sized interface for String32
@@ -1543,8 +1529,7 @@ var _ xdrType = (*String32)(nil)
 
 // String64 is an XDR Typedef defines as:
 //
-//   typedef string string64<64>;
-//
+//	typedef string string64<64>;
 type String64 string
 
 // XDRMaxSize implements the Sized interface for String64
@@ -1606,8 +1591,7 @@ var _ xdrType = (*String64)(nil)
 
 // SequenceNumber is an XDR Typedef defines as:
 //
-//   typedef int64 SequenceNumber;
-//
+//	typedef int64 SequenceNumber;
 type SequenceNumber Int64
 
 // EncodeTo encodes this value using the Encoder.
@@ -1662,8 +1646,7 @@ var _ xdrType = (*SequenceNumber)(nil)
 
 // TimePoint is an XDR Typedef defines as:
 //
-//   typedef uint64 TimePoint;
-//
+//	typedef uint64 TimePoint;
 type TimePoint Uint64
 
 // EncodeTo encodes this value using the Encoder.
@@ -1718,8 +1701,7 @@ var _ xdrType = (*TimePoint)(nil)
 
 // Duration is an XDR Typedef defines as:
 //
-//   typedef uint64 Duration;
-//
+//	typedef uint64 Duration;
 type Duration Uint64
 
 // EncodeTo encodes this value using the Encoder.
@@ -1774,8 +1756,7 @@ var _ xdrType = (*Duration)(nil)
 
 // DataValue is an XDR Typedef defines as:
 //
-//   typedef opaque DataValue<64>;
-//
+//	typedef opaque DataValue<64>;
 type DataValue []byte
 
 // XDRMaxSize implements the Sized interface for DataValue
@@ -1835,8 +1816,7 @@ var _ xdrType = (*DataValue)(nil)
 
 // PoolId is an XDR Typedef defines as:
 //
-//   typedef Hash PoolID;
-//
+//	typedef Hash PoolID;
 type PoolId Hash
 
 // EncodeTo encodes this value using the Encoder.
@@ -1891,8 +1871,7 @@ var _ xdrType = (*PoolId)(nil)
 
 // AssetCode4 is an XDR Typedef defines as:
 //
-//   typedef opaque AssetCode4[4];
-//
+//	typedef opaque AssetCode4[4];
 type AssetCode4 [4]byte
 
 // XDRMaxSize implements the Sized interface for AssetCode4
@@ -1952,8 +1931,7 @@ var _ xdrType = (*AssetCode4)(nil)
 
 // AssetCode12 is an XDR Typedef defines as:
 //
-//   typedef opaque AssetCode12[12];
-//
+//	typedef opaque AssetCode12[12];
 type AssetCode12 [12]byte
 
 // XDRMaxSize implements the Sized interface for AssetCode12
@@ -2013,14 +1991,13 @@ var _ xdrType = (*AssetCode12)(nil)
 
 // AssetType is an XDR Enum defines as:
 //
-//   enum AssetType
-//    {
-//        ASSET_TYPE_NATIVE = 0,
-//        ASSET_TYPE_CREDIT_ALPHANUM4 = 1,
-//        ASSET_TYPE_CREDIT_ALPHANUM12 = 2,
-//        ASSET_TYPE_POOL_SHARE = 3
-//    };
-//
+//	enum AssetType
+//	 {
+//	     ASSET_TYPE_NATIVE = 0,
+//	     ASSET_TYPE_CREDIT_ALPHANUM4 = 1,
+//	     ASSET_TYPE_CREDIT_ALPHANUM12 = 2,
+//	     ASSET_TYPE_POOL_SHARE = 3
+//	 };
 type AssetType int32
 
 const (
@@ -2103,17 +2080,16 @@ var _ xdrType = (*AssetType)(nil)
 
 // AssetCode is an XDR Union defines as:
 //
-//   union AssetCode switch (AssetType type)
-//    {
-//    case ASSET_TYPE_CREDIT_ALPHANUM4:
-//        AssetCode4 assetCode4;
+//	union AssetCode switch (AssetType type)
+//	 {
+//	 case ASSET_TYPE_CREDIT_ALPHANUM4:
+//	     AssetCode4 assetCode4;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM12:
-//        AssetCode12 assetCode12;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM12:
+//	     AssetCode12 assetCode12;
 //
-//        // add other asset types here in the future
-//    };
-//
+//	     // add other asset types here in the future
+//	 };
 type AssetCode struct {
 	Type        AssetType
 	AssetCode4  *AssetCode4
@@ -2292,12 +2268,11 @@ var _ xdrType = (*AssetCode)(nil)
 
 // AlphaNum4 is an XDR Struct defines as:
 //
-//   struct AlphaNum4
-//    {
-//        AssetCode4 assetCode;
-//        AccountID issuer;
-//    };
-//
+//	struct AlphaNum4
+//	 {
+//	     AssetCode4 assetCode;
+//	     AccountID issuer;
+//	 };
 type AlphaNum4 struct {
 	AssetCode AssetCode4
 	Issuer    AccountId
@@ -2363,12 +2338,11 @@ var _ xdrType = (*AlphaNum4)(nil)
 
 // AlphaNum12 is an XDR Struct defines as:
 //
-//   struct AlphaNum12
-//    {
-//        AssetCode12 assetCode;
-//        AccountID issuer;
-//    };
-//
+//	struct AlphaNum12
+//	 {
+//	     AssetCode12 assetCode;
+//	     AccountID issuer;
+//	 };
 type AlphaNum12 struct {
 	AssetCode AssetCode12
 	Issuer    AccountId
@@ -2434,20 +2408,19 @@ var _ xdrType = (*AlphaNum12)(nil)
 
 // Asset is an XDR Union defines as:
 //
-//   union Asset switch (AssetType type)
-//    {
-//    case ASSET_TYPE_NATIVE: // Not credit
-//        void;
+//	union Asset switch (AssetType type)
+//	 {
+//	 case ASSET_TYPE_NATIVE: // Not credit
+//	     void;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM4:
-//        AlphaNum4 alphaNum4;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM4:
+//	     AlphaNum4 alphaNum4;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM12:
-//        AlphaNum12 alphaNum12;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM12:
+//	     AlphaNum12 alphaNum12;
 //
-//        // add other asset types here in the future
-//    };
-//
+//	     // add other asset types here in the future
+//	 };
 type Asset struct {
 	Type       AssetType
 	AlphaNum4  *AlphaNum4
@@ -2636,12 +2609,11 @@ var _ xdrType = (*Asset)(nil)
 
 // Price is an XDR Struct defines as:
 //
-//   struct Price
-//    {
-//        int32 n; // numerator
-//        int32 d; // denominator
-//    };
-//
+//	struct Price
+//	 {
+//	     int32 n; // numerator
+//	     int32 d; // denominator
+//	 };
 type Price struct {
 	N Int32
 	D Int32
@@ -2707,12 +2679,11 @@ var _ xdrType = (*Price)(nil)
 
 // Liabilities is an XDR Struct defines as:
 //
-//   struct Liabilities
-//    {
-//        int64 buying;
-//        int64 selling;
-//    };
-//
+//	struct Liabilities
+//	 {
+//	     int64 buying;
+//	     int64 selling;
+//	 };
 type Liabilities struct {
 	Buying  Int64
 	Selling Int64
@@ -2778,14 +2749,13 @@ var _ xdrType = (*Liabilities)(nil)
 
 // ThresholdIndexes is an XDR Enum defines as:
 //
-//   enum ThresholdIndexes
-//    {
-//        THRESHOLD_MASTER_WEIGHT = 0,
-//        THRESHOLD_LOW = 1,
-//        THRESHOLD_MED = 2,
-//        THRESHOLD_HIGH = 3
-//    };
-//
+//	enum ThresholdIndexes
+//	 {
+//	     THRESHOLD_MASTER_WEIGHT = 0,
+//	     THRESHOLD_LOW = 1,
+//	     THRESHOLD_MED = 2,
+//	     THRESHOLD_HIGH = 3
+//	 };
 type ThresholdIndexes int32
 
 const (
@@ -2868,18 +2838,17 @@ var _ xdrType = (*ThresholdIndexes)(nil)
 
 // LedgerEntryType is an XDR Enum defines as:
 //
-//   enum LedgerEntryType
-//    {
-//        ACCOUNT = 0,
-//        TRUSTLINE = 1,
-//        OFFER = 2,
-//        DATA = 3,
-//        CLAIMABLE_BALANCE = 4,
-//        LIQUIDITY_POOL = 5,
-//        CONTRACT_DATA = 6,
-//        CONFIG_SETTING = 7
-//    };
-//
+//	enum LedgerEntryType
+//	 {
+//	     ACCOUNT = 0,
+//	     TRUSTLINE = 1,
+//	     OFFER = 2,
+//	     DATA = 3,
+//	     CLAIMABLE_BALANCE = 4,
+//	     LIQUIDITY_POOL = 5,
+//	     CONTRACT_DATA = 6,
+//	     CONFIG_SETTING = 7
+//	 };
 type LedgerEntryType int32
 
 const (
@@ -2970,12 +2939,11 @@ var _ xdrType = (*LedgerEntryType)(nil)
 
 // Signer is an XDR Struct defines as:
 //
-//   struct Signer
-//    {
-//        SignerKey key;
-//        uint32 weight; // really only need 1 byte
-//    };
-//
+//	struct Signer
+//	 {
+//	     SignerKey key;
+//	     uint32 weight; // really only need 1 byte
+//	 };
 type Signer struct {
 	Key    SignerKey
 	Weight Uint32
@@ -3041,24 +3009,23 @@ var _ xdrType = (*Signer)(nil)
 
 // AccountFlags is an XDR Enum defines as:
 //
-//   enum AccountFlags
-//    { // masks for each flag
+//	enum AccountFlags
+//	 { // masks for each flag
 //
-//        // Flags set on issuer accounts
-//        // TrustLines are created with authorized set to "false" requiring
-//        // the issuer to set it for each TrustLine
-//        AUTH_REQUIRED_FLAG = 0x1,
-//        // If set, the authorized flag in TrustLines can be cleared
-//        // otherwise, authorization cannot be revoked
-//        AUTH_REVOCABLE_FLAG = 0x2,
-//        // Once set, causes all AUTH_* flags to be read-only
-//        AUTH_IMMUTABLE_FLAG = 0x4,
-//        // Trustlines are created with clawback enabled set to "true",
-//        // and claimable balances created from those trustlines are created
-//        // with clawback enabled set to "true"
-//        AUTH_CLAWBACK_ENABLED_FLAG = 0x8
-//    };
-//
+//	     // Flags set on issuer accounts
+//	     // TrustLines are created with authorized set to "false" requiring
+//	     // the issuer to set it for each TrustLine
+//	     AUTH_REQUIRED_FLAG = 0x1,
+//	     // If set, the authorized flag in TrustLines can be cleared
+//	     // otherwise, authorization cannot be revoked
+//	     AUTH_REVOCABLE_FLAG = 0x2,
+//	     // Once set, causes all AUTH_* flags to be read-only
+//	     AUTH_IMMUTABLE_FLAG = 0x4,
+//	     // Trustlines are created with clawback enabled set to "true",
+//	     // and claimable balances created from those trustlines are created
+//	     // with clawback enabled set to "true"
+//	     AUTH_CLAWBACK_ENABLED_FLAG = 0x8
+//	 };
 type AccountFlags int32
 
 const (
@@ -3141,43 +3108,38 @@ var _ xdrType = (*AccountFlags)(nil)
 
 // MaskAccountFlags is an XDR Const defines as:
 //
-//   const MASK_ACCOUNT_FLAGS = 0x7;
-//
+//	const MASK_ACCOUNT_FLAGS = 0x7;
 const MaskAccountFlags = 0x7
 
 // MaskAccountFlagsV17 is an XDR Const defines as:
 //
-//   const MASK_ACCOUNT_FLAGS_V17 = 0xF;
-//
+//	const MASK_ACCOUNT_FLAGS_V17 = 0xF;
 const MaskAccountFlagsV17 = 0xF
 
 // MaxSigners is an XDR Const defines as:
 //
-//   const MAX_SIGNERS = 20;
-//
+//	const MAX_SIGNERS = 20;
 const MaxSigners = 20
 
 // SponsorshipDescriptor is an XDR Typedef defines as:
 //
-//   typedef AccountID* SponsorshipDescriptor;
-//
+//	typedef AccountID* SponsorshipDescriptor;
 type SponsorshipDescriptor = *AccountId
 
 // AccountEntryExtensionV3 is an XDR Struct defines as:
 //
-//   struct AccountEntryExtensionV3
-//    {
-//        // We can use this to add more fields, or because it is first, to
-//        // change AccountEntryExtensionV3 into a union.
-//        ExtensionPoint ext;
+//	struct AccountEntryExtensionV3
+//	 {
+//	     // We can use this to add more fields, or because it is first, to
+//	     // change AccountEntryExtensionV3 into a union.
+//	     ExtensionPoint ext;
 //
-//        // Ledger number at which `seqNum` took on its present value.
-//        uint32 seqLedger;
+//	     // Ledger number at which `seqNum` took on its present value.
+//	     uint32 seqLedger;
 //
-//        // Time at which `seqNum` took on its present value.
-//        TimePoint seqTime;
-//    };
-//
+//	     // Time at which `seqNum` took on its present value.
+//	     TimePoint seqTime;
+//	 };
 type AccountEntryExtensionV3 struct {
 	Ext       ExtensionPoint
 	SeqLedger Uint32
@@ -3252,14 +3214,13 @@ var _ xdrType = (*AccountEntryExtensionV3)(nil)
 
 // AccountEntryExtensionV2Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 3:
-//            AccountEntryExtensionV3 v3;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 3:
+//	         AccountEntryExtensionV3 v3;
+//	     }
 type AccountEntryExtensionV2Ext struct {
 	V  int32
 	V3 *AccountEntryExtensionV3
@@ -3400,22 +3361,21 @@ var _ xdrType = (*AccountEntryExtensionV2Ext)(nil)
 
 // AccountEntryExtensionV2 is an XDR Struct defines as:
 //
-//   struct AccountEntryExtensionV2
-//    {
-//        uint32 numSponsored;
-//        uint32 numSponsoring;
-//        SponsorshipDescriptor signerSponsoringIDs<MAX_SIGNERS>;
+//	struct AccountEntryExtensionV2
+//	 {
+//	     uint32 numSponsored;
+//	     uint32 numSponsoring;
+//	     SponsorshipDescriptor signerSponsoringIDs<MAX_SIGNERS>;
 //
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 3:
-//            AccountEntryExtensionV3 v3;
-//        }
-//        ext;
-//    };
-//
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 3:
+//	         AccountEntryExtensionV3 v3;
+//	     }
+//	     ext;
+//	 };
 type AccountEntryExtensionV2 struct {
 	NumSponsored        Uint32
 	NumSponsoring       Uint32
@@ -3534,14 +3494,13 @@ var _ xdrType = (*AccountEntryExtensionV2)(nil)
 
 // AccountEntryExtensionV1Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 2:
-//            AccountEntryExtensionV2 v2;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 2:
+//	         AccountEntryExtensionV2 v2;
+//	     }
 type AccountEntryExtensionV1Ext struct {
 	V  int32
 	V2 *AccountEntryExtensionV2
@@ -3682,20 +3641,19 @@ var _ xdrType = (*AccountEntryExtensionV1Ext)(nil)
 
 // AccountEntryExtensionV1 is an XDR Struct defines as:
 //
-//   struct AccountEntryExtensionV1
-//    {
-//        Liabilities liabilities;
+//	struct AccountEntryExtensionV1
+//	 {
+//	     Liabilities liabilities;
 //
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 2:
-//            AccountEntryExtensionV2 v2;
-//        }
-//        ext;
-//    };
-//
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 2:
+//	         AccountEntryExtensionV2 v2;
+//	     }
+//	     ext;
+//	 };
 type AccountEntryExtensionV1 struct {
 	Liabilities Liabilities
 	Ext         AccountEntryExtensionV1Ext
@@ -3761,14 +3719,13 @@ var _ xdrType = (*AccountEntryExtensionV1)(nil)
 
 // AccountEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            AccountEntryExtensionV1 v1;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         AccountEntryExtensionV1 v1;
+//	     }
 type AccountEntryExt struct {
 	V  int32
 	V1 *AccountEntryExtensionV1
@@ -3909,35 +3866,34 @@ var _ xdrType = (*AccountEntryExt)(nil)
 
 // AccountEntry is an XDR Struct defines as:
 //
-//   struct AccountEntry
-//    {
-//        AccountID accountID;      // master public key for this account
-//        int64 balance;            // in stroops
-//        SequenceNumber seqNum;    // last sequence number used for this account
-//        uint32 numSubEntries;     // number of sub-entries this account has
-//                                  // drives the reserve
-//        AccountID* inflationDest; // Account to vote for during inflation
-//        uint32 flags;             // see AccountFlags
+//	struct AccountEntry
+//	 {
+//	     AccountID accountID;      // master public key for this account
+//	     int64 balance;            // in stroops
+//	     SequenceNumber seqNum;    // last sequence number used for this account
+//	     uint32 numSubEntries;     // number of sub-entries this account has
+//	                               // drives the reserve
+//	     AccountID* inflationDest; // Account to vote for during inflation
+//	     uint32 flags;             // see AccountFlags
 //
-//        string32 homeDomain; // can be used for reverse federation and memo lookup
+//	     string32 homeDomain; // can be used for reverse federation and memo lookup
 //
-//        // fields used for signatures
-//        // thresholds stores unsigned bytes: [weight of master|low|medium|high]
-//        Thresholds thresholds;
+//	     // fields used for signatures
+//	     // thresholds stores unsigned bytes: [weight of master|low|medium|high]
+//	     Thresholds thresholds;
 //
-//        Signer signers<MAX_SIGNERS>; // possible signers for this account
+//	     Signer signers<MAX_SIGNERS>; // possible signers for this account
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            AccountEntryExtensionV1 v1;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         AccountEntryExtensionV1 v1;
+//	     }
+//	     ext;
+//	 };
 type AccountEntry struct {
 	AccountId     AccountId
 	Balance       Int64
@@ -4110,18 +4066,17 @@ var _ xdrType = (*AccountEntry)(nil)
 
 // TrustLineFlags is an XDR Enum defines as:
 //
-//   enum TrustLineFlags
-//    {
-//        // issuer has authorized account to perform transactions with its credit
-//        AUTHORIZED_FLAG = 1,
-//        // issuer has authorized account to maintain and reduce liabilities for its
-//        // credit
-//        AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG = 2,
-//        // issuer has specified that it may clawback its credit, and that claimable
-//        // balances created with its credit may also be clawed back
-//        TRUSTLINE_CLAWBACK_ENABLED_FLAG = 4
-//    };
-//
+//	enum TrustLineFlags
+//	 {
+//	     // issuer has authorized account to perform transactions with its credit
+//	     AUTHORIZED_FLAG = 1,
+//	     // issuer has authorized account to maintain and reduce liabilities for its
+//	     // credit
+//	     AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG = 2,
+//	     // issuer has specified that it may clawback its credit, and that claimable
+//	     // balances created with its credit may also be clawed back
+//	     TRUSTLINE_CLAWBACK_ENABLED_FLAG = 4
+//	 };
 type TrustLineFlags int32
 
 const (
@@ -4202,29 +4157,25 @@ var _ xdrType = (*TrustLineFlags)(nil)
 
 // MaskTrustlineFlags is an XDR Const defines as:
 //
-//   const MASK_TRUSTLINE_FLAGS = 1;
-//
+//	const MASK_TRUSTLINE_FLAGS = 1;
 const MaskTrustlineFlags = 1
 
 // MaskTrustlineFlagsV13 is an XDR Const defines as:
 //
-//   const MASK_TRUSTLINE_FLAGS_V13 = 3;
-//
+//	const MASK_TRUSTLINE_FLAGS_V13 = 3;
 const MaskTrustlineFlagsV13 = 3
 
 // MaskTrustlineFlagsV17 is an XDR Const defines as:
 //
-//   const MASK_TRUSTLINE_FLAGS_V17 = 7;
-//
+//	const MASK_TRUSTLINE_FLAGS_V17 = 7;
 const MaskTrustlineFlagsV17 = 7
 
 // LiquidityPoolType is an XDR Enum defines as:
 //
-//   enum LiquidityPoolType
-//    {
-//        LIQUIDITY_POOL_CONSTANT_PRODUCT = 0
-//    };
-//
+//	enum LiquidityPoolType
+//	 {
+//	     LIQUIDITY_POOL_CONSTANT_PRODUCT = 0
+//	 };
 type LiquidityPoolType int32
 
 const (
@@ -4301,23 +4252,22 @@ var _ xdrType = (*LiquidityPoolType)(nil)
 
 // TrustLineAsset is an XDR Union defines as:
 //
-//   union TrustLineAsset switch (AssetType type)
-//    {
-//    case ASSET_TYPE_NATIVE: // Not credit
-//        void;
+//	union TrustLineAsset switch (AssetType type)
+//	 {
+//	 case ASSET_TYPE_NATIVE: // Not credit
+//	     void;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM4:
-//        AlphaNum4 alphaNum4;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM4:
+//	     AlphaNum4 alphaNum4;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM12:
-//        AlphaNum12 alphaNum12;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM12:
+//	     AlphaNum12 alphaNum12;
 //
-//    case ASSET_TYPE_POOL_SHARE:
-//        PoolID liquidityPoolID;
+//	 case ASSET_TYPE_POOL_SHARE:
+//	     PoolID liquidityPoolID;
 //
-//        // add other asset types here in the future
-//    };
-//
+//	     // add other asset types here in the future
+//	 };
 type TrustLineAsset struct {
 	Type            AssetType
 	AlphaNum4       *AlphaNum4
@@ -4554,12 +4504,11 @@ var _ xdrType = (*TrustLineAsset)(nil)
 
 // TrustLineEntryExtensionV2Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type TrustLineEntryExtensionV2Ext struct {
 	V int32
 }
@@ -4652,18 +4601,17 @@ var _ xdrType = (*TrustLineEntryExtensionV2Ext)(nil)
 
 // TrustLineEntryExtensionV2 is an XDR Struct defines as:
 //
-//   struct TrustLineEntryExtensionV2
-//    {
-//        int32 liquidityPoolUseCount;
+//	struct TrustLineEntryExtensionV2
+//	 {
+//	     int32 liquidityPoolUseCount;
 //
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type TrustLineEntryExtensionV2 struct {
 	LiquidityPoolUseCount Int32
 	Ext                   TrustLineEntryExtensionV2Ext
@@ -4729,14 +4677,13 @@ var _ xdrType = (*TrustLineEntryExtensionV2)(nil)
 
 // TrustLineEntryV1Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//                {
-//                case 0:
-//                    void;
-//                case 2:
-//                    TrustLineEntryExtensionV2 v2;
-//                }
-//
+//	union switch (int v)
+//	             {
+//	             case 0:
+//	                 void;
+//	             case 2:
+//	                 TrustLineEntryExtensionV2 v2;
+//	             }
 type TrustLineEntryV1Ext struct {
 	V  int32
 	V2 *TrustLineEntryExtensionV2
@@ -4877,20 +4824,19 @@ var _ xdrType = (*TrustLineEntryV1Ext)(nil)
 
 // TrustLineEntryV1 is an XDR NestedStruct defines as:
 //
-//   struct
-//            {
-//                Liabilities liabilities;
+//	struct
+//	         {
+//	             Liabilities liabilities;
 //
-//                union switch (int v)
-//                {
-//                case 0:
-//                    void;
-//                case 2:
-//                    TrustLineEntryExtensionV2 v2;
-//                }
-//                ext;
-//            }
-//
+//	             union switch (int v)
+//	             {
+//	             case 0:
+//	                 void;
+//	             case 2:
+//	                 TrustLineEntryExtensionV2 v2;
+//	             }
+//	             ext;
+//	         }
 type TrustLineEntryV1 struct {
 	Liabilities Liabilities
 	Ext         TrustLineEntryV1Ext
@@ -4956,26 +4902,25 @@ var _ xdrType = (*TrustLineEntryV1)(nil)
 
 // TrustLineEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            struct
-//            {
-//                Liabilities liabilities;
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         struct
+//	         {
+//	             Liabilities liabilities;
 //
-//                union switch (int v)
-//                {
-//                case 0:
-//                    void;
-//                case 2:
-//                    TrustLineEntryExtensionV2 v2;
-//                }
-//                ext;
-//            } v1;
-//        }
-//
+//	             union switch (int v)
+//	             {
+//	             case 0:
+//	                 void;
+//	             case 2:
+//	                 TrustLineEntryExtensionV2 v2;
+//	             }
+//	             ext;
+//	         } v1;
+//	     }
 type TrustLineEntryExt struct {
 	V  int32
 	V1 *TrustLineEntryV1
@@ -5116,39 +5061,38 @@ var _ xdrType = (*TrustLineEntryExt)(nil)
 
 // TrustLineEntry is an XDR Struct defines as:
 //
-//   struct TrustLineEntry
-//    {
-//        AccountID accountID;  // account this trustline belongs to
-//        TrustLineAsset asset; // type of asset (with issuer)
-//        int64 balance;        // how much of this asset the user has.
-//                              // Asset defines the unit for this;
+//	struct TrustLineEntry
+//	 {
+//	     AccountID accountID;  // account this trustline belongs to
+//	     TrustLineAsset asset; // type of asset (with issuer)
+//	     int64 balance;        // how much of this asset the user has.
+//	                           // Asset defines the unit for this;
 //
-//        int64 limit;  // balance cannot be above this
-//        uint32 flags; // see TrustLineFlags
+//	     int64 limit;  // balance cannot be above this
+//	     uint32 flags; // see TrustLineFlags
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            struct
-//            {
-//                Liabilities liabilities;
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         struct
+//	         {
+//	             Liabilities liabilities;
 //
-//                union switch (int v)
-//                {
-//                case 0:
-//                    void;
-//                case 2:
-//                    TrustLineEntryExtensionV2 v2;
-//                }
-//                ext;
-//            } v1;
-//        }
-//        ext;
-//    };
-//
+//	             union switch (int v)
+//	             {
+//	             case 0:
+//	                 void;
+//	             case 2:
+//	                 TrustLineEntryExtensionV2 v2;
+//	             }
+//	             ext;
+//	         } v1;
+//	     }
+//	     ext;
+//	 };
 type TrustLineEntry struct {
 	AccountId AccountId
 	Asset     TrustLineAsset
@@ -5250,13 +5194,12 @@ var _ xdrType = (*TrustLineEntry)(nil)
 
 // OfferEntryFlags is an XDR Enum defines as:
 //
-//   enum OfferEntryFlags
-//    {
-//        // an offer with this flag will not act on and take a reverse offer of equal
-//        // price
-//        PASSIVE_FLAG = 1
-//    };
-//
+//	enum OfferEntryFlags
+//	 {
+//	     // an offer with this flag will not act on and take a reverse offer of equal
+//	     // price
+//	     PASSIVE_FLAG = 1
+//	 };
 type OfferEntryFlags int32
 
 const (
@@ -5333,18 +5276,16 @@ var _ xdrType = (*OfferEntryFlags)(nil)
 
 // MaskOfferentryFlags is an XDR Const defines as:
 //
-//   const MASK_OFFERENTRY_FLAGS = 1;
-//
+//	const MASK_OFFERENTRY_FLAGS = 1;
 const MaskOfferentryFlags = 1
 
 // OfferEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type OfferEntryExt struct {
 	V int32
 }
@@ -5437,31 +5378,30 @@ var _ xdrType = (*OfferEntryExt)(nil)
 
 // OfferEntry is an XDR Struct defines as:
 //
-//   struct OfferEntry
-//    {
-//        AccountID sellerID;
-//        int64 offerID;
-//        Asset selling; // A
-//        Asset buying;  // B
-//        int64 amount;  // amount of A
+//	struct OfferEntry
+//	 {
+//	     AccountID sellerID;
+//	     int64 offerID;
+//	     Asset selling; // A
+//	     Asset buying;  // B
+//	     int64 amount;  // amount of A
 //
-//        /* price for this offer:
-//            price of A in terms of B
-//            price=AmountB/AmountA=priceNumerator/priceDenominator
-//            price is after fees
-//        */
-//        Price price;
-//        uint32 flags; // see OfferEntryFlags
+//	     /* price for this offer:
+//	         price of A in terms of B
+//	         price=AmountB/AmountA=priceNumerator/priceDenominator
+//	         price is after fees
+//	     */
+//	     Price price;
+//	     uint32 flags; // see OfferEntryFlags
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type OfferEntry struct {
 	SellerId AccountId
 	OfferId  Int64
@@ -5581,12 +5521,11 @@ var _ xdrType = (*OfferEntry)(nil)
 
 // DataEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type DataEntryExt struct {
 	V int32
 }
@@ -5679,21 +5618,20 @@ var _ xdrType = (*DataEntryExt)(nil)
 
 // DataEntry is an XDR Struct defines as:
 //
-//   struct DataEntry
-//    {
-//        AccountID accountID; // account this data belongs to
-//        string64 dataName;
-//        DataValue dataValue;
+//	struct DataEntry
+//	 {
+//	     AccountID accountID; // account this data belongs to
+//	     string64 dataName;
+//	     DataValue dataValue;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type DataEntry struct {
 	AccountId AccountId
 	DataName  String64
@@ -5777,16 +5715,15 @@ var _ xdrType = (*DataEntry)(nil)
 
 // ClaimPredicateType is an XDR Enum defines as:
 //
-//   enum ClaimPredicateType
-//    {
-//        CLAIM_PREDICATE_UNCONDITIONAL = 0,
-//        CLAIM_PREDICATE_AND = 1,
-//        CLAIM_PREDICATE_OR = 2,
-//        CLAIM_PREDICATE_NOT = 3,
-//        CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME = 4,
-//        CLAIM_PREDICATE_BEFORE_RELATIVE_TIME = 5
-//    };
-//
+//	enum ClaimPredicateType
+//	 {
+//	     CLAIM_PREDICATE_UNCONDITIONAL = 0,
+//	     CLAIM_PREDICATE_AND = 1,
+//	     CLAIM_PREDICATE_OR = 2,
+//	     CLAIM_PREDICATE_NOT = 3,
+//	     CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME = 4,
+//	     CLAIM_PREDICATE_BEFORE_RELATIVE_TIME = 5
+//	 };
 type ClaimPredicateType int32
 
 const (
@@ -5873,23 +5810,22 @@ var _ xdrType = (*ClaimPredicateType)(nil)
 
 // ClaimPredicate is an XDR Union defines as:
 //
-//   union ClaimPredicate switch (ClaimPredicateType type)
-//    {
-//    case CLAIM_PREDICATE_UNCONDITIONAL:
-//        void;
-//    case CLAIM_PREDICATE_AND:
-//        ClaimPredicate andPredicates<2>;
-//    case CLAIM_PREDICATE_OR:
-//        ClaimPredicate orPredicates<2>;
-//    case CLAIM_PREDICATE_NOT:
-//        ClaimPredicate* notPredicate;
-//    case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-//        int64 absBefore; // Predicate will be true if closeTime < absBefore
-//    case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-//        int64 relBefore; // Seconds since closeTime of the ledger in which the
-//                         // ClaimableBalanceEntry was created
-//    };
-//
+//	union ClaimPredicate switch (ClaimPredicateType type)
+//	 {
+//	 case CLAIM_PREDICATE_UNCONDITIONAL:
+//	     void;
+//	 case CLAIM_PREDICATE_AND:
+//	     ClaimPredicate andPredicates<2>;
+//	 case CLAIM_PREDICATE_OR:
+//	     ClaimPredicate orPredicates<2>;
+//	 case CLAIM_PREDICATE_NOT:
+//	     ClaimPredicate* notPredicate;
+//	 case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
+//	     int64 absBefore; // Predicate will be true if closeTime < absBefore
+//	 case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
+//	     int64 relBefore; // Seconds since closeTime of the ledger in which the
+//	                      // ClaimableBalanceEntry was created
+//	 };
 type ClaimPredicate struct {
 	Type          ClaimPredicateType
 	AndPredicates *[]ClaimPredicate `xdrmaxsize:"2"`
@@ -6277,11 +6213,10 @@ var _ xdrType = (*ClaimPredicate)(nil)
 
 // ClaimantType is an XDR Enum defines as:
 //
-//   enum ClaimantType
-//    {
-//        CLAIMANT_TYPE_V0 = 0
-//    };
-//
+//	enum ClaimantType
+//	 {
+//	     CLAIMANT_TYPE_V0 = 0
+//	 };
 type ClaimantType int32
 
 const (
@@ -6358,12 +6293,11 @@ var _ xdrType = (*ClaimantType)(nil)
 
 // ClaimantV0 is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID destination;    // The account that can use this condition
-//            ClaimPredicate predicate; // Claimable if predicate is true
-//        }
-//
+//	struct
+//	     {
+//	         AccountID destination;    // The account that can use this condition
+//	         ClaimPredicate predicate; // Claimable if predicate is true
+//	     }
 type ClaimantV0 struct {
 	Destination AccountId
 	Predicate   ClaimPredicate
@@ -6429,16 +6363,15 @@ var _ xdrType = (*ClaimantV0)(nil)
 
 // Claimant is an XDR Union defines as:
 //
-//   union Claimant switch (ClaimantType type)
-//    {
-//    case CLAIMANT_TYPE_V0:
-//        struct
-//        {
-//            AccountID destination;    // The account that can use this condition
-//            ClaimPredicate predicate; // Claimable if predicate is true
-//        } v0;
-//    };
-//
+//	union Claimant switch (ClaimantType type)
+//	 {
+//	 case CLAIMANT_TYPE_V0:
+//	     struct
+//	     {
+//	         AccountID destination;    // The account that can use this condition
+//	         ClaimPredicate predicate; // Claimable if predicate is true
+//	     } v0;
+//	 };
 type Claimant struct {
 	Type ClaimantType
 	V0   *ClaimantV0
@@ -6569,11 +6502,10 @@ var _ xdrType = (*Claimant)(nil)
 
 // ClaimableBalanceIdType is an XDR Enum defines as:
 //
-//   enum ClaimableBalanceIDType
-//    {
-//        CLAIMABLE_BALANCE_ID_TYPE_V0 = 0
-//    };
-//
+//	enum ClaimableBalanceIDType
+//	 {
+//	     CLAIMABLE_BALANCE_ID_TYPE_V0 = 0
+//	 };
 type ClaimableBalanceIdType int32
 
 const (
@@ -6650,12 +6582,11 @@ var _ xdrType = (*ClaimableBalanceIdType)(nil)
 
 // ClaimableBalanceId is an XDR Union defines as:
 //
-//   union ClaimableBalanceID switch (ClaimableBalanceIDType type)
-//    {
-//    case CLAIMABLE_BALANCE_ID_TYPE_V0:
-//        Hash v0;
-//    };
-//
+//	union ClaimableBalanceID switch (ClaimableBalanceIDType type)
+//	 {
+//	 case CLAIMABLE_BALANCE_ID_TYPE_V0:
+//	     Hash v0;
+//	 };
 type ClaimableBalanceId struct {
 	Type ClaimableBalanceIdType
 	V0   *Hash
@@ -6786,13 +6717,12 @@ var _ xdrType = (*ClaimableBalanceId)(nil)
 
 // ClaimableBalanceFlags is an XDR Enum defines as:
 //
-//   enum ClaimableBalanceFlags
-//    {
-//        // If set, the issuer account of the asset held by the claimable balance may
-//        // clawback the claimable balance
-//        CLAIMABLE_BALANCE_CLAWBACK_ENABLED_FLAG = 0x1
-//    };
-//
+//	enum ClaimableBalanceFlags
+//	 {
+//	     // If set, the issuer account of the asset held by the claimable balance may
+//	     // clawback the claimable balance
+//	     CLAIMABLE_BALANCE_CLAWBACK_ENABLED_FLAG = 0x1
+//	 };
 type ClaimableBalanceFlags int32
 
 const (
@@ -6869,18 +6799,16 @@ var _ xdrType = (*ClaimableBalanceFlags)(nil)
 
 // MaskClaimableBalanceFlags is an XDR Const defines as:
 //
-//   const MASK_CLAIMABLE_BALANCE_FLAGS = 0x1;
-//
+//	const MASK_CLAIMABLE_BALANCE_FLAGS = 0x1;
 const MaskClaimableBalanceFlags = 0x1
 
 // ClaimableBalanceEntryExtensionV1Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type ClaimableBalanceEntryExtensionV1Ext struct {
 	V int32
 }
@@ -6973,18 +6901,17 @@ var _ xdrType = (*ClaimableBalanceEntryExtensionV1Ext)(nil)
 
 // ClaimableBalanceEntryExtensionV1 is an XDR Struct defines as:
 //
-//   struct ClaimableBalanceEntryExtensionV1
-//    {
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
+//	struct ClaimableBalanceEntryExtensionV1
+//	 {
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
 //
-//        uint32 flags; // see ClaimableBalanceFlags
-//    };
-//
+//	     uint32 flags; // see ClaimableBalanceFlags
+//	 };
 type ClaimableBalanceEntryExtensionV1 struct {
 	Ext   ClaimableBalanceEntryExtensionV1Ext
 	Flags Uint32
@@ -7050,14 +6977,13 @@ var _ xdrType = (*ClaimableBalanceEntryExtensionV1)(nil)
 
 // ClaimableBalanceEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            ClaimableBalanceEntryExtensionV1 v1;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         ClaimableBalanceEntryExtensionV1 v1;
+//	     }
 type ClaimableBalanceEntryExt struct {
 	V  int32
 	V1 *ClaimableBalanceEntryExtensionV1
@@ -7198,31 +7124,30 @@ var _ xdrType = (*ClaimableBalanceEntryExt)(nil)
 
 // ClaimableBalanceEntry is an XDR Struct defines as:
 //
-//   struct ClaimableBalanceEntry
-//    {
-//        // Unique identifier for this ClaimableBalanceEntry
-//        ClaimableBalanceID balanceID;
+//	struct ClaimableBalanceEntry
+//	 {
+//	     // Unique identifier for this ClaimableBalanceEntry
+//	     ClaimableBalanceID balanceID;
 //
-//        // List of claimants with associated predicate
-//        Claimant claimants<10>;
+//	     // List of claimants with associated predicate
+//	     Claimant claimants<10>;
 //
-//        // Any asset including native
-//        Asset asset;
+//	     // Any asset including native
+//	     Asset asset;
 //
-//        // Amount of asset
-//        int64 amount;
+//	     // Amount of asset
+//	     int64 amount;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            ClaimableBalanceEntryExtensionV1 v1;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         ClaimableBalanceEntryExtensionV1 v1;
+//	     }
+//	     ext;
+//	 };
 type ClaimableBalanceEntry struct {
 	BalanceId ClaimableBalanceId
 	Claimants []Claimant `xdrmaxsize:"10"`
@@ -7335,13 +7260,12 @@ var _ xdrType = (*ClaimableBalanceEntry)(nil)
 
 // LiquidityPoolConstantProductParameters is an XDR Struct defines as:
 //
-//   struct LiquidityPoolConstantProductParameters
-//    {
-//        Asset assetA; // assetA < assetB
-//        Asset assetB;
-//        int32 fee; // Fee is in basis points, so the actual rate is (fee/100)%
-//    };
-//
+//	struct LiquidityPoolConstantProductParameters
+//	 {
+//	     Asset assetA; // assetA < assetB
+//	     Asset assetB;
+//	     int32 fee; // Fee is in basis points, so the actual rate is (fee/100)%
+//	 };
 type LiquidityPoolConstantProductParameters struct {
 	AssetA Asset
 	AssetB Asset
@@ -7416,17 +7340,16 @@ var _ xdrType = (*LiquidityPoolConstantProductParameters)(nil)
 
 // LiquidityPoolEntryConstantProduct is an XDR NestedStruct defines as:
 //
-//   struct
-//            {
-//                LiquidityPoolConstantProductParameters params;
+//	struct
+//	         {
+//	             LiquidityPoolConstantProductParameters params;
 //
-//                int64 reserveA;        // amount of A in the pool
-//                int64 reserveB;        // amount of B in the pool
-//                int64 totalPoolShares; // total number of pool shares issued
-//                int64 poolSharesTrustLineCount; // number of trust lines for the
-//                                                // associated pool shares
-//            }
-//
+//	             int64 reserveA;        // amount of A in the pool
+//	             int64 reserveB;        // amount of B in the pool
+//	             int64 totalPoolShares; // total number of pool shares issued
+//	             int64 poolSharesTrustLineCount; // number of trust lines for the
+//	                                             // associated pool shares
+//	         }
 type LiquidityPoolEntryConstantProduct struct {
 	Params                   LiquidityPoolConstantProductParameters
 	ReserveA                 Int64
@@ -7519,21 +7442,20 @@ var _ xdrType = (*LiquidityPoolEntryConstantProduct)(nil)
 
 // LiquidityPoolEntryBody is an XDR NestedUnion defines as:
 //
-//   union switch (LiquidityPoolType type)
-//        {
-//        case LIQUIDITY_POOL_CONSTANT_PRODUCT:
-//            struct
-//            {
-//                LiquidityPoolConstantProductParameters params;
+//	union switch (LiquidityPoolType type)
+//	     {
+//	     case LIQUIDITY_POOL_CONSTANT_PRODUCT:
+//	         struct
+//	         {
+//	             LiquidityPoolConstantProductParameters params;
 //
-//                int64 reserveA;        // amount of A in the pool
-//                int64 reserveB;        // amount of B in the pool
-//                int64 totalPoolShares; // total number of pool shares issued
-//                int64 poolSharesTrustLineCount; // number of trust lines for the
-//                                                // associated pool shares
-//            } constantProduct;
-//        }
-//
+//	             int64 reserveA;        // amount of A in the pool
+//	             int64 reserveB;        // amount of B in the pool
+//	             int64 totalPoolShares; // total number of pool shares issued
+//	             int64 poolSharesTrustLineCount; // number of trust lines for the
+//	                                             // associated pool shares
+//	         } constantProduct;
+//	     }
 type LiquidityPoolEntryBody struct {
 	Type            LiquidityPoolType
 	ConstantProduct *LiquidityPoolEntryConstantProduct
@@ -7664,27 +7586,26 @@ var _ xdrType = (*LiquidityPoolEntryBody)(nil)
 
 // LiquidityPoolEntry is an XDR Struct defines as:
 //
-//   struct LiquidityPoolEntry
-//    {
-//        PoolID liquidityPoolID;
+//	struct LiquidityPoolEntry
+//	 {
+//	     PoolID liquidityPoolID;
 //
-//        union switch (LiquidityPoolType type)
-//        {
-//        case LIQUIDITY_POOL_CONSTANT_PRODUCT:
-//            struct
-//            {
-//                LiquidityPoolConstantProductParameters params;
+//	     union switch (LiquidityPoolType type)
+//	     {
+//	     case LIQUIDITY_POOL_CONSTANT_PRODUCT:
+//	         struct
+//	         {
+//	             LiquidityPoolConstantProductParameters params;
 //
-//                int64 reserveA;        // amount of A in the pool
-//                int64 reserveB;        // amount of B in the pool
-//                int64 totalPoolShares; // total number of pool shares issued
-//                int64 poolSharesTrustLineCount; // number of trust lines for the
-//                                                // associated pool shares
-//            } constantProduct;
-//        }
-//        body;
-//    };
-//
+//	             int64 reserveA;        // amount of A in the pool
+//	             int64 reserveB;        // amount of B in the pool
+//	             int64 totalPoolShares; // total number of pool shares issued
+//	             int64 poolSharesTrustLineCount; // number of trust lines for the
+//	                                             // associated pool shares
+//	         } constantProduct;
+//	     }
+//	     body;
+//	 };
 type LiquidityPoolEntry struct {
 	LiquidityPoolId PoolId
 	Body            LiquidityPoolEntryBody
@@ -7750,12 +7671,11 @@ var _ xdrType = (*LiquidityPoolEntry)(nil)
 
 // ContractDataEntry is an XDR Struct defines as:
 //
-//   struct ContractDataEntry {
-//        Hash contractID;
-//        SCVal key;
-//        SCVal val;
-//    };
-//
+//	struct ContractDataEntry {
+//	     Hash contractID;
+//	     SCVal key;
+//	     SCVal val;
+//	 };
 type ContractDataEntry struct {
 	ContractId Hash
 	Key        ScVal
@@ -7830,11 +7750,10 @@ var _ xdrType = (*ContractDataEntry)(nil)
 
 // ConfigSettingType is an XDR Enum defines as:
 //
-//   enum ConfigSettingType
-//    {
-//        CONFIG_SETTING_TYPE_UINT32 = 0
-//    };
-//
+//	enum ConfigSettingType
+//	 {
+//	     CONFIG_SETTING_TYPE_UINT32 = 0
+//	 };
 type ConfigSettingType int32
 
 const (
@@ -7911,12 +7830,11 @@ var _ xdrType = (*ConfigSettingType)(nil)
 
 // ConfigSetting is an XDR Union defines as:
 //
-//   union ConfigSetting switch (ConfigSettingType type)
-//    {
-//    case CONFIG_SETTING_TYPE_UINT32:
-//        uint32 uint32Val;
-//    };
-//
+//	union ConfigSetting switch (ConfigSettingType type)
+//	 {
+//	 case CONFIG_SETTING_TYPE_UINT32:
+//	     uint32 uint32Val;
+//	 };
 type ConfigSetting struct {
 	Type      ConfigSettingType
 	Uint32Val *Uint32
@@ -8047,11 +7965,10 @@ var _ xdrType = (*ConfigSetting)(nil)
 
 // ConfigSettingId is an XDR Enum defines as:
 //
-//   enum ConfigSettingID
-//    {
-//        CONFIG_SETTING_CONTRACT_MAX_SIZE = 0
-//    };
-//
+//	enum ConfigSettingID
+//	 {
+//	     CONFIG_SETTING_CONTRACT_MAX_SIZE = 0
+//	 };
 type ConfigSettingId int32
 
 const (
@@ -8128,12 +8045,11 @@ var _ xdrType = (*ConfigSettingId)(nil)
 
 // ConfigSettingEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type ConfigSettingEntryExt struct {
 	V int32
 }
@@ -8226,19 +8142,18 @@ var _ xdrType = (*ConfigSettingEntryExt)(nil)
 
 // ConfigSettingEntry is an XDR Struct defines as:
 //
-//   struct ConfigSettingEntry
-//    {
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
+//	struct ConfigSettingEntry
+//	 {
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
 //
-//        ConfigSettingID configSettingID;
-//        ConfigSetting setting;
-//    };
-//
+//	     ConfigSettingID configSettingID;
+//	     ConfigSetting setting;
+//	 };
 type ConfigSettingEntry struct {
 	Ext             ConfigSettingEntryExt
 	ConfigSettingId ConfigSettingId
@@ -8313,12 +8228,11 @@ var _ xdrType = (*ConfigSettingEntry)(nil)
 
 // LedgerEntryExtensionV1Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type LedgerEntryExtensionV1Ext struct {
 	V int32
 }
@@ -8411,18 +8325,17 @@ var _ xdrType = (*LedgerEntryExtensionV1Ext)(nil)
 
 // LedgerEntryExtensionV1 is an XDR Struct defines as:
 //
-//   struct LedgerEntryExtensionV1
-//    {
-//        SponsorshipDescriptor sponsoringID;
+//	struct LedgerEntryExtensionV1
+//	 {
+//	     SponsorshipDescriptor sponsoringID;
 //
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type LedgerEntryExtensionV1 struct {
 	SponsoringId SponsorshipDescriptor
 	Ext          LedgerEntryExtensionV1Ext
@@ -8503,26 +8416,25 @@ var _ xdrType = (*LedgerEntryExtensionV1)(nil)
 
 // LedgerEntryData is an XDR NestedUnion defines as:
 //
-//   union switch (LedgerEntryType type)
-//        {
-//        case ACCOUNT:
-//            AccountEntry account;
-//        case TRUSTLINE:
-//            TrustLineEntry trustLine;
-//        case OFFER:
-//            OfferEntry offer;
-//        case DATA:
-//            DataEntry data;
-//        case CLAIMABLE_BALANCE:
-//            ClaimableBalanceEntry claimableBalance;
-//        case LIQUIDITY_POOL:
-//            LiquidityPoolEntry liquidityPool;
-//        case CONTRACT_DATA:
-//            ContractDataEntry contractData;
-//        case CONFIG_SETTING:
-//            ConfigSettingEntry configSetting;
-//        }
-//
+//	union switch (LedgerEntryType type)
+//	     {
+//	     case ACCOUNT:
+//	         AccountEntry account;
+//	     case TRUSTLINE:
+//	         TrustLineEntry trustLine;
+//	     case OFFER:
+//	         OfferEntry offer;
+//	     case DATA:
+//	         DataEntry data;
+//	     case CLAIMABLE_BALANCE:
+//	         ClaimableBalanceEntry claimableBalance;
+//	     case LIQUIDITY_POOL:
+//	         LiquidityPoolEntry liquidityPool;
+//	     case CONTRACT_DATA:
+//	         ContractDataEntry contractData;
+//	     case CONFIG_SETTING:
+//	         ConfigSettingEntry configSetting;
+//	     }
 type LedgerEntryData struct {
 	Type             LedgerEntryType
 	Account          *AccountEntry
@@ -8989,14 +8901,13 @@ var _ xdrType = (*LedgerEntryData)(nil)
 
 // LedgerEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            LedgerEntryExtensionV1 v1;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         LedgerEntryExtensionV1 v1;
+//	     }
 type LedgerEntryExt struct {
 	V  int32
 	V1 *LedgerEntryExtensionV1
@@ -9137,42 +9048,41 @@ var _ xdrType = (*LedgerEntryExt)(nil)
 
 // LedgerEntry is an XDR Struct defines as:
 //
-//   struct LedgerEntry
-//    {
-//        uint32 lastModifiedLedgerSeq; // ledger the LedgerEntry was last changed
+//	struct LedgerEntry
+//	 {
+//	     uint32 lastModifiedLedgerSeq; // ledger the LedgerEntry was last changed
 //
-//        union switch (LedgerEntryType type)
-//        {
-//        case ACCOUNT:
-//            AccountEntry account;
-//        case TRUSTLINE:
-//            TrustLineEntry trustLine;
-//        case OFFER:
-//            OfferEntry offer;
-//        case DATA:
-//            DataEntry data;
-//        case CLAIMABLE_BALANCE:
-//            ClaimableBalanceEntry claimableBalance;
-//        case LIQUIDITY_POOL:
-//            LiquidityPoolEntry liquidityPool;
-//        case CONTRACT_DATA:
-//            ContractDataEntry contractData;
-//        case CONFIG_SETTING:
-//            ConfigSettingEntry configSetting;
-//        }
-//        data;
+//	     union switch (LedgerEntryType type)
+//	     {
+//	     case ACCOUNT:
+//	         AccountEntry account;
+//	     case TRUSTLINE:
+//	         TrustLineEntry trustLine;
+//	     case OFFER:
+//	         OfferEntry offer;
+//	     case DATA:
+//	         DataEntry data;
+//	     case CLAIMABLE_BALANCE:
+//	         ClaimableBalanceEntry claimableBalance;
+//	     case LIQUIDITY_POOL:
+//	         LiquidityPoolEntry liquidityPool;
+//	     case CONTRACT_DATA:
+//	         ContractDataEntry contractData;
+//	     case CONFIG_SETTING:
+//	         ConfigSettingEntry configSetting;
+//	     }
+//	     data;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            LedgerEntryExtensionV1 v1;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         LedgerEntryExtensionV1 v1;
+//	     }
+//	     ext;
+//	 };
 type LedgerEntry struct {
 	LastModifiedLedgerSeq Uint32
 	Data                  LedgerEntryData
@@ -9247,11 +9157,10 @@ var _ xdrType = (*LedgerEntry)(nil)
 
 // LedgerKeyAccount is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID accountID;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID accountID;
+//	     }
 type LedgerKeyAccount struct {
 	AccountId AccountId
 }
@@ -9308,12 +9217,11 @@ var _ xdrType = (*LedgerKeyAccount)(nil)
 
 // LedgerKeyTrustLine is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID accountID;
-//            TrustLineAsset asset;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID accountID;
+//	         TrustLineAsset asset;
+//	     }
 type LedgerKeyTrustLine struct {
 	AccountId AccountId
 	Asset     TrustLineAsset
@@ -9379,12 +9287,11 @@ var _ xdrType = (*LedgerKeyTrustLine)(nil)
 
 // LedgerKeyOffer is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID sellerID;
-//            int64 offerID;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID sellerID;
+//	         int64 offerID;
+//	     }
 type LedgerKeyOffer struct {
 	SellerId AccountId
 	OfferId  Int64
@@ -9450,12 +9357,11 @@ var _ xdrType = (*LedgerKeyOffer)(nil)
 
 // LedgerKeyData is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID accountID;
-//            string64 dataName;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID accountID;
+//	         string64 dataName;
+//	     }
 type LedgerKeyData struct {
 	AccountId AccountId
 	DataName  String64
@@ -9521,11 +9427,10 @@ var _ xdrType = (*LedgerKeyData)(nil)
 
 // LedgerKeyClaimableBalance is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            ClaimableBalanceID balanceID;
-//        }
-//
+//	struct
+//	     {
+//	         ClaimableBalanceID balanceID;
+//	     }
 type LedgerKeyClaimableBalance struct {
 	BalanceId ClaimableBalanceId
 }
@@ -9582,11 +9487,10 @@ var _ xdrType = (*LedgerKeyClaimableBalance)(nil)
 
 // LedgerKeyLiquidityPool is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            PoolID liquidityPoolID;
-//        }
-//
+//	struct
+//	     {
+//	         PoolID liquidityPoolID;
+//	     }
 type LedgerKeyLiquidityPool struct {
 	LiquidityPoolId PoolId
 }
@@ -9643,12 +9547,11 @@ var _ xdrType = (*LedgerKeyLiquidityPool)(nil)
 
 // LedgerKeyContractData is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            Hash contractID;
-//            SCVal key;
-//        }
-//
+//	struct
+//	     {
+//	         Hash contractID;
+//	         SCVal key;
+//	     }
 type LedgerKeyContractData struct {
 	ContractId Hash
 	Key        ScVal
@@ -9714,11 +9617,10 @@ var _ xdrType = (*LedgerKeyContractData)(nil)
 
 // LedgerKeyConfigSetting is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            ConfigSettingID configSettingID;
-//        }
-//
+//	struct
+//	     {
+//	         ConfigSettingID configSettingID;
+//	     }
 type LedgerKeyConfigSetting struct {
 	ConfigSettingId ConfigSettingId
 }
@@ -9775,59 +9677,58 @@ var _ xdrType = (*LedgerKeyConfigSetting)(nil)
 
 // LedgerKey is an XDR Union defines as:
 //
-//   union LedgerKey switch (LedgerEntryType type)
-//    {
-//    case ACCOUNT:
-//        struct
-//        {
-//            AccountID accountID;
-//        } account;
+//	union LedgerKey switch (LedgerEntryType type)
+//	 {
+//	 case ACCOUNT:
+//	     struct
+//	     {
+//	         AccountID accountID;
+//	     } account;
 //
-//    case TRUSTLINE:
-//        struct
-//        {
-//            AccountID accountID;
-//            TrustLineAsset asset;
-//        } trustLine;
+//	 case TRUSTLINE:
+//	     struct
+//	     {
+//	         AccountID accountID;
+//	         TrustLineAsset asset;
+//	     } trustLine;
 //
-//    case OFFER:
-//        struct
-//        {
-//            AccountID sellerID;
-//            int64 offerID;
-//        } offer;
+//	 case OFFER:
+//	     struct
+//	     {
+//	         AccountID sellerID;
+//	         int64 offerID;
+//	     } offer;
 //
-//    case DATA:
-//        struct
-//        {
-//            AccountID accountID;
-//            string64 dataName;
-//        } data;
+//	 case DATA:
+//	     struct
+//	     {
+//	         AccountID accountID;
+//	         string64 dataName;
+//	     } data;
 //
-//    case CLAIMABLE_BALANCE:
-//        struct
-//        {
-//            ClaimableBalanceID balanceID;
-//        } claimableBalance;
+//	 case CLAIMABLE_BALANCE:
+//	     struct
+//	     {
+//	         ClaimableBalanceID balanceID;
+//	     } claimableBalance;
 //
-//    case LIQUIDITY_POOL:
-//        struct
-//        {
-//            PoolID liquidityPoolID;
-//        } liquidityPool;
-//    case CONTRACT_DATA:
-//        struct
-//        {
-//            Hash contractID;
-//            SCVal key;
-//        } contractData;
-//    case CONFIG_SETTING:
-//        struct
-//        {
-//            ConfigSettingID configSettingID;
-//        } configSetting;
-//    };
-//
+//	 case LIQUIDITY_POOL:
+//	     struct
+//	     {
+//	         PoolID liquidityPoolID;
+//	     } liquidityPool;
+//	 case CONTRACT_DATA:
+//	     struct
+//	     {
+//	         Hash contractID;
+//	         SCVal key;
+//	     } contractData;
+//	 case CONFIG_SETTING:
+//	     struct
+//	     {
+//	         ConfigSettingID configSettingID;
+//	     } configSetting;
+//	 };
 type LedgerKey struct {
 	Type             LedgerEntryType
 	Account          *LedgerKeyAccount
@@ -10294,20 +10195,19 @@ var _ xdrType = (*LedgerKey)(nil)
 
 // EnvelopeType is an XDR Enum defines as:
 //
-//   enum EnvelopeType
-//    {
-//        ENVELOPE_TYPE_TX_V0 = 0,
-//        ENVELOPE_TYPE_SCP = 1,
-//        ENVELOPE_TYPE_TX = 2,
-//        ENVELOPE_TYPE_AUTH = 3,
-//        ENVELOPE_TYPE_SCPVALUE = 4,
-//        ENVELOPE_TYPE_TX_FEE_BUMP = 5,
-//        ENVELOPE_TYPE_OP_ID = 6,
-//        ENVELOPE_TYPE_POOL_REVOKE_OP_ID = 7,
-//        ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519 = 8,
-//        ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT = 9
-//    };
-//
+//	enum EnvelopeType
+//	 {
+//	     ENVELOPE_TYPE_TX_V0 = 0,
+//	     ENVELOPE_TYPE_SCP = 1,
+//	     ENVELOPE_TYPE_TX = 2,
+//	     ENVELOPE_TYPE_AUTH = 3,
+//	     ENVELOPE_TYPE_SCPVALUE = 4,
+//	     ENVELOPE_TYPE_TX_FEE_BUMP = 5,
+//	     ENVELOPE_TYPE_OP_ID = 6,
+//	     ENVELOPE_TYPE_POOL_REVOKE_OP_ID = 7,
+//	     ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519 = 8,
+//	     ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT = 9
+//	 };
 type EnvelopeType int32
 
 const (
@@ -10402,8 +10302,7 @@ var _ xdrType = (*EnvelopeType)(nil)
 
 // UpgradeType is an XDR Typedef defines as:
 //
-//   typedef opaque UpgradeType<128>;
-//
+//	typedef opaque UpgradeType<128>;
 type UpgradeType []byte
 
 // XDRMaxSize implements the Sized interface for UpgradeType
@@ -10463,12 +10362,11 @@ var _ xdrType = (*UpgradeType)(nil)
 
 // StellarValueType is an XDR Enum defines as:
 //
-//   enum StellarValueType
-//    {
-//        STELLAR_VALUE_BASIC = 0,
-//        STELLAR_VALUE_SIGNED = 1
-//    };
-//
+//	enum StellarValueType
+//	 {
+//	     STELLAR_VALUE_BASIC = 0,
+//	     STELLAR_VALUE_SIGNED = 1
+//	 };
 type StellarValueType int32
 
 const (
@@ -10547,12 +10445,11 @@ var _ xdrType = (*StellarValueType)(nil)
 
 // LedgerCloseValueSignature is an XDR Struct defines as:
 //
-//   struct LedgerCloseValueSignature
-//    {
-//        NodeID nodeID;       // which node introduced the value
-//        Signature signature; // nodeID's signature
-//    };
-//
+//	struct LedgerCloseValueSignature
+//	 {
+//	     NodeID nodeID;       // which node introduced the value
+//	     Signature signature; // nodeID's signature
+//	 };
 type LedgerCloseValueSignature struct {
 	NodeId    NodeId
 	Signature Signature
@@ -10618,14 +10515,13 @@ var _ xdrType = (*LedgerCloseValueSignature)(nil)
 
 // StellarValueExt is an XDR NestedUnion defines as:
 //
-//   union switch (StellarValueType v)
-//        {
-//        case STELLAR_VALUE_BASIC:
-//            void;
-//        case STELLAR_VALUE_SIGNED:
-//            LedgerCloseValueSignature lcValueSignature;
-//        }
-//
+//	union switch (StellarValueType v)
+//	     {
+//	     case STELLAR_VALUE_BASIC:
+//	         void;
+//	     case STELLAR_VALUE_SIGNED:
+//	         LedgerCloseValueSignature lcValueSignature;
+//	     }
 type StellarValueExt struct {
 	V                StellarValueType
 	LcValueSignature *LedgerCloseValueSignature
@@ -10766,29 +10662,28 @@ var _ xdrType = (*StellarValueExt)(nil)
 
 // StellarValue is an XDR Struct defines as:
 //
-//   struct StellarValue
-//    {
-//        Hash txSetHash;      // transaction set to apply to previous ledger
-//        TimePoint closeTime; // network close time
+//	struct StellarValue
+//	 {
+//	     Hash txSetHash;      // transaction set to apply to previous ledger
+//	     TimePoint closeTime; // network close time
 //
-//        // upgrades to apply to the previous ledger (usually empty)
-//        // this is a vector of encoded 'LedgerUpgrade' so that nodes can drop
-//        // unknown steps during consensus if needed.
-//        // see notes below on 'LedgerUpgrade' for more detail
-//        // max size is dictated by number of upgrade types (+ room for future)
-//        UpgradeType upgrades<6>;
+//	     // upgrades to apply to the previous ledger (usually empty)
+//	     // this is a vector of encoded 'LedgerUpgrade' so that nodes can drop
+//	     // unknown steps during consensus if needed.
+//	     // see notes below on 'LedgerUpgrade' for more detail
+//	     // max size is dictated by number of upgrade types (+ room for future)
+//	     UpgradeType upgrades<6>;
 //
-//        // reserved for future use
-//        union switch (StellarValueType v)
-//        {
-//        case STELLAR_VALUE_BASIC:
-//            void;
-//        case STELLAR_VALUE_SIGNED:
-//            LedgerCloseValueSignature lcValueSignature;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (StellarValueType v)
+//	     {
+//	     case STELLAR_VALUE_BASIC:
+//	         void;
+//	     case STELLAR_VALUE_SIGNED:
+//	         LedgerCloseValueSignature lcValueSignature;
+//	     }
+//	     ext;
+//	 };
 type StellarValue struct {
 	TxSetHash Hash
 	CloseTime TimePoint
@@ -10892,23 +10787,21 @@ var _ xdrType = (*StellarValue)(nil)
 
 // MaskLedgerHeaderFlags is an XDR Const defines as:
 //
-//   const MASK_LEDGER_HEADER_FLAGS = 0x7F;
-//
+//	const MASK_LEDGER_HEADER_FLAGS = 0x7F;
 const MaskLedgerHeaderFlags = 0x7F
 
 // LedgerHeaderFlags is an XDR Enum defines as:
 //
-//   enum LedgerHeaderFlags
-//    {
-//        DISABLE_LIQUIDITY_POOL_TRADING_FLAG = 0x1,
-//        DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG = 0x2,
-//        DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG = 0x4,
-//        DISABLE_CONTRACT_CREATE = 0x8,
-//        DISABLE_CONTRACT_UPDATE = 0x10,
-//        DISABLE_CONTRACT_REMOVE = 0x20,
-//        DISABLE_CONTRACT_INVOKE = 0x40
-//    };
-//
+//	enum LedgerHeaderFlags
+//	 {
+//	     DISABLE_LIQUIDITY_POOL_TRADING_FLAG = 0x1,
+//	     DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG = 0x2,
+//	     DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG = 0x4,
+//	     DISABLE_CONTRACT_CREATE = 0x8,
+//	     DISABLE_CONTRACT_UPDATE = 0x10,
+//	     DISABLE_CONTRACT_REMOVE = 0x20,
+//	     DISABLE_CONTRACT_INVOKE = 0x40
+//	 };
 type LedgerHeaderFlags int32
 
 const (
@@ -10997,12 +10890,11 @@ var _ xdrType = (*LedgerHeaderFlags)(nil)
 
 // LedgerHeaderExtensionV1Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type LedgerHeaderExtensionV1Ext struct {
 	V int32
 }
@@ -11095,18 +10987,17 @@ var _ xdrType = (*LedgerHeaderExtensionV1Ext)(nil)
 
 // LedgerHeaderExtensionV1 is an XDR Struct defines as:
 //
-//   struct LedgerHeaderExtensionV1
-//    {
-//        uint32 flags; // LedgerHeaderFlags
+//	struct LedgerHeaderExtensionV1
+//	 {
+//	     uint32 flags; // LedgerHeaderFlags
 //
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type LedgerHeaderExtensionV1 struct {
 	Flags Uint32
 	Ext   LedgerHeaderExtensionV1Ext
@@ -11172,14 +11063,13 @@ var _ xdrType = (*LedgerHeaderExtensionV1)(nil)
 
 // LedgerHeaderExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            LedgerHeaderExtensionV1 v1;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         LedgerHeaderExtensionV1 v1;
+//	     }
 type LedgerHeaderExt struct {
 	V  int32
 	V1 *LedgerHeaderExtensionV1
@@ -11320,46 +11210,45 @@ var _ xdrType = (*LedgerHeaderExt)(nil)
 
 // LedgerHeader is an XDR Struct defines as:
 //
-//   struct LedgerHeader
-//    {
-//        uint32 ledgerVersion;    // the protocol version of the ledger
-//        Hash previousLedgerHash; // hash of the previous ledger header
-//        StellarValue scpValue;   // what consensus agreed to
-//        Hash txSetResultHash;    // the TransactionResultSet that led to this ledger
-//        Hash bucketListHash;     // hash of the ledger state
+//	struct LedgerHeader
+//	 {
+//	     uint32 ledgerVersion;    // the protocol version of the ledger
+//	     Hash previousLedgerHash; // hash of the previous ledger header
+//	     StellarValue scpValue;   // what consensus agreed to
+//	     Hash txSetResultHash;    // the TransactionResultSet that led to this ledger
+//	     Hash bucketListHash;     // hash of the ledger state
 //
-//        uint32 ledgerSeq; // sequence number of this ledger
+//	     uint32 ledgerSeq; // sequence number of this ledger
 //
-//        int64 totalCoins; // total number of stroops in existence.
-//                          // 10,000,000 stroops in 1 XLM
+//	     int64 totalCoins; // total number of stroops in existence.
+//	                       // 10,000,000 stroops in 1 XLM
 //
-//        int64 feePool;       // fees burned since last inflation run
-//        uint32 inflationSeq; // inflation sequence number
+//	     int64 feePool;       // fees burned since last inflation run
+//	     uint32 inflationSeq; // inflation sequence number
 //
-//        uint64 idPool; // last used global ID, used for generating objects
+//	     uint64 idPool; // last used global ID, used for generating objects
 //
-//        uint32 baseFee;     // base fee per operation in stroops
-//        uint32 baseReserve; // account base reserve in stroops
+//	     uint32 baseFee;     // base fee per operation in stroops
+//	     uint32 baseReserve; // account base reserve in stroops
 //
-//        uint32 maxTxSetSize; // maximum size a transaction set can be
+//	     uint32 maxTxSetSize; // maximum size a transaction set can be
 //
-//        Hash skipList[4]; // hashes of ledgers in the past. allows you to jump back
-//                          // in time without walking the chain back ledger by ledger
-//                          // each slot contains the oldest ledger that is mod of
-//                          // either 50  5000  50000 or 500000 depending on index
-//                          // skipList[0] mod(50), skipList[1] mod(5000), etc
+//	     Hash skipList[4]; // hashes of ledgers in the past. allows you to jump back
+//	                       // in time without walking the chain back ledger by ledger
+//	                       // each slot contains the oldest ledger that is mod of
+//	                       // either 50  5000  50000 or 500000 depending on index
+//	                       // skipList[0] mod(50), skipList[1] mod(5000), etc
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            LedgerHeaderExtensionV1 v1;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         LedgerHeaderExtensionV1 v1;
+//	     }
+//	     ext;
+//	 };
 type LedgerHeader struct {
 	LedgerVersion      Uint32
 	PreviousLedgerHash Hash
@@ -11546,16 +11435,15 @@ var _ xdrType = (*LedgerHeader)(nil)
 
 // LedgerUpgradeType is an XDR Enum defines as:
 //
-//   enum LedgerUpgradeType
-//    {
-//        LEDGER_UPGRADE_VERSION = 1,
-//        LEDGER_UPGRADE_BASE_FEE = 2,
-//        LEDGER_UPGRADE_MAX_TX_SET_SIZE = 3,
-//        LEDGER_UPGRADE_BASE_RESERVE = 4,
-//        LEDGER_UPGRADE_FLAGS = 5,
-//        LEDGER_UPGRADE_CONFIG = 6
-//    };
-//
+//	enum LedgerUpgradeType
+//	 {
+//	     LEDGER_UPGRADE_VERSION = 1,
+//	     LEDGER_UPGRADE_BASE_FEE = 2,
+//	     LEDGER_UPGRADE_MAX_TX_SET_SIZE = 3,
+//	     LEDGER_UPGRADE_BASE_RESERVE = 4,
+//	     LEDGER_UPGRADE_FLAGS = 5,
+//	     LEDGER_UPGRADE_CONFIG = 6
+//	 };
 type LedgerUpgradeType int32
 
 const (
@@ -11642,12 +11530,11 @@ var _ xdrType = (*LedgerUpgradeType)(nil)
 
 // LedgerUpgradeConfigSetting is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            ConfigSettingID id; // id to update
-//            ConfigSetting setting; // new value
-//        }
-//
+//	struct
+//	     {
+//	         ConfigSettingID id; // id to update
+//	         ConfigSetting setting; // new value
+//	     }
 type LedgerUpgradeConfigSetting struct {
 	Id      ConfigSettingId
 	Setting ConfigSetting
@@ -11713,26 +11600,25 @@ var _ xdrType = (*LedgerUpgradeConfigSetting)(nil)
 
 // LedgerUpgrade is an XDR Union defines as:
 //
-//   union LedgerUpgrade switch (LedgerUpgradeType type)
-//    {
-//    case LEDGER_UPGRADE_VERSION:
-//        uint32 newLedgerVersion; // update ledgerVersion
-//    case LEDGER_UPGRADE_BASE_FEE:
-//        uint32 newBaseFee; // update baseFee
-//    case LEDGER_UPGRADE_MAX_TX_SET_SIZE:
-//        uint32 newMaxTxSetSize; // update maxTxSetSize
-//    case LEDGER_UPGRADE_BASE_RESERVE:
-//        uint32 newBaseReserve; // update baseReserve
-//    case LEDGER_UPGRADE_FLAGS:
-//        uint32 newFlags; // update flags
-//    case LEDGER_UPGRADE_CONFIG:
-//        struct
-//        {
-//            ConfigSettingID id; // id to update
-//            ConfigSetting setting; // new value
-//        } configSetting;
-//    };
-//
+//	union LedgerUpgrade switch (LedgerUpgradeType type)
+//	 {
+//	 case LEDGER_UPGRADE_VERSION:
+//	     uint32 newLedgerVersion; // update ledgerVersion
+//	 case LEDGER_UPGRADE_BASE_FEE:
+//	     uint32 newBaseFee; // update baseFee
+//	 case LEDGER_UPGRADE_MAX_TX_SET_SIZE:
+//	     uint32 newMaxTxSetSize; // update maxTxSetSize
+//	 case LEDGER_UPGRADE_BASE_RESERVE:
+//	     uint32 newBaseReserve; // update baseReserve
+//	 case LEDGER_UPGRADE_FLAGS:
+//	     uint32 newFlags; // update flags
+//	 case LEDGER_UPGRADE_CONFIG:
+//	     struct
+//	     {
+//	         ConfigSettingID id; // id to update
+//	         ConfigSetting setting; // new value
+//	     } configSetting;
+//	 };
 type LedgerUpgrade struct {
 	Type             LedgerUpgradeType
 	NewLedgerVersion *Uint32
@@ -12103,16 +11989,15 @@ var _ xdrType = (*LedgerUpgrade)(nil)
 
 // BucketEntryType is an XDR Enum defines as:
 //
-//   enum BucketEntryType
-//    {
-//        METAENTRY =
-//            -1, // At-and-after protocol 11: bucket metadata, should come first.
-//        LIVEENTRY = 0, // Before protocol 11: created-or-updated;
-//                       // At-and-after protocol 11: only updated.
-//        DEADENTRY = 1,
-//        INITENTRY = 2 // At-and-after protocol 11: only created.
-//    };
-//
+//	enum BucketEntryType
+//	 {
+//	     METAENTRY =
+//	         -1, // At-and-after protocol 11: bucket metadata, should come first.
+//	     LIVEENTRY = 0, // Before protocol 11: created-or-updated;
+//	                    // At-and-after protocol 11: only updated.
+//	     DEADENTRY = 1,
+//	     INITENTRY = 2 // At-and-after protocol 11: only created.
+//	 };
 type BucketEntryType int32
 
 const (
@@ -12195,12 +12080,11 @@ var _ xdrType = (*BucketEntryType)(nil)
 
 // BucketMetadataExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type BucketMetadataExt struct {
 	V int32
 }
@@ -12293,20 +12177,19 @@ var _ xdrType = (*BucketMetadataExt)(nil)
 
 // BucketMetadata is an XDR Struct defines as:
 //
-//   struct BucketMetadata
-//    {
-//        // Indicates the protocol version used to create / merge this bucket.
-//        uint32 ledgerVersion;
+//	struct BucketMetadata
+//	 {
+//	     // Indicates the protocol version used to create / merge this bucket.
+//	     uint32 ledgerVersion;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type BucketMetadata struct {
 	LedgerVersion Uint32
 	Ext           BucketMetadataExt
@@ -12372,18 +12255,17 @@ var _ xdrType = (*BucketMetadata)(nil)
 
 // BucketEntry is an XDR Union defines as:
 //
-//   union BucketEntry switch (BucketEntryType type)
-//    {
-//    case LIVEENTRY:
-//    case INITENTRY:
-//        LedgerEntry liveEntry;
+//	union BucketEntry switch (BucketEntryType type)
+//	 {
+//	 case LIVEENTRY:
+//	 case INITENTRY:
+//	     LedgerEntry liveEntry;
 //
-//    case DEADENTRY:
-//        LedgerKey deadEntry;
-//    case METAENTRY:
-//        BucketMetadata metaEntry;
-//    };
-//
+//	 case DEADENTRY:
+//	     LedgerKey deadEntry;
+//	 case METAENTRY:
+//	     BucketMetadata metaEntry;
+//	 };
 type BucketEntry struct {
 	Type      BucketEntryType
 	LiveEntry *LedgerEntry
@@ -12632,13 +12514,12 @@ var _ xdrType = (*BucketEntry)(nil)
 
 // TxSetComponentType is an XDR Enum defines as:
 //
-//   enum TxSetComponentType
-//    {
-//      // txs with effective fee <= bid derived from a base fee (if any).
-//      // If base fee is not specified, no discount is applied.
-//      TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE = 0
-//    };
-//
+//	enum TxSetComponentType
+//	 {
+//	   // txs with effective fee <= bid derived from a base fee (if any).
+//	   // If base fee is not specified, no discount is applied.
+//	   TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE = 0
+//	 };
 type TxSetComponentType int32
 
 const (
@@ -12715,12 +12596,11 @@ var _ xdrType = (*TxSetComponentType)(nil)
 
 // TxSetComponentTxsMaybeDiscountedFee is an XDR NestedStruct defines as:
 //
-//   struct
-//      {
-//        int64* baseFee;
-//        TransactionEnvelope txs<>;
-//      }
-//
+//	struct
+//	   {
+//	     int64* baseFee;
+//	     TransactionEnvelope txs<>;
+//	   }
 type TxSetComponentTxsMaybeDiscountedFee struct {
 	BaseFee *Int64
 	Txs     []TransactionEnvelope
@@ -12818,16 +12698,15 @@ var _ xdrType = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
 
 // TxSetComponent is an XDR Union defines as:
 //
-//   union TxSetComponent switch (TxSetComponentType type)
-//    {
-//    case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
-//      struct
-//      {
-//        int64* baseFee;
-//        TransactionEnvelope txs<>;
-//      } txsMaybeDiscountedFee;
-//    };
-//
+//	union TxSetComponent switch (TxSetComponentType type)
+//	 {
+//	 case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+//	   struct
+//	   {
+//	     int64* baseFee;
+//	     TransactionEnvelope txs<>;
+//	   } txsMaybeDiscountedFee;
+//	 };
 type TxSetComponent struct {
 	Type                  TxSetComponentType
 	TxsMaybeDiscountedFee *TxSetComponentTxsMaybeDiscountedFee
@@ -12958,12 +12837,11 @@ var _ xdrType = (*TxSetComponent)(nil)
 
 // TransactionPhase is an XDR Union defines as:
 //
-//   union TransactionPhase switch (int v)
-//    {
-//    case 0:
-//        TxSetComponent v0Components<>;
-//    };
-//
+//	union TransactionPhase switch (int v)
+//	 {
+//	 case 0:
+//	     TxSetComponent v0Components<>;
+//	 };
 type TransactionPhase struct {
 	V            int32
 	V0Components *[]TxSetComponent
@@ -13111,12 +12989,11 @@ var _ xdrType = (*TransactionPhase)(nil)
 
 // TransactionSet is an XDR Struct defines as:
 //
-//   struct TransactionSet
-//    {
-//        Hash previousLedgerHash;
-//        TransactionEnvelope txs<>;
-//    };
-//
+//	struct TransactionSet
+//	 {
+//	     Hash previousLedgerHash;
+//	     TransactionEnvelope txs<>;
+//	 };
 type TransactionSet struct {
 	PreviousLedgerHash Hash
 	Txs                []TransactionEnvelope
@@ -13199,12 +13076,11 @@ var _ xdrType = (*TransactionSet)(nil)
 
 // TransactionSetV1 is an XDR Struct defines as:
 //
-//   struct TransactionSetV1
-//    {
-//        Hash previousLedgerHash;
-//        TransactionPhase phases<>;
-//    };
-//
+//	struct TransactionSetV1
+//	 {
+//	     Hash previousLedgerHash;
+//	     TransactionPhase phases<>;
+//	 };
 type TransactionSetV1 struct {
 	PreviousLedgerHash Hash
 	Phases             []TransactionPhase
@@ -13287,13 +13163,12 @@ var _ xdrType = (*TransactionSetV1)(nil)
 
 // GeneralizedTransactionSet is an XDR Union defines as:
 //
-//   union GeneralizedTransactionSet switch (int v)
-//    {
-//    // We consider the legacy TransactionSet to be v0.
-//    case 1:
-//        TransactionSetV1 v1TxSet;
-//    };
-//
+//	union GeneralizedTransactionSet switch (int v)
+//	 {
+//	 // We consider the legacy TransactionSet to be v0.
+//	 case 1:
+//	     TransactionSetV1 v1TxSet;
+//	 };
 type GeneralizedTransactionSet struct {
 	V       int32
 	V1TxSet *TransactionSetV1
@@ -13424,12 +13299,11 @@ var _ xdrType = (*GeneralizedTransactionSet)(nil)
 
 // TransactionResultPair is an XDR Struct defines as:
 //
-//   struct TransactionResultPair
-//    {
-//        Hash transactionHash;
-//        TransactionResult result; // result for the transaction
-//    };
-//
+//	struct TransactionResultPair
+//	 {
+//	     Hash transactionHash;
+//	     TransactionResult result; // result for the transaction
+//	 };
 type TransactionResultPair struct {
 	TransactionHash Hash
 	Result          TransactionResult
@@ -13495,11 +13369,10 @@ var _ xdrType = (*TransactionResultPair)(nil)
 
 // TransactionResultSet is an XDR Struct defines as:
 //
-//   struct TransactionResultSet
-//    {
-//        TransactionResultPair results<>;
-//    };
-//
+//	struct TransactionResultSet
+//	 {
+//	     TransactionResultPair results<>;
+//	 };
 type TransactionResultSet struct {
 	Results []TransactionResultPair
 }
@@ -13573,14 +13446,13 @@ var _ xdrType = (*TransactionResultSet)(nil)
 
 // TransactionHistoryEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            GeneralizedTransactionSet generalizedTxSet;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         GeneralizedTransactionSet generalizedTxSet;
+//	     }
 type TransactionHistoryEntryExt struct {
 	V                int32
 	GeneralizedTxSet *GeneralizedTransactionSet
@@ -13721,22 +13593,21 @@ var _ xdrType = (*TransactionHistoryEntryExt)(nil)
 
 // TransactionHistoryEntry is an XDR Struct defines as:
 //
-//   struct TransactionHistoryEntry
-//    {
-//        uint32 ledgerSeq;
-//        TransactionSet txSet;
+//	struct TransactionHistoryEntry
+//	 {
+//	     uint32 ledgerSeq;
+//	     TransactionSet txSet;
 //
-//        // when v != 0, txSet must be empty
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        case 1:
-//            GeneralizedTransactionSet generalizedTxSet;
-//        }
-//        ext;
-//    };
-//
+//	     // when v != 0, txSet must be empty
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     case 1:
+//	         GeneralizedTransactionSet generalizedTxSet;
+//	     }
+//	     ext;
+//	 };
 type TransactionHistoryEntry struct {
 	LedgerSeq Uint32
 	TxSet     TransactionSet
@@ -13811,12 +13682,11 @@ var _ xdrType = (*TransactionHistoryEntry)(nil)
 
 // TransactionHistoryResultEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type TransactionHistoryResultEntryExt struct {
 	V int32
 }
@@ -13909,20 +13779,19 @@ var _ xdrType = (*TransactionHistoryResultEntryExt)(nil)
 
 // TransactionHistoryResultEntry is an XDR Struct defines as:
 //
-//   struct TransactionHistoryResultEntry
-//    {
-//        uint32 ledgerSeq;
-//        TransactionResultSet txResultSet;
+//	struct TransactionHistoryResultEntry
+//	 {
+//	     uint32 ledgerSeq;
+//	     TransactionResultSet txResultSet;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type TransactionHistoryResultEntry struct {
 	LedgerSeq   Uint32
 	TxResultSet TransactionResultSet
@@ -13997,13 +13866,12 @@ var _ xdrType = (*TransactionHistoryResultEntry)(nil)
 
 // TransactionResultPairV2 is an XDR Struct defines as:
 //
-//   struct TransactionResultPairV2
-//    {
-//        Hash transactionHash;
-//        Hash hashOfMetaHashes; // hash of hashes in TransactionMetaV3
-//                               // TransactionResult is in the meta
-//    };
-//
+//	struct TransactionResultPairV2
+//	 {
+//	     Hash transactionHash;
+//	     Hash hashOfMetaHashes; // hash of hashes in TransactionMetaV3
+//	                            // TransactionResult is in the meta
+//	 };
 type TransactionResultPairV2 struct {
 	TransactionHash  Hash
 	HashOfMetaHashes Hash
@@ -14069,11 +13937,10 @@ var _ xdrType = (*TransactionResultPairV2)(nil)
 
 // TransactionResultSetV2 is an XDR Struct defines as:
 //
-//   struct TransactionResultSetV2
-//    {
-//        TransactionResultPairV2 results<>;
-//    };
-//
+//	struct TransactionResultSetV2
+//	 {
+//	     TransactionResultPairV2 results<>;
+//	 };
 type TransactionResultSetV2 struct {
 	Results []TransactionResultPairV2
 }
@@ -14147,12 +14014,11 @@ var _ xdrType = (*TransactionResultSetV2)(nil)
 
 // TransactionHistoryResultEntryV2Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type TransactionHistoryResultEntryV2Ext struct {
 	V int32
 }
@@ -14245,20 +14111,19 @@ var _ xdrType = (*TransactionHistoryResultEntryV2Ext)(nil)
 
 // TransactionHistoryResultEntryV2 is an XDR Struct defines as:
 //
-//   struct TransactionHistoryResultEntryV2
-//    {
-//        uint32 ledgerSeq;
-//        TransactionResultSetV2 txResultSet;
+//	struct TransactionHistoryResultEntryV2
+//	 {
+//	     uint32 ledgerSeq;
+//	     TransactionResultSetV2 txResultSet;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type TransactionHistoryResultEntryV2 struct {
 	LedgerSeq   Uint32
 	TxResultSet TransactionResultSetV2
@@ -14333,12 +14198,11 @@ var _ xdrType = (*TransactionHistoryResultEntryV2)(nil)
 
 // LedgerHeaderHistoryEntryExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type LedgerHeaderHistoryEntryExt struct {
 	V int32
 }
@@ -14431,20 +14295,19 @@ var _ xdrType = (*LedgerHeaderHistoryEntryExt)(nil)
 
 // LedgerHeaderHistoryEntry is an XDR Struct defines as:
 //
-//   struct LedgerHeaderHistoryEntry
-//    {
-//        Hash hash;
-//        LedgerHeader header;
+//	struct LedgerHeaderHistoryEntry
+//	 {
+//	     Hash hash;
+//	     LedgerHeader header;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type LedgerHeaderHistoryEntry struct {
 	Hash   Hash
 	Header LedgerHeader
@@ -14519,12 +14382,11 @@ var _ xdrType = (*LedgerHeaderHistoryEntry)(nil)
 
 // LedgerScpMessages is an XDR Struct defines as:
 //
-//   struct LedgerSCPMessages
-//    {
-//        uint32 ledgerSeq;
-//        SCPEnvelope messages<>;
-//    };
-//
+//	struct LedgerSCPMessages
+//	 {
+//	     uint32 ledgerSeq;
+//	     SCPEnvelope messages<>;
+//	 };
 type LedgerScpMessages struct {
 	LedgerSeq Uint32
 	Messages  []ScpEnvelope
@@ -14607,12 +14469,11 @@ var _ xdrType = (*LedgerScpMessages)(nil)
 
 // ScpHistoryEntryV0 is an XDR Struct defines as:
 //
-//   struct SCPHistoryEntryV0
-//    {
-//        SCPQuorumSet quorumSets<>; // additional quorum sets used by ledgerMessages
-//        LedgerSCPMessages ledgerMessages;
-//    };
-//
+//	struct SCPHistoryEntryV0
+//	 {
+//	     SCPQuorumSet quorumSets<>; // additional quorum sets used by ledgerMessages
+//	     LedgerSCPMessages ledgerMessages;
+//	 };
 type ScpHistoryEntryV0 struct {
 	QuorumSets     []ScpQuorumSet
 	LedgerMessages LedgerScpMessages
@@ -14695,12 +14556,11 @@ var _ xdrType = (*ScpHistoryEntryV0)(nil)
 
 // ScpHistoryEntry is an XDR Union defines as:
 //
-//   union SCPHistoryEntry switch (int v)
-//    {
-//    case 0:
-//        SCPHistoryEntryV0 v0;
-//    };
-//
+//	union SCPHistoryEntry switch (int v)
+//	 {
+//	 case 0:
+//	     SCPHistoryEntryV0 v0;
+//	 };
 type ScpHistoryEntry struct {
 	V  int32
 	V0 *ScpHistoryEntryV0
@@ -14831,14 +14691,13 @@ var _ xdrType = (*ScpHistoryEntry)(nil)
 
 // LedgerEntryChangeType is an XDR Enum defines as:
 //
-//   enum LedgerEntryChangeType
-//    {
-//        LEDGER_ENTRY_CREATED = 0, // entry was added to the ledger
-//        LEDGER_ENTRY_UPDATED = 1, // entry was modified in the ledger
-//        LEDGER_ENTRY_REMOVED = 2, // entry was removed from the ledger
-//        LEDGER_ENTRY_STATE = 3    // value of the entry
-//    };
-//
+//	enum LedgerEntryChangeType
+//	 {
+//	     LEDGER_ENTRY_CREATED = 0, // entry was added to the ledger
+//	     LEDGER_ENTRY_UPDATED = 1, // entry was modified in the ledger
+//	     LEDGER_ENTRY_REMOVED = 2, // entry was removed from the ledger
+//	     LEDGER_ENTRY_STATE = 3    // value of the entry
+//	 };
 type LedgerEntryChangeType int32
 
 const (
@@ -14921,18 +14780,17 @@ var _ xdrType = (*LedgerEntryChangeType)(nil)
 
 // LedgerEntryChange is an XDR Union defines as:
 //
-//   union LedgerEntryChange switch (LedgerEntryChangeType type)
-//    {
-//    case LEDGER_ENTRY_CREATED:
-//        LedgerEntry created;
-//    case LEDGER_ENTRY_UPDATED:
-//        LedgerEntry updated;
-//    case LEDGER_ENTRY_REMOVED:
-//        LedgerKey removed;
-//    case LEDGER_ENTRY_STATE:
-//        LedgerEntry state;
-//    };
-//
+//	union LedgerEntryChange switch (LedgerEntryChangeType type)
+//	 {
+//	 case LEDGER_ENTRY_CREATED:
+//	     LedgerEntry created;
+//	 case LEDGER_ENTRY_UPDATED:
+//	     LedgerEntry updated;
+//	 case LEDGER_ENTRY_REMOVED:
+//	     LedgerKey removed;
+//	 case LEDGER_ENTRY_STATE:
+//	     LedgerEntry state;
+//	 };
 type LedgerEntryChange struct {
 	Type    LedgerEntryChangeType
 	Created *LedgerEntry
@@ -15207,8 +15065,7 @@ var _ xdrType = (*LedgerEntryChange)(nil)
 
 // LedgerEntryChanges is an XDR Typedef defines as:
 //
-//   typedef LedgerEntryChange LedgerEntryChanges<>;
-//
+//	typedef LedgerEntryChange LedgerEntryChanges<>;
 type LedgerEntryChanges []LedgerEntryChange
 
 // EncodeTo encodes this value using the Encoder.
@@ -15280,11 +15137,10 @@ var _ xdrType = (*LedgerEntryChanges)(nil)
 
 // OperationMeta is an XDR Struct defines as:
 //
-//   struct OperationMeta
-//    {
-//        LedgerEntryChanges changes;
-//    };
-//
+//	struct OperationMeta
+//	 {
+//	     LedgerEntryChanges changes;
+//	 };
 type OperationMeta struct {
 	Changes LedgerEntryChanges
 }
@@ -15341,12 +15197,11 @@ var _ xdrType = (*OperationMeta)(nil)
 
 // TransactionMetaV1 is an XDR Struct defines as:
 //
-//   struct TransactionMetaV1
-//    {
-//        LedgerEntryChanges txChanges; // tx level changes if any
-//        OperationMeta operations<>;   // meta for each operation
-//    };
-//
+//	struct TransactionMetaV1
+//	 {
+//	     LedgerEntryChanges txChanges; // tx level changes if any
+//	     OperationMeta operations<>;   // meta for each operation
+//	 };
 type TransactionMetaV1 struct {
 	TxChanges  LedgerEntryChanges
 	Operations []OperationMeta
@@ -15429,15 +15284,14 @@ var _ xdrType = (*TransactionMetaV1)(nil)
 
 // TransactionMetaV2 is an XDR Struct defines as:
 //
-//   struct TransactionMetaV2
-//    {
-//        LedgerEntryChanges txChangesBefore; // tx level changes before operations
-//                                            // are applied if any
-//        OperationMeta operations<>;         // meta for each operation
-//        LedgerEntryChanges txChangesAfter;  // tx level changes after operations are
-//                                            // applied if any
-//    };
-//
+//	struct TransactionMetaV2
+//	 {
+//	     LedgerEntryChanges txChangesBefore; // tx level changes before operations
+//	                                         // are applied if any
+//	     OperationMeta operations<>;         // meta for each operation
+//	     LedgerEntryChanges txChangesAfter;  // tx level changes after operations are
+//	                                         // applied if any
+//	 };
 type TransactionMetaV2 struct {
 	TxChangesBefore LedgerEntryChanges
 	Operations      []OperationMeta
@@ -15529,12 +15383,11 @@ var _ xdrType = (*TransactionMetaV2)(nil)
 
 // ContractEventType is an XDR Enum defines as:
 //
-//   enum ContractEventType
-//    {
-//        SYSTEM = 0,
-//        CONTRACT = 1
-//    };
-//
+//	enum ContractEventType
+//	 {
+//	     SYSTEM = 0,
+//	     CONTRACT = 1
+//	 };
 type ContractEventType int32
 
 const (
@@ -15613,12 +15466,11 @@ var _ xdrType = (*ContractEventType)(nil)
 
 // ContractEventV0 is an XDR NestedStruct defines as:
 //
-//   struct
-//            {
-//                SCVec topics;
-//                SCVal data;
-//            }
-//
+//	struct
+//	         {
+//	             SCVec topics;
+//	             SCVal data;
+//	         }
 type ContractEventV0 struct {
 	Topics ScVec
 	Data   ScVal
@@ -15684,16 +15536,15 @@ var _ xdrType = (*ContractEventV0)(nil)
 
 // ContractEventBody is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            struct
-//            {
-//                SCVec topics;
-//                SCVal data;
-//            } v0;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         struct
+//	         {
+//	             SCVec topics;
+//	             SCVal data;
+//	         } v0;
+//	     }
 type ContractEventBody struct {
 	V  int32
 	V0 *ContractEventV0
@@ -15824,27 +15675,26 @@ var _ xdrType = (*ContractEventBody)(nil)
 
 // ContractEvent is an XDR Struct defines as:
 //
-//   struct ContractEvent
-//    {
-//        // We can use this to add more fields, or because it
-//        // is first, to change ContractEvent into a union.
-//        ExtensionPoint ext;
+//	struct ContractEvent
+//	 {
+//	     // We can use this to add more fields, or because it
+//	     // is first, to change ContractEvent into a union.
+//	     ExtensionPoint ext;
 //
-//        Hash* contractID;
-//        ContractEventType type;
+//	     Hash* contractID;
+//	     ContractEventType type;
 //
-//        union switch (int v)
-//        {
-//        case 0:
-//            struct
-//            {
-//                SCVec topics;
-//                SCVal data;
-//            } v0;
-//        }
-//        body;
-//    };
-//
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         struct
+//	         {
+//	             SCVec topics;
+//	             SCVal data;
+//	         } v0;
+//	     }
+//	     body;
+//	 };
 type ContractEvent struct {
 	Ext        ExtensionPoint
 	ContractId *Hash
@@ -15943,21 +15793,20 @@ var _ xdrType = (*ContractEvent)(nil)
 
 // TransactionMetaV3 is an XDR Struct defines as:
 //
-//   struct TransactionMetaV3
-//    {
-//        LedgerEntryChanges txChangesBefore; // tx level changes before operations
-//                                            // are applied if any
-//        OperationMeta operations<>;         // meta for each operation
-//        LedgerEntryChanges txChangesAfter;  // tx level changes after operations are
-//                                            // applied if any
-//        ContractEvent events<>;            // custom events populated by the
-//                                            // contracts themselves
-//        TransactionResult txResult;
+//	struct TransactionMetaV3
+//	 {
+//	     LedgerEntryChanges txChangesBefore; // tx level changes before operations
+//	                                         // are applied if any
+//	     OperationMeta operations<>;         // meta for each operation
+//	     LedgerEntryChanges txChangesAfter;  // tx level changes after operations are
+//	                                         // applied if any
+//	     ContractEvent events<>;            // custom events populated by the
+//	                                         // contracts themselves
+//	     TransactionResult txResult;
 //
-//        Hash hashes[3];                     // stores sha256(txChangesBefore, operations, txChangesAfter),
-//                                            // sha256(events), and sha256(txResult)
-//    };
-//
+//	     Hash hashes[3];                     // stores sha256(txChangesBefore, operations, txChangesAfter),
+//	                                         // sha256(events), and sha256(txResult)
+//	 };
 type TransactionMetaV3 struct {
 	TxChangesBefore LedgerEntryChanges
 	Operations      []OperationMeta
@@ -16096,18 +15945,17 @@ var _ xdrType = (*TransactionMetaV3)(nil)
 
 // TransactionMeta is an XDR Union defines as:
 //
-//   union TransactionMeta switch (int v)
-//    {
-//    case 0:
-//        OperationMeta operations<>;
-//    case 1:
-//        TransactionMetaV1 v1;
-//    case 2:
-//        TransactionMetaV2 v2;
-//    case 3:
-//        TransactionMetaV3 v3;
-//    };
-//
+//	union TransactionMeta switch (int v)
+//	 {
+//	 case 0:
+//	     OperationMeta operations<>;
+//	 case 1:
+//	     TransactionMetaV1 v1;
+//	 case 2:
+//	     TransactionMetaV2 v2;
+//	 case 3:
+//	     TransactionMetaV3 v3;
+//	 };
 type TransactionMeta struct {
 	V          int32
 	Operations *[]OperationMeta
@@ -16399,13 +16247,12 @@ var _ xdrType = (*TransactionMeta)(nil)
 
 // TransactionResultMeta is an XDR Struct defines as:
 //
-//   struct TransactionResultMeta
-//    {
-//        TransactionResultPair result;
-//        LedgerEntryChanges feeProcessing;
-//        TransactionMeta txApplyProcessing;
-//    };
-//
+//	struct TransactionResultMeta
+//	 {
+//	     TransactionResultPair result;
+//	     LedgerEntryChanges feeProcessing;
+//	     TransactionMeta txApplyProcessing;
+//	 };
 type TransactionResultMeta struct {
 	Result            TransactionResultPair
 	FeeProcessing     LedgerEntryChanges
@@ -16480,13 +16327,12 @@ var _ xdrType = (*TransactionResultMeta)(nil)
 
 // TransactionResultMetaV2 is an XDR Struct defines as:
 //
-//   struct TransactionResultMetaV2
-//    {
-//        TransactionResultPairV2 result;
-//        LedgerEntryChanges feeProcessing;
-//        TransactionMeta txApplyProcessing;
-//    };
-//
+//	struct TransactionResultMetaV2
+//	 {
+//	     TransactionResultPairV2 result;
+//	     LedgerEntryChanges feeProcessing;
+//	     TransactionMeta txApplyProcessing;
+//	 };
 type TransactionResultMetaV2 struct {
 	Result            TransactionResultPairV2
 	FeeProcessing     LedgerEntryChanges
@@ -16561,12 +16407,11 @@ var _ xdrType = (*TransactionResultMetaV2)(nil)
 
 // UpgradeEntryMeta is an XDR Struct defines as:
 //
-//   struct UpgradeEntryMeta
-//    {
-//        LedgerUpgrade upgrade;
-//        LedgerEntryChanges changes;
-//    };
-//
+//	struct UpgradeEntryMeta
+//	 {
+//	     LedgerUpgrade upgrade;
+//	     LedgerEntryChanges changes;
+//	 };
 type UpgradeEntryMeta struct {
 	Upgrade LedgerUpgrade
 	Changes LedgerEntryChanges
@@ -16632,24 +16477,23 @@ var _ xdrType = (*UpgradeEntryMeta)(nil)
 
 // LedgerCloseMetaV0 is an XDR Struct defines as:
 //
-//   struct LedgerCloseMetaV0
-//    {
-//        LedgerHeaderHistoryEntry ledgerHeader;
-//        // NB: txSet is sorted in "Hash order"
-//        TransactionSet txSet;
+//	struct LedgerCloseMetaV0
+//	 {
+//	     LedgerHeaderHistoryEntry ledgerHeader;
+//	     // NB: txSet is sorted in "Hash order"
+//	     TransactionSet txSet;
 //
-//        // NB: transactions are sorted in apply order here
-//        // fees for all transactions are processed first
-//        // followed by applying transactions
-//        TransactionResultMeta txProcessing<>;
+//	     // NB: transactions are sorted in apply order here
+//	     // fees for all transactions are processed first
+//	     // followed by applying transactions
+//	     TransactionResultMeta txProcessing<>;
 //
-//        // upgrades are applied last
-//        UpgradeEntryMeta upgradesProcessing<>;
+//	     // upgrades are applied last
+//	     UpgradeEntryMeta upgradesProcessing<>;
 //
-//        // other misc information attached to the ledger close
-//        SCPHistoryEntry scpInfo<>;
-//    };
-//
+//	     // other misc information attached to the ledger close
+//	     SCPHistoryEntry scpInfo<>;
+//	 };
 type LedgerCloseMetaV0 struct {
 	LedgerHeader       LedgerHeaderHistoryEntry
 	TxSet              TransactionSet
@@ -16791,24 +16635,23 @@ var _ xdrType = (*LedgerCloseMetaV0)(nil)
 
 // LedgerCloseMetaV1 is an XDR Struct defines as:
 //
-//   struct LedgerCloseMetaV1
-//    {
-//        LedgerHeaderHistoryEntry ledgerHeader;
+//	struct LedgerCloseMetaV1
+//	 {
+//	     LedgerHeaderHistoryEntry ledgerHeader;
 //
-//        GeneralizedTransactionSet txSet;
+//	     GeneralizedTransactionSet txSet;
 //
-//        // NB: transactions are sorted in apply order here
-//        // fees for all transactions are processed first
-//        // followed by applying transactions
-//        TransactionResultMeta txProcessing<>;
+//	     // NB: transactions are sorted in apply order here
+//	     // fees for all transactions are processed first
+//	     // followed by applying transactions
+//	     TransactionResultMeta txProcessing<>;
 //
-//        // upgrades are applied last
-//        UpgradeEntryMeta upgradesProcessing<>;
+//	     // upgrades are applied last
+//	     UpgradeEntryMeta upgradesProcessing<>;
 //
-//        // other misc information attached to the ledger close
-//        SCPHistoryEntry scpInfo<>;
-//    };
-//
+//	     // other misc information attached to the ledger close
+//	     SCPHistoryEntry scpInfo<>;
+//	 };
 type LedgerCloseMetaV1 struct {
 	LedgerHeader       LedgerHeaderHistoryEntry
 	TxSet              GeneralizedTransactionSet
@@ -16950,24 +16793,23 @@ var _ xdrType = (*LedgerCloseMetaV1)(nil)
 
 // LedgerCloseMetaV2 is an XDR Struct defines as:
 //
-//   struct LedgerCloseMetaV2
-//    {
-//        LedgerHeaderHistoryEntry ledgerHeader;
+//	struct LedgerCloseMetaV2
+//	 {
+//	     LedgerHeaderHistoryEntry ledgerHeader;
 //
-//        GeneralizedTransactionSet txSet;
+//	     GeneralizedTransactionSet txSet;
 //
-//        // NB: transactions are sorted in apply order here
-//        // fees for all transactions are processed first
-//        // followed by applying transactions
-//        TransactionResultMetaV2 txProcessing<>;
+//	     // NB: transactions are sorted in apply order here
+//	     // fees for all transactions are processed first
+//	     // followed by applying transactions
+//	     TransactionResultMetaV2 txProcessing<>;
 //
-//        // upgrades are applied last
-//        UpgradeEntryMeta upgradesProcessing<>;
+//	     // upgrades are applied last
+//	     UpgradeEntryMeta upgradesProcessing<>;
 //
-//        // other misc information attached to the ledger close
-//        SCPHistoryEntry scpInfo<>;
-//    };
-//
+//	     // other misc information attached to the ledger close
+//	     SCPHistoryEntry scpInfo<>;
+//	 };
 type LedgerCloseMetaV2 struct {
 	LedgerHeader       LedgerHeaderHistoryEntry
 	TxSet              GeneralizedTransactionSet
@@ -17109,16 +16951,15 @@ var _ xdrType = (*LedgerCloseMetaV2)(nil)
 
 // LedgerCloseMeta is an XDR Union defines as:
 //
-//   union LedgerCloseMeta switch (int v)
-//    {
-//    case 0:
-//        LedgerCloseMetaV0 v0;
-//    case 1:
-//        LedgerCloseMetaV1 v1;
-//    case 2:
-//        LedgerCloseMetaV2 v2;
-//    };
-//
+//	union LedgerCloseMeta switch (int v)
+//	 {
+//	 case 0:
+//	     LedgerCloseMetaV0 v0;
+//	 case 1:
+//	     LedgerCloseMetaV1 v1;
+//	 case 2:
+//	     LedgerCloseMetaV2 v2;
+//	 };
 type LedgerCloseMeta struct {
 	V  int32
 	V0 *LedgerCloseMetaV0
@@ -17345,15 +17186,14 @@ var _ xdrType = (*LedgerCloseMeta)(nil)
 
 // ErrorCode is an XDR Enum defines as:
 //
-//   enum ErrorCode
-//    {
-//        ERR_MISC = 0, // Unspecific error
-//        ERR_DATA = 1, // Malformed data
-//        ERR_CONF = 2, // Misconfiguration error
-//        ERR_AUTH = 3, // Authentication failure
-//        ERR_LOAD = 4  // System overloaded
-//    };
-//
+//	enum ErrorCode
+//	 {
+//	     ERR_MISC = 0, // Unspecific error
+//	     ERR_DATA = 1, // Malformed data
+//	     ERR_CONF = 2, // Misconfiguration error
+//	     ERR_AUTH = 3, // Authentication failure
+//	     ERR_LOAD = 4  // System overloaded
+//	 };
 type ErrorCode int32
 
 const (
@@ -17438,12 +17278,11 @@ var _ xdrType = (*ErrorCode)(nil)
 
 // Error is an XDR Struct defines as:
 //
-//   struct Error
-//    {
-//        ErrorCode code;
-//        string msg<100>;
-//    };
-//
+//	struct Error
+//	 {
+//	     ErrorCode code;
+//	     string msg<100>;
+//	 };
 type Error struct {
 	Code ErrorCode
 	Msg  string `xdrmaxsize:"100"`
@@ -17509,11 +17348,10 @@ var _ xdrType = (*Error)(nil)
 
 // SendMore is an XDR Struct defines as:
 //
-//   struct SendMore
-//    {
-//        uint32 numMessages;
-//    };
-//
+//	struct SendMore
+//	 {
+//	     uint32 numMessages;
+//	 };
 type SendMore struct {
 	NumMessages Uint32
 }
@@ -17570,13 +17408,12 @@ var _ xdrType = (*SendMore)(nil)
 
 // AuthCert is an XDR Struct defines as:
 //
-//   struct AuthCert
-//    {
-//        Curve25519Public pubkey;
-//        uint64 expiration;
-//        Signature sig;
-//    };
-//
+//	struct AuthCert
+//	 {
+//	     Curve25519Public pubkey;
+//	     uint64 expiration;
+//	     Signature sig;
+//	 };
 type AuthCert struct {
 	Pubkey     Curve25519Public
 	Expiration Uint64
@@ -17651,19 +17488,18 @@ var _ xdrType = (*AuthCert)(nil)
 
 // Hello is an XDR Struct defines as:
 //
-//   struct Hello
-//    {
-//        uint32 ledgerVersion;
-//        uint32 overlayVersion;
-//        uint32 overlayMinVersion;
-//        Hash networkID;
-//        string versionStr<100>;
-//        int listeningPort;
-//        NodeID peerID;
-//        AuthCert cert;
-//        uint256 nonce;
-//    };
-//
+//	struct Hello
+//	 {
+//	     uint32 ledgerVersion;
+//	     uint32 overlayVersion;
+//	     uint32 overlayMinVersion;
+//	     Hash networkID;
+//	     string versionStr<100>;
+//	     int listeningPort;
+//	     NodeID peerID;
+//	     AuthCert cert;
+//	     uint256 nonce;
+//	 };
 type Hello struct {
 	LedgerVersion     Uint32
 	OverlayVersion    Uint32
@@ -17792,17 +17628,15 @@ var _ xdrType = (*Hello)(nil)
 
 // AuthMsgFlagPullModeRequested is an XDR Const defines as:
 //
-//   const AUTH_MSG_FLAG_PULL_MODE_REQUESTED = 100;
-//
+//	const AUTH_MSG_FLAG_PULL_MODE_REQUESTED = 100;
 const AuthMsgFlagPullModeRequested = 100
 
 // Auth is an XDR Struct defines as:
 //
-//   struct Auth
-//    {
-//        int flags;
-//    };
-//
+//	struct Auth
+//	 {
+//	     int flags;
+//	 };
 type Auth struct {
 	Flags int32
 }
@@ -17859,12 +17693,11 @@ var _ xdrType = (*Auth)(nil)
 
 // IpAddrType is an XDR Enum defines as:
 //
-//   enum IPAddrType
-//    {
-//        IPv4 = 0,
-//        IPv6 = 1
-//    };
-//
+//	enum IPAddrType
+//	 {
+//	     IPv4 = 0,
+//	     IPv6 = 1
+//	 };
 type IpAddrType int32
 
 const (
@@ -17943,14 +17776,13 @@ var _ xdrType = (*IpAddrType)(nil)
 
 // PeerAddressIp is an XDR NestedUnion defines as:
 //
-//   union switch (IPAddrType type)
-//        {
-//        case IPv4:
-//            opaque ipv4[4];
-//        case IPv6:
-//            opaque ipv6[16];
-//        }
-//
+//	union switch (IPAddrType type)
+//	     {
+//	     case IPv4:
+//	         opaque ipv4[4];
+//	     case IPv6:
+//	         opaque ipv6[16];
+//	     }
 type PeerAddressIp struct {
 	Type IpAddrType
 	Ipv4 *[4]byte  `xdrmaxsize:"4"`
@@ -18129,20 +17961,19 @@ var _ xdrType = (*PeerAddressIp)(nil)
 
 // PeerAddress is an XDR Struct defines as:
 //
-//   struct PeerAddress
-//    {
-//        union switch (IPAddrType type)
-//        {
-//        case IPv4:
-//            opaque ipv4[4];
-//        case IPv6:
-//            opaque ipv6[16];
-//        }
-//        ip;
-//        uint32 port;
-//        uint32 numFailures;
-//    };
-//
+//	struct PeerAddress
+//	 {
+//	     union switch (IPAddrType type)
+//	     {
+//	     case IPv4:
+//	         opaque ipv4[4];
+//	     case IPv6:
+//	         opaque ipv6[16];
+//	     }
+//	     ip;
+//	     uint32 port;
+//	     uint32 numFailures;
+//	 };
 type PeerAddress struct {
 	Ip          PeerAddressIp
 	Port        Uint32
@@ -18217,38 +18048,37 @@ var _ xdrType = (*PeerAddress)(nil)
 
 // MessageType is an XDR Enum defines as:
 //
-//   enum MessageType
-//    {
-//        ERROR_MSG = 0,
-//        AUTH = 2,
-//        DONT_HAVE = 3,
+//	enum MessageType
+//	 {
+//	     ERROR_MSG = 0,
+//	     AUTH = 2,
+//	     DONT_HAVE = 3,
 //
-//        GET_PEERS = 4, // gets a list of peers this guy knows about
-//        PEERS = 5,
+//	     GET_PEERS = 4, // gets a list of peers this guy knows about
+//	     PEERS = 5,
 //
-//        GET_TX_SET = 6, // gets a particular txset by hash
-//        TX_SET = 7,
-//        GENERALIZED_TX_SET = 17,
+//	     GET_TX_SET = 6, // gets a particular txset by hash
+//	     TX_SET = 7,
+//	     GENERALIZED_TX_SET = 17,
 //
-//        TRANSACTION = 8, // pass on a tx you have heard about
+//	     TRANSACTION = 8, // pass on a tx you have heard about
 //
-//        // SCP
-//        GET_SCP_QUORUMSET = 9,
-//        SCP_QUORUMSET = 10,
-//        SCP_MESSAGE = 11,
-//        GET_SCP_STATE = 12,
+//	     // SCP
+//	     GET_SCP_QUORUMSET = 9,
+//	     SCP_QUORUMSET = 10,
+//	     SCP_MESSAGE = 11,
+//	     GET_SCP_STATE = 12,
 //
-//        // new messages
-//        HELLO = 13,
+//	     // new messages
+//	     HELLO = 13,
 //
-//        SURVEY_REQUEST = 14,
-//        SURVEY_RESPONSE = 15,
+//	     SURVEY_REQUEST = 14,
+//	     SURVEY_RESPONSE = 15,
 //
-//        SEND_MORE = 16,
-//        FLOOD_ADVERT = 18,
-//        FLOOD_DEMAND = 19
-//    };
-//
+//	     SEND_MORE = 16,
+//	     FLOOD_ADVERT = 18,
+//	     FLOOD_DEMAND = 19
+//	 };
 type MessageType int32
 
 const (
@@ -18361,12 +18191,11 @@ var _ xdrType = (*MessageType)(nil)
 
 // DontHave is an XDR Struct defines as:
 //
-//   struct DontHave
-//    {
-//        MessageType type;
-//        uint256 reqHash;
-//    };
-//
+//	struct DontHave
+//	 {
+//	     MessageType type;
+//	     uint256 reqHash;
+//	 };
 type DontHave struct {
 	Type    MessageType
 	ReqHash Uint256
@@ -18432,11 +18261,10 @@ var _ xdrType = (*DontHave)(nil)
 
 // SurveyMessageCommandType is an XDR Enum defines as:
 //
-//   enum SurveyMessageCommandType
-//    {
-//        SURVEY_TOPOLOGY = 0
-//    };
-//
+//	enum SurveyMessageCommandType
+//	 {
+//	     SURVEY_TOPOLOGY = 0
+//	 };
 type SurveyMessageCommandType int32
 
 const (
@@ -18513,15 +18341,14 @@ var _ xdrType = (*SurveyMessageCommandType)(nil)
 
 // SurveyRequestMessage is an XDR Struct defines as:
 //
-//   struct SurveyRequestMessage
-//    {
-//        NodeID surveyorPeerID;
-//        NodeID surveyedPeerID;
-//        uint32 ledgerNum;
-//        Curve25519Public encryptionKey;
-//        SurveyMessageCommandType commandType;
-//    };
-//
+//	struct SurveyRequestMessage
+//	 {
+//	     NodeID surveyorPeerID;
+//	     NodeID surveyedPeerID;
+//	     uint32 ledgerNum;
+//	     Curve25519Public encryptionKey;
+//	     SurveyMessageCommandType commandType;
+//	 };
 type SurveyRequestMessage struct {
 	SurveyorPeerId NodeId
 	SurveyedPeerId NodeId
@@ -18614,12 +18441,11 @@ var _ xdrType = (*SurveyRequestMessage)(nil)
 
 // SignedSurveyRequestMessage is an XDR Struct defines as:
 //
-//   struct SignedSurveyRequestMessage
-//    {
-//        Signature requestSignature;
-//        SurveyRequestMessage request;
-//    };
-//
+//	struct SignedSurveyRequestMessage
+//	 {
+//	     Signature requestSignature;
+//	     SurveyRequestMessage request;
+//	 };
 type SignedSurveyRequestMessage struct {
 	RequestSignature Signature
 	Request          SurveyRequestMessage
@@ -18685,8 +18511,7 @@ var _ xdrType = (*SignedSurveyRequestMessage)(nil)
 
 // EncryptedBody is an XDR Typedef defines as:
 //
-//   typedef opaque EncryptedBody<64000>;
-//
+//	typedef opaque EncryptedBody<64000>;
 type EncryptedBody []byte
 
 // XDRMaxSize implements the Sized interface for EncryptedBody
@@ -18746,15 +18571,14 @@ var _ xdrType = (*EncryptedBody)(nil)
 
 // SurveyResponseMessage is an XDR Struct defines as:
 //
-//   struct SurveyResponseMessage
-//    {
-//        NodeID surveyorPeerID;
-//        NodeID surveyedPeerID;
-//        uint32 ledgerNum;
-//        SurveyMessageCommandType commandType;
-//        EncryptedBody encryptedBody;
-//    };
-//
+//	struct SurveyResponseMessage
+//	 {
+//	     NodeID surveyorPeerID;
+//	     NodeID surveyedPeerID;
+//	     uint32 ledgerNum;
+//	     SurveyMessageCommandType commandType;
+//	     EncryptedBody encryptedBody;
+//	 };
 type SurveyResponseMessage struct {
 	SurveyorPeerId NodeId
 	SurveyedPeerId NodeId
@@ -18847,12 +18671,11 @@ var _ xdrType = (*SurveyResponseMessage)(nil)
 
 // SignedSurveyResponseMessage is an XDR Struct defines as:
 //
-//   struct SignedSurveyResponseMessage
-//    {
-//        Signature responseSignature;
-//        SurveyResponseMessage response;
-//    };
-//
+//	struct SignedSurveyResponseMessage
+//	 {
+//	     Signature responseSignature;
+//	     SurveyResponseMessage response;
+//	 };
 type SignedSurveyResponseMessage struct {
 	ResponseSignature Signature
 	Response          SurveyResponseMessage
@@ -18918,27 +18741,26 @@ var _ xdrType = (*SignedSurveyResponseMessage)(nil)
 
 // PeerStats is an XDR Struct defines as:
 //
-//   struct PeerStats
-//    {
-//        NodeID id;
-//        string versionStr<100>;
-//        uint64 messagesRead;
-//        uint64 messagesWritten;
-//        uint64 bytesRead;
-//        uint64 bytesWritten;
-//        uint64 secondsConnected;
+//	struct PeerStats
+//	 {
+//	     NodeID id;
+//	     string versionStr<100>;
+//	     uint64 messagesRead;
+//	     uint64 messagesWritten;
+//	     uint64 bytesRead;
+//	     uint64 bytesWritten;
+//	     uint64 secondsConnected;
 //
-//        uint64 uniqueFloodBytesRecv;
-//        uint64 duplicateFloodBytesRecv;
-//        uint64 uniqueFetchBytesRecv;
-//        uint64 duplicateFetchBytesRecv;
+//	     uint64 uniqueFloodBytesRecv;
+//	     uint64 duplicateFloodBytesRecv;
+//	     uint64 uniqueFetchBytesRecv;
+//	     uint64 duplicateFetchBytesRecv;
 //
-//        uint64 uniqueFloodMessageRecv;
-//        uint64 duplicateFloodMessageRecv;
-//        uint64 uniqueFetchMessageRecv;
-//        uint64 duplicateFetchMessageRecv;
-//    };
-//
+//	     uint64 uniqueFloodMessageRecv;
+//	     uint64 duplicateFloodMessageRecv;
+//	     uint64 uniqueFetchMessageRecv;
+//	     uint64 duplicateFetchMessageRecv;
+//	 };
 type PeerStats struct {
 	Id                        NodeId
 	VersionStr                string `xdrmaxsize:"100"`
@@ -19121,8 +18943,7 @@ var _ xdrType = (*PeerStats)(nil)
 
 // PeerStatList is an XDR Typedef defines as:
 //
-//   typedef PeerStats PeerStatList<25>;
-//
+//	typedef PeerStats PeerStatList<25>;
 type PeerStatList []PeerStats
 
 // XDRMaxSize implements the Sized interface for PeerStatList
@@ -19202,15 +19023,14 @@ var _ xdrType = (*PeerStatList)(nil)
 
 // TopologyResponseBody is an XDR Struct defines as:
 //
-//   struct TopologyResponseBody
-//    {
-//        PeerStatList inboundPeers;
-//        PeerStatList outboundPeers;
+//	struct TopologyResponseBody
+//	 {
+//	     PeerStatList inboundPeers;
+//	     PeerStatList outboundPeers;
 //
-//        uint32 totalInboundPeerCount;
-//        uint32 totalOutboundPeerCount;
-//    };
-//
+//	     uint32 totalInboundPeerCount;
+//	     uint32 totalOutboundPeerCount;
+//	 };
 type TopologyResponseBody struct {
 	InboundPeers           PeerStatList
 	OutboundPeers          PeerStatList
@@ -19294,14 +19114,12 @@ var _ xdrType = (*TopologyResponseBody)(nil)
 
 // TxAdvertVectorMaxSize is an XDR Const defines as:
 //
-//   const TX_ADVERT_VECTOR_MAX_SIZE = 1000;
-//
+//	const TX_ADVERT_VECTOR_MAX_SIZE = 1000;
 const TxAdvertVectorMaxSize = 1000
 
 // TxAdvertVector is an XDR Typedef defines as:
 //
-//   typedef Hash TxAdvertVector<TX_ADVERT_VECTOR_MAX_SIZE>;
-//
+//	typedef Hash TxAdvertVector<TX_ADVERT_VECTOR_MAX_SIZE>;
 type TxAdvertVector []Hash
 
 // XDRMaxSize implements the Sized interface for TxAdvertVector
@@ -19381,11 +19199,10 @@ var _ xdrType = (*TxAdvertVector)(nil)
 
 // FloodAdvert is an XDR Struct defines as:
 //
-//   struct FloodAdvert
-//    {
-//        TxAdvertVector txHashes;
-//    };
-//
+//	struct FloodAdvert
+//	 {
+//	     TxAdvertVector txHashes;
+//	 };
 type FloodAdvert struct {
 	TxHashes TxAdvertVector
 }
@@ -19442,14 +19259,12 @@ var _ xdrType = (*FloodAdvert)(nil)
 
 // TxDemandVectorMaxSize is an XDR Const defines as:
 //
-//   const TX_DEMAND_VECTOR_MAX_SIZE = 1000;
-//
+//	const TX_DEMAND_VECTOR_MAX_SIZE = 1000;
 const TxDemandVectorMaxSize = 1000
 
 // TxDemandVector is an XDR Typedef defines as:
 //
-//   typedef Hash TxDemandVector<TX_DEMAND_VECTOR_MAX_SIZE>;
-//
+//	typedef Hash TxDemandVector<TX_DEMAND_VECTOR_MAX_SIZE>;
 type TxDemandVector []Hash
 
 // XDRMaxSize implements the Sized interface for TxDemandVector
@@ -19529,11 +19344,10 @@ var _ xdrType = (*TxDemandVector)(nil)
 
 // FloodDemand is an XDR Struct defines as:
 //
-//   struct FloodDemand
-//    {
-//        TxDemandVector txHashes;
-//    };
-//
+//	struct FloodDemand
+//	 {
+//	     TxDemandVector txHashes;
+//	 };
 type FloodDemand struct {
 	TxHashes TxDemandVector
 }
@@ -19590,12 +19404,11 @@ var _ xdrType = (*FloodDemand)(nil)
 
 // SurveyResponseBody is an XDR Union defines as:
 //
-//   union SurveyResponseBody switch (SurveyMessageCommandType type)
-//    {
-//    case SURVEY_TOPOLOGY:
-//        TopologyResponseBody topologyResponseBody;
-//    };
-//
+//	union SurveyResponseBody switch (SurveyMessageCommandType type)
+//	 {
+//	 case SURVEY_TOPOLOGY:
+//	     TopologyResponseBody topologyResponseBody;
+//	 };
 type SurveyResponseBody struct {
 	Type                 SurveyMessageCommandType
 	TopologyResponseBody *TopologyResponseBody
@@ -19726,56 +19539,55 @@ var _ xdrType = (*SurveyResponseBody)(nil)
 
 // StellarMessage is an XDR Union defines as:
 //
-//   union StellarMessage switch (MessageType type)
-//    {
-//    case ERROR_MSG:
-//        Error error;
-//    case HELLO:
-//        Hello hello;
-//    case AUTH:
-//        Auth auth;
-//    case DONT_HAVE:
-//        DontHave dontHave;
-//    case GET_PEERS:
-//        void;
-//    case PEERS:
-//        PeerAddress peers<100>;
+//	union StellarMessage switch (MessageType type)
+//	 {
+//	 case ERROR_MSG:
+//	     Error error;
+//	 case HELLO:
+//	     Hello hello;
+//	 case AUTH:
+//	     Auth auth;
+//	 case DONT_HAVE:
+//	     DontHave dontHave;
+//	 case GET_PEERS:
+//	     void;
+//	 case PEERS:
+//	     PeerAddress peers<100>;
 //
-//    case GET_TX_SET:
-//        uint256 txSetHash;
-//    case TX_SET:
-//        TransactionSet txSet;
-//    case GENERALIZED_TX_SET:
-//        GeneralizedTransactionSet generalizedTxSet;
+//	 case GET_TX_SET:
+//	     uint256 txSetHash;
+//	 case TX_SET:
+//	     TransactionSet txSet;
+//	 case GENERALIZED_TX_SET:
+//	     GeneralizedTransactionSet generalizedTxSet;
 //
-//    case TRANSACTION:
-//        TransactionEnvelope transaction;
+//	 case TRANSACTION:
+//	     TransactionEnvelope transaction;
 //
-//    case SURVEY_REQUEST:
-//        SignedSurveyRequestMessage signedSurveyRequestMessage;
+//	 case SURVEY_REQUEST:
+//	     SignedSurveyRequestMessage signedSurveyRequestMessage;
 //
-//    case SURVEY_RESPONSE:
-//        SignedSurveyResponseMessage signedSurveyResponseMessage;
+//	 case SURVEY_RESPONSE:
+//	     SignedSurveyResponseMessage signedSurveyResponseMessage;
 //
-//    // SCP
-//    case GET_SCP_QUORUMSET:
-//        uint256 qSetHash;
-//    case SCP_QUORUMSET:
-//        SCPQuorumSet qSet;
-//    case SCP_MESSAGE:
-//        SCPEnvelope envelope;
-//    case GET_SCP_STATE:
-//        uint32 getSCPLedgerSeq; // ledger seq requested ; if 0, requests the latest
-//    case SEND_MORE:
-//        SendMore sendMoreMessage;
+//	 // SCP
+//	 case GET_SCP_QUORUMSET:
+//	     uint256 qSetHash;
+//	 case SCP_QUORUMSET:
+//	     SCPQuorumSet qSet;
+//	 case SCP_MESSAGE:
+//	     SCPEnvelope envelope;
+//	 case GET_SCP_STATE:
+//	     uint32 getSCPLedgerSeq; // ledger seq requested ; if 0, requests the latest
+//	 case SEND_MORE:
+//	     SendMore sendMoreMessage;
 //
-//    // Pull mode
-//    case FLOOD_ADVERT:
-//        FloodAdvert floodAdvert;
-//    case FLOOD_DEMAND:
-//        FloodDemand floodDemand;
-//    };
-//
+//	 // Pull mode
+//	 case FLOOD_ADVERT:
+//	     FloodAdvert floodAdvert;
+//	 case FLOOD_DEMAND:
+//	     FloodDemand floodDemand;
+//	 };
 type StellarMessage struct {
 	Type                        MessageType
 	Error                       *Error
@@ -20752,13 +20564,12 @@ var _ xdrType = (*StellarMessage)(nil)
 
 // AuthenticatedMessageV0 is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            uint64 sequence;
-//            StellarMessage message;
-//            HmacSha256Mac mac;
-//        }
-//
+//	struct
+//	     {
+//	         uint64 sequence;
+//	         StellarMessage message;
+//	         HmacSha256Mac mac;
+//	     }
 type AuthenticatedMessageV0 struct {
 	Sequence Uint64
 	Message  StellarMessage
@@ -20833,17 +20644,16 @@ var _ xdrType = (*AuthenticatedMessageV0)(nil)
 
 // AuthenticatedMessage is an XDR Union defines as:
 //
-//   union AuthenticatedMessage switch (uint32 v)
-//    {
-//    case 0:
-//        struct
-//        {
-//            uint64 sequence;
-//            StellarMessage message;
-//            HmacSha256Mac mac;
-//        } v0;
-//    };
-//
+//	union AuthenticatedMessage switch (uint32 v)
+//	 {
+//	 case 0:
+//	     struct
+//	     {
+//	         uint64 sequence;
+//	         StellarMessage message;
+//	         HmacSha256Mac mac;
+//	     } v0;
+//	 };
 type AuthenticatedMessage struct {
 	V  Uint32
 	V0 *AuthenticatedMessageV0
@@ -20974,12 +20784,11 @@ var _ xdrType = (*AuthenticatedMessage)(nil)
 
 // LiquidityPoolParameters is an XDR Union defines as:
 //
-//   union LiquidityPoolParameters switch (LiquidityPoolType type)
-//    {
-//    case LIQUIDITY_POOL_CONSTANT_PRODUCT:
-//        LiquidityPoolConstantProductParameters constantProduct;
-//    };
-//
+//	union LiquidityPoolParameters switch (LiquidityPoolType type)
+//	 {
+//	 case LIQUIDITY_POOL_CONSTANT_PRODUCT:
+//	     LiquidityPoolConstantProductParameters constantProduct;
+//	 };
 type LiquidityPoolParameters struct {
 	Type            LiquidityPoolType
 	ConstantProduct *LiquidityPoolConstantProductParameters
@@ -21110,12 +20919,11 @@ var _ xdrType = (*LiquidityPoolParameters)(nil)
 
 // MuxedAccountMed25519 is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            uint64 id;
-//            uint256 ed25519;
-//        }
-//
+//	struct
+//	     {
+//	         uint64 id;
+//	         uint256 ed25519;
+//	     }
 type MuxedAccountMed25519 struct {
 	Id      Uint64
 	Ed25519 Uint256
@@ -21181,18 +20989,17 @@ var _ xdrType = (*MuxedAccountMed25519)(nil)
 
 // MuxedAccount is an XDR Union defines as:
 //
-//   union MuxedAccount switch (CryptoKeyType type)
-//    {
-//    case KEY_TYPE_ED25519:
-//        uint256 ed25519;
-//    case KEY_TYPE_MUXED_ED25519:
-//        struct
-//        {
-//            uint64 id;
-//            uint256 ed25519;
-//        } med25519;
-//    };
-//
+//	union MuxedAccount switch (CryptoKeyType type)
+//	 {
+//	 case KEY_TYPE_ED25519:
+//	     uint256 ed25519;
+//	 case KEY_TYPE_MUXED_ED25519:
+//	     struct
+//	     {
+//	         uint64 id;
+//	         uint256 ed25519;
+//	     } med25519;
+//	 };
 type MuxedAccount struct {
 	Type     CryptoKeyType
 	Ed25519  *Uint256
@@ -21371,12 +21178,11 @@ var _ xdrType = (*MuxedAccount)(nil)
 
 // DecoratedSignature is an XDR Struct defines as:
 //
-//   struct DecoratedSignature
-//    {
-//        SignatureHint hint;  // last 4 bytes of the public key, used as a hint
-//        Signature signature; // actual signature
-//    };
-//
+//	struct DecoratedSignature
+//	 {
+//	     SignatureHint hint;  // last 4 bytes of the public key, used as a hint
+//	     Signature signature; // actual signature
+//	 };
 type DecoratedSignature struct {
 	Hint      SignatureHint
 	Signature Signature
@@ -21442,12 +21248,11 @@ var _ xdrType = (*DecoratedSignature)(nil)
 
 // LedgerFootprint is an XDR Struct defines as:
 //
-//   struct LedgerFootprint
-//    {
-//        LedgerKey readOnly<>;
-//        LedgerKey readWrite<>;
-//    };
-//
+//	struct LedgerFootprint
+//	 {
+//	     LedgerKey readOnly<>;
+//	     LedgerKey readWrite<>;
+//	 };
 type LedgerFootprint struct {
 	ReadOnly  []LedgerKey
 	ReadWrite []LedgerKey
@@ -21546,35 +21351,34 @@ var _ xdrType = (*LedgerFootprint)(nil)
 
 // OperationType is an XDR Enum defines as:
 //
-//   enum OperationType
-//    {
-//        CREATE_ACCOUNT = 0,
-//        PAYMENT = 1,
-//        PATH_PAYMENT_STRICT_RECEIVE = 2,
-//        MANAGE_SELL_OFFER = 3,
-//        CREATE_PASSIVE_SELL_OFFER = 4,
-//        SET_OPTIONS = 5,
-//        CHANGE_TRUST = 6,
-//        ALLOW_TRUST = 7,
-//        ACCOUNT_MERGE = 8,
-//        INFLATION = 9,
-//        MANAGE_DATA = 10,
-//        BUMP_SEQUENCE = 11,
-//        MANAGE_BUY_OFFER = 12,
-//        PATH_PAYMENT_STRICT_SEND = 13,
-//        CREATE_CLAIMABLE_BALANCE = 14,
-//        CLAIM_CLAIMABLE_BALANCE = 15,
-//        BEGIN_SPONSORING_FUTURE_RESERVES = 16,
-//        END_SPONSORING_FUTURE_RESERVES = 17,
-//        REVOKE_SPONSORSHIP = 18,
-//        CLAWBACK = 19,
-//        CLAWBACK_CLAIMABLE_BALANCE = 20,
-//        SET_TRUST_LINE_FLAGS = 21,
-//        LIQUIDITY_POOL_DEPOSIT = 22,
-//        LIQUIDITY_POOL_WITHDRAW = 23,
-//        INVOKE_HOST_FUNCTION = 24
-//    };
-//
+//	enum OperationType
+//	 {
+//	     CREATE_ACCOUNT = 0,
+//	     PAYMENT = 1,
+//	     PATH_PAYMENT_STRICT_RECEIVE = 2,
+//	     MANAGE_SELL_OFFER = 3,
+//	     CREATE_PASSIVE_SELL_OFFER = 4,
+//	     SET_OPTIONS = 5,
+//	     CHANGE_TRUST = 6,
+//	     ALLOW_TRUST = 7,
+//	     ACCOUNT_MERGE = 8,
+//	     INFLATION = 9,
+//	     MANAGE_DATA = 10,
+//	     BUMP_SEQUENCE = 11,
+//	     MANAGE_BUY_OFFER = 12,
+//	     PATH_PAYMENT_STRICT_SEND = 13,
+//	     CREATE_CLAIMABLE_BALANCE = 14,
+//	     CLAIM_CLAIMABLE_BALANCE = 15,
+//	     BEGIN_SPONSORING_FUTURE_RESERVES = 16,
+//	     END_SPONSORING_FUTURE_RESERVES = 17,
+//	     REVOKE_SPONSORSHIP = 18,
+//	     CLAWBACK = 19,
+//	     CLAWBACK_CLAIMABLE_BALANCE = 20,
+//	     SET_TRUST_LINE_FLAGS = 21,
+//	     LIQUIDITY_POOL_DEPOSIT = 22,
+//	     LIQUIDITY_POOL_WITHDRAW = 23,
+//	     INVOKE_HOST_FUNCTION = 24
+//	 };
 type OperationType int32
 
 const (
@@ -21699,12 +21503,11 @@ var _ xdrType = (*OperationType)(nil)
 
 // CreateAccountOp is an XDR Struct defines as:
 //
-//   struct CreateAccountOp
-//    {
-//        AccountID destination; // account to create
-//        int64 startingBalance; // amount they end up with
-//    };
-//
+//	struct CreateAccountOp
+//	 {
+//	     AccountID destination; // account to create
+//	     int64 startingBalance; // amount they end up with
+//	 };
 type CreateAccountOp struct {
 	Destination     AccountId
 	StartingBalance Int64
@@ -21770,13 +21573,12 @@ var _ xdrType = (*CreateAccountOp)(nil)
 
 // PaymentOp is an XDR Struct defines as:
 //
-//   struct PaymentOp
-//    {
-//        MuxedAccount destination; // recipient of the payment
-//        Asset asset;              // what they end up with
-//        int64 amount;             // amount they end up with
-//    };
-//
+//	struct PaymentOp
+//	 {
+//	     MuxedAccount destination; // recipient of the payment
+//	     Asset asset;              // what they end up with
+//	     int64 amount;             // amount they end up with
+//	 };
 type PaymentOp struct {
 	Destination MuxedAccount
 	Asset       Asset
@@ -21851,20 +21653,19 @@ var _ xdrType = (*PaymentOp)(nil)
 
 // PathPaymentStrictReceiveOp is an XDR Struct defines as:
 //
-//   struct PathPaymentStrictReceiveOp
-//    {
-//        Asset sendAsset; // asset we pay with
-//        int64 sendMax;   // the maximum amount of sendAsset to
-//                         // send (excluding fees).
-//                         // The operation will fail if can't be met
+//	struct PathPaymentStrictReceiveOp
+//	 {
+//	     Asset sendAsset; // asset we pay with
+//	     int64 sendMax;   // the maximum amount of sendAsset to
+//	                      // send (excluding fees).
+//	                      // The operation will fail if can't be met
 //
-//        MuxedAccount destination; // recipient of the payment
-//        Asset destAsset;          // what they end up with
-//        int64 destAmount;         // amount they end up with
+//	     MuxedAccount destination; // recipient of the payment
+//	     Asset destAsset;          // what they end up with
+//	     int64 destAmount;         // amount they end up with
 //
-//        Asset path<5>; // additional hops it must go through to get there
-//    };
-//
+//	     Asset path<5>; // additional hops it must go through to get there
+//	 };
 type PathPaymentStrictReceiveOp struct {
 	SendAsset   Asset
 	SendMax     Int64
@@ -21986,20 +21787,19 @@ var _ xdrType = (*PathPaymentStrictReceiveOp)(nil)
 
 // PathPaymentStrictSendOp is an XDR Struct defines as:
 //
-//   struct PathPaymentStrictSendOp
-//    {
-//        Asset sendAsset;  // asset we pay with
-//        int64 sendAmount; // amount of sendAsset to send (excluding fees)
+//	struct PathPaymentStrictSendOp
+//	 {
+//	     Asset sendAsset;  // asset we pay with
+//	     int64 sendAmount; // amount of sendAsset to send (excluding fees)
 //
-//        MuxedAccount destination; // recipient of the payment
-//        Asset destAsset;          // what they end up with
-//        int64 destMin;            // the minimum amount of dest asset to
-//                                  // be received
-//                                  // The operation will fail if it can't be met
+//	     MuxedAccount destination; // recipient of the payment
+//	     Asset destAsset;          // what they end up with
+//	     int64 destMin;            // the minimum amount of dest asset to
+//	                               // be received
+//	                               // The operation will fail if it can't be met
 //
-//        Asset path<5>; // additional hops it must go through to get there
-//    };
-//
+//	     Asset path<5>; // additional hops it must go through to get there
+//	 };
 type PathPaymentStrictSendOp struct {
 	SendAsset   Asset
 	SendAmount  Int64
@@ -22121,17 +21921,16 @@ var _ xdrType = (*PathPaymentStrictSendOp)(nil)
 
 // ManageSellOfferOp is an XDR Struct defines as:
 //
-//   struct ManageSellOfferOp
-//    {
-//        Asset selling;
-//        Asset buying;
-//        int64 amount; // amount being sold. if set to 0, delete the offer
-//        Price price;  // price of thing being sold in terms of what you are buying
+//	struct ManageSellOfferOp
+//	 {
+//	     Asset selling;
+//	     Asset buying;
+//	     int64 amount; // amount being sold. if set to 0, delete the offer
+//	     Price price;  // price of thing being sold in terms of what you are buying
 //
-//        // 0=create a new offer, otherwise edit an existing offer
-//        int64 offerID;
-//    };
-//
+//	     // 0=create a new offer, otherwise edit an existing offer
+//	     int64 offerID;
+//	 };
 type ManageSellOfferOp struct {
 	Selling Asset
 	Buying  Asset
@@ -22224,18 +22023,17 @@ var _ xdrType = (*ManageSellOfferOp)(nil)
 
 // ManageBuyOfferOp is an XDR Struct defines as:
 //
-//   struct ManageBuyOfferOp
-//    {
-//        Asset selling;
-//        Asset buying;
-//        int64 buyAmount; // amount being bought. if set to 0, delete the offer
-//        Price price;     // price of thing being bought in terms of what you are
-//                         // selling
+//	struct ManageBuyOfferOp
+//	 {
+//	     Asset selling;
+//	     Asset buying;
+//	     int64 buyAmount; // amount being bought. if set to 0, delete the offer
+//	     Price price;     // price of thing being bought in terms of what you are
+//	                      // selling
 //
-//        // 0=create a new offer, otherwise edit an existing offer
-//        int64 offerID;
-//    };
-//
+//	     // 0=create a new offer, otherwise edit an existing offer
+//	     int64 offerID;
+//	 };
 type ManageBuyOfferOp struct {
 	Selling   Asset
 	Buying    Asset
@@ -22328,14 +22126,13 @@ var _ xdrType = (*ManageBuyOfferOp)(nil)
 
 // CreatePassiveSellOfferOp is an XDR Struct defines as:
 //
-//   struct CreatePassiveSellOfferOp
-//    {
-//        Asset selling; // A
-//        Asset buying;  // B
-//        int64 amount;  // amount taker gets
-//        Price price;   // cost of A in terms of B
-//    };
-//
+//	struct CreatePassiveSellOfferOp
+//	 {
+//	     Asset selling; // A
+//	     Asset buying;  // B
+//	     int64 amount;  // amount taker gets
+//	     Price price;   // cost of A in terms of B
+//	 };
 type CreatePassiveSellOfferOp struct {
 	Selling Asset
 	Buying  Asset
@@ -22419,26 +22216,25 @@ var _ xdrType = (*CreatePassiveSellOfferOp)(nil)
 
 // SetOptionsOp is an XDR Struct defines as:
 //
-//   struct SetOptionsOp
-//    {
-//        AccountID* inflationDest; // sets the inflation destination
+//	struct SetOptionsOp
+//	 {
+//	     AccountID* inflationDest; // sets the inflation destination
 //
-//        uint32* clearFlags; // which flags to clear
-//        uint32* setFlags;   // which flags to set
+//	     uint32* clearFlags; // which flags to clear
+//	     uint32* setFlags;   // which flags to set
 //
-//        // account threshold manipulation
-//        uint32* masterWeight; // weight of the master account
-//        uint32* lowThreshold;
-//        uint32* medThreshold;
-//        uint32* highThreshold;
+//	     // account threshold manipulation
+//	     uint32* masterWeight; // weight of the master account
+//	     uint32* lowThreshold;
+//	     uint32* medThreshold;
+//	     uint32* highThreshold;
 //
-//        string32* homeDomain; // sets the home domain
+//	     string32* homeDomain; // sets the home domain
 //
-//        // Add, update or remove a signer for the account
-//        // signer is deleted if the weight is 0
-//        Signer* signer;
-//    };
-//
+//	     // Add, update or remove a signer for the account
+//	     // signer is deleted if the weight is 0
+//	     Signer* signer;
+//	 };
 type SetOptionsOp struct {
 	InflationDest *AccountId
 	ClearFlags    *Uint32
@@ -22694,23 +22490,22 @@ var _ xdrType = (*SetOptionsOp)(nil)
 
 // ChangeTrustAsset is an XDR Union defines as:
 //
-//   union ChangeTrustAsset switch (AssetType type)
-//    {
-//    case ASSET_TYPE_NATIVE: // Not credit
-//        void;
+//	union ChangeTrustAsset switch (AssetType type)
+//	 {
+//	 case ASSET_TYPE_NATIVE: // Not credit
+//	     void;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM4:
-//        AlphaNum4 alphaNum4;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM4:
+//	     AlphaNum4 alphaNum4;
 //
-//    case ASSET_TYPE_CREDIT_ALPHANUM12:
-//        AlphaNum12 alphaNum12;
+//	 case ASSET_TYPE_CREDIT_ALPHANUM12:
+//	     AlphaNum12 alphaNum12;
 //
-//    case ASSET_TYPE_POOL_SHARE:
-//        LiquidityPoolParameters liquidityPool;
+//	 case ASSET_TYPE_POOL_SHARE:
+//	     LiquidityPoolParameters liquidityPool;
 //
-//        // add other asset types here in the future
-//    };
-//
+//	     // add other asset types here in the future
+//	 };
 type ChangeTrustAsset struct {
 	Type          AssetType
 	AlphaNum4     *AlphaNum4
@@ -22947,14 +22742,13 @@ var _ xdrType = (*ChangeTrustAsset)(nil)
 
 // ChangeTrustOp is an XDR Struct defines as:
 //
-//   struct ChangeTrustOp
-//    {
-//        ChangeTrustAsset line;
+//	struct ChangeTrustOp
+//	 {
+//	     ChangeTrustAsset line;
 //
-//        // if limit is set to 0, deletes the trust line
-//        int64 limit;
-//    };
-//
+//	     // if limit is set to 0, deletes the trust line
+//	     int64 limit;
+//	 };
 type ChangeTrustOp struct {
 	Line  ChangeTrustAsset
 	Limit Int64
@@ -23020,15 +22814,14 @@ var _ xdrType = (*ChangeTrustOp)(nil)
 
 // AllowTrustOp is an XDR Struct defines as:
 //
-//   struct AllowTrustOp
-//    {
-//        AccountID trustor;
-//        AssetCode asset;
+//	struct AllowTrustOp
+//	 {
+//	     AccountID trustor;
+//	     AssetCode asset;
 //
-//        // One of 0, AUTHORIZED_FLAG, or AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG
-//        uint32 authorize;
-//    };
-//
+//	     // One of 0, AUTHORIZED_FLAG, or AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG
+//	     uint32 authorize;
+//	 };
 type AllowTrustOp struct {
 	Trustor   AccountId
 	Asset     AssetCode
@@ -23103,12 +22896,11 @@ var _ xdrType = (*AllowTrustOp)(nil)
 
 // ManageDataOp is an XDR Struct defines as:
 //
-//   struct ManageDataOp
-//    {
-//        string64 dataName;
-//        DataValue* dataValue; // set to null to clear
-//    };
-//
+//	struct ManageDataOp
+//	 {
+//	     string64 dataName;
+//	     DataValue* dataValue; // set to null to clear
+//	 };
 type ManageDataOp struct {
 	DataName  String64
 	DataValue *DataValue
@@ -23189,11 +22981,10 @@ var _ xdrType = (*ManageDataOp)(nil)
 
 // BumpSequenceOp is an XDR Struct defines as:
 //
-//   struct BumpSequenceOp
-//    {
-//        SequenceNumber bumpTo;
-//    };
-//
+//	struct BumpSequenceOp
+//	 {
+//	     SequenceNumber bumpTo;
+//	 };
 type BumpSequenceOp struct {
 	BumpTo SequenceNumber
 }
@@ -23250,13 +23041,12 @@ var _ xdrType = (*BumpSequenceOp)(nil)
 
 // CreateClaimableBalanceOp is an XDR Struct defines as:
 //
-//   struct CreateClaimableBalanceOp
-//    {
-//        Asset asset;
-//        int64 amount;
-//        Claimant claimants<10>;
-//    };
-//
+//	struct CreateClaimableBalanceOp
+//	 {
+//	     Asset asset;
+//	     int64 amount;
+//	     Claimant claimants<10>;
+//	 };
 type CreateClaimableBalanceOp struct {
 	Asset     Asset
 	Amount    Int64
@@ -23351,11 +23141,10 @@ var _ xdrType = (*CreateClaimableBalanceOp)(nil)
 
 // ClaimClaimableBalanceOp is an XDR Struct defines as:
 //
-//   struct ClaimClaimableBalanceOp
-//    {
-//        ClaimableBalanceID balanceID;
-//    };
-//
+//	struct ClaimClaimableBalanceOp
+//	 {
+//	     ClaimableBalanceID balanceID;
+//	 };
 type ClaimClaimableBalanceOp struct {
 	BalanceId ClaimableBalanceId
 }
@@ -23412,11 +23201,10 @@ var _ xdrType = (*ClaimClaimableBalanceOp)(nil)
 
 // BeginSponsoringFutureReservesOp is an XDR Struct defines as:
 //
-//   struct BeginSponsoringFutureReservesOp
-//    {
-//        AccountID sponsoredID;
-//    };
-//
+//	struct BeginSponsoringFutureReservesOp
+//	 {
+//	     AccountID sponsoredID;
+//	 };
 type BeginSponsoringFutureReservesOp struct {
 	SponsoredId AccountId
 }
@@ -23473,12 +23261,11 @@ var _ xdrType = (*BeginSponsoringFutureReservesOp)(nil)
 
 // RevokeSponsorshipType is an XDR Enum defines as:
 //
-//   enum RevokeSponsorshipType
-//    {
-//        REVOKE_SPONSORSHIP_LEDGER_ENTRY = 0,
-//        REVOKE_SPONSORSHIP_SIGNER = 1
-//    };
-//
+//	enum RevokeSponsorshipType
+//	 {
+//	     REVOKE_SPONSORSHIP_LEDGER_ENTRY = 0,
+//	     REVOKE_SPONSORSHIP_SIGNER = 1
+//	 };
 type RevokeSponsorshipType int32
 
 const (
@@ -23557,12 +23344,11 @@ var _ xdrType = (*RevokeSponsorshipType)(nil)
 
 // RevokeSponsorshipOpSigner is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID accountID;
-//            SignerKey signerKey;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID accountID;
+//	         SignerKey signerKey;
+//	     }
 type RevokeSponsorshipOpSigner struct {
 	AccountId AccountId
 	SignerKey SignerKey
@@ -23628,18 +23414,17 @@ var _ xdrType = (*RevokeSponsorshipOpSigner)(nil)
 
 // RevokeSponsorshipOp is an XDR Union defines as:
 //
-//   union RevokeSponsorshipOp switch (RevokeSponsorshipType type)
-//    {
-//    case REVOKE_SPONSORSHIP_LEDGER_ENTRY:
-//        LedgerKey ledgerKey;
-//    case REVOKE_SPONSORSHIP_SIGNER:
-//        struct
-//        {
-//            AccountID accountID;
-//            SignerKey signerKey;
-//        } signer;
-//    };
-//
+//	union RevokeSponsorshipOp switch (RevokeSponsorshipType type)
+//	 {
+//	 case REVOKE_SPONSORSHIP_LEDGER_ENTRY:
+//	     LedgerKey ledgerKey;
+//	 case REVOKE_SPONSORSHIP_SIGNER:
+//	     struct
+//	     {
+//	         AccountID accountID;
+//	         SignerKey signerKey;
+//	     } signer;
+//	 };
 type RevokeSponsorshipOp struct {
 	Type      RevokeSponsorshipType
 	LedgerKey *LedgerKey
@@ -23818,13 +23603,12 @@ var _ xdrType = (*RevokeSponsorshipOp)(nil)
 
 // ClawbackOp is an XDR Struct defines as:
 //
-//   struct ClawbackOp
-//    {
-//        Asset asset;
-//        MuxedAccount from;
-//        int64 amount;
-//    };
-//
+//	struct ClawbackOp
+//	 {
+//	     Asset asset;
+//	     MuxedAccount from;
+//	     int64 amount;
+//	 };
 type ClawbackOp struct {
 	Asset  Asset
 	From   MuxedAccount
@@ -23899,11 +23683,10 @@ var _ xdrType = (*ClawbackOp)(nil)
 
 // ClawbackClaimableBalanceOp is an XDR Struct defines as:
 //
-//   struct ClawbackClaimableBalanceOp
-//    {
-//        ClaimableBalanceID balanceID;
-//    };
-//
+//	struct ClawbackClaimableBalanceOp
+//	 {
+//	     ClaimableBalanceID balanceID;
+//	 };
 type ClawbackClaimableBalanceOp struct {
 	BalanceId ClaimableBalanceId
 }
@@ -23960,15 +23743,14 @@ var _ xdrType = (*ClawbackClaimableBalanceOp)(nil)
 
 // SetTrustLineFlagsOp is an XDR Struct defines as:
 //
-//   struct SetTrustLineFlagsOp
-//    {
-//        AccountID trustor;
-//        Asset asset;
+//	struct SetTrustLineFlagsOp
+//	 {
+//	     AccountID trustor;
+//	     Asset asset;
 //
-//        uint32 clearFlags; // which flags to clear
-//        uint32 setFlags;   // which flags to set
-//    };
-//
+//	     uint32 clearFlags; // which flags to clear
+//	     uint32 setFlags;   // which flags to set
+//	 };
 type SetTrustLineFlagsOp struct {
 	Trustor    AccountId
 	Asset      Asset
@@ -24052,21 +23834,19 @@ var _ xdrType = (*SetTrustLineFlagsOp)(nil)
 
 // LiquidityPoolFeeV18 is an XDR Const defines as:
 //
-//   const LIQUIDITY_POOL_FEE_V18 = 30;
-//
+//	const LIQUIDITY_POOL_FEE_V18 = 30;
 const LiquidityPoolFeeV18 = 30
 
 // LiquidityPoolDepositOp is an XDR Struct defines as:
 //
-//   struct LiquidityPoolDepositOp
-//    {
-//        PoolID liquidityPoolID;
-//        int64 maxAmountA; // maximum amount of first asset to deposit
-//        int64 maxAmountB; // maximum amount of second asset to deposit
-//        Price minPrice;   // minimum depositA/depositB
-//        Price maxPrice;   // maximum depositA/depositB
-//    };
-//
+//	struct LiquidityPoolDepositOp
+//	 {
+//	     PoolID liquidityPoolID;
+//	     int64 maxAmountA; // maximum amount of first asset to deposit
+//	     int64 maxAmountB; // maximum amount of second asset to deposit
+//	     Price minPrice;   // minimum depositA/depositB
+//	     Price maxPrice;   // maximum depositA/depositB
+//	 };
 type LiquidityPoolDepositOp struct {
 	LiquidityPoolId PoolId
 	MaxAmountA      Int64
@@ -24159,14 +23939,13 @@ var _ xdrType = (*LiquidityPoolDepositOp)(nil)
 
 // LiquidityPoolWithdrawOp is an XDR Struct defines as:
 //
-//   struct LiquidityPoolWithdrawOp
-//    {
-//        PoolID liquidityPoolID;
-//        int64 amount;     // amount of pool shares to withdraw
-//        int64 minAmountA; // minimum amount of first asset to withdraw
-//        int64 minAmountB; // minimum amount of second asset to withdraw
-//    };
-//
+//	struct LiquidityPoolWithdrawOp
+//	 {
+//	     PoolID liquidityPoolID;
+//	     int64 amount;     // amount of pool shares to withdraw
+//	     int64 minAmountA; // minimum amount of first asset to withdraw
+//	     int64 minAmountB; // minimum amount of second asset to withdraw
+//	 };
 type LiquidityPoolWithdrawOp struct {
 	LiquidityPoolId PoolId
 	Amount          Int64
@@ -24250,12 +24029,11 @@ var _ xdrType = (*LiquidityPoolWithdrawOp)(nil)
 
 // HostFunction is an XDR Enum defines as:
 //
-//   enum HostFunction
-//    {
-//        HOST_FN_CALL = 0,
-//        HOST_FN_CREATE_CONTRACT = 1
-//    };
-//
+//	enum HostFunction
+//	 {
+//	     HOST_FN_CALL = 0,
+//	     HOST_FN_CREATE_CONTRACT = 1
+//	 };
 type HostFunction int32
 
 const (
@@ -24334,18 +24112,17 @@ var _ xdrType = (*HostFunction)(nil)
 
 // InvokeHostFunctionOp is an XDR Struct defines as:
 //
-//   struct InvokeHostFunctionOp
-//    {
-//        // The host function to invoke
-//        HostFunction function;
+//	struct InvokeHostFunctionOp
+//	 {
+//	     // The host function to invoke
+//	     HostFunction function;
 //
-//        // Parameters to the host function
-//        SCVec parameters;
+//	     // Parameters to the host function
+//	     SCVec parameters;
 //
-//        // The footprint for this invocation
-//        LedgerFootprint footprint;
-//    };
-//
+//	     // The footprint for this invocation
+//	     LedgerFootprint footprint;
+//	 };
 type InvokeHostFunctionOp struct {
 	Function   HostFunction
 	Parameters ScVec
@@ -24420,60 +24197,59 @@ var _ xdrType = (*InvokeHostFunctionOp)(nil)
 
 // OperationBody is an XDR NestedUnion defines as:
 //
-//   union switch (OperationType type)
-//        {
-//        case CREATE_ACCOUNT:
-//            CreateAccountOp createAccountOp;
-//        case PAYMENT:
-//            PaymentOp paymentOp;
-//        case PATH_PAYMENT_STRICT_RECEIVE:
-//            PathPaymentStrictReceiveOp pathPaymentStrictReceiveOp;
-//        case MANAGE_SELL_OFFER:
-//            ManageSellOfferOp manageSellOfferOp;
-//        case CREATE_PASSIVE_SELL_OFFER:
-//            CreatePassiveSellOfferOp createPassiveSellOfferOp;
-//        case SET_OPTIONS:
-//            SetOptionsOp setOptionsOp;
-//        case CHANGE_TRUST:
-//            ChangeTrustOp changeTrustOp;
-//        case ALLOW_TRUST:
-//            AllowTrustOp allowTrustOp;
-//        case ACCOUNT_MERGE:
-//            MuxedAccount destination;
-//        case INFLATION:
-//            void;
-//        case MANAGE_DATA:
-//            ManageDataOp manageDataOp;
-//        case BUMP_SEQUENCE:
-//            BumpSequenceOp bumpSequenceOp;
-//        case MANAGE_BUY_OFFER:
-//            ManageBuyOfferOp manageBuyOfferOp;
-//        case PATH_PAYMENT_STRICT_SEND:
-//            PathPaymentStrictSendOp pathPaymentStrictSendOp;
-//        case CREATE_CLAIMABLE_BALANCE:
-//            CreateClaimableBalanceOp createClaimableBalanceOp;
-//        case CLAIM_CLAIMABLE_BALANCE:
-//            ClaimClaimableBalanceOp claimClaimableBalanceOp;
-//        case BEGIN_SPONSORING_FUTURE_RESERVES:
-//            BeginSponsoringFutureReservesOp beginSponsoringFutureReservesOp;
-//        case END_SPONSORING_FUTURE_RESERVES:
-//            void;
-//        case REVOKE_SPONSORSHIP:
-//            RevokeSponsorshipOp revokeSponsorshipOp;
-//        case CLAWBACK:
-//            ClawbackOp clawbackOp;
-//        case CLAWBACK_CLAIMABLE_BALANCE:
-//            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
-//        case SET_TRUST_LINE_FLAGS:
-//            SetTrustLineFlagsOp setTrustLineFlagsOp;
-//        case LIQUIDITY_POOL_DEPOSIT:
-//            LiquidityPoolDepositOp liquidityPoolDepositOp;
-//        case LIQUIDITY_POOL_WITHDRAW:
-//            LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
-//        case INVOKE_HOST_FUNCTION:
-//            InvokeHostFunctionOp invokeHostFunctionOp;
-//        }
-//
+//	union switch (OperationType type)
+//	     {
+//	     case CREATE_ACCOUNT:
+//	         CreateAccountOp createAccountOp;
+//	     case PAYMENT:
+//	         PaymentOp paymentOp;
+//	     case PATH_PAYMENT_STRICT_RECEIVE:
+//	         PathPaymentStrictReceiveOp pathPaymentStrictReceiveOp;
+//	     case MANAGE_SELL_OFFER:
+//	         ManageSellOfferOp manageSellOfferOp;
+//	     case CREATE_PASSIVE_SELL_OFFER:
+//	         CreatePassiveSellOfferOp createPassiveSellOfferOp;
+//	     case SET_OPTIONS:
+//	         SetOptionsOp setOptionsOp;
+//	     case CHANGE_TRUST:
+//	         ChangeTrustOp changeTrustOp;
+//	     case ALLOW_TRUST:
+//	         AllowTrustOp allowTrustOp;
+//	     case ACCOUNT_MERGE:
+//	         MuxedAccount destination;
+//	     case INFLATION:
+//	         void;
+//	     case MANAGE_DATA:
+//	         ManageDataOp manageDataOp;
+//	     case BUMP_SEQUENCE:
+//	         BumpSequenceOp bumpSequenceOp;
+//	     case MANAGE_BUY_OFFER:
+//	         ManageBuyOfferOp manageBuyOfferOp;
+//	     case PATH_PAYMENT_STRICT_SEND:
+//	         PathPaymentStrictSendOp pathPaymentStrictSendOp;
+//	     case CREATE_CLAIMABLE_BALANCE:
+//	         CreateClaimableBalanceOp createClaimableBalanceOp;
+//	     case CLAIM_CLAIMABLE_BALANCE:
+//	         ClaimClaimableBalanceOp claimClaimableBalanceOp;
+//	     case BEGIN_SPONSORING_FUTURE_RESERVES:
+//	         BeginSponsoringFutureReservesOp beginSponsoringFutureReservesOp;
+//	     case END_SPONSORING_FUTURE_RESERVES:
+//	         void;
+//	     case REVOKE_SPONSORSHIP:
+//	         RevokeSponsorshipOp revokeSponsorshipOp;
+//	     case CLAWBACK:
+//	         ClawbackOp clawbackOp;
+//	     case CLAWBACK_CLAIMABLE_BALANCE:
+//	         ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
+//	     case SET_TRUST_LINE_FLAGS:
+//	         SetTrustLineFlagsOp setTrustLineFlagsOp;
+//	     case LIQUIDITY_POOL_DEPOSIT:
+//	         LiquidityPoolDepositOp liquidityPoolDepositOp;
+//	     case LIQUIDITY_POOL_WITHDRAW:
+//	         LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
+//	     case INVOKE_HOST_FUNCTION:
+//	         InvokeHostFunctionOp invokeHostFunctionOp;
+//	     }
 type OperationBody struct {
 	Type                            OperationType
 	CreateAccountOp                 *CreateAccountOp
@@ -25680,69 +25456,68 @@ var _ xdrType = (*OperationBody)(nil)
 
 // Operation is an XDR Struct defines as:
 //
-//   struct Operation
-//    {
-//        // sourceAccount is the account used to run the operation
-//        // if not set, the runtime defaults to "sourceAccount" specified at
-//        // the transaction level
-//        MuxedAccount* sourceAccount;
+//	struct Operation
+//	 {
+//	     // sourceAccount is the account used to run the operation
+//	     // if not set, the runtime defaults to "sourceAccount" specified at
+//	     // the transaction level
+//	     MuxedAccount* sourceAccount;
 //
-//        union switch (OperationType type)
-//        {
-//        case CREATE_ACCOUNT:
-//            CreateAccountOp createAccountOp;
-//        case PAYMENT:
-//            PaymentOp paymentOp;
-//        case PATH_PAYMENT_STRICT_RECEIVE:
-//            PathPaymentStrictReceiveOp pathPaymentStrictReceiveOp;
-//        case MANAGE_SELL_OFFER:
-//            ManageSellOfferOp manageSellOfferOp;
-//        case CREATE_PASSIVE_SELL_OFFER:
-//            CreatePassiveSellOfferOp createPassiveSellOfferOp;
-//        case SET_OPTIONS:
-//            SetOptionsOp setOptionsOp;
-//        case CHANGE_TRUST:
-//            ChangeTrustOp changeTrustOp;
-//        case ALLOW_TRUST:
-//            AllowTrustOp allowTrustOp;
-//        case ACCOUNT_MERGE:
-//            MuxedAccount destination;
-//        case INFLATION:
-//            void;
-//        case MANAGE_DATA:
-//            ManageDataOp manageDataOp;
-//        case BUMP_SEQUENCE:
-//            BumpSequenceOp bumpSequenceOp;
-//        case MANAGE_BUY_OFFER:
-//            ManageBuyOfferOp manageBuyOfferOp;
-//        case PATH_PAYMENT_STRICT_SEND:
-//            PathPaymentStrictSendOp pathPaymentStrictSendOp;
-//        case CREATE_CLAIMABLE_BALANCE:
-//            CreateClaimableBalanceOp createClaimableBalanceOp;
-//        case CLAIM_CLAIMABLE_BALANCE:
-//            ClaimClaimableBalanceOp claimClaimableBalanceOp;
-//        case BEGIN_SPONSORING_FUTURE_RESERVES:
-//            BeginSponsoringFutureReservesOp beginSponsoringFutureReservesOp;
-//        case END_SPONSORING_FUTURE_RESERVES:
-//            void;
-//        case REVOKE_SPONSORSHIP:
-//            RevokeSponsorshipOp revokeSponsorshipOp;
-//        case CLAWBACK:
-//            ClawbackOp clawbackOp;
-//        case CLAWBACK_CLAIMABLE_BALANCE:
-//            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
-//        case SET_TRUST_LINE_FLAGS:
-//            SetTrustLineFlagsOp setTrustLineFlagsOp;
-//        case LIQUIDITY_POOL_DEPOSIT:
-//            LiquidityPoolDepositOp liquidityPoolDepositOp;
-//        case LIQUIDITY_POOL_WITHDRAW:
-//            LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
-//        case INVOKE_HOST_FUNCTION:
-//            InvokeHostFunctionOp invokeHostFunctionOp;
-//        }
-//        body;
-//    };
-//
+//	     union switch (OperationType type)
+//	     {
+//	     case CREATE_ACCOUNT:
+//	         CreateAccountOp createAccountOp;
+//	     case PAYMENT:
+//	         PaymentOp paymentOp;
+//	     case PATH_PAYMENT_STRICT_RECEIVE:
+//	         PathPaymentStrictReceiveOp pathPaymentStrictReceiveOp;
+//	     case MANAGE_SELL_OFFER:
+//	         ManageSellOfferOp manageSellOfferOp;
+//	     case CREATE_PASSIVE_SELL_OFFER:
+//	         CreatePassiveSellOfferOp createPassiveSellOfferOp;
+//	     case SET_OPTIONS:
+//	         SetOptionsOp setOptionsOp;
+//	     case CHANGE_TRUST:
+//	         ChangeTrustOp changeTrustOp;
+//	     case ALLOW_TRUST:
+//	         AllowTrustOp allowTrustOp;
+//	     case ACCOUNT_MERGE:
+//	         MuxedAccount destination;
+//	     case INFLATION:
+//	         void;
+//	     case MANAGE_DATA:
+//	         ManageDataOp manageDataOp;
+//	     case BUMP_SEQUENCE:
+//	         BumpSequenceOp bumpSequenceOp;
+//	     case MANAGE_BUY_OFFER:
+//	         ManageBuyOfferOp manageBuyOfferOp;
+//	     case PATH_PAYMENT_STRICT_SEND:
+//	         PathPaymentStrictSendOp pathPaymentStrictSendOp;
+//	     case CREATE_CLAIMABLE_BALANCE:
+//	         CreateClaimableBalanceOp createClaimableBalanceOp;
+//	     case CLAIM_CLAIMABLE_BALANCE:
+//	         ClaimClaimableBalanceOp claimClaimableBalanceOp;
+//	     case BEGIN_SPONSORING_FUTURE_RESERVES:
+//	         BeginSponsoringFutureReservesOp beginSponsoringFutureReservesOp;
+//	     case END_SPONSORING_FUTURE_RESERVES:
+//	         void;
+//	     case REVOKE_SPONSORSHIP:
+//	         RevokeSponsorshipOp revokeSponsorshipOp;
+//	     case CLAWBACK:
+//	         ClawbackOp clawbackOp;
+//	     case CLAWBACK_CLAIMABLE_BALANCE:
+//	         ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
+//	     case SET_TRUST_LINE_FLAGS:
+//	         SetTrustLineFlagsOp setTrustLineFlagsOp;
+//	     case LIQUIDITY_POOL_DEPOSIT:
+//	         LiquidityPoolDepositOp liquidityPoolDepositOp;
+//	     case LIQUIDITY_POOL_WITHDRAW:
+//	         LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
+//	     case INVOKE_HOST_FUNCTION:
+//	         InvokeHostFunctionOp invokeHostFunctionOp;
+//	     }
+//	     body;
+//	 };
 type Operation struct {
 	SourceAccount *MuxedAccount
 	Body          OperationBody
@@ -25823,13 +25598,12 @@ var _ xdrType = (*Operation)(nil)
 
 // HashIdPreimageOperationId is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID sourceAccount;
-//            SequenceNumber seqNum;
-//            uint32 opNum;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID sourceAccount;
+//	         SequenceNumber seqNum;
+//	         uint32 opNum;
+//	     }
 type HashIdPreimageOperationId struct {
 	SourceAccount AccountId
 	SeqNum        SequenceNumber
@@ -25904,15 +25678,14 @@ var _ xdrType = (*HashIdPreimageOperationId)(nil)
 
 // HashIdPreimageRevokeId is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            AccountID sourceAccount;
-//            SequenceNumber seqNum;
-//            uint32 opNum;
-//            PoolID liquidityPoolID;
-//            Asset asset;
-//        }
-//
+//	struct
+//	     {
+//	         AccountID sourceAccount;
+//	         SequenceNumber seqNum;
+//	         uint32 opNum;
+//	         PoolID liquidityPoolID;
+//	         Asset asset;
+//	     }
 type HashIdPreimageRevokeId struct {
 	SourceAccount   AccountId
 	SeqNum          SequenceNumber
@@ -26005,12 +25778,11 @@ var _ xdrType = (*HashIdPreimageRevokeId)(nil)
 
 // HashIdPreimageEd25519ContractId is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            uint256 ed25519;
-//            uint256 salt;
-//        }
-//
+//	struct
+//	     {
+//	         uint256 ed25519;
+//	         uint256 salt;
+//	     }
 type HashIdPreimageEd25519ContractId struct {
 	Ed25519 Uint256
 	Salt    Uint256
@@ -26076,12 +25848,11 @@ var _ xdrType = (*HashIdPreimageEd25519ContractId)(nil)
 
 // HashIdPreimageContractId is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            Hash contractID;
-//            uint256 salt;
-//        }
-//
+//	struct
+//	     {
+//	         Hash contractID;
+//	         uint256 salt;
+//	     }
 type HashIdPreimageContractId struct {
 	ContractId Hash
 	Salt       Uint256
@@ -26147,38 +25918,37 @@ var _ xdrType = (*HashIdPreimageContractId)(nil)
 
 // HashIdPreimage is an XDR Union defines as:
 //
-//   union HashIDPreimage switch (EnvelopeType type)
-//    {
-//    case ENVELOPE_TYPE_OP_ID:
-//        struct
-//        {
-//            AccountID sourceAccount;
-//            SequenceNumber seqNum;
-//            uint32 opNum;
-//        } operationID;
-//    case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
-//        struct
-//        {
-//            AccountID sourceAccount;
-//            SequenceNumber seqNum;
-//            uint32 opNum;
-//            PoolID liquidityPoolID;
-//            Asset asset;
-//        } revokeID;
-//    case ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519:
-//        struct
-//        {
-//            uint256 ed25519;
-//            uint256 salt;
-//        } ed25519ContractID;
-//    case ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT:
-//        struct
-//        {
-//            Hash contractID;
-//            uint256 salt;
-//        } contractID;
-//    };
-//
+//	union HashIDPreimage switch (EnvelopeType type)
+//	 {
+//	 case ENVELOPE_TYPE_OP_ID:
+//	     struct
+//	     {
+//	         AccountID sourceAccount;
+//	         SequenceNumber seqNum;
+//	         uint32 opNum;
+//	     } operationID;
+//	 case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
+//	     struct
+//	     {
+//	         AccountID sourceAccount;
+//	         SequenceNumber seqNum;
+//	         uint32 opNum;
+//	         PoolID liquidityPoolID;
+//	         Asset asset;
+//	     } revokeID;
+//	 case ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519:
+//	     struct
+//	     {
+//	         uint256 ed25519;
+//	         uint256 salt;
+//	     } ed25519ContractID;
+//	 case ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT:
+//	     struct
+//	     {
+//	         Hash contractID;
+//	         uint256 salt;
+//	     } contractID;
+//	 };
 type HashIdPreimage struct {
 	Type              EnvelopeType
 	OperationId       *HashIdPreimageOperationId
@@ -26453,15 +26223,14 @@ var _ xdrType = (*HashIdPreimage)(nil)
 
 // MemoType is an XDR Enum defines as:
 //
-//   enum MemoType
-//    {
-//        MEMO_NONE = 0,
-//        MEMO_TEXT = 1,
-//        MEMO_ID = 2,
-//        MEMO_HASH = 3,
-//        MEMO_RETURN = 4
-//    };
-//
+//	enum MemoType
+//	 {
+//	     MEMO_NONE = 0,
+//	     MEMO_TEXT = 1,
+//	     MEMO_ID = 2,
+//	     MEMO_HASH = 3,
+//	     MEMO_RETURN = 4
+//	 };
 type MemoType int32
 
 const (
@@ -26546,20 +26315,19 @@ var _ xdrType = (*MemoType)(nil)
 
 // Memo is an XDR Union defines as:
 //
-//   union Memo switch (MemoType type)
-//    {
-//    case MEMO_NONE:
-//        void;
-//    case MEMO_TEXT:
-//        string text<28>;
-//    case MEMO_ID:
-//        uint64 id;
-//    case MEMO_HASH:
-//        Hash hash; // the hash of what to pull from the content server
-//    case MEMO_RETURN:
-//        Hash retHash; // the hash of the tx you are rejecting
-//    };
-//
+//	union Memo switch (MemoType type)
+//	 {
+//	 case MEMO_NONE:
+//	     void;
+//	 case MEMO_TEXT:
+//	     string text<28>;
+//	 case MEMO_ID:
+//	     uint64 id;
+//	 case MEMO_HASH:
+//	     Hash hash; // the hash of what to pull from the content server
+//	 case MEMO_RETURN:
+//	     Hash retHash; // the hash of the tx you are rejecting
+//	 };
 type Memo struct {
 	Type    MemoType
 	Text    *string `xdrmaxsize:"28"`
@@ -26844,12 +26612,11 @@ var _ xdrType = (*Memo)(nil)
 
 // TimeBounds is an XDR Struct defines as:
 //
-//   struct TimeBounds
-//    {
-//        TimePoint minTime;
-//        TimePoint maxTime; // 0 here means no maxTime
-//    };
-//
+//	struct TimeBounds
+//	 {
+//	     TimePoint minTime;
+//	     TimePoint maxTime; // 0 here means no maxTime
+//	 };
 type TimeBounds struct {
 	MinTime TimePoint
 	MaxTime TimePoint
@@ -26915,12 +26682,11 @@ var _ xdrType = (*TimeBounds)(nil)
 
 // LedgerBounds is an XDR Struct defines as:
 //
-//   struct LedgerBounds
-//    {
-//        uint32 minLedger;
-//        uint32 maxLedger; // 0 here means no maxLedger
-//    };
-//
+//	struct LedgerBounds
+//	 {
+//	     uint32 minLedger;
+//	     uint32 maxLedger; // 0 here means no maxLedger
+//	 };
 type LedgerBounds struct {
 	MinLedger Uint32
 	MaxLedger Uint32
@@ -26986,39 +26752,38 @@ var _ xdrType = (*LedgerBounds)(nil)
 
 // PreconditionsV2 is an XDR Struct defines as:
 //
-//   struct PreconditionsV2
-//    {
-//        TimeBounds* timeBounds;
+//	struct PreconditionsV2
+//	 {
+//	     TimeBounds* timeBounds;
 //
-//        // Transaction only valid for ledger numbers n such that
-//        // minLedger <= n < maxLedger (if maxLedger == 0, then
-//        // only minLedger is checked)
-//        LedgerBounds* ledgerBounds;
+//	     // Transaction only valid for ledger numbers n such that
+//	     // minLedger <= n < maxLedger (if maxLedger == 0, then
+//	     // only minLedger is checked)
+//	     LedgerBounds* ledgerBounds;
 //
-//        // If NULL, only valid when sourceAccount's sequence number
-//        // is seqNum - 1.  Otherwise, valid when sourceAccount's
-//        // sequence number n satisfies minSeqNum <= n < tx.seqNum.
-//        // Note that after execution the account's sequence number
-//        // is always raised to tx.seqNum, and a transaction is not
-//        // valid if tx.seqNum is too high to ensure replay protection.
-//        SequenceNumber* minSeqNum;
+//	     // If NULL, only valid when sourceAccount's sequence number
+//	     // is seqNum - 1.  Otherwise, valid when sourceAccount's
+//	     // sequence number n satisfies minSeqNum <= n < tx.seqNum.
+//	     // Note that after execution the account's sequence number
+//	     // is always raised to tx.seqNum, and a transaction is not
+//	     // valid if tx.seqNum is too high to ensure replay protection.
+//	     SequenceNumber* minSeqNum;
 //
-//        // For the transaction to be valid, the current ledger time must
-//        // be at least minSeqAge greater than sourceAccount's seqTime.
-//        Duration minSeqAge;
+//	     // For the transaction to be valid, the current ledger time must
+//	     // be at least minSeqAge greater than sourceAccount's seqTime.
+//	     Duration minSeqAge;
 //
-//        // For the transaction to be valid, the current ledger number
-//        // must be at least minSeqLedgerGap greater than sourceAccount's
-//        // seqLedger.
-//        uint32 minSeqLedgerGap;
+//	     // For the transaction to be valid, the current ledger number
+//	     // must be at least minSeqLedgerGap greater than sourceAccount's
+//	     // seqLedger.
+//	     uint32 minSeqLedgerGap;
 //
-//        // For the transaction to be valid, there must be a signature
-//        // corresponding to every Signer in this array, even if the
-//        // signature is not otherwise required by the sourceAccount or
-//        // operations.
-//        SignerKey extraSigners<2>;
-//    };
-//
+//	     // For the transaction to be valid, there must be a signature
+//	     // corresponding to every Signer in this array, even if the
+//	     // signature is not otherwise required by the sourceAccount or
+//	     // operations.
+//	     SignerKey extraSigners<2>;
+//	 };
 type PreconditionsV2 struct {
 	TimeBounds      *TimeBounds
 	LedgerBounds    *LedgerBounds
@@ -27183,13 +26948,12 @@ var _ xdrType = (*PreconditionsV2)(nil)
 
 // PreconditionType is an XDR Enum defines as:
 //
-//   enum PreconditionType
-//    {
-//        PRECOND_NONE = 0,
-//        PRECOND_TIME = 1,
-//        PRECOND_V2 = 2
-//    };
-//
+//	enum PreconditionType
+//	 {
+//	     PRECOND_NONE = 0,
+//	     PRECOND_TIME = 1,
+//	     PRECOND_V2 = 2
+//	 };
 type PreconditionType int32
 
 const (
@@ -27270,16 +27034,15 @@ var _ xdrType = (*PreconditionType)(nil)
 
 // Preconditions is an XDR Union defines as:
 //
-//   union Preconditions switch (PreconditionType type)
-//    {
-//    case PRECOND_NONE:
-//        void;
-//    case PRECOND_TIME:
-//        TimeBounds timeBounds;
-//    case PRECOND_V2:
-//        PreconditionsV2 v2;
-//    };
-//
+//	union Preconditions switch (PreconditionType type)
+//	 {
+//	 case PRECOND_NONE:
+//	     void;
+//	 case PRECOND_TIME:
+//	     TimeBounds timeBounds;
+//	 case PRECOND_V2:
+//	     PreconditionsV2 v2;
+//	 };
 type Preconditions struct {
 	Type       PreconditionType
 	TimeBounds *TimeBounds
@@ -27468,18 +27231,16 @@ var _ xdrType = (*Preconditions)(nil)
 
 // MaxOpsPerTx is an XDR Const defines as:
 //
-//   const MAX_OPS_PER_TX = 100;
-//
+//	const MAX_OPS_PER_TX = 100;
 const MaxOpsPerTx = 100
 
 // TransactionV0Ext is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type TransactionV0Ext struct {
 	V int32
 }
@@ -27572,22 +27333,21 @@ var _ xdrType = (*TransactionV0Ext)(nil)
 
 // TransactionV0 is an XDR Struct defines as:
 //
-//   struct TransactionV0
-//    {
-//        uint256 sourceAccountEd25519;
-//        uint32 fee;
-//        SequenceNumber seqNum;
-//        TimeBounds* timeBounds;
-//        Memo memo;
-//        Operation operations<MAX_OPS_PER_TX>;
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	struct TransactionV0
+//	 {
+//	     uint256 sourceAccountEd25519;
+//	     uint32 fee;
+//	     SequenceNumber seqNum;
+//	     TimeBounds* timeBounds;
+//	     Memo memo;
+//	     Operation operations<MAX_OPS_PER_TX>;
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type TransactionV0 struct {
 	SourceAccountEd25519 Uint256
 	Fee                  Uint32
@@ -27733,14 +27493,13 @@ var _ xdrType = (*TransactionV0)(nil)
 
 // TransactionV0Envelope is an XDR Struct defines as:
 //
-//   struct TransactionV0Envelope
-//    {
-//        TransactionV0 tx;
-//        /* Each decorated signature is a signature over the SHA256 hash of
-//         * a TransactionSignaturePayload */
-//        DecoratedSignature signatures<20>;
-//    };
-//
+//	struct TransactionV0Envelope
+//	 {
+//	     TransactionV0 tx;
+//	     /* Each decorated signature is a signature over the SHA256 hash of
+//	      * a TransactionSignaturePayload */
+//	     DecoratedSignature signatures<20>;
+//	 };
 type TransactionV0Envelope struct {
 	Tx         TransactionV0
 	Signatures []DecoratedSignature `xdrmaxsize:"20"`
@@ -27826,12 +27585,11 @@ var _ xdrType = (*TransactionV0Envelope)(nil)
 
 // TransactionExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type TransactionExt struct {
 	V int32
 }
@@ -27924,33 +27682,32 @@ var _ xdrType = (*TransactionExt)(nil)
 
 // Transaction is an XDR Struct defines as:
 //
-//   struct Transaction
-//    {
-//        // account used to run the transaction
-//        MuxedAccount sourceAccount;
+//	struct Transaction
+//	 {
+//	     // account used to run the transaction
+//	     MuxedAccount sourceAccount;
 //
-//        // the fee the sourceAccount will pay
-//        uint32 fee;
+//	     // the fee the sourceAccount will pay
+//	     uint32 fee;
 //
-//        // sequence number to consume in the account
-//        SequenceNumber seqNum;
+//	     // sequence number to consume in the account
+//	     SequenceNumber seqNum;
 //
-//        // validity conditions
-//        Preconditions cond;
+//	     // validity conditions
+//	     Preconditions cond;
 //
-//        Memo memo;
+//	     Memo memo;
 //
-//        Operation operations<MAX_OPS_PER_TX>;
+//	     Operation operations<MAX_OPS_PER_TX>;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type Transaction struct {
 	SourceAccount MuxedAccount
 	Fee           Uint32
@@ -28081,14 +27838,13 @@ var _ xdrType = (*Transaction)(nil)
 
 // TransactionV1Envelope is an XDR Struct defines as:
 //
-//   struct TransactionV1Envelope
-//    {
-//        Transaction tx;
-//        /* Each decorated signature is a signature over the SHA256 hash of
-//         * a TransactionSignaturePayload */
-//        DecoratedSignature signatures<20>;
-//    };
-//
+//	struct TransactionV1Envelope
+//	 {
+//	     Transaction tx;
+//	     /* Each decorated signature is a signature over the SHA256 hash of
+//	      * a TransactionSignaturePayload */
+//	     DecoratedSignature signatures<20>;
+//	 };
 type TransactionV1Envelope struct {
 	Tx         Transaction
 	Signatures []DecoratedSignature `xdrmaxsize:"20"`
@@ -28174,12 +27930,11 @@ var _ xdrType = (*TransactionV1Envelope)(nil)
 
 // FeeBumpTransactionInnerTx is an XDR NestedUnion defines as:
 //
-//   union switch (EnvelopeType type)
-//        {
-//        case ENVELOPE_TYPE_TX:
-//            TransactionV1Envelope v1;
-//        }
-//
+//	union switch (EnvelopeType type)
+//	     {
+//	     case ENVELOPE_TYPE_TX:
+//	         TransactionV1Envelope v1;
+//	     }
 type FeeBumpTransactionInnerTx struct {
 	Type EnvelopeType
 	V1   *TransactionV1Envelope
@@ -28310,12 +28065,11 @@ var _ xdrType = (*FeeBumpTransactionInnerTx)(nil)
 
 // FeeBumpTransactionExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type FeeBumpTransactionExt struct {
 	V int32
 }
@@ -28408,24 +28162,23 @@ var _ xdrType = (*FeeBumpTransactionExt)(nil)
 
 // FeeBumpTransaction is an XDR Struct defines as:
 //
-//   struct FeeBumpTransaction
-//    {
-//        MuxedAccount feeSource;
-//        int64 fee;
-//        union switch (EnvelopeType type)
-//        {
-//        case ENVELOPE_TYPE_TX:
-//            TransactionV1Envelope v1;
-//        }
-//        innerTx;
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	struct FeeBumpTransaction
+//	 {
+//	     MuxedAccount feeSource;
+//	     int64 fee;
+//	     union switch (EnvelopeType type)
+//	     {
+//	     case ENVELOPE_TYPE_TX:
+//	         TransactionV1Envelope v1;
+//	     }
+//	     innerTx;
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type FeeBumpTransaction struct {
 	FeeSource MuxedAccount
 	Fee       Int64
@@ -28509,14 +28262,13 @@ var _ xdrType = (*FeeBumpTransaction)(nil)
 
 // FeeBumpTransactionEnvelope is an XDR Struct defines as:
 //
-//   struct FeeBumpTransactionEnvelope
-//    {
-//        FeeBumpTransaction tx;
-//        /* Each decorated signature is a signature over the SHA256 hash of
-//         * a TransactionSignaturePayload */
-//        DecoratedSignature signatures<20>;
-//    };
-//
+//	struct FeeBumpTransactionEnvelope
+//	 {
+//	     FeeBumpTransaction tx;
+//	     /* Each decorated signature is a signature over the SHA256 hash of
+//	      * a TransactionSignaturePayload */
+//	     DecoratedSignature signatures<20>;
+//	 };
 type FeeBumpTransactionEnvelope struct {
 	Tx         FeeBumpTransaction
 	Signatures []DecoratedSignature `xdrmaxsize:"20"`
@@ -28602,16 +28354,15 @@ var _ xdrType = (*FeeBumpTransactionEnvelope)(nil)
 
 // TransactionEnvelope is an XDR Union defines as:
 //
-//   union TransactionEnvelope switch (EnvelopeType type)
-//    {
-//    case ENVELOPE_TYPE_TX_V0:
-//        TransactionV0Envelope v0;
-//    case ENVELOPE_TYPE_TX:
-//        TransactionV1Envelope v1;
-//    case ENVELOPE_TYPE_TX_FEE_BUMP:
-//        FeeBumpTransactionEnvelope feeBump;
-//    };
-//
+//	union TransactionEnvelope switch (EnvelopeType type)
+//	 {
+//	 case ENVELOPE_TYPE_TX_V0:
+//	     TransactionV0Envelope v0;
+//	 case ENVELOPE_TYPE_TX:
+//	     TransactionV1Envelope v1;
+//	 case ENVELOPE_TYPE_TX_FEE_BUMP:
+//	     FeeBumpTransactionEnvelope feeBump;
+//	 };
 type TransactionEnvelope struct {
 	Type    EnvelopeType
 	V0      *TransactionV0Envelope
@@ -28838,15 +28589,14 @@ var _ xdrType = (*TransactionEnvelope)(nil)
 
 // TransactionSignaturePayloadTaggedTransaction is an XDR NestedUnion defines as:
 //
-//   union switch (EnvelopeType type)
-//        {
-//        // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
-//        case ENVELOPE_TYPE_TX:
-//            Transaction tx;
-//        case ENVELOPE_TYPE_TX_FEE_BUMP:
-//            FeeBumpTransaction feeBump;
-//        }
-//
+//	union switch (EnvelopeType type)
+//	     {
+//	     // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
+//	     case ENVELOPE_TYPE_TX:
+//	         Transaction tx;
+//	     case ENVELOPE_TYPE_TX_FEE_BUMP:
+//	         FeeBumpTransaction feeBump;
+//	     }
 type TransactionSignaturePayloadTaggedTransaction struct {
 	Type    EnvelopeType
 	Tx      *Transaction
@@ -29025,20 +28775,19 @@ var _ xdrType = (*TransactionSignaturePayloadTaggedTransaction)(nil)
 
 // TransactionSignaturePayload is an XDR Struct defines as:
 //
-//   struct TransactionSignaturePayload
-//    {
-//        Hash networkId;
-//        union switch (EnvelopeType type)
-//        {
-//        // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
-//        case ENVELOPE_TYPE_TX:
-//            Transaction tx;
-//        case ENVELOPE_TYPE_TX_FEE_BUMP:
-//            FeeBumpTransaction feeBump;
-//        }
-//        taggedTransaction;
-//    };
-//
+//	struct TransactionSignaturePayload
+//	 {
+//	     Hash networkId;
+//	     union switch (EnvelopeType type)
+//	     {
+//	     // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
+//	     case ENVELOPE_TYPE_TX:
+//	         Transaction tx;
+//	     case ENVELOPE_TYPE_TX_FEE_BUMP:
+//	         FeeBumpTransaction feeBump;
+//	     }
+//	     taggedTransaction;
+//	 };
 type TransactionSignaturePayload struct {
 	NetworkId         Hash
 	TaggedTransaction TransactionSignaturePayloadTaggedTransaction
@@ -29104,13 +28853,12 @@ var _ xdrType = (*TransactionSignaturePayload)(nil)
 
 // ClaimAtomType is an XDR Enum defines as:
 //
-//   enum ClaimAtomType
-//    {
-//        CLAIM_ATOM_TYPE_V0 = 0,
-//        CLAIM_ATOM_TYPE_ORDER_BOOK = 1,
-//        CLAIM_ATOM_TYPE_LIQUIDITY_POOL = 2
-//    };
-//
+//	enum ClaimAtomType
+//	 {
+//	     CLAIM_ATOM_TYPE_V0 = 0,
+//	     CLAIM_ATOM_TYPE_ORDER_BOOK = 1,
+//	     CLAIM_ATOM_TYPE_LIQUIDITY_POOL = 2
+//	 };
 type ClaimAtomType int32
 
 const (
@@ -29191,21 +28939,20 @@ var _ xdrType = (*ClaimAtomType)(nil)
 
 // ClaimOfferAtomV0 is an XDR Struct defines as:
 //
-//   struct ClaimOfferAtomV0
-//    {
-//        // emitted to identify the offer
-//        uint256 sellerEd25519; // Account that owns the offer
-//        int64 offerID;
+//	struct ClaimOfferAtomV0
+//	 {
+//	     // emitted to identify the offer
+//	     uint256 sellerEd25519; // Account that owns the offer
+//	     int64 offerID;
 //
-//        // amount and asset taken from the owner
-//        Asset assetSold;
-//        int64 amountSold;
+//	     // amount and asset taken from the owner
+//	     Asset assetSold;
+//	     int64 amountSold;
 //
-//        // amount and asset sent to the owner
-//        Asset assetBought;
-//        int64 amountBought;
-//    };
-//
+//	     // amount and asset sent to the owner
+//	     Asset assetBought;
+//	     int64 amountBought;
+//	 };
 type ClaimOfferAtomV0 struct {
 	SellerEd25519 Uint256
 	OfferId       Int64
@@ -29307,21 +29054,20 @@ var _ xdrType = (*ClaimOfferAtomV0)(nil)
 
 // ClaimOfferAtom is an XDR Struct defines as:
 //
-//   struct ClaimOfferAtom
-//    {
-//        // emitted to identify the offer
-//        AccountID sellerID; // Account that owns the offer
-//        int64 offerID;
+//	struct ClaimOfferAtom
+//	 {
+//	     // emitted to identify the offer
+//	     AccountID sellerID; // Account that owns the offer
+//	     int64 offerID;
 //
-//        // amount and asset taken from the owner
-//        Asset assetSold;
-//        int64 amountSold;
+//	     // amount and asset taken from the owner
+//	     Asset assetSold;
+//	     int64 amountSold;
 //
-//        // amount and asset sent to the owner
-//        Asset assetBought;
-//        int64 amountBought;
-//    };
-//
+//	     // amount and asset sent to the owner
+//	     Asset assetBought;
+//	     int64 amountBought;
+//	 };
 type ClaimOfferAtom struct {
 	SellerId     AccountId
 	OfferId      Int64
@@ -29423,19 +29169,18 @@ var _ xdrType = (*ClaimOfferAtom)(nil)
 
 // ClaimLiquidityAtom is an XDR Struct defines as:
 //
-//   struct ClaimLiquidityAtom
-//    {
-//        PoolID liquidityPoolID;
+//	struct ClaimLiquidityAtom
+//	 {
+//	     PoolID liquidityPoolID;
 //
-//        // amount and asset taken from the pool
-//        Asset assetSold;
-//        int64 amountSold;
+//	     // amount and asset taken from the pool
+//	     Asset assetSold;
+//	     int64 amountSold;
 //
-//        // amount and asset sent to the pool
-//        Asset assetBought;
-//        int64 amountBought;
-//    };
-//
+//	     // amount and asset sent to the pool
+//	     Asset assetBought;
+//	     int64 amountBought;
+//	 };
 type ClaimLiquidityAtom struct {
 	LiquidityPoolId PoolId
 	AssetSold       Asset
@@ -29528,16 +29273,15 @@ var _ xdrType = (*ClaimLiquidityAtom)(nil)
 
 // ClaimAtom is an XDR Union defines as:
 //
-//   union ClaimAtom switch (ClaimAtomType type)
-//    {
-//    case CLAIM_ATOM_TYPE_V0:
-//        ClaimOfferAtomV0 v0;
-//    case CLAIM_ATOM_TYPE_ORDER_BOOK:
-//        ClaimOfferAtom orderBook;
-//    case CLAIM_ATOM_TYPE_LIQUIDITY_POOL:
-//        ClaimLiquidityAtom liquidityPool;
-//    };
-//
+//	union ClaimAtom switch (ClaimAtomType type)
+//	 {
+//	 case CLAIM_ATOM_TYPE_V0:
+//	     ClaimOfferAtomV0 v0;
+//	 case CLAIM_ATOM_TYPE_ORDER_BOOK:
+//	     ClaimOfferAtom orderBook;
+//	 case CLAIM_ATOM_TYPE_LIQUIDITY_POOL:
+//	     ClaimLiquidityAtom liquidityPool;
+//	 };
 type ClaimAtom struct {
 	Type          ClaimAtomType
 	V0            *ClaimOfferAtomV0
@@ -29764,19 +29508,18 @@ var _ xdrType = (*ClaimAtom)(nil)
 
 // CreateAccountResultCode is an XDR Enum defines as:
 //
-//   enum CreateAccountResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        CREATE_ACCOUNT_SUCCESS = 0, // account was created
+//	enum CreateAccountResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     CREATE_ACCOUNT_SUCCESS = 0, // account was created
 //
-//        // codes considered as "failure" for the operation
-//        CREATE_ACCOUNT_MALFORMED = -1,   // invalid destination
-//        CREATE_ACCOUNT_UNDERFUNDED = -2, // not enough funds in source account
-//        CREATE_ACCOUNT_LOW_RESERVE =
-//            -3, // would create an account below the min reserve
-//        CREATE_ACCOUNT_ALREADY_EXIST = -4 // account already exists
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     CREATE_ACCOUNT_MALFORMED = -1,   // invalid destination
+//	     CREATE_ACCOUNT_UNDERFUNDED = -2, // not enough funds in source account
+//	     CREATE_ACCOUNT_LOW_RESERVE =
+//	         -3, // would create an account below the min reserve
+//	     CREATE_ACCOUNT_ALREADY_EXIST = -4 // account already exists
+//	 };
 type CreateAccountResultCode int32
 
 const (
@@ -29861,17 +29604,16 @@ var _ xdrType = (*CreateAccountResultCode)(nil)
 
 // CreateAccountResult is an XDR Union defines as:
 //
-//   union CreateAccountResult switch (CreateAccountResultCode code)
-//    {
-//    case CREATE_ACCOUNT_SUCCESS:
-//        void;
-//    case CREATE_ACCOUNT_MALFORMED:
-//    case CREATE_ACCOUNT_UNDERFUNDED:
-//    case CREATE_ACCOUNT_LOW_RESERVE:
-//    case CREATE_ACCOUNT_ALREADY_EXIST:
-//        void;
-//    };
-//
+//	union CreateAccountResult switch (CreateAccountResultCode code)
+//	 {
+//	 case CREATE_ACCOUNT_SUCCESS:
+//	     void;
+//	 case CREATE_ACCOUNT_MALFORMED:
+//	 case CREATE_ACCOUNT_UNDERFUNDED:
+//	 case CREATE_ACCOUNT_LOW_RESERVE:
+//	 case CREATE_ACCOUNT_ALREADY_EXIST:
+//	     void;
+//	 };
 type CreateAccountResult struct {
 	Code CreateAccountResultCode
 }
@@ -30004,23 +29746,22 @@ var _ xdrType = (*CreateAccountResult)(nil)
 
 // PaymentResultCode is an XDR Enum defines as:
 //
-//   enum PaymentResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        PAYMENT_SUCCESS = 0, // payment successfully completed
+//	enum PaymentResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     PAYMENT_SUCCESS = 0, // payment successfully completed
 //
-//        // codes considered as "failure" for the operation
-//        PAYMENT_MALFORMED = -1,          // bad input
-//        PAYMENT_UNDERFUNDED = -2,        // not enough funds in source account
-//        PAYMENT_SRC_NO_TRUST = -3,       // no trust line on source account
-//        PAYMENT_SRC_NOT_AUTHORIZED = -4, // source not authorized to transfer
-//        PAYMENT_NO_DESTINATION = -5,     // destination account does not exist
-//        PAYMENT_NO_TRUST = -6,       // destination missing a trust line for asset
-//        PAYMENT_NOT_AUTHORIZED = -7, // destination not authorized to hold asset
-//        PAYMENT_LINE_FULL = -8,      // destination would go above their limit
-//        PAYMENT_NO_ISSUER = -9       // missing issuer on asset
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     PAYMENT_MALFORMED = -1,          // bad input
+//	     PAYMENT_UNDERFUNDED = -2,        // not enough funds in source account
+//	     PAYMENT_SRC_NO_TRUST = -3,       // no trust line on source account
+//	     PAYMENT_SRC_NOT_AUTHORIZED = -4, // source not authorized to transfer
+//	     PAYMENT_NO_DESTINATION = -5,     // destination account does not exist
+//	     PAYMENT_NO_TRUST = -6,       // destination missing a trust line for asset
+//	     PAYMENT_NOT_AUTHORIZED = -7, // destination not authorized to hold asset
+//	     PAYMENT_LINE_FULL = -8,      // destination would go above their limit
+//	     PAYMENT_NO_ISSUER = -9       // missing issuer on asset
+//	 };
 type PaymentResultCode int32
 
 const (
@@ -30115,22 +29856,21 @@ var _ xdrType = (*PaymentResultCode)(nil)
 
 // PaymentResult is an XDR Union defines as:
 //
-//   union PaymentResult switch (PaymentResultCode code)
-//    {
-//    case PAYMENT_SUCCESS:
-//        void;
-//    case PAYMENT_MALFORMED:
-//    case PAYMENT_UNDERFUNDED:
-//    case PAYMENT_SRC_NO_TRUST:
-//    case PAYMENT_SRC_NOT_AUTHORIZED:
-//    case PAYMENT_NO_DESTINATION:
-//    case PAYMENT_NO_TRUST:
-//    case PAYMENT_NOT_AUTHORIZED:
-//    case PAYMENT_LINE_FULL:
-//    case PAYMENT_NO_ISSUER:
-//        void;
-//    };
-//
+//	union PaymentResult switch (PaymentResultCode code)
+//	 {
+//	 case PAYMENT_SUCCESS:
+//	     void;
+//	 case PAYMENT_MALFORMED:
+//	 case PAYMENT_UNDERFUNDED:
+//	 case PAYMENT_SRC_NO_TRUST:
+//	 case PAYMENT_SRC_NOT_AUTHORIZED:
+//	 case PAYMENT_NO_DESTINATION:
+//	 case PAYMENT_NO_TRUST:
+//	 case PAYMENT_NOT_AUTHORIZED:
+//	 case PAYMENT_LINE_FULL:
+//	 case PAYMENT_NO_ISSUER:
+//	     void;
+//	 };
 type PaymentResult struct {
 	Code PaymentResultCode
 }
@@ -30313,35 +30053,34 @@ var _ xdrType = (*PaymentResult)(nil)
 
 // PathPaymentStrictReceiveResultCode is an XDR Enum defines as:
 //
-//   enum PathPaymentStrictReceiveResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        PATH_PAYMENT_STRICT_RECEIVE_SUCCESS = 0, // success
+//	enum PathPaymentStrictReceiveResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     PATH_PAYMENT_STRICT_RECEIVE_SUCCESS = 0, // success
 //
-//        // codes considered as "failure" for the operation
-//        PATH_PAYMENT_STRICT_RECEIVE_MALFORMED = -1, // bad input
-//        PATH_PAYMENT_STRICT_RECEIVE_UNDERFUNDED =
-//            -2, // not enough funds in source account
-//        PATH_PAYMENT_STRICT_RECEIVE_SRC_NO_TRUST =
-//            -3, // no trust line on source account
-//        PATH_PAYMENT_STRICT_RECEIVE_SRC_NOT_AUTHORIZED =
-//            -4, // source not authorized to transfer
-//        PATH_PAYMENT_STRICT_RECEIVE_NO_DESTINATION =
-//            -5, // destination account does not exist
-//        PATH_PAYMENT_STRICT_RECEIVE_NO_TRUST =
-//            -6, // dest missing a trust line for asset
-//        PATH_PAYMENT_STRICT_RECEIVE_NOT_AUTHORIZED =
-//            -7, // dest not authorized to hold asset
-//        PATH_PAYMENT_STRICT_RECEIVE_LINE_FULL =
-//            -8, // dest would go above their limit
-//        PATH_PAYMENT_STRICT_RECEIVE_NO_ISSUER = -9, // missing issuer on one asset
-//        PATH_PAYMENT_STRICT_RECEIVE_TOO_FEW_OFFERS =
-//            -10, // not enough offers to satisfy path
-//        PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF =
-//            -11, // would cross one of its own offers
-//        PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX = -12 // could not satisfy sendmax
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     PATH_PAYMENT_STRICT_RECEIVE_MALFORMED = -1, // bad input
+//	     PATH_PAYMENT_STRICT_RECEIVE_UNDERFUNDED =
+//	         -2, // not enough funds in source account
+//	     PATH_PAYMENT_STRICT_RECEIVE_SRC_NO_TRUST =
+//	         -3, // no trust line on source account
+//	     PATH_PAYMENT_STRICT_RECEIVE_SRC_NOT_AUTHORIZED =
+//	         -4, // source not authorized to transfer
+//	     PATH_PAYMENT_STRICT_RECEIVE_NO_DESTINATION =
+//	         -5, // destination account does not exist
+//	     PATH_PAYMENT_STRICT_RECEIVE_NO_TRUST =
+//	         -6, // dest missing a trust line for asset
+//	     PATH_PAYMENT_STRICT_RECEIVE_NOT_AUTHORIZED =
+//	         -7, // dest not authorized to hold asset
+//	     PATH_PAYMENT_STRICT_RECEIVE_LINE_FULL =
+//	         -8, // dest would go above their limit
+//	     PATH_PAYMENT_STRICT_RECEIVE_NO_ISSUER = -9, // missing issuer on one asset
+//	     PATH_PAYMENT_STRICT_RECEIVE_TOO_FEW_OFFERS =
+//	         -10, // not enough offers to satisfy path
+//	     PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF =
+//	         -11, // would cross one of its own offers
+//	     PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX = -12 // could not satisfy sendmax
+//	 };
 type PathPaymentStrictReceiveResultCode int32
 
 const (
@@ -30442,13 +30181,12 @@ var _ xdrType = (*PathPaymentStrictReceiveResultCode)(nil)
 
 // SimplePaymentResult is an XDR Struct defines as:
 //
-//   struct SimplePaymentResult
-//    {
-//        AccountID destination;
-//        Asset asset;
-//        int64 amount;
-//    };
-//
+//	struct SimplePaymentResult
+//	 {
+//	     AccountID destination;
+//	     Asset asset;
+//	     int64 amount;
+//	 };
 type SimplePaymentResult struct {
 	Destination AccountId
 	Asset       Asset
@@ -30523,12 +30261,11 @@ var _ xdrType = (*SimplePaymentResult)(nil)
 
 // PathPaymentStrictReceiveResultSuccess is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            ClaimAtom offers<>;
-//            SimplePaymentResult last;
-//        }
-//
+//	struct
+//	     {
+//	         ClaimAtom offers<>;
+//	         SimplePaymentResult last;
+//	     }
 type PathPaymentStrictReceiveResultSuccess struct {
 	Offers []ClaimAtom
 	Last   SimplePaymentResult
@@ -30611,32 +30348,31 @@ var _ xdrType = (*PathPaymentStrictReceiveResultSuccess)(nil)
 
 // PathPaymentStrictReceiveResult is an XDR Union defines as:
 //
-//   union PathPaymentStrictReceiveResult switch (
-//        PathPaymentStrictReceiveResultCode code)
-//    {
-//    case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
-//        struct
-//        {
-//            ClaimAtom offers<>;
-//            SimplePaymentResult last;
-//        } success;
-//    case PATH_PAYMENT_STRICT_RECEIVE_MALFORMED:
-//    case PATH_PAYMENT_STRICT_RECEIVE_UNDERFUNDED:
-//    case PATH_PAYMENT_STRICT_RECEIVE_SRC_NO_TRUST:
-//    case PATH_PAYMENT_STRICT_RECEIVE_SRC_NOT_AUTHORIZED:
-//    case PATH_PAYMENT_STRICT_RECEIVE_NO_DESTINATION:
-//    case PATH_PAYMENT_STRICT_RECEIVE_NO_TRUST:
-//    case PATH_PAYMENT_STRICT_RECEIVE_NOT_AUTHORIZED:
-//    case PATH_PAYMENT_STRICT_RECEIVE_LINE_FULL:
-//        void;
-//    case PATH_PAYMENT_STRICT_RECEIVE_NO_ISSUER:
-//        Asset noIssuer; // the asset that caused the error
-//    case PATH_PAYMENT_STRICT_RECEIVE_TOO_FEW_OFFERS:
-//    case PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF:
-//    case PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX:
-//        void;
-//    };
-//
+//	union PathPaymentStrictReceiveResult switch (
+//	     PathPaymentStrictReceiveResultCode code)
+//	 {
+//	 case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
+//	     struct
+//	     {
+//	         ClaimAtom offers<>;
+//	         SimplePaymentResult last;
+//	     } success;
+//	 case PATH_PAYMENT_STRICT_RECEIVE_MALFORMED:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_UNDERFUNDED:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_SRC_NO_TRUST:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_SRC_NOT_AUTHORIZED:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_NO_DESTINATION:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_NO_TRUST:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_NOT_AUTHORIZED:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_LINE_FULL:
+//	     void;
+//	 case PATH_PAYMENT_STRICT_RECEIVE_NO_ISSUER:
+//	     Asset noIssuer; // the asset that caused the error
+//	 case PATH_PAYMENT_STRICT_RECEIVE_TOO_FEW_OFFERS:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF:
+//	 case PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX:
+//	     void;
+//	 };
 type PathPaymentStrictReceiveResult struct {
 	Code     PathPaymentStrictReceiveResultCode
 	Success  *PathPaymentStrictReceiveResultSuccess
@@ -30925,34 +30661,33 @@ var _ xdrType = (*PathPaymentStrictReceiveResult)(nil)
 
 // PathPaymentStrictSendResultCode is an XDR Enum defines as:
 //
-//   enum PathPaymentStrictSendResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        PATH_PAYMENT_STRICT_SEND_SUCCESS = 0, // success
+//	enum PathPaymentStrictSendResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     PATH_PAYMENT_STRICT_SEND_SUCCESS = 0, // success
 //
-//        // codes considered as "failure" for the operation
-//        PATH_PAYMENT_STRICT_SEND_MALFORMED = -1, // bad input
-//        PATH_PAYMENT_STRICT_SEND_UNDERFUNDED =
-//            -2, // not enough funds in source account
-//        PATH_PAYMENT_STRICT_SEND_SRC_NO_TRUST =
-//            -3, // no trust line on source account
-//        PATH_PAYMENT_STRICT_SEND_SRC_NOT_AUTHORIZED =
-//            -4, // source not authorized to transfer
-//        PATH_PAYMENT_STRICT_SEND_NO_DESTINATION =
-//            -5, // destination account does not exist
-//        PATH_PAYMENT_STRICT_SEND_NO_TRUST =
-//            -6, // dest missing a trust line for asset
-//        PATH_PAYMENT_STRICT_SEND_NOT_AUTHORIZED =
-//            -7, // dest not authorized to hold asset
-//        PATH_PAYMENT_STRICT_SEND_LINE_FULL = -8, // dest would go above their limit
-//        PATH_PAYMENT_STRICT_SEND_NO_ISSUER = -9, // missing issuer on one asset
-//        PATH_PAYMENT_STRICT_SEND_TOO_FEW_OFFERS =
-//            -10, // not enough offers to satisfy path
-//        PATH_PAYMENT_STRICT_SEND_OFFER_CROSS_SELF =
-//            -11, // would cross one of its own offers
-//        PATH_PAYMENT_STRICT_SEND_UNDER_DESTMIN = -12 // could not satisfy destMin
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     PATH_PAYMENT_STRICT_SEND_MALFORMED = -1, // bad input
+//	     PATH_PAYMENT_STRICT_SEND_UNDERFUNDED =
+//	         -2, // not enough funds in source account
+//	     PATH_PAYMENT_STRICT_SEND_SRC_NO_TRUST =
+//	         -3, // no trust line on source account
+//	     PATH_PAYMENT_STRICT_SEND_SRC_NOT_AUTHORIZED =
+//	         -4, // source not authorized to transfer
+//	     PATH_PAYMENT_STRICT_SEND_NO_DESTINATION =
+//	         -5, // destination account does not exist
+//	     PATH_PAYMENT_STRICT_SEND_NO_TRUST =
+//	         -6, // dest missing a trust line for asset
+//	     PATH_PAYMENT_STRICT_SEND_NOT_AUTHORIZED =
+//	         -7, // dest not authorized to hold asset
+//	     PATH_PAYMENT_STRICT_SEND_LINE_FULL = -8, // dest would go above their limit
+//	     PATH_PAYMENT_STRICT_SEND_NO_ISSUER = -9, // missing issuer on one asset
+//	     PATH_PAYMENT_STRICT_SEND_TOO_FEW_OFFERS =
+//	         -10, // not enough offers to satisfy path
+//	     PATH_PAYMENT_STRICT_SEND_OFFER_CROSS_SELF =
+//	         -11, // would cross one of its own offers
+//	     PATH_PAYMENT_STRICT_SEND_UNDER_DESTMIN = -12 // could not satisfy destMin
+//	 };
 type PathPaymentStrictSendResultCode int32
 
 const (
@@ -31053,12 +30788,11 @@ var _ xdrType = (*PathPaymentStrictSendResultCode)(nil)
 
 // PathPaymentStrictSendResultSuccess is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            ClaimAtom offers<>;
-//            SimplePaymentResult last;
-//        }
-//
+//	struct
+//	     {
+//	         ClaimAtom offers<>;
+//	         SimplePaymentResult last;
+//	     }
 type PathPaymentStrictSendResultSuccess struct {
 	Offers []ClaimAtom
 	Last   SimplePaymentResult
@@ -31141,31 +30875,30 @@ var _ xdrType = (*PathPaymentStrictSendResultSuccess)(nil)
 
 // PathPaymentStrictSendResult is an XDR Union defines as:
 //
-//   union PathPaymentStrictSendResult switch (PathPaymentStrictSendResultCode code)
-//    {
-//    case PATH_PAYMENT_STRICT_SEND_SUCCESS:
-//        struct
-//        {
-//            ClaimAtom offers<>;
-//            SimplePaymentResult last;
-//        } success;
-//    case PATH_PAYMENT_STRICT_SEND_MALFORMED:
-//    case PATH_PAYMENT_STRICT_SEND_UNDERFUNDED:
-//    case PATH_PAYMENT_STRICT_SEND_SRC_NO_TRUST:
-//    case PATH_PAYMENT_STRICT_SEND_SRC_NOT_AUTHORIZED:
-//    case PATH_PAYMENT_STRICT_SEND_NO_DESTINATION:
-//    case PATH_PAYMENT_STRICT_SEND_NO_TRUST:
-//    case PATH_PAYMENT_STRICT_SEND_NOT_AUTHORIZED:
-//    case PATH_PAYMENT_STRICT_SEND_LINE_FULL:
-//        void;
-//    case PATH_PAYMENT_STRICT_SEND_NO_ISSUER:
-//        Asset noIssuer; // the asset that caused the error
-//    case PATH_PAYMENT_STRICT_SEND_TOO_FEW_OFFERS:
-//    case PATH_PAYMENT_STRICT_SEND_OFFER_CROSS_SELF:
-//    case PATH_PAYMENT_STRICT_SEND_UNDER_DESTMIN:
-//        void;
-//    };
-//
+//	union PathPaymentStrictSendResult switch (PathPaymentStrictSendResultCode code)
+//	 {
+//	 case PATH_PAYMENT_STRICT_SEND_SUCCESS:
+//	     struct
+//	     {
+//	         ClaimAtom offers<>;
+//	         SimplePaymentResult last;
+//	     } success;
+//	 case PATH_PAYMENT_STRICT_SEND_MALFORMED:
+//	 case PATH_PAYMENT_STRICT_SEND_UNDERFUNDED:
+//	 case PATH_PAYMENT_STRICT_SEND_SRC_NO_TRUST:
+//	 case PATH_PAYMENT_STRICT_SEND_SRC_NOT_AUTHORIZED:
+//	 case PATH_PAYMENT_STRICT_SEND_NO_DESTINATION:
+//	 case PATH_PAYMENT_STRICT_SEND_NO_TRUST:
+//	 case PATH_PAYMENT_STRICT_SEND_NOT_AUTHORIZED:
+//	 case PATH_PAYMENT_STRICT_SEND_LINE_FULL:
+//	     void;
+//	 case PATH_PAYMENT_STRICT_SEND_NO_ISSUER:
+//	     Asset noIssuer; // the asset that caused the error
+//	 case PATH_PAYMENT_STRICT_SEND_TOO_FEW_OFFERS:
+//	 case PATH_PAYMENT_STRICT_SEND_OFFER_CROSS_SELF:
+//	 case PATH_PAYMENT_STRICT_SEND_UNDER_DESTMIN:
+//	     void;
+//	 };
 type PathPaymentStrictSendResult struct {
 	Code     PathPaymentStrictSendResultCode
 	Success  *PathPaymentStrictSendResultSuccess
@@ -31454,33 +31187,32 @@ var _ xdrType = (*PathPaymentStrictSendResult)(nil)
 
 // ManageSellOfferResultCode is an XDR Enum defines as:
 //
-//   enum ManageSellOfferResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        MANAGE_SELL_OFFER_SUCCESS = 0,
+//	enum ManageSellOfferResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     MANAGE_SELL_OFFER_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        MANAGE_SELL_OFFER_MALFORMED = -1, // generated offer would be invalid
-//        MANAGE_SELL_OFFER_SELL_NO_TRUST =
-//            -2,                              // no trust line for what we're selling
-//        MANAGE_SELL_OFFER_BUY_NO_TRUST = -3, // no trust line for what we're buying
-//        MANAGE_SELL_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
-//        MANAGE_SELL_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
-//        MANAGE_SELL_OFFER_LINE_FULL = -6, // can't receive more of what it's buying
-//        MANAGE_SELL_OFFER_UNDERFUNDED = -7, // doesn't hold what it's trying to sell
-//        MANAGE_SELL_OFFER_CROSS_SELF =
-//            -8, // would cross an offer from the same user
-//        MANAGE_SELL_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
-//        MANAGE_SELL_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
+//	     // codes considered as "failure" for the operation
+//	     MANAGE_SELL_OFFER_MALFORMED = -1, // generated offer would be invalid
+//	     MANAGE_SELL_OFFER_SELL_NO_TRUST =
+//	         -2,                              // no trust line for what we're selling
+//	     MANAGE_SELL_OFFER_BUY_NO_TRUST = -3, // no trust line for what we're buying
+//	     MANAGE_SELL_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
+//	     MANAGE_SELL_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
+//	     MANAGE_SELL_OFFER_LINE_FULL = -6, // can't receive more of what it's buying
+//	     MANAGE_SELL_OFFER_UNDERFUNDED = -7, // doesn't hold what it's trying to sell
+//	     MANAGE_SELL_OFFER_CROSS_SELF =
+//	         -8, // would cross an offer from the same user
+//	     MANAGE_SELL_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
+//	     MANAGE_SELL_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
 //
-//        // update errors
-//        MANAGE_SELL_OFFER_NOT_FOUND =
-//            -11, // offerID does not match an existing offer
+//	     // update errors
+//	     MANAGE_SELL_OFFER_NOT_FOUND =
+//	         -11, // offerID does not match an existing offer
 //
-//        MANAGE_SELL_OFFER_LOW_RESERVE =
-//            -12 // not enough funds to create a new Offer
-//    };
-//
+//	     MANAGE_SELL_OFFER_LOW_RESERVE =
+//	         -12 // not enough funds to create a new Offer
+//	 };
 type ManageSellOfferResultCode int32
 
 const (
@@ -31581,13 +31313,12 @@ var _ xdrType = (*ManageSellOfferResultCode)(nil)
 
 // ManageOfferEffect is an XDR Enum defines as:
 //
-//   enum ManageOfferEffect
-//    {
-//        MANAGE_OFFER_CREATED = 0,
-//        MANAGE_OFFER_UPDATED = 1,
-//        MANAGE_OFFER_DELETED = 2
-//    };
-//
+//	enum ManageOfferEffect
+//	 {
+//	     MANAGE_OFFER_CREATED = 0,
+//	     MANAGE_OFFER_UPDATED = 1,
+//	     MANAGE_OFFER_DELETED = 2
+//	 };
 type ManageOfferEffect int32
 
 const (
@@ -31668,15 +31399,14 @@ var _ xdrType = (*ManageOfferEffect)(nil)
 
 // ManageOfferSuccessResultOffer is an XDR NestedUnion defines as:
 //
-//   union switch (ManageOfferEffect effect)
-//        {
-//        case MANAGE_OFFER_CREATED:
-//        case MANAGE_OFFER_UPDATED:
-//            OfferEntry offer;
-//        case MANAGE_OFFER_DELETED:
-//            void;
-//        }
-//
+//	union switch (ManageOfferEffect effect)
+//	     {
+//	     case MANAGE_OFFER_CREATED:
+//	     case MANAGE_OFFER_UPDATED:
+//	         OfferEntry offer;
+//	     case MANAGE_OFFER_DELETED:
+//	         void;
+//	     }
 type ManageOfferSuccessResultOffer struct {
 	Effect ManageOfferEffect
 	Offer  *OfferEntry
@@ -31839,22 +31569,21 @@ var _ xdrType = (*ManageOfferSuccessResultOffer)(nil)
 
 // ManageOfferSuccessResult is an XDR Struct defines as:
 //
-//   struct ManageOfferSuccessResult
-//    {
-//        // offers that got claimed while creating this offer
-//        ClaimAtom offersClaimed<>;
+//	struct ManageOfferSuccessResult
+//	 {
+//	     // offers that got claimed while creating this offer
+//	     ClaimAtom offersClaimed<>;
 //
-//        union switch (ManageOfferEffect effect)
-//        {
-//        case MANAGE_OFFER_CREATED:
-//        case MANAGE_OFFER_UPDATED:
-//            OfferEntry offer;
-//        case MANAGE_OFFER_DELETED:
-//            void;
-//        }
-//        offer;
-//    };
-//
+//	     union switch (ManageOfferEffect effect)
+//	     {
+//	     case MANAGE_OFFER_CREATED:
+//	     case MANAGE_OFFER_UPDATED:
+//	         OfferEntry offer;
+//	     case MANAGE_OFFER_DELETED:
+//	         void;
+//	     }
+//	     offer;
+//	 };
 type ManageOfferSuccessResult struct {
 	OffersClaimed []ClaimAtom
 	Offer         ManageOfferSuccessResultOffer
@@ -31937,25 +31666,24 @@ var _ xdrType = (*ManageOfferSuccessResult)(nil)
 
 // ManageSellOfferResult is an XDR Union defines as:
 //
-//   union ManageSellOfferResult switch (ManageSellOfferResultCode code)
-//    {
-//    case MANAGE_SELL_OFFER_SUCCESS:
-//        ManageOfferSuccessResult success;
-//    case MANAGE_SELL_OFFER_MALFORMED:
-//    case MANAGE_SELL_OFFER_SELL_NO_TRUST:
-//    case MANAGE_SELL_OFFER_BUY_NO_TRUST:
-//    case MANAGE_SELL_OFFER_SELL_NOT_AUTHORIZED:
-//    case MANAGE_SELL_OFFER_BUY_NOT_AUTHORIZED:
-//    case MANAGE_SELL_OFFER_LINE_FULL:
-//    case MANAGE_SELL_OFFER_UNDERFUNDED:
-//    case MANAGE_SELL_OFFER_CROSS_SELF:
-//    case MANAGE_SELL_OFFER_SELL_NO_ISSUER:
-//    case MANAGE_SELL_OFFER_BUY_NO_ISSUER:
-//    case MANAGE_SELL_OFFER_NOT_FOUND:
-//    case MANAGE_SELL_OFFER_LOW_RESERVE:
-//        void;
-//    };
-//
+//	union ManageSellOfferResult switch (ManageSellOfferResultCode code)
+//	 {
+//	 case MANAGE_SELL_OFFER_SUCCESS:
+//	     ManageOfferSuccessResult success;
+//	 case MANAGE_SELL_OFFER_MALFORMED:
+//	 case MANAGE_SELL_OFFER_SELL_NO_TRUST:
+//	 case MANAGE_SELL_OFFER_BUY_NO_TRUST:
+//	 case MANAGE_SELL_OFFER_SELL_NOT_AUTHORIZED:
+//	 case MANAGE_SELL_OFFER_BUY_NOT_AUTHORIZED:
+//	 case MANAGE_SELL_OFFER_LINE_FULL:
+//	 case MANAGE_SELL_OFFER_UNDERFUNDED:
+//	 case MANAGE_SELL_OFFER_CROSS_SELF:
+//	 case MANAGE_SELL_OFFER_SELL_NO_ISSUER:
+//	 case MANAGE_SELL_OFFER_BUY_NO_ISSUER:
+//	 case MANAGE_SELL_OFFER_NOT_FOUND:
+//	 case MANAGE_SELL_OFFER_LOW_RESERVE:
+//	     void;
+//	 };
 type ManageSellOfferResult struct {
 	Code    ManageSellOfferResultCode
 	Success *ManageOfferSuccessResult
@@ -32206,30 +31934,29 @@ var _ xdrType = (*ManageSellOfferResult)(nil)
 
 // ManageBuyOfferResultCode is an XDR Enum defines as:
 //
-//   enum ManageBuyOfferResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        MANAGE_BUY_OFFER_SUCCESS = 0,
+//	enum ManageBuyOfferResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     MANAGE_BUY_OFFER_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        MANAGE_BUY_OFFER_MALFORMED = -1,     // generated offer would be invalid
-//        MANAGE_BUY_OFFER_SELL_NO_TRUST = -2, // no trust line for what we're selling
-//        MANAGE_BUY_OFFER_BUY_NO_TRUST = -3,  // no trust line for what we're buying
-//        MANAGE_BUY_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
-//        MANAGE_BUY_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
-//        MANAGE_BUY_OFFER_LINE_FULL = -6,   // can't receive more of what it's buying
-//        MANAGE_BUY_OFFER_UNDERFUNDED = -7, // doesn't hold what it's trying to sell
-//        MANAGE_BUY_OFFER_CROSS_SELF = -8, // would cross an offer from the same user
-//        MANAGE_BUY_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
-//        MANAGE_BUY_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
+//	     // codes considered as "failure" for the operation
+//	     MANAGE_BUY_OFFER_MALFORMED = -1,     // generated offer would be invalid
+//	     MANAGE_BUY_OFFER_SELL_NO_TRUST = -2, // no trust line for what we're selling
+//	     MANAGE_BUY_OFFER_BUY_NO_TRUST = -3,  // no trust line for what we're buying
+//	     MANAGE_BUY_OFFER_SELL_NOT_AUTHORIZED = -4, // not authorized to sell
+//	     MANAGE_BUY_OFFER_BUY_NOT_AUTHORIZED = -5,  // not authorized to buy
+//	     MANAGE_BUY_OFFER_LINE_FULL = -6,   // can't receive more of what it's buying
+//	     MANAGE_BUY_OFFER_UNDERFUNDED = -7, // doesn't hold what it's trying to sell
+//	     MANAGE_BUY_OFFER_CROSS_SELF = -8, // would cross an offer from the same user
+//	     MANAGE_BUY_OFFER_SELL_NO_ISSUER = -9, // no issuer for what we're selling
+//	     MANAGE_BUY_OFFER_BUY_NO_ISSUER = -10, // no issuer for what we're buying
 //
-//        // update errors
-//        MANAGE_BUY_OFFER_NOT_FOUND =
-//            -11, // offerID does not match an existing offer
+//	     // update errors
+//	     MANAGE_BUY_OFFER_NOT_FOUND =
+//	         -11, // offerID does not match an existing offer
 //
-//        MANAGE_BUY_OFFER_LOW_RESERVE = -12 // not enough funds to create a new Offer
-//    };
-//
+//	     MANAGE_BUY_OFFER_LOW_RESERVE = -12 // not enough funds to create a new Offer
+//	 };
 type ManageBuyOfferResultCode int32
 
 const (
@@ -32330,25 +32057,24 @@ var _ xdrType = (*ManageBuyOfferResultCode)(nil)
 
 // ManageBuyOfferResult is an XDR Union defines as:
 //
-//   union ManageBuyOfferResult switch (ManageBuyOfferResultCode code)
-//    {
-//    case MANAGE_BUY_OFFER_SUCCESS:
-//        ManageOfferSuccessResult success;
-//    case MANAGE_BUY_OFFER_MALFORMED:
-//    case MANAGE_BUY_OFFER_SELL_NO_TRUST:
-//    case MANAGE_BUY_OFFER_BUY_NO_TRUST:
-//    case MANAGE_BUY_OFFER_SELL_NOT_AUTHORIZED:
-//    case MANAGE_BUY_OFFER_BUY_NOT_AUTHORIZED:
-//    case MANAGE_BUY_OFFER_LINE_FULL:
-//    case MANAGE_BUY_OFFER_UNDERFUNDED:
-//    case MANAGE_BUY_OFFER_CROSS_SELF:
-//    case MANAGE_BUY_OFFER_SELL_NO_ISSUER:
-//    case MANAGE_BUY_OFFER_BUY_NO_ISSUER:
-//    case MANAGE_BUY_OFFER_NOT_FOUND:
-//    case MANAGE_BUY_OFFER_LOW_RESERVE:
-//        void;
-//    };
-//
+//	union ManageBuyOfferResult switch (ManageBuyOfferResultCode code)
+//	 {
+//	 case MANAGE_BUY_OFFER_SUCCESS:
+//	     ManageOfferSuccessResult success;
+//	 case MANAGE_BUY_OFFER_MALFORMED:
+//	 case MANAGE_BUY_OFFER_SELL_NO_TRUST:
+//	 case MANAGE_BUY_OFFER_BUY_NO_TRUST:
+//	 case MANAGE_BUY_OFFER_SELL_NOT_AUTHORIZED:
+//	 case MANAGE_BUY_OFFER_BUY_NOT_AUTHORIZED:
+//	 case MANAGE_BUY_OFFER_LINE_FULL:
+//	 case MANAGE_BUY_OFFER_UNDERFUNDED:
+//	 case MANAGE_BUY_OFFER_CROSS_SELF:
+//	 case MANAGE_BUY_OFFER_SELL_NO_ISSUER:
+//	 case MANAGE_BUY_OFFER_BUY_NO_ISSUER:
+//	 case MANAGE_BUY_OFFER_NOT_FOUND:
+//	 case MANAGE_BUY_OFFER_LOW_RESERVE:
+//	     void;
+//	 };
 type ManageBuyOfferResult struct {
 	Code    ManageBuyOfferResultCode
 	Success *ManageOfferSuccessResult
@@ -32599,24 +32325,23 @@ var _ xdrType = (*ManageBuyOfferResult)(nil)
 
 // SetOptionsResultCode is an XDR Enum defines as:
 //
-//   enum SetOptionsResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        SET_OPTIONS_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        SET_OPTIONS_LOW_RESERVE = -1,      // not enough funds to add a signer
-//        SET_OPTIONS_TOO_MANY_SIGNERS = -2, // max number of signers already reached
-//        SET_OPTIONS_BAD_FLAGS = -3,        // invalid combination of clear/set flags
-//        SET_OPTIONS_INVALID_INFLATION = -4,      // inflation account does not exist
-//        SET_OPTIONS_CANT_CHANGE = -5,            // can no longer change this option
-//        SET_OPTIONS_UNKNOWN_FLAG = -6,           // can't set an unknown flag
-//        SET_OPTIONS_THRESHOLD_OUT_OF_RANGE = -7, // bad value for weight/threshold
-//        SET_OPTIONS_BAD_SIGNER = -8,             // signer cannot be masterkey
-//        SET_OPTIONS_INVALID_HOME_DOMAIN = -9,    // malformed home domain
-//        SET_OPTIONS_AUTH_REVOCABLE_REQUIRED =
-//            -10 // auth revocable is required for clawback
-//    };
-//
+//	enum SetOptionsResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     SET_OPTIONS_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     SET_OPTIONS_LOW_RESERVE = -1,      // not enough funds to add a signer
+//	     SET_OPTIONS_TOO_MANY_SIGNERS = -2, // max number of signers already reached
+//	     SET_OPTIONS_BAD_FLAGS = -3,        // invalid combination of clear/set flags
+//	     SET_OPTIONS_INVALID_INFLATION = -4,      // inflation account does not exist
+//	     SET_OPTIONS_CANT_CHANGE = -5,            // can no longer change this option
+//	     SET_OPTIONS_UNKNOWN_FLAG = -6,           // can't set an unknown flag
+//	     SET_OPTIONS_THRESHOLD_OUT_OF_RANGE = -7, // bad value for weight/threshold
+//	     SET_OPTIONS_BAD_SIGNER = -8,             // signer cannot be masterkey
+//	     SET_OPTIONS_INVALID_HOME_DOMAIN = -9,    // malformed home domain
+//	     SET_OPTIONS_AUTH_REVOCABLE_REQUIRED =
+//	         -10 // auth revocable is required for clawback
+//	 };
 type SetOptionsResultCode int32
 
 const (
@@ -32713,23 +32438,22 @@ var _ xdrType = (*SetOptionsResultCode)(nil)
 
 // SetOptionsResult is an XDR Union defines as:
 //
-//   union SetOptionsResult switch (SetOptionsResultCode code)
-//    {
-//    case SET_OPTIONS_SUCCESS:
-//        void;
-//    case SET_OPTIONS_LOW_RESERVE:
-//    case SET_OPTIONS_TOO_MANY_SIGNERS:
-//    case SET_OPTIONS_BAD_FLAGS:
-//    case SET_OPTIONS_INVALID_INFLATION:
-//    case SET_OPTIONS_CANT_CHANGE:
-//    case SET_OPTIONS_UNKNOWN_FLAG:
-//    case SET_OPTIONS_THRESHOLD_OUT_OF_RANGE:
-//    case SET_OPTIONS_BAD_SIGNER:
-//    case SET_OPTIONS_INVALID_HOME_DOMAIN:
-//    case SET_OPTIONS_AUTH_REVOCABLE_REQUIRED:
-//        void;
-//    };
-//
+//	union SetOptionsResult switch (SetOptionsResultCode code)
+//	 {
+//	 case SET_OPTIONS_SUCCESS:
+//	     void;
+//	 case SET_OPTIONS_LOW_RESERVE:
+//	 case SET_OPTIONS_TOO_MANY_SIGNERS:
+//	 case SET_OPTIONS_BAD_FLAGS:
+//	 case SET_OPTIONS_INVALID_INFLATION:
+//	 case SET_OPTIONS_CANT_CHANGE:
+//	 case SET_OPTIONS_UNKNOWN_FLAG:
+//	 case SET_OPTIONS_THRESHOLD_OUT_OF_RANGE:
+//	 case SET_OPTIONS_BAD_SIGNER:
+//	 case SET_OPTIONS_INVALID_HOME_DOMAIN:
+//	 case SET_OPTIONS_AUTH_REVOCABLE_REQUIRED:
+//	     void;
+//	 };
 type SetOptionsResult struct {
 	Code SetOptionsResultCode
 }
@@ -32922,25 +32646,24 @@ var _ xdrType = (*SetOptionsResult)(nil)
 
 // ChangeTrustResultCode is an XDR Enum defines as:
 //
-//   enum ChangeTrustResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        CHANGE_TRUST_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        CHANGE_TRUST_MALFORMED = -1,     // bad input
-//        CHANGE_TRUST_NO_ISSUER = -2,     // could not find issuer
-//        CHANGE_TRUST_INVALID_LIMIT = -3, // cannot drop limit below balance
-//                                         // cannot create with a limit of 0
-//        CHANGE_TRUST_LOW_RESERVE =
-//            -4, // not enough funds to create a new trust line,
-//        CHANGE_TRUST_SELF_NOT_ALLOWED = -5,   // trusting self is not allowed
-//        CHANGE_TRUST_TRUST_LINE_MISSING = -6, // Asset trustline is missing for pool
-//        CHANGE_TRUST_CANNOT_DELETE =
-//            -7, // Asset trustline is still referenced in a pool
-//        CHANGE_TRUST_NOT_AUTH_MAINTAIN_LIABILITIES =
-//            -8 // Asset trustline is deauthorized
-//    };
-//
+//	enum ChangeTrustResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     CHANGE_TRUST_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     CHANGE_TRUST_MALFORMED = -1,     // bad input
+//	     CHANGE_TRUST_NO_ISSUER = -2,     // could not find issuer
+//	     CHANGE_TRUST_INVALID_LIMIT = -3, // cannot drop limit below balance
+//	                                      // cannot create with a limit of 0
+//	     CHANGE_TRUST_LOW_RESERVE =
+//	         -4, // not enough funds to create a new trust line,
+//	     CHANGE_TRUST_SELF_NOT_ALLOWED = -5,   // trusting self is not allowed
+//	     CHANGE_TRUST_TRUST_LINE_MISSING = -6, // Asset trustline is missing for pool
+//	     CHANGE_TRUST_CANNOT_DELETE =
+//	         -7, // Asset trustline is still referenced in a pool
+//	     CHANGE_TRUST_NOT_AUTH_MAINTAIN_LIABILITIES =
+//	         -8 // Asset trustline is deauthorized
+//	 };
 type ChangeTrustResultCode int32
 
 const (
@@ -33033,21 +32756,20 @@ var _ xdrType = (*ChangeTrustResultCode)(nil)
 
 // ChangeTrustResult is an XDR Union defines as:
 //
-//   union ChangeTrustResult switch (ChangeTrustResultCode code)
-//    {
-//    case CHANGE_TRUST_SUCCESS:
-//        void;
-//    case CHANGE_TRUST_MALFORMED:
-//    case CHANGE_TRUST_NO_ISSUER:
-//    case CHANGE_TRUST_INVALID_LIMIT:
-//    case CHANGE_TRUST_LOW_RESERVE:
-//    case CHANGE_TRUST_SELF_NOT_ALLOWED:
-//    case CHANGE_TRUST_TRUST_LINE_MISSING:
-//    case CHANGE_TRUST_CANNOT_DELETE:
-//    case CHANGE_TRUST_NOT_AUTH_MAINTAIN_LIABILITIES:
-//        void;
-//    };
-//
+//	union ChangeTrustResult switch (ChangeTrustResultCode code)
+//	 {
+//	 case CHANGE_TRUST_SUCCESS:
+//	     void;
+//	 case CHANGE_TRUST_MALFORMED:
+//	 case CHANGE_TRUST_NO_ISSUER:
+//	 case CHANGE_TRUST_INVALID_LIMIT:
+//	 case CHANGE_TRUST_LOW_RESERVE:
+//	 case CHANGE_TRUST_SELF_NOT_ALLOWED:
+//	 case CHANGE_TRUST_TRUST_LINE_MISSING:
+//	 case CHANGE_TRUST_CANNOT_DELETE:
+//	 case CHANGE_TRUST_NOT_AUTH_MAINTAIN_LIABILITIES:
+//	     void;
+//	 };
 type ChangeTrustResult struct {
 	Code ChangeTrustResultCode
 }
@@ -33220,21 +32942,20 @@ var _ xdrType = (*ChangeTrustResult)(nil)
 
 // AllowTrustResultCode is an XDR Enum defines as:
 //
-//   enum AllowTrustResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        ALLOW_TRUST_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        ALLOW_TRUST_MALFORMED = -1,     // asset is not ASSET_TYPE_ALPHANUM
-//        ALLOW_TRUST_NO_TRUST_LINE = -2, // trustor does not have a trustline
-//                                        // source account does not require trust
-//        ALLOW_TRUST_TRUST_NOT_REQUIRED = -3,
-//        ALLOW_TRUST_CANT_REVOKE = -4,      // source account can't revoke trust,
-//        ALLOW_TRUST_SELF_NOT_ALLOWED = -5, // trusting self is not allowed
-//        ALLOW_TRUST_LOW_RESERVE = -6       // claimable balances can't be created
-//                                           // on revoke due to low reserves
-//    };
-//
+//	enum AllowTrustResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     ALLOW_TRUST_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     ALLOW_TRUST_MALFORMED = -1,     // asset is not ASSET_TYPE_ALPHANUM
+//	     ALLOW_TRUST_NO_TRUST_LINE = -2, // trustor does not have a trustline
+//	                                     // source account does not require trust
+//	     ALLOW_TRUST_TRUST_NOT_REQUIRED = -3,
+//	     ALLOW_TRUST_CANT_REVOKE = -4,      // source account can't revoke trust,
+//	     ALLOW_TRUST_SELF_NOT_ALLOWED = -5, // trusting self is not allowed
+//	     ALLOW_TRUST_LOW_RESERVE = -6       // claimable balances can't be created
+//	                                        // on revoke due to low reserves
+//	 };
 type AllowTrustResultCode int32
 
 const (
@@ -33323,19 +33044,18 @@ var _ xdrType = (*AllowTrustResultCode)(nil)
 
 // AllowTrustResult is an XDR Union defines as:
 //
-//   union AllowTrustResult switch (AllowTrustResultCode code)
-//    {
-//    case ALLOW_TRUST_SUCCESS:
-//        void;
-//    case ALLOW_TRUST_MALFORMED:
-//    case ALLOW_TRUST_NO_TRUST_LINE:
-//    case ALLOW_TRUST_TRUST_NOT_REQUIRED:
-//    case ALLOW_TRUST_CANT_REVOKE:
-//    case ALLOW_TRUST_SELF_NOT_ALLOWED:
-//    case ALLOW_TRUST_LOW_RESERVE:
-//        void;
-//    };
-//
+//	union AllowTrustResult switch (AllowTrustResultCode code)
+//	 {
+//	 case ALLOW_TRUST_SUCCESS:
+//	     void;
+//	 case ALLOW_TRUST_MALFORMED:
+//	 case ALLOW_TRUST_NO_TRUST_LINE:
+//	 case ALLOW_TRUST_TRUST_NOT_REQUIRED:
+//	 case ALLOW_TRUST_CANT_REVOKE:
+//	 case ALLOW_TRUST_SELF_NOT_ALLOWED:
+//	 case ALLOW_TRUST_LOW_RESERVE:
+//	     void;
+//	 };
 type AllowTrustResult struct {
 	Code AllowTrustResultCode
 }
@@ -33488,21 +33208,20 @@ var _ xdrType = (*AllowTrustResult)(nil)
 
 // AccountMergeResultCode is an XDR Enum defines as:
 //
-//   enum AccountMergeResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        ACCOUNT_MERGE_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        ACCOUNT_MERGE_MALFORMED = -1,       // can't merge onto itself
-//        ACCOUNT_MERGE_NO_ACCOUNT = -2,      // destination does not exist
-//        ACCOUNT_MERGE_IMMUTABLE_SET = -3,   // source account has AUTH_IMMUTABLE set
-//        ACCOUNT_MERGE_HAS_SUB_ENTRIES = -4, // account has trust lines/offers
-//        ACCOUNT_MERGE_SEQNUM_TOO_FAR = -5,  // sequence number is over max allowed
-//        ACCOUNT_MERGE_DEST_FULL = -6,       // can't add source balance to
-//                                            // destination balance
-//        ACCOUNT_MERGE_IS_SPONSOR = -7       // can't merge account that is a sponsor
-//    };
-//
+//	enum AccountMergeResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     ACCOUNT_MERGE_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     ACCOUNT_MERGE_MALFORMED = -1,       // can't merge onto itself
+//	     ACCOUNT_MERGE_NO_ACCOUNT = -2,      // destination does not exist
+//	     ACCOUNT_MERGE_IMMUTABLE_SET = -3,   // source account has AUTH_IMMUTABLE set
+//	     ACCOUNT_MERGE_HAS_SUB_ENTRIES = -4, // account has trust lines/offers
+//	     ACCOUNT_MERGE_SEQNUM_TOO_FAR = -5,  // sequence number is over max allowed
+//	     ACCOUNT_MERGE_DEST_FULL = -6,       // can't add source balance to
+//	                                         // destination balance
+//	     ACCOUNT_MERGE_IS_SPONSOR = -7       // can't merge account that is a sponsor
+//	 };
 type AccountMergeResultCode int32
 
 const (
@@ -33593,20 +33312,19 @@ var _ xdrType = (*AccountMergeResultCode)(nil)
 
 // AccountMergeResult is an XDR Union defines as:
 //
-//   union AccountMergeResult switch (AccountMergeResultCode code)
-//    {
-//    case ACCOUNT_MERGE_SUCCESS:
-//        int64 sourceAccountBalance; // how much got transferred from source account
-//    case ACCOUNT_MERGE_MALFORMED:
-//    case ACCOUNT_MERGE_NO_ACCOUNT:
-//    case ACCOUNT_MERGE_IMMUTABLE_SET:
-//    case ACCOUNT_MERGE_HAS_SUB_ENTRIES:
-//    case ACCOUNT_MERGE_SEQNUM_TOO_FAR:
-//    case ACCOUNT_MERGE_DEST_FULL:
-//    case ACCOUNT_MERGE_IS_SPONSOR:
-//        void;
-//    };
-//
+//	union AccountMergeResult switch (AccountMergeResultCode code)
+//	 {
+//	 case ACCOUNT_MERGE_SUCCESS:
+//	     int64 sourceAccountBalance; // how much got transferred from source account
+//	 case ACCOUNT_MERGE_MALFORMED:
+//	 case ACCOUNT_MERGE_NO_ACCOUNT:
+//	 case ACCOUNT_MERGE_IMMUTABLE_SET:
+//	 case ACCOUNT_MERGE_HAS_SUB_ENTRIES:
+//	 case ACCOUNT_MERGE_SEQNUM_TOO_FAR:
+//	 case ACCOUNT_MERGE_DEST_FULL:
+//	 case ACCOUNT_MERGE_IS_SPONSOR:
+//	     void;
+//	 };
 type AccountMergeResult struct {
 	Code                 AccountMergeResultCode
 	SourceAccountBalance *Int64
@@ -33807,14 +33525,13 @@ var _ xdrType = (*AccountMergeResult)(nil)
 
 // InflationResultCode is an XDR Enum defines as:
 //
-//   enum InflationResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        INFLATION_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        INFLATION_NOT_TIME = -1
-//    };
-//
+//	enum InflationResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     INFLATION_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     INFLATION_NOT_TIME = -1
+//	 };
 type InflationResultCode int32
 
 const (
@@ -33893,12 +33610,11 @@ var _ xdrType = (*InflationResultCode)(nil)
 
 // InflationPayout is an XDR Struct defines as:
 //
-//   struct InflationPayout // or use PaymentResultAtom to limit types?
-//    {
-//        AccountID destination;
-//        int64 amount;
-//    };
-//
+//	struct InflationPayout // or use PaymentResultAtom to limit types?
+//	 {
+//	     AccountID destination;
+//	     int64 amount;
+//	 };
 type InflationPayout struct {
 	Destination AccountId
 	Amount      Int64
@@ -33964,14 +33680,13 @@ var _ xdrType = (*InflationPayout)(nil)
 
 // InflationResult is an XDR Union defines as:
 //
-//   union InflationResult switch (InflationResultCode code)
-//    {
-//    case INFLATION_SUCCESS:
-//        InflationPayout payouts<>;
-//    case INFLATION_NOT_TIME:
-//        void;
-//    };
-//
+//	union InflationResult switch (InflationResultCode code)
+//	 {
+//	 case INFLATION_SUCCESS:
+//	     InflationPayout payouts<>;
+//	 case INFLATION_NOT_TIME:
+//	     void;
+//	 };
 type InflationResult struct {
 	Code    InflationResultCode
 	Payouts *[]InflationPayout
@@ -34129,19 +33844,18 @@ var _ xdrType = (*InflationResult)(nil)
 
 // ManageDataResultCode is an XDR Enum defines as:
 //
-//   enum ManageDataResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        MANAGE_DATA_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        MANAGE_DATA_NOT_SUPPORTED_YET =
-//            -1, // The network hasn't moved to this protocol change yet
-//        MANAGE_DATA_NAME_NOT_FOUND =
-//            -2, // Trying to remove a Data Entry that isn't there
-//        MANAGE_DATA_LOW_RESERVE = -3, // not enough funds to create a new Data Entry
-//        MANAGE_DATA_INVALID_NAME = -4 // Name not a valid string
-//    };
-//
+//	enum ManageDataResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     MANAGE_DATA_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     MANAGE_DATA_NOT_SUPPORTED_YET =
+//	         -1, // The network hasn't moved to this protocol change yet
+//	     MANAGE_DATA_NAME_NOT_FOUND =
+//	         -2, // Trying to remove a Data Entry that isn't there
+//	     MANAGE_DATA_LOW_RESERVE = -3, // not enough funds to create a new Data Entry
+//	     MANAGE_DATA_INVALID_NAME = -4 // Name not a valid string
+//	 };
 type ManageDataResultCode int32
 
 const (
@@ -34226,17 +33940,16 @@ var _ xdrType = (*ManageDataResultCode)(nil)
 
 // ManageDataResult is an XDR Union defines as:
 //
-//   union ManageDataResult switch (ManageDataResultCode code)
-//    {
-//    case MANAGE_DATA_SUCCESS:
-//        void;
-//    case MANAGE_DATA_NOT_SUPPORTED_YET:
-//    case MANAGE_DATA_NAME_NOT_FOUND:
-//    case MANAGE_DATA_LOW_RESERVE:
-//    case MANAGE_DATA_INVALID_NAME:
-//        void;
-//    };
-//
+//	union ManageDataResult switch (ManageDataResultCode code)
+//	 {
+//	 case MANAGE_DATA_SUCCESS:
+//	     void;
+//	 case MANAGE_DATA_NOT_SUPPORTED_YET:
+//	 case MANAGE_DATA_NAME_NOT_FOUND:
+//	 case MANAGE_DATA_LOW_RESERVE:
+//	 case MANAGE_DATA_INVALID_NAME:
+//	     void;
+//	 };
 type ManageDataResult struct {
 	Code ManageDataResultCode
 }
@@ -34369,14 +34082,13 @@ var _ xdrType = (*ManageDataResult)(nil)
 
 // BumpSequenceResultCode is an XDR Enum defines as:
 //
-//   enum BumpSequenceResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        BUMP_SEQUENCE_SUCCESS = 0,
-//        // codes considered as "failure" for the operation
-//        BUMP_SEQUENCE_BAD_SEQ = -1 // `bumpTo` is not within bounds
-//    };
-//
+//	enum BumpSequenceResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     BUMP_SEQUENCE_SUCCESS = 0,
+//	     // codes considered as "failure" for the operation
+//	     BUMP_SEQUENCE_BAD_SEQ = -1 // `bumpTo` is not within bounds
+//	 };
 type BumpSequenceResultCode int32
 
 const (
@@ -34455,14 +34167,13 @@ var _ xdrType = (*BumpSequenceResultCode)(nil)
 
 // BumpSequenceResult is an XDR Union defines as:
 //
-//   union BumpSequenceResult switch (BumpSequenceResultCode code)
-//    {
-//    case BUMP_SEQUENCE_SUCCESS:
-//        void;
-//    case BUMP_SEQUENCE_BAD_SEQ:
-//        void;
-//    };
-//
+//	union BumpSequenceResult switch (BumpSequenceResultCode code)
+//	 {
+//	 case BUMP_SEQUENCE_SUCCESS:
+//	     void;
+//	 case BUMP_SEQUENCE_BAD_SEQ:
+//	     void;
+//	 };
 type BumpSequenceResult struct {
 	Code BumpSequenceResultCode
 }
@@ -34565,16 +34276,15 @@ var _ xdrType = (*BumpSequenceResult)(nil)
 
 // CreateClaimableBalanceResultCode is an XDR Enum defines as:
 //
-//   enum CreateClaimableBalanceResultCode
-//    {
-//        CREATE_CLAIMABLE_BALANCE_SUCCESS = 0,
-//        CREATE_CLAIMABLE_BALANCE_MALFORMED = -1,
-//        CREATE_CLAIMABLE_BALANCE_LOW_RESERVE = -2,
-//        CREATE_CLAIMABLE_BALANCE_NO_TRUST = -3,
-//        CREATE_CLAIMABLE_BALANCE_NOT_AUTHORIZED = -4,
-//        CREATE_CLAIMABLE_BALANCE_UNDERFUNDED = -5
-//    };
-//
+//	enum CreateClaimableBalanceResultCode
+//	 {
+//	     CREATE_CLAIMABLE_BALANCE_SUCCESS = 0,
+//	     CREATE_CLAIMABLE_BALANCE_MALFORMED = -1,
+//	     CREATE_CLAIMABLE_BALANCE_LOW_RESERVE = -2,
+//	     CREATE_CLAIMABLE_BALANCE_NO_TRUST = -3,
+//	     CREATE_CLAIMABLE_BALANCE_NOT_AUTHORIZED = -4,
+//	     CREATE_CLAIMABLE_BALANCE_UNDERFUNDED = -5
+//	 };
 type CreateClaimableBalanceResultCode int32
 
 const (
@@ -34661,19 +34371,18 @@ var _ xdrType = (*CreateClaimableBalanceResultCode)(nil)
 
 // CreateClaimableBalanceResult is an XDR Union defines as:
 //
-//   union CreateClaimableBalanceResult switch (
-//        CreateClaimableBalanceResultCode code)
-//    {
-//    case CREATE_CLAIMABLE_BALANCE_SUCCESS:
-//        ClaimableBalanceID balanceID;
-//    case CREATE_CLAIMABLE_BALANCE_MALFORMED:
-//    case CREATE_CLAIMABLE_BALANCE_LOW_RESERVE:
-//    case CREATE_CLAIMABLE_BALANCE_NO_TRUST:
-//    case CREATE_CLAIMABLE_BALANCE_NOT_AUTHORIZED:
-//    case CREATE_CLAIMABLE_BALANCE_UNDERFUNDED:
-//        void;
-//    };
-//
+//	union CreateClaimableBalanceResult switch (
+//	     CreateClaimableBalanceResultCode code)
+//	 {
+//	 case CREATE_CLAIMABLE_BALANCE_SUCCESS:
+//	     ClaimableBalanceID balanceID;
+//	 case CREATE_CLAIMABLE_BALANCE_MALFORMED:
+//	 case CREATE_CLAIMABLE_BALANCE_LOW_RESERVE:
+//	 case CREATE_CLAIMABLE_BALANCE_NO_TRUST:
+//	 case CREATE_CLAIMABLE_BALANCE_NOT_AUTHORIZED:
+//	 case CREATE_CLAIMABLE_BALANCE_UNDERFUNDED:
+//	     void;
+//	 };
 type CreateClaimableBalanceResult struct {
 	Code      CreateClaimableBalanceResultCode
 	BalanceId *ClaimableBalanceId
@@ -34854,16 +34563,15 @@ var _ xdrType = (*CreateClaimableBalanceResult)(nil)
 
 // ClaimClaimableBalanceResultCode is an XDR Enum defines as:
 //
-//   enum ClaimClaimableBalanceResultCode
-//    {
-//        CLAIM_CLAIMABLE_BALANCE_SUCCESS = 0,
-//        CLAIM_CLAIMABLE_BALANCE_DOES_NOT_EXIST = -1,
-//        CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM = -2,
-//        CLAIM_CLAIMABLE_BALANCE_LINE_FULL = -3,
-//        CLAIM_CLAIMABLE_BALANCE_NO_TRUST = -4,
-//        CLAIM_CLAIMABLE_BALANCE_NOT_AUTHORIZED = -5
-//    };
-//
+//	enum ClaimClaimableBalanceResultCode
+//	 {
+//	     CLAIM_CLAIMABLE_BALANCE_SUCCESS = 0,
+//	     CLAIM_CLAIMABLE_BALANCE_DOES_NOT_EXIST = -1,
+//	     CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM = -2,
+//	     CLAIM_CLAIMABLE_BALANCE_LINE_FULL = -3,
+//	     CLAIM_CLAIMABLE_BALANCE_NO_TRUST = -4,
+//	     CLAIM_CLAIMABLE_BALANCE_NOT_AUTHORIZED = -5
+//	 };
 type ClaimClaimableBalanceResultCode int32
 
 const (
@@ -34950,18 +34658,17 @@ var _ xdrType = (*ClaimClaimableBalanceResultCode)(nil)
 
 // ClaimClaimableBalanceResult is an XDR Union defines as:
 //
-//   union ClaimClaimableBalanceResult switch (ClaimClaimableBalanceResultCode code)
-//    {
-//    case CLAIM_CLAIMABLE_BALANCE_SUCCESS:
-//        void;
-//    case CLAIM_CLAIMABLE_BALANCE_DOES_NOT_EXIST:
-//    case CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM:
-//    case CLAIM_CLAIMABLE_BALANCE_LINE_FULL:
-//    case CLAIM_CLAIMABLE_BALANCE_NO_TRUST:
-//    case CLAIM_CLAIMABLE_BALANCE_NOT_AUTHORIZED:
-//        void;
-//    };
-//
+//	union ClaimClaimableBalanceResult switch (ClaimClaimableBalanceResultCode code)
+//	 {
+//	 case CLAIM_CLAIMABLE_BALANCE_SUCCESS:
+//	     void;
+//	 case CLAIM_CLAIMABLE_BALANCE_DOES_NOT_EXIST:
+//	 case CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM:
+//	 case CLAIM_CLAIMABLE_BALANCE_LINE_FULL:
+//	 case CLAIM_CLAIMABLE_BALANCE_NO_TRUST:
+//	 case CLAIM_CLAIMABLE_BALANCE_NOT_AUTHORIZED:
+//	     void;
+//	 };
 type ClaimClaimableBalanceResult struct {
 	Code ClaimClaimableBalanceResultCode
 }
@@ -35104,17 +34811,16 @@ var _ xdrType = (*ClaimClaimableBalanceResult)(nil)
 
 // BeginSponsoringFutureReservesResultCode is an XDR Enum defines as:
 //
-//   enum BeginSponsoringFutureReservesResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS = 0,
+//	enum BeginSponsoringFutureReservesResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        BEGIN_SPONSORING_FUTURE_RESERVES_MALFORMED = -1,
-//        BEGIN_SPONSORING_FUTURE_RESERVES_ALREADY_SPONSORED = -2,
-//        BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE = -3
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     BEGIN_SPONSORING_FUTURE_RESERVES_MALFORMED = -1,
+//	     BEGIN_SPONSORING_FUTURE_RESERVES_ALREADY_SPONSORED = -2,
+//	     BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE = -3
+//	 };
 type BeginSponsoringFutureReservesResultCode int32
 
 const (
@@ -35197,17 +34903,16 @@ var _ xdrType = (*BeginSponsoringFutureReservesResultCode)(nil)
 
 // BeginSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union BeginSponsoringFutureReservesResult switch (
-//        BeginSponsoringFutureReservesResultCode code)
-//    {
-//    case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
-//        void;
-//    case BEGIN_SPONSORING_FUTURE_RESERVES_MALFORMED:
-//    case BEGIN_SPONSORING_FUTURE_RESERVES_ALREADY_SPONSORED:
-//    case BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE:
-//        void;
-//    };
-//
+//	union BeginSponsoringFutureReservesResult switch (
+//	     BeginSponsoringFutureReservesResultCode code)
+//	 {
+//	 case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
+//	     void;
+//	 case BEGIN_SPONSORING_FUTURE_RESERVES_MALFORMED:
+//	 case BEGIN_SPONSORING_FUTURE_RESERVES_ALREADY_SPONSORED:
+//	 case BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE:
+//	     void;
+//	 };
 type BeginSponsoringFutureReservesResult struct {
 	Code BeginSponsoringFutureReservesResultCode
 }
@@ -35330,15 +35035,14 @@ var _ xdrType = (*BeginSponsoringFutureReservesResult)(nil)
 
 // EndSponsoringFutureReservesResultCode is an XDR Enum defines as:
 //
-//   enum EndSponsoringFutureReservesResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        END_SPONSORING_FUTURE_RESERVES_SUCCESS = 0,
+//	enum EndSponsoringFutureReservesResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     END_SPONSORING_FUTURE_RESERVES_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED = -1
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED = -1
+//	 };
 type EndSponsoringFutureReservesResultCode int32
 
 const (
@@ -35417,15 +35121,14 @@ var _ xdrType = (*EndSponsoringFutureReservesResultCode)(nil)
 
 // EndSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union EndSponsoringFutureReservesResult switch (
-//        EndSponsoringFutureReservesResultCode code)
-//    {
-//    case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
-//        void;
-//    case END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED:
-//        void;
-//    };
-//
+//	union EndSponsoringFutureReservesResult switch (
+//	     EndSponsoringFutureReservesResultCode code)
+//	 {
+//	 case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
+//	     void;
+//	 case END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED:
+//	     void;
+//	 };
 type EndSponsoringFutureReservesResult struct {
 	Code EndSponsoringFutureReservesResultCode
 }
@@ -35528,19 +35231,18 @@ var _ xdrType = (*EndSponsoringFutureReservesResult)(nil)
 
 // RevokeSponsorshipResultCode is an XDR Enum defines as:
 //
-//   enum RevokeSponsorshipResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        REVOKE_SPONSORSHIP_SUCCESS = 0,
+//	enum RevokeSponsorshipResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     REVOKE_SPONSORSHIP_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        REVOKE_SPONSORSHIP_DOES_NOT_EXIST = -1,
-//        REVOKE_SPONSORSHIP_NOT_SPONSOR = -2,
-//        REVOKE_SPONSORSHIP_LOW_RESERVE = -3,
-//        REVOKE_SPONSORSHIP_ONLY_TRANSFERABLE = -4,
-//        REVOKE_SPONSORSHIP_MALFORMED = -5
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     REVOKE_SPONSORSHIP_DOES_NOT_EXIST = -1,
+//	     REVOKE_SPONSORSHIP_NOT_SPONSOR = -2,
+//	     REVOKE_SPONSORSHIP_LOW_RESERVE = -3,
+//	     REVOKE_SPONSORSHIP_ONLY_TRANSFERABLE = -4,
+//	     REVOKE_SPONSORSHIP_MALFORMED = -5
+//	 };
 type RevokeSponsorshipResultCode int32
 
 const (
@@ -35627,18 +35329,17 @@ var _ xdrType = (*RevokeSponsorshipResultCode)(nil)
 
 // RevokeSponsorshipResult is an XDR Union defines as:
 //
-//   union RevokeSponsorshipResult switch (RevokeSponsorshipResultCode code)
-//    {
-//    case REVOKE_SPONSORSHIP_SUCCESS:
-//        void;
-//    case REVOKE_SPONSORSHIP_DOES_NOT_EXIST:
-//    case REVOKE_SPONSORSHIP_NOT_SPONSOR:
-//    case REVOKE_SPONSORSHIP_LOW_RESERVE:
-//    case REVOKE_SPONSORSHIP_ONLY_TRANSFERABLE:
-//    case REVOKE_SPONSORSHIP_MALFORMED:
-//        void;
-//    };
-//
+//	union RevokeSponsorshipResult switch (RevokeSponsorshipResultCode code)
+//	 {
+//	 case REVOKE_SPONSORSHIP_SUCCESS:
+//	     void;
+//	 case REVOKE_SPONSORSHIP_DOES_NOT_EXIST:
+//	 case REVOKE_SPONSORSHIP_NOT_SPONSOR:
+//	 case REVOKE_SPONSORSHIP_LOW_RESERVE:
+//	 case REVOKE_SPONSORSHIP_ONLY_TRANSFERABLE:
+//	 case REVOKE_SPONSORSHIP_MALFORMED:
+//	     void;
+//	 };
 type RevokeSponsorshipResult struct {
 	Code RevokeSponsorshipResultCode
 }
@@ -35781,18 +35482,17 @@ var _ xdrType = (*RevokeSponsorshipResult)(nil)
 
 // ClawbackResultCode is an XDR Enum defines as:
 //
-//   enum ClawbackResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        CLAWBACK_SUCCESS = 0,
+//	enum ClawbackResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     CLAWBACK_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        CLAWBACK_MALFORMED = -1,
-//        CLAWBACK_NOT_CLAWBACK_ENABLED = -2,
-//        CLAWBACK_NO_TRUST = -3,
-//        CLAWBACK_UNDERFUNDED = -4
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     CLAWBACK_MALFORMED = -1,
+//	     CLAWBACK_NOT_CLAWBACK_ENABLED = -2,
+//	     CLAWBACK_NO_TRUST = -3,
+//	     CLAWBACK_UNDERFUNDED = -4
+//	 };
 type ClawbackResultCode int32
 
 const (
@@ -35877,17 +35577,16 @@ var _ xdrType = (*ClawbackResultCode)(nil)
 
 // ClawbackResult is an XDR Union defines as:
 //
-//   union ClawbackResult switch (ClawbackResultCode code)
-//    {
-//    case CLAWBACK_SUCCESS:
-//        void;
-//    case CLAWBACK_MALFORMED:
-//    case CLAWBACK_NOT_CLAWBACK_ENABLED:
-//    case CLAWBACK_NO_TRUST:
-//    case CLAWBACK_UNDERFUNDED:
-//        void;
-//    };
-//
+//	union ClawbackResult switch (ClawbackResultCode code)
+//	 {
+//	 case CLAWBACK_SUCCESS:
+//	     void;
+//	 case CLAWBACK_MALFORMED:
+//	 case CLAWBACK_NOT_CLAWBACK_ENABLED:
+//	 case CLAWBACK_NO_TRUST:
+//	 case CLAWBACK_UNDERFUNDED:
+//	     void;
+//	 };
 type ClawbackResult struct {
 	Code ClawbackResultCode
 }
@@ -36020,17 +35719,16 @@ var _ xdrType = (*ClawbackResult)(nil)
 
 // ClawbackClaimableBalanceResultCode is an XDR Enum defines as:
 //
-//   enum ClawbackClaimableBalanceResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        CLAWBACK_CLAIMABLE_BALANCE_SUCCESS = 0,
+//	enum ClawbackClaimableBalanceResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     CLAWBACK_CLAIMABLE_BALANCE_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        CLAWBACK_CLAIMABLE_BALANCE_DOES_NOT_EXIST = -1,
-//        CLAWBACK_CLAIMABLE_BALANCE_NOT_ISSUER = -2,
-//        CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED = -3
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     CLAWBACK_CLAIMABLE_BALANCE_DOES_NOT_EXIST = -1,
+//	     CLAWBACK_CLAIMABLE_BALANCE_NOT_ISSUER = -2,
+//	     CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED = -3
+//	 };
 type ClawbackClaimableBalanceResultCode int32
 
 const (
@@ -36113,17 +35811,16 @@ var _ xdrType = (*ClawbackClaimableBalanceResultCode)(nil)
 
 // ClawbackClaimableBalanceResult is an XDR Union defines as:
 //
-//   union ClawbackClaimableBalanceResult switch (
-//        ClawbackClaimableBalanceResultCode code)
-//    {
-//    case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
-//        void;
-//    case CLAWBACK_CLAIMABLE_BALANCE_DOES_NOT_EXIST:
-//    case CLAWBACK_CLAIMABLE_BALANCE_NOT_ISSUER:
-//    case CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED:
-//        void;
-//    };
-//
+//	union ClawbackClaimableBalanceResult switch (
+//	     ClawbackClaimableBalanceResultCode code)
+//	 {
+//	 case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
+//	     void;
+//	 case CLAWBACK_CLAIMABLE_BALANCE_DOES_NOT_EXIST:
+//	 case CLAWBACK_CLAIMABLE_BALANCE_NOT_ISSUER:
+//	 case CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED:
+//	     void;
+//	 };
 type ClawbackClaimableBalanceResult struct {
 	Code ClawbackClaimableBalanceResultCode
 }
@@ -36246,20 +35943,19 @@ var _ xdrType = (*ClawbackClaimableBalanceResult)(nil)
 
 // SetTrustLineFlagsResultCode is an XDR Enum defines as:
 //
-//   enum SetTrustLineFlagsResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        SET_TRUST_LINE_FLAGS_SUCCESS = 0,
+//	enum SetTrustLineFlagsResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     SET_TRUST_LINE_FLAGS_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        SET_TRUST_LINE_FLAGS_MALFORMED = -1,
-//        SET_TRUST_LINE_FLAGS_NO_TRUST_LINE = -2,
-//        SET_TRUST_LINE_FLAGS_CANT_REVOKE = -3,
-//        SET_TRUST_LINE_FLAGS_INVALID_STATE = -4,
-//        SET_TRUST_LINE_FLAGS_LOW_RESERVE = -5 // claimable balances can't be created
-//                                              // on revoke due to low reserves
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     SET_TRUST_LINE_FLAGS_MALFORMED = -1,
+//	     SET_TRUST_LINE_FLAGS_NO_TRUST_LINE = -2,
+//	     SET_TRUST_LINE_FLAGS_CANT_REVOKE = -3,
+//	     SET_TRUST_LINE_FLAGS_INVALID_STATE = -4,
+//	     SET_TRUST_LINE_FLAGS_LOW_RESERVE = -5 // claimable balances can't be created
+//	                                           // on revoke due to low reserves
+//	 };
 type SetTrustLineFlagsResultCode int32
 
 const (
@@ -36346,18 +36042,17 @@ var _ xdrType = (*SetTrustLineFlagsResultCode)(nil)
 
 // SetTrustLineFlagsResult is an XDR Union defines as:
 //
-//   union SetTrustLineFlagsResult switch (SetTrustLineFlagsResultCode code)
-//    {
-//    case SET_TRUST_LINE_FLAGS_SUCCESS:
-//        void;
-//    case SET_TRUST_LINE_FLAGS_MALFORMED:
-//    case SET_TRUST_LINE_FLAGS_NO_TRUST_LINE:
-//    case SET_TRUST_LINE_FLAGS_CANT_REVOKE:
-//    case SET_TRUST_LINE_FLAGS_INVALID_STATE:
-//    case SET_TRUST_LINE_FLAGS_LOW_RESERVE:
-//        void;
-//    };
-//
+//	union SetTrustLineFlagsResult switch (SetTrustLineFlagsResultCode code)
+//	 {
+//	 case SET_TRUST_LINE_FLAGS_SUCCESS:
+//	     void;
+//	 case SET_TRUST_LINE_FLAGS_MALFORMED:
+//	 case SET_TRUST_LINE_FLAGS_NO_TRUST_LINE:
+//	 case SET_TRUST_LINE_FLAGS_CANT_REVOKE:
+//	 case SET_TRUST_LINE_FLAGS_INVALID_STATE:
+//	 case SET_TRUST_LINE_FLAGS_LOW_RESERVE:
+//	     void;
+//	 };
 type SetTrustLineFlagsResult struct {
 	Code SetTrustLineFlagsResultCode
 }
@@ -36500,25 +36195,24 @@ var _ xdrType = (*SetTrustLineFlagsResult)(nil)
 
 // LiquidityPoolDepositResultCode is an XDR Enum defines as:
 //
-//   enum LiquidityPoolDepositResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        LIQUIDITY_POOL_DEPOSIT_SUCCESS = 0,
+//	enum LiquidityPoolDepositResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     LIQUIDITY_POOL_DEPOSIT_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        LIQUIDITY_POOL_DEPOSIT_MALFORMED = -1,      // bad input
-//        LIQUIDITY_POOL_DEPOSIT_NO_TRUST = -2,       // no trust line for one of the
-//                                                    // assets
-//        LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED = -3, // not authorized for one of the
-//                                                    // assets
-//        LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED = -4,    // not enough balance for one of
-//                                                    // the assets
-//        LIQUIDITY_POOL_DEPOSIT_LINE_FULL = -5,      // pool share trust line doesn't
-//                                                    // have sufficient limit
-//        LIQUIDITY_POOL_DEPOSIT_BAD_PRICE = -6,      // deposit price outside bounds
-//        LIQUIDITY_POOL_DEPOSIT_POOL_FULL = -7       // pool reserves are full
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     LIQUIDITY_POOL_DEPOSIT_MALFORMED = -1,      // bad input
+//	     LIQUIDITY_POOL_DEPOSIT_NO_TRUST = -2,       // no trust line for one of the
+//	                                                 // assets
+//	     LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED = -3, // not authorized for one of the
+//	                                                 // assets
+//	     LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED = -4,    // not enough balance for one of
+//	                                                 // the assets
+//	     LIQUIDITY_POOL_DEPOSIT_LINE_FULL = -5,      // pool share trust line doesn't
+//	                                                 // have sufficient limit
+//	     LIQUIDITY_POOL_DEPOSIT_BAD_PRICE = -6,      // deposit price outside bounds
+//	     LIQUIDITY_POOL_DEPOSIT_POOL_FULL = -7       // pool reserves are full
+//	 };
 type LiquidityPoolDepositResultCode int32
 
 const (
@@ -36609,20 +36303,19 @@ var _ xdrType = (*LiquidityPoolDepositResultCode)(nil)
 
 // LiquidityPoolDepositResult is an XDR Union defines as:
 //
-//   union LiquidityPoolDepositResult switch (LiquidityPoolDepositResultCode code)
-//    {
-//    case LIQUIDITY_POOL_DEPOSIT_SUCCESS:
-//        void;
-//    case LIQUIDITY_POOL_DEPOSIT_MALFORMED:
-//    case LIQUIDITY_POOL_DEPOSIT_NO_TRUST:
-//    case LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED:
-//    case LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED:
-//    case LIQUIDITY_POOL_DEPOSIT_LINE_FULL:
-//    case LIQUIDITY_POOL_DEPOSIT_BAD_PRICE:
-//    case LIQUIDITY_POOL_DEPOSIT_POOL_FULL:
-//        void;
-//    };
-//
+//	union LiquidityPoolDepositResult switch (LiquidityPoolDepositResultCode code)
+//	 {
+//	 case LIQUIDITY_POOL_DEPOSIT_SUCCESS:
+//	     void;
+//	 case LIQUIDITY_POOL_DEPOSIT_MALFORMED:
+//	 case LIQUIDITY_POOL_DEPOSIT_NO_TRUST:
+//	 case LIQUIDITY_POOL_DEPOSIT_NOT_AUTHORIZED:
+//	 case LIQUIDITY_POOL_DEPOSIT_UNDERFUNDED:
+//	 case LIQUIDITY_POOL_DEPOSIT_LINE_FULL:
+//	 case LIQUIDITY_POOL_DEPOSIT_BAD_PRICE:
+//	 case LIQUIDITY_POOL_DEPOSIT_POOL_FULL:
+//	     void;
+//	 };
 type LiquidityPoolDepositResult struct {
 	Code LiquidityPoolDepositResultCode
 }
@@ -36785,22 +36478,21 @@ var _ xdrType = (*LiquidityPoolDepositResult)(nil)
 
 // LiquidityPoolWithdrawResultCode is an XDR Enum defines as:
 //
-//   enum LiquidityPoolWithdrawResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        LIQUIDITY_POOL_WITHDRAW_SUCCESS = 0,
+//	enum LiquidityPoolWithdrawResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     LIQUIDITY_POOL_WITHDRAW_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        LIQUIDITY_POOL_WITHDRAW_MALFORMED = -1,    // bad input
-//        LIQUIDITY_POOL_WITHDRAW_NO_TRUST = -2,     // no trust line for one of the
-//                                                   // assets
-//        LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED = -3,  // not enough balance of the
-//                                                   // pool share
-//        LIQUIDITY_POOL_WITHDRAW_LINE_FULL = -4,    // would go above limit for one
-//                                                   // of the assets
-//        LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM = -5 // didn't withdraw enough
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     LIQUIDITY_POOL_WITHDRAW_MALFORMED = -1,    // bad input
+//	     LIQUIDITY_POOL_WITHDRAW_NO_TRUST = -2,     // no trust line for one of the
+//	                                                // assets
+//	     LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED = -3,  // not enough balance of the
+//	                                                // pool share
+//	     LIQUIDITY_POOL_WITHDRAW_LINE_FULL = -4,    // would go above limit for one
+//	                                                // of the assets
+//	     LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM = -5 // didn't withdraw enough
+//	 };
 type LiquidityPoolWithdrawResultCode int32
 
 const (
@@ -36887,18 +36579,17 @@ var _ xdrType = (*LiquidityPoolWithdrawResultCode)(nil)
 
 // LiquidityPoolWithdrawResult is an XDR Union defines as:
 //
-//   union LiquidityPoolWithdrawResult switch (LiquidityPoolWithdrawResultCode code)
-//    {
-//    case LIQUIDITY_POOL_WITHDRAW_SUCCESS:
-//        void;
-//    case LIQUIDITY_POOL_WITHDRAW_MALFORMED:
-//    case LIQUIDITY_POOL_WITHDRAW_NO_TRUST:
-//    case LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED:
-//    case LIQUIDITY_POOL_WITHDRAW_LINE_FULL:
-//    case LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM:
-//        void;
-//    };
-//
+//	union LiquidityPoolWithdrawResult switch (LiquidityPoolWithdrawResultCode code)
+//	 {
+//	 case LIQUIDITY_POOL_WITHDRAW_SUCCESS:
+//	     void;
+//	 case LIQUIDITY_POOL_WITHDRAW_MALFORMED:
+//	 case LIQUIDITY_POOL_WITHDRAW_NO_TRUST:
+//	 case LIQUIDITY_POOL_WITHDRAW_UNDERFUNDED:
+//	 case LIQUIDITY_POOL_WITHDRAW_LINE_FULL:
+//	 case LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM:
+//	     void;
+//	 };
 type LiquidityPoolWithdrawResult struct {
 	Code LiquidityPoolWithdrawResultCode
 }
@@ -37041,16 +36732,15 @@ var _ xdrType = (*LiquidityPoolWithdrawResult)(nil)
 
 // InvokeHostFunctionResultCode is an XDR Enum defines as:
 //
-//   enum InvokeHostFunctionResultCode
-//    {
-//        // codes considered as "success" for the operation
-//        INVOKE_HOST_FUNCTION_SUCCESS = 0,
+//	enum InvokeHostFunctionResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     INVOKE_HOST_FUNCTION_SUCCESS = 0,
 //
-//        // codes considered as "failure" for the operation
-//        INVOKE_HOST_FUNCTION_MALFORMED = -1,
-//        INVOKE_HOST_FUNCTION_TRAPPED = -2
-//    };
-//
+//	     // codes considered as "failure" for the operation
+//	     INVOKE_HOST_FUNCTION_MALFORMED = -1,
+//	     INVOKE_HOST_FUNCTION_TRAPPED = -2
+//	 };
 type InvokeHostFunctionResultCode int32
 
 const (
@@ -37131,15 +36821,14 @@ var _ xdrType = (*InvokeHostFunctionResultCode)(nil)
 
 // InvokeHostFunctionResult is an XDR Union defines as:
 //
-//   union InvokeHostFunctionResult switch (InvokeHostFunctionResultCode code)
-//    {
-//    case INVOKE_HOST_FUNCTION_SUCCESS:
-//        void;
-//    case INVOKE_HOST_FUNCTION_MALFORMED:
-//    case INVOKE_HOST_FUNCTION_TRAPPED:
-//        void;
-//    };
-//
+//	union InvokeHostFunctionResult switch (InvokeHostFunctionResultCode code)
+//	 {
+//	 case INVOKE_HOST_FUNCTION_SUCCESS:
+//	     void;
+//	 case INVOKE_HOST_FUNCTION_MALFORMED:
+//	 case INVOKE_HOST_FUNCTION_TRAPPED:
+//	     void;
+//	 };
 type InvokeHostFunctionResult struct {
 	Code InvokeHostFunctionResultCode
 }
@@ -37252,18 +36941,17 @@ var _ xdrType = (*InvokeHostFunctionResult)(nil)
 
 // OperationResultCode is an XDR Enum defines as:
 //
-//   enum OperationResultCode
-//    {
-//        opINNER = 0, // inner object result is valid
+//	enum OperationResultCode
+//	 {
+//	     opINNER = 0, // inner object result is valid
 //
-//        opBAD_AUTH = -1,            // too few valid signatures / wrong network
-//        opNO_ACCOUNT = -2,          // source account was not found
-//        opNOT_SUPPORTED = -3,       // operation not supported at this time
-//        opTOO_MANY_SUBENTRIES = -4, // max number of subentries already reached
-//        opEXCEEDED_WORK_LIMIT = -5, // operation did too much work
-//        opTOO_MANY_SPONSORING = -6  // account is sponsoring too many entries
-//    };
-//
+//	     opBAD_AUTH = -1,            // too few valid signatures / wrong network
+//	     opNO_ACCOUNT = -2,          // source account was not found
+//	     opNOT_SUPPORTED = -3,       // operation not supported at this time
+//	     opTOO_MANY_SUBENTRIES = -4, // max number of subentries already reached
+//	     opEXCEEDED_WORK_LIMIT = -5, // operation did too much work
+//	     opTOO_MANY_SPONSORING = -6  // account is sponsoring too many entries
+//	 };
 type OperationResultCode int32
 
 const (
@@ -37352,60 +37040,59 @@ var _ xdrType = (*OperationResultCode)(nil)
 
 // OperationResultTr is an XDR NestedUnion defines as:
 //
-//   union switch (OperationType type)
-//        {
-//        case CREATE_ACCOUNT:
-//            CreateAccountResult createAccountResult;
-//        case PAYMENT:
-//            PaymentResult paymentResult;
-//        case PATH_PAYMENT_STRICT_RECEIVE:
-//            PathPaymentStrictReceiveResult pathPaymentStrictReceiveResult;
-//        case MANAGE_SELL_OFFER:
-//            ManageSellOfferResult manageSellOfferResult;
-//        case CREATE_PASSIVE_SELL_OFFER:
-//            ManageSellOfferResult createPassiveSellOfferResult;
-//        case SET_OPTIONS:
-//            SetOptionsResult setOptionsResult;
-//        case CHANGE_TRUST:
-//            ChangeTrustResult changeTrustResult;
-//        case ALLOW_TRUST:
-//            AllowTrustResult allowTrustResult;
-//        case ACCOUNT_MERGE:
-//            AccountMergeResult accountMergeResult;
-//        case INFLATION:
-//            InflationResult inflationResult;
-//        case MANAGE_DATA:
-//            ManageDataResult manageDataResult;
-//        case BUMP_SEQUENCE:
-//            BumpSequenceResult bumpSeqResult;
-//        case MANAGE_BUY_OFFER:
-//            ManageBuyOfferResult manageBuyOfferResult;
-//        case PATH_PAYMENT_STRICT_SEND:
-//            PathPaymentStrictSendResult pathPaymentStrictSendResult;
-//        case CREATE_CLAIMABLE_BALANCE:
-//            CreateClaimableBalanceResult createClaimableBalanceResult;
-//        case CLAIM_CLAIMABLE_BALANCE:
-//            ClaimClaimableBalanceResult claimClaimableBalanceResult;
-//        case BEGIN_SPONSORING_FUTURE_RESERVES:
-//            BeginSponsoringFutureReservesResult beginSponsoringFutureReservesResult;
-//        case END_SPONSORING_FUTURE_RESERVES:
-//            EndSponsoringFutureReservesResult endSponsoringFutureReservesResult;
-//        case REVOKE_SPONSORSHIP:
-//            RevokeSponsorshipResult revokeSponsorshipResult;
-//        case CLAWBACK:
-//            ClawbackResult clawbackResult;
-//        case CLAWBACK_CLAIMABLE_BALANCE:
-//            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
-//        case SET_TRUST_LINE_FLAGS:
-//            SetTrustLineFlagsResult setTrustLineFlagsResult;
-//        case LIQUIDITY_POOL_DEPOSIT:
-//            LiquidityPoolDepositResult liquidityPoolDepositResult;
-//        case LIQUIDITY_POOL_WITHDRAW:
-//            LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
-//        case INVOKE_HOST_FUNCTION:
-//            InvokeHostFunctionResult invokeHostFunctionResult;
-//        }
-//
+//	union switch (OperationType type)
+//	     {
+//	     case CREATE_ACCOUNT:
+//	         CreateAccountResult createAccountResult;
+//	     case PAYMENT:
+//	         PaymentResult paymentResult;
+//	     case PATH_PAYMENT_STRICT_RECEIVE:
+//	         PathPaymentStrictReceiveResult pathPaymentStrictReceiveResult;
+//	     case MANAGE_SELL_OFFER:
+//	         ManageSellOfferResult manageSellOfferResult;
+//	     case CREATE_PASSIVE_SELL_OFFER:
+//	         ManageSellOfferResult createPassiveSellOfferResult;
+//	     case SET_OPTIONS:
+//	         SetOptionsResult setOptionsResult;
+//	     case CHANGE_TRUST:
+//	         ChangeTrustResult changeTrustResult;
+//	     case ALLOW_TRUST:
+//	         AllowTrustResult allowTrustResult;
+//	     case ACCOUNT_MERGE:
+//	         AccountMergeResult accountMergeResult;
+//	     case INFLATION:
+//	         InflationResult inflationResult;
+//	     case MANAGE_DATA:
+//	         ManageDataResult manageDataResult;
+//	     case BUMP_SEQUENCE:
+//	         BumpSequenceResult bumpSeqResult;
+//	     case MANAGE_BUY_OFFER:
+//	         ManageBuyOfferResult manageBuyOfferResult;
+//	     case PATH_PAYMENT_STRICT_SEND:
+//	         PathPaymentStrictSendResult pathPaymentStrictSendResult;
+//	     case CREATE_CLAIMABLE_BALANCE:
+//	         CreateClaimableBalanceResult createClaimableBalanceResult;
+//	     case CLAIM_CLAIMABLE_BALANCE:
+//	         ClaimClaimableBalanceResult claimClaimableBalanceResult;
+//	     case BEGIN_SPONSORING_FUTURE_RESERVES:
+//	         BeginSponsoringFutureReservesResult beginSponsoringFutureReservesResult;
+//	     case END_SPONSORING_FUTURE_RESERVES:
+//	         EndSponsoringFutureReservesResult endSponsoringFutureReservesResult;
+//	     case REVOKE_SPONSORSHIP:
+//	         RevokeSponsorshipResult revokeSponsorshipResult;
+//	     case CLAWBACK:
+//	         ClawbackResult clawbackResult;
+//	     case CLAWBACK_CLAIMABLE_BALANCE:
+//	         ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
+//	     case SET_TRUST_LINE_FLAGS:
+//	         SetTrustLineFlagsResult setTrustLineFlagsResult;
+//	     case LIQUIDITY_POOL_DEPOSIT:
+//	         LiquidityPoolDepositResult liquidityPoolDepositResult;
+//	     case LIQUIDITY_POOL_WITHDRAW:
+//	         LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
+//	     case INVOKE_HOST_FUNCTION:
+//	         InvokeHostFunctionResult invokeHostFunctionResult;
+//	     }
 type OperationResultTr struct {
 	Type                                OperationType
 	CreateAccountResult                 *CreateAccountResult
@@ -38688,72 +38375,71 @@ var _ xdrType = (*OperationResultTr)(nil)
 
 // OperationResult is an XDR Union defines as:
 //
-//   union OperationResult switch (OperationResultCode code)
-//    {
-//    case opINNER:
-//        union switch (OperationType type)
-//        {
-//        case CREATE_ACCOUNT:
-//            CreateAccountResult createAccountResult;
-//        case PAYMENT:
-//            PaymentResult paymentResult;
-//        case PATH_PAYMENT_STRICT_RECEIVE:
-//            PathPaymentStrictReceiveResult pathPaymentStrictReceiveResult;
-//        case MANAGE_SELL_OFFER:
-//            ManageSellOfferResult manageSellOfferResult;
-//        case CREATE_PASSIVE_SELL_OFFER:
-//            ManageSellOfferResult createPassiveSellOfferResult;
-//        case SET_OPTIONS:
-//            SetOptionsResult setOptionsResult;
-//        case CHANGE_TRUST:
-//            ChangeTrustResult changeTrustResult;
-//        case ALLOW_TRUST:
-//            AllowTrustResult allowTrustResult;
-//        case ACCOUNT_MERGE:
-//            AccountMergeResult accountMergeResult;
-//        case INFLATION:
-//            InflationResult inflationResult;
-//        case MANAGE_DATA:
-//            ManageDataResult manageDataResult;
-//        case BUMP_SEQUENCE:
-//            BumpSequenceResult bumpSeqResult;
-//        case MANAGE_BUY_OFFER:
-//            ManageBuyOfferResult manageBuyOfferResult;
-//        case PATH_PAYMENT_STRICT_SEND:
-//            PathPaymentStrictSendResult pathPaymentStrictSendResult;
-//        case CREATE_CLAIMABLE_BALANCE:
-//            CreateClaimableBalanceResult createClaimableBalanceResult;
-//        case CLAIM_CLAIMABLE_BALANCE:
-//            ClaimClaimableBalanceResult claimClaimableBalanceResult;
-//        case BEGIN_SPONSORING_FUTURE_RESERVES:
-//            BeginSponsoringFutureReservesResult beginSponsoringFutureReservesResult;
-//        case END_SPONSORING_FUTURE_RESERVES:
-//            EndSponsoringFutureReservesResult endSponsoringFutureReservesResult;
-//        case REVOKE_SPONSORSHIP:
-//            RevokeSponsorshipResult revokeSponsorshipResult;
-//        case CLAWBACK:
-//            ClawbackResult clawbackResult;
-//        case CLAWBACK_CLAIMABLE_BALANCE:
-//            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
-//        case SET_TRUST_LINE_FLAGS:
-//            SetTrustLineFlagsResult setTrustLineFlagsResult;
-//        case LIQUIDITY_POOL_DEPOSIT:
-//            LiquidityPoolDepositResult liquidityPoolDepositResult;
-//        case LIQUIDITY_POOL_WITHDRAW:
-//            LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
-//        case INVOKE_HOST_FUNCTION:
-//            InvokeHostFunctionResult invokeHostFunctionResult;
-//        }
-//        tr;
-//    case opBAD_AUTH:
-//    case opNO_ACCOUNT:
-//    case opNOT_SUPPORTED:
-//    case opTOO_MANY_SUBENTRIES:
-//    case opEXCEEDED_WORK_LIMIT:
-//    case opTOO_MANY_SPONSORING:
-//        void;
-//    };
-//
+//	union OperationResult switch (OperationResultCode code)
+//	 {
+//	 case opINNER:
+//	     union switch (OperationType type)
+//	     {
+//	     case CREATE_ACCOUNT:
+//	         CreateAccountResult createAccountResult;
+//	     case PAYMENT:
+//	         PaymentResult paymentResult;
+//	     case PATH_PAYMENT_STRICT_RECEIVE:
+//	         PathPaymentStrictReceiveResult pathPaymentStrictReceiveResult;
+//	     case MANAGE_SELL_OFFER:
+//	         ManageSellOfferResult manageSellOfferResult;
+//	     case CREATE_PASSIVE_SELL_OFFER:
+//	         ManageSellOfferResult createPassiveSellOfferResult;
+//	     case SET_OPTIONS:
+//	         SetOptionsResult setOptionsResult;
+//	     case CHANGE_TRUST:
+//	         ChangeTrustResult changeTrustResult;
+//	     case ALLOW_TRUST:
+//	         AllowTrustResult allowTrustResult;
+//	     case ACCOUNT_MERGE:
+//	         AccountMergeResult accountMergeResult;
+//	     case INFLATION:
+//	         InflationResult inflationResult;
+//	     case MANAGE_DATA:
+//	         ManageDataResult manageDataResult;
+//	     case BUMP_SEQUENCE:
+//	         BumpSequenceResult bumpSeqResult;
+//	     case MANAGE_BUY_OFFER:
+//	         ManageBuyOfferResult manageBuyOfferResult;
+//	     case PATH_PAYMENT_STRICT_SEND:
+//	         PathPaymentStrictSendResult pathPaymentStrictSendResult;
+//	     case CREATE_CLAIMABLE_BALANCE:
+//	         CreateClaimableBalanceResult createClaimableBalanceResult;
+//	     case CLAIM_CLAIMABLE_BALANCE:
+//	         ClaimClaimableBalanceResult claimClaimableBalanceResult;
+//	     case BEGIN_SPONSORING_FUTURE_RESERVES:
+//	         BeginSponsoringFutureReservesResult beginSponsoringFutureReservesResult;
+//	     case END_SPONSORING_FUTURE_RESERVES:
+//	         EndSponsoringFutureReservesResult endSponsoringFutureReservesResult;
+//	     case REVOKE_SPONSORSHIP:
+//	         RevokeSponsorshipResult revokeSponsorshipResult;
+//	     case CLAWBACK:
+//	         ClawbackResult clawbackResult;
+//	     case CLAWBACK_CLAIMABLE_BALANCE:
+//	         ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
+//	     case SET_TRUST_LINE_FLAGS:
+//	         SetTrustLineFlagsResult setTrustLineFlagsResult;
+//	     case LIQUIDITY_POOL_DEPOSIT:
+//	         LiquidityPoolDepositResult liquidityPoolDepositResult;
+//	     case LIQUIDITY_POOL_WITHDRAW:
+//	         LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
+//	     case INVOKE_HOST_FUNCTION:
+//	         InvokeHostFunctionResult invokeHostFunctionResult;
+//	     }
+//	     tr;
+//	 case opBAD_AUTH:
+//	 case opNO_ACCOUNT:
+//	 case opNOT_SUPPORTED:
+//	 case opTOO_MANY_SUBENTRIES:
+//	 case opEXCEEDED_WORK_LIMIT:
+//	 case opTOO_MANY_SPONSORING:
+//	     void;
+//	 };
 type OperationResult struct {
 	Code OperationResultCode
 	Tr   *OperationResultTr
@@ -38944,33 +38630,32 @@ var _ xdrType = (*OperationResult)(nil)
 
 // TransactionResultCode is an XDR Enum defines as:
 //
-//   enum TransactionResultCode
-//    {
-//        txFEE_BUMP_INNER_SUCCESS = 1, // fee bump inner transaction succeeded
-//        txSUCCESS = 0,                // all operations succeeded
+//	enum TransactionResultCode
+//	 {
+//	     txFEE_BUMP_INNER_SUCCESS = 1, // fee bump inner transaction succeeded
+//	     txSUCCESS = 0,                // all operations succeeded
 //
-//        txFAILED = -1, // one of the operations failed (none were applied)
+//	     txFAILED = -1, // one of the operations failed (none were applied)
 //
-//        txTOO_EARLY = -2,         // ledger closeTime before minTime
-//        txTOO_LATE = -3,          // ledger closeTime after maxTime
-//        txMISSING_OPERATION = -4, // no operation was specified
-//        txBAD_SEQ = -5,           // sequence number does not match source account
+//	     txTOO_EARLY = -2,         // ledger closeTime before minTime
+//	     txTOO_LATE = -3,          // ledger closeTime after maxTime
+//	     txMISSING_OPERATION = -4, // no operation was specified
+//	     txBAD_SEQ = -5,           // sequence number does not match source account
 //
-//        txBAD_AUTH = -6,             // too few valid signatures / wrong network
-//        txINSUFFICIENT_BALANCE = -7, // fee would bring account below reserve
-//        txNO_ACCOUNT = -8,           // source account not found
-//        txINSUFFICIENT_FEE = -9,     // fee is too small
-//        txBAD_AUTH_EXTRA = -10,      // unused signatures attached to transaction
-//        txINTERNAL_ERROR = -11,      // an unknown error occurred
+//	     txBAD_AUTH = -6,             // too few valid signatures / wrong network
+//	     txINSUFFICIENT_BALANCE = -7, // fee would bring account below reserve
+//	     txNO_ACCOUNT = -8,           // source account not found
+//	     txINSUFFICIENT_FEE = -9,     // fee is too small
+//	     txBAD_AUTH_EXTRA = -10,      // unused signatures attached to transaction
+//	     txINTERNAL_ERROR = -11,      // an unknown error occurred
 //
-//        txNOT_SUPPORTED = -12,         // transaction type not supported
-//        txFEE_BUMP_INNER_FAILED = -13, // fee bump inner transaction failed
-//        txBAD_SPONSORSHIP = -14,       // sponsorship not confirmed
-//        txBAD_MIN_SEQ_AGE_OR_GAP =
-//            -15, // minSeqAge or minSeqLedgerGap conditions not met
-//        txMALFORMED = -16 // precondition is invalid
-//    };
-//
+//	     txNOT_SUPPORTED = -12,         // transaction type not supported
+//	     txFEE_BUMP_INNER_FAILED = -13, // fee bump inner transaction failed
+//	     txBAD_SPONSORSHIP = -14,       // sponsorship not confirmed
+//	     txBAD_MIN_SEQ_AGE_OR_GAP =
+//	         -15, // minSeqAge or minSeqLedgerGap conditions not met
+//	     txMALFORMED = -16 // precondition is invalid
+//	 };
 type TransactionResultCode int32
 
 const (
@@ -39081,30 +38766,29 @@ var _ xdrType = (*TransactionResultCode)(nil)
 
 // InnerTransactionResultResult is an XDR NestedUnion defines as:
 //
-//   union switch (TransactionResultCode code)
-//        {
-//        // txFEE_BUMP_INNER_SUCCESS is not included
-//        case txSUCCESS:
-//        case txFAILED:
-//            OperationResult results<>;
-//        case txTOO_EARLY:
-//        case txTOO_LATE:
-//        case txMISSING_OPERATION:
-//        case txBAD_SEQ:
-//        case txBAD_AUTH:
-//        case txINSUFFICIENT_BALANCE:
-//        case txNO_ACCOUNT:
-//        case txINSUFFICIENT_FEE:
-//        case txBAD_AUTH_EXTRA:
-//        case txINTERNAL_ERROR:
-//        case txNOT_SUPPORTED:
-//        // txFEE_BUMP_INNER_FAILED is not included
-//        case txBAD_SPONSORSHIP:
-//        case txBAD_MIN_SEQ_AGE_OR_GAP:
-//        case txMALFORMED:
-//            void;
-//        }
-//
+//	union switch (TransactionResultCode code)
+//	     {
+//	     // txFEE_BUMP_INNER_SUCCESS is not included
+//	     case txSUCCESS:
+//	     case txFAILED:
+//	         OperationResult results<>;
+//	     case txTOO_EARLY:
+//	     case txTOO_LATE:
+//	     case txMISSING_OPERATION:
+//	     case txBAD_SEQ:
+//	     case txBAD_AUTH:
+//	     case txINSUFFICIENT_BALANCE:
+//	     case txNO_ACCOUNT:
+//	     case txINSUFFICIENT_FEE:
+//	     case txBAD_AUTH_EXTRA:
+//	     case txINTERNAL_ERROR:
+//	     case txNOT_SUPPORTED:
+//	     // txFEE_BUMP_INNER_FAILED is not included
+//	     case txBAD_SPONSORSHIP:
+//	     case txBAD_MIN_SEQ_AGE_OR_GAP:
+//	     case txMALFORMED:
+//	         void;
+//	     }
 type InnerTransactionResultResult struct {
 	Code    TransactionResultCode
 	Results *[]OperationResult
@@ -39431,12 +39115,11 @@ var _ xdrType = (*InnerTransactionResultResult)(nil)
 
 // InnerTransactionResultExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type InnerTransactionResultExt struct {
 	V int32
 }
@@ -39529,45 +39212,44 @@ var _ xdrType = (*InnerTransactionResultExt)(nil)
 
 // InnerTransactionResult is an XDR Struct defines as:
 //
-//   struct InnerTransactionResult
-//    {
-//        // Always 0. Here for binary compatibility.
-//        int64 feeCharged;
+//	struct InnerTransactionResult
+//	 {
+//	     // Always 0. Here for binary compatibility.
+//	     int64 feeCharged;
 //
-//        union switch (TransactionResultCode code)
-//        {
-//        // txFEE_BUMP_INNER_SUCCESS is not included
-//        case txSUCCESS:
-//        case txFAILED:
-//            OperationResult results<>;
-//        case txTOO_EARLY:
-//        case txTOO_LATE:
-//        case txMISSING_OPERATION:
-//        case txBAD_SEQ:
-//        case txBAD_AUTH:
-//        case txINSUFFICIENT_BALANCE:
-//        case txNO_ACCOUNT:
-//        case txINSUFFICIENT_FEE:
-//        case txBAD_AUTH_EXTRA:
-//        case txINTERNAL_ERROR:
-//        case txNOT_SUPPORTED:
-//        // txFEE_BUMP_INNER_FAILED is not included
-//        case txBAD_SPONSORSHIP:
-//        case txBAD_MIN_SEQ_AGE_OR_GAP:
-//        case txMALFORMED:
-//            void;
-//        }
-//        result;
+//	     union switch (TransactionResultCode code)
+//	     {
+//	     // txFEE_BUMP_INNER_SUCCESS is not included
+//	     case txSUCCESS:
+//	     case txFAILED:
+//	         OperationResult results<>;
+//	     case txTOO_EARLY:
+//	     case txTOO_LATE:
+//	     case txMISSING_OPERATION:
+//	     case txBAD_SEQ:
+//	     case txBAD_AUTH:
+//	     case txINSUFFICIENT_BALANCE:
+//	     case txNO_ACCOUNT:
+//	     case txINSUFFICIENT_FEE:
+//	     case txBAD_AUTH_EXTRA:
+//	     case txINTERNAL_ERROR:
+//	     case txNOT_SUPPORTED:
+//	     // txFEE_BUMP_INNER_FAILED is not included
+//	     case txBAD_SPONSORSHIP:
+//	     case txBAD_MIN_SEQ_AGE_OR_GAP:
+//	     case txMALFORMED:
+//	         void;
+//	     }
+//	     result;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type InnerTransactionResult struct {
 	FeeCharged Int64
 	Result     InnerTransactionResultResult
@@ -39642,12 +39324,11 @@ var _ xdrType = (*InnerTransactionResult)(nil)
 
 // InnerTransactionResultPair is an XDR Struct defines as:
 //
-//   struct InnerTransactionResultPair
-//    {
-//        Hash transactionHash;          // hash of the inner transaction
-//        InnerTransactionResult result; // result for the inner transaction
-//    };
-//
+//	struct InnerTransactionResultPair
+//	 {
+//	     Hash transactionHash;          // hash of the inner transaction
+//	     InnerTransactionResult result; // result for the inner transaction
+//	 };
 type InnerTransactionResultPair struct {
 	TransactionHash Hash
 	Result          InnerTransactionResult
@@ -39713,32 +39394,31 @@ var _ xdrType = (*InnerTransactionResultPair)(nil)
 
 // TransactionResultResult is an XDR NestedUnion defines as:
 //
-//   union switch (TransactionResultCode code)
-//        {
-//        case txFEE_BUMP_INNER_SUCCESS:
-//        case txFEE_BUMP_INNER_FAILED:
-//            InnerTransactionResultPair innerResultPair;
-//        case txSUCCESS:
-//        case txFAILED:
-//            OperationResult results<>;
-//        case txTOO_EARLY:
-//        case txTOO_LATE:
-//        case txMISSING_OPERATION:
-//        case txBAD_SEQ:
-//        case txBAD_AUTH:
-//        case txINSUFFICIENT_BALANCE:
-//        case txNO_ACCOUNT:
-//        case txINSUFFICIENT_FEE:
-//        case txBAD_AUTH_EXTRA:
-//        case txINTERNAL_ERROR:
-//        case txNOT_SUPPORTED:
-//        // case txFEE_BUMP_INNER_FAILED: handled above
-//        case txBAD_SPONSORSHIP:
-//        case txBAD_MIN_SEQ_AGE_OR_GAP:
-//        case txMALFORMED:
-//            void;
-//        }
-//
+//	union switch (TransactionResultCode code)
+//	     {
+//	     case txFEE_BUMP_INNER_SUCCESS:
+//	     case txFEE_BUMP_INNER_FAILED:
+//	         InnerTransactionResultPair innerResultPair;
+//	     case txSUCCESS:
+//	     case txFAILED:
+//	         OperationResult results<>;
+//	     case txTOO_EARLY:
+//	     case txTOO_LATE:
+//	     case txMISSING_OPERATION:
+//	     case txBAD_SEQ:
+//	     case txBAD_AUTH:
+//	     case txINSUFFICIENT_BALANCE:
+//	     case txNO_ACCOUNT:
+//	     case txINSUFFICIENT_FEE:
+//	     case txBAD_AUTH_EXTRA:
+//	     case txINTERNAL_ERROR:
+//	     case txNOT_SUPPORTED:
+//	     // case txFEE_BUMP_INNER_FAILED: handled above
+//	     case txBAD_SPONSORSHIP:
+//	     case txBAD_MIN_SEQ_AGE_OR_GAP:
+//	     case txMALFORMED:
+//	         void;
+//	     }
 type TransactionResultResult struct {
 	Code            TransactionResultCode
 	InnerResultPair *InnerTransactionResultPair
@@ -40135,12 +39815,11 @@ var _ xdrType = (*TransactionResultResult)(nil)
 
 // TransactionResultExt is an XDR NestedUnion defines as:
 //
-//   union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//
+//	union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
 type TransactionResultExt struct {
 	V int32
 }
@@ -40233,46 +39912,45 @@ var _ xdrType = (*TransactionResultExt)(nil)
 
 // TransactionResult is an XDR Struct defines as:
 //
-//   struct TransactionResult
-//    {
-//        int64 feeCharged; // actual fee charged for the transaction
+//	struct TransactionResult
+//	 {
+//	     int64 feeCharged; // actual fee charged for the transaction
 //
-//        union switch (TransactionResultCode code)
-//        {
-//        case txFEE_BUMP_INNER_SUCCESS:
-//        case txFEE_BUMP_INNER_FAILED:
-//            InnerTransactionResultPair innerResultPair;
-//        case txSUCCESS:
-//        case txFAILED:
-//            OperationResult results<>;
-//        case txTOO_EARLY:
-//        case txTOO_LATE:
-//        case txMISSING_OPERATION:
-//        case txBAD_SEQ:
-//        case txBAD_AUTH:
-//        case txINSUFFICIENT_BALANCE:
-//        case txNO_ACCOUNT:
-//        case txINSUFFICIENT_FEE:
-//        case txBAD_AUTH_EXTRA:
-//        case txINTERNAL_ERROR:
-//        case txNOT_SUPPORTED:
-//        // case txFEE_BUMP_INNER_FAILED: handled above
-//        case txBAD_SPONSORSHIP:
-//        case txBAD_MIN_SEQ_AGE_OR_GAP:
-//        case txMALFORMED:
-//            void;
-//        }
-//        result;
+//	     union switch (TransactionResultCode code)
+//	     {
+//	     case txFEE_BUMP_INNER_SUCCESS:
+//	     case txFEE_BUMP_INNER_FAILED:
+//	         InnerTransactionResultPair innerResultPair;
+//	     case txSUCCESS:
+//	     case txFAILED:
+//	         OperationResult results<>;
+//	     case txTOO_EARLY:
+//	     case txTOO_LATE:
+//	     case txMISSING_OPERATION:
+//	     case txBAD_SEQ:
+//	     case txBAD_AUTH:
+//	     case txINSUFFICIENT_BALANCE:
+//	     case txNO_ACCOUNT:
+//	     case txINSUFFICIENT_FEE:
+//	     case txBAD_AUTH_EXTRA:
+//	     case txINTERNAL_ERROR:
+//	     case txNOT_SUPPORTED:
+//	     // case txFEE_BUMP_INNER_FAILED: handled above
+//	     case txBAD_SPONSORSHIP:
+//	     case txBAD_MIN_SEQ_AGE_OR_GAP:
+//	     case txMALFORMED:
+//	         void;
+//	     }
+//	     result;
 //
-//        // reserved for future use
-//        union switch (int v)
-//        {
-//        case 0:
-//            void;
-//        }
-//        ext;
-//    };
-//
+//	     // reserved for future use
+//	     union switch (int v)
+//	     {
+//	     case 0:
+//	         void;
+//	     }
+//	     ext;
+//	 };
 type TransactionResult struct {
 	FeeCharged Int64
 	Result     TransactionResultResult
@@ -40347,8 +40025,7 @@ var _ xdrType = (*TransactionResult)(nil)
 
 // Hash is an XDR Typedef defines as:
 //
-//   typedef opaque Hash[32];
-//
+//	typedef opaque Hash[32];
 type Hash [32]byte
 
 // XDRMaxSize implements the Sized interface for Hash
@@ -40408,8 +40085,7 @@ var _ xdrType = (*Hash)(nil)
 
 // Uint256 is an XDR Typedef defines as:
 //
-//   typedef opaque uint256[32];
-//
+//	typedef opaque uint256[32];
 type Uint256 [32]byte
 
 // XDRMaxSize implements the Sized interface for Uint256
@@ -40469,8 +40145,7 @@ var _ xdrType = (*Uint256)(nil)
 
 // Uint32 is an XDR Typedef defines as:
 //
-//   typedef unsigned int uint32;
-//
+//	typedef unsigned int uint32;
 type Uint32 uint32
 
 // EncodeTo encodes this value using the Encoder.
@@ -40527,8 +40202,7 @@ var _ xdrType = (*Uint32)(nil)
 
 // Int32 is an XDR Typedef defines as:
 //
-//   typedef int int32;
-//
+//	typedef int int32;
 type Int32 int32
 
 // EncodeTo encodes this value using the Encoder.
@@ -40585,8 +40259,7 @@ var _ xdrType = (*Int32)(nil)
 
 // Uint64 is an XDR Typedef defines as:
 //
-//   typedef unsigned hyper uint64;
-//
+//	typedef unsigned hyper uint64;
 type Uint64 uint64
 
 // EncodeTo encodes this value using the Encoder.
@@ -40643,8 +40316,7 @@ var _ xdrType = (*Uint64)(nil)
 
 // Int64 is an XDR Typedef defines as:
 //
-//   typedef hyper int64;
-//
+//	typedef hyper int64;
 type Int64 int64
 
 // EncodeTo encodes this value using the Encoder.
@@ -40701,12 +40373,11 @@ var _ xdrType = (*Int64)(nil)
 
 // ExtensionPoint is an XDR Union defines as:
 //
-//   union ExtensionPoint switch (int v)
-//    {
-//    case 0:
-//        void;
-//    };
-//
+//	union ExtensionPoint switch (int v)
+//	 {
+//	 case 0:
+//	     void;
+//	 };
 type ExtensionPoint struct {
 	V int32
 }
@@ -40799,17 +40470,16 @@ var _ xdrType = (*ExtensionPoint)(nil)
 
 // CryptoKeyType is an XDR Enum defines as:
 //
-//   enum CryptoKeyType
-//    {
-//        KEY_TYPE_ED25519 = 0,
-//        KEY_TYPE_PRE_AUTH_TX = 1,
-//        KEY_TYPE_HASH_X = 2,
-//        KEY_TYPE_ED25519_SIGNED_PAYLOAD = 3,
-//        // MUXED enum values for supported type are derived from the enum values
-//        // above by ORing them with 0x100
-//        KEY_TYPE_MUXED_ED25519 = 0x100
-//    };
-//
+//	enum CryptoKeyType
+//	 {
+//	     KEY_TYPE_ED25519 = 0,
+//	     KEY_TYPE_PRE_AUTH_TX = 1,
+//	     KEY_TYPE_HASH_X = 2,
+//	     KEY_TYPE_ED25519_SIGNED_PAYLOAD = 3,
+//	     // MUXED enum values for supported type are derived from the enum values
+//	     // above by ORing them with 0x100
+//	     KEY_TYPE_MUXED_ED25519 = 0x100
+//	 };
 type CryptoKeyType int32
 
 const (
@@ -40894,11 +40564,10 @@ var _ xdrType = (*CryptoKeyType)(nil)
 
 // PublicKeyType is an XDR Enum defines as:
 //
-//   enum PublicKeyType
-//    {
-//        PUBLIC_KEY_TYPE_ED25519 = KEY_TYPE_ED25519
-//    };
-//
+//	enum PublicKeyType
+//	 {
+//	     PUBLIC_KEY_TYPE_ED25519 = KEY_TYPE_ED25519
+//	 };
 type PublicKeyType int32
 
 const (
@@ -40975,14 +40644,13 @@ var _ xdrType = (*PublicKeyType)(nil)
 
 // SignerKeyType is an XDR Enum defines as:
 //
-//   enum SignerKeyType
-//    {
-//        SIGNER_KEY_TYPE_ED25519 = KEY_TYPE_ED25519,
-//        SIGNER_KEY_TYPE_PRE_AUTH_TX = KEY_TYPE_PRE_AUTH_TX,
-//        SIGNER_KEY_TYPE_HASH_X = KEY_TYPE_HASH_X,
-//        SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD = KEY_TYPE_ED25519_SIGNED_PAYLOAD
-//    };
-//
+//	enum SignerKeyType
+//	 {
+//	     SIGNER_KEY_TYPE_ED25519 = KEY_TYPE_ED25519,
+//	     SIGNER_KEY_TYPE_PRE_AUTH_TX = KEY_TYPE_PRE_AUTH_TX,
+//	     SIGNER_KEY_TYPE_HASH_X = KEY_TYPE_HASH_X,
+//	     SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD = KEY_TYPE_ED25519_SIGNED_PAYLOAD
+//	 };
 type SignerKeyType int32
 
 const (
@@ -41065,12 +40733,11 @@ var _ xdrType = (*SignerKeyType)(nil)
 
 // PublicKey is an XDR Union defines as:
 //
-//   union PublicKey switch (PublicKeyType type)
-//    {
-//    case PUBLIC_KEY_TYPE_ED25519:
-//        uint256 ed25519;
-//    };
-//
+//	union PublicKey switch (PublicKeyType type)
+//	 {
+//	 case PUBLIC_KEY_TYPE_ED25519:
+//	     uint256 ed25519;
+//	 };
 type PublicKey struct {
 	Type    PublicKeyType
 	Ed25519 *Uint256
@@ -41201,14 +40868,13 @@ var _ xdrType = (*PublicKey)(nil)
 
 // SignerKeyEd25519SignedPayload is an XDR NestedStruct defines as:
 //
-//   struct
-//        {
-//            /* Public key that must sign the payload. */
-//            uint256 ed25519;
-//            /* Payload to be raw signed by ed25519. */
-//            opaque payload<64>;
-//        }
-//
+//	struct
+//	     {
+//	         /* Public key that must sign the payload. */
+//	         uint256 ed25519;
+//	         /* Payload to be raw signed by ed25519. */
+//	         opaque payload<64>;
+//	     }
 type SignerKeyEd25519SignedPayload struct {
 	Ed25519 Uint256
 	Payload []byte `xdrmaxsize:"64"`
@@ -41274,26 +40940,25 @@ var _ xdrType = (*SignerKeyEd25519SignedPayload)(nil)
 
 // SignerKey is an XDR Union defines as:
 //
-//   union SignerKey switch (SignerKeyType type)
-//    {
-//    case SIGNER_KEY_TYPE_ED25519:
-//        uint256 ed25519;
-//    case SIGNER_KEY_TYPE_PRE_AUTH_TX:
-//        /* SHA-256 Hash of TransactionSignaturePayload structure */
-//        uint256 preAuthTx;
-//    case SIGNER_KEY_TYPE_HASH_X:
-//        /* Hash of random 256 bit preimage X */
-//        uint256 hashX;
-//    case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
-//        struct
-//        {
-//            /* Public key that must sign the payload. */
-//            uint256 ed25519;
-//            /* Payload to be raw signed by ed25519. */
-//            opaque payload<64>;
-//        } ed25519SignedPayload;
-//    };
-//
+//	union SignerKey switch (SignerKeyType type)
+//	 {
+//	 case SIGNER_KEY_TYPE_ED25519:
+//	     uint256 ed25519;
+//	 case SIGNER_KEY_TYPE_PRE_AUTH_TX:
+//	     /* SHA-256 Hash of TransactionSignaturePayload structure */
+//	     uint256 preAuthTx;
+//	 case SIGNER_KEY_TYPE_HASH_X:
+//	     /* Hash of random 256 bit preimage X */
+//	     uint256 hashX;
+//	 case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+//	     struct
+//	     {
+//	         /* Public key that must sign the payload. */
+//	         uint256 ed25519;
+//	         /* Payload to be raw signed by ed25519. */
+//	         opaque payload<64>;
+//	     } ed25519SignedPayload;
+//	 };
 type SignerKey struct {
 	Type                 SignerKeyType
 	Ed25519              *Uint256
@@ -41568,8 +41233,7 @@ var _ xdrType = (*SignerKey)(nil)
 
 // Signature is an XDR Typedef defines as:
 //
-//   typedef opaque Signature<64>;
-//
+//	typedef opaque Signature<64>;
 type Signature []byte
 
 // XDRMaxSize implements the Sized interface for Signature
@@ -41629,8 +41293,7 @@ var _ xdrType = (*Signature)(nil)
 
 // SignatureHint is an XDR Typedef defines as:
 //
-//   typedef opaque SignatureHint[4];
-//
+//	typedef opaque SignatureHint[4];
 type SignatureHint [4]byte
 
 // XDRMaxSize implements the Sized interface for SignatureHint
@@ -41690,8 +41353,7 @@ var _ xdrType = (*SignatureHint)(nil)
 
 // NodeId is an XDR Typedef defines as:
 //
-//   typedef PublicKey NodeID;
-//
+//	typedef PublicKey NodeID;
 type NodeId PublicKey
 
 // SwitchFieldName returns the field name in which this union's
@@ -41777,11 +41439,10 @@ var _ xdrType = (*NodeId)(nil)
 
 // Curve25519Secret is an XDR Struct defines as:
 //
-//   struct Curve25519Secret
-//    {
-//        opaque key[32];
-//    };
-//
+//	struct Curve25519Secret
+//	 {
+//	     opaque key[32];
+//	 };
 type Curve25519Secret struct {
 	Key [32]byte `xdrmaxsize:"32"`
 }
@@ -41838,11 +41499,10 @@ var _ xdrType = (*Curve25519Secret)(nil)
 
 // Curve25519Public is an XDR Struct defines as:
 //
-//   struct Curve25519Public
-//    {
-//        opaque key[32];
-//    };
-//
+//	struct Curve25519Public
+//	 {
+//	     opaque key[32];
+//	 };
 type Curve25519Public struct {
 	Key [32]byte `xdrmaxsize:"32"`
 }
@@ -41899,11 +41559,10 @@ var _ xdrType = (*Curve25519Public)(nil)
 
 // HmacSha256Key is an XDR Struct defines as:
 //
-//   struct HmacSha256Key
-//    {
-//        opaque key[32];
-//    };
-//
+//	struct HmacSha256Key
+//	 {
+//	     opaque key[32];
+//	 };
 type HmacSha256Key struct {
 	Key [32]byte `xdrmaxsize:"32"`
 }
@@ -41960,11 +41619,10 @@ var _ xdrType = (*HmacSha256Key)(nil)
 
 // HmacSha256Mac is an XDR Struct defines as:
 //
-//   struct HmacSha256Mac
-//    {
-//        opaque mac[32];
-//    };
-//
+//	struct HmacSha256Mac
+//	 {
+//	     opaque mac[32];
+//	 };
 type HmacSha256Mac struct {
 	Mac [32]byte `xdrmaxsize:"32"`
 }
@@ -42021,11 +41679,10 @@ var _ xdrType = (*HmacSha256Mac)(nil)
 
 // ScEnvMetaKind is an XDR Enum defines as:
 //
-//   enum SCEnvMetaKind
-//    {
-//        SC_ENV_META_KIND_INTERFACE_VERSION = 0
-//    };
-//
+//	enum SCEnvMetaKind
+//	 {
+//	     SC_ENV_META_KIND_INTERFACE_VERSION = 0
+//	 };
 type ScEnvMetaKind int32
 
 const (
@@ -42102,12 +41759,11 @@ var _ xdrType = (*ScEnvMetaKind)(nil)
 
 // ScEnvMetaEntry is an XDR Union defines as:
 //
-//   union SCEnvMetaEntry switch (SCEnvMetaKind kind)
-//    {
-//    case SC_ENV_META_KIND_INTERFACE_VERSION:
-//        uint64 interfaceVersion;
-//    };
-//
+//	union SCEnvMetaEntry switch (SCEnvMetaKind kind)
+//	 {
+//	 case SC_ENV_META_KIND_INTERFACE_VERSION:
+//	     uint64 interfaceVersion;
+//	 };
 type ScEnvMetaEntry struct {
 	Kind             ScEnvMetaKind
 	InterfaceVersion *Uint64
@@ -42238,35 +41894,34 @@ var _ xdrType = (*ScEnvMetaEntry)(nil)
 
 // ScSpecType is an XDR Enum defines as:
 //
-//   enum SCSpecType
-//    {
-//        SC_SPEC_TYPE_VAL = 0,
+//	enum SCSpecType
+//	 {
+//	     SC_SPEC_TYPE_VAL = 0,
 //
-//        // Types with no parameters.
-//        SC_SPEC_TYPE_U32 = 1,
-//        SC_SPEC_TYPE_I32 = 2,
-//        SC_SPEC_TYPE_U64 = 3,
-//        SC_SPEC_TYPE_I64 = 4,
-//        SC_SPEC_TYPE_BOOL = 5,
-//        SC_SPEC_TYPE_SYMBOL = 6,
-//        SC_SPEC_TYPE_BITSET = 7,
-//        SC_SPEC_TYPE_STATUS = 8,
-//        SC_SPEC_TYPE_BYTES = 9,
-//        SC_SPEC_TYPE_BIG_INT = 10,
+//	     // Types with no parameters.
+//	     SC_SPEC_TYPE_U32 = 1,
+//	     SC_SPEC_TYPE_I32 = 2,
+//	     SC_SPEC_TYPE_U64 = 3,
+//	     SC_SPEC_TYPE_I64 = 4,
+//	     SC_SPEC_TYPE_BOOL = 5,
+//	     SC_SPEC_TYPE_SYMBOL = 6,
+//	     SC_SPEC_TYPE_BITSET = 7,
+//	     SC_SPEC_TYPE_STATUS = 8,
+//	     SC_SPEC_TYPE_BYTES = 9,
+//	     SC_SPEC_TYPE_BIG_INT = 10,
 //
-//        // Types with parameters.
-//        SC_SPEC_TYPE_OPTION = 1000,
-//        SC_SPEC_TYPE_RESULT = 1001,
-//        SC_SPEC_TYPE_VEC = 1002,
-//        SC_SPEC_TYPE_SET = 1003,
-//        SC_SPEC_TYPE_MAP = 1004,
-//        SC_SPEC_TYPE_TUPLE = 1005,
-//        SC_SPEC_TYPE_BYTES_N = 1006,
+//	     // Types with parameters.
+//	     SC_SPEC_TYPE_OPTION = 1000,
+//	     SC_SPEC_TYPE_RESULT = 1001,
+//	     SC_SPEC_TYPE_VEC = 1002,
+//	     SC_SPEC_TYPE_SET = 1003,
+//	     SC_SPEC_TYPE_MAP = 1004,
+//	     SC_SPEC_TYPE_TUPLE = 1005,
+//	     SC_SPEC_TYPE_BYTES_N = 1006,
 //
-//        // User defined types.
-//        SC_SPEC_TYPE_UDT = 2000
-//    };
-//
+//	     // User defined types.
+//	     SC_SPEC_TYPE_UDT = 2000
+//	 };
 type ScSpecType int32
 
 const (
@@ -42379,11 +42034,10 @@ var _ xdrType = (*ScSpecType)(nil)
 
 // ScSpecTypeOption is an XDR Struct defines as:
 //
-//   struct SCSpecTypeOption
-//    {
-//        SCSpecTypeDef valueType;
-//    };
-//
+//	struct SCSpecTypeOption
+//	 {
+//	     SCSpecTypeDef valueType;
+//	 };
 type ScSpecTypeOption struct {
 	ValueType ScSpecTypeDef
 }
@@ -42440,12 +42094,11 @@ var _ xdrType = (*ScSpecTypeOption)(nil)
 
 // ScSpecTypeResult is an XDR Struct defines as:
 //
-//   struct SCSpecTypeResult
-//    {
-//        SCSpecTypeDef okType;
-//        SCSpecTypeDef errorType;
-//    };
-//
+//	struct SCSpecTypeResult
+//	 {
+//	     SCSpecTypeDef okType;
+//	     SCSpecTypeDef errorType;
+//	 };
 type ScSpecTypeResult struct {
 	OkType    ScSpecTypeDef
 	ErrorType ScSpecTypeDef
@@ -42511,11 +42164,10 @@ var _ xdrType = (*ScSpecTypeResult)(nil)
 
 // ScSpecTypeVec is an XDR Struct defines as:
 //
-//   struct SCSpecTypeVec
-//    {
-//        SCSpecTypeDef elementType;
-//    };
-//
+//	struct SCSpecTypeVec
+//	 {
+//	     SCSpecTypeDef elementType;
+//	 };
 type ScSpecTypeVec struct {
 	ElementType ScSpecTypeDef
 }
@@ -42572,12 +42224,11 @@ var _ xdrType = (*ScSpecTypeVec)(nil)
 
 // ScSpecTypeMap is an XDR Struct defines as:
 //
-//   struct SCSpecTypeMap
-//    {
-//        SCSpecTypeDef keyType;
-//        SCSpecTypeDef valueType;
-//    };
-//
+//	struct SCSpecTypeMap
+//	 {
+//	     SCSpecTypeDef keyType;
+//	     SCSpecTypeDef valueType;
+//	 };
 type ScSpecTypeMap struct {
 	KeyType   ScSpecTypeDef
 	ValueType ScSpecTypeDef
@@ -42643,11 +42294,10 @@ var _ xdrType = (*ScSpecTypeMap)(nil)
 
 // ScSpecTypeSet is an XDR Struct defines as:
 //
-//   struct SCSpecTypeSet
-//    {
-//        SCSpecTypeDef elementType;
-//    };
-//
+//	struct SCSpecTypeSet
+//	 {
+//	     SCSpecTypeDef elementType;
+//	 };
 type ScSpecTypeSet struct {
 	ElementType ScSpecTypeDef
 }
@@ -42704,11 +42354,10 @@ var _ xdrType = (*ScSpecTypeSet)(nil)
 
 // ScSpecTypeTuple is an XDR Struct defines as:
 //
-//   struct SCSpecTypeTuple
-//    {
-//        SCSpecTypeDef valueTypes<12>;
-//    };
-//
+//	struct SCSpecTypeTuple
+//	 {
+//	     SCSpecTypeDef valueTypes<12>;
+//	 };
 type ScSpecTypeTuple struct {
 	ValueTypes []ScSpecTypeDef `xdrmaxsize:"12"`
 }
@@ -42785,11 +42434,10 @@ var _ xdrType = (*ScSpecTypeTuple)(nil)
 
 // ScSpecTypeBytesN is an XDR Struct defines as:
 //
-//   struct SCSpecTypeBytesN
-//    {
-//        uint32 n;
-//    };
-//
+//	struct SCSpecTypeBytesN
+//	 {
+//	     uint32 n;
+//	 };
 type ScSpecTypeBytesN struct {
 	N Uint32
 }
@@ -42846,11 +42494,10 @@ var _ xdrType = (*ScSpecTypeBytesN)(nil)
 
 // ScSpecTypeUdt is an XDR Struct defines as:
 //
-//   struct SCSpecTypeUDT
-//    {
-//        string name<60>;
-//    };
-//
+//	struct SCSpecTypeUDT
+//	 {
+//	     string name<60>;
+//	 };
 type ScSpecTypeUdt struct {
 	Name string `xdrmaxsize:"60"`
 }
@@ -42907,38 +42554,37 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 
 // ScSpecTypeDef is an XDR Union defines as:
 //
-//   union SCSpecTypeDef switch (SCSpecType type)
-//    {
-//    case SC_SPEC_TYPE_VAL:
-//    case SC_SPEC_TYPE_U64:
-//    case SC_SPEC_TYPE_I64:
-//    case SC_SPEC_TYPE_U32:
-//    case SC_SPEC_TYPE_I32:
-//    case SC_SPEC_TYPE_BOOL:
-//    case SC_SPEC_TYPE_SYMBOL:
-//    case SC_SPEC_TYPE_BITSET:
-//    case SC_SPEC_TYPE_STATUS:
-//    case SC_SPEC_TYPE_BYTES:
-//    case SC_SPEC_TYPE_BIG_INT:
-//        void;
-//    case SC_SPEC_TYPE_OPTION:
-//        SCSpecTypeOption option;
-//    case SC_SPEC_TYPE_RESULT:
-//        SCSpecTypeResult result;
-//    case SC_SPEC_TYPE_VEC:
-//        SCSpecTypeVec vec;
-//    case SC_SPEC_TYPE_MAP:
-//        SCSpecTypeMap map;
-//    case SC_SPEC_TYPE_SET:
-//        SCSpecTypeSet set;
-//    case SC_SPEC_TYPE_TUPLE:
-//        SCSpecTypeTuple tuple;
-//    case SC_SPEC_TYPE_BYTES_N:
-//        SCSpecTypeBytesN bytesN;
-//    case SC_SPEC_TYPE_UDT:
-//        SCSpecTypeUDT udt;
-//    };
-//
+//	union SCSpecTypeDef switch (SCSpecType type)
+//	 {
+//	 case SC_SPEC_TYPE_VAL:
+//	 case SC_SPEC_TYPE_U64:
+//	 case SC_SPEC_TYPE_I64:
+//	 case SC_SPEC_TYPE_U32:
+//	 case SC_SPEC_TYPE_I32:
+//	 case SC_SPEC_TYPE_BOOL:
+//	 case SC_SPEC_TYPE_SYMBOL:
+//	 case SC_SPEC_TYPE_BITSET:
+//	 case SC_SPEC_TYPE_STATUS:
+//	 case SC_SPEC_TYPE_BYTES:
+//	 case SC_SPEC_TYPE_BIG_INT:
+//	     void;
+//	 case SC_SPEC_TYPE_OPTION:
+//	     SCSpecTypeOption option;
+//	 case SC_SPEC_TYPE_RESULT:
+//	     SCSpecTypeResult result;
+//	 case SC_SPEC_TYPE_VEC:
+//	     SCSpecTypeVec vec;
+//	 case SC_SPEC_TYPE_MAP:
+//	     SCSpecTypeMap map;
+//	 case SC_SPEC_TYPE_SET:
+//	     SCSpecTypeSet set;
+//	 case SC_SPEC_TYPE_TUPLE:
+//	     SCSpecTypeTuple tuple;
+//	 case SC_SPEC_TYPE_BYTES_N:
+//	     SCSpecTypeBytesN bytesN;
+//	 case SC_SPEC_TYPE_UDT:
+//	     SCSpecTypeUDT udt;
+//	 };
 type ScSpecTypeDef struct {
 	Type   ScSpecType
 	Option *ScSpecTypeOption
@@ -43515,12 +43161,11 @@ var _ xdrType = (*ScSpecTypeDef)(nil)
 
 // ScSpecUdtStructFieldV0 is an XDR Struct defines as:
 //
-//   struct SCSpecUDTStructFieldV0
-//    {
-//        string name<30>;
-//        SCSpecTypeDef type;
-//    };
-//
+//	struct SCSpecUDTStructFieldV0
+//	 {
+//	     string name<30>;
+//	     SCSpecTypeDef type;
+//	 };
 type ScSpecUdtStructFieldV0 struct {
 	Name string `xdrmaxsize:"30"`
 	Type ScSpecTypeDef
@@ -43586,13 +43231,12 @@ var _ xdrType = (*ScSpecUdtStructFieldV0)(nil)
 
 // ScSpecUdtStructV0 is an XDR Struct defines as:
 //
-//   struct SCSpecUDTStructV0
-//    {
-//        string lib<80>;
-//        string name<60>;
-//        SCSpecUDTStructFieldV0 fields<40>;
-//    };
-//
+//	struct SCSpecUDTStructV0
+//	 {
+//	     string lib<80>;
+//	     string name<60>;
+//	     SCSpecUDTStructFieldV0 fields<40>;
+//	 };
 type ScSpecUdtStructV0 struct {
 	Lib    string                   `xdrmaxsize:"80"`
 	Name   string                   `xdrmaxsize:"60"`
@@ -43687,12 +43331,11 @@ var _ xdrType = (*ScSpecUdtStructV0)(nil)
 
 // ScSpecUdtUnionCaseV0 is an XDR Struct defines as:
 //
-//   struct SCSpecUDTUnionCaseV0
-//    {
-//        string name<60>;
-//        SCSpecTypeDef *type;
-//    };
-//
+//	struct SCSpecUDTUnionCaseV0
+//	 {
+//	     string name<60>;
+//	     SCSpecTypeDef *type;
+//	 };
 type ScSpecUdtUnionCaseV0 struct {
 	Name string `xdrmaxsize:"60"`
 	Type *ScSpecTypeDef
@@ -43773,13 +43416,12 @@ var _ xdrType = (*ScSpecUdtUnionCaseV0)(nil)
 
 // ScSpecUdtUnionV0 is an XDR Struct defines as:
 //
-//   struct SCSpecUDTUnionV0
-//    {
-//        string lib<80>;
-//        string name<60>;
-//        SCSpecUDTUnionCaseV0 cases<50>;
-//    };
-//
+//	struct SCSpecUDTUnionV0
+//	 {
+//	     string lib<80>;
+//	     string name<60>;
+//	     SCSpecUDTUnionCaseV0 cases<50>;
+//	 };
 type ScSpecUdtUnionV0 struct {
 	Lib   string                 `xdrmaxsize:"80"`
 	Name  string                 `xdrmaxsize:"60"`
@@ -43874,12 +43516,11 @@ var _ xdrType = (*ScSpecUdtUnionV0)(nil)
 
 // ScSpecFunctionInputV0 is an XDR Struct defines as:
 //
-//   struct SCSpecFunctionInputV0
-//    {
-//        string name<30>;
-//        SCSpecTypeDef type;
-//    };
-//
+//	struct SCSpecFunctionInputV0
+//	 {
+//	     string name<30>;
+//	     SCSpecTypeDef type;
+//	 };
 type ScSpecFunctionInputV0 struct {
 	Name string `xdrmaxsize:"30"`
 	Type ScSpecTypeDef
@@ -43945,13 +43586,12 @@ var _ xdrType = (*ScSpecFunctionInputV0)(nil)
 
 // ScSpecFunctionV0 is an XDR Struct defines as:
 //
-//   struct SCSpecFunctionV0
-//    {
-//        SCSymbol name;
-//        SCSpecFunctionInputV0 inputs<10>;
-//        SCSpecTypeDef outputs<1>;
-//    };
-//
+//	struct SCSpecFunctionV0
+//	 {
+//	     SCSymbol name;
+//	     SCSpecFunctionInputV0 inputs<10>;
+//	     SCSpecTypeDef outputs<1>;
+//	 };
 type ScSpecFunctionV0 struct {
 	Name    ScSymbol
 	Inputs  []ScSpecFunctionInputV0 `xdrmaxsize:"10"`
@@ -44065,13 +43705,12 @@ var _ xdrType = (*ScSpecFunctionV0)(nil)
 
 // ScSpecEntryKind is an XDR Enum defines as:
 //
-//   enum SCSpecEntryKind
-//    {
-//        SC_SPEC_ENTRY_FUNCTION_V0 = 0,
-//        SC_SPEC_ENTRY_UDT_STRUCT_V0 = 1,
-//        SC_SPEC_ENTRY_UDT_UNION_V0 = 2
-//    };
-//
+//	enum SCSpecEntryKind
+//	 {
+//	     SC_SPEC_ENTRY_FUNCTION_V0 = 0,
+//	     SC_SPEC_ENTRY_UDT_STRUCT_V0 = 1,
+//	     SC_SPEC_ENTRY_UDT_UNION_V0 = 2
+//	 };
 type ScSpecEntryKind int32
 
 const (
@@ -44152,16 +43791,15 @@ var _ xdrType = (*ScSpecEntryKind)(nil)
 
 // ScSpecEntry is an XDR Union defines as:
 //
-//   union SCSpecEntry switch (SCSpecEntryKind kind)
-//    {
-//    case SC_SPEC_ENTRY_FUNCTION_V0:
-//        SCSpecFunctionV0 functionV0;
-//    case SC_SPEC_ENTRY_UDT_STRUCT_V0:
-//        SCSpecUDTStructV0 udtStructV0;
-//    case SC_SPEC_ENTRY_UDT_UNION_V0:
-//        SCSpecUDTUnionV0 udtUnionV0;
-//    };
-//
+//	union SCSpecEntry switch (SCSpecEntryKind kind)
+//	 {
+//	 case SC_SPEC_ENTRY_FUNCTION_V0:
+//	     SCSpecFunctionV0 functionV0;
+//	 case SC_SPEC_ENTRY_UDT_STRUCT_V0:
+//	     SCSpecUDTStructV0 udtStructV0;
+//	 case SC_SPEC_ENTRY_UDT_UNION_V0:
+//	     SCSpecUDTUnionV0 udtUnionV0;
+//	 };
 type ScSpecEntry struct {
 	Kind        ScSpecEntryKind
 	FunctionV0  *ScSpecFunctionV0
@@ -44388,8 +44026,7 @@ var _ xdrType = (*ScSpecEntry)(nil)
 
 // ScSymbol is an XDR Typedef defines as:
 //
-//   typedef string SCSymbol<10>;
-//
+//	typedef string SCSymbol<10>;
 type ScSymbol string
 
 // XDRMaxSize implements the Sized interface for ScSymbol
@@ -44451,18 +44088,17 @@ var _ xdrType = (*ScSymbol)(nil)
 
 // ScValType is an XDR Enum defines as:
 //
-//   enum SCValType
-//    {
-//        SCV_U63 = 0,
-//        SCV_U32 = 1,
-//        SCV_I32 = 2,
-//        SCV_STATIC = 3,
-//        SCV_OBJECT = 4,
-//        SCV_SYMBOL = 5,
-//        SCV_BITSET = 6,
-//        SCV_STATUS = 7
-//    };
-//
+//	enum SCValType
+//	 {
+//	     SCV_U63 = 0,
+//	     SCV_U32 = 1,
+//	     SCV_I32 = 2,
+//	     SCV_STATIC = 3,
+//	     SCV_OBJECT = 4,
+//	     SCV_SYMBOL = 5,
+//	     SCV_BITSET = 6,
+//	     SCV_STATUS = 7
+//	 };
 type ScValType int32
 
 const (
@@ -44553,14 +44189,13 @@ var _ xdrType = (*ScValType)(nil)
 
 // ScStatic is an XDR Enum defines as:
 //
-//   enum SCStatic
-//    {
-//        SCS_VOID = 0,
-//        SCS_TRUE = 1,
-//        SCS_FALSE = 2,
-//        SCS_LEDGER_KEY_CONTRACT_CODE = 3
-//    };
-//
+//	enum SCStatic
+//	 {
+//	     SCS_VOID = 0,
+//	     SCS_TRUE = 1,
+//	     SCS_FALSE = 2,
+//	     SCS_LEDGER_KEY_CONTRACT_CODE = 3
+//	 };
 type ScStatic int32
 
 const (
@@ -44643,19 +44278,18 @@ var _ xdrType = (*ScStatic)(nil)
 
 // ScStatusType is an XDR Enum defines as:
 //
-//   enum SCStatusType
-//    {
-//        SST_OK = 0,
-//        SST_UNKNOWN_ERROR = 1,
-//        SST_HOST_VALUE_ERROR = 2,
-//        SST_HOST_OBJECT_ERROR = 3,
-//        SST_HOST_FUNCTION_ERROR = 4,
-//        SST_HOST_STORAGE_ERROR = 5,
-//        SST_HOST_CONTEXT_ERROR = 6,
-//        SST_VM_ERROR = 7
-//        // TODO: add more
-//    };
-//
+//	enum SCStatusType
+//	 {
+//	     SST_OK = 0,
+//	     SST_UNKNOWN_ERROR = 1,
+//	     SST_HOST_VALUE_ERROR = 2,
+//	     SST_HOST_OBJECT_ERROR = 3,
+//	     SST_HOST_FUNCTION_ERROR = 4,
+//	     SST_HOST_STORAGE_ERROR = 5,
+//	     SST_HOST_CONTEXT_ERROR = 6,
+//	     SST_VM_ERROR = 7
+//	     // TODO: add more
+//	 };
 type ScStatusType int32
 
 const (
@@ -44746,22 +44380,21 @@ var _ xdrType = (*ScStatusType)(nil)
 
 // ScHostValErrorCode is an XDR Enum defines as:
 //
-//   enum SCHostValErrorCode
-//    {
-//        HOST_VALUE_UNKNOWN_ERROR = 0,
-//        HOST_VALUE_RESERVED_TAG_VALUE = 1,
-//        HOST_VALUE_UNEXPECTED_VAL_TYPE = 2,
-//        HOST_VALUE_U63_OUT_OF_RANGE = 3,
-//        HOST_VALUE_U32_OUT_OF_RANGE = 4,
-//        HOST_VALUE_STATIC_UNKNOWN = 5,
-//        HOST_VALUE_MISSING_OBJECT = 6,
-//        HOST_VALUE_SYMBOL_TOO_LONG = 7,
-//        HOST_VALUE_SYMBOL_BAD_CHAR = 8,
-//        HOST_VALUE_SYMBOL_CONTAINS_NON_UTF8 = 9,
-//        HOST_VALUE_BITSET_TOO_MANY_BITS = 10,
-//        HOST_VALUE_STATUS_UNKNOWN = 11
-//    };
-//
+//	enum SCHostValErrorCode
+//	 {
+//	     HOST_VALUE_UNKNOWN_ERROR = 0,
+//	     HOST_VALUE_RESERVED_TAG_VALUE = 1,
+//	     HOST_VALUE_UNEXPECTED_VAL_TYPE = 2,
+//	     HOST_VALUE_U63_OUT_OF_RANGE = 3,
+//	     HOST_VALUE_U32_OUT_OF_RANGE = 4,
+//	     HOST_VALUE_STATIC_UNKNOWN = 5,
+//	     HOST_VALUE_MISSING_OBJECT = 6,
+//	     HOST_VALUE_SYMBOL_TOO_LONG = 7,
+//	     HOST_VALUE_SYMBOL_BAD_CHAR = 8,
+//	     HOST_VALUE_SYMBOL_CONTAINS_NON_UTF8 = 9,
+//	     HOST_VALUE_BITSET_TOO_MANY_BITS = 10,
+//	     HOST_VALUE_STATUS_UNKNOWN = 11
+//	 };
 type ScHostValErrorCode int32
 
 const (
@@ -44860,17 +44493,16 @@ var _ xdrType = (*ScHostValErrorCode)(nil)
 
 // ScHostObjErrorCode is an XDR Enum defines as:
 //
-//   enum SCHostObjErrorCode
-//    {
-//        HOST_OBJECT_UNKNOWN_ERROR = 0,
-//        HOST_OBJECT_UNKNOWN_REFERENCE = 1,
-//        HOST_OBJECT_UNEXPECTED_TYPE = 2,
-//        HOST_OBJECT_OBJECT_COUNT_EXCEEDS_U32_MAX = 3,
-//        HOST_OBJECT_OBJECT_NOT_EXIST = 4,
-//        HOST_OBJECT_VEC_INDEX_OUT_OF_BOUND = 5,
-//        HOST_OBJECT_CONTRACT_HASH_WRONG_LENGTH = 6
-//    };
-//
+//	enum SCHostObjErrorCode
+//	 {
+//	     HOST_OBJECT_UNKNOWN_ERROR = 0,
+//	     HOST_OBJECT_UNKNOWN_REFERENCE = 1,
+//	     HOST_OBJECT_UNEXPECTED_TYPE = 2,
+//	     HOST_OBJECT_OBJECT_COUNT_EXCEEDS_U32_MAX = 3,
+//	     HOST_OBJECT_OBJECT_NOT_EXIST = 4,
+//	     HOST_OBJECT_VEC_INDEX_OUT_OF_BOUND = 5,
+//	     HOST_OBJECT_CONTRACT_HASH_WRONG_LENGTH = 6
+//	 };
 type ScHostObjErrorCode int32
 
 const (
@@ -44959,15 +44591,14 @@ var _ xdrType = (*ScHostObjErrorCode)(nil)
 
 // ScHostFnErrorCode is an XDR Enum defines as:
 //
-//   enum SCHostFnErrorCode
-//    {
-//        HOST_FN_UNKNOWN_ERROR = 0,
-//        HOST_FN_UNEXPECTED_HOST_FUNCTION_ACTION = 1,
-//        HOST_FN_INPUT_ARGS_WRONG_LENGTH = 2,
-//        HOST_FN_INPUT_ARGS_WRONG_TYPE = 3,
-//        HOST_FN_INPUT_ARGS_INVALID = 4
-//    };
-//
+//	enum SCHostFnErrorCode
+//	 {
+//	     HOST_FN_UNKNOWN_ERROR = 0,
+//	     HOST_FN_UNEXPECTED_HOST_FUNCTION_ACTION = 1,
+//	     HOST_FN_INPUT_ARGS_WRONG_LENGTH = 2,
+//	     HOST_FN_INPUT_ARGS_WRONG_TYPE = 3,
+//	     HOST_FN_INPUT_ARGS_INVALID = 4
+//	 };
 type ScHostFnErrorCode int32
 
 const (
@@ -45052,16 +44683,15 @@ var _ xdrType = (*ScHostFnErrorCode)(nil)
 
 // ScHostStorageErrorCode is an XDR Enum defines as:
 //
-//   enum SCHostStorageErrorCode
-//    {
-//        HOST_STORAGE_UNKNOWN_ERROR = 0,
-//        HOST_STORAGE_EXPECT_CONTRACT_DATA = 1,
-//        HOST_STORAGE_READWRITE_ACCESS_TO_READONLY_ENTRY = 2,
-//        HOST_STORAGE_ACCESS_TO_UNKNOWN_ENTRY = 3,
-//        HOST_STORAGE_MISSING_KEY_IN_GET = 4,
-//        HOST_STORAGE_GET_ON_DELETED_KEY = 5
-//    };
-//
+//	enum SCHostStorageErrorCode
+//	 {
+//	     HOST_STORAGE_UNKNOWN_ERROR = 0,
+//	     HOST_STORAGE_EXPECT_CONTRACT_DATA = 1,
+//	     HOST_STORAGE_READWRITE_ACCESS_TO_READONLY_ENTRY = 2,
+//	     HOST_STORAGE_ACCESS_TO_UNKNOWN_ENTRY = 3,
+//	     HOST_STORAGE_MISSING_KEY_IN_GET = 4,
+//	     HOST_STORAGE_GET_ON_DELETED_KEY = 5
+//	 };
 type ScHostStorageErrorCode int32
 
 const (
@@ -45148,12 +44778,11 @@ var _ xdrType = (*ScHostStorageErrorCode)(nil)
 
 // ScHostContextErrorCode is an XDR Enum defines as:
 //
-//   enum SCHostContextErrorCode
-//    {
-//        HOST_CONTEXT_UNKNOWN_ERROR = 0,
-//        HOST_CONTEXT_NO_CONTRACT_RUNNING = 1
-//    };
-//
+//	enum SCHostContextErrorCode
+//	 {
+//	     HOST_CONTEXT_UNKNOWN_ERROR = 0,
+//	     HOST_CONTEXT_NO_CONTRACT_RUNNING = 1
+//	 };
 type ScHostContextErrorCode int32
 
 const (
@@ -45232,28 +44861,27 @@ var _ xdrType = (*ScHostContextErrorCode)(nil)
 
 // ScVmErrorCode is an XDR Enum defines as:
 //
-//   enum SCVmErrorCode {
-//        VM_UNKNOWN = 0,
-//        VM_VALIDATION = 1,
-//        VM_INSTANTIATION = 2,
-//        VM_FUNCTION = 3,
-//        VM_TABLE = 4,
-//        VM_MEMORY = 5,
-//        VM_GLOBAL = 6,
-//        VM_VALUE = 7,
-//        VM_TRAP_UNREACHABLE = 8,
-//        VM_TRAP_MEMORY_ACCESS_OUT_OF_BOUNDS = 9,
-//        VM_TRAP_TABLE_ACCESS_OUT_OF_BOUNDS = 10,
-//        VM_TRAP_ELEM_UNINITIALIZED = 11,
-//        VM_TRAP_DIVISION_BY_ZERO = 12,
-//        VM_TRAP_INTEGER_OVERFLOW = 13,
-//        VM_TRAP_INVALID_CONVERSION_TO_INT = 14,
-//        VM_TRAP_STACK_OVERFLOW = 15,
-//        VM_TRAP_UNEXPECTED_SIGNATURE = 16,
-//        VM_TRAP_MEM_LIMIT_EXCEEDED = 17,
-//        VM_TRAP_CPU_LIMIT_EXCEEDED = 18
-//    };
-//
+//	enum SCVmErrorCode {
+//	     VM_UNKNOWN = 0,
+//	     VM_VALIDATION = 1,
+//	     VM_INSTANTIATION = 2,
+//	     VM_FUNCTION = 3,
+//	     VM_TABLE = 4,
+//	     VM_MEMORY = 5,
+//	     VM_GLOBAL = 6,
+//	     VM_VALUE = 7,
+//	     VM_TRAP_UNREACHABLE = 8,
+//	     VM_TRAP_MEMORY_ACCESS_OUT_OF_BOUNDS = 9,
+//	     VM_TRAP_TABLE_ACCESS_OUT_OF_BOUNDS = 10,
+//	     VM_TRAP_ELEM_UNINITIALIZED = 11,
+//	     VM_TRAP_DIVISION_BY_ZERO = 12,
+//	     VM_TRAP_INTEGER_OVERFLOW = 13,
+//	     VM_TRAP_INVALID_CONVERSION_TO_INT = 14,
+//	     VM_TRAP_STACK_OVERFLOW = 15,
+//	     VM_TRAP_UNEXPECTED_SIGNATURE = 16,
+//	     VM_TRAP_MEM_LIMIT_EXCEEDED = 17,
+//	     VM_TRAP_CPU_LIMIT_EXCEEDED = 18
+//	 };
 type ScVmErrorCode int32
 
 const (
@@ -45366,12 +44994,11 @@ var _ xdrType = (*ScVmErrorCode)(nil)
 
 // ScUnknownErrorCode is an XDR Enum defines as:
 //
-//   enum SCUnknownErrorCode
-//    {
-//        UNKNOWN_ERROR_GENERAL = 0,
-//        UNKNOWN_ERROR_XDR = 1
-//    };
-//
+//	enum SCUnknownErrorCode
+//	 {
+//	     UNKNOWN_ERROR_GENERAL = 0,
+//	     UNKNOWN_ERROR_XDR = 1
+//	 };
 type ScUnknownErrorCode int32
 
 const (
@@ -45450,26 +45077,25 @@ var _ xdrType = (*ScUnknownErrorCode)(nil)
 
 // ScStatus is an XDR Union defines as:
 //
-//   union SCStatus switch (SCStatusType type)
-//    {
-//    case SST_OK:
-//        void;
-//    case SST_UNKNOWN_ERROR:
-//        SCUnknownErrorCode unknownCode;
-//    case SST_HOST_VALUE_ERROR:
-//        SCHostValErrorCode valCode;
-//    case SST_HOST_OBJECT_ERROR:
-//        SCHostObjErrorCode objCode;
-//    case SST_HOST_FUNCTION_ERROR:
-//        SCHostFnErrorCode fnCode;
-//    case SST_HOST_STORAGE_ERROR:
-//        SCHostStorageErrorCode storageCode;
-//    case SST_HOST_CONTEXT_ERROR:
-//        SCHostContextErrorCode contextCode;
-//    case SST_VM_ERROR:
-//        SCVmErrorCode vmCode;
-//    };
-//
+//	union SCStatus switch (SCStatusType type)
+//	 {
+//	 case SST_OK:
+//	     void;
+//	 case SST_UNKNOWN_ERROR:
+//	     SCUnknownErrorCode unknownCode;
+//	 case SST_HOST_VALUE_ERROR:
+//	     SCHostValErrorCode valCode;
+//	 case SST_HOST_OBJECT_ERROR:
+//	     SCHostObjErrorCode objCode;
+//	 case SST_HOST_FUNCTION_ERROR:
+//	     SCHostFnErrorCode fnCode;
+//	 case SST_HOST_STORAGE_ERROR:
+//	     SCHostStorageErrorCode storageCode;
+//	 case SST_HOST_CONTEXT_ERROR:
+//	     SCHostContextErrorCode contextCode;
+//	 case SST_VM_ERROR:
+//	     SCVmErrorCode vmCode;
+//	 };
 type ScStatus struct {
 	Type        ScStatusType
 	UnknownCode *ScUnknownErrorCode
@@ -45898,26 +45524,25 @@ var _ xdrType = (*ScStatus)(nil)
 
 // ScVal is an XDR Union defines as:
 //
-//   union SCVal switch (SCValType type)
-//    {
-//    case SCV_U63:
-//        int64 u63;
-//    case SCV_U32:
-//        uint32 u32;
-//    case SCV_I32:
-//        int32 i32;
-//    case SCV_STATIC:
-//        SCStatic ic;
-//    case SCV_OBJECT:
-//        SCObject* obj;
-//    case SCV_SYMBOL:
-//        SCSymbol sym;
-//    case SCV_BITSET:
-//        uint64 bits;
-//    case SCV_STATUS:
-//        SCStatus status;
-//    };
-//
+//	union SCVal switch (SCValType type)
+//	 {
+//	 case SCV_U63:
+//	     int64 u63;
+//	 case SCV_U32:
+//	     uint32 u32;
+//	 case SCV_I32:
+//	     int32 i32;
+//	 case SCV_STATIC:
+//	     SCStatic ic;
+//	 case SCV_OBJECT:
+//	     SCObject* obj;
+//	 case SCV_SYMBOL:
+//	     SCSymbol sym;
+//	 case SCV_BITSET:
+//	     uint64 bits;
+//	 case SCV_STATUS:
+//	     SCStatus status;
+//	 };
 type ScVal struct {
 	Type   ScValType
 	U63    *Int64
@@ -46399,24 +46024,23 @@ var _ xdrType = (*ScVal)(nil)
 
 // ScObjectType is an XDR Enum defines as:
 //
-//   enum SCObjectType
-//    {
-//        // We have a few objects that represent non-stellar-specific concepts
-//        // like general-purpose maps, vectors, numbers, blobs.
+//	enum SCObjectType
+//	 {
+//	     // We have a few objects that represent non-stellar-specific concepts
+//	     // like general-purpose maps, vectors, numbers, blobs.
 //
-//        SCO_VEC = 0,
-//        SCO_MAP = 1,
-//        SCO_U64 = 2,
-//        SCO_I64 = 3,
-//        SCO_BYTES = 4,
-//        SCO_BIG_INT = 5,
-//        SCO_HASH = 6,
-//        SCO_PUBLIC_KEY = 7,
-//        SCO_CONTRACT_CODE = 8
+//	     SCO_VEC = 0,
+//	     SCO_MAP = 1,
+//	     SCO_U64 = 2,
+//	     SCO_I64 = 3,
+//	     SCO_BYTES = 4,
+//	     SCO_BIG_INT = 5,
+//	     SCO_HASH = 6,
+//	     SCO_PUBLIC_KEY = 7,
+//	     SCO_CONTRACT_CODE = 8
 //
-//        // TODO: add more
-//    };
-//
+//	     // TODO: add more
+//	 };
 type ScObjectType int32
 
 const (
@@ -46509,12 +46133,11 @@ var _ xdrType = (*ScObjectType)(nil)
 
 // ScMapEntry is an XDR Struct defines as:
 //
-//   struct SCMapEntry
-//    {
-//        SCVal key;
-//        SCVal val;
-//    };
-//
+//	struct SCMapEntry
+//	 {
+//	     SCVal key;
+//	     SCVal val;
+//	 };
 type ScMapEntry struct {
 	Key ScVal
 	Val ScVal
@@ -46580,14 +46203,12 @@ var _ xdrType = (*ScMapEntry)(nil)
 
 // ScvalLimit is an XDR Const defines as:
 //
-//   const SCVAL_LIMIT = 256000;
-//
+//	const SCVAL_LIMIT = 256000;
 const ScvalLimit = 256000
 
 // ScVec is an XDR Typedef defines as:
 //
-//   typedef SCVal SCVec<SCVAL_LIMIT>;
-//
+//	typedef SCVal SCVec<SCVAL_LIMIT>;
 type ScVec []ScVal
 
 // XDRMaxSize implements the Sized interface for ScVec
@@ -46667,8 +46288,7 @@ var _ xdrType = (*ScVec)(nil)
 
 // ScMap is an XDR Typedef defines as:
 //
-//   typedef SCMapEntry SCMap<SCVAL_LIMIT>;
-//
+//	typedef SCMapEntry SCMap<SCVAL_LIMIT>;
 type ScMap []ScMapEntry
 
 // XDRMaxSize implements the Sized interface for ScMap
@@ -46748,13 +46368,12 @@ var _ xdrType = (*ScMap)(nil)
 
 // ScNumSign is an XDR Enum defines as:
 //
-//   enum SCNumSign
-//    {
-//        NEGATIVE = -1,
-//        ZERO = 0,
-//        POSITIVE = 1
-//    };
-//
+//	enum SCNumSign
+//	 {
+//	     NEGATIVE = -1,
+//	     ZERO = 0,
+//	     POSITIVE = 1
+//	 };
 type ScNumSign int32
 
 const (
@@ -46835,15 +46454,14 @@ var _ xdrType = (*ScNumSign)(nil)
 
 // ScBigInt is an XDR Union defines as:
 //
-//   union SCBigInt switch (SCNumSign sign)
-//    {
-//    case ZERO:
-//        void;
-//    case POSITIVE:
-//    case NEGATIVE:
-//        opaque magnitude<256000>;
-//    };
-//
+//	union SCBigInt switch (SCNumSign sign)
+//	 {
+//	 case ZERO:
+//	     void;
+//	 case POSITIVE:
+//	 case NEGATIVE:
+//	     opaque magnitude<256000>;
+//	 };
 type ScBigInt struct {
 	Sign      ScNumSign
 	Magnitude *[]byte `xdrmaxsize:"256000"`
@@ -47006,11 +46624,10 @@ var _ xdrType = (*ScBigInt)(nil)
 
 // ScHashType is an XDR Enum defines as:
 //
-//   enum SCHashType
-//    {
-//        SCHASH_SHA256 = 0
-//    };
-//
+//	enum SCHashType
+//	 {
+//	     SCHASH_SHA256 = 0
+//	 };
 type ScHashType int32
 
 const (
@@ -47087,12 +46704,11 @@ var _ xdrType = (*ScHashType)(nil)
 
 // ScHash is an XDR Union defines as:
 //
-//   union SCHash switch (SCHashType type)
-//    {
-//    case SCHASH_SHA256:
-//        Hash sha256;
-//    };
-//
+//	union SCHash switch (SCHashType type)
+//	 {
+//	 case SCHASH_SHA256:
+//	     Hash sha256;
+//	 };
 type ScHash struct {
 	Type   ScHashType
 	Sha256 *Hash
@@ -47223,12 +46839,11 @@ var _ xdrType = (*ScHash)(nil)
 
 // ScContractCodeType is an XDR Enum defines as:
 //
-//   enum SCContractCodeType
-//    {
-//        SCCONTRACT_CODE_WASM = 0,
-//        SCCONTRACT_CODE_TOKEN = 1
-//    };
-//
+//	enum SCContractCodeType
+//	 {
+//	     SCCONTRACT_CODE_WASM = 0,
+//	     SCCONTRACT_CODE_TOKEN = 1
+//	 };
 type ScContractCodeType int32
 
 const (
@@ -47307,14 +46922,13 @@ var _ xdrType = (*ScContractCodeType)(nil)
 
 // ScContractCode is an XDR Union defines as:
 //
-//   union SCContractCode switch (SCContractCodeType type)
-//    {
-//    case SCCONTRACT_CODE_WASM:
-//        opaque wasm<SCVAL_LIMIT>;
-//    case SCCONTRACT_CODE_TOKEN:
-//        void;
-//    };
-//
+//	union SCContractCode switch (SCContractCodeType type)
+//	 {
+//	 case SCCONTRACT_CODE_WASM:
+//	     opaque wasm<SCVAL_LIMIT>;
+//	 case SCCONTRACT_CODE_TOKEN:
+//	     void;
+//	 };
 type ScContractCode struct {
 	Type ScContractCodeType
 	Wasm *[]byte `xdrmaxsize:"256000"`
@@ -47455,28 +47069,27 @@ var _ xdrType = (*ScContractCode)(nil)
 
 // ScObject is an XDR Union defines as:
 //
-//   union SCObject switch (SCObjectType type)
-//    {
-//    case SCO_VEC:
-//        SCVec vec;
-//    case SCO_MAP:
-//        SCMap map;
-//    case SCO_U64:
-//        uint64 u64;
-//    case SCO_I64:
-//        int64 i64;
-//    case SCO_BYTES:
-//        opaque bin<SCVAL_LIMIT>;
-//    case SCO_BIG_INT:
-//        SCBigInt bigInt;
-//    case SCO_HASH:
-//        SCHash hash;
-//    case SCO_PUBLIC_KEY:
-//        PublicKey publicKey;
-//    case SCO_CONTRACT_CODE:
-//        SCContractCode contractCode;
-//    };
-//
+//	union SCObject switch (SCObjectType type)
+//	 {
+//	 case SCO_VEC:
+//	     SCVec vec;
+//	 case SCO_MAP:
+//	     SCMap map;
+//	 case SCO_U64:
+//	     uint64 u64;
+//	 case SCO_I64:
+//	     int64 i64;
+//	 case SCO_BYTES:
+//	     opaque bin<SCVAL_LIMIT>;
+//	 case SCO_BIG_INT:
+//	     SCBigInt bigInt;
+//	 case SCO_HASH:
+//	     SCHash hash;
+//	 case SCO_PUBLIC_KEY:
+//	     PublicKey publicKey;
+//	 case SCO_CONTRACT_CODE:
+//	     SCContractCode contractCode;
+//	 };
 type ScObject struct {
 	Type         ScObjectType
 	Vec          *ScVec
@@ -47991,14 +47604,13 @@ var _ xdrType = (*ScObject)(nil)
 
 // StoredTransactionSet is an XDR Union defines as:
 //
-//   union StoredTransactionSet switch (int v)
-//    {
-//    case 0:
-//    	TransactionSet txSet;
-//    case 1:
-//    	GeneralizedTransactionSet generalizedTxSet;
-//    };
-//
+//	union StoredTransactionSet switch (int v)
+//	 {
+//	 case 0:
+//	 	TransactionSet txSet;
+//	 case 1:
+//	 	GeneralizedTransactionSet generalizedTxSet;
+//	 };
 type StoredTransactionSet struct {
 	V                int32
 	TxSet            *TransactionSet
@@ -48177,13 +47789,12 @@ var _ xdrType = (*StoredTransactionSet)(nil)
 
 // PersistedScpStateV0 is an XDR Struct defines as:
 //
-//   struct PersistedSCPStateV0
-//    {
-//    	SCPEnvelope scpEnvelopes<>;
-//    	SCPQuorumSet quorumSets<>;
-//    	StoredTransactionSet txSets<>;
-//    };
-//
+//	struct PersistedSCPStateV0
+//	 {
+//	 	SCPEnvelope scpEnvelopes<>;
+//	 	SCPQuorumSet quorumSets<>;
+//	 	StoredTransactionSet txSets<>;
+//	 };
 type PersistedScpStateV0 struct {
 	ScpEnvelopes []ScpEnvelope
 	QuorumSets   []ScpQuorumSet
@@ -48307,13 +47918,12 @@ var _ xdrType = (*PersistedScpStateV0)(nil)
 
 // PersistedScpStateV1 is an XDR Struct defines as:
 //
-//   struct PersistedSCPStateV1
-//    {
-//    	// Tx sets are saved separately
-//    	SCPEnvelope scpEnvelopes<>;
-//    	SCPQuorumSet quorumSets<>;
-//    };
-//
+//	struct PersistedSCPStateV1
+//	 {
+//	 	// Tx sets are saved separately
+//	 	SCPEnvelope scpEnvelopes<>;
+//	 	SCPQuorumSet quorumSets<>;
+//	 };
 type PersistedScpStateV1 struct {
 	ScpEnvelopes []ScpEnvelope
 	QuorumSets   []ScpQuorumSet
@@ -48412,14 +48022,13 @@ var _ xdrType = (*PersistedScpStateV1)(nil)
 
 // PersistedScpState is an XDR Union defines as:
 //
-//   union PersistedSCPState switch (int v)
-//    {
-//    case 0:
-//    	PersistedSCPStateV0 v0;
-//    case 1:
-//    	PersistedSCPStateV1 v1;
-//    };
-//
+//	union PersistedSCPState switch (int v)
+//	 {
+//	 case 0:
+//	 	PersistedSCPStateV0 v0;
+//	 case 1:
+//	 	PersistedSCPStateV1 v1;
+//	 };
 type PersistedScpState struct {
 	V  int32
 	V0 *PersistedScpStateV0
