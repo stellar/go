@@ -879,6 +879,24 @@ func (q Q) ReapLookupTables(ctx context.Context, offsets map[string]int64) (
 				objectField: "history_account_id",
 			},
 		},
+		"history_assets": {
+			{
+				name:        "history_trades",
+				objectField: "base_asset_id",
+			},
+			{
+				name:        "history_trades",
+				objectField: "counter_asset_id",
+			},
+			{
+				name:        "history_trades_60000",
+				objectField: "base_asset_id",
+			},
+			{
+				name:        "history_trades_60000",
+				objectField: "counter_asset_id",
+			},
+		},
 		"history_claimable_balances": {
 			{
 				name:        "history_operation_claimable_balances",
