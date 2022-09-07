@@ -65,7 +65,10 @@ func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 	L := b.log.WithField("key", filepath)
 	localPath := path.Join(b.dir, filepath)
 
-	if _, ok := b.lru.Get(localPath); !ok {
+	// If the lockfile exists, we should defer to the remote source.
+	_, statErr := os.Stat(nameLockfile(localPath))
+
+	if _, ok := b.lru.Get(localPath); !ok || statErr == nil {
 		// If it doesn't exist in the cache, it might still exist on the disk if
 		// we've restarted from an existing directory.
 		local, err := os.Open(localPath)
@@ -94,7 +97,9 @@ func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 			return remote, nil
 		}
 
-		return teeReadCloser(remote, local), nil
+		return teeReadCloser(remote, local, func() error {
+			return os.Remove(nameLockfile(localPath))
+		}), nil
 	}
 
 	// The cache claims it exists, so just give it a read and send it.
@@ -143,7 +148,8 @@ func (b *OnDiskCache) Size(filepath string) (int64, error) {
 		}
 
 		L.WithError(err).Debug("retrieving size of cached ledger failed")
-		b.lru.Remove(localPath) // stale cache?
+		b.lru.Remove(localPath)            // stale cache?
+		os.Remove(nameLockfile(localPath)) // errors don't matter
 	}
 
 	return b.Storage.Size(filepath)
@@ -162,7 +168,9 @@ func (b *OnDiskCache) PutFile(filepath string, in io.ReadCloser) error {
 		L.WithError(err).Error("failed to put file locally")
 	} else {
 		// tee upload data into our local file
-		in = teeReadCloser(in, local)
+		in = teeReadCloser(in, local, func() error {
+			return os.Remove(nameLockfile(path.Join(b.dir, filepath)))
+		})
 	}
 
 	return b.Storage.PutFile(filepath, in)
@@ -202,9 +210,17 @@ func (b *OnDiskCache) createLocal(filepath string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	_, err = os.Create(nameLockfile(localPath))
+	if err != nil {
+		return nil, err
+	}
 
 	b.lru.Add(localPath, struct{}{}) // just use the cache as an array
 	return local, nil
+}
+
+func nameLockfile(file string) string {
+	return file + ".lock"
 }
 
 // The below is a helper interface so that we can use io.TeeReader to write
@@ -219,12 +235,13 @@ func (t trc) Close() error {
 	return t.close()
 }
 
-func teeReadCloser(r io.ReadCloser, w io.WriteCloser) io.ReadCloser {
+func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.ReadCloser {
 	return trc{
 		Reader: io.TeeReader(r, w),
 		close: func() error {
 			r.Close()
-			return w.Close()
+			w.Close()
+			return onClose()
 		},
 	}
 }
