@@ -9,7 +9,9 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-// OnDiskCache fronts another storage with a local filesystem cache
+// OnDiskCache fronts another storage with a local filesystem cache. Its
+// thread-safe, meaning you can be actively caching a file and retrieve it at
+// the same time without corruption, because retrieval will wait for the fetch.
 type OnDiskCache struct {
 	Storage
 	dir      string
@@ -239,8 +241,18 @@ func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.R
 	return trc{
 		Reader: io.TeeReader(r, w),
 		close: func() error {
-			r.Close()
-			w.Close()
+			// Always run all closers, but return the first error
+			if err := r.Close(); err != nil {
+				w.Close()
+				onClose()
+				return err
+			}
+
+			if err := w.Close(); err != nil {
+				onClose()
+				return err
+			}
+
 			return onClose()
 		},
 	}

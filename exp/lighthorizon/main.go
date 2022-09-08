@@ -62,6 +62,7 @@ break down accounts by active ledgers.`,
 			cacheDir, _ := cmd.Flags().GetString("ledger-cache")
 			cacheSize, _ := cmd.Flags().GetUint("ledger-cache-size")
 			logLevelParam, _ := cmd.Flags().GetString("log-level")
+			downloadCount, _ := cmd.Flags().GetUint("parallel-downloads")
 
 			L := log.WithField("service", "horizon-lite")
 			logLevel, err := logrus.ParseLevel(logLevelParam)
@@ -88,6 +89,7 @@ break down accounts by active ledgers.`,
 				NetworkPassphrase: networkPassphrase,
 				CacheDir:          cacheDir,
 				CacheSize:         int(cacheSize),
+				ParallelDownloads: downloadCount,
 			})
 			if err != nil {
 				log.Fatal(err)
@@ -129,6 +131,8 @@ break down accounts by active ledgers.`,
 		"if left empty, uses a temporary directory")
 	serve.Flags().Uint("ledger-cache-size", defaultCacheSize,
 		"number of ledgers to store in the cache")
+	serve.Flags().Uint("parallel-downloads", 1,
+		"how many workers should download ledgers in parallel?")
 
 	cmd.AddCommand(serve)
 	tools.AddCacheCommands(cmd)

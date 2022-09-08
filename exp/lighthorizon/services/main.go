@@ -116,13 +116,28 @@ func searchAccountTransactions(ctx context.Context,
 			Infof("Fulfilled request for account %s at cursor %d", accountId, cursor)
 	}()
 
+	checkpointMgr := historyarchive.NewCheckpointManager(0)
+
 	for {
-		start := time.Now()
-		ledger, ledgerErr := config.Ingester.GetLedger(ctx, nextLedger)
-		if ledgerErr != nil {
-			return errors.Wrapf(ledgerErr,
-				"ledger export state is out of sync at ledger %d", nextLedger)
+		if checkpointMgr.IsCheckpoint(nextLedger) {
+			r := historyarchive.Range{
+				Low:  nextLedger,
+				High: checkpointMgr.NextCheckpoint(nextLedger + 1),
+			}
+			log.Infof("prepare range %d, %d", r.Low, r.High)
+			if innerErr := config.Ingester.PrepareRange(ctx, r); innerErr != nil {
+				log.Errorf("failed to prepare ledger range [%d, %d]: %v",
+					r.Low, r.High, innerErr)
+			}
 		}
+
+		start := time.Now()
+		ledger, innerErr := config.Ingester.GetLedger(ctx, nextLedger)
+		if innerErr != nil {
+			return errors.Wrapf(innerErr,
+				"failed to retrieve ledger %d from archive", nextLedger)
+		}
+		count++
 		thisFetchDuration := time.Since(start)
 		if thisFetchDuration > slowFetchDurationThreshold {
 			log.WithField("duration", thisFetchDuration).
@@ -131,9 +146,10 @@ func searchAccountTransactions(ctx context.Context,
 		fetchDuration += thisFetchDuration
 
 		start = time.Now()
-		reader, readerErr := config.Ingester.NewLedgerTransactionReader(ledger)
-		if readerErr != nil {
-			return readerErr
+		reader, innerErr := config.Ingester.NewLedgerTransactionReader(ledger)
+		if innerErr != nil {
+			return errors.Wrapf(innerErr,
+				"failed to read ledger %d", nextLedger)
 		}
 
 		for {
