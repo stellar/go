@@ -30,7 +30,7 @@ func TestAccountTransactionCursorManager(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	for _, checkpoint := range []uint32{1, 5, 10} {
+	for _, checkpoint := range []uint32{1, 5, 10, 12} {
 		require.NoError(t, store.AddParticipantsToIndexes(
 			checkpoint, allTransactionsIndex, []string{accountId}))
 	}
@@ -57,25 +57,40 @@ func TestAccountTransactionCursorManager(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 4*freq, getLedgerFromCursor(nextCursor))
 
+	// cursor increments
 	for i := int32(1); i < freq; i++ {
-		nextCursor, err = cursorMgr.Advance()
+		nextCursor, err = cursorMgr.Advance(1)
 		require.NoError(t, err)
 		assert.EqualValues(t, 4*freq+i, getLedgerFromCursor(nextCursor))
 	}
 
 	// cursor jumps to next active checkpoint
-	nextCursor, err = cursorMgr.Advance()
+	nextCursor, err = cursorMgr.Advance(1)
 	require.NoError(t, err)
 	assert.EqualValues(t, 9*freq, getLedgerFromCursor(nextCursor))
 
-	// cursor increments
-	for i := int32(1); i < freq; i++ {
-		nextCursor, err = cursorMgr.Advance()
-		require.NoError(t, err)
-		assert.EqualValues(t, 9*freq+i, getLedgerFromCursor(nextCursor))
-	}
+	// cursor skips
+	nextCursor, err = cursorMgr.Advance(5)
+	require.NoError(t, err)
+	assert.EqualValues(t, 9*freq+5, getLedgerFromCursor(nextCursor))
 
-	// cursor stops when no more actives
-	_, err = cursorMgr.Advance()
+	// cursor jumps to next active when skipping
+	nextCursor, err = cursorMgr.Advance(uint(freq - 5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 11*freq, getLedgerFromCursor(nextCursor))
+
+	// cursor EOFs at the end
+	nextCursor, err = cursorMgr.Advance(uint(freq - 1))
+	require.NoError(t, err)
+	assert.EqualValues(t, 12*freq-1, getLedgerFromCursor(nextCursor))
+	_, err = cursorMgr.Advance(1)
+	assert.ErrorIs(t, err, io.EOF)
+
+	// cursor EOFs if skipping past the end
+	rewind := toid.New(int32(getLedgerFromCursor(nextCursor)-5), 0, 0)
+	nextCursor, err = cursorMgr.Begin(rewind.ToInt64())
+	require.NoError(t, err)
+	assert.EqualValues(t, rewind.LedgerSequence, getLedgerFromCursor(nextCursor))
+	_, err = cursorMgr.Advance(uint(freq))
 	assert.ErrorIs(t, err, io.EOF)
 }

@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/common"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/network"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
@@ -33,8 +33,10 @@ func PopulateTransaction(
 		return
 	}
 
+	ltx := tx.LedgerTransaction
+
 	dest.ID = txHash
-	dest.Successful = tx.Result.Successful()
+	dest.Successful = ltx.Result.Successful()
 	dest.Hash = txHash
 	dest.Ledger = int32(tx.LedgerHeader.LedgerSeq)
 	dest.LedgerCloseTime = time.Unix(int64(tx.LedgerHeader.ScpValue.CloseTime), 0).UTC()
@@ -51,26 +53,26 @@ func PopulateTransaction(
 			return
 		}
 	}
-	dest.AccountSequence = tx.Envelope.SeqNum()
+	dest.AccountSequence = tx.LedgerTransaction.Envelope.SeqNum()
 
-	envelopeBase64, err := encoder.MarshalBase64(tx.Envelope)
+	envelopeBase64, err := encoder.MarshalBase64(ltx.Envelope)
 	if err != nil {
 		return
 	}
-	resultBase64, err := encoder.MarshalBase64(&tx.Result.Result)
+	resultBase64, err := encoder.MarshalBase64(&ltx.Result.Result)
 	if err != nil {
 		return
 	}
-	metaBase64, err := encoder.MarshalBase64(tx.UnsafeMeta)
+	metaBase64, err := encoder.MarshalBase64(ltx.UnsafeMeta)
 	if err != nil {
 		return
 	}
-	feeMetaBase64, err := encoder.MarshalBase64(tx.FeeChanges)
+	feeMetaBase64, err := encoder.MarshalBase64(ltx.FeeChanges)
 	if err != nil {
 		return
 	}
 
-	dest.OperationCount = int32(len(tx.Envelope.Operations()))
+	dest.OperationCount = int32(len(ltx.Envelope.Operations()))
 	dest.EnvelopeXdr = envelopeBase64
 	dest.ResultXdr = resultBase64
 	dest.ResultMetaXdr = metaBase64
@@ -88,44 +90,44 @@ func PopulateTransaction(
 		}
 	}
 
-	dest.Signatures = signatures(tx.Envelope.Signatures())
+	dest.Signatures = signatures(ltx.Envelope.Signatures())
 
 	// If we never use this, we'll remove it later. This just defends us against
 	// nil dereferences.
 	dest.Preconditions = &protocol.TransactionPreconditions{}
 
-	if tb := tx.Envelope.Preconditions().TimeBounds; tb != nil {
+	if tb := ltx.Envelope.Preconditions().TimeBounds; tb != nil {
 		dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{
 			MaxTime: formatTime(tb.MaxTime),
 			MinTime: formatTime(tb.MinTime),
 		}
 	}
 
-	if lb := tx.Envelope.LedgerBounds(); lb != nil {
+	if lb := ltx.Envelope.LedgerBounds(); lb != nil {
 		dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{
 			MinLedger: uint32(lb.MinLedger),
 			MaxLedger: uint32(lb.MaxLedger),
 		}
 	}
 
-	if minSeq := tx.Envelope.MinSeqNum(); minSeq != nil {
+	if minSeq := ltx.Envelope.MinSeqNum(); minSeq != nil {
 		dest.Preconditions.MinAccountSequence = fmt.Sprint(*minSeq)
 	}
 
-	if minSeqAge := tx.Envelope.MinSeqAge(); minSeqAge != nil && *minSeqAge > 0 {
+	if minSeqAge := ltx.Envelope.MinSeqAge(); minSeqAge != nil && *minSeqAge > 0 {
 		dest.Preconditions.MinAccountSequenceAge = formatTime(*minSeqAge)
 	}
 
-	if minSeqGap := tx.Envelope.MinSeqLedgerGap(); minSeqGap != nil {
+	if minSeqGap := ltx.Envelope.MinSeqLedgerGap(); minSeqGap != nil {
 		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(*minSeqGap)
 	}
 
-	if signers := tx.Envelope.ExtraSigners(); len(signers) > 0 {
+	if signers := ltx.Envelope.ExtraSigners(); len(signers) > 0 {
 		dest.Preconditions.ExtraSigners = formatSigners(signers)
 	}
 
-	if tx.Envelope.IsFeeBump() {
-		innerTx, ok := tx.Envelope.FeeBump.Tx.InnerTx.GetV1()
+	if ltx.Envelope.IsFeeBump() {
+		innerTx, ok := ltx.Envelope.FeeBump.Tx.InnerTx.GetV1()
 		if !ok {
 			panic("Failed to parse inner transaction from fee-bump tx.")
 		}
@@ -137,7 +139,7 @@ func PopulateTransaction(
 		}
 		innerHash := hex.EncodeToString(rawInnerHash[:])
 
-		feeAccountMuxed := tx.Envelope.FeeBumpAccount()
+		feeAccountMuxed := ltx.Envelope.FeeBumpAccount()
 		dest.FeeAccount = feeAccountMuxed.ToAccountId().Address()
 		if _, ok := feeAccountMuxed.GetMed25519(); ok {
 			dest.FeeAccountMuxed, err = feeAccountMuxed.GetAddress()
@@ -150,15 +152,15 @@ func PopulateTransaction(
 			}
 		}
 
-		dest.MaxFee = tx.Envelope.FeeBumpFee()
+		dest.MaxFee = ltx.Envelope.FeeBumpFee()
 		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
 			Hash:       txHash,
-			Signatures: signatures(tx.Envelope.FeeBumpSignatures()),
+			Signatures: signatures(ltx.Envelope.FeeBumpSignatures()),
 		}
 		dest.InnerTransaction = &protocol.InnerTransaction{
 			Hash:       innerHash,
 			MaxFee:     int64(innerTx.Tx.Fee),
-			Signatures: signatures(tx.Envelope.Signatures()),
+			Signatures: signatures(ltx.Envelope.Signatures()),
 		}
 		// TODO: Figure out what this means? Maybe @tamirms knows.
 		// if transactionHash != row.TransactionHash {
@@ -168,9 +170,9 @@ func PopulateTransaction(
 		dest.FeeAccount = dest.Account
 		dest.FeeAccountMuxed = dest.AccountMuxed
 		dest.FeeAccountMuxedID = dest.AccountMuxedID
-		dest.MaxFee = int64(tx.Envelope.Fee())
+		dest.MaxFee = int64(ltx.Envelope.Fee())
 	}
-	dest.FeeCharged = int64(tx.Result.Result.FeeCharged)
+	dest.FeeCharged = int64(ltx.Result.Result.FeeCharged)
 
 	lb := hal.LinkBuilder{Base: baseUrl}
 	dest.PT = strconv.FormatUint(uint64(tx.TOID()), 10)
@@ -211,8 +213,8 @@ func signatures(xdrSignatures []xdr.DecoratedSignature) []string {
 	return signatures
 }
 
-func memoType(transaction archive.LedgerTransaction) string {
-	switch transaction.Envelope.Memo().Type {
+func memoType(tx ingester.LedgerTransaction) string {
+	switch tx.Envelope.Memo().Type {
 	case xdr.MemoTypeMemoNone:
 		return "none"
 	case xdr.MemoTypeMemoText:
@@ -224,13 +226,13 @@ func memoType(transaction archive.LedgerTransaction) string {
 	case xdr.MemoTypeMemoReturn:
 		return "return"
 	default:
-		panic(fmt.Errorf("invalid memo type: %v", transaction.Envelope.Memo().Type))
+		panic(fmt.Errorf("invalid memo type: %v", tx.Envelope.Memo().Type))
 	}
 }
 
-func memo(transaction archive.LedgerTransaction) (value string, valid bool) {
+func memo(tx ingester.LedgerTransaction) (value string, valid bool) {
 	valid = true
-	memo := transaction.Envelope.Memo()
+	memo := tx.Envelope.Memo()
 
 	switch memo.Type {
 	case xdr.MemoTypeMemoNone:

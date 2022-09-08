@@ -9,10 +9,10 @@ import (
 )
 
 type HistoryArchiveBackend struct {
-	metaArchive *metaarchive.MetaArchive
+	metaArchive metaarchive.MetaArchive
 }
 
-func NewHistoryArchiveBackend(metaArchive *metaarchive.MetaArchive) *HistoryArchiveBackend {
+func NewHistoryArchiveBackend(metaArchive metaarchive.MetaArchive) *HistoryArchiveBackend {
 	return &HistoryArchiveBackend{
 		metaArchive: metaArchive,
 	}

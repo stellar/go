@@ -4,14 +4,14 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/stellar/go/exp/lighthorizon/archive"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
 type Transaction struct {
-	*archive.LedgerTransaction
+	*ingester.LedgerTransaction
 	LedgerHeader *xdr.LedgerHeader
 	TxIndex      int32
 

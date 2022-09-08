@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/common"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -30,7 +30,7 @@ func (tr *TransactionRepository) GetTransactionsByAccount(ctx context.Context,
 ) ([]common.Transaction, error) {
 	txs := []common.Transaction{}
 
-	txsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
+	txsCallback := func(tx ingester.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
 		txs = append(txs, common.Transaction{
 			LedgerTransaction: &tx,
 			LedgerHeader:      ledgerHeader,
