@@ -128,5 +128,3 @@ spec:
   - hosts:
     - lighthorizon-pubnet.prototypes.kube001.services.stellar-ops.com
     secretName: lighthorizon-pubnet-web-cert
-
-

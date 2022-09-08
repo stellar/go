@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"github.com/spf13/cobra"
@@ -19,7 +19,7 @@ func main() {
 		},
 	}
 
-	cmd = addCacheCommands(cmd)
-	cmd = addIndexCommands(cmd)
+	cmd = AddCacheCommands(cmd)
+	cmd = AddIndexCommands(cmd)
 	cmd.Execute()
 }
