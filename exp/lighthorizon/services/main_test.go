@@ -146,11 +146,10 @@ func mockArchiveAndIndex(ctx context.Context) (ingester.Ingester, index.Store) {
 	mockArchive.
 		On("NewLedgerTransactionReader", expectedLedger1).Return(mockReaderLedger1, nil).Once().
 		On("NewLedgerTransactionReader", expectedLedger2).Return(mockReaderLedger2, nil).Once().
-		On("NewLedgerTransactionReader", expectedLedger3).Return(mockReaderLedger3, nil).
-		On(
-			"NewLedgerTransactionReader",
-			mock.AnythingOfType("ingester.LedgerTransaction")).
-		Return(mockReaderLedgerTheRest, nil)
+		On("NewLedgerTransactionReader", expectedLedger3).Return(mockReaderLedger3, nil).Once().
+		On("NewLedgerTransactionReader", mock.AnythingOfType("xdr.SerializedLedgerCloseMeta")).
+		Return(mockReaderLedgerTheRest, nil).
+		On("PrepareRange", mock.Anything, mock.Anything).Return(nil)
 
 	// should be 24784
 	activeChk := uint32(index.GetCheckpointNumber(uint32(startLedgerSeq)))

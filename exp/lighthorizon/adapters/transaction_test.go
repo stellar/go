@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/exp/lighthorizon/common"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
 	protocol "github.com/stellar/go/protocols/horizon"
@@ -52,15 +53,17 @@ func TestTransactionAdapter(t *testing.T) {
 	closeTimestamp := expectedTx.LedgerCloseTime.UTC().Unix()
 
 	tx := common.Transaction{
-		LedgerTransaction: &ingest.LedgerTransaction{
-			Index:    0,
-			Envelope: txEnv,
-			Result: xdr.TransactionResultPair{
-				TransactionHash: xdr.Hash{},
-				Result:          txResult,
+		LedgerTransaction: &ingester.LedgerTransaction{
+			LedgerTransaction: &ingest.LedgerTransaction{
+				Index:    0,
+				Envelope: txEnv,
+				Result: xdr.TransactionResultPair{
+					TransactionHash: xdr.Hash{},
+					Result:          txResult,
+				},
+				FeeChanges: txFeeMeta,
+				UnsafeMeta: txMeta,
 			},
-			FeeChanges: txFeeMeta,
-			UnsafeMeta: txMeta,
 		},
 		LedgerHeader: &xdr.LedgerHeader{
 			LedgerSeq: xdr.Uint32(expectedTx.Ledger),

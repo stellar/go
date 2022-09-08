@@ -3,6 +3,7 @@ package ingester
 import (
 	"context"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -26,6 +27,11 @@ func (m *MockIngester) GetLatestLedgerSequence(ctx context.Context) (uint32, err
 func (m *MockIngester) GetLedger(ctx context.Context, sequence uint32) (xdr.SerializedLedgerCloseMeta, error) {
 	args := m.Called(ctx, sequence)
 	return args.Get(0).(xdr.SerializedLedgerCloseMeta), args.Error(1)
+}
+
+func (m *MockIngester) PrepareRange(ctx context.Context, r historyarchive.Range) error {
+	args := m.Called(ctx, r)
+	return args.Error(0)
 }
 
 type MockLedgerTransactionReader struct {
