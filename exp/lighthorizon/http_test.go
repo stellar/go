@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -35,7 +35,7 @@ func TestUnknownUrl(t *testing.T) {
 	resp := recorder.Result()
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
-	raw, err := ioutil.ReadAll(resp.Body)
+	raw, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 
 	var problem problem.P
