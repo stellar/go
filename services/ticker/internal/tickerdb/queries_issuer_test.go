@@ -11,7 +11,7 @@ import (
 )
 
 func TestInsertOrUpdateIssuer(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession

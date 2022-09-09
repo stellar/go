@@ -139,7 +139,7 @@ func (s *TickerSession) performUpsertQuery(ctx context.Context, dbStruct interfa
 	return err
 }
 
-func CheckDBVersion(t *testing.T) *dbtest.DB {
+func OpenTestDBConnection(t *testing.T) *dbtest.DB {
 	db := dbtest.Postgres(t)
 	dbVersion := db.Version()
 

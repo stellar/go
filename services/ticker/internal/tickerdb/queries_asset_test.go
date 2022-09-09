@@ -12,7 +12,7 @@ import (
 )
 
 func TestInsertOrUpdateAsset(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
@@ -156,7 +156,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 }
 
 func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession

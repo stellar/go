@@ -14,7 +14,7 @@ import (
 // SetupTickerTestSession sets up the database for testing the GraphQL endpoints
 // and associated query logic.
 func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerdb.TickerSession) {
-	db := tickerdb.CheckDBVersion(t)
+	db := tickerdb.OpenTestDBConnection(t)
 	session.DB = db.Open()
 	ctx := context.Background()
 

@@ -13,7 +13,7 @@ import (
 )
 
 func TestRetrieveMarketData(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
@@ -302,7 +302,7 @@ func TestRetrieveMarketData(t *testing.T) {
 }
 
 func TestRetrievePartialMarkets(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
@@ -617,7 +617,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 }
 
 func Test24hStatsFallback(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
@@ -723,7 +723,7 @@ func Test24hStatsFallback(t *testing.T) {
 }
 
 func TestPreferAnchorAssetCode(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession

@@ -13,7 +13,7 @@ import (
 )
 
 func TestBulkInsertTrades(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
@@ -119,7 +119,7 @@ func TestBulkInsertTrades(t *testing.T) {
 }
 
 func TestGetLastTrade(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
@@ -223,7 +223,7 @@ func TestGetLastTrade(t *testing.T) {
 }
 
 func TestDeleteOldTrades(t *testing.T) {
-	db := CheckDBVersion(t)
+	db := OpenTestDBConnection(t)
 	defer db.Close()
 
 	var session TickerSession
