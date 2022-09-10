@@ -30,15 +30,15 @@ func main() {
 		Use:  "lighthorizon <subcommand>",
 		Long: "Horizon Lite command suite",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Usage()
+			return cmd.Usage() // require a subcommand
 		},
 	}
 
 	serve := &cobra.Command{
 		Use: "serve <txmeta source> <index source>",
-		Long: `Starts the Horizon Lite server, which only serves the following endpoint:
-
-	GET /accounts/:id/transactions
+		Long: `Starts the Horizon Lite server, binding it to port 8080 on all 
+local interfaces of the host. You can refer to the OpenAPI documentation located
+at the /api endpoint to see what endpoints are supported.
 
 The <txmeta source> should be a URL to meta archives from which to read unpacked
 ledger files, while the <index source> should be a URL containing indices that

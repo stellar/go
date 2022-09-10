@@ -1,9 +1,10 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Horizon Light API
+  title: Horizon Lite API
   version: 0.0.1
   description: |-
-    The Light API is a published web service on port parameter specified when running Horizon Light `--port=<port>`.
+    The Horizon Lite API is a published web service on port 8080. It's considered
+    extremely experimental and only provides a minimal subset of endpoints.
 servers:
   - url: http://localhost:8080/
 paths:
