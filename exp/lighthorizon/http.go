@@ -62,6 +62,10 @@ func lightHorizonHTTPHandler(registry *prometheus.Registry, lightHorizon service
 		r.MethodFunc(http.MethodGet, "/operations", actions.NewOpsByAccountHandler(lightHorizon))
 	})
 
+	router.MethodFunc(http.MethodGet, "/", actions.Root(actions.RootResponse{
+		Version: HorizonLiteVersion,
+		// by default, no other fields are known yet
+	}))
 	router.MethodFunc(http.MethodGet, "/api", actions.ApiDocs())
 	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
