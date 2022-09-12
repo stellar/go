@@ -14,9 +14,7 @@ RUN apt-get clean
 
 COPY --from=builder /go/bin/lighthorizon ./
 
-ENTRYPOINT ./lighthorizon \
-  -source "$TXMETA_SOURCE" \
-  -indexes "$INDEXES_SOURCE" \
-  -network-passphrase "$NETWORK_PASSPHRASE" \
-  -ledger-cache "$CACHE_PATH"
-    
+ENTRYPOINT ./lighthorizon serve \
+  --network-passphrase "$NETWORK_PASSPHRASE" \
+  --ledger-cache "$CACHE_PATH" \
+  "$TXMETA_SOURCE" "$INDEXES_SOURCE" \

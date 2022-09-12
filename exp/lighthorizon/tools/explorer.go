@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"context"
@@ -24,7 +24,7 @@ var (
 	checkpointMgr = historyarchive.NewCheckpointManager(0)
 )
 
-func addIndexCommands(parent *cobra.Command) *cobra.Command {
+func AddIndexCommands(parent *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "index",
 		Long: "Lets you view details about an index source.",

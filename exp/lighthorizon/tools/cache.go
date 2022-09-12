@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"context"
@@ -21,7 +21,7 @@ const (
 	defaultCacheCount = (60 * 60 * 24) / 5 // ~24hrs worth of ledgers
 )
 
-func addCacheCommands(parent *cobra.Command) *cobra.Command {
+func AddCacheCommands(parent *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "cache",
 		Long: "Manages the on-disk cache of ledgers.",
