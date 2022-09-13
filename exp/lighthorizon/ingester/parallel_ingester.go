@@ -18,7 +18,7 @@ type parallelIngester struct {
 
 	ledgerFeedLock sync.RWMutex
 	ledgerFeed     map[uint32]downloadState
-	ledgerQueue    set.Set[uint32]
+	ledgerQueue    set.ISet[uint32]
 
 	workQueue  chan uint32
 	signalChan chan error
@@ -44,7 +44,7 @@ func NewParallelIngester(
 		},
 		ledgerFeedLock: sync.RWMutex{},
 		ledgerFeed:     make(map[uint32]downloadState, 64),
-		ledgerQueue:    set.NewSet[uint32](64),
+		ledgerQueue:    set.NewSafeSet[uint32](64),
 		workQueue:      make(chan uint32, workerCount),
 		signalChan:     make(chan error),
 	}
@@ -76,7 +76,7 @@ func NewParallelIngester(
 // PrepareRange will create a set of parallel worker routines that feed ledgers
 // to a channel in the order they're downloaded and store the results in an
 // array. You can use this to download ledgers in parallel to fetching them
-// individually via `GetLedger()`.
+// individually via `GetLedger()`. `PrepareRange()` is thread-safe.
 //
 // Note: The passed in range `r` is inclusive of the boundaries.
 func (i *parallelIngester) PrepareRange(ctx context.Context, r historyarchive.Range) error {
@@ -131,8 +131,8 @@ func (i *parallelIngester) GetLedger(
 			i.ledgerFeedLock.RUnlock() // re-lock as a writer
 			i.ledgerFeedLock.Lock()
 			delete(i.ledgerFeed, ledgerSeq)
-			i.ledgerQueue.Remove(ledgerSeq)
 			i.ledgerFeedLock.Unlock()
+			i.ledgerQueue.Remove(ledgerSeq)
 
 			return state.ledger, state.err
 		}
