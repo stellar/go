@@ -14,7 +14,7 @@ func TestSet(t *testing.T) {
 
 	s.AddSlice([]string{"a", "b", "c"})
 	require.True(t, s.Contains("b"))
-	require.Equal(t, []string{"sanity", "a", "b", "c"}, s.Slice())
+	require.ElementsMatch(t, []string{"sanity", "a", "b", "c"}, s.Slice())
 }
 
 func TestSafeSet(t *testing.T) {
