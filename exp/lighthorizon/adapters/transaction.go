@@ -33,10 +33,8 @@ func PopulateTransaction(
 		return
 	}
 
-	ltx := tx.LedgerTransaction
-
 	dest.ID = txHash
-	dest.Successful = ltx.Result.Successful()
+	dest.Successful = tx.Result.Successful()
 	dest.Hash = txHash
 	dest.Ledger = int32(tx.LedgerHeader.LedgerSeq)
 	dest.LedgerCloseTime = time.Unix(int64(tx.LedgerHeader.ScpValue.CloseTime), 0).UTC()
@@ -53,26 +51,26 @@ func PopulateTransaction(
 			return
 		}
 	}
-	dest.AccountSequence = tx.LedgerTransaction.Envelope.SeqNum()
+	dest.AccountSequence = tx.Envelope.SeqNum()
 
-	envelopeBase64, err := encoder.MarshalBase64(ltx.Envelope)
+	envelopeBase64, err := encoder.MarshalBase64(tx.Envelope)
 	if err != nil {
 		return
 	}
-	resultBase64, err := encoder.MarshalBase64(&ltx.Result.Result)
+	resultBase64, err := encoder.MarshalBase64(&tx.Result.Result)
 	if err != nil {
 		return
 	}
-	metaBase64, err := encoder.MarshalBase64(ltx.UnsafeMeta)
+	metaBase64, err := encoder.MarshalBase64(tx.UnsafeMeta)
 	if err != nil {
 		return
 	}
-	feeMetaBase64, err := encoder.MarshalBase64(ltx.FeeChanges)
+	feeMetaBase64, err := encoder.MarshalBase64(tx.FeeChanges)
 	if err != nil {
 		return
 	}
 
-	dest.OperationCount = int32(len(ltx.Envelope.Operations()))
+	dest.OperationCount = int32(len(tx.Envelope.Operations()))
 	dest.EnvelopeXdr = envelopeBase64
 	dest.ResultXdr = resultBase64
 	dest.ResultMetaXdr = metaBase64
@@ -90,44 +88,44 @@ func PopulateTransaction(
 		}
 	}
 
-	dest.Signatures = signatures(ltx.Envelope.Signatures())
+	dest.Signatures = signatures(tx.Envelope.Signatures())
 
 	// If we never use this, we'll remove it later. This just defends us against
 	// nil dereferences.
 	dest.Preconditions = &protocol.TransactionPreconditions{}
 
-	if tb := ltx.Envelope.Preconditions().TimeBounds; tb != nil {
+	if tb := tx.Envelope.Preconditions().TimeBounds; tb != nil {
 		dest.Preconditions.TimeBounds = &protocol.TransactionPreconditionsTimebounds{
 			MaxTime: formatTime(tb.MaxTime),
 			MinTime: formatTime(tb.MinTime),
 		}
 	}
 
-	if lb := ltx.Envelope.LedgerBounds(); lb != nil {
+	if lb := tx.Envelope.LedgerBounds(); lb != nil {
 		dest.Preconditions.LedgerBounds = &protocol.TransactionPreconditionsLedgerbounds{
 			MinLedger: uint32(lb.MinLedger),
 			MaxLedger: uint32(lb.MaxLedger),
 		}
 	}
 
-	if minSeq := ltx.Envelope.MinSeqNum(); minSeq != nil {
+	if minSeq := tx.Envelope.MinSeqNum(); minSeq != nil {
 		dest.Preconditions.MinAccountSequence = fmt.Sprint(*minSeq)
 	}
 
-	if minSeqAge := ltx.Envelope.MinSeqAge(); minSeqAge != nil && *minSeqAge > 0 {
+	if minSeqAge := tx.Envelope.MinSeqAge(); minSeqAge != nil && *minSeqAge > 0 {
 		dest.Preconditions.MinAccountSequenceAge = formatTime(*minSeqAge)
 	}
 
-	if minSeqGap := ltx.Envelope.MinSeqLedgerGap(); minSeqGap != nil {
+	if minSeqGap := tx.Envelope.MinSeqLedgerGap(); minSeqGap != nil {
 		dest.Preconditions.MinAccountSequenceLedgerGap = uint32(*minSeqGap)
 	}
 
-	if signers := ltx.Envelope.ExtraSigners(); len(signers) > 0 {
+	if signers := tx.Envelope.ExtraSigners(); len(signers) > 0 {
 		dest.Preconditions.ExtraSigners = formatSigners(signers)
 	}
 
-	if ltx.Envelope.IsFeeBump() {
-		innerTx, ok := ltx.Envelope.FeeBump.Tx.InnerTx.GetV1()
+	if tx.Envelope.IsFeeBump() {
+		innerTx, ok := tx.Envelope.FeeBump.Tx.InnerTx.GetV1()
 		if !ok {
 			panic("Failed to parse inner transaction from fee-bump tx.")
 		}
@@ -139,7 +137,7 @@ func PopulateTransaction(
 		}
 		innerHash := hex.EncodeToString(rawInnerHash[:])
 
-		feeAccountMuxed := ltx.Envelope.FeeBumpAccount()
+		feeAccountMuxed := tx.Envelope.FeeBumpAccount()
 		dest.FeeAccount = feeAccountMuxed.ToAccountId().Address()
 		if _, ok := feeAccountMuxed.GetMed25519(); ok {
 			dest.FeeAccountMuxed, err = feeAccountMuxed.GetAddress()
@@ -152,15 +150,15 @@ func PopulateTransaction(
 			}
 		}
 
-		dest.MaxFee = ltx.Envelope.FeeBumpFee()
+		dest.MaxFee = tx.Envelope.FeeBumpFee()
 		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
 			Hash:       txHash,
-			Signatures: signatures(ltx.Envelope.FeeBumpSignatures()),
+			Signatures: signatures(tx.Envelope.FeeBumpSignatures()),
 		}
 		dest.InnerTransaction = &protocol.InnerTransaction{
 			Hash:       innerHash,
 			MaxFee:     int64(innerTx.Tx.Fee),
-			Signatures: signatures(ltx.Envelope.Signatures()),
+			Signatures: signatures(tx.Envelope.Signatures()),
 		}
 		// TODO: Figure out what this means? Maybe @tamirms knows.
 		// if transactionHash != row.TransactionHash {
@@ -170,9 +168,9 @@ func PopulateTransaction(
 		dest.FeeAccount = dest.Account
 		dest.FeeAccountMuxed = dest.AccountMuxed
 		dest.FeeAccountMuxedID = dest.AccountMuxedID
-		dest.MaxFee = int64(ltx.Envelope.Fee())
+		dest.MaxFee = int64(tx.Envelope.Fee())
 	}
-	dest.FeeCharged = int64(ltx.Result.Result.FeeCharged)
+	dest.FeeCharged = int64(tx.Result.Result.FeeCharged)
 
 	lb := hal.LinkBuilder{Base: baseUrl}
 	dest.PT = strconv.FormatUint(uint64(tx.TOID()), 10)
