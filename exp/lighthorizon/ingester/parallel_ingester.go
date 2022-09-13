@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/metaarchive"
 	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/storage"
 	"github.com/stellar/go/xdr"
 )
 
@@ -33,13 +32,13 @@ type downloadState struct {
 // given `networkPassphrase` that can download ledgers in parallel via
 // `workerCount` workers via `PrepareRange()`.
 func NewParallelIngester(
-	ledgerSource storage.Storage,
+	archive metaarchive.MetaArchive,
 	networkPassphrase string,
 	workerCount uint,
 ) *parallelIngester {
 	self := &parallelIngester{
 		liteIngester: liteIngester{
-			MetaArchive:       metaarchive.NewMetaArchive(ledgerSource),
+			MetaArchive:       archive,
 			networkPassphrase: networkPassphrase,
 		},
 		ledgerFeedLock: sync.RWMutex{},

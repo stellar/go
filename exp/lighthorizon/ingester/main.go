@@ -75,7 +75,7 @@ func NewIngester(config IngesterConfig) (Ingester, error) {
 	if config.ParallelDownloads > 1 {
 		log.Infof("Enabling parallel ledger fetches with %d workers", config.ParallelDownloads)
 		return NewParallelIngester(
-			source,
+			metaarchive.NewMetaArchive(source),
 			config.NetworkPassphrase,
 			config.ParallelDownloads), nil
 	}
