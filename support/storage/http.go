@@ -30,7 +30,7 @@ func checkResp(r *http.Response) error {
 	if r.StatusCode >= 200 && r.StatusCode < 400 {
 		return nil
 	} else {
-		return fmt.Errorf("Bad HTTP response '%s' for %s '%s'",
+		return fmt.Errorf("bad HTTP response '%s' for %s '%s'",
 			r.Status, r.Request.Method, r.Request.URL.String())
 	}
 }

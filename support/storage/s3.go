@@ -5,16 +5,39 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"path"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/stellar/go/support/errors"
 )
+
+type s3HttpProxy interface {
+	Send(*s3.GetObjectInput) (io.ReadCloser, error)
+}
+
+type defaultS3HttpProxy struct {
+	*S3Storage
+}
+
+func (proxy *defaultS3HttpProxy) Send(params *s3.GetObjectInput) (io.ReadCloser, error) {
+	req, resp := proxy.svc.GetObjectRequest(params)
+	if proxy.unsignedRequests {
+		req.Handlers.Sign.Clear() // makes this request unsigned
+	}
+	req.SetContext(proxy.ctx)
+	logReq(req.HTTPRequest)
+	err := req.Send()
+	logResp(req.HTTPResponse)
+
+	return resp.Body, err
+}
 
 type S3Storage struct {
 	ctx              context.Context
@@ -23,6 +46,7 @@ type S3Storage struct {
 	prefix           string
 	unsignedRequests bool
 	writeACLrule     string
+	s3Http           s3HttpProxy
 }
 
 func NewS3Storage(
@@ -67,19 +91,16 @@ func (b *S3Storage) GetFile(pth string) (io.ReadCloser, error) {
 		Key:    aws.String(key),
 	}
 
-	req, resp := b.svc.GetObjectRequest(params)
-	if b.unsignedRequests {
-		req.Handlers.Sign.Clear() // makes this request unsigned
-	}
-	req.SetContext(b.ctx)
-	logReq(req.HTTPRequest)
-	err := req.Send()
-	logResp(req.HTTPResponse)
+	resp, err := b.s3HttpProxy().Send(params)
+
 	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == s3.ErrCodeNoSuchKey {
+			return nil, os.ErrNotExist
+		}
 		return nil, err
 	}
 
-	return resp.Body, nil
+	return resp, nil
 }
 
 func (b *S3Storage) Head(pth string) (*http.Response, error) {
@@ -236,4 +257,13 @@ func (b *S3Storage) CanListFiles() bool {
 
 func (b *S3Storage) Close() error {
 	return nil
+}
+
+func (b *S3Storage) s3HttpProxy() s3HttpProxy {
+	if b.s3Http != nil {
+		return b.s3Http
+	}
+	return &defaultS3HttpProxy{
+		S3Storage: b,
+	}
 }

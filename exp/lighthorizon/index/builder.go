@@ -294,16 +294,16 @@ func (builder *IndexBuilder) Watch(ctx context.Context) error {
 		//
 		// [1]: https://stellarfoundation.slack.com/archives/C02B04RMK/p1654903342555669
 
-		// We sleep with linear backoff starting with 1s. Ledgers get posted
+		// We sleep with linear backoff starting with 6s. Ledgers get posted
 		// every 5-7s on average, but to be extra careful, let's give it a full
 		// minute before we give up entirely.
 		timedCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
 
-		sleepTime := time.Second
-
+		sleepTime := (6 * time.Second)
 	outer:
 		for {
+			time.Sleep(sleepTime)
 			select {
 			case <-timedCtx.Done():
 				return errors.Wrap(timedCtx.Err(), "awaiting next ledger failed")
@@ -318,8 +318,7 @@ func (builder *IndexBuilder) Watch(ctx context.Context) error {
 				}
 
 				if os.IsNotExist(buildErr) {
-					time.Sleep(sleepTime)
-					sleepTime += 2
+					sleepTime += (time.Second * 2)
 					continue
 				}
 
