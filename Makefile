@@ -12,7 +12,7 @@ xdr/Stellar-contract-spec.x \
 xdr/Stellar-contract.x \
 xdr/Stellar-internal.x
 
-XDRGEN_COMMIT=fons/xdrgen-fixes
+XDRGEN_COMMIT=2864dda63ad8a5d3b0e33430fcd6093633ce8fac
 
 .PHONY: xdr xdr-clean xdr-update
 
