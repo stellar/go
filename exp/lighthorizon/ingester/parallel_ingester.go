@@ -15,9 +15,8 @@ import (
 type parallelIngester struct {
 	liteIngester
 
-	ledgerFeedLock sync.RWMutex
-	ledgerFeed     map[uint32]downloadState
-	ledgerQueue    set.ISet[uint32]
+	ledgerFeed  sync.Map // thread-safe version of map[uint32]downloadState
+	ledgerQueue set.ISet[uint32]
 
 	workQueue  chan uint32
 	signalChan chan error
@@ -41,11 +40,10 @@ func NewParallelIngester(
 			MetaArchive:       archive,
 			networkPassphrase: networkPassphrase,
 		},
-		ledgerFeedLock: sync.RWMutex{},
-		ledgerFeed:     make(map[uint32]downloadState, 64),
-		ledgerQueue:    set.NewSafeSet[uint32](64),
-		workQueue:      make(chan uint32, workerCount),
-		signalChan:     make(chan error),
+		ledgerFeed:  sync.Map{},
+		ledgerQueue: set.NewSafeSet[uint32](64),
+		workQueue:   make(chan uint32, workerCount),
+		signalChan:  make(chan error),
 	}
 
 	// These are the workers that download & store ledgers in memory.
@@ -61,9 +59,7 @@ func NewParallelIngester(
 					WithField("worker", jj).WithError(err).
 					Debugf("Downloaded ledger %d", ledgerSeq)
 
-				self.ledgerFeedLock.Lock()
-				self.ledgerFeed[ledgerSeq] = downloadState{txmeta, err}
-				self.ledgerFeedLock.Unlock()
+				self.ledgerFeed.Store(ledgerSeq, downloadState{txmeta, err})
 				self.signalChan <- err
 			}
 		}(j)
@@ -125,17 +121,12 @@ func (i *parallelIngester) GetLedger(
 	// If the ledger isn't available yet, wait for the download worker.
 	var err error
 	for err == nil {
-		i.ledgerFeedLock.RLock()
-		if state, ok := i.ledgerFeed[ledgerSeq]; ok {
-			i.ledgerFeedLock.RUnlock() // re-lock as a writer
-			i.ledgerFeedLock.Lock()
-			delete(i.ledgerFeed, ledgerSeq)
-			i.ledgerFeedLock.Unlock()
+		if iState, ok := i.ledgerFeed.Load(ledgerSeq); ok {
+			state := iState.(downloadState)
+			i.ledgerFeed.Delete(ledgerSeq)
 			i.ledgerQueue.Remove(ledgerSeq)
-
 			return state.ledger, state.err
 		}
-		i.ledgerFeedLock.RUnlock()
 
 		select {
 		case err = <-i.signalChan: // blocks until another ledger downloads
