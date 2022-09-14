@@ -2,6 +2,7 @@ package schema
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 )
 
 //go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -pkg schema -o bindata.go migrations/
@@ -45,24 +48,42 @@ var Migrations migrate.MigrationSource = &migrate.AssetMigrationSource{
 // - redo: migrations are first ran downard `count` times, and then are rand
 // upward back to the current version at the start of the process. If count is
 // 0, a count of 1 will be assumed.
-func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
+func Migrate(sqlDb *sql.DB, dir MigrateDir, count int) (int, error) {
+	session := db.Wrap(sqlDb, "postgres")
+	historyQ := history.Q{session.Clone()}
+
+	err := historyQ.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	// Lock ingestion
+	_, err = historyQ.GetLastLedgerIngest(context.Background())
+	if err != nil {
+		return 0, err
+	}
+
+	// Unlock ingestion when done. DB migrations run in a separate DB connection
+	// so no need to Commit().
+	defer historyQ.Rollback()
+
 	switch dir {
 	case MigrateUp:
-		return migrate.ExecMax(db, "postgres", Migrations, migrate.Up, count)
+		return migrate.ExecMax(sqlDb, "postgres", Migrations, migrate.Up, count)
 	case MigrateDown:
-		return migrate.ExecMax(db, "postgres", Migrations, migrate.Down, count)
+		return migrate.ExecMax(sqlDb, "postgres", Migrations, migrate.Down, count)
 	case MigrateRedo:
 
 		if count == 0 {
 			count = 1
 		}
 
-		down, err := migrate.ExecMax(db, "postgres", Migrations, migrate.Down, count)
+		down, err := migrate.ExecMax(sqlDb, "postgres", Migrations, migrate.Down, count)
 		if err != nil {
 			return down, err
 		}
 
-		return migrate.ExecMax(db, "postgres", Migrations, migrate.Up, down)
+		return migrate.ExecMax(sqlDb, "postgres", Migrations, migrate.Up, down)
 	default:
 		return 0, errors.New("Invalid migration direction")
 	}
