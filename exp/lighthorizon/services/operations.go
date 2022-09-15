@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/common"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -30,9 +30,9 @@ func (or *OperationRepository) GetOperationsByAccount(ctx context.Context,
 ) ([]common.Operation, error) {
 	ops := []common.Operation{}
 
-	opsCallback := func(tx archive.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
+	opsCallback := func(tx ingester.LedgerTransaction, ledgerHeader *xdr.LedgerHeader) (bool, error) {
 		for operationOrder, op := range tx.Envelope.Operations() {
-			opParticipants, err := or.Config.Archive.GetOperationParticipants(tx, op, operationOrder)
+			opParticipants, err := ingester.GetOperationParticipants(tx, op, operationOrder)
 			if err != nil {
 				return false, err
 			}

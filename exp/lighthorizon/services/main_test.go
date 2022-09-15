@@ -7,9 +7,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
-	"github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	passphrase     = "White New England clam chowder"
 	accountId      = "GDCXSQPVE45DVGT2ZRFFIIHSJ2EJED65W6AELGWIDRMPMWNXCEBJ4FKX"
 	startLedgerSeq = 1586112
 )
@@ -94,12 +95,12 @@ func TestItGetsOperationsByAccount(t *testing.T) {
 	})
 }
 
-func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archive, index.Store) {
-	mockArchive := &archive.MockArchive{}
-	mockReaderLedger1 := &archive.MockLedgerTransactionReader{}
-	mockReaderLedger2 := &archive.MockLedgerTransactionReader{}
-	mockReaderLedger3 := &archive.MockLedgerTransactionReader{}
-	mockReaderLedgerTheRest := &archive.MockLedgerTransactionReader{}
+func mockArchiveAndIndex(ctx context.Context) (ingester.Ingester, index.Store) {
+	mockArchive := &ingester.MockIngester{}
+	mockReaderLedger1 := &ingester.MockLedgerTransactionReader{}
+	mockReaderLedger2 := &ingester.MockLedgerTransactionReader{}
+	mockReaderLedger3 := &ingester.MockLedgerTransactionReader{}
+	mockReaderLedgerTheRest := &ingester.MockLedgerTransactionReader{}
 
 	expectedLedger1 := testLedger(startLedgerSeq)
 	expectedLedger2 := testLedger(startLedgerSeq + 1)
@@ -117,90 +118,74 @@ func mockArchiveAndIndex(ctx context.Context, passphrase string) (archive.Archiv
 	expectedLedger3Tx1 := testLedgerTx(source2, 1, 34)
 	expectedLedger3Tx2 := testLedgerTx(source, 2, 34)
 
-	mockArchive.
-		On("GetLedger", ctx, uint32(1586112)).Return(expectedLedger1, nil).
-		On("GetLedger", ctx, uint32(1586113)).Return(expectedLedger2, nil).
-		On("GetLedger", ctx, uint32(1586114)).Return(expectedLedger3, nil).
-		On("GetLedger", ctx, mock.Anything).Return(xdr.LedgerCloseMeta{}, nil)
-
-	mockArchive.
-		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger1).Return(mockReaderLedger1, nil).
-		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger2).Return(mockReaderLedger2, nil).
-		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, expectedLedger3).Return(mockReaderLedger3, nil).
-		On("NewLedgerTransactionReaderFromLedgerCloseMeta", passphrase, mock.Anything).Return(mockReaderLedgerTheRest, nil)
-
-	partialParticipants := set.Set[string]{}
-	partialParticipants.Add(source.Address())
-
-	allParticipants := set.Set[string]{}
-	allParticipants.Add(source.Address())
-	allParticipants.Add(source2.Address())
-
-	mockArchive.
-		On("GetTransactionParticipants", expectedLedger1Tx1).Return(partialParticipants, nil).
-		On("GetTransactionParticipants", expectedLedger1Tx2).Return(partialParticipants, nil).
-		On("GetTransactionParticipants", expectedLedger2Tx1).Return(partialParticipants, nil).
-		On("GetTransactionParticipants", expectedLedger2Tx2).Return(allParticipants, nil).
-		On("GetTransactionParticipants", expectedLedger3Tx1).Return(allParticipants, nil).
-		On("GetTransactionParticipants", expectedLedger3Tx2).Return(partialParticipants, nil)
-
-	mockArchive.
-		On("GetOperationParticipants", expectedLedger1Tx1, mock.Anything, int(0)).Return(partialParticipants, nil).
-		On("GetOperationParticipants", expectedLedger1Tx1, mock.Anything, int(1)).Return(partialParticipants, nil).
-		On("GetOperationParticipants", expectedLedger1Tx2, mock.Anything, int(0)).Return(partialParticipants, nil).
-		On("GetOperationParticipants", expectedLedger2Tx1, mock.Anything, int(0)).Return(partialParticipants, nil).
-		On("GetOperationParticipants", expectedLedger2Tx2, mock.Anything, int(0)).Return(allParticipants, nil).
-		On("GetOperationParticipants", expectedLedger3Tx1, mock.Anything, int(0)).Return(allParticipants, nil).
-		On("GetOperationParticipants", expectedLedger3Tx2, mock.Anything, int(0)).Return(partialParticipants, nil)
-
 	mockReaderLedger1.
 		On("Read").Return(expectedLedger1Tx1, nil).Once().
 		On("Read").Return(expectedLedger1Tx2, nil).Once().
-		On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
+		On("Read").Return(ingester.LedgerTransaction{}, io.EOF).Once()
 
 	mockReaderLedger2.
 		On("Read").Return(expectedLedger2Tx1, nil).Once().
 		On("Read").Return(expectedLedger2Tx2, nil).Once().
-		On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
+		On("Read").Return(ingester.LedgerTransaction{}, io.EOF).Once()
 
 	mockReaderLedger3.
 		On("Read").Return(expectedLedger3Tx1, nil).Once().
 		On("Read").Return(expectedLedger3Tx2, nil).Once().
-		On("Read").Return(archive.LedgerTransaction{}, io.EOF).Once()
+		On("Read").Return(ingester.LedgerTransaction{}, io.EOF).Once()
 
 	mockReaderLedgerTheRest.
-		On("Read").Return(archive.LedgerTransaction{}, io.EOF)
+		On("Read").Return(ingester.LedgerTransaction{}, io.EOF)
+
+	mockArchive.
+		On("GetLedger", mock.Anything, uint32(1586112)).Return(expectedLedger1, nil).
+		On("GetLedger", mock.Anything, uint32(1586113)).Return(expectedLedger2, nil).
+		On("GetLedger", mock.Anything, uint32(1586114)).Return(expectedLedger3, nil).
+		On("GetLedger", mock.Anything, mock.AnythingOfType("uint32")).
+		Return(xdr.SerializedLedgerCloseMeta{}, nil)
+
+	mockArchive.
+		On("NewLedgerTransactionReader", expectedLedger1).Return(mockReaderLedger1, nil).Once().
+		On("NewLedgerTransactionReader", expectedLedger2).Return(mockReaderLedger2, nil).Once().
+		On("NewLedgerTransactionReader", expectedLedger3).Return(mockReaderLedger3, nil).Once().
+		On("NewLedgerTransactionReader", mock.AnythingOfType("xdr.SerializedLedgerCloseMeta")).
+		Return(mockReaderLedgerTheRest, nil).
+		On("PrepareRange", mock.Anything, mock.Anything).Return(nil)
 
 	// should be 24784
-	firstActiveChk := uint32(index.GetCheckpointNumber(uint32(startLedgerSeq)))
+	activeChk := uint32(index.GetCheckpointNumber(uint32(startLedgerSeq)))
 	mockStore := &index.MockStore{}
 	mockStore.
-		On("NextActive", accountId, mock.Anything, uint32(0)).Return(firstActiveChk, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk-1).Return(firstActiveChk, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk).Return(firstActiveChk, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk+1).Return(firstActiveChk+1, nil).
-		On("NextActive", accountId, mock.Anything, firstActiveChk+2).Return(uint32(0), io.EOF)
+		On("NextActive", accountId, mock.Anything, uint32(0)).Return(activeChk, nil).     // start
+		On("NextActive", accountId, mock.Anything, activeChk-1).Return(activeChk, nil).   // prev
+		On("NextActive", accountId, mock.Anything, activeChk).Return(activeChk, nil).     // curr
+		On("NextActive", accountId, mock.Anything, activeChk+1).Return(uint32(0), io.EOF) // next
 
 	return mockArchive, mockStore
 }
 
-func testLedger(seq int) xdr.LedgerCloseMeta {
-	return xdr.LedgerCloseMeta{
-		V0: &xdr.LedgerCloseMetaV0{
-			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-				Header: xdr.LedgerHeader{
-					LedgerSeq: xdr.Uint32(seq),
+func testLedger(seq int) xdr.SerializedLedgerCloseMeta {
+	return xdr.SerializedLedgerCloseMeta{
+		V: 0,
+		V0: &xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						LedgerSeq: xdr.Uint32(seq),
+					},
 				},
 			},
 		},
 	}
 }
 
-func testLedgerTx(source xdr.AccountId, txIndex uint32, bumpTos ...int) archive.LedgerTransaction {
-	ops := []xdr.Operation{}
+func testLedgerTx(source xdr.AccountId, txIndex uint32, bumpTos ...int) ingester.LedgerTransaction {
+	code := xdr.TransactionResultCodeTxSuccess
+
+	operations := []xdr.Operation{}
 	for _, bumpTo := range bumpTos {
-		ops = append(ops, xdr.Operation{
+		operations = append(operations, xdr.Operation{
 			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeBumpSequence,
 				BumpSequenceOp: &xdr.BumpSequenceOp{
 					BumpTo: xdr.SequenceNumber(bumpTo),
 				},
@@ -208,29 +193,43 @@ func testLedgerTx(source xdr.AccountId, txIndex uint32, bumpTos ...int) archive.
 		})
 	}
 
-	tx := archive.LedgerTransaction{
-		Envelope: xdr.TransactionEnvelope{
-			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-			V1: &xdr.TransactionV1Envelope{
-				Tx: xdr.Transaction{
-					SourceAccount: source.ToMuxedAccount(),
-					Fee:           xdr.Uint32(1),
-					Operations:    ops,
+	return ingester.LedgerTransaction{
+		LedgerTransaction: &ingest.LedgerTransaction{
+			Result: xdr.TransactionResultPair{
+				TransactionHash: xdr.Hash{},
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code:            code,
+						InnerResultPair: &xdr.InnerTransactionResultPair{},
+						Results:         &[]xdr.OperationResult{},
+					},
 				},
 			},
+			Envelope: xdr.TransactionEnvelope{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1: &xdr.TransactionV1Envelope{
+					Tx: xdr.Transaction{
+						SourceAccount: source.ToMuxedAccount(),
+						Operations:    operations,
+					},
+				},
+			},
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, len(bumpTos)),
+				},
+			},
+			Index: txIndex,
 		},
-		Index: txIndex,
 	}
-
-	return tx
 }
 
 func newTransactionService(ctx context.Context) TransactionService {
-	passphrase := "White New England clam chowder"
-	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	ingest, store := mockArchiveAndIndex(ctx)
 	return &TransactionRepository{
 		Config: Config{
-			Archive:    archive,
+			Ingester:   ingest,
 			IndexStore: store,
 			Passphrase: passphrase,
 			Metrics:    NewMetrics(prometheus.NewRegistry()),
@@ -239,11 +238,10 @@ func newTransactionService(ctx context.Context) TransactionService {
 }
 
 func newOperationService(ctx context.Context) OperationService {
-	passphrase := "White New England clam chowder"
-	archive, store := mockArchiveAndIndex(ctx, passphrase)
+	ingest, store := mockArchiveAndIndex(ctx)
 	return &OperationRepository{
 		Config: Config{
-			Archive:    archive,
+			Ingester:   ingest,
 			IndexStore: store,
 			Passphrase: passphrase,
 			Metrics:    NewMetrics(prometheus.NewRegistry()),

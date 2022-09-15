@@ -209,10 +209,10 @@ func PurgeLedgers(cacheDir string, start, end uint32) error {
 		if err := os.Remove(ledgerPath); err != nil {
 			log.Warnf("Failed to remove cached ledger %d: %v", i, err)
 			continue
-		} else {
-			log.Debugf("Purged ledger from %s", ledgerPath)
-			successful++
 		}
+		os.Remove(storage.NameLockfile(ledgerPath)) // ignore lockfile errors
+		log.Debugf("Purged ledger from %s", ledgerPath)
+		successful++
 	}
 
 	log.Infof("Purged %d cached ledgers from %s", successful, cacheDir)

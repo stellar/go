@@ -6,19 +6,20 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/exp/constraints"
 
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/xdr"
-
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 )
 
 const (
-	allTransactionsIndex = "all/all"
-	allPaymentsIndex     = "all/payments"
+	allTransactionsIndex       = "all/all"
+	allPaymentsIndex           = "all/payments"
+	slowFetchDurationThreshold = time.Second
 )
 
 var (
@@ -64,7 +65,7 @@ type Metrics struct {
 }
 
 type Config struct {
-	Archive    archive.Archive
+	Ingester   ingester.Ingester
 	IndexStore index.Store
 	Passphrase string
 	Metrics    Metrics
@@ -73,7 +74,7 @@ type Config struct {
 // searchCallback is a generic way for any endpoint to process a transaction and
 // its corresponding ledger. It should return whether or not we should stop
 // processing (e.g. when a limit is reached) and any error that occurred.
-type searchCallback func(archive.LedgerTransaction, *xdr.LedgerHeader) (finished bool, err error)
+type searchCallback func(ingester.LedgerTransaction, *xdr.LedgerHeader) (finished bool, err error)
 
 func searchAccountTransactions(ctx context.Context,
 	cursor int64,
@@ -88,48 +89,74 @@ func searchAccountTransactions(ctx context.Context,
 	} else if err != nil {
 		return err
 	}
-
 	nextLedger := getLedgerFromCursor(cursor)
-	log.Debugf("Searching %s for account %s starting at ledger %d",
-		allTransactionsIndex, accountId, nextLedger)
+
+	log.WithField("cursor", cursor).
+		Debugf("Searching %s for account %s starting at ledger %d",
+			allTransactionsIndex, accountId, nextLedger)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	fullStart := time.Now()
-	avgFetchDuration := time.Duration(0)
-	avgProcessDuration := time.Duration(0)
-	avgIndexFetchDuration := time.Duration(0)
+	fetchDuration := time.Duration(0)
+	processDuration := time.Duration(0)
+	indexFetchDuration := time.Duration(0)
 	count := int64(0)
 
 	defer func() {
 		log.WithField("ledgers", count).
-			WithField("ledger-fetch", avgFetchDuration.String()).
-			WithField("ledger-process", avgProcessDuration.String()).
-			WithField("index-fetch", avgIndexFetchDuration.String()).
+			WithField("ledger-fetch", fetchDuration).
+			WithField("ledger-process", processDuration).
+			WithField("index-fetch", indexFetchDuration).
+			WithField("avg-ledger-fetch", getAverageDuration(fetchDuration, count)).
+			WithField("avg-ledger-process", getAverageDuration(processDuration, count)).
+			WithField("avg-index-fetch", getAverageDuration(indexFetchDuration, count)).
 			WithField("total", time.Since(fullStart)).
 			Infof("Fulfilled request for account %s at cursor %d", accountId, cursor)
 	}()
 
+	checkpointMgr := historyarchive.NewCheckpointManager(0)
+
 	for {
-		count++
-		start := time.Now()
-		ledger, ledgerErr := config.Archive.GetLedger(ctx, nextLedger)
-		if ledgerErr != nil {
-			return errors.Wrapf(ledgerErr,
-				"ledger export state is out of sync at ledger %d", nextLedger)
+		if checkpointMgr.IsCheckpoint(nextLedger) {
+			r := historyarchive.Range{
+				Low:  nextLedger,
+				High: checkpointMgr.NextCheckpoint(nextLedger + 1),
+			}
+			log.Infof("prepare range %d, %d", r.Low, r.High)
+			if innerErr := config.Ingester.PrepareRange(ctx, r); innerErr != nil {
+				log.Errorf("failed to prepare ledger range [%d, %d]: %v",
+					r.Low, r.High, innerErr)
+			}
 		}
-		fetchDuration := time.Since(start)
-		if fetchDuration > time.Second {
-			log.WithField("duration", fetchDuration).
+
+		start := time.Now()
+		ledger, innerErr := config.Ingester.GetLedger(ctx, nextLedger)
+		if innerErr != nil {
+			return errors.Wrapf(innerErr,
+				"failed to retrieve ledger %d from archive", nextLedger)
+		}
+		count++
+		thisFetchDuration := time.Since(start)
+		if thisFetchDuration > slowFetchDurationThreshold {
+			log.WithField("duration", thisFetchDuration).
 				Warnf("Fetching ledger %d was really slow", nextLedger)
 		}
-		incrementAverage(&avgFetchDuration, fetchDuration, count)
+		fetchDuration += thisFetchDuration
 
 		start = time.Now()
-		reader, readerErr := config.Archive.NewLedgerTransactionReaderFromLedgerCloseMeta(config.Passphrase, ledger)
-		if readerErr != nil {
-			return readerErr
+		reader, innerErr := config.Ingester.NewLedgerTransactionReader(ledger)
+		if innerErr != nil {
+			return errors.Wrapf(innerErr,
+				"failed to read ledger %d", nextLedger)
 		}
 
 		for {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
 			tx, readErr := reader.Read()
 			if readErr == io.EOF {
 				break
@@ -138,50 +165,44 @@ func searchAccountTransactions(ctx context.Context,
 			}
 
 			// Note: If we move to ledger-based indices, we don't need this,
-			// since we have a guarantee that the transaction will contain the
-			// account as a participant.
-			participants, participantErr := config.Archive.GetTransactionParticipants(tx)
+			// since we have a guarantee that the transaction will contain
+			// the account as a participant.
+			participants, participantErr := ingester.GetTransactionParticipants(tx)
 			if participantErr != nil {
 				return participantErr
 			}
 
 			if _, found := participants[accountId]; found {
-				finished, callBackErr := callback(tx, &ledger.V0.LedgerHeader.Header)
+				finished, callBackErr := callback(tx, &ledger.V0.V0.LedgerHeader.Header)
 				if callBackErr != nil {
 					return callBackErr
 				} else if finished {
-					incrementAverage(&avgProcessDuration, time.Since(start), count)
+					processDuration += time.Since(start)
 					return nil
 				}
 			}
-
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
 		}
 
-		incrementAverage(&avgProcessDuration, time.Since(start), count)
-
+		processDuration += time.Since(start)
 		start = time.Now()
-		cursor, err = cursorMgr.Advance()
+
+		cursor, err = cursorMgr.Advance(1)
 		if err != nil && err != io.EOF {
 			return err
 		}
 
 		nextLedger = getLedgerFromCursor(cursor)
-		incrementAverage(&avgIndexFetchDuration, time.Since(start), count)
+		indexFetchDuration += time.Since(start)
 		if err == io.EOF {
-			return nil
+			break
 		}
 	}
+
+	return nil
 }
 
-// This calculates the average by incorporating a new value into an existing
-// average in place. Note that `newCount` should represent the *new* total
-// number of values incorporated into the average.
-//
-// Reference: https://math.stackexchange.com/a/106720
-func incrementAverage(prevAverage *time.Duration, latest time.Duration, newCount int64) {
-	increment := int64(latest-*prevAverage) / newCount
-	*prevAverage = *prevAverage + time.Duration(increment)
+func getAverageDuration[
+	T constraints.Signed | constraints.Float,
+](d time.Duration, count T) time.Duration {
+	return time.Duration(int64(float64(d.Nanoseconds()) / float64(count)))
 }

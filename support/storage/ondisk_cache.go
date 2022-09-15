@@ -9,7 +9,9 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-// OnDiskCache fronts another storage with a local filesystem cache
+// OnDiskCache fronts another storage with a local filesystem cache. Its
+// thread-safe, meaning you can be actively caching a file and retrieve it at
+// the same time without corruption, because retrieval will wait for the fetch.
 type OnDiskCache struct {
 	Storage
 	dir      string
@@ -65,10 +67,15 @@ func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 	L := b.log.WithField("key", filepath)
 	localPath := path.Join(b.dir, filepath)
 
-	// If the lockfile exists, we should defer to the remote source.
-	_, statErr := os.Stat(nameLockfile(localPath))
-
-	if _, ok := b.lru.Get(localPath); !ok || statErr == nil {
+	// If the lockfile exists, we should defer to the remote source but *not*
+	// update the cache, as it means there's an in-progress sync of the same
+	// file.
+	_, statErr := os.Stat(NameLockfile(localPath))
+	if statErr == nil {
+		L.Debug("incomplete file in cache on disk")
+		L.Debug("retrieving file from remote backend")
+		return b.Storage.GetFile(filepath)
+	} else if _, ok := b.lru.Get(localPath); !ok {
 		// If it doesn't exist in the cache, it might still exist on the disk if
 		// we've restarted from an existing directory.
 		local, err := os.Open(localPath)
@@ -78,8 +85,7 @@ func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 			return local, nil
 		}
 
-		b.log.WithField("key", filepath).
-			Debug("retrieving file from remote backend")
+		L.Debug("retrieving file from remote backend")
 
 		// Since it's not on-disk, pull it from the remote backend, shove it
 		// into the cache, and write it to disk.
@@ -93,12 +99,11 @@ func (b *OnDiskCache) GetFile(filepath string) (io.ReadCloser, error) {
 			// If there's some local FS error, we can still continue with the
 			// remote version, so just log it and continue.
 			L.WithError(err).Error("caching ledger failed")
-
 			return remote, nil
 		}
 
 		return teeReadCloser(remote, local, func() error {
-			return os.Remove(nameLockfile(localPath))
+			return os.Remove(NameLockfile(localPath))
 		}), nil
 	}
 
@@ -148,8 +153,7 @@ func (b *OnDiskCache) Size(filepath string) (int64, error) {
 		}
 
 		L.WithError(err).Debug("retrieving size of cached ledger failed")
-		b.lru.Remove(localPath)            // stale cache?
-		os.Remove(nameLockfile(localPath)) // errors don't matter
+		b.lru.Remove(localPath) // stale cache?
 	}
 
 	return b.Storage.Size(filepath)
@@ -169,7 +173,7 @@ func (b *OnDiskCache) PutFile(filepath string, in io.ReadCloser) error {
 	} else {
 		// tee upload data into our local file
 		in = teeReadCloser(in, local, func() error {
-			return os.Remove(nameLockfile(path.Join(b.dir, filepath)))
+			return os.Remove(NameLockfile(path.Join(b.dir, filepath)))
 		})
 	}
 
@@ -193,6 +197,7 @@ func (b *OnDiskCache) Evict(filepath string) {
 
 func (b *OnDiskCache) onEviction(key, value interface{}) {
 	path := key.(string)
+	os.Remove(NameLockfile(path))           // just in case
 	if err := os.Remove(path); err != nil { // best effort removal
 		b.log.WithError(err).
 			WithField("key", path).
@@ -210,7 +215,7 @@ func (b *OnDiskCache) createLocal(filepath string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = os.Create(nameLockfile(localPath))
+	_, err = os.Create(NameLockfile(localPath))
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +224,7 @@ func (b *OnDiskCache) createLocal(filepath string) (*os.File, error) {
 	return local, nil
 }
 
-func nameLockfile(file string) string {
+func NameLockfile(file string) string {
 	return file + ".lock"
 }
 
@@ -239,9 +244,17 @@ func teeReadCloser(r io.ReadCloser, w io.WriteCloser, onClose func() error) io.R
 	return trc{
 		Reader: io.TeeReader(r, w),
 		close: func() error {
-			r.Close()
-			w.Close()
-			return onClose()
+			// Always run all closers, but return the first error
+			err1 := r.Close()
+			err2 := w.Close()
+			err3 := onClose()
+
+			if err1 != nil {
+				return err1
+			} else if err2 != nil {
+				return err2
+			}
+			return err3
 		},
 	}
 }

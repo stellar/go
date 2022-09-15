@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stellar/go/exp/lighthorizon/actions"
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/index"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/exp/lighthorizon/services"
 	"github.com/stellar/go/exp/lighthorizon/tools"
 
@@ -62,6 +62,7 @@ break down accounts by active ledgers.`,
 			cacheDir, _ := cmd.Flags().GetString("ledger-cache")
 			cacheSize, _ := cmd.Flags().GetUint("ledger-cache-size")
 			logLevelParam, _ := cmd.Flags().GetString("log-level")
+			downloadCount, _ := cmd.Flags().GetUint("parallel-downloads")
 
 			L := log.WithField("service", "horizon-lite")
 			logLevel, err := logrus.ParseLevel(logLevelParam)
@@ -83,11 +84,12 @@ break down accounts by active ledgers.`,
 				return
 			}
 
-			ingester, err := archive.NewIngestArchive(archive.ArchiveConfig{
+			ingester, err := ingester.NewIngester(ingester.IngesterConfig{
 				SourceUrl:         sourceUrl,
 				NetworkPassphrase: networkPassphrase,
 				CacheDir:          cacheDir,
 				CacheSize:         int(cacheSize),
+				ParallelDownloads: downloadCount,
 			})
 			if err != nil {
 				log.Fatal(err)
@@ -95,7 +97,7 @@ break down accounts by active ledgers.`,
 			}
 
 			Config := services.Config{
-				Archive:    ingester,
+				Ingester:   ingester,
 				Passphrase: networkPassphrase,
 				IndexStore: indexStore,
 				Metrics:    services.NewMetrics(registry),
@@ -129,6 +131,8 @@ break down accounts by active ledgers.`,
 		"if left empty, uses a temporary directory")
 	serve.Flags().Uint("ledger-cache-size", defaultCacheSize,
 		"number of ledgers to store in the cache")
+	serve.Flags().Uint("parallel-downloads", 1,
+		"how many workers should download ledgers in parallel?")
 
 	cmd.AddCommand(serve)
 	tools.AddCacheCommands(cmd)

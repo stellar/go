@@ -84,7 +84,7 @@ func BuildIndices(
 	wg, ctx := errgroup.WithContext(ctx)
 	ch := make(chan historyarchive.Range, parallel)
 
-	indexBuilder := NewIndexBuilder(indexStore, *metaArchive, networkPassphrase)
+	indexBuilder := NewIndexBuilder(indexStore, metaArchive, networkPassphrase)
 	for _, part := range modules {
 		switch part {
 		case "transactions":

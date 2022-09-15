@@ -12,17 +12,20 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type MetaArchive struct {
+type MetaArchive interface {
+	GetLatestLedgerSequence(ctx context.Context) (uint32, error)
+	GetLedger(ctx context.Context, sequence uint32) (xdr.SerializedLedgerCloseMeta, error)
+}
+
+type metaArchive struct {
 	s storage.Storage
 }
 
-func NewMetaArchive(b storage.Storage) *MetaArchive {
-	return &MetaArchive{
-		s: b,
-	}
+func NewMetaArchive(b storage.Storage) MetaArchive {
+	return &metaArchive{s: b}
 }
 
-func (m *MetaArchive) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+func (m *metaArchive) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
 	r, err := m.s.GetFile("latest")
 	if os.IsNotExist(err) {
 		return 2, nil
@@ -41,7 +44,7 @@ func (m *MetaArchive) GetLatestLedgerSequence(ctx context.Context) (uint32, erro
 	return uint32(parsed), nil
 }
 
-func (m *MetaArchive) GetLedger(ctx context.Context, sequence uint32) (xdr.SerializedLedgerCloseMeta, error) {
+func (m *metaArchive) GetLedger(ctx context.Context, sequence uint32) (xdr.SerializedLedgerCloseMeta, error) {
 	var ledger xdr.SerializedLedgerCloseMeta
 	r, err := m.s.GetFile("ledgers/" + strconv.FormatUint(uint64(sequence), 10))
 	if err != nil {

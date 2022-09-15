@@ -126,6 +126,10 @@ func (r Range) InRange(sequence uint32) bool {
 	return sequence >= r.Low && sequence <= r.High
 }
 
+func (r Range) Size() uint32 {
+	return 1 + (r.High - r.Low)
+}
+
 func fmtRangeList(vs []uint32, cManager CheckpointManager) string {
 	slices.Sort(vs)
 

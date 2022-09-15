@@ -32,3 +32,5 @@ func (set Set[T]) Slice() []T {
 	}
 	return slice
 }
+
+var _ ISet[int] = (*Set[int])(nil) // ensure conformity to the interface

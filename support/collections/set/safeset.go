@@ -6,8 +6,8 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-// safeSet is a simple, thread-safe set implementation. It must be created via
-// NewSafeSet.
+// safeSet is a simple, thread-safe set implementation. Note that it *must* be
+// created via NewSafeSet.
 type safeSet[T constraints.Ordered] struct {
 	Set[T]
 	lock sync.RWMutex

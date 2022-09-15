@@ -9,7 +9,7 @@ import (
 // particular indexing strategy.
 type CursorManager interface {
 	Begin(cursor int64) (int64, error)
-	Advance() (int64, error)
+	Advance(times uint) (int64, error)
 }
 
 type AccountActivityCursorManager struct {
@@ -56,35 +56,39 @@ func (c *AccountActivityCursorManager) Begin(cursor int64) (int64, error) {
 	return c.lastCursor.ToInt64(), nil
 }
 
-func (c *AccountActivityCursorManager) Advance() (int64, error) {
+func (c *AccountActivityCursorManager) Advance(times uint) (int64, error) {
 	if c.lastCursor == nil {
 		panic("invalid cursor, call Begin() first")
 	}
 
-	// Advancing the cursor means deciding whether or not we need to query the
-	// index.
-
-	lastLedger := uint32(c.lastCursor.LedgerSequence)
+	//
+	// Advancing the cursor means deciding whether or not we need to query
+	// the index.
+	//
 	freq := checkpointManager.GetCheckpointFrequency()
 
-	if checkpointManager.IsCheckpoint(lastLedger) {
-		// If the last cursor we looked at was a checkpoint ledger, then we need
-		// to jump ahead to the next checkpoint. Note that NextActive() is
-		// "inclusive" so if the parameter is an active checkpoint it will
-		// return itself.
-		checkpoint := index.GetCheckpointNumber(uint32(c.lastCursor.LedgerSequence))
-		checkpoint, err := c.store.NextActive(c.AccountId, allTransactionsIndex, checkpoint+1)
-		if err != nil {
-			return c.lastCursor.ToInt64(), err
-		}
+	for i := uint(1); i <= times; i++ {
+		lastLedger := uint32(c.lastCursor.LedgerSequence)
 
-		// We add a -1 here because an active checkpoint indicates that an
-		// account had activity in the *previous* 64 ledgers, so we need to
-		// backtrack to that ledger range.
-		c.lastCursor = toid.New(int32((checkpoint-1)*freq), 1, 1)
-	} else {
-		// Otherwise, we can just bump the ledger number.
-		c.lastCursor = toid.New(int32(lastLedger+1), 1, 1)
+		if checkpointManager.IsCheckpoint(lastLedger) {
+			// If the last cursor we looked at was a checkpoint ledger, then we
+			// need to jump ahead to the next checkpoint. Note that NextActive()
+			// is "inclusive" so if the parameter is an active checkpoint it
+			// will return itself.
+			checkpoint := index.GetCheckpointNumber(uint32(c.lastCursor.LedgerSequence))
+			checkpoint, err := c.store.NextActive(c.AccountId, allTransactionsIndex, checkpoint+1)
+			if err != nil {
+				return c.lastCursor.ToInt64(), err
+			}
+
+			// We add a -1 here because an active checkpoint indicates that an
+			// account had activity in the *previous* 64 ledgers, so we need to
+			// backtrack to that ledger range.
+			c.lastCursor = toid.New(int32((checkpoint-1)*freq), 1, 1)
+		} else {
+			// Otherwise, we can just bump the ledger number.
+			c.lastCursor = toid.New(int32(lastLedger+1), 1, 1)
+		}
 	}
 
 	return c.lastCursor.ToInt64(), nil

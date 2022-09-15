@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/stellar/go/exp/lighthorizon/archive"
 	"github.com/stellar/go/exp/lighthorizon/common"
+	"github.com/stellar/go/exp/lighthorizon/ingester"
 	"github.com/stellar/go/network"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/render/hal"
@@ -211,8 +211,8 @@ func signatures(xdrSignatures []xdr.DecoratedSignature) []string {
 	return signatures
 }
 
-func memoType(transaction archive.LedgerTransaction) string {
-	switch transaction.Envelope.Memo().Type {
+func memoType(tx ingester.LedgerTransaction) string {
+	switch tx.Envelope.Memo().Type {
 	case xdr.MemoTypeMemoNone:
 		return "none"
 	case xdr.MemoTypeMemoText:
@@ -224,13 +224,13 @@ func memoType(transaction archive.LedgerTransaction) string {
 	case xdr.MemoTypeMemoReturn:
 		return "return"
 	default:
-		panic(fmt.Errorf("invalid memo type: %v", transaction.Envelope.Memo().Type))
+		panic(fmt.Errorf("invalid memo type: %v", tx.Envelope.Memo().Type))
 	}
 }
 
-func memo(transaction archive.LedgerTransaction) (value string, valid bool) {
+func memo(tx ingester.LedgerTransaction) (value string, valid bool) {
 	valid = true
-	memo := transaction.Envelope.Memo()
+	memo := tx.Envelope.Memo()
 
 	switch memo.Type {
 	case xdr.MemoTypeMemoNone:
