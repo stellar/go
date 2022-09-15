@@ -34,6 +34,10 @@ func (h Handler) Close() {
 	}
 }
 
+type HealthCheckResult struct {
+	Status string `json:"status"`
+}
+
 // NewJSONRPCHandler constructs a Handler instance
 func NewJSONRPCHandler(captiveConfig ledgerbackend.CaptiveCoreConfig, logger *log.Entry) (Handler, error) {
 	core, err := ledgerbackend.NewCaptive(captiveConfig)
@@ -43,8 +47,8 @@ func NewJSONRPCHandler(captiveConfig ledgerbackend.CaptiveCoreConfig, logger *lo
 
 	return Handler{
 		bridge: jhttp.NewBridge(handler.Map{
-			"getHealth": handler.New(func(ctx context.Context) string {
-				return "ok"
+			"getHealth": handler.New(func(ctx context.Context) HealthCheckResult {
+				return HealthCheckResult{Status: "healthy"}
 			}),
 		}, nil),
 		core:   core,
