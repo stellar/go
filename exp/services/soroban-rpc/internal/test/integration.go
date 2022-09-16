@@ -19,7 +19,6 @@ import (
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/log"
 )
 
@@ -27,9 +26,6 @@ const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
 	stellarCoreProtocolVersion  = 19
 	stellarCorePort             = 11626
-	captiveCoreHTTPPort         = 21626
-	historyArchiveURL           = "http://localhost:1570"
-	checkpointFrequency         = 8
 )
 
 type Test struct {
@@ -37,7 +33,6 @@ type Test struct {
 
 	composePath string
 
-	captiveConfig ledgerbackend.CaptiveCoreConfig
 	handler       internal.Handler
 	server        *httptest.Server
 	horizonClient *horizonclient.Client
@@ -74,34 +69,8 @@ func NewTest(t *testing.T) *Test {
 func (i *Test) configureJSONRPCServer() {
 	logger := log.New()
 
-	captiveCoreTomlParams := ledgerbackend.CaptiveCoreTomlParams{
-		NetworkPassphrase:  StandaloneNetworkPassphrase,
-		HistoryArchiveURLs: []string{historyArchiveURL},
-		HTTPPort:           new(uint),
-		Strict:             true,
-	}
-	*captiveCoreTomlParams.HTTPPort = captiveCoreHTTPPort
-
-	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(
-		filepath.Join(i.composePath, "captive-core-integration-tests.cfg"),
-		captiveCoreTomlParams,
-	)
-	if err != nil {
-		i.t.Fatalf("invalid captive core toml: %v", err)
-	}
-
-	i.captiveConfig = ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          os.Getenv("SOROBAN_RPC_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
-		NetworkPassphrase:   StandaloneNetworkPassphrase,
-		HistoryArchiveURLs:  []string{historyArchiveURL},
-		CheckpointFrequency: checkpointFrequency,
-		Log:                 logger.WithField("subservice", "stellar-core"),
-		Toml:                captiveCoreToml,
-		UserAgent:           "captivecore",
-	}
-
+	var err error
 	i.handler, err = internal.NewJSONRPCHandler(internal.HandlerParams{
-		CaptiveConfig: i.captiveConfig,
 		AccountStore: methods.AccountStore{
 			Client: i.horizonClient,
 		},

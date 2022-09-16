@@ -34,8 +34,8 @@ func (a AccountStore) GetAccount(request AccountRequest) (AccountInfo, error) {
 	}, nil
 }
 
-// NewAccount returns a json rpc handler to fetch account info
-func NewAccount(store AccountStore) jrpc2.Handler {
+// NewAccountHandler returns a json rpc handler to fetch account info
+func NewAccountHandler(store AccountStore) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, request AccountRequest) (AccountInfo, error) {
 		response, err := store.GetAccount(request)
 		if err != nil {
