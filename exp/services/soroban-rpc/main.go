@@ -2,17 +2,21 @@ package main
 
 import (
 	"fmt"
+	"go/types"
+	"net/http"
+	"strings"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal"
+	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
-	"go/types"
-	"strings"
 )
 
 func main() {
@@ -20,6 +24,7 @@ func main() {
 	var networkPassphrase, binaryPath, configPath string
 	var captiveCoreTomlParams ledgerbackend.CaptiveCoreTomlParams
 	var historyArchiveURLs []string
+	var horizonURL string
 	var checkpointFrequency uint32
 	var logLevel logrus.Level
 	logger := supportlog.New()
@@ -71,6 +76,14 @@ func main() {
 				return nil
 			},
 			Usage: "comma-separated list of stellar history archives to connect with",
+		},
+		&config.ConfigOption{
+			Name:        "horizon-url",
+			ConfigKey:   &horizonURL,
+			OptType:     types.String,
+			Required:    true,
+			FlagDefault: "",
+			Usage:       "URL used to query Horizon",
 		},
 		&config.ConfigOption{
 			Name:        "log-level",
@@ -131,7 +144,20 @@ func main() {
 				UserAgent:           "captivecore",
 			}
 
-			handler, err := internal.NewJSONRPCHandler(captiveConfig, logger)
+			hc := &horizonclient.Client{
+				HorizonURL: horizonURL,
+				HTTP: &http.Client{
+					Timeout: horizonclient.HorizonTimeout,
+				},
+				AppName: "Soroban RPC",
+			}
+			hc.SetHorizonTimeout(horizonclient.HorizonTimeout)
+
+			handler, err := internal.NewJSONRPCHandler(internal.HandlerParams{
+				CaptiveConfig: captiveConfig,
+				AccountStore:  methods.AccountStore{Client: hc},
+				Logger:        logger,
+			})
 			if err != nil {
 				logger.Fatalf("could not create handler: %v", err)
 			}

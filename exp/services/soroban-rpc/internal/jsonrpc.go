@@ -1,12 +1,12 @@
 package internal
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/creachadair/jrpc2/handler"
 	"github.com/creachadair/jrpc2/jhttp"
 
+	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/log"
 )
@@ -34,24 +34,25 @@ func (h Handler) Close() {
 	}
 }
 
-type HealthCheckResult struct {
-	Status string `json:"status"`
+type HandlerParams struct {
+	CaptiveConfig ledgerbackend.CaptiveCoreConfig
+	AccountStore  methods.AccountStore
+	Logger        *log.Entry
 }
 
 // NewJSONRPCHandler constructs a Handler instance
-func NewJSONRPCHandler(captiveConfig ledgerbackend.CaptiveCoreConfig, logger *log.Entry) (Handler, error) {
-	core, err := ledgerbackend.NewCaptive(captiveConfig)
+func NewJSONRPCHandler(params HandlerParams) (Handler, error) {
+	core, err := ledgerbackend.NewCaptive(params.CaptiveConfig)
 	if err != nil {
 		return Handler{}, err
 	}
 
 	return Handler{
 		bridge: jhttp.NewBridge(handler.Map{
-			"getHealth": handler.New(func(ctx context.Context) HealthCheckResult {
-				return HealthCheckResult{Status: "healthy"}
-			}),
+			"getHealth":  methods.NewHealthCheck(),
+			"getAccount": methods.NewAccount(params.AccountStore),
 		}, nil),
 		core:   core,
-		logger: logger,
+		logger: params.Logger,
 	}, nil
 }
