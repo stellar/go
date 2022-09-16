@@ -2,6 +2,7 @@ package methods
 
 import (
 	"context"
+
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/handler"
 )

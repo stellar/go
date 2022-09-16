@@ -45,6 +45,7 @@ func NewAccount(store AccountStore) jrpc2.Handler {
 					Message: herr.Problem.Title,
 				}).WithData(herr.Problem.Extras)
 			}
+			return response, err
 		}
 		return response, nil
 	})
