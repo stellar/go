@@ -10,7 +10,7 @@ import (
 )
 
 type AccountInfo struct {
-	ID       string ` json:"id"`
+	ID       string `json:"id"`
 	Sequence int64  `json:"sequence,string"`
 }
 
