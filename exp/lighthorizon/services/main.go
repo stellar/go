@@ -204,5 +204,8 @@ func searchAccountTransactions(ctx context.Context,
 func getAverageDuration[
 	T constraints.Signed | constraints.Float,
 ](d time.Duration, count T) time.Duration {
+	if count == 0 {
+		return 0 // don't bomb on div-by-zero
+	}
 	return time.Duration(int64(float64(d.Nanoseconds()) / float64(count)))
 }
