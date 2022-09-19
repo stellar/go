@@ -132,7 +132,7 @@ func (p *Pipeline) resetNode(node *PipelineNode) {
 	}
 }
 
-// Process starts pipeline. Return channel will return if an error occured in
+// Process starts pipeline. Return channel will return if an error occurred in
 // any of the processors or any of the pipeline hooks. Will return ErrShutdown
 // if the pipeline was shutdown.
 func (p *Pipeline) Process(reader Reader) <-chan error {
