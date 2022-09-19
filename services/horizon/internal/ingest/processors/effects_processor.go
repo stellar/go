@@ -222,6 +222,9 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addLiquidityPoolDepositEffect()
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		err = wrapper.addLiquidityPoolWithdrawEffect()
+	case xdr.OperationTypeInvokeHostFunction:
+		// TODO:
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

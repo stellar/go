@@ -50,6 +50,7 @@ func TestForOperationResultCoversForAllOpTypes(t *testing.T) {
 		xdr.OperationTypeSetTrustLineFlags:             reflect.TypeOf(xdr.SetTrustLineFlagsResultCode(0)),
 		xdr.OperationTypeLiquidityPoolDeposit:          reflect.TypeOf(xdr.LiquidityPoolDepositResultCode(0)),
 		xdr.OperationTypeLiquidityPoolWithdraw:         reflect.TypeOf(xdr.LiquidityPoolWithdrawResultCode(0)),
+		xdr.OperationTypeInvokeHostFunction:            reflect.TypeOf(xdr.InvokeHostFunctionResultCode(0)),
 	}
 	// If this is not equal it means one or more result struct is missing in resultTypes map.
 	assert.Equal(t, len(xdr.OperationTypeToStringMap), len(resultTypes))

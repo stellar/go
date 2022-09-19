@@ -491,6 +491,16 @@ func String(code interface{}) (string, error) {
 		case xdr.LiquidityPoolWithdrawResultCodeLiquidityPoolWithdrawUnderMinimum:
 			return "op_under_minimum", nil
 		}
+	case xdr.InvokeHostFunctionResultCode:
+		switch code {
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
+			return OpSuccess, nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionMalformed:
+			return OpMalformed, nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionTrapped:
+			return "function_trapped", nil
+
+		}
 	}
 
 	return "", errors.New(ErrUnknownCode)
@@ -555,6 +565,8 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustLiquidityPoolDepositResult().Code
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		ic = ir.MustLiquidityPoolWithdrawResult().Code
+	case xdr.OperationTypeInvokeHostFunction:
+		ic = ir.MustInvokeHostFunctionResult().Code
 	}
 
 	return String(ic)

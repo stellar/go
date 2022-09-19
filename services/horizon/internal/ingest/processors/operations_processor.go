@@ -584,6 +584,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{Asset: assetA, Amount: amount.String(receivedA)},
 			{Asset: assetB, Amount: amount.String(receivedB)},
 		}
+	case xdr.OperationTypeInvokeHostFunction:
+		// TODO
 
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
@@ -808,7 +810,9 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		// the only direct participant is the source_account
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-		// the only direct participant is the source_account
+	// the only direct participant is the source_account
+	case xdr.OperationTypeInvokeHostFunction:
+		// TODO
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

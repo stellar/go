@@ -423,6 +423,8 @@ func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reached
 	}
 	// Inflation is not supported
 	delete(allOpTypes, xdr.OperationTypeInflation)
+	// TODO:
+	delete(allOpTypes, xdr.OperationTypeInvokeHostFunction)
 
 	for _, op := range submittedOps {
 		opXDR, err := op.BuildXDR()

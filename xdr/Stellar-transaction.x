@@ -2,6 +2,7 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
+%#include "xdr/Stellar-contract.h"
 %#include "xdr/Stellar-ledger-entries.h"
 
 namespace stellar
@@ -32,6 +33,13 @@ struct DecoratedSignature
     Signature signature; // actual signature
 };
 
+// Ledger key sets touched by a smart contract transaction.
+struct LedgerFootprint
+{
+    LedgerKey readOnly<>;
+    LedgerKey readWrite<>;
+};
+
 enum OperationType
 {
     CREATE_ACCOUNT = 0,
@@ -57,7 +65,8 @@ enum OperationType
     CLAWBACK_CLAIMABLE_BALANCE = 20,
     SET_TRUST_LINE_FLAGS = 21,
     LIQUIDITY_POOL_DEPOSIT = 22,
-    LIQUIDITY_POOL_WITHDRAW = 23
+    LIQUIDITY_POOL_WITHDRAW = 23,
+    INVOKE_HOST_FUNCTION = 24
 };
 
 /* CreateAccount
@@ -465,6 +474,24 @@ struct LiquidityPoolWithdrawOp
     int64 minAmountB; // minimum amount of second asset to withdraw
 };
 
+enum HostFunction
+{
+    HOST_FN_CALL = 0,
+    HOST_FN_CREATE_CONTRACT = 1
+};
+
+struct InvokeHostFunctionOp
+{
+    // The host function to invoke
+    HostFunction function;
+
+    // Parameters to the host function
+    SCVec parameters;
+
+    // The footprint for this invocation
+    LedgerFootprint footprint;
+};
+
 /* An operation is the lowest unit of work that a transaction does */
 struct Operation
 {
@@ -523,6 +550,8 @@ struct Operation
         LiquidityPoolDepositOp liquidityPoolDepositOp;
     case LIQUIDITY_POOL_WITHDRAW:
         LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
+    case INVOKE_HOST_FUNCTION:
+        InvokeHostFunctionOp invokeHostFunctionOp;
     }
     body;
 };
@@ -545,6 +574,18 @@ case ENVELOPE_TYPE_POOL_REVOKE_OP_ID:
         PoolID liquidityPoolID;
         Asset asset;
     } revokeID;
+case ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519:
+    struct
+    {
+        uint256 ed25519;
+        uint256 salt;
+    } ed25519ContractID;
+case ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT:
+    struct
+    {
+        Hash contractID;
+        uint256 salt;
+    } contractID;
 };
 
 enum MemoType
@@ -1588,6 +1629,25 @@ case LIQUIDITY_POOL_WITHDRAW_UNDER_MINIMUM:
     void;
 };
 
+enum InvokeHostFunctionResultCode
+{
+    // codes considered as "success" for the operation
+    INVOKE_HOST_FUNCTION_SUCCESS = 0,
+
+    // codes considered as "failure" for the operation
+    INVOKE_HOST_FUNCTION_MALFORMED = -1,
+    INVOKE_HOST_FUNCTION_TRAPPED = -2
+};
+
+union InvokeHostFunctionResult switch (InvokeHostFunctionResultCode code)
+{
+case INVOKE_HOST_FUNCTION_SUCCESS:
+    void;
+case INVOKE_HOST_FUNCTION_MALFORMED:
+case INVOKE_HOST_FUNCTION_TRAPPED:
+    void;
+};
+
 /* High level Operation Result */
 enum OperationResultCode
 {
@@ -1654,6 +1714,8 @@ case opINNER:
         LiquidityPoolDepositResult liquidityPoolDepositResult;
     case LIQUIDITY_POOL_WITHDRAW:
         LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
+    case INVOKE_HOST_FUNCTION:
+        InvokeHostFunctionResult invokeHostFunctionResult;
     }
     tr;
 case opBAD_AUTH:
