@@ -3,16 +3,16 @@
 
 // Package xdr is generated from:
 //
-//	xdr/Stellar-SCP.x
-//	xdr/Stellar-contract-env-meta.x
-//	xdr/Stellar-contract-spec.x
-//	xdr/Stellar-contract.x
-//	xdr/Stellar-internal.x
-//	xdr/Stellar-ledger-entries.x
-//	xdr/Stellar-ledger.x
-//	xdr/Stellar-overlay.x
-//	xdr/Stellar-transaction.x
-//	xdr/Stellar-types.x
+//  xdr/Stellar-SCP.x
+//  xdr/Stellar-contract-env-meta.x
+//  xdr/Stellar-contract-spec.x
+//  xdr/Stellar-contract.x
+//  xdr/Stellar-internal.x
+//  xdr/Stellar-ledger-entries.x
+//  xdr/Stellar-ledger.x
+//  xdr/Stellar-overlay.x
+//  xdr/Stellar-transaction.x
+//  xdr/Stellar-types.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
@@ -31,7 +31,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":               "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
 	"xdr/Stellar-contract-env-meta.x": "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-spec.x":     "87a80c63cf6b757218ea07cb2a13e80c31fd0f08c81b872806455ea830d9fef6",
-	"xdr/Stellar-contract.x":          "0eb75f128f55a899a9ccecd4c5a2a4dcd7ef0cc56ff068ffeb419f55d1a72f74",
+	"xdr/Stellar-contract.x":          "ce7cd778639252f6bb10bc64b68d828cd0104e5ceeaa22a0e51a4a82e58fdedf",
 	"xdr/Stellar-internal.x":          "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
 	"xdr/Stellar-ledger-entries.x":    "d1c0b58d2134370a6dfa57ef509dccc5de5d1950bcbdad22ccc6c640046f79f2",
 	"xdr/Stellar-ledger.x":            "c1b43f57346f5ca124c79a1c05a33043bcb9a8185432efec848b7001afd3bb25",
@@ -44287,7 +44287,8 @@ var _ xdrType = (*ScStatic)(nil)
 //	     SST_HOST_FUNCTION_ERROR = 4,
 //	     SST_HOST_STORAGE_ERROR = 5,
 //	     SST_HOST_CONTEXT_ERROR = 6,
-//	     SST_VM_ERROR = 7
+//	     SST_VM_ERROR = 7,
+//	     SST_CONTRACT_ERROR = 8
 //	     // TODO: add more
 //	 };
 type ScStatusType int32
@@ -44301,6 +44302,7 @@ const (
 	ScStatusTypeSstHostStorageError  ScStatusType = 5
 	ScStatusTypeSstHostContextError  ScStatusType = 6
 	ScStatusTypeSstVmError           ScStatusType = 7
+	ScStatusTypeSstContractError     ScStatusType = 8
 )
 
 var scStatusTypeMap = map[int32]string{
@@ -44312,6 +44314,7 @@ var scStatusTypeMap = map[int32]string{
 	5: "ScStatusTypeSstHostStorageError",
 	6: "ScStatusTypeSstHostContextError",
 	7: "ScStatusTypeSstVmError",
+	8: "ScStatusTypeSstContractError",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -45095,16 +45098,19 @@ var _ xdrType = (*ScUnknownErrorCode)(nil)
 //	     SCHostContextErrorCode contextCode;
 //	 case SST_VM_ERROR:
 //	     SCVmErrorCode vmCode;
+//	 case SST_CONTRACT_ERROR:
+//	     uint32 contractCode;
 //	 };
 type ScStatus struct {
-	Type        ScStatusType
-	UnknownCode *ScUnknownErrorCode
-	ValCode     *ScHostValErrorCode
-	ObjCode     *ScHostObjErrorCode
-	FnCode      *ScHostFnErrorCode
-	StorageCode *ScHostStorageErrorCode
-	ContextCode *ScHostContextErrorCode
-	VmCode      *ScVmErrorCode
+	Type         ScStatusType
+	UnknownCode  *ScUnknownErrorCode
+	ValCode      *ScHostValErrorCode
+	ObjCode      *ScHostObjErrorCode
+	FnCode       *ScHostFnErrorCode
+	StorageCode  *ScHostStorageErrorCode
+	ContextCode  *ScHostContextErrorCode
+	VmCode       *ScVmErrorCode
+	ContractCode *Uint32
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -45133,6 +45139,8 @@ func (u ScStatus) ArmForSwitch(sw int32) (string, bool) {
 		return "ContextCode", true
 	case ScStatusTypeSstVmError:
 		return "VmCode", true
+	case ScStatusTypeSstContractError:
+		return "ContractCode", true
 	}
 	return "-", false
 }
@@ -45192,6 +45200,13 @@ func NewScStatus(aType ScStatusType, value interface{}) (result ScStatus, err er
 			return
 		}
 		result.VmCode = &tv
+	case ScStatusTypeSstContractError:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.ContractCode = &tv
 	}
 	return
 }
@@ -45371,6 +45386,31 @@ func (u ScStatus) GetVmCode() (result ScVmErrorCode, ok bool) {
 	return
 }
 
+// MustContractCode retrieves the ContractCode value from the union,
+// panicing if the value is not set.
+func (u ScStatus) MustContractCode() Uint32 {
+	val, ok := u.GetContractCode()
+
+	if !ok {
+		panic("arm ContractCode is not set")
+	}
+
+	return val
+}
+
+// GetContractCode retrieves the ContractCode value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScStatus) GetContractCode() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ContractCode" {
+		result = *u.ContractCode
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u ScStatus) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -45413,6 +45453,11 @@ func (u ScStatus) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ScStatusTypeSstVmError:
 		if err = (*u.VmCode).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScStatusTypeSstContractError:
+		if err = (*u.ContractCode).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -45489,6 +45534,14 @@ func (u *ScStatus) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScVmErrorCode: %s", err)
+		}
+		return n, nil
+	case ScStatusTypeSstContractError:
+		u.ContractCode = new(Uint32)
+		nTmp, err = (*u.ContractCode).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint32: %s", err)
 		}
 		return n, nil
 	}

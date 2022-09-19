@@ -3623,6 +3623,7 @@ const (
 	SST_HOST_STORAGE_ERROR  SCStatusType = 5
 	SST_HOST_CONTEXT_ERROR  SCStatusType = 6
 	SST_VM_ERROR            SCStatusType = 7
+	SST_CONTRACT_ERROR      SCStatusType = 8
 )
 
 type SCHostValErrorCode int32
@@ -3731,6 +3732,8 @@ type SCStatus struct {
 	//      ContextCode() *SCHostContextErrorCode
 	//   SST_VM_ERROR:
 	//      VmCode() *SCVmErrorCode
+	//   SST_CONTRACT_ERROR:
+	//      ContractCode() *Uint32
 	Type SCStatusType
 	_u   interface{}
 }
@@ -24278,6 +24281,7 @@ var _XdrNames_SCStatusType = map[int32]string{
 	int32(SST_HOST_STORAGE_ERROR):  "SST_HOST_STORAGE_ERROR",
 	int32(SST_HOST_CONTEXT_ERROR):  "SST_HOST_CONTEXT_ERROR",
 	int32(SST_VM_ERROR):            "SST_VM_ERROR",
+	int32(SST_CONTRACT_ERROR):      "SST_CONTRACT_ERROR",
 }
 var _XdrValues_SCStatusType = map[string]int32{
 	"SST_OK":                  int32(SST_OK),
@@ -24288,6 +24292,7 @@ var _XdrValues_SCStatusType = map[string]int32{
 	"SST_HOST_STORAGE_ERROR":  int32(SST_HOST_STORAGE_ERROR),
 	"SST_HOST_CONTEXT_ERROR":  int32(SST_HOST_CONTEXT_ERROR),
 	"SST_VM_ERROR":            int32(SST_VM_ERROR),
+	"SST_CONTRACT_ERROR":      int32(SST_CONTRACT_ERROR),
 }
 
 func (SCStatusType) XdrEnumNames() map[int32]string {
@@ -24728,6 +24733,7 @@ var _XdrTags_SCStatus = map[int32]bool{
 	XdrToI32(SST_HOST_STORAGE_ERROR):  true,
 	XdrToI32(SST_HOST_CONTEXT_ERROR):  true,
 	XdrToI32(SST_VM_ERROR):            true,
+	XdrToI32(SST_CONTRACT_ERROR):      true,
 }
 
 func (_ SCStatus) XdrValidTags() map[int32]bool {
@@ -24838,9 +24844,24 @@ func (u *SCStatus) VmCode() *SCVmErrorCode {
 		return nil
 	}
 }
+func (u *SCStatus) ContractCode() *Uint32 {
+	switch u.Type {
+	case SST_CONTRACT_ERROR:
+		if v, ok := u._u.(*Uint32); ok {
+			return v
+		} else {
+			var zero Uint32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCStatus.ContractCode accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u SCStatus) XdrValid() bool {
 	switch u.Type {
-	case SST_OK, SST_UNKNOWN_ERROR, SST_HOST_VALUE_ERROR, SST_HOST_OBJECT_ERROR, SST_HOST_FUNCTION_ERROR, SST_HOST_STORAGE_ERROR, SST_HOST_CONTEXT_ERROR, SST_VM_ERROR:
+	case SST_OK, SST_UNKNOWN_ERROR, SST_HOST_VALUE_ERROR, SST_HOST_OBJECT_ERROR, SST_HOST_FUNCTION_ERROR, SST_HOST_STORAGE_ERROR, SST_HOST_CONTEXT_ERROR, SST_VM_ERROR, SST_CONTRACT_ERROR:
 		return true
 	}
 	return false
@@ -24869,6 +24890,8 @@ func (u *SCStatus) XdrUnionBody() XdrType {
 		return XDR_SCHostContextErrorCode(u.ContextCode())
 	case SST_VM_ERROR:
 		return XDR_SCVmErrorCode(u.VmCode())
+	case SST_CONTRACT_ERROR:
+		return XDR_Uint32(u.ContractCode())
 	}
 	return nil
 }
@@ -24890,6 +24913,8 @@ func (u *SCStatus) XdrUnionBodyName() string {
 		return "ContextCode"
 	case SST_VM_ERROR:
 		return "VmCode"
+	case SST_CONTRACT_ERROR:
+		return "ContractCode"
 	}
 	return ""
 }
@@ -24928,6 +24953,9 @@ func (u *SCStatus) XdrRecurse(x XDR, name string) {
 		return
 	case SST_VM_ERROR:
 		x.Marshal(x.Sprintf("%svmCode", name), XDR_SCVmErrorCode(u.VmCode()))
+		return
+	case SST_CONTRACT_ERROR:
+		x.Marshal(x.Sprintf("%scontractCode", name), XDR_Uint32(u.ContractCode()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in SCStatus", u.Type)
