@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"github.com/stellar/go/exp/services/soroban-rpc/internal"
 	"io/ioutil"
 	"net/http/httptest"
 	"os"
@@ -16,8 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
-	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/exp/services/soroban-rpc/internal"
+	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
 	"github.com/stellar/go/support/log"
 )
 
@@ -25,9 +26,6 @@ const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
 	stellarCoreProtocolVersion  = 19
 	stellarCorePort             = 11626
-	captiveCoreHTTPPort         = 21626
-	historyArchiveURL           = "http://localhost:1570"
-	checkpointFrequency         = 8
 )
 
 type Test struct {
@@ -35,9 +33,9 @@ type Test struct {
 
 	composePath string
 
-	captiveConfig ledgerbackend.CaptiveCoreConfig
 	handler       internal.Handler
 	server        *httptest.Server
+	horizonClient *horizonclient.Client
 
 	coreClient *stellarcore.Client
 
@@ -57,10 +55,12 @@ func NewTest(t *testing.T) *Test {
 	}
 
 	// Only run Stellar Core container and its dependencies.
-	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color")
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
+	i.horizonClient = &horizonclient.Client{HorizonURL: "http://localhost:8000"}
 	i.waitForCore()
+	i.waitForHorizon()
 	i.configureJSONRPCServer()
 
 	return i
@@ -69,33 +69,13 @@ func NewTest(t *testing.T) *Test {
 func (i *Test) configureJSONRPCServer() {
 	logger := log.New()
 
-	captiveCoreTomlParams := ledgerbackend.CaptiveCoreTomlParams{
-		NetworkPassphrase:  StandaloneNetworkPassphrase,
-		HistoryArchiveURLs: []string{historyArchiveURL},
-		HTTPPort:           new(uint),
-		Strict:             true,
-	}
-	*captiveCoreTomlParams.HTTPPort = captiveCoreHTTPPort
-
-	captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(
-		filepath.Join(i.composePath, "captive-core-integration-tests.cfg"),
-		captiveCoreTomlParams,
-	)
-	if err != nil {
-		i.t.Fatalf("invalid captive core toml: %v", err)
-	}
-
-	i.captiveConfig = ledgerbackend.CaptiveCoreConfig{
-		BinaryPath:          os.Getenv("SOROBAN_RPC_INTEGRATION_TESTS_CAPTIVE_CORE_BIN"),
-		NetworkPassphrase:   StandaloneNetworkPassphrase,
-		HistoryArchiveURLs:  []string{historyArchiveURL},
-		CheckpointFrequency: checkpointFrequency,
-		Log:                 logger.WithField("subservice", "stellar-core"),
-		Toml:                captiveCoreToml,
-		UserAgent:           "captivecore",
-	}
-
-	i.handler, err = internal.NewJSONRPCHandler(i.captiveConfig, log.New())
+	var err error
+	i.handler, err = internal.NewJSONRPCHandler(internal.HandlerParams{
+		AccountStore: methods.AccountStore{
+			Client: i.horizonClient,
+		},
+		Logger: logger,
+	})
 	if err != nil {
 		i.t.Fatalf("cannot create handler: %v", err)
 	}
@@ -126,8 +106,7 @@ func (i *Test) prepareShutdownHandlers() {
 		func() {
 			i.handler.Close()
 			i.server.Close()
-			i.runComposeCommand("rm", "-fvs", "core")
-			i.runComposeCommand("rm", "-fvs", "core-postgres")
+			i.runComposeCommand("down", "-v")
 		},
 	)
 
@@ -187,6 +166,33 @@ func (i *Test) waitForCore() {
 		return
 	}
 	i.t.Fatal("Core could not sync after 30s")
+}
+
+func (i *Test) waitForHorizon() {
+	for t := 60; t >= 0; t -= 1 {
+		time.Sleep(time.Second)
+
+		i.t.Log("Waiting for ingestion and protocol upgrade...")
+		root, err := i.horizonClient.Root()
+		if err != nil {
+			i.t.Logf("could not obtain root response %v", err)
+			continue
+		}
+
+		if root.HorizonSequence < 3 ||
+			int(root.HorizonSequence) != int(root.IngestSequence) {
+			i.t.Logf("Horizon ingesting... %v", root)
+			continue
+		}
+
+		if uint32(root.CurrentProtocolVersion) == stellarCoreProtocolVersion {
+			i.t.Logf("Horizon protocol version matches %d: %+v",
+				root.CurrentProtocolVersion, root)
+			return
+		}
+	}
+
+	i.t.Fatal("Horizon not ingesting...")
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.

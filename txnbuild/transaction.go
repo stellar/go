@@ -139,7 +139,7 @@ func stringsToKP(keys ...string) ([]*keypair.Full, error) {
 func concatHashX(signatures []xdr.DecoratedSignature, preimage []byte) ([]xdr.DecoratedSignature, error) {
 	if maxSize := xdr.Signature(preimage).XDRMaxSize(); len(preimage) > maxSize {
 		return nil, errors.Errorf(
-			"preimage cannnot be more than %d bytes", maxSize,
+			"preimage cannot be more than %d bytes", maxSize,
 		)
 	}
 	extended := make(
