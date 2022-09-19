@@ -13,6 +13,7 @@ xdr/Stellar-contract.x \
 xdr/Stellar-internal.x
 
 XDRGEN_COMMIT=2864dda63ad8a5d3b0e33430fcd6093633ce8fac
+XDRNEXT_COMMIT=d194cc6cd79e3b368c43477556b0084e81b9dcbc
 
 .PHONY: xdr xdr-clean xdr-update
 
@@ -39,7 +40,7 @@ gxdr/xdr_generated.go: $(XDRS)
 	go fmt $@
 
 xdr/%.x:
-	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-xdr-next/main/$(@F)
+	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-xdr-next/$(XDRNEXT_COMMIT)/$(@F)
 
 xdr/xdr_generated.go: $(XDRS)
 	docker run -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
