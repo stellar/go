@@ -3,16 +3,16 @@
 
 // Package xdr is generated from:
 //
-//  xdr/Stellar-SCP.x
-//  xdr/Stellar-contract-env-meta.x
-//  xdr/Stellar-contract-spec.x
-//  xdr/Stellar-contract.x
-//  xdr/Stellar-internal.x
-//  xdr/Stellar-ledger-entries.x
-//  xdr/Stellar-ledger.x
-//  xdr/Stellar-overlay.x
-//  xdr/Stellar-transaction.x
-//  xdr/Stellar-types.x
+//	xdr/Stellar-SCP.x
+//	xdr/Stellar-contract-env-meta.x
+//	xdr/Stellar-contract-spec.x
+//	xdr/Stellar-contract.x
+//	xdr/Stellar-internal.x
+//	xdr/Stellar-ledger-entries.x
+//	xdr/Stellar-ledger.x
+//	xdr/Stellar-overlay.x
+//	xdr/Stellar-transaction.x
+//	xdr/Stellar-types.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
