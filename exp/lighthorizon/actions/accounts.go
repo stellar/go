@@ -3,6 +3,7 @@ package actions
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/stellar/go/support/log"
@@ -69,7 +70,11 @@ func NewTXByAccountHandler(lightHorizon services.LightHorizon) func(http.Respons
 		txns, err := lightHorizon.Transactions.GetTransactionsByAccount(ctx, paginate.Cursor, paginate.Limit, accountId)
 		if err != nil {
 			log.Error(err)
-			sendErrorResponse(r.Context(), w, supportProblem.ServerError)
+			if os.IsNotExist(err) {
+				sendErrorResponse(r.Context(), w, supportProblem.NotFound)
+			} else if err != nil {
+				sendErrorResponse(r.Context(), w, supportProblem.ServerError)
+			}
 			return
 		}
 
