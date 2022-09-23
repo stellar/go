@@ -140,9 +140,9 @@ func setCurrentServerTime(host string, serverDate []string, clock *clock.Clock) 
 // currentServerTime returns the current server time for a given horizon server
 func currentServerTime(host string, currentTimeUTC int64) int64 {
 	serverTimeMapMutex.Lock()
-	st := ServerTimeMap[host]
+	st, has := ServerTimeMap[host]
 	serverTimeMapMutex.Unlock()
-	if &st == nil {
+	if !has {
 		return 0
 	}
 
