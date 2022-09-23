@@ -2,69 +2,37 @@ package xdr
 
 import "fmt"
 
-func (l LedgerCloseMeta) LedgerSequence() uint32 {
+func (l LedgerCloseMeta) LedgerHeaderHistoryEntry() LedgerHeaderHistoryEntry {
 	switch l.V {
 	case 0:
-		return uint32(l.MustV0().LedgerHeader.Header.LedgerSeq)
+		return l.MustV0().LedgerHeader
 	case 1:
-		return uint32(l.MustV1().LedgerHeader.Header.LedgerSeq)
+		return l.MustV1().LedgerHeader
 	case 2:
-		return uint32(l.MustV2().LedgerHeader.Header.LedgerSeq)
+		return l.MustV2().LedgerHeader
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
+}
+
+func (l LedgerCloseMeta) LedgerSequence() uint32 {
+	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerSeq)
 }
 
 func (l LedgerCloseMeta) LedgerHash() Hash {
-	switch l.V {
-	case 0:
-		return l.MustV0().LedgerHeader.Hash
-	case 1:
-		return l.MustV1().LedgerHeader.Hash
-	case 2:
-		return l.MustV2().LedgerHeader.Hash
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
+	return l.LedgerHeaderHistoryEntry().Hash
 }
 
 func (l LedgerCloseMeta) PreviousLedgerHash() Hash {
-	switch l.V {
-	case 0:
-		return l.MustV0().LedgerHeader.Header.PreviousLedgerHash
-	case 1:
-		return l.MustV1().LedgerHeader.Header.PreviousLedgerHash
-	case 2:
-		return l.MustV2().LedgerHeader.Header.PreviousLedgerHash
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
+	return l.LedgerHeaderHistoryEntry().Header.PreviousLedgerHash
 }
 
 func (l LedgerCloseMeta) ProtocolVersion() uint32 {
-	switch l.V {
-	case 0:
-		return uint32(l.MustV0().LedgerHeader.Header.LedgerVersion)
-	case 1:
-		return uint32(l.MustV1().LedgerHeader.Header.LedgerVersion)
-	case 2:
-		return uint32(l.MustV2().LedgerHeader.Header.LedgerVersion)
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
+	return uint32(l.LedgerHeaderHistoryEntry().Header.LedgerVersion)
 }
 
 func (l LedgerCloseMeta) BucketListHash() Hash {
-	switch l.V {
-	case 0:
-		return l.MustV0().LedgerHeader.Header.BucketListHash
-	case 1:
-		return l.MustV1().LedgerHeader.Header.BucketListHash
-	case 2:
-		return l.MustV2().LedgerHeader.Header.BucketListHash
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
+	return l.LedgerHeaderHistoryEntry().Header.BucketListHash
 }
 
 func (l LedgerCloseMeta) CountTransactions() int {
@@ -160,6 +128,20 @@ func (l LedgerCloseMeta) TxApplyProcessing(i int) TransactionMeta {
 		return l.MustV1().TxProcessing[i].TxApplyProcessing
 	case 2:
 		return l.MustV2().TxProcessing[i].TxApplyProcessing
+	default:
+		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
+	}
+}
+
+// UpgradesProcessing returns UpgradesProcessing for ledger.
+func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
+	switch l.V {
+	case 0:
+		return l.MustV0().UpgradesProcessing
+	case 1:
+		return l.MustV1().UpgradesProcessing
+	case 2:
+		return l.MustV2().UpgradesProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}

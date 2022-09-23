@@ -47,7 +47,7 @@ func (reader *LedgerTransactionReader) GetSequence() uint32 {
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
 func (reader *LedgerTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	return reader.ledgerCloseMeta.V0.LedgerHeader
+	return reader.ledgerCloseMeta.LedgerHeaderHistoryEntry()
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time
