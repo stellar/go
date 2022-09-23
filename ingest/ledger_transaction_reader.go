@@ -97,7 +97,6 @@ func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta
 
 		reader.transactions = append(reader.transactions, LedgerTransaction{
 			Index:      uint32(i + 1), // Transactions start at '1'
-			Hash:       hash,
 			Envelope:   envelope,
 			Result:     lcm.TransactionResultPair(i),
 			UnsafeMeta: lcm.TxApplyProcessing(i),

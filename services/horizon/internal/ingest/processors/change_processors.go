@@ -51,7 +51,7 @@ func StreamLedgerTransactions(
 					tx.Index,
 				)
 			}
-			log.Debugf("Filters did not find match on transaction, dropping this tx with hash %v", tx.Hash.HexString())
+			log.Debugf("Filters did not find match on transaction, dropping this tx with hash %v", tx.Result.TransactionHash.HexString())
 			continue
 		}
 

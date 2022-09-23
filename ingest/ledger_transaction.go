@@ -8,7 +8,6 @@ import (
 // LedgerTransaction represents the data for a single transaction within a ledger.
 type LedgerTransaction struct {
 	Index    uint32
-	Hash     xdr.Hash
 	Envelope xdr.TransactionEnvelope
 	Result   xdr.TransactionResultPair
 	// FeeChanges and UnsafeMeta are low level values, do not use them directly unless

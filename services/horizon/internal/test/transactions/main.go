@@ -24,7 +24,6 @@ type TestTransaction struct {
 func BuildLedgerTransaction(t *testing.T, tx TestTransaction) ingest.LedgerTransaction {
 	transaction := ingest.LedgerTransaction{
 		Index:      tx.Index,
-		Hash:       xdr.Hash{},
 		Envelope:   xdr.TransactionEnvelope{},
 		Result:     xdr.TransactionResultPair{},
 		FeeChanges: xdr.LedgerEntryChanges{},
@@ -42,7 +41,7 @@ func BuildLedgerTransaction(t *testing.T, tx TestTransaction) ingest.LedgerTrans
 	err = xdr.SafeUnmarshalBase64(tx.FeeChangesXDR, &transaction.FeeChanges)
 	tt.NoError(err)
 
-	_, err = hex.Decode(transaction.Hash[:], []byte(tx.Hash))
+	_, err = hex.Decode(transaction.Result.TransactionHash[:], []byte(tx.Hash))
 	tt.NoError(err)
 
 	return transaction
