@@ -2,7 +2,9 @@ package ingest
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"io"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -68,6 +70,12 @@ func (reader *LedgerTransactionReader) Rewind() {
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
 // a per-transaction view of the data when Read() is called.
 func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta, networkPassphrase string) error {
+	marshalled, err := lcm.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(lcm.LedgerSequence(), base64.StdEncoding.EncodeToString(marshalled))
+
 	byHash := map[xdr.Hash]xdr.TransactionEnvelope{}
 	for i, tx := range lcm.TransactionEnvelopes() {
 		hash, err := network.HashTransactionInEnvelope(tx, networkPassphrase)
