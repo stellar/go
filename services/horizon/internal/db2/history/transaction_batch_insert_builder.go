@@ -184,7 +184,7 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32, enc
 	}
 
 	t := TransactionWithoutLedger{
-		TransactionHash:             hex.EncodeToString(transaction.Result.TransactionHash[:]),
+		TransactionHash:             hex.EncodeToString(transaction.Hash[:]),
 		LedgerSequence:              int32(sequence),
 		ApplicationOrder:            int32(transaction.Index),
 		Account:                     account.Address(),
