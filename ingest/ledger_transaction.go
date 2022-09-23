@@ -55,7 +55,6 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			)
 			changes = append(changes, opChanges...)
 		}
-
 	case 2:
 		v2Meta := t.UnsafeMeta.MustV2()
 		txChangesBefore := GetChangesFromLedgerEntryChanges(v2Meta.TxChangesBefore)
@@ -75,6 +74,27 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		}
 
 		txChangesAfter := GetChangesFromLedgerEntryChanges(v2Meta.TxChangesAfter)
+		changes = append(changes, txChangesAfter...)
+	case 3:
+		v3Meta := t.UnsafeMeta.MustV3()
+
+		txChangesBefore := GetChangesFromLedgerEntryChanges(v3Meta.TxChangesBefore)
+		changes = append(changes, txChangesBefore...)
+
+		// Ignore operations meta and txChangesAfter if txInternalError
+		// https://github.com/stellar/go/issues/2111
+		if t.txInternalError() {
+			return changes, nil
+		}
+
+		for _, operationMeta := range v3Meta.Operations {
+			opChanges := GetChangesFromLedgerEntryChanges(
+				operationMeta.Changes,
+			)
+			changes = append(changes, opChanges...)
+		}
+
+		txChangesAfter := GetChangesFromLedgerEntryChanges(v3Meta.TxChangesAfter)
 		changes = append(changes, txChangesAfter...)
 	default:
 		return changes, errors.New("Unsupported TransactionMeta version")
@@ -117,6 +137,14 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 
 		v2Meta := t.UnsafeMeta.MustV2()
 		changes = operationChanges(v2Meta.Operations, operationIndex)
+	case 3:
+		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
+		if t.txInternalError() {
+			return changes, nil
+		}
+
+		v3Meta := t.UnsafeMeta.MustV3()
+		changes = operationChanges(v3Meta.Operations, operationIndex)
 	default:
 		return changes, errors.New("Unsupported TransactionMeta version")
 	}
