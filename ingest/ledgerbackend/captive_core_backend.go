@@ -2,9 +2,7 @@ package ledgerbackend
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"sync"
 
@@ -501,11 +499,6 @@ func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xd
 		case result, ok := <-c.stellarCoreRunner.getMetaPipe():
 			found, ledger, err := c.handleMetaPipeResult(sequence, result, ok)
 			if found || err != nil {
-				marshalled, err := ledger.MarshalBinary()
-				if err != nil {
-					panic(err)
-				}
-				fmt.Println(ledger.LedgerSequence(), base64.StdEncoding.EncodeToString(marshalled))
 				return ledger, err
 			}
 		}
