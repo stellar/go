@@ -69,16 +69,30 @@ func NewTest(t *testing.T) *Test {
 func (i *Test) configureJSONRPCServer() {
 	logger := log.New()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	proxy := methods.NewTransactionProxy(
+		i.horizonClient,
+		10,
+		10,
+		StandaloneNetworkPassphrase,
+		2*time.Minute,
+		2*time.Minute,
+	)
+
 	var err error
 	i.handler, err = internal.NewJSONRPCHandler(internal.HandlerParams{
 		AccountStore: methods.AccountStore{
 			Client: i.horizonClient,
 		},
-		Logger: logger,
+		TransactionProxy: proxy,
+		Logger:           logger,
 	})
 	if err != nil {
+		cancel()
 		i.t.Fatalf("cannot create handler: %v", err)
 	}
+	i.shutdownCalls = append(i.shutdownCalls, cancel)
+	proxy.Start(ctx)
 	i.server = httptest.NewServer(i.handler)
 }
 

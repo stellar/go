@@ -30,16 +30,19 @@ func (h Handler) Close() {
 }
 
 type HandlerParams struct {
-	AccountStore methods.AccountStore
-	Logger       *log.Entry
+	AccountStore     methods.AccountStore
+	TransactionProxy *methods.TransactionProxy
+	Logger           *log.Entry
 }
 
 // NewJSONRPCHandler constructs a Handler instance
 func NewJSONRPCHandler(params HandlerParams) (Handler, error) {
 	return Handler{
 		bridge: jhttp.NewBridge(handler.Map{
-			"getHealth":  methods.NewHealthCheck(),
-			"getAccount": methods.NewAccountHandler(params.AccountStore),
+			"getHealth":            methods.NewHealthCheck(),
+			"getAccount":           methods.NewAccountHandler(params.AccountStore),
+			"getTransactionStatus": methods.NewGetTransactionHandler(params.TransactionProxy),
+			"sendTransaction":      methods.NewSendTransactionHandler(params.TransactionProxy),
 		}, nil),
 		logger: params.Logger,
 	}, nil

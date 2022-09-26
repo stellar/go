@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/stellar/go/network"
 	"go/types"
 	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -19,7 +22,8 @@ import (
 
 func main() {
 	var port int
-	var horizonURL string
+	var horizonURL, networkPassphrase string
+	var txConcurrency, txQueueSize int
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
@@ -55,6 +59,30 @@ func main() {
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
+		{
+			Name:        "network-passphrase",
+			Usage:       "Network passphrase of the Stellar network transactions should be signed for",
+			OptType:     types.String,
+			ConfigKey:   &networkPassphrase,
+			FlagDefault: network.TestNetworkPassphrase,
+			Required:    true,
+		},
+		{
+			Name:        "tx-concurrency",
+			Usage:       "Maximum number of concurrent transaction submissions",
+			OptType:     types.Int,
+			ConfigKey:   &txConcurrency,
+			FlagDefault: 10,
+			Required:    false,
+		},
+		{
+			Name:        "tx-queue",
+			Usage:       "Maximum length of pending transactions queue",
+			OptType:     types.Int,
+			ConfigKey:   &txQueueSize,
+			FlagDefault: 10,
+			Required:    false,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "soroban-rpc",
@@ -73,20 +101,33 @@ func main() {
 			}
 			hc.SetHorizonTimeout(horizonclient.HorizonTimeout)
 
+			transactionProxy := methods.NewTransactionProxy(
+				hc,
+				txConcurrency,
+				txQueueSize,
+				networkPassphrase,
+				10*time.Minute,
+				5*time.Minute,
+			)
+
 			handler, err := internal.NewJSONRPCHandler(internal.HandlerParams{
-				AccountStore: methods.AccountStore{Client: hc},
-				Logger:       logger,
+				AccountStore:     methods.AccountStore{Client: hc},
+				Logger:           logger,
+				TransactionProxy: transactionProxy,
 			})
 			if err != nil {
 				logger.Fatalf("could not create handler: %v", err)
 			}
+			ctx, cancel := context.WithCancel(context.Background())
 			supporthttp.Run(supporthttp.Config{
 				ListenAddr: fmt.Sprintf(":%d", port),
 				Handler:    handler,
 				OnStarting: func() {
 					logger.Infof("Starting Soroban JSON RPC server on %v", port)
+					transactionProxy.Start(ctx)
 				},
 				OnStopping: func() {
+					cancel()
 					handler.Close()
 				},
 			})
