@@ -15,7 +15,7 @@ jobs:
         go: [1.18.6, 1.19.1]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
-        protocol-version: [18, 19]
+        protocol-version: [18, 19, 20]
     runs-on: ${{ matrix.os }}
     services:
       postgres:
@@ -34,6 +34,8 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
+      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 19.3.1-1069.056673a51.focal~soroban2
+      PROTOCOL_20_CORE_DOCKER_IMG: 2opremio/stellar-core:19.3.1-1069.056673a51.focal-soroban2
       PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.3.0-1006.9ce6dc4e9.focal
       PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.3.0-1006.9ce6dc4e9.focal
       PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 19.3.0-1006.9ce6dc4e9.focal
@@ -101,7 +103,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ./empty
-        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_18_CORE_DOCKER_IMG }}
+        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_20_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_18_CORE_DOCKER_IMG }}-${{ matrix.protocol-version }}
 
     - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
       run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...

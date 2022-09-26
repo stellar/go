@@ -47,7 +47,7 @@ func (reader *LedgerTransactionReader) GetSequence() uint32 {
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
 func (reader *LedgerTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	return reader.ledgerCloseMeta.V0.LedgerHeader
+	return reader.ledgerCloseMeta.LedgerHeaderHistoryEntry()
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time
@@ -69,7 +69,7 @@ func (reader *LedgerTransactionReader) Rewind() {
 // a per-transaction view of the data when Read() is called.
 func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta, networkPassphrase string) error {
 	byHash := map[xdr.Hash]xdr.TransactionEnvelope{}
-	for i, tx := range lcm.V0.TxSet.Txs {
+	for i, tx := range lcm.TransactionEnvelopes() {
 		hash, err := network.HashTransactionInEnvelope(tx, networkPassphrase)
 		if err != nil {
 			return errors.Wrapf(err, "could not hash transaction %d in TxSet", i)
@@ -77,18 +77,18 @@ func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta
 		byHash[hash] = tx
 	}
 
-	for i := range lcm.V0.TxProcessing {
-		result := lcm.V0.TxProcessing[i].Result
-		envelope, ok := byHash[result.TransactionHash]
+	for i := 0; i < lcm.CountTransactions(); i++ {
+		hash := lcm.TransactionHash(i)
+		envelope, ok := byHash[hash]
 		if !ok {
-			hexHash := hex.EncodeToString(result.TransactionHash[:])
+			hexHash := hex.EncodeToString(hash[:])
 			return errors.Errorf("unknown tx hash in LedgerCloseMeta: %v", hexHash)
 		}
 
 		// We check the version only if FeeProcessing are non empty because some backends
 		// (like HistoryArchiveBackend) do not return meta.
-		if lcm.V0.LedgerHeader.Header.LedgerVersion < 10 && lcm.V0.TxProcessing[i].TxApplyProcessing.V != 2 &&
-			len(lcm.V0.TxProcessing[i].FeeProcessing) > 0 {
+		if lcm.ProtocolVersion() < 10 && lcm.TxApplyProcessing(i).V < 2 &&
+			len(lcm.FeeProcessing(i)) > 0 {
 			return errors.New(
 				"TransactionMeta.V=2 is required in protocol version older than version 10. " +
 					"Please process ledgers again using the latest stellar-core version.",
@@ -98,9 +98,9 @@ func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta
 		reader.transactions = append(reader.transactions, LedgerTransaction{
 			Index:      uint32(i + 1), // Transactions start at '1'
 			Envelope:   envelope,
-			Result:     result,
-			UnsafeMeta: lcm.V0.TxProcessing[i].TxApplyProcessing,
-			FeeChanges: lcm.V0.TxProcessing[i].FeeProcessing,
+			Result:     lcm.TransactionResultPair(i),
+			UnsafeMeta: lcm.TxApplyProcessing(i),
+			FeeChanges: lcm.FeeProcessing(i),
 		})
 	}
 	return nil

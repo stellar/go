@@ -124,9 +124,9 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 		return r.Read()
 	case upgradeChangesState:
 		// Get upgrade changes
-		if r.upgradeIndex < len(r.LedgerTransactionReader.ledgerCloseMeta.V0.UpgradesProcessing) {
+		if r.upgradeIndex < len(r.LedgerTransactionReader.ledgerCloseMeta.UpgradesProcessing()) {
 			changes := GetChangesFromLedgerEntryChanges(
-				r.LedgerTransactionReader.ledgerCloseMeta.V0.UpgradesProcessing[r.upgradeIndex].Changes,
+				r.LedgerTransactionReader.ledgerCloseMeta.UpgradesProcessing()[r.upgradeIndex].Changes,
 			)
 			r.pending = append(r.pending, changes...)
 			r.upgradeIndex++
