@@ -103,7 +103,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ./empty
-        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_18_CORE_DOCKER_IMG }}
+        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_20_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_18_CORE_DOCKER_IMG }}-${{ matrix.protocol-version }}
 
     - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
       run: go test -race -timeout 25m -v ./services/horizon/internal/integration/...
