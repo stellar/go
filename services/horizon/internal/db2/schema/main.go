@@ -53,6 +53,8 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 		return 0, err
 	}
 
+	defer txConn.Close()
+
 	tx, err := txConn.BeginTx(context.Background(), nil)
 	if err != nil {
 		return 0, err
