@@ -55,9 +55,28 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			)
 			changes = append(changes, opChanges...)
 		}
-	case 2:
-		v2Meta := t.UnsafeMeta.MustV2()
-		txChangesBefore := GetChangesFromLedgerEntryChanges(v2Meta.TxChangesBefore)
+	case 2, 3:
+		var (
+			beforeChanges, afterChanges xdr.LedgerEntryChanges
+			operationMeta               []xdr.OperationMeta
+		)
+
+		switch t.UnsafeMeta.V {
+		case 2:
+			v2Meta := t.UnsafeMeta.MustV2()
+			beforeChanges = v2Meta.TxChangesBefore
+			afterChanges = v2Meta.TxChangesAfter
+			operationMeta = v2Meta.Operations
+		case 3:
+			v3Meta := t.UnsafeMeta.MustV3()
+			beforeChanges = v3Meta.TxChangesBefore
+			afterChanges = v3Meta.TxChangesAfter
+			operationMeta = v3Meta.Operations
+		default:
+			panic("Invalid meta version, expected 2 or 3")
+		}
+
+		txChangesBefore := GetChangesFromLedgerEntryChanges(beforeChanges)
 		changes = append(changes, txChangesBefore...)
 
 		// Ignore operations meta and txChangesAfter if txInternalError
@@ -66,35 +85,14 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			return changes, nil
 		}
 
-		for _, operationMeta := range v2Meta.Operations {
+		for _, operationMeta := range operationMeta {
 			opChanges := GetChangesFromLedgerEntryChanges(
 				operationMeta.Changes,
 			)
 			changes = append(changes, opChanges...)
 		}
 
-		txChangesAfter := GetChangesFromLedgerEntryChanges(v2Meta.TxChangesAfter)
-		changes = append(changes, txChangesAfter...)
-	case 3:
-		v3Meta := t.UnsafeMeta.MustV3()
-
-		txChangesBefore := GetChangesFromLedgerEntryChanges(v3Meta.TxChangesBefore)
-		changes = append(changes, txChangesBefore...)
-
-		// Ignore operations meta and txChangesAfter if txInternalError
-		// https://github.com/stellar/go/issues/2111
-		if t.txInternalError() {
-			return changes, nil
-		}
-
-		for _, operationMeta := range v3Meta.Operations {
-			opChanges := GetChangesFromLedgerEntryChanges(
-				operationMeta.Changes,
-			)
-			changes = append(changes, opChanges...)
-		}
-
-		txChangesAfter := GetChangesFromLedgerEntryChanges(v3Meta.TxChangesAfter)
+		txChangesAfter := GetChangesFromLedgerEntryChanges(afterChanges)
 		changes = append(changes, txChangesAfter...)
 	default:
 		return changes, errors.New("Unsupported TransactionMeta version")

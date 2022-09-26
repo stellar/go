@@ -53,7 +53,7 @@ func (l LedgerCloseMeta) TransactionEnvelopes() []TransactionEnvelope {
 	case 0:
 		return l.MustV0().TxSet.Txs
 	case 1, 2:
-		var envelopes []TransactionEnvelope
+		var envelopes = make([]TransactionEnvelope, 0, l.CountTransactions())
 		var phases []TransactionPhase
 		if l.V == 1 {
 			phases = l.MustV1().TxSet.V1TxSet.Phases
