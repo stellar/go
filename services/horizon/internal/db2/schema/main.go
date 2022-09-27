@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	stdLog "log"
-	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -68,11 +67,25 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 		// so no need to Commit().
 		defer tx.Rollback()
 
-		// Lock ingestion
-		row := tx.QueryRow("select value from key_value_store where key = 'exp_ingest_last_ledger' for update")
-		err = row.Err()
+		// Check if table exists
+		row := tx.QueryRow(`select exists (
+			select from information_schema.tables where table_schema = 'public' and table_name = 'key_value_store'
+		)`)
+		if err := row.Err(); err != nil {
+			return 0, err
+		}
+
+		var tableExists bool
+		err = row.Scan(&tableExists)
 		if err != nil {
-			if !strings.Contains(err.Error(), `pq: relation "key_value_store" does not exist`) {
+			return 0, err
+		}
+
+		if tableExists {
+			// Lock ingestion
+			row := tx.QueryRow("select value from key_value_store where key = 'exp_ingest_last_ledger' for update")
+			err = row.Err()
+			if err != nil {
 				return 0, err
 			}
 		}
