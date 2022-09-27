@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -27,7 +28,7 @@ var (
 func AddIndexCommands(parent *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "index",
-		Long: "Lets you view details about an index source.",
+		Long: "Lets you view details about an index source and modify it.",
 		Example: `
 index view file:///tmp/indices
 index view file:///tmp/indices GAGJZWQ5QT34VK3U6W6YKRYFIK6YSAXQC6BHIIYLG6X3CE5QW2KAYNJR
@@ -163,9 +164,36 @@ view gcs://indices --limit=10 GAXLQGKIUAIIUHAX4GJO3J7HFGLBCNF6ZCZSTLJE7EKO5IUHGL
 		},
 	}
 
+	purge := &cobra.Command{
+		Use:     "purge <index path> <start ledger> <end ledger>",
+		Long:    "Purges all indices for the given ledger range.",
+		Example: `purge s3://indices 10000 10005`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 3 {
+				return cmd.Usage()
+			}
+
+			path := args[0]
+			start, err := strconv.ParseUint(args[1], 10, 32)
+			if err != nil {
+				return cmd.Usage()
+			}
+			end, err := strconv.ParseUint(args[2], 10, 32)
+			if err != nil {
+				return cmd.Usage()
+			}
+
+			r := historyarchive.Range{Low: uint32(start), High: uint32(end)}
+			log.Infof("Purging all indices from %s for ledger range: [%d, %d].",
+				path, r.Low, r.High)
+
+			return purgeIndex(path, r)
+		},
+	}
+
 	view.Flags().Uint("limit", 10, "a maximum number of accounts or checkpoints to show")
 	view.Flags().String("index-name", "", "filter for a particular index")
-	cmd.AddCommand(stats, view)
+	cmd.AddCommand(stats, view, purge)
 
 	if parent == nil {
 		return cmd
@@ -179,12 +207,15 @@ func getIndex(path, account, indexName string, limit uint) map[uint32][]string {
 
 	store, err := index.Connect(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to index store at %s: %v", path, err)
+		return nil
 	}
 
 	indices, err := store.Read(account)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to read indices for %s from index store at %s: %v",
+			account, path, err)
+		return nil
 	}
 
 	// It's better to summarize activity and then group it by index rather than
@@ -256,4 +287,70 @@ func showAccounts(path string, limit uint) []string {
 	}
 
 	return accounts
+}
+
+func purgeIndex(path string, r historyarchive.Range) error {
+	freq := historyarchive.DefaultCheckpointFrequency
+	store, err := index.Connect(path)
+	if err != nil {
+		log.Fatalf("Failed to connect to index store at %s: %v", path, err)
+		return err
+	}
+
+	accounts, err := store.ReadAccounts()
+	if err != nil {
+		log.Fatalf("Failed read accounts: %v", err)
+		return err
+	}
+
+	purged := 0
+	for _, account := range accounts {
+		L := log.WithField("account", account)
+
+		indices, err := store.Read(account)
+		if err != nil {
+			L.Errorf("Failed to read indices: %v", err)
+			continue
+		}
+
+		for name, index := range indices {
+			var err error
+			active := uint32(0)
+			for err == nil {
+				if active*freq < r.Low { // too low, skip ahead
+					active, err = index.NextActiveBit(active + 1)
+					continue
+				} else if active*freq > r.High { // too high, we're done
+					break
+				}
+
+				L.WithField("index", name).
+					Debugf("Purged checkpoint %d (ledgers %d through %d).",
+						active, active*freq, (active+1)*freq-1)
+
+				purged++
+
+				index.SetInactive(active)
+				active, err = index.NextActiveBit(active)
+			}
+
+			if err != nil && err != io.EOF {
+				L.WithField("index", name).
+					Errorf("Iterating over index failed: %v", err)
+				continue
+			}
+
+		}
+
+		store.AddParticipantToIndexesNoBackend(account, indices)
+		if err := store.Flush(); err != nil {
+			log.WithField("account", account).
+				Errorf("Flushing index failed: %v", err)
+			continue
+		}
+	}
+
+	log.Infof("Purged %d values across %d accounts from all indices at %s.",
+		purged, len(accounts), path)
+	return nil
 }

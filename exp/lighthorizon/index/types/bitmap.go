@@ -2,9 +2,12 @@ package index
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 	"sync"
 
+	"github.com/stellar/go/support/ordered"
 	"github.com/stellar/go/xdr"
 )
 
@@ -47,6 +50,14 @@ func (i *BitmapIndex) SetActive(index uint32) error {
 	return i.setActive(index)
 }
 
+func (i *BitmapIndex) SetInactive(index uint32) error {
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+	return i.setInactive(index)
+}
+
+// bitShiftLeft returns a byte with the bit set corresponding to the index. In
+// other words, it flips the bit corresponding to the index's "position" mod-8.
 func bitShiftLeft(index uint32) byte {
 	if index%8 == 0 {
 		return 1
@@ -55,10 +66,18 @@ func bitShiftLeft(index uint32) byte {
 	}
 }
 
+// rangeFirstBit returns the index of the first *possible* active bit in the
+// bitmap. In other words, if you just have SetActive(12), this will return 9,
+// because you have one byte (0b0001_0000) and the *first* value the bitmap can
+// represent is 9.
 func (i *BitmapIndex) rangeFirstBit() uint32 {
 	return (i.firstBit-1)/8*8 + 1
 }
 
+// rangeLastBit returns the index of the last *possible* active bit in the
+// bitmap. In other words, if you just have SetActive(12), this will return 16,
+// because you have one byte (0b0001_0000) and the *last* value the bitmap can
+// represent is 16.
 func (i *BitmapIndex) rangeLastBit() uint32 {
 	return i.rangeFirstBit() + uint32(len(i.bitmap))*8 - 1
 }
@@ -86,20 +105,15 @@ func (i *BitmapIndex) setActive(index uint32) error {
 			// Expand the bitmap
 			if index < i.rangeFirstBit() {
 				// ...to the left
-				c := (i.rangeFirstBit() - index) / 8
-				if (i.rangeFirstBit()-index)%8 != 0 {
-					c++
-				}
-				newBytes := make([]byte, c)
+				newBytes := make([]byte, distance(index, i.rangeFirstBit()))
 				i.bitmap = append(newBytes, i.bitmap...)
-
 				b := bitShiftLeft(index)
 				i.bitmap[0] = i.bitmap[0] | b
 
 				i.firstBit = index
 			} else if index > i.rangeLastBit() {
 				// ... to the right
-				newBytes := make([]byte, (index-i.rangeLastBit())/8+1)
+				newBytes := make([]byte, distance(i.rangeLastBit(), index))
 				i.bitmap = append(i.bitmap, newBytes...)
 				b := bitShiftLeft(index)
 				loc := (index - i.rangeFirstBit()) / 8
@@ -107,6 +121,80 @@ func (i *BitmapIndex) setActive(index uint32) error {
 
 				i.lastBit = index
 			}
+		}
+	}
+
+	return nil
+}
+
+func (i *BitmapIndex) setInactive(index uint32) error {
+	// Is this index even active in the first place?
+	if i.firstBit == 0 || index < i.rangeFirstBit() || index > i.rangeLastBit() {
+		return nil // not really an error
+	}
+
+	loc := (index - i.rangeFirstBit()) / 8 // which byte?
+	b := bitShiftLeft(index)               // which bit w/in the byte?
+	i.bitmap[loc] &= ^b                    // unset only that bit
+
+	// If unsetting this bit made the first byte empty OR we unset the earliest
+	// set bit, we need to find the next "first" active bit.
+	if loc == 0 && i.firstBit == index {
+		// find the next active bit to set as the start
+		nextBit, err := i.nextActiveBit(index)
+		if err == io.EOF {
+			i.firstBit = 0
+			i.lastBit = 0
+			i.bitmap = []byte{}
+		} else if err != nil {
+			return err
+		} else {
+			// Trim all (now-)empty bytes off the front.
+			i.bitmap = i.bitmap[distance(i.firstBit, nextBit):]
+			i.firstBit = nextBit
+		}
+	} else if int(loc) == len(i.bitmap)-1 {
+		idx := -1
+
+		if i.bitmap[loc] == 0 {
+			// find the latest non-empty byte, to set as the new "end"
+			j := len(i.bitmap) - 1
+			for i.bitmap[j] == 0 {
+				j--
+			}
+
+			i.bitmap = i.bitmap[:j+1]
+			idx = 8
+		} else if i.lastBit == index {
+			// Get the "bit number" of the last active bit (i.e. the one we just
+			// turned off) to mark the starting point for the search.
+			idx = 8
+			if index%8 != 0 {
+				idx = int(index % 8)
+			}
+		}
+
+		// Do we need to adjust the range? Imagine we had 0b0011_0100 and we
+		// unset the last active bit.
+		//         ^
+		// Then, we need to adjust our internal lastBit tracker to represent the
+		// ^ bit above. This means finding the first previous set bit.
+		if idx > -1 {
+			l := uint32(len(i.bitmap) - 1)
+			// Imagine we had 0b0011_0100 and we unset the last active bit.
+			//                     ^
+			// Then, we need to adjust our internal lastBit tracker to represent
+			// the ^ bit above. This means finding the first previous set bit.
+			j, ok := int(idx), false
+			for ; j >= 0 && !ok; j-- {
+				_, ok = maxBitAfter(i.bitmap[l], uint32(j))
+			}
+
+			// We know from the earlier conditional that *some* bit is set, so
+			// we know that j represents the index of the bit that's the new
+			// "last active" bit.
+			firstByte := i.rangeFirstBit()
+			i.lastBit = firstByte + (l * 8) + uint32(j) + 1
 		}
 	}
 
@@ -208,21 +296,6 @@ func (i *BitmapIndex) nextActiveBit(position uint32) (uint32, error) {
 	return 0, io.EOF
 }
 
-func maxBitAfter(b byte, after uint32) (uint32, bool) {
-	if b == 0 {
-		// empty byte
-		return 0, false
-	}
-
-	for shift := uint32(after); shift < 8; shift++ {
-		mask := byte(0b1000_0000) >> shift
-		if mask&b != 0 {
-			return shift, true
-		}
-	}
-	return 0, false
-}
-
 func (i *BitmapIndex) ToXDR() xdr.BitmapIndex {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
@@ -249,4 +322,46 @@ func (i *BitmapIndex) Buffer() *bytes.Buffer {
 // Flush flushes the index data to byte slice in index format.
 func (i *BitmapIndex) Flush() []byte {
 	return i.Buffer().Bytes()
+}
+
+// DebugCompare returns a string that compares this bitmap to another bitmap
+// byte-by-byte in binary form as two columns.
+func (i *BitmapIndex) DebugCompare(j *BitmapIndex) string {
+	output := make([]string, ordered.Max(len(i.bitmap), len(j.bitmap)))
+	for n := 0; n < len(output); n++ {
+		if n < len(i.bitmap) {
+			output[n] += fmt.Sprintf("%08b", i.bitmap[n])
+		} else {
+			output[n] += "        "
+		}
+
+		output[n] += " | "
+
+		if n < len(j.bitmap) {
+			output[n] += fmt.Sprintf("%08b", j.bitmap[n])
+		}
+	}
+
+	return strings.Join(output, "\n")
+}
+
+func maxBitAfter(b byte, after uint32) (uint32, bool) {
+	if b == 0 {
+		// empty byte
+		return 0, false
+	}
+
+	for shift := uint32(after); shift < 8; shift++ {
+		mask := byte(0b1000_0000) >> shift
+		if mask&b != 0 {
+			return shift, true
+		}
+	}
+	return 0, false
+}
+
+// distance returns how many bytes occur between the two given indices. Note
+// that j >= i, otherwise the result will be negative.
+func distance(i, j uint32) int {
+	return (int(j)-1)/8 - (int(i)-1)/8
 }
