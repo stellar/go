@@ -203,7 +203,7 @@ func TestRunFromUseDBLedgersMatch(t *testing.T) {
 	assert.NoError(t, runner.close())
 }
 
-func TestRunFromUseDBLedgersNotMatch(t *testing.T) {
+func TestRunFromUseDBLedgersBehind(t *testing.T) {
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
@@ -230,7 +230,67 @@ func TestRunFromUseDBLedgersNotMatch(t *testing.T) {
 
 	offlineInfoCmdMock := simpleCommandMock()
 	infoResponse := stellarcore.InfoResponse{}
-	infoResponse.Info.Ledger.Num = 101 // runner is one ledger behind
+	infoResponse.Info.Ledger.Num = 90 // runner is 10 ledgers behind
+	infoResponseBytes, err := json.Marshal(infoResponse)
+	assert.NoError(t, err)
+	offlineInfoCmdMock.On("Output").Return(infoResponseBytes, nil)
+	offlineInfoCmdMock.On("Wait").Return(nil)
+
+	// Replace system calls with a mock
+	scMock := &mockSystemCaller{}
+	defer scMock.AssertExpectations(t)
+	// Storage dir is not removed because ledgers do not match
+	scMock.On("stat", mock.Anything).Return(isDirImpl(true), nil)
+	scMock.On("writeFile", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	scMock.On("command",
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
+		"offline-info",
+	).Return(offlineInfoCmdMock)
+	scMock.On("command",
+		"/usr/bin/stellar-core",
+		"--conf",
+		mock.Anything,
+		"--console",
+		"run",
+		"--metadata-output-stream",
+		"fd:3",
+	).Return(cmdMock)
+	runner.systemCaller = scMock
+
+	assert.NoError(t, runner.runFrom(100, "hash"))
+	assert.NoError(t, runner.close())
+}
+
+func TestRunFromUseDBLedgersInFront(t *testing.T) {
+	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
+	assert.NoError(t, err)
+
+	captiveCoreToml.AddExamplePubnetValidators()
+
+	runner := newStellarCoreRunner(CaptiveCoreConfig{
+		BinaryPath:         "/usr/bin/stellar-core",
+		HistoryArchiveURLs: []string{"http://localhost"},
+		Log:                log.New(),
+		Context:            context.Background(),
+		Toml:               captiveCoreToml,
+		StoragePath:        "/tmp/captive-core",
+		UseDB:              true,
+	})
+
+	newDBCmdMock := simpleCommandMock()
+	newDBCmdMock.On("Run").Return(nil)
+
+	catchupCmdMock := simpleCommandMock()
+	catchupCmdMock.On("Run").Return(nil)
+
+	cmdMock := simpleCommandMock()
+	cmdMock.On("Wait").Return(nil)
+
+	offlineInfoCmdMock := simpleCommandMock()
+	infoResponse := stellarcore.InfoResponse{}
+	infoResponse.Info.Ledger.Num = 110 // runner is 10 ledgers in front
 	infoResponseBytes, err := json.Marshal(infoResponse)
 	assert.NoError(t, err)
 	offlineInfoCmdMock.On("Output").Return(infoResponseBytes, nil)

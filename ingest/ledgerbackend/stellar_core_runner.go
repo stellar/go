@@ -373,7 +373,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		if err != nil {
 			r.log.Infof("Error running offline-info: %v, removing existing storage-dir contents", err)
 			removeStorageDir = true
-		} else if uint32(info.Info.Ledger.Num) != from {
+		} else if uint32(info.Info.Ledger.Num) > from {
 			r.log.Infof("Unexpected LCL in Stellar-Core DB: %d (want: %d), removing existing storage-dir contents", info.Info.Ledger.Num, from)
 			removeStorageDir = true
 		}
