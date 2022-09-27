@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	stdLog "log"
+	"strings"
 	"text/tabwriter"
 	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/stellar/go/support/errors"
 )
 
 //go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -pkg schema -o bindata.go migrations/
@@ -71,7 +72,7 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 		row := tx.QueryRow("select value from key_value_store where key = 'exp_ingest_last_ledger' for update")
 		err = row.Err()
 		if err != nil {
-			if err.Error() == `pq: relation "key_value_store" does not exist` {
+			if !strings.Contains(err.Error(), `pq: relation "key_value_store" does not exist`) {
 				return 0, err
 			}
 		}
