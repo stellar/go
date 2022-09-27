@@ -21,4 +21,4 @@ ENTRYPOINT ./lighthorizon serve \
   --ledger-cache-preload "$CACHE_PRELOAD_COUNT" \
   --ledger-cache-preload-start "$CACHE_PRELOAD_START_LEDGER" \
   --log-level debug \
-  "$TXMETA_SOURCE" "$INDEXES_SOURCE" \
+  "$TXMETA_SOURCE" "$INDEXES_SOURCE"
