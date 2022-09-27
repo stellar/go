@@ -50,7 +50,7 @@ func TestVersion(t *testing.T) {
 
 	for _, kase := range cases {
 		actual, err := Version(kase.Address)
-		if assert.NoError(t, err, "An error occured decoding case %s", kase.Name) {
+		if assert.NoError(t, err, "An error occurred decoding case %s", kase.Name) {
 			assert.Equal(t, kase.ExpectedVersionByte, actual, "Output mismatch in case %s", kase.Name)
 		}
 	}

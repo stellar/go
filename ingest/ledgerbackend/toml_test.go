@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newUint(v uint) *uint {
@@ -355,7 +356,7 @@ func TestExternalStorageConfigUsesDatabaseToml(t *testing.T) {
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
-	toml.unmarshal(configBytes, true)
+	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "sqlite3:///etc/defaults/stellar.db")
 }
 
@@ -383,7 +384,7 @@ func TestDBConfigDefaultsToSqlite(t *testing.T) {
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
-	toml.unmarshal(configBytes, true)
+	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
 }
 
@@ -411,6 +412,6 @@ func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
 
 	assert.NoError(t, err)
 	toml := CaptiveCoreToml{}
-	toml.unmarshal(configBytes, true)
+	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "")
 }
