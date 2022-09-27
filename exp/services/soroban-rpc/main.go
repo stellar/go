@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/types"
 	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -12,25 +13,26 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 )
 
 func main() {
-	var port int
-	var horizonURL string
+	var endpoint, horizonURL, networkPassphrase string
+	var txConcurrency, txQueueSize int
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
 	configOpts := config.ConfigOptions{
 		{
-			Name:        "port",
-			Usage:       "Port to listen and serve on",
-			OptType:     types.Int,
-			ConfigKey:   &port,
-			FlagDefault: 8000,
-			Required:    true,
+			Name:        "endpoint",
+			Usage:       "Endpoint to listen and serve on",
+			OptType:     types.String,
+			ConfigKey:   &endpoint,
+			FlagDefault: "localhost:8000",
+			Required:    false,
 		},
 		&config.ConfigOption{
 			Name:        "horizon-url",
@@ -55,6 +57,30 @@ func main() {
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
+		{
+			Name:        "network-passphrase",
+			Usage:       "Network passphrase of the Stellar network transactions should be signed for",
+			OptType:     types.String,
+			ConfigKey:   &networkPassphrase,
+			FlagDefault: network.FutureNetworkPassphrase,
+			Required:    true,
+		},
+		{
+			Name:        "tx-concurrency",
+			Usage:       "Maximum number of concurrent transaction submissions",
+			OptType:     types.Int,
+			ConfigKey:   &txConcurrency,
+			FlagDefault: 10,
+			Required:    false,
+		},
+		{
+			Name:        "tx-queue",
+			Usage:       "Maximum length of pending transactions queue",
+			OptType:     types.Int,
+			ConfigKey:   &txQueueSize,
+			FlagDefault: 10,
+			Required:    false,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "soroban-rpc",
@@ -73,18 +99,28 @@ func main() {
 			}
 			hc.SetHorizonTimeout(horizonclient.HorizonTimeout)
 
+			transactionProxy := methods.NewTransactionProxy(
+				hc,
+				txConcurrency,
+				txQueueSize,
+				networkPassphrase,
+				5*time.Minute,
+			)
+
 			handler, err := internal.NewJSONRPCHandler(internal.HandlerParams{
-				AccountStore: methods.AccountStore{Client: hc},
-				Logger:       logger,
+				AccountStore:     methods.AccountStore{Client: hc},
+				Logger:           logger,
+				TransactionProxy: transactionProxy,
 			})
 			if err != nil {
 				logger.Fatalf("could not create handler: %v", err)
 			}
 			supporthttp.Run(supporthttp.Config{
-				ListenAddr: fmt.Sprintf(":%d", port),
+				ListenAddr: endpoint,
 				Handler:    handler,
 				OnStarting: func() {
-					logger.Infof("Starting Soroban JSON RPC server on %v", port)
+					logger.Infof("Starting Soroban JSON RPC server on %v", endpoint)
+					handler.Start()
 				},
 				OnStopping: func() {
 					handler.Close()
