@@ -71,7 +71,8 @@ func Migrate(db *sql.DB, dir MigrateDir, count int) (int, error) {
 		row := tx.QueryRow(`select exists (
 			select from information_schema.tables where table_schema = 'public' and table_name = 'key_value_store'
 		)`)
-		if err := row.Err(); err != nil {
+		err = row.Err()
+		if err != nil {
 			return 0, err
 		}
 
