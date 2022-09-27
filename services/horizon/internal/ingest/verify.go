@@ -82,7 +82,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	})
 
 	if !s.checkpointManager.IsCheckpoint(ledgerSequence) {
-		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
+		localLog.Info("Current ledger is not a checkpoint ledger. Canceling...")
 		return nil
 	}
 
@@ -101,7 +101,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			}
 
 			if ledgerSequence < historyLatestSequence {
-				localLog.Info("Current ledger is old. Cancelling...")
+				localLog.Info("Current ledger is old. Canceling...")
 				return nil
 			}
 
@@ -118,7 +118,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				// Wait for stellar-core to publish HAS
 				retries++
 				if retries == 12 {
-					localLog.Info("Checkpoint not published. Cancelling...")
+					localLog.Info("Checkpoint not published. Canceling...")
 					return nil
 				}
 			}
@@ -131,7 +131,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	defer func() {
 		duration := time.Since(startTime).Seconds()
 		if updateMetrics {
-			// Don't update metrics if context cancelled.
+			// Don't update metrics if context canceled.
 			if s.ctx.Err() != context.Canceled {
 				s.Metrics().StateVerifyDuration.Observe(float64(duration))
 				for typ, tot := range totalByType {

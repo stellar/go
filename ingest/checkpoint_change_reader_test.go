@@ -761,7 +761,7 @@ func entryAccount(t xdr.BucketEntryType, id string, balance uint32) xdr.BucketEn
 			},
 		}
 	default:
-		panic("Unkown entry type")
+		panic("Unknown entry type")
 	}
 }
 

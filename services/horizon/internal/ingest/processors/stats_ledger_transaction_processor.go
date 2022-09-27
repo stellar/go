@@ -116,7 +116,7 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context
 		case xdr.OperationTypeLiquidityPoolWithdraw:
 			p.results.OperationsLiquidityPoolWithdraw++
 		default:
-			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
+			panic(fmt.Sprintf("Unknown operation type: %d", op.Body.Type))
 		}
 	}
 

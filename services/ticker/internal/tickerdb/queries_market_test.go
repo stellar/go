@@ -285,7 +285,7 @@ func TestRetrieveMarketData(t *testing.T) {
 
 	assert.Equal(t, priceChange24hDiff, priceChange7dDiff)
 
-	// Analysing aggregated orderbook data:
+	// Analyzing aggregated orderbook data:
 	assert.Equal(t, 15, xlmethMkt.NumBids)
 	assert.Equal(t, 0.15, xlmethMkt.BidVolume)
 	assert.Equal(t, 200.0, xlmethMkt.HighestBid)

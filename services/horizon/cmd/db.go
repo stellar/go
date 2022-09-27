@@ -99,7 +99,7 @@ var dbMigrateDownCmd = &cobra.Command{
 			return err
 		}
 
-		// Only allow invokations with 1 args.
+		// Only allow invocations with 1 args.
 		if len(args) != 1 {
 			return ErrUsage{cmd}
 		}
@@ -123,7 +123,7 @@ var dbMigrateRedoCmd = &cobra.Command{
 			return err
 		}
 
-		// Only allow invokations with 1 args.
+		// Only allow invocations with 1 args.
 		if len(args) != 1 {
 			return ErrUsage{cmd}
 		}
@@ -147,7 +147,7 @@ var dbMigrateStatusCmd = &cobra.Command{
 			return err
 		}
 
-		// Only allow invokations with 0 args.
+		// Only allow invocations with 0 args.
 		if len(args) != 0 {
 			fmt.Println(args)
 			return ErrUsage{cmd}
@@ -177,7 +177,7 @@ var dbMigrateUpCmd = &cobra.Command{
 			return err
 		}
 
-		// Only allow invokations with 0-1 args.
+		// Only allow invocations with 0-1 args.
 		if len(args) > 1 {
 			return ErrUsage{cmd}
 		}

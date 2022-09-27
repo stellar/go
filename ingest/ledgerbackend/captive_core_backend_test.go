@@ -1362,7 +1362,7 @@ func TestCaptiveIsPrepared(t *testing.T) {
 }
 
 // TestCaptiveIsPreparedCoreContextCancelled checks if IsPrepared returns false
-// if the stellarCoreRunner.context() is cancelled. This can happen when
+// if the stellarCoreRunner.context() is canceled. This can happen when
 // stellarCoreRunner was closed, ex. when binary file was updated.
 func TestCaptiveIsPreparedCoreContextCancelled(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}

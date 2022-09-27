@@ -584,7 +584,7 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 			}
 		} else if !ok {
 			// This case should never happen because the ledger buffer channel can only be closed
-			// if and only if the process exits or the context is cancelled.
+			// if and only if the process exits or the context is canceled.
 			// However, we add this check for the sake of completeness
 			return errors.Errorf("meta pipe closed unexpectedly")
 		}

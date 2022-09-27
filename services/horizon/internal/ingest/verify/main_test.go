@@ -197,7 +197,7 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 1)
 
-	// Check the behaviour of transformFunction to code path to test.
+	// Check the behavior of transformFunction to code path to test.
 	s.verifier.transformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
 			return true, xdr.LedgerEntry{}
