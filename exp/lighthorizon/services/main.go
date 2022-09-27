@@ -124,7 +124,7 @@ func searchAccountTransactions(ctx context.Context,
 				Low:  nextLedger,
 				High: checkpointMgr.NextCheckpoint(nextLedger + 1),
 			}
-			log.Infof("prepare range %d, %d", r.Low, r.High)
+			log.Infof("Preparing ledger range [%d, %d]", r.Low, r.High)
 			if innerErr := config.Ingester.PrepareRange(ctx, r); innerErr != nil {
 				log.Errorf("failed to prepare ledger range [%d, %d]: %v",
 					r.Low, r.High, innerErr)
@@ -133,6 +133,11 @@ func searchAccountTransactions(ctx context.Context,
 
 		start := time.Now()
 		ledger, innerErr := config.Ingester.GetLedger(ctx, nextLedger)
+
+		// TODO: We should have helpful error messages when innerErr points to a
+		// 404 for that particular ledger, since that situation shouldn't happen
+		// under normal operations, but rather indicates a problem with the
+		// backing archive.
 		if innerErr != nil {
 			return errors.Wrapf(innerErr,
 				"failed to retrieve ledger %d from archive", nextLedger)

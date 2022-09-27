@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -96,6 +97,27 @@ break down accounts by active ledgers.`,
 				return
 			}
 
+			latestLedger, err := ingester.GetLatestLedgerSequence(context.Background())
+			if err != nil {
+				log.Fatalf("Failed to retrieve latest ledger from %s: %v", sourceUrl, err)
+				return
+			}
+			log.Infof("The latest ledger stored at %s is %d.", sourceUrl, latestLedger)
+
+			cachePreloadCount, _ := cmd.Flags().GetUint32("ledger-cache-preload")
+			cachePreloadStart, _ := cmd.Flags().GetUint32("ledger-cache-preload-start")
+			if cacheDir != "" && cachePreloadCount > 0 {
+				startLedger := latestLedger - cachePreloadCount
+				if cachePreloadStart > 0 {
+					startLedger = cachePreloadStart
+				}
+
+				go func() {
+					tools.BuildCache(sourceUrl, cacheDir,
+						startLedger, cachePreloadCount, false)
+				}()
+			}
+
 			Config := services.Config{
 				Ingester:   ingester,
 				Passphrase: networkPassphrase,
@@ -118,6 +140,8 @@ break down accounts by active ledgers.`,
 				Version:      HorizonLiteVersion,
 				LedgerSource: sourceUrl,
 				IndexSource:  indexStoreUrl,
+
+				LatestLedger: latestLedger,
 			}))
 
 			log.Fatal(http.ListenAndServe(":8080", router))
@@ -131,6 +155,10 @@ break down accounts by active ledgers.`,
 		"if left empty, uses a temporary directory")
 	serve.Flags().Uint("ledger-cache-size", defaultCacheSize,
 		"number of ledgers to store in the cache")
+	serve.Flags().Uint32("ledger-cache-preload", 0,
+		"should the cache come preloaded with the latest <n> ledgers?")
+	serve.Flags().Uint32("ledger-cache-preload-start", 0,
+		"the preload should start at ledger <n>")
 	serve.Flags().Uint("parallel-downloads", 1,
 		"how many workers should download ledgers in parallel?")
 
