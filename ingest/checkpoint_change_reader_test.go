@@ -757,7 +757,7 @@ func entryAccount(t xdr.BucketEntryType, id string, balance uint32) xdr.BucketEn
 			Type: xdr.BucketEntryTypeDeadentry,
 			DeadEntry: &xdr.LedgerKey{
 				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &xdr.LedgerKeyAccount{xdr.MustAddress(id)},
+				Account: &xdr.LedgerKeyAccount{AccountId: xdr.MustAddress(id)},
 			},
 		}
 	default:

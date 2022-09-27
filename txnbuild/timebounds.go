@@ -28,7 +28,7 @@ type Timebounds = TimeBounds
 
 // Validate for TimeBounds sanity-checks the configured Timebound limits, and confirms the object was built
 // using a factory method. This is done to ensure that default Timebound structs (which have no limits) are not
-// valid - you must explicitly specifiy the Timebound you require.
+// valid - you must explicitly specify the Timebound you require.
 func (tb *TimeBounds) Validate() error {
 	if tb == nil || !tb.wasBuilt {
 		return errors.New("timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")

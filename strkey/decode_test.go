@@ -92,7 +92,7 @@ func TestDecode(t *testing.T) {
 
 	for _, kase := range cases {
 		payload, err := Decode(kase.ExpectedVersionByte, kase.Address)
-		if assert.NoError(t, err, "An error occured decoding case %s", kase.Name) {
+		if assert.NoError(t, err, "An error occurred decoding case %s", kase.Name) {
 			assert.Equal(t, kase.ExpectedPayload, payload, "Output mismatch in case %s", kase.Name)
 		}
 	}

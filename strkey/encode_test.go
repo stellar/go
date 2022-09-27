@@ -93,7 +93,7 @@ func TestEncode(t *testing.T) {
 
 	for _, kase := range cases {
 		actual, err := Encode(kase.VersionByte, kase.Payload)
-		if assert.NoError(t, err, "An error occured in case %s", kase.Name) {
+		if assert.NoError(t, err, "An error occurred in case %s", kase.Name) {
 			assert.Equal(t, kase.Expected, actual, "Output mismatch in case %s", kase.Name)
 		}
 	}
