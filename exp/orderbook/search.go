@@ -162,7 +162,7 @@ func search(
 			pathToCurrentAsset := bestPath[currentAsset]
 			edges := state.venues(currentAsset)
 			for j := 0; j < len(edges); j++ {
-				// Exit early if the context was cancelled.
+				// Exit early if the context was canceled.
 				if err := ctx.Err(); err != nil {
 					return err
 				}

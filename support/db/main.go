@@ -38,7 +38,7 @@ var (
 	// taken longer than context's deadline max duration
 	ErrTimeout = errors.New("canceling statement due to lack of response within timeout period")
 	// ErrCancelled is an error returned by Session methods when request has
-	// been cancelled (ex. context cancelled).
+	// been canceled (ex. context canceled).
 	ErrCancelled = errors.New("canceling statement due to user request")
 	// ErrConflictWithRecovery is an error returned by Session methods when
 	// read replica cancels the query due to conflict with about-to-be-applied
@@ -48,7 +48,7 @@ var (
 	// error.
 	ErrBadConnection = errors.New("bad connection")
 	// ErrStatementTimeout is an error returned by Session methods when request has
-	// been cancelled due to a statement timeout.
+	// been canceled due to a statement timeout.
 	ErrStatementTimeout = errors.New("canceling statement due to statement timeout")
 )
 

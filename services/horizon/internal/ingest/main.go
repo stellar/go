@@ -37,7 +37,7 @@ const (
 	// Version history:
 	// - 1: Initial version
 	// - 2: Added the orderbook, offers processors and distributed ingestion.
-	// - 3: Fixed a bug that could potentialy result in invalid state
+	// - 3: Fixed a bug that could potentially result in invalid state
 	//      (#1722). Update the version to clear the state.
 	// - 4: Fixed a bug in AccountSignersChanged method.
 	// - 5: Added trust lines.
@@ -148,7 +148,7 @@ type Metrics struct {
 	LedgerStatsCounter *prometheus.CounterVec
 
 	// ProcessorsRunDuration exposes processors run durations.
-	// Deprecated in favour of: ProcessorsRunDurationSummary.
+	// Deprecated in favor of: ProcessorsRunDurationSummary.
 	ProcessorsRunDuration *prometheus.CounterVec
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
@@ -725,7 +725,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 
 	err = s.historyQ.Commit()
 	if err != nil {
-		log.WithField("err", err).Error("Error commiting a transaction")
+		log.WithField("err", err).Error("Error committing a transaction")
 		return
 	}
 
