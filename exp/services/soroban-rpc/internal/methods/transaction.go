@@ -36,7 +36,8 @@ type TransactionStatusResponse struct {
 	ID     string               `json:"id"`
 	Status string               `json:"status"`
 	Result *horizon.Transaction `json:"result"`
-	Error  *problem.P           `json:"error"`
+	// Error will be nil unless Status is equal to "error"
+	Error *problem.P `json:"error"`
 }
 
 type SendTransactionResponse struct {
@@ -64,7 +65,6 @@ type TransactionProxy struct {
 	queue      chan horizonRequest
 	workers    int
 	ttl        time.Duration
-	ctx        context.Context
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 }
@@ -78,7 +78,6 @@ func NewTransactionProxy(
 	if workers > queueSize {
 		queueSize = workers
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	return &TransactionProxy{
 		results:    map[string]transactionResult{},
 		client:     client,
@@ -86,26 +85,25 @@ func NewTransactionProxy(
 		queue:      make(chan horizonRequest, queueSize),
 		workers:    workers,
 		ttl:        ttl,
-		ctx:        ctx,
-		cancel:     cancel,
 	}
 }
 
-func (p *TransactionProxy) Start() {
+func (p *TransactionProxy) Start(ctx context.Context) {
+	ctx, p.cancel = context.WithCancel(ctx)
+	p.wg.Add(p.workers)
 	for i := 0; i < p.workers; i++ {
-		p.wg.Add(1)
-		go p.startWorker(p.ctx)
+		go p.startWorker(ctx)
 	}
 }
 
 func (p *TransactionProxy) Close() {
+	// signal the worker go routines to abort
 	p.cancel()
+	// wait until the worker go routines are done
 	p.wg.Wait()
 }
 
 func (p *TransactionProxy) SendTransaction(ctx context.Context, request SendTransactionRequest) SendTransactionResponse {
-	defer p.deleteExpiredEntries(time.Now())
-
 	var envelope xdr.TransactionEnvelope
 	err := xdr.SafeUnmarshalBase64(request.Transaction, &envelope)
 	if err != nil {
@@ -132,7 +130,11 @@ func (p *TransactionProxy) SendTransaction(ctx context.Context, request SendTran
 	txHash := hex.EncodeToString(hash[:])
 
 	p.lock.Lock()
-	defer p.lock.Unlock()
+	defer func() {
+		p.deleteExpiredEntries(time.Now())
+		p.lock.Unlock()
+	}()
+
 	result, ok := p.results[txHash]
 	// if pending or completed without any errors use
 	// getTransactionStatus method with tx hash to obtain
@@ -259,10 +261,8 @@ func (p *TransactionProxy) GetTransactionStatus(ctx context.Context, request Get
 	}
 }
 
+// deleteExpiredEntries should only be called while the write lock is held
 func (p *TransactionProxy) deleteExpiredEntries(now time.Time) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
 	for key, val := range p.results {
 		if !val.pending && now.Sub(val.timestamp) > p.ttl {
 			delete(p.results, key)

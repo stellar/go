@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/stellar/go/network"
 	"go/types"
 	"net/http"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"

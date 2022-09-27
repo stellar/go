@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/creachadair/jrpc2/handler"
@@ -19,7 +20,7 @@ type Handler struct {
 
 // Start spawns the background workers necessary for the JSON RPC handlers.
 func (h Handler) Start() {
-	h.transactionProxy.Start()
+	h.transactionProxy.Start(context.Background())
 }
 
 // ServeHTTP implements the http.Handler interface
