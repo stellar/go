@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/creachadair/jrpc2/code"
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/stretchr/testify/assert"
 
@@ -52,26 +51,29 @@ func TestSendTransactionSucceeds(t *testing.T) {
 	expectedHash, err := tx.HashHex(StandaloneNetworkPassphrase)
 	assert.NoError(t, err)
 
-	assert.Equal(t, methods.SendTransactionResponse{ID: expectedHash}, result)
+	assert.Equal(t, methods.SendTransactionResponse{
+		ID:     expectedHash,
+		Status: methods.TransactionPending,
+	}, result)
 
-	getTransactionStatus(t, cli, expectedHash, func(t *testing.T, response methods.TransactionStatusResponse) {
-		assert.Equal(t, methods.TransactionComplete, response.Status)
-		assert.Equal(t, expectedHash, response.ID)
-		assert.Equal(t, true, response.Result.Successful)
+	response := getTransactionStatus(t, cli, expectedHash)
+	assert.Equal(t, methods.TransactionSuccess, response.Status)
+	assert.Equal(t, expectedHash, response.ID)
+	assert.Equal(t, true, response.Result.Successful)
+	assert.Nil(t, response.Error)
 
-		accountInfoRequest := methods.AccountRequest{
-			Address: address,
-		}
-		var accountInfoResponse methods.AccountInfo
-		err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
-		assert.NoError(t, err)
-		assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 1}, accountInfoResponse)
-	})
+	accountInfoRequest := methods.AccountRequest{
+		Address: address,
+	}
+	var accountInfoResponse methods.AccountInfo
+	err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
+	assert.NoError(t, err)
+	assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 1}, accountInfoResponse)
 }
 
-func getTransactionStatus(t *testing.T, cli *jrpc2.Client, hash string, f func(*testing.T, methods.TransactionStatusResponse)) {
+func getTransactionStatus(t *testing.T, cli *jrpc2.Client, hash string) methods.TransactionStatusResponse {
+	var result methods.TransactionStatusResponse
 	for i := 0; i < 60; i++ {
-		var result methods.TransactionStatusResponse
 		request := methods.GetTransactionStatusRequest{Hash: hash}
 		err := cli.CallResult(context.Background(), "getTransactionStatus", request, &result)
 		assert.NoError(t, err)
@@ -81,29 +83,10 @@ func getTransactionStatus(t *testing.T, cli *jrpc2.Client, hash string, f func(*
 			continue
 		}
 
-		f(t, result)
-		return
+		return result
 	}
 	t.Fatal("getTransactionStatus timed out")
-}
-
-func assertTransactionStatusError(t *testing.T, cli *jrpc2.Client, hash string, f func(*testing.T, error)) {
-	for i := 0; i < 60; i++ {
-		var result methods.TransactionStatusResponse
-		request := methods.GetTransactionStatusRequest{Hash: hash}
-		err := cli.CallResult(context.Background(), "getTransactionStatus", request, &result)
-
-		if err == nil && result.Status == methods.TransactionPending {
-			time.Sleep(time.Second)
-			continue
-		} else if err == nil {
-			t.Fatalf("expected transaction to fail but got %v", result)
-		}
-
-		f(t, err)
-		return
-	}
-	t.Fatal("getTransactionStatus timed out")
+	return result
 }
 
 func TestSendTransactionBadSequence(t *testing.T) {
@@ -140,18 +123,20 @@ func TestSendTransactionBadSequence(t *testing.T) {
 	expectedHash, err := tx.HashHex(StandaloneNetworkPassphrase)
 	assert.NoError(t, err)
 
-	assert.Equal(t, methods.SendTransactionResponse{ID: expectedHash}, result)
+	assert.Equal(t, methods.SendTransactionResponse{
+		ID:     expectedHash,
+		Status: methods.TransactionPending,
+	}, result)
 
-	assertTransactionStatusError(t, cli, expectedHash, func(t *testing.T, err error) {
-		rpcErr := err.(*jrpc2.Error)
-		assert.Equal(t, "Transaction Failed", rpcErr.Message)
-		assert.Equal(t, code.InvalidRequest, rpcErr.Code)
-		assert.Equal(
-			t,
-			"{\"envelope_xdr\":\"AAAAAgAAAABzdv3ojkzWHMD7KUoXhrPx0GH18vHKV0ZfqpMiEblG1gAAAGQAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAC3Nvcm9iYW4uY29tAAAAAAAAAAAAAAAAARG5RtYAAABAvSifLEf7tP1tZ5sN/GYzqNmZnGV2BnMHHSaaRLSC7tzKu6vedJrdFX/u8iJRQZICF4T7FQQGl2BFEMmdF+8uCg==\",\"result_codes\":{\"transaction\":\"tx_bad_seq\"},\"result_xdr\":\"AAAAAAAAAAD////7AAAAAA==\"}",
-			string(rpcErr.Data),
-		)
-	})
+	response := getTransactionStatus(t, cli, expectedHash)
+	assert.Equal(t, methods.TransactionError, response.Status)
+	assert.Equal(t, expectedHash, response.ID)
+	assert.Nil(t, response.Result)
+	assert.Equal(t, "Transaction Failed", response.Error.Title)
+	assert.Equal(t, 400, response.Error.Status)
+	assert.Equal(t, map[string]interface{}{
+		"transaction": "tx_bad_seq",
+	}, response.Error.Extras["result_codes"])
 
 	// assert that the transaction was not included in any ledger
 	accountInfoRequest := methods.AccountRequest{
@@ -163,7 +148,7 @@ func TestSendTransactionBadSequence(t *testing.T) {
 	assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 0}, accountInfoResponse)
 }
 
-func TestSendTransactionFailed(t *testing.T) {
+func TestSendTransactionFailedInLedger(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
@@ -202,20 +187,44 @@ func TestSendTransactionFailed(t *testing.T) {
 	expectedHash, err := tx.HashHex(StandaloneNetworkPassphrase)
 	assert.NoError(t, err)
 
-	assert.Equal(t, methods.SendTransactionResponse{ID: expectedHash}, result)
+	assert.Equal(t, methods.SendTransactionResponse{
+		ID:     expectedHash,
+		Status: methods.TransactionPending,
+	}, result)
 
-	getTransactionStatus(t, cli, expectedHash, func(t *testing.T, response methods.TransactionStatusResponse) {
-		assert.Equal(t, methods.TransactionComplete, response.Status)
-		assert.Equal(t, expectedHash, response.ID)
-		assert.Equal(t, false, response.Result.Successful)
+	response := getTransactionStatus(t, cli, expectedHash)
+	assert.Equal(t, methods.TransactionError, response.Status)
+	assert.Equal(t, expectedHash, response.ID)
+	assert.Equal(t, false, response.Result.Successful)
+	assert.Nil(t, response.Error)
 
-		// assert that the transaction was not included in any ledger
-		accountInfoRequest := methods.AccountRequest{
-			Address: address,
-		}
-		var accountInfoResponse methods.AccountInfo
-		err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
-		assert.NoError(t, err)
-		assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 1}, accountInfoResponse)
-	})
+	// assert that the transaction was not included in any ledger
+	accountInfoRequest := methods.AccountRequest{
+		Address: address,
+	}
+	var accountInfoResponse methods.AccountInfo
+	err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
+	assert.NoError(t, err)
+	assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 1}, accountInfoResponse)
+}
+
+func TestSendTransactionFailedInvalidXDR(t *testing.T) {
+	test := NewTest(t)
+
+	ch := jhttp.NewChannel(test.server.URL, nil)
+	cli := jrpc2.NewClient(ch, nil)
+
+	request := methods.SendTransactionRequest{Transaction: "abcdef"}
+	var response methods.SendTransactionResponse
+	err := cli.CallResult(context.Background(), "sendTransaction", request, &response)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "", response.ID)
+	assert.Equal(t, methods.TransactionError, response.Status)
+
+	assert.Equal(t, 400, response.Error.Status)
+	assert.Equal(t, map[string]interface{}{
+		"invalid_field": "transaction",
+		"reason":        "cannot unmarshall transaction: decoding EnvelopeType: decoding EnvelopeType: xdr:DecodeInt: unexpected EOF while decoding 4 bytes - read: '[105 183 29]'",
+	}, response.Error.Extras)
 }

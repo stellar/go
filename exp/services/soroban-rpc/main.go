@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/stellar/go/network"
 	"go/types"
@@ -21,20 +20,19 @@ import (
 )
 
 func main() {
-	var port int
-	var horizonURL, networkPassphrase string
+	var endpoint, horizonURL, networkPassphrase string
 	var txConcurrency, txQueueSize int
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
 	configOpts := config.ConfigOptions{
 		{
-			Name:        "port",
-			Usage:       "Port to listen and serve on",
-			OptType:     types.Int,
-			ConfigKey:   &port,
-			FlagDefault: 8000,
-			Required:    true,
+			Name:        "endpoint",
+			Usage:       "Endpoint to listen and serve on",
+			OptType:     types.String,
+			ConfigKey:   &endpoint,
+			FlagDefault: "localhost:8000",
+			Required:    false,
 		},
 		&config.ConfigOption{
 			Name:        "horizon-url",
@@ -64,7 +62,7 @@ func main() {
 			Usage:       "Network passphrase of the Stellar network transactions should be signed for",
 			OptType:     types.String,
 			ConfigKey:   &networkPassphrase,
-			FlagDefault: network.TestNetworkPassphrase,
+			FlagDefault: network.FutureNetworkPassphrase,
 			Required:    true,
 		},
 		{
@@ -106,7 +104,6 @@ func main() {
 				txConcurrency,
 				txQueueSize,
 				networkPassphrase,
-				10*time.Minute,
 				5*time.Minute,
 			)
 
@@ -118,16 +115,14 @@ func main() {
 			if err != nil {
 				logger.Fatalf("could not create handler: %v", err)
 			}
-			ctx, cancel := context.WithCancel(context.Background())
 			supporthttp.Run(supporthttp.Config{
-				ListenAddr: fmt.Sprintf(":%d", port),
+				ListenAddr: endpoint,
 				Handler:    handler,
 				OnStarting: func() {
-					logger.Infof("Starting Soroban JSON RPC server on %v", port)
-					transactionProxy.Start(ctx)
+					logger.Infof("Starting Soroban JSON RPC server on %v", endpoint)
+					handler.Start()
 				},
 				OnStopping: func() {
-					cancel()
 					handler.Close()
 				},
 			})

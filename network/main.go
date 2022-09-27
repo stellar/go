@@ -17,6 +17,8 @@ const (
 	PublicNetworkPassphrase = "Public Global Stellar Network ; September 2015"
 	// TestNetworkPassphrase is the pass phrase used for every transaction intended for the SDF-run test network
 	TestNetworkPassphrase = "Test SDF Network ; September 2015"
+	// FutureNetworkPassphrase is the pass phrase used for every transaction intended for the SDF-run future network
+	FutureNetworkPassphrase = "Test SDF Future Network ; October 2022"
 )
 
 // ID returns the network ID derived from the provided passphrase.  This value

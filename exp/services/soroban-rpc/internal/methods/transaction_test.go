@@ -13,7 +13,6 @@ func TestDeleteExpiredTransaction(t *testing.T) {
 		10,
 		10,
 		"",
-		2*time.Minute,
 		ttl,
 	)
 	pending := transactionResult{

@@ -12,8 +12,14 @@ import (
 
 // Handler is the HTTP handler which serves the Soroban JSON RPC responses
 type Handler struct {
-	bridge jhttp.Bridge
-	logger *log.Entry
+	bridge           jhttp.Bridge
+	logger           *log.Entry
+	transactionProxy *methods.TransactionProxy
+}
+
+// Start spawns the background workers necessary for the JSON RPC handlers.
+func (h Handler) Start() {
+	h.transactionProxy.Start()
 }
 
 // ServeHTTP implements the http.Handler interface
@@ -27,6 +33,7 @@ func (h Handler) Close() {
 	if err := h.bridge.Close(); err != nil {
 		h.logger.WithError(err).Warn("could not close bridge")
 	}
+	h.transactionProxy.Close()
 }
 
 type HandlerParams struct {
@@ -41,9 +48,10 @@ func NewJSONRPCHandler(params HandlerParams) (Handler, error) {
 		bridge: jhttp.NewBridge(handler.Map{
 			"getHealth":            methods.NewHealthCheck(),
 			"getAccount":           methods.NewAccountHandler(params.AccountStore),
-			"getTransactionStatus": methods.NewGetTransactionHandler(params.TransactionProxy),
+			"getTransactionStatus": methods.NewGetTransactionStatusHandler(params.TransactionProxy),
 			"sendTransaction":      methods.NewSendTransactionHandler(params.TransactionProxy),
 		}, nil),
-		logger: params.Logger,
+		logger:           params.Logger,
+		transactionProxy: params.TransactionProxy,
 	}, nil
 }
