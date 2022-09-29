@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.21.0 (Pending)
+
+### Changes
+
+- Update XDR definitions for soroban usage ([4576](https://github.com/stellar/go/pull/4576))
+- Include InvokeHostFunction Details on Operation API resources ([4608](https://github.com/stellar/go/pull/4608))
+
+
 ## 2.20.0
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
