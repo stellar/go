@@ -259,7 +259,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	}
 
 	if err := changeProcessor.Commit(s.ctx); err != nil {
-		return changeStats.GetResults(), errors.Wrap(err, "Error commiting changes from processor")
+		return changeStats.GetResults(), errors.Wrap(err, "Error committing changes from processor")
 	}
 
 	return changeStats.GetResults(), nil
@@ -287,7 +287,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 
 	err = changeProcessor.Commit(s.ctx)
 	if err != nil {
-		return errors.Wrap(err, "Error commiting changes from processor")
+		return errors.Wrap(err, "Error committing changes from processor")
 	}
 
 	return nil

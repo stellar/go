@@ -179,7 +179,7 @@ func (c *Client) stream(
 			var buffer bytes.Buffer
 			nonEmptylinesRead := 0
 			for {
-				// Check if ctx is not cancelled
+				// Check if ctx is not canceled
 				select {
 				case <-ctx.Done():
 					return nil
@@ -197,7 +197,7 @@ func (c *Client) stream(
 						//
 						// In the former case, that (again) should never happen in Horizon, we need to
 						// check if there are any events we need to decode. We do this in the `if`
-						// statement below just in case if Horizon behaviour changes in a future.
+						// statement below just in case if Horizon behavior changes in a future.
 						//
 						// From spec:
 						// > Once the end of the file is reached, the user agent must dispatch the
@@ -278,7 +278,7 @@ func (c *Client) fixHorizonURL() string {
 	return c.HorizonURL
 }
 
-// SetHorizonTimeout allows users to set the timeout before a horizon request is cancelled.
+// SetHorizonTimeout allows users to set the timeout before a horizon request is canceled.
 // The timeout is specified as a time.Duration which is in nanoseconds.
 func (c *Client) SetHorizonTimeout(t time.Duration) *Client {
 	c.horizonTimeout = t

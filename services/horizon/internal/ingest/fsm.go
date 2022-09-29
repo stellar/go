@@ -606,9 +606,9 @@ func (h historyRangeState) run(s *system) (transition, error) {
 			// Commit finished work in case of ledger backend error.
 			commitErr := s.historyQ.Commit()
 			if commitErr != nil {
-				log.WithError(commitErr).Error("Error commiting partial range results")
+				log.WithError(commitErr).Error("Error committing partial range results")
 			} else {
-				log.Info("Commited partial range results")
+				log.Info("Committed partial range results")
 			}
 			return start(), errors.Wrap(err, "error getting ledger")
 		}
