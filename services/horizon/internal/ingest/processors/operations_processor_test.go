@@ -4,6 +4,7 @@ package processors
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -87,6 +88,111 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 	}
 
 	return nil
+}
+
+func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+
+	contractParamVal1 := xdr.ScSymbol("func1")
+	contractParamVal2 := xdr.Int32(-5)
+	contractParamVal3 := xdr.Uint32(6)
+	contractParamVal4 := xdr.Uint64(3)
+	scoObjectBytes := []byte{0, 1, 2}
+	contractParamVal5 := xdr.ScObject{
+		Type: xdr.ScObjectTypeScoBytes,
+		Bin:  &scoObjectBytes,
+	}
+	contractParamVal5Addr := &contractParamVal5
+	contractParamVal6 := xdr.ScStaticScsTrue
+
+	ledgerKeyAccount := xdr.LedgerKeyAccount{
+		AccountId: source.ToAccountId(),
+	}
+
+	tx := ingest.LedgerTransaction{
+		UnsafeMeta: xdr.TransactionMeta{
+			V:  2,
+			V2: &xdr.TransactionMetaV2{},
+		},
+	}
+
+	wrapper := transactionOperationWrapper{
+		transaction: tx,
+		operation: xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeInvokeHostFunction,
+				InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+					Function: xdr.HostFunctionHostFnCall,
+					Parameters: []xdr.ScVal{
+						{
+							Type: xdr.ScValTypeScvSymbol,
+							Sym:  &contractParamVal1,
+						},
+						{
+							Type: xdr.ScValTypeScvI32,
+							I32:  &contractParamVal2,
+						},
+						{
+							Type: xdr.ScValTypeScvU32,
+							U32:  &contractParamVal3,
+						},
+						{
+							Type: xdr.ScValTypeScvBitset,
+							Bits: &contractParamVal4,
+						},
+						{
+							Type: xdr.ScValTypeScvObject,
+							Obj:  &contractParamVal5Addr,
+						},
+						{
+							Type: xdr.ScValTypeScvStatic,
+							Ic:   &contractParamVal6,
+						},
+						{
+							// invalid ScVal
+							Type: 5555,
+						},
+					},
+					Footprint: xdr.LedgerFootprint{
+						ReadOnly: []xdr.LedgerKey{
+							{
+								Type:    xdr.LedgerEntryTypeAccount,
+								Account: &ledgerKeyAccount,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	details, err := wrapper.Details()
+	s.Assert().NoError(err)
+	s.Assert().Equal(details["function"].(string), "HostFunctionHostFnCall")
+
+	raw, err := wrapper.operation.Body.InvokeHostFunctionOp.Footprint.MarshalBinary()
+	s.Assert().NoError(err)
+	s.Assert().Equal(details["footprint"].(string), base64.StdEncoding.EncodeToString(raw))
+
+	serializedParams := details["parameters"].([]map[string]string)
+	s.assertInvokeHostFunctionParameter(serializedParams, 0, "Sym", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[0])
+	s.assertInvokeHostFunctionParameter(serializedParams, 1, "I32", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[1])
+	s.assertInvokeHostFunctionParameter(serializedParams, 2, "U32", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[2])
+	s.assertInvokeHostFunctionParameter(serializedParams, 3, "Bits", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[3])
+	s.assertInvokeHostFunctionParameter(serializedParams, 4, "Obj", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[4])
+	s.assertInvokeHostFunctionParameter(serializedParams, 5, "Ic", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[5])
+	s.assertInvokeHostFunctionParameter(serializedParams, 6, "n/a", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[6])
+}
+
+func (s *OperationsProcessorTestSuiteLedger) assertInvokeHostFunctionParameter(parameters []map[string]string, paramPosition int, expectedType string, expectedVal xdr.ScVal) {
+	serializedParam := parameters[paramPosition]
+	s.Assert().Equal(serializedParam["type"], expectedType)
+	if expectedSerializedXdr, err := expectedVal.MarshalBinary(); err == nil {
+		s.Assert().Equal(serializedParam["value"], base64.StdEncoding.EncodeToString(expectedSerializedXdr))
+	} else {
+		s.Assert().Equal(serializedParam["value"], "n/a")
+	}
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {

@@ -345,6 +345,25 @@ type LiquidityPoolWithdraw struct {
 	ReservesReceived []base.AssetAmount `json:"reserves_received"`
 }
 
+// InvokeHostFunction is the json resource representing a single smart contract
+// function invocation operation, having type InvokeHostFunction.
+//
+// The model for InvokeHostFunction is intentionally simplified, Footprint
+// just contains a base64 encoded string of it's xdr serialization.
+type InvokeHostFunction struct {
+	Base
+	Parameters []HostFunctionParameter `json:"parameters"`
+	Function   string                  `json:"function"`
+	Footprint  string                  `json:"footprint"`
+}
+
+// InvokeHostFunction parameter model, intentionally simplified, Value
+// just contains a base64 encoded string of the ScVal xdr serialization.
+type HostFunctionParameter struct {
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
 // Operation interface contains methods implemented by the operation types
 type Operation interface {
 	GetBase() Base
@@ -573,8 +592,7 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		}
 		ops = op
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO:
-		var op LiquidityPoolWithdraw
+		var op InvokeHostFunction
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

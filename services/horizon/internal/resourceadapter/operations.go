@@ -147,8 +147,7 @@ func NewOperation(
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO
-		e := operations.LiquidityPoolWithdraw{Base: base}
+		e := operations.InvokeHostFunction{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
 	default:

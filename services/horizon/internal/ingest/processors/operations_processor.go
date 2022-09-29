@@ -585,8 +585,28 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			{Asset: assetB, Amount: amount.String(receivedB)},
 		}
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO
+		op := operation.operation.Body.MustInvokeHostFunctionOp()
+		details["function"] = op.Function.String()
+		params := make([]map[string]string, 0, len(op.Parameters))
 
+		for _, param := range op.Parameters {
+			serializedParam := map[string]string{}
+			serializedParam["value"] = "n/a"
+			serializedParam["type"] = "n/a"
+
+			if name, ok := param.ArmForSwitch(int32(param.Type)); ok {
+				serializedParam["type"] = name
+				if raw, err := param.MarshalBinary(); err == nil {
+					serializedParam["value"] = base64.StdEncoding.EncodeToString(raw)
+				}
+			}
+			params = append(params, serializedParam)
+		}
+
+		details["parameters"] = params
+		if raw, err := op.Footprint.MarshalBinary(); err == nil {
+			details["footprint"] = base64.StdEncoding.EncodeToString(raw)
+		}
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
@@ -810,11 +830,11 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeLiquidityPoolDeposit:
 		// the only direct participant is the source_account
 	case xdr.OperationTypeLiquidityPoolWithdraw:
-	// the only direct participant is the source_account
+		// the only direct participant is the source_account
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO
+		// the only direct participant is the source_account
 	default:
-		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+		return participants, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}
 
 	sponsor, err := operation.getSponsor()

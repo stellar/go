@@ -223,7 +223,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		err = wrapper.addLiquidityPoolWithdrawEffect()
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO:
+		// TODO: https://github.com/stellar/go/issues/4585
 		return nil, nil
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)

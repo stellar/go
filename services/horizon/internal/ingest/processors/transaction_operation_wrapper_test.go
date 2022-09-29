@@ -2216,7 +2216,7 @@ func TestParticipantsCoversAllOperationTypes(t *testing.T) {
 	}
 	// calling Participants should error due to the unknown operation
 	_, err := operation.Participants()
-	assert.Contains(t, err.Error(), "Unknown operation type")
+	assert.Contains(t, err.Error(), "unknown operation type")
 }
 
 func TestDetailsCoversAllOperationTypes(t *testing.T) {
