@@ -30,14 +30,14 @@ import (
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":               "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
 	"xdr/Stellar-contract-env-meta.x": "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
-	"xdr/Stellar-contract-spec.x":     "87a80c63cf6b757218ea07cb2a13e80c31fd0f08c81b872806455ea830d9fef6",
-	"xdr/Stellar-contract.x":          "ce7cd778639252f6bb10bc64b68d828cd0104e5ceeaa22a0e51a4a82e58fdedf",
+	"xdr/Stellar-contract-spec.x":     "8819c9b462fcc74199f051989ad14621b833036e8fed0fa3a1b83abda84a8bfc",
+	"xdr/Stellar-contract.x":          "1cbf58f3a8e3f7d2f700ae48551782344c095ec38d2a36618d33ad1af18a39d1",
 	"xdr/Stellar-internal.x":          "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
-	"xdr/Stellar-ledger-entries.x":    "d1c0b58d2134370a6dfa57ef509dccc5de5d1950bcbdad22ccc6c640046f79f2",
+	"xdr/Stellar-ledger-entries.x":    "b06993820d3488cf05d69755de7fef2f1b1ad9c185d2f55ce78b9fb556c17dcf",
 	"xdr/Stellar-ledger.x":            "c1b43f57346f5ca124c79a1c05a33043bcb9a8185432efec848b7001afd3bb25",
 	"xdr/Stellar-overlay.x":           "5b45fe3bd74abb25d91db4c729f3fb57a438d0a2a012f7a1c1118f1bb4d23637",
-	"xdr/Stellar-transaction.x":       "a7dbe0ad9e3f2625c876bb5b2c2bd5e5c358ace0023dce066321afbfb031e6f4",
-	"xdr/Stellar-types.x":             "60b7588e573f5e5518766eb5e6b6ea42f0e53144663cbe557e485cceb6306c85",
+	"xdr/Stellar-transaction.x":       "dc270655d2c26d656c7b035bc3003477dfab1097d3c46ff1cee6d68602af114c",
+	"xdr/Stellar-types.x":             "7b3e5470c4bcf7c19f9cc8f8bf81a494b540fc2157476329cf19863afab2343b",
 }
 
 type xdrType interface {
@@ -1318,92 +1318,6 @@ var (
 func (s ScpQuorumSet) xdrType() {}
 
 var _ xdrType = (*ScpQuorumSet)(nil)
-
-// AccountId is an XDR Typedef defines as:
-//
-//	typedef PublicKey AccountID;
-type AccountId PublicKey
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u AccountId) SwitchFieldName() string {
-	return PublicKey(u).SwitchFieldName()
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of PublicKey
-func (u AccountId) ArmForSwitch(sw int32) (string, bool) {
-	return PublicKey(u).ArmForSwitch(sw)
-}
-
-// NewAccountId creates a new  AccountId.
-func NewAccountId(aType PublicKeyType, value interface{}) (result AccountId, err error) {
-	u, err := NewPublicKey(aType, value)
-	result = AccountId(u)
-	return
-}
-
-// MustEd25519 retrieves the Ed25519 value from the union,
-// panicing if the value is not set.
-func (u AccountId) MustEd25519() Uint256 {
-	return PublicKey(u).MustEd25519()
-}
-
-// GetEd25519 retrieves the Ed25519 value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u AccountId) GetEd25519() (result Uint256, ok bool) {
-	return PublicKey(u).GetEd25519()
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s AccountId) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = PublicKey(s).EncodeTo(e); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*AccountId)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *AccountId) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = (*PublicKey)(s).DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding PublicKey: %s", err)
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s AccountId) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *AccountId) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*AccountId)(nil)
-	_ encoding.BinaryUnmarshaler = (*AccountId)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s AccountId) xdrType() {}
-
-var _ xdrType = (*AccountId)(nil)
 
 // Thresholds is an XDR Typedef defines as:
 //
@@ -10206,34 +10120,40 @@ var _ xdrType = (*LedgerKey)(nil)
 //	     ENVELOPE_TYPE_OP_ID = 6,
 //	     ENVELOPE_TYPE_POOL_REVOKE_OP_ID = 7,
 //	     ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519 = 8,
-//	     ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT = 9
+//	     ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT = 9,
+//	     ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET = 10,
+//	     ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT = 11
 //	 };
 type EnvelopeType int32
 
 const (
-	EnvelopeTypeEnvelopeTypeTxV0                   EnvelopeType = 0
-	EnvelopeTypeEnvelopeTypeScp                    EnvelopeType = 1
-	EnvelopeTypeEnvelopeTypeTx                     EnvelopeType = 2
-	EnvelopeTypeEnvelopeTypeAuth                   EnvelopeType = 3
-	EnvelopeTypeEnvelopeTypeScpvalue               EnvelopeType = 4
-	EnvelopeTypeEnvelopeTypeTxFeeBump              EnvelopeType = 5
-	EnvelopeTypeEnvelopeTypeOpId                   EnvelopeType = 6
-	EnvelopeTypeEnvelopeTypePoolRevokeOpId         EnvelopeType = 7
-	EnvelopeTypeEnvelopeTypeContractIdFromEd25519  EnvelopeType = 8
-	EnvelopeTypeEnvelopeTypeContractIdFromContract EnvelopeType = 9
+	EnvelopeTypeEnvelopeTypeTxV0                        EnvelopeType = 0
+	EnvelopeTypeEnvelopeTypeScp                         EnvelopeType = 1
+	EnvelopeTypeEnvelopeTypeTx                          EnvelopeType = 2
+	EnvelopeTypeEnvelopeTypeAuth                        EnvelopeType = 3
+	EnvelopeTypeEnvelopeTypeScpvalue                    EnvelopeType = 4
+	EnvelopeTypeEnvelopeTypeTxFeeBump                   EnvelopeType = 5
+	EnvelopeTypeEnvelopeTypeOpId                        EnvelopeType = 6
+	EnvelopeTypeEnvelopeTypePoolRevokeOpId              EnvelopeType = 7
+	EnvelopeTypeEnvelopeTypeContractIdFromEd25519       EnvelopeType = 8
+	EnvelopeTypeEnvelopeTypeContractIdFromContract      EnvelopeType = 9
+	EnvelopeTypeEnvelopeTypeContractIdFromAsset         EnvelopeType = 10
+	EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount EnvelopeType = 11
 )
 
 var envelopeTypeMap = map[int32]string{
-	0: "EnvelopeTypeEnvelopeTypeTxV0",
-	1: "EnvelopeTypeEnvelopeTypeScp",
-	2: "EnvelopeTypeEnvelopeTypeTx",
-	3: "EnvelopeTypeEnvelopeTypeAuth",
-	4: "EnvelopeTypeEnvelopeTypeScpvalue",
-	5: "EnvelopeTypeEnvelopeTypeTxFeeBump",
-	6: "EnvelopeTypeEnvelopeTypeOpId",
-	7: "EnvelopeTypeEnvelopeTypePoolRevokeOpId",
-	8: "EnvelopeTypeEnvelopeTypeContractIdFromEd25519",
-	9: "EnvelopeTypeEnvelopeTypeContractIdFromContract",
+	0:  "EnvelopeTypeEnvelopeTypeTxV0",
+	1:  "EnvelopeTypeEnvelopeTypeScp",
+	2:  "EnvelopeTypeEnvelopeTypeTx",
+	3:  "EnvelopeTypeEnvelopeTypeAuth",
+	4:  "EnvelopeTypeEnvelopeTypeScpvalue",
+	5:  "EnvelopeTypeEnvelopeTypeTxFeeBump",
+	6:  "EnvelopeTypeEnvelopeTypeOpId",
+	7:  "EnvelopeTypeEnvelopeTypePoolRevokeOpId",
+	8:  "EnvelopeTypeEnvelopeTypeContractIdFromEd25519",
+	9:  "EnvelopeTypeEnvelopeTypeContractIdFromContract",
+	10: "EnvelopeTypeEnvelopeTypeContractIdFromAsset",
+	11: "EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -24031,19 +23951,28 @@ var _ xdrType = (*LiquidityPoolWithdrawOp)(nil)
 //
 //	enum HostFunction
 //	 {
-//	     HOST_FN_CALL = 0,
-//	     HOST_FN_CREATE_CONTRACT = 1
+//	     HOST_FN_INVOKE_CONTRACT = 0,
+//	     HOST_FN_CREATE_CONTRACT_WITH_ED25519 = 1,
+//	     HOST_FN_CREATE_CONTRACT_WITH_SOURCE_ACCOUNT = 2,
+//	     HOST_FN_CREATE_TOKEN_CONTRACT_WITH_SOURCE_ACCOUNT = 3,
+//	     HOST_FN_CREATE_TOKEN_CONTRACT_WITH_ASSET = 4
 //	 };
 type HostFunction int32
 
 const (
-	HostFunctionHostFnCall           HostFunction = 0
-	HostFunctionHostFnCreateContract HostFunction = 1
+	HostFunctionHostFnInvokeContract                       HostFunction = 0
+	HostFunctionHostFnCreateContractWithEd25519            HostFunction = 1
+	HostFunctionHostFnCreateContractWithSourceAccount      HostFunction = 2
+	HostFunctionHostFnCreateTokenContractWithSourceAccount HostFunction = 3
+	HostFunctionHostFnCreateTokenContractWithAsset         HostFunction = 4
 )
 
 var hostFunctionMap = map[int32]string{
-	0: "HostFunctionHostFnCall",
-	1: "HostFunctionHostFnCreateContract",
+	0: "HostFunctionHostFnInvokeContract",
+	1: "HostFunctionHostFnCreateContractWithEd25519",
+	2: "HostFunctionHostFnCreateContractWithSourceAccount",
+	3: "HostFunctionHostFnCreateTokenContractWithSourceAccount",
+	4: "HostFunctionHostFnCreateTokenContractWithAsset",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -25916,6 +25845,76 @@ func (s HashIdPreimageContractId) xdrType() {}
 
 var _ xdrType = (*HashIdPreimageContractId)(nil)
 
+// HashIdPreimageSourceAccountContractId is an XDR NestedStruct defines as:
+//
+//	struct
+//	     {
+//	         AccountID sourceAccount;
+//	         uint256 salt;
+//	     }
+type HashIdPreimageSourceAccountContractId struct {
+	SourceAccount AccountId
+	Salt          Uint256
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *HashIdPreimageSourceAccountContractId) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.SourceAccount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Salt.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*HashIdPreimageSourceAccountContractId)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *HashIdPreimageSourceAccountContractId) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.SourceAccount.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding AccountId: %s", err)
+	}
+	nTmp, err = s.Salt.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint256: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s HashIdPreimageSourceAccountContractId) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *HashIdPreimageSourceAccountContractId) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*HashIdPreimageSourceAccountContractId)(nil)
+	_ encoding.BinaryUnmarshaler = (*HashIdPreimageSourceAccountContractId)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s HashIdPreimageSourceAccountContractId) xdrType() {}
+
+var _ xdrType = (*HashIdPreimageSourceAccountContractId)(nil)
+
 // HashIdPreimage is an XDR Union defines as:
 //
 //	union HashIDPreimage switch (EnvelopeType type)
@@ -25948,13 +25947,23 @@ var _ xdrType = (*HashIdPreimageContractId)(nil)
 //	         Hash contractID;
 //	         uint256 salt;
 //	     } contractID;
+//	 case ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET:
+//	     Asset fromAsset;
+//	 case ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+//	     struct
+//	     {
+//	         AccountID sourceAccount;
+//	         uint256 salt;
+//	     } sourceAccountContractID;
 //	 };
 type HashIdPreimage struct {
-	Type              EnvelopeType
-	OperationId       *HashIdPreimageOperationId
-	RevokeId          *HashIdPreimageRevokeId
-	Ed25519ContractId *HashIdPreimageEd25519ContractId
-	ContractId        *HashIdPreimageContractId
+	Type                    EnvelopeType
+	OperationId             *HashIdPreimageOperationId
+	RevokeId                *HashIdPreimageRevokeId
+	Ed25519ContractId       *HashIdPreimageEd25519ContractId
+	ContractId              *HashIdPreimageContractId
+	FromAsset               *Asset
+	SourceAccountContractId *HashIdPreimageSourceAccountContractId
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -25975,6 +25984,10 @@ func (u HashIdPreimage) ArmForSwitch(sw int32) (string, bool) {
 		return "Ed25519ContractId", true
 	case EnvelopeTypeEnvelopeTypeContractIdFromContract:
 		return "ContractId", true
+	case EnvelopeTypeEnvelopeTypeContractIdFromAsset:
+		return "FromAsset", true
+	case EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount:
+		return "SourceAccountContractId", true
 	}
 	return "-", false
 }
@@ -26011,6 +26024,20 @@ func NewHashIdPreimage(aType EnvelopeType, value interface{}) (result HashIdPrei
 			return
 		}
 		result.ContractId = &tv
+	case EnvelopeTypeEnvelopeTypeContractIdFromAsset:
+		tv, ok := value.(Asset)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Asset")
+			return
+		}
+		result.FromAsset = &tv
+	case EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount:
+		tv, ok := value.(HashIdPreimageSourceAccountContractId)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be HashIdPreimageSourceAccountContractId")
+			return
+		}
+		result.SourceAccountContractId = &tv
 	}
 	return
 }
@@ -26115,6 +26142,56 @@ func (u HashIdPreimage) GetContractId() (result HashIdPreimageContractId, ok boo
 	return
 }
 
+// MustFromAsset retrieves the FromAsset value from the union,
+// panicing if the value is not set.
+func (u HashIdPreimage) MustFromAsset() Asset {
+	val, ok := u.GetFromAsset()
+
+	if !ok {
+		panic("arm FromAsset is not set")
+	}
+
+	return val
+}
+
+// GetFromAsset retrieves the FromAsset value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HashIdPreimage) GetFromAsset() (result Asset, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "FromAsset" {
+		result = *u.FromAsset
+		ok = true
+	}
+
+	return
+}
+
+// MustSourceAccountContractId retrieves the SourceAccountContractId value from the union,
+// panicing if the value is not set.
+func (u HashIdPreimage) MustSourceAccountContractId() HashIdPreimageSourceAccountContractId {
+	val, ok := u.GetSourceAccountContractId()
+
+	if !ok {
+		panic("arm SourceAccountContractId is not set")
+	}
+
+	return val
+}
+
+// GetSourceAccountContractId retrieves the SourceAccountContractId value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HashIdPreimage) GetSourceAccountContractId() (result HashIdPreimageSourceAccountContractId, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SourceAccountContractId" {
+		result = *u.SourceAccountContractId
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -26139,6 +26216,16 @@ func (u HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case EnvelopeTypeEnvelopeTypeContractIdFromContract:
 		if err = (*u.ContractId).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case EnvelopeTypeEnvelopeTypeContractIdFromAsset:
+		if err = (*u.FromAsset).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount:
+		if err = (*u.SourceAccountContractId).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -26188,6 +26275,22 @@ func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding HashIdPreimageContractId: %s", err)
+		}
+		return n, nil
+	case EnvelopeTypeEnvelopeTypeContractIdFromAsset:
+		u.FromAsset = new(Asset)
+		nTmp, err = (*u.FromAsset).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Asset: %s", err)
+		}
+		return n, nil
+	case EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount:
+		u.SourceAccountContractId = new(HashIdPreimageSourceAccountContractId)
+		nTmp, err = (*u.SourceAccountContractId).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding HashIdPreimageSourceAccountContractId: %s", err)
 		}
 		return n, nil
 	}
@@ -36824,13 +36927,14 @@ var _ xdrType = (*InvokeHostFunctionResultCode)(nil)
 //	union InvokeHostFunctionResult switch (InvokeHostFunctionResultCode code)
 //	 {
 //	 case INVOKE_HOST_FUNCTION_SUCCESS:
-//	     void;
+//	     SCVal success;
 //	 case INVOKE_HOST_FUNCTION_MALFORMED:
 //	 case INVOKE_HOST_FUNCTION_TRAPPED:
 //	     void;
 //	 };
 type InvokeHostFunctionResult struct {
-	Code InvokeHostFunctionResultCode
+	Code    InvokeHostFunctionResultCode
+	Success *ScVal
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -36844,7 +36948,7 @@ func (u InvokeHostFunctionResult) SwitchFieldName() string {
 func (u InvokeHostFunctionResult) ArmForSwitch(sw int32) (string, bool) {
 	switch InvokeHostFunctionResultCode(sw) {
 	case InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
-		return "", true
+		return "Success", true
 	case InvokeHostFunctionResultCodeInvokeHostFunctionMalformed:
 		return "", true
 	case InvokeHostFunctionResultCodeInvokeHostFunctionTrapped:
@@ -36858,12 +36962,42 @@ func NewInvokeHostFunctionResult(code InvokeHostFunctionResultCode, value interf
 	result.Code = code
 	switch InvokeHostFunctionResultCode(code) {
 	case InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
-		// void
+		tv, ok := value.(ScVal)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScVal")
+			return
+		}
+		result.Success = &tv
 	case InvokeHostFunctionResultCodeInvokeHostFunctionMalformed:
 		// void
 	case InvokeHostFunctionResultCodeInvokeHostFunctionTrapped:
 		// void
 	}
+	return
+}
+
+// MustSuccess retrieves the Success value from the union,
+// panicing if the value is not set.
+func (u InvokeHostFunctionResult) MustSuccess() ScVal {
+	val, ok := u.GetSuccess()
+
+	if !ok {
+		panic("arm Success is not set")
+	}
+
+	return val
+}
+
+// GetSuccess retrieves the Success value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u InvokeHostFunctionResult) GetSuccess() (result ScVal, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Code))
+
+	if armName == "Success" {
+		result = *u.Success
+		ok = true
+	}
+
 	return
 }
 
@@ -36875,7 +37009,9 @@ func (u InvokeHostFunctionResult) EncodeTo(e *xdr.Encoder) error {
 	}
 	switch InvokeHostFunctionResultCode(u.Code) {
 	case InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
-		// Void
+		if err = (*u.Success).EncodeTo(e); err != nil {
+			return err
+		}
 		return nil
 	case InvokeHostFunctionResultCodeInvokeHostFunctionMalformed:
 		// Void
@@ -36900,7 +37036,12 @@ func (u *InvokeHostFunctionResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 	}
 	switch InvokeHostFunctionResultCode(u.Code) {
 	case InvokeHostFunctionResultCodeInvokeHostFunctionSuccess:
-		// Void
+		u.Success = new(ScVal)
+		nTmp, err = (*u.Success).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScVal: %s", err)
+		}
 		return n, nil
 	case InvokeHostFunctionResultCodeInvokeHostFunctionMalformed:
 		// Void
@@ -41437,6 +41578,92 @@ func (s NodeId) xdrType() {}
 
 var _ xdrType = (*NodeId)(nil)
 
+// AccountId is an XDR Typedef defines as:
+//
+//	typedef PublicKey AccountID;
+type AccountId PublicKey
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u AccountId) SwitchFieldName() string {
+	return PublicKey(u).SwitchFieldName()
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of PublicKey
+func (u AccountId) ArmForSwitch(sw int32) (string, bool) {
+	return PublicKey(u).ArmForSwitch(sw)
+}
+
+// NewAccountId creates a new  AccountId.
+func NewAccountId(aType PublicKeyType, value interface{}) (result AccountId, err error) {
+	u, err := NewPublicKey(aType, value)
+	result = AccountId(u)
+	return
+}
+
+// MustEd25519 retrieves the Ed25519 value from the union,
+// panicing if the value is not set.
+func (u AccountId) MustEd25519() Uint256 {
+	return PublicKey(u).MustEd25519()
+}
+
+// GetEd25519 retrieves the Ed25519 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u AccountId) GetEd25519() (result Uint256, ok bool) {
+	return PublicKey(u).GetEd25519()
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s AccountId) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = PublicKey(s).EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*AccountId)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *AccountId) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = (*PublicKey)(s).DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding PublicKey: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s AccountId) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *AccountId) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*AccountId)(nil)
+	_ encoding.BinaryUnmarshaler = (*AccountId)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s AccountId) xdrType() {}
+
+var _ xdrType = (*AccountId)(nil)
+
 // Curve25519Secret is an XDR Struct defines as:
 //
 //	struct Curve25519Secret
@@ -41909,6 +42136,8 @@ var _ xdrType = (*ScEnvMetaEntry)(nil)
 //	     SC_SPEC_TYPE_STATUS = 8,
 //	     SC_SPEC_TYPE_BYTES = 9,
 //	     SC_SPEC_TYPE_BIG_INT = 10,
+//	     SC_SPEC_TYPE_INVOKER = 11,
+//	     SC_SPEC_TYPE_ACCOUNT_ID = 12,
 //
 //	     // Types with parameters.
 //	     SC_SPEC_TYPE_OPTION = 1000,
@@ -41925,25 +42154,27 @@ var _ xdrType = (*ScEnvMetaEntry)(nil)
 type ScSpecType int32
 
 const (
-	ScSpecTypeScSpecTypeVal    ScSpecType = 0
-	ScSpecTypeScSpecTypeU32    ScSpecType = 1
-	ScSpecTypeScSpecTypeI32    ScSpecType = 2
-	ScSpecTypeScSpecTypeU64    ScSpecType = 3
-	ScSpecTypeScSpecTypeI64    ScSpecType = 4
-	ScSpecTypeScSpecTypeBool   ScSpecType = 5
-	ScSpecTypeScSpecTypeSymbol ScSpecType = 6
-	ScSpecTypeScSpecTypeBitset ScSpecType = 7
-	ScSpecTypeScSpecTypeStatus ScSpecType = 8
-	ScSpecTypeScSpecTypeBytes  ScSpecType = 9
-	ScSpecTypeScSpecTypeBigInt ScSpecType = 10
-	ScSpecTypeScSpecTypeOption ScSpecType = 1000
-	ScSpecTypeScSpecTypeResult ScSpecType = 1001
-	ScSpecTypeScSpecTypeVec    ScSpecType = 1002
-	ScSpecTypeScSpecTypeSet    ScSpecType = 1003
-	ScSpecTypeScSpecTypeMap    ScSpecType = 1004
-	ScSpecTypeScSpecTypeTuple  ScSpecType = 1005
-	ScSpecTypeScSpecTypeBytesN ScSpecType = 1006
-	ScSpecTypeScSpecTypeUdt    ScSpecType = 2000
+	ScSpecTypeScSpecTypeVal       ScSpecType = 0
+	ScSpecTypeScSpecTypeU32       ScSpecType = 1
+	ScSpecTypeScSpecTypeI32       ScSpecType = 2
+	ScSpecTypeScSpecTypeU64       ScSpecType = 3
+	ScSpecTypeScSpecTypeI64       ScSpecType = 4
+	ScSpecTypeScSpecTypeBool      ScSpecType = 5
+	ScSpecTypeScSpecTypeSymbol    ScSpecType = 6
+	ScSpecTypeScSpecTypeBitset    ScSpecType = 7
+	ScSpecTypeScSpecTypeStatus    ScSpecType = 8
+	ScSpecTypeScSpecTypeBytes     ScSpecType = 9
+	ScSpecTypeScSpecTypeBigInt    ScSpecType = 10
+	ScSpecTypeScSpecTypeInvoker   ScSpecType = 11
+	ScSpecTypeScSpecTypeAccountId ScSpecType = 12
+	ScSpecTypeScSpecTypeOption    ScSpecType = 1000
+	ScSpecTypeScSpecTypeResult    ScSpecType = 1001
+	ScSpecTypeScSpecTypeVec       ScSpecType = 1002
+	ScSpecTypeScSpecTypeSet       ScSpecType = 1003
+	ScSpecTypeScSpecTypeMap       ScSpecType = 1004
+	ScSpecTypeScSpecTypeTuple     ScSpecType = 1005
+	ScSpecTypeScSpecTypeBytesN    ScSpecType = 1006
+	ScSpecTypeScSpecTypeUdt       ScSpecType = 2000
 )
 
 var scSpecTypeMap = map[int32]string{
@@ -41958,6 +42189,8 @@ var scSpecTypeMap = map[int32]string{
 	8:    "ScSpecTypeScSpecTypeStatus",
 	9:    "ScSpecTypeScSpecTypeBytes",
 	10:   "ScSpecTypeScSpecTypeBigInt",
+	11:   "ScSpecTypeScSpecTypeInvoker",
+	12:   "ScSpecTypeScSpecTypeAccountId",
 	1000: "ScSpecTypeScSpecTypeOption",
 	1001: "ScSpecTypeScSpecTypeResult",
 	1002: "ScSpecTypeScSpecTypeVec",
@@ -42567,6 +42800,8 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 //	 case SC_SPEC_TYPE_STATUS:
 //	 case SC_SPEC_TYPE_BYTES:
 //	 case SC_SPEC_TYPE_BIG_INT:
+//	 case SC_SPEC_TYPE_INVOKER:
+//	 case SC_SPEC_TYPE_ACCOUNT_ID:
 //	     void;
 //	 case SC_SPEC_TYPE_OPTION:
 //	     SCSpecTypeOption option;
@@ -42629,6 +42864,10 @@ func (u ScSpecTypeDef) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case ScSpecTypeScSpecTypeBigInt:
 		return "", true
+	case ScSpecTypeScSpecTypeInvoker:
+		return "", true
+	case ScSpecTypeScSpecTypeAccountId:
+		return "", true
 	case ScSpecTypeScSpecTypeOption:
 		return "Option", true
 	case ScSpecTypeScSpecTypeResult:
@@ -42674,6 +42913,10 @@ func NewScSpecTypeDef(aType ScSpecType, value interface{}) (result ScSpecTypeDef
 	case ScSpecTypeScSpecTypeBytes:
 		// void
 	case ScSpecTypeScSpecTypeBigInt:
+		// void
+	case ScSpecTypeScSpecTypeInvoker:
+		// void
+	case ScSpecTypeScSpecTypeAccountId:
 		// void
 	case ScSpecTypeScSpecTypeOption:
 		tv, ok := value.(ScSpecTypeOption)
@@ -42975,6 +43218,12 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 	case ScSpecTypeScSpecTypeBigInt:
 		// Void
 		return nil
+	case ScSpecTypeScSpecTypeInvoker:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeAccountId:
+		// Void
+		return nil
 	case ScSpecTypeScSpecTypeOption:
 		if err = (*u.Option).EncodeTo(e); err != nil {
 			return err
@@ -43062,6 +43311,12 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case ScSpecTypeScSpecTypeBigInt:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeInvoker:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeAccountId:
 		// Void
 		return n, nil
 	case ScSpecTypeScSpecTypeOption:
@@ -43514,6 +43769,346 @@ func (s ScSpecUdtUnionV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtUnionV0)(nil)
 
+// ScSpecUdtEnumCaseV0 is an XDR Struct defines as:
+//
+//	struct SCSpecUDTEnumCaseV0
+//	 {
+//	     string name<60>;
+//	     uint32 value;
+//	 };
+type ScSpecUdtEnumCaseV0 struct {
+	Name  string `xdrmaxsize:"60"`
+	Value Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpecUdtEnumCaseV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s.Name)); err != nil {
+		return err
+	}
+	if err = s.Value.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSpecUdtEnumCaseV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpecUdtEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	s.Name, nTmp, err = d.DecodeString(60)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Name: %s", err)
+	}
+	nTmp, err = s.Value.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtEnumCaseV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtEnumCaseV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtEnumCaseV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtEnumCaseV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtEnumCaseV0) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtEnumCaseV0)(nil)
+
+// ScSpecUdtEnumV0 is an XDR Struct defines as:
+//
+//	struct SCSpecUDTEnumV0
+//	 {
+//	     string lib<80>;
+//	     string name<60>;
+//	     SCSpecUDTEnumCaseV0 cases<50>;
+//	 };
+type ScSpecUdtEnumV0 struct {
+	Lib   string                `xdrmaxsize:"80"`
+	Name  string                `xdrmaxsize:"60"`
+	Cases []ScSpecUdtEnumCaseV0 `xdrmaxsize:"50"`
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpecUdtEnumV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s.Lib)); err != nil {
+		return err
+	}
+	if _, err = e.EncodeString(string(s.Name)); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Cases))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Cases); i++ {
+		if err = s.Cases[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSpecUdtEnumV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	s.Lib, nTmp, err = d.DecodeString(80)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Lib: %s", err)
+	}
+	s.Name, nTmp, err = d.DecodeString(60)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Name: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScSpecUdtEnumCaseV0: %s", err)
+	}
+	if l > 50 {
+		return n, fmt.Errorf("decoding ScSpecUdtEnumCaseV0: data size (%d) exceeds size limit (50)", l)
+	}
+	s.Cases = nil
+	if l > 0 {
+		s.Cases = make([]ScSpecUdtEnumCaseV0, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Cases[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScSpecUdtEnumCaseV0: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtEnumV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtEnumV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtEnumV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtEnumV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtEnumV0) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtEnumV0)(nil)
+
+// ScSpecUdtErrorEnumCaseV0 is an XDR Struct defines as:
+//
+//	struct SCSpecUDTErrorEnumCaseV0
+//	 {
+//	     string name<60>;
+//	     uint32 value;
+//	 };
+type ScSpecUdtErrorEnumCaseV0 struct {
+	Name  string `xdrmaxsize:"60"`
+	Value Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpecUdtErrorEnumCaseV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s.Name)); err != nil {
+		return err
+	}
+	if err = s.Value.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSpecUdtErrorEnumCaseV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpecUdtErrorEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	s.Name, nTmp, err = d.DecodeString(60)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Name: %s", err)
+	}
+	nTmp, err = s.Value.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtErrorEnumCaseV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtErrorEnumCaseV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtErrorEnumCaseV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtErrorEnumCaseV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtErrorEnumCaseV0) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtErrorEnumCaseV0)(nil)
+
+// ScSpecUdtErrorEnumV0 is an XDR Struct defines as:
+//
+//	struct SCSpecUDTErrorEnumV0
+//	 {
+//	     string lib<80>;
+//	     string name<60>;
+//	     SCSpecUDTErrorEnumCaseV0 cases<50>;
+//	 };
+type ScSpecUdtErrorEnumV0 struct {
+	Lib   string                     `xdrmaxsize:"80"`
+	Name  string                     `xdrmaxsize:"60"`
+	Cases []ScSpecUdtErrorEnumCaseV0 `xdrmaxsize:"50"`
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpecUdtErrorEnumV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s.Lib)); err != nil {
+		return err
+	}
+	if _, err = e.EncodeString(string(s.Name)); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Cases))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Cases); i++ {
+		if err = s.Cases[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSpecUdtErrorEnumV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	s.Lib, nTmp, err = d.DecodeString(80)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Lib: %s", err)
+	}
+	s.Name, nTmp, err = d.DecodeString(60)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Name: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScSpecUdtErrorEnumCaseV0: %s", err)
+	}
+	if l > 50 {
+		return n, fmt.Errorf("decoding ScSpecUdtErrorEnumCaseV0: data size (%d) exceeds size limit (50)", l)
+	}
+	s.Cases = nil
+	if l > 0 {
+		s.Cases = make([]ScSpecUdtErrorEnumCaseV0, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Cases[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScSpecUdtErrorEnumCaseV0: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtErrorEnumV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtErrorEnumV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtErrorEnumV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtErrorEnumV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtErrorEnumV0) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtErrorEnumV0)(nil)
+
 // ScSpecFunctionInputV0 is an XDR Struct defines as:
 //
 //	struct SCSpecFunctionInputV0
@@ -43709,20 +44304,26 @@ var _ xdrType = (*ScSpecFunctionV0)(nil)
 //	 {
 //	     SC_SPEC_ENTRY_FUNCTION_V0 = 0,
 //	     SC_SPEC_ENTRY_UDT_STRUCT_V0 = 1,
-//	     SC_SPEC_ENTRY_UDT_UNION_V0 = 2
+//	     SC_SPEC_ENTRY_UDT_UNION_V0 = 2,
+//	     SC_SPEC_ENTRY_UDT_ENUM_V0 = 3,
+//	     SC_SPEC_ENTRY_UDT_ERROR_ENUM_V0 = 4
 //	 };
 type ScSpecEntryKind int32
 
 const (
-	ScSpecEntryKindScSpecEntryFunctionV0  ScSpecEntryKind = 0
-	ScSpecEntryKindScSpecEntryUdtStructV0 ScSpecEntryKind = 1
-	ScSpecEntryKindScSpecEntryUdtUnionV0  ScSpecEntryKind = 2
+	ScSpecEntryKindScSpecEntryFunctionV0     ScSpecEntryKind = 0
+	ScSpecEntryKindScSpecEntryUdtStructV0    ScSpecEntryKind = 1
+	ScSpecEntryKindScSpecEntryUdtUnionV0     ScSpecEntryKind = 2
+	ScSpecEntryKindScSpecEntryUdtEnumV0      ScSpecEntryKind = 3
+	ScSpecEntryKindScSpecEntryUdtErrorEnumV0 ScSpecEntryKind = 4
 )
 
 var scSpecEntryKindMap = map[int32]string{
 	0: "ScSpecEntryKindScSpecEntryFunctionV0",
 	1: "ScSpecEntryKindScSpecEntryUdtStructV0",
 	2: "ScSpecEntryKindScSpecEntryUdtUnionV0",
+	3: "ScSpecEntryKindScSpecEntryUdtEnumV0",
+	4: "ScSpecEntryKindScSpecEntryUdtErrorEnumV0",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -43799,12 +44400,18 @@ var _ xdrType = (*ScSpecEntryKind)(nil)
 //	     SCSpecUDTStructV0 udtStructV0;
 //	 case SC_SPEC_ENTRY_UDT_UNION_V0:
 //	     SCSpecUDTUnionV0 udtUnionV0;
+//	 case SC_SPEC_ENTRY_UDT_ENUM_V0:
+//	     SCSpecUDTEnumV0 udtEnumV0;
+//	 case SC_SPEC_ENTRY_UDT_ERROR_ENUM_V0:
+//	     SCSpecUDTErrorEnumV0 udtErrorEnumV0;
 //	 };
 type ScSpecEntry struct {
-	Kind        ScSpecEntryKind
-	FunctionV0  *ScSpecFunctionV0
-	UdtStructV0 *ScSpecUdtStructV0
-	UdtUnionV0  *ScSpecUdtUnionV0
+	Kind           ScSpecEntryKind
+	FunctionV0     *ScSpecFunctionV0
+	UdtStructV0    *ScSpecUdtStructV0
+	UdtUnionV0     *ScSpecUdtUnionV0
+	UdtEnumV0      *ScSpecUdtEnumV0
+	UdtErrorEnumV0 *ScSpecUdtErrorEnumV0
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -43823,6 +44430,10 @@ func (u ScSpecEntry) ArmForSwitch(sw int32) (string, bool) {
 		return "UdtStructV0", true
 	case ScSpecEntryKindScSpecEntryUdtUnionV0:
 		return "UdtUnionV0", true
+	case ScSpecEntryKindScSpecEntryUdtEnumV0:
+		return "UdtEnumV0", true
+	case ScSpecEntryKindScSpecEntryUdtErrorEnumV0:
+		return "UdtErrorEnumV0", true
 	}
 	return "-", false
 }
@@ -43852,6 +44463,20 @@ func NewScSpecEntry(kind ScSpecEntryKind, value interface{}) (result ScSpecEntry
 			return
 		}
 		result.UdtUnionV0 = &tv
+	case ScSpecEntryKindScSpecEntryUdtEnumV0:
+		tv, ok := value.(ScSpecUdtEnumV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScSpecUdtEnumV0")
+			return
+		}
+		result.UdtEnumV0 = &tv
+	case ScSpecEntryKindScSpecEntryUdtErrorEnumV0:
+		tv, ok := value.(ScSpecUdtErrorEnumV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScSpecUdtErrorEnumV0")
+			return
+		}
+		result.UdtErrorEnumV0 = &tv
 	}
 	return
 }
@@ -43931,6 +44556,56 @@ func (u ScSpecEntry) GetUdtUnionV0() (result ScSpecUdtUnionV0, ok bool) {
 	return
 }
 
+// MustUdtEnumV0 retrieves the UdtEnumV0 value from the union,
+// panicing if the value is not set.
+func (u ScSpecEntry) MustUdtEnumV0() ScSpecUdtEnumV0 {
+	val, ok := u.GetUdtEnumV0()
+
+	if !ok {
+		panic("arm UdtEnumV0 is not set")
+	}
+
+	return val
+}
+
+// GetUdtEnumV0 retrieves the UdtEnumV0 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScSpecEntry) GetUdtEnumV0() (result ScSpecUdtEnumV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Kind))
+
+	if armName == "UdtEnumV0" {
+		result = *u.UdtEnumV0
+		ok = true
+	}
+
+	return
+}
+
+// MustUdtErrorEnumV0 retrieves the UdtErrorEnumV0 value from the union,
+// panicing if the value is not set.
+func (u ScSpecEntry) MustUdtErrorEnumV0() ScSpecUdtErrorEnumV0 {
+	val, ok := u.GetUdtErrorEnumV0()
+
+	if !ok {
+		panic("arm UdtErrorEnumV0 is not set")
+	}
+
+	return val
+}
+
+// GetUdtErrorEnumV0 retrieves the UdtErrorEnumV0 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScSpecEntry) GetUdtErrorEnumV0() (result ScSpecUdtErrorEnumV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Kind))
+
+	if armName == "UdtErrorEnumV0" {
+		result = *u.UdtErrorEnumV0
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u ScSpecEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -43950,6 +44625,16 @@ func (u ScSpecEntry) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ScSpecEntryKindScSpecEntryUdtUnionV0:
 		if err = (*u.UdtUnionV0).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScSpecEntryKindScSpecEntryUdtEnumV0:
+		if err = (*u.UdtEnumV0).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScSpecEntryKindScSpecEntryUdtErrorEnumV0:
+		if err = (*u.UdtErrorEnumV0).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -43991,6 +44676,22 @@ func (u *ScSpecEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecUdtUnionV0: %s", err)
+		}
+		return n, nil
+	case ScSpecEntryKindScSpecEntryUdtEnumV0:
+		u.UdtEnumV0 = new(ScSpecUdtEnumV0)
+		nTmp, err = (*u.UdtEnumV0).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSpecUdtEnumV0: %s", err)
+		}
+		return n, nil
+	case ScSpecEntryKindScSpecEntryUdtErrorEnumV0:
+		u.UdtErrorEnumV0 = new(ScSpecUdtErrorEnumV0)
+		nTmp, err = (*u.UdtErrorEnumV0).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSpecUdtErrorEnumV0: %s", err)
 		}
 		return n, nil
 	}
@@ -46088,9 +46789,8 @@ var _ xdrType = (*ScVal)(nil)
 //	     SCO_I64 = 3,
 //	     SCO_BYTES = 4,
 //	     SCO_BIG_INT = 5,
-//	     SCO_HASH = 6,
-//	     SCO_PUBLIC_KEY = 7,
-//	     SCO_CONTRACT_CODE = 8
+//	     SCO_CONTRACT_CODE = 6,
+//	     SCO_ACCOUNT_ID = 7
 //
 //	     // TODO: add more
 //	 };
@@ -46103,9 +46803,8 @@ const (
 	ScObjectTypeScoI64          ScObjectType = 3
 	ScObjectTypeScoBytes        ScObjectType = 4
 	ScObjectTypeScoBigInt       ScObjectType = 5
-	ScObjectTypeScoHash         ScObjectType = 6
-	ScObjectTypeScoPublicKey    ScObjectType = 7
-	ScObjectTypeScoContractCode ScObjectType = 8
+	ScObjectTypeScoContractCode ScObjectType = 6
+	ScObjectTypeScoAccountId    ScObjectType = 7
 )
 
 var scObjectTypeMap = map[int32]string{
@@ -46115,9 +46814,8 @@ var scObjectTypeMap = map[int32]string{
 	3: "ScObjectTypeScoI64",
 	4: "ScObjectTypeScoBytes",
 	5: "ScObjectTypeScoBigInt",
-	6: "ScObjectTypeScoHash",
-	7: "ScObjectTypeScoPublicKey",
-	8: "ScObjectTypeScoContractCode",
+	6: "ScObjectTypeScoContractCode",
+	7: "ScObjectTypeScoAccountId",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -46675,221 +47373,6 @@ func (s ScBigInt) xdrType() {}
 
 var _ xdrType = (*ScBigInt)(nil)
 
-// ScHashType is an XDR Enum defines as:
-//
-//	enum SCHashType
-//	 {
-//	     SCHASH_SHA256 = 0
-//	 };
-type ScHashType int32
-
-const (
-	ScHashTypeSchashSha256 ScHashType = 0
-)
-
-var scHashTypeMap = map[int32]string{
-	0: "ScHashTypeSchashSha256",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScHashType
-func (e ScHashType) ValidEnum(v int32) bool {
-	_, ok := scHashTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ScHashType) String() string {
-	name, _ := scHashTypeMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e ScHashType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := scHashTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ScHashType enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*ScHashType)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *ScHashType) DecodeFrom(d *xdr.Decoder) (int, error) {
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding ScHashType: %s", err)
-	}
-	if _, ok := scHashTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ScHashType enum value", v)
-	}
-	*e = ScHashType(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScHashType) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScHashType) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScHashType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScHashType)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScHashType) xdrType() {}
-
-var _ xdrType = (*ScHashType)(nil)
-
-// ScHash is an XDR Union defines as:
-//
-//	union SCHash switch (SCHashType type)
-//	 {
-//	 case SCHASH_SHA256:
-//	     Hash sha256;
-//	 };
-type ScHash struct {
-	Type   ScHashType
-	Sha256 *Hash
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u ScHash) SwitchFieldName() string {
-	return "Type"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScHash
-func (u ScHash) ArmForSwitch(sw int32) (string, bool) {
-	switch ScHashType(sw) {
-	case ScHashTypeSchashSha256:
-		return "Sha256", true
-	}
-	return "-", false
-}
-
-// NewScHash creates a new  ScHash.
-func NewScHash(aType ScHashType, value interface{}) (result ScHash, err error) {
-	result.Type = aType
-	switch ScHashType(aType) {
-	case ScHashTypeSchashSha256:
-		tv, ok := value.(Hash)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Hash")
-			return
-		}
-		result.Sha256 = &tv
-	}
-	return
-}
-
-// MustSha256 retrieves the Sha256 value from the union,
-// panicing if the value is not set.
-func (u ScHash) MustSha256() Hash {
-	val, ok := u.GetSha256()
-
-	if !ok {
-		panic("arm Sha256 is not set")
-	}
-
-	return val
-}
-
-// GetSha256 retrieves the Sha256 value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScHash) GetSha256() (result Hash, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Sha256" {
-		result = *u.Sha256
-		ok = true
-	}
-
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u ScHash) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = u.Type.EncodeTo(e); err != nil {
-		return err
-	}
-	switch ScHashType(u.Type) {
-	case ScHashTypeSchashSha256:
-		if err = (*u.Sha256).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("Type (ScHashType) switch value '%d' is not valid for union ScHash", u.Type)
-}
-
-var _ decoderFrom = (*ScHash)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *ScHash) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScHashType: %s", err)
-	}
-	switch ScHashType(u.Type) {
-	case ScHashTypeSchashSha256:
-		u.Sha256 = new(Hash)
-		nTmp, err = (*u.Sha256).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Hash: %s", err)
-		}
-		return n, nil
-	}
-	return n, fmt.Errorf("union ScHash has invalid Type (ScHashType) switch value '%d'", u.Type)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScHash) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScHash) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScHash)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScHash)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScHash) xdrType() {}
-
-var _ xdrType = (*ScHash)(nil)
-
 // ScContractCodeType is an XDR Enum defines as:
 //
 //	enum SCContractCodeType
@@ -47136,12 +47619,10 @@ var _ xdrType = (*ScContractCode)(nil)
 //	     opaque bin<SCVAL_LIMIT>;
 //	 case SCO_BIG_INT:
 //	     SCBigInt bigInt;
-//	 case SCO_HASH:
-//	     SCHash hash;
-//	 case SCO_PUBLIC_KEY:
-//	     PublicKey publicKey;
 //	 case SCO_CONTRACT_CODE:
 //	     SCContractCode contractCode;
+//	 case SCO_ACCOUNT_ID:
+//	     AccountID accountID;
 //	 };
 type ScObject struct {
 	Type         ScObjectType
@@ -47151,9 +47632,8 @@ type ScObject struct {
 	I64          *Int64
 	Bin          *[]byte `xdrmaxsize:"256000"`
 	BigInt       *ScBigInt
-	Hash         *ScHash
-	PublicKey    *PublicKey
 	ContractCode *ScContractCode
+	AccountId    *AccountId
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -47178,12 +47658,10 @@ func (u ScObject) ArmForSwitch(sw int32) (string, bool) {
 		return "Bin", true
 	case ScObjectTypeScoBigInt:
 		return "BigInt", true
-	case ScObjectTypeScoHash:
-		return "Hash", true
-	case ScObjectTypeScoPublicKey:
-		return "PublicKey", true
 	case ScObjectTypeScoContractCode:
 		return "ContractCode", true
+	case ScObjectTypeScoAccountId:
+		return "AccountId", true
 	}
 	return "-", false
 }
@@ -47234,20 +47712,6 @@ func NewScObject(aType ScObjectType, value interface{}) (result ScObject, err er
 			return
 		}
 		result.BigInt = &tv
-	case ScObjectTypeScoHash:
-		tv, ok := value.(ScHash)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScHash")
-			return
-		}
-		result.Hash = &tv
-	case ScObjectTypeScoPublicKey:
-		tv, ok := value.(PublicKey)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be PublicKey")
-			return
-		}
-		result.PublicKey = &tv
 	case ScObjectTypeScoContractCode:
 		tv, ok := value.(ScContractCode)
 		if !ok {
@@ -47255,6 +47719,13 @@ func NewScObject(aType ScObjectType, value interface{}) (result ScObject, err er
 			return
 		}
 		result.ContractCode = &tv
+	case ScObjectTypeScoAccountId:
+		tv, ok := value.(AccountId)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AccountId")
+			return
+		}
+		result.AccountId = &tv
 	}
 	return
 }
@@ -47409,56 +47880,6 @@ func (u ScObject) GetBigInt() (result ScBigInt, ok bool) {
 	return
 }
 
-// MustHash retrieves the Hash value from the union,
-// panicing if the value is not set.
-func (u ScObject) MustHash() ScHash {
-	val, ok := u.GetHash()
-
-	if !ok {
-		panic("arm Hash is not set")
-	}
-
-	return val
-}
-
-// GetHash retrieves the Hash value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetHash() (result ScHash, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Hash" {
-		result = *u.Hash
-		ok = true
-	}
-
-	return
-}
-
-// MustPublicKey retrieves the PublicKey value from the union,
-// panicing if the value is not set.
-func (u ScObject) MustPublicKey() PublicKey {
-	val, ok := u.GetPublicKey()
-
-	if !ok {
-		panic("arm PublicKey is not set")
-	}
-
-	return val
-}
-
-// GetPublicKey retrieves the PublicKey value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetPublicKey() (result PublicKey, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "PublicKey" {
-		result = *u.PublicKey
-		ok = true
-	}
-
-	return
-}
-
 // MustContractCode retrieves the ContractCode value from the union,
 // panicing if the value is not set.
 func (u ScObject) MustContractCode() ScContractCode {
@@ -47478,6 +47899,31 @@ func (u ScObject) GetContractCode() (result ScContractCode, ok bool) {
 
 	if armName == "ContractCode" {
 		result = *u.ContractCode
+		ok = true
+	}
+
+	return
+}
+
+// MustAccountId retrieves the AccountId value from the union,
+// panicing if the value is not set.
+func (u ScObject) MustAccountId() AccountId {
+	val, ok := u.GetAccountId()
+
+	if !ok {
+		panic("arm AccountId is not set")
+	}
+
+	return val
+}
+
+// GetAccountId retrieves the AccountId value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScObject) GetAccountId() (result AccountId, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "AccountId" {
+		result = *u.AccountId
 		ok = true
 	}
 
@@ -47521,18 +47967,13 @@ func (u ScObject) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoHash:
-		if err = (*u.Hash).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScObjectTypeScoPublicKey:
-		if err = (*u.PublicKey).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
 	case ScObjectTypeScoContractCode:
 		if err = (*u.ContractCode).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScObjectTypeScoAccountId:
+		if err = (*u.AccountId).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -47600,28 +48041,20 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ScBigInt: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoHash:
-		u.Hash = new(ScHash)
-		nTmp, err = (*u.Hash).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScHash: %s", err)
-		}
-		return n, nil
-	case ScObjectTypeScoPublicKey:
-		u.PublicKey = new(PublicKey)
-		nTmp, err = (*u.PublicKey).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding PublicKey: %s", err)
-		}
-		return n, nil
 	case ScObjectTypeScoContractCode:
 		u.ContractCode = new(ScContractCode)
 		nTmp, err = (*u.ContractCode).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScContractCode: %s", err)
+		}
+		return n, nil
+	case ScObjectTypeScoAccountId:
+		u.AccountId = new(AccountId)
+		nTmp, err = (*u.AccountId).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding AccountId: %s", err)
 		}
 		return n, nil
 	}

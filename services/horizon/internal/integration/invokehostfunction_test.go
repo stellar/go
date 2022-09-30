@@ -167,7 +167,7 @@ func assembleCreateContractOp(t *testing.T, account txnbuild.Account, accountKp 
 	}
 
 	return &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnCreateContract,
+		Function: xdr.HostFunctionHostFnCreateContractWithEd25519,
 		Footprint: xdr.LedgerFootprint{
 			ReadWrite: []xdr.LedgerKey{
 				{

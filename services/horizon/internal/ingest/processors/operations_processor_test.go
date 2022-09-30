@@ -123,7 +123,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeInvokeHostFunction,
 				InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-					Function: xdr.HostFunctionHostFnCall,
+					Function: xdr.HostFunctionHostFnInvokeContract,
 					Parameters: []xdr.ScVal{
 						{
 							Type: xdr.ScValTypeScvSymbol,
@@ -169,7 +169,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 
 	details, err := wrapper.Details()
 	s.Assert().NoError(err)
-	s.Assert().Equal(details["function"].(string), "HostFunctionHostFnCall")
+	s.Assert().Equal(details["function"].(string), "HostFunctionHostFnInvokeContract")
 
 	raw, err := wrapper.operation.Body.InvokeHostFunctionOp.Footprint.MarshalBinary()
 	s.Assert().NoError(err)

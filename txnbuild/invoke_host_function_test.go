@@ -13,7 +13,7 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761100))
 
 	invokeHostFunctionOp := InvokeHostFunction{
-		Function:      xdr.HostFunctionHostFnCall,
+		Function:      xdr.HostFunctionHostFnInvokeContract,
 		Parameters:    xdr.ScVec{},
 		Footprint:     xdr.LedgerFootprint{},
 		SourceAccount: sourceAccount.AccountID,
@@ -24,7 +24,7 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 
 func TestCreateInvokeHostFunctionInValid(t *testing.T) {
 	invokeHostFunctionOp := InvokeHostFunction{
-		Function:      xdr.HostFunctionHostFnCall,
+		Function:      xdr.HostFunctionHostFnInvokeContract,
 		Parameters:    xdr.ScVec{},
 		Footprint:     xdr.LedgerFootprint{},
 		SourceAccount: "invalid account value",
