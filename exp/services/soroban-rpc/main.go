@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/stellar/go/clients/stellarcore"
 	"go/types"
 	"net/http"
 	"time"
@@ -20,7 +21,7 @@ import (
 )
 
 func main() {
-	var endpoint, horizonURL, networkPassphrase string
+	var endpoint, horizonURL, stellarCoreURL, networkPassphrase string
 	var txConcurrency, txQueueSize int
 	var logLevel logrus.Level
 	logger := supportlog.New()
@@ -41,6 +42,14 @@ func main() {
 			Required:    true,
 			FlagDefault: "",
 			Usage:       "URL used to query Horizon",
+		},
+		&config.ConfigOption{
+			Name:        "stellar-core-url",
+			ConfigKey:   &stellarCoreURL,
+			OptType:     types.String,
+			Required:    true,
+			FlagDefault: "",
+			Usage:       "URL used to query Stellar Core",
 		},
 		&config.ConfigOption{
 			Name:        "log-level",
@@ -111,6 +120,7 @@ func main() {
 				AccountStore:     methods.AccountStore{Client: hc},
 				Logger:           logger,
 				TransactionProxy: transactionProxy,
+				CoreClient:       &stellarcore.Client{URL: stellarCoreURL},
 			})
 			if err != nil {
 				logger.Fatalf("could not create handler: %v", err)
