@@ -390,7 +390,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.MaxAssetsPerPathRequest,
 			OptType:     types.Int,
 			FlagDefault: int(15),
-			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-recieve' endpoints",
+			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-receive' endpoints",
 		},
 		&support.ConfigOption{
 			Name:        "disable-pool-path-finding",

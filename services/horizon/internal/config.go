@@ -48,7 +48,7 @@ type Config struct {
 
 	// MaxPathLength is the maximum length of the path returned by `/paths` endpoint.
 	MaxPathLength uint
-	// MaxAssetsPerPathRequest is the maximum number of assets considered for `/paths/strict-send` and `/paths/strict-recieve`
+	// MaxAssetsPerPathRequest is the maximum number of assets considered for `/paths/strict-send` and `/paths/strict-receive`
 	MaxAssetsPerPathRequest int
 	// DisablePoolPathFinding configures horizon to run path finding without including liquidity pools
 	// in the path finding search.

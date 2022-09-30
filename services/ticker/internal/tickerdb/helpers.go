@@ -145,7 +145,7 @@ func OpenTestDBConnection(t *testing.T) *dbtest.DB {
 
 	// Ticker requires Postgres >= v10
 	if dbVersion < 10 {
-		t.Skipf("Skipping test becuase Postgres v%d found, and Postgres v10+ required for this test.", dbVersion)
+		t.Skipf("Skipping test because Postgres v%d found, and Postgres v10+ required for this test.", dbVersion)
 	}
 
 	return db

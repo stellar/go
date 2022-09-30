@@ -120,7 +120,7 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context
 			p.results.OperationsInvokeHostFunction++
 			return nil
 		default:
-			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
+			panic(fmt.Sprintf("Unknown operation type: %d", op.Body.Type))
 		}
 	}
 

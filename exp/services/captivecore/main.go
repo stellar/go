@@ -165,7 +165,7 @@ func main() {
 				},
 				OnStopping: func() {
 					// TODO: Check this aborts in-progress requests instead of letting
-					// them finish, to preserve existing behaviour.
+					// them finish, to preserve existing behavior.
 					api.Shutdown()
 					if dbConn != nil {
 						dbConn.Close()
