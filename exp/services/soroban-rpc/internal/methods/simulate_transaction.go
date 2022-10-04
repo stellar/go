@@ -13,7 +13,7 @@ import (
 )
 
 type SimulateTransactionRequest struct {
-	InvokeHostFunctionOp string `json:"invoke_host_function_op"`
+	Transaction string `json:"transaction"`
 }
 
 type SimulateTransactionCost struct {
@@ -21,22 +21,39 @@ type SimulateTransactionCost struct {
 	MemoryBytes     uint64 `json:"memBytes,string"`
 }
 
+type InvokeHostFunctionResult struct {
+	XDR string `json:"xdr"`
+}
+
 type SimulateTransactionResponse struct {
-	Error     string                  `json:"error,omitempty"`
-	Result    string                  `json:"result"`
-	Footprint string                  `json:"footprint"`
-	Cost      SimulateTransactionCost `json:"cost"`
+	Error        string                     `json:"error,omitempty"`
+	Results      []InvokeHostFunctionResult `json:"result"`
+	Footprint    string                     `json:"footprint"`
+	Cost         SimulateTransactionCost    `json:"cost"`
+	LatestLedger int64                      `json:"latestLedger,string"`
 }
 
 // NewSimulateTransactionHandler returns a json rpc handler to execute preflight requests to stellar core
 func NewSimulateTransactionHandler(logger *log.Entry, coreClient *stellarcore.Client) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, request SimulateTransactionRequest) SimulateTransactionResponse {
-		var xdrOp xdr.InvokeHostFunctionOp
-		if err := xdr.SafeUnmarshalBase64(request.InvokeHostFunctionOp, &xdrOp); err != nil {
+		var txEnvelope xdr.TransactionEnvelope
+		if err := xdr.SafeUnmarshalBase64(request.Transaction, &txEnvelope); err != nil {
 			logger.WithError(err).WithField("request", request).
-				Info("could not unmarshal invoke host function op")
+				Info("could not unmarshal simulate transaction envelope")
 			return SimulateTransactionResponse{
-				Error: "Could not unmarshal invoke host function op",
+				Error: "Could not unmarshal transaction",
+			}
+		}
+		if len(txEnvelope.Operations()) != 1 {
+			return SimulateTransactionResponse{
+				Error: "Transaction contains more than one operation",
+			}
+		}
+
+		xdrOp, ok := txEnvelope.Operations()[0].Body.GetInvokeHostFunctionOp()
+		if !ok {
+			return SimulateTransactionResponse{
+				Error: "Transaction does not contain invoke host function operation",
 			}
 		}
 
@@ -56,12 +73,13 @@ func NewSimulateTransactionHandler(logger *log.Entry, coreClient *stellarcore.Cl
 		}
 
 		return SimulateTransactionResponse{
-			Result:    coreResponse.Result,
+			Results:   []InvokeHostFunctionResult{{XDR: coreResponse.Result}},
 			Footprint: coreResponse.Footprint,
 			Cost: SimulateTransactionCost{
 				CPUInstructions: coreResponse.CPUInstructions,
 				MemoryBytes:     coreResponse.MemoryBytes,
 			},
+			LatestLedger: coreResponse.Ledger,
 		}
 	})
 }

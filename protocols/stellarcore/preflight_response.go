@@ -18,4 +18,5 @@ type PreflightResponse struct {
 	Footprint       string `json:"footprint"`
 	CPUInstructions uint64 `json:"cpu_insns"`
 	MemoryBytes     uint64 `json:"mem_bytes"`
+	Ledger          int64  `json:"ledger"`
 }

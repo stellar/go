@@ -18,7 +18,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func createInvokeHostOperation(t *testing.T) xdr.Operation {
+func createInvokeHostOperation(t *testing.T) *txnbuild.InvokeHostFunction {
 	accountKp := keypair.Root(StandaloneNetworkPassphrase)
 	sha256Hash := sha256.New()
 	contract := []byte("a contract")
@@ -71,17 +71,15 @@ func createInvokeHostOperation(t *testing.T) xdr.Operation {
 		Obj:  &contractSignatureParaeterAddr,
 	}
 
-	op, err := (&txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnCreateContract,
+	return &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunctionHostFnCreateContractWithEd25519,
 		Parameters: xdr.ScVec{
 			contractNameParameter,
 			saltParameter,
 			publicKeyParameter,
 			contractSignatureParameter,
 		},
-	}).BuildXDR()
-	assert.NoError(t, err)
-	return op
+	}
 }
 
 func TestSimulateTransactionSucceeds(t *testing.T) {
@@ -90,9 +88,23 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
-	invokeHostOpB64, err := xdr.MarshalBase64(createInvokeHostOperation(t).Body.MustInvokeHostFunctionOp())
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(t)},
+		BaseFee:              txnbuild.MinBaseFee,
+		Memo:                 nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
 	require.NoError(t, err)
-	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: invokeHostOpB64}
+	txB64, err := tx.Base64()
+	require.NoError(t, err)
+	request := methods.SimulateTransactionRequest{Transaction: txB64}
 
 	var result methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
@@ -100,11 +112,13 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	assert.Equal(
 		t,
 		methods.SimulateTransactionResponse{
-			Result:    "AAAABAAAAAEAAAAEAAAAIGbba7aVJHQuYwtVAaQdNhRSu6PxDWrUPGsKBRiUum0g",
 			Footprint: "AAAAAAAAAAEAAAAGZttrtpUkdC5jC1UBpB02FFK7o/ENatQ8awoFGJS6bSAAAAADAAAAAw==",
 			Cost: methods.SimulateTransactionCost{
 				CPUInstructions: 606,
 				MemoryBytes:     66,
+			},
+			Results: []methods.InvokeHostFunctionResult{
+				{XDR: "AAAABAAAAAEAAAAEAAAAIGbba7aVJHQuYwtVAaQdNhRSu6PxDWrUPGsKBRiUum0g"},
 			},
 		},
 		result,
@@ -117,13 +131,26 @@ func TestSimulateTransactionError(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
-	invokeHostOp := createInvokeHostOperation(t).Body.MustInvokeHostFunctionOp()
-	// remove signature parameter
+	invokeHostOp := createInvokeHostOperation(t)
 	invokeHostOp.Parameters = invokeHostOp.Parameters[:len(invokeHostOp.Parameters)-1]
-	invokeHostOpB64, err := xdr.MarshalBase64(invokeHostOp)
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations:           []txnbuild.Operation{invokeHostOp},
+		BaseFee:              txnbuild.MinBaseFee,
+		Memo:                 nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
 	require.NoError(t, err)
+	txB64, err := tx.Base64()
+	require.NoError(t, err)
+	request := methods.SimulateTransactionRequest{Transaction: txB64}
 
-	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: invokeHostOpB64}
 	var result methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
@@ -136,19 +163,93 @@ func TestSimulateTransactionError(t *testing.T) {
 	)
 }
 
+func TestSimulateTransactionMultipleOperations(t *testing.T) {
+	test := NewTest(t)
+
+	ch := jhttp.NewChannel(test.server.URL, nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(t), createInvokeHostOperation(t)},
+		BaseFee:              txnbuild.MinBaseFee,
+		Memo:                 nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
+	require.NoError(t, err)
+	txB64, err := tx.Base64()
+	require.NoError(t, err)
+	request := methods.SimulateTransactionRequest{Transaction: txB64}
+
+	var result methods.SimulateTransactionResponse
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
+	assert.NoError(t, err)
+	assert.Equal(
+		t,
+		methods.SimulateTransactionResponse{
+			Error: "Transaction contains more than one operation",
+		},
+		result,
+	)
+}
+
+func TestSimulateTransactionWithoutInvokeHostFunction(t *testing.T) {
+	test := NewTest(t)
+
+	ch := jhttp.NewChannel(test.server.URL, nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations: []txnbuild.Operation{
+			&txnbuild.BumpSequence{BumpTo: 1},
+		},
+		BaseFee: txnbuild.MinBaseFee,
+		Memo:    nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
+	require.NoError(t, err)
+	txB64, err := tx.Base64()
+	require.NoError(t, err)
+	request := methods.SimulateTransactionRequest{Transaction: txB64}
+
+	var result methods.SimulateTransactionResponse
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
+	assert.NoError(t, err)
+	assert.Equal(
+		t,
+		methods.SimulateTransactionResponse{
+			Error: "Transaction does not contain invoke host function operation",
+		},
+		result,
+	)
+}
+
 func TestSimulateTransactionUnmarshalError(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
-	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: "invalid"}
+	request := methods.SimulateTransactionRequest{Transaction: "invalid"}
 	var result methods.SimulateTransactionResponse
 	err := client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
 	assert.Equal(
 		t,
-		"Could not unmarshal invoke host function op",
+		"Could not unmarshal transaction",
 		result.Error,
 	)
 }
@@ -162,9 +263,23 @@ func TestSimulateTransactionDeadlineError(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
-	invokeHostOpB64, err := xdr.MarshalBase64(createInvokeHostOperation(t).Body.MustInvokeHostFunctionOp())
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(t)},
+		BaseFee:              txnbuild.MinBaseFee,
+		Memo:                 nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
 	require.NoError(t, err)
-	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: invokeHostOpB64}
+	txB64, err := tx.Base64()
+	require.NoError(t, err)
+	request := methods.SimulateTransactionRequest{Transaction: txB64}
 
 	var result methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
