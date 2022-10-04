@@ -3,7 +3,9 @@ package test
 import (
 	"context"
 	"crypto/sha256"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/jhttp"
@@ -86,14 +88,14 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	invokeHostOpB64, err := xdr.MarshalBase64(createInvokeHostOperation(t).Body.MustInvokeHostFunctionOp())
 	require.NoError(t, err)
-
 	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: invokeHostOpB64}
+
 	var result methods.SimulateTransactionResponse
-	err = cli.CallResult(context.Background(), "simulateTransaction", request, &result)
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
 	assert.Equal(
 		t,
@@ -113,7 +115,7 @@ func TestSimulateTransactionError(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	invokeHostOp := createInvokeHostOperation(t).Body.MustInvokeHostFunctionOp()
 	// remove signature parameter
@@ -123,7 +125,7 @@ func TestSimulateTransactionError(t *testing.T) {
 
 	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: invokeHostOpB64}
 	var result methods.SimulateTransactionResponse
-	err = cli.CallResult(context.Background(), "simulateTransaction", request, &result)
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
 	assert.Equal(
 		t,
@@ -138,15 +140,38 @@ func TestSimulateTransactionUnmarshalError(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: "invalid"}
 	var result methods.SimulateTransactionResponse
-	err := cli.CallResult(context.Background(), "simulateTransaction", request, &result)
+	err := client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
 	assert.Equal(
 		t,
-		"Could unmarshal invoke host function op: decoding HostFunction: decoding HostFunction: xdr:DecodeInt: unexpected EOF while decoding 4 bytes - read: '[138 123 218]'",
+		"Could not unmarshal invoke host function op",
+		result.Error,
+	)
+}
+
+func TestSimulateTransactionDeadlineError(t *testing.T) {
+	test := NewTest(t)
+	test.coreClient.HTTP = &http.Client{
+		Timeout: time.Microsecond,
+	}
+
+	ch := jhttp.NewChannel(test.server.URL, nil)
+	client := jrpc2.NewClient(ch, nil)
+
+	invokeHostOpB64, err := xdr.MarshalBase64(createInvokeHostOperation(t).Body.MustInvokeHostFunctionOp())
+	require.NoError(t, err)
+	request := methods.SimulateTransactionRequest{InvokeHostFunctionOp: invokeHostOpB64}
+
+	var result methods.SimulateTransactionResponse
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
+	assert.NoError(t, err)
+	assert.Equal(
+		t,
+		"Could not submit request to core",
 		result.Error,
 	)
 }

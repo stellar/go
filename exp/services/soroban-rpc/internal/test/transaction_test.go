@@ -20,7 +20,7 @@ func TestSendTransactionSucceeds(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	kp := keypair.Root(StandaloneNetworkPassphrase)
 	address := kp.Address()
@@ -45,7 +45,7 @@ func TestSendTransactionSucceeds(t *testing.T) {
 
 	request := methods.SendTransactionRequest{Transaction: b64}
 	var result methods.SendTransactionResponse
-	err = cli.CallResult(context.Background(), "sendTransaction", request, &result)
+	err = client.CallResult(context.Background(), "sendTransaction", request, &result)
 	assert.NoError(t, err)
 
 	expectedHash, err := tx.HashHex(StandaloneNetworkPassphrase)
@@ -56,7 +56,7 @@ func TestSendTransactionSucceeds(t *testing.T) {
 		Status: methods.TransactionPending,
 	}, result)
 
-	response := getTransactionStatus(t, cli, expectedHash)
+	response := getTransactionStatus(t, client, expectedHash)
 	assert.Equal(t, methods.TransactionSuccess, response.Status)
 	assert.Equal(t, expectedHash, response.ID)
 	assert.Equal(t, true, response.Result.Successful)
@@ -66,16 +66,16 @@ func TestSendTransactionSucceeds(t *testing.T) {
 		Address: address,
 	}
 	var accountInfoResponse methods.AccountInfo
-	err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
+	err = client.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
 	assert.NoError(t, err)
 	assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 1}, accountInfoResponse)
 }
 
-func getTransactionStatus(t *testing.T, cli *jrpc2.Client, hash string) methods.TransactionStatusResponse {
+func getTransactionStatus(t *testing.T, client *jrpc2.Client, hash string) methods.TransactionStatusResponse {
 	var result methods.TransactionStatusResponse
 	for i := 0; i < 60; i++ {
 		request := methods.GetTransactionStatusRequest{Hash: hash}
-		err := cli.CallResult(context.Background(), "getTransactionStatus", request, &result)
+		err := client.CallResult(context.Background(), "getTransactionStatus", request, &result)
 		assert.NoError(t, err)
 
 		if result.Status == methods.TransactionPending {
@@ -93,7 +93,7 @@ func TestSendTransactionBadSequence(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	kp := keypair.Root(StandaloneNetworkPassphrase)
 	address := kp.Address()
@@ -117,7 +117,7 @@ func TestSendTransactionBadSequence(t *testing.T) {
 
 	request := methods.SendTransactionRequest{Transaction: b64}
 	var result methods.SendTransactionResponse
-	err = cli.CallResult(context.Background(), "sendTransaction", request, &result)
+	err = client.CallResult(context.Background(), "sendTransaction", request, &result)
 	assert.NoError(t, err)
 
 	expectedHash, err := tx.HashHex(StandaloneNetworkPassphrase)
@@ -128,7 +128,7 @@ func TestSendTransactionBadSequence(t *testing.T) {
 		Status: methods.TransactionPending,
 	}, result)
 
-	response := getTransactionStatus(t, cli, expectedHash)
+	response := getTransactionStatus(t, client, expectedHash)
 	assert.Equal(t, methods.TransactionError, response.Status)
 	assert.Equal(t, expectedHash, response.ID)
 	assert.Nil(t, response.Result)
@@ -143,7 +143,7 @@ func TestSendTransactionBadSequence(t *testing.T) {
 		Address: address,
 	}
 	var accountInfoResponse methods.AccountInfo
-	err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
+	err = client.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
 	assert.NoError(t, err)
 	assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 0}, accountInfoResponse)
 }
@@ -152,7 +152,7 @@ func TestSendTransactionFailedInLedger(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	kp := keypair.Root(StandaloneNetworkPassphrase)
 	address := kp.Address()
@@ -181,7 +181,7 @@ func TestSendTransactionFailedInLedger(t *testing.T) {
 
 	request := methods.SendTransactionRequest{Transaction: b64}
 	var result methods.SendTransactionResponse
-	err = cli.CallResult(context.Background(), "sendTransaction", request, &result)
+	err = client.CallResult(context.Background(), "sendTransaction", request, &result)
 	assert.NoError(t, err)
 
 	expectedHash, err := tx.HashHex(StandaloneNetworkPassphrase)
@@ -192,7 +192,7 @@ func TestSendTransactionFailedInLedger(t *testing.T) {
 		Status: methods.TransactionPending,
 	}, result)
 
-	response := getTransactionStatus(t, cli, expectedHash)
+	response := getTransactionStatus(t, client, expectedHash)
 	assert.Equal(t, methods.TransactionError, response.Status)
 	assert.Equal(t, expectedHash, response.ID)
 	assert.Equal(t, false, response.Result.Successful)
@@ -203,7 +203,7 @@ func TestSendTransactionFailedInLedger(t *testing.T) {
 		Address: address,
 	}
 	var accountInfoResponse methods.AccountInfo
-	err = cli.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
+	err = client.CallResult(context.Background(), "getAccount", accountInfoRequest, &accountInfoResponse)
 	assert.NoError(t, err)
 	assert.Equal(t, methods.AccountInfo{ID: address, Sequence: 1}, accountInfoResponse)
 }
@@ -212,11 +212,11 @@ func TestSendTransactionFailedInvalidXDR(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	request := methods.SendTransactionRequest{Transaction: "abcdef"}
 	var response methods.SendTransactionResponse
-	err := cli.CallResult(context.Background(), "sendTransaction", request, &response)
+	err := client.CallResult(context.Background(), "sendTransaction", request, &response)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "", response.ID)

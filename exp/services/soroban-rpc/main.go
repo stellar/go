@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/stellar/go/clients/stellarcore"
 	"go/types"
 	"net/http"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
 	"github.com/stellar/go/network"

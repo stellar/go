@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stellar/go/xdr"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // Client represents a client that is capable of communicating with a

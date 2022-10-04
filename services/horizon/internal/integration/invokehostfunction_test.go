@@ -48,8 +48,8 @@ func TestInvokeHostFunctionCreateContractByKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stellarcore.PreflightStatusOk, response.Status)
 	require.Equal(t, expectedFootPrint, response.Footprint)
-	require.True(t, response.CPUInstructions > 0)
-	require.True(t, response.MemoryBytes > 0)
+	require.Greater(t, response.CPUInstructions, uint64(0))
+	require.Greater(t, response.MemoryBytes, uint64(0))
 	require.Empty(t, response.Detail)
 
 	paramsBin, err := createContractOp.Parameters.MarshalBinary()

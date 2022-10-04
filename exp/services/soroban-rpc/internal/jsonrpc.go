@@ -53,7 +53,7 @@ func NewJSONRPCHandler(params HandlerParams) (Handler, error) {
 			"getAccount":           methods.NewAccountHandler(params.AccountStore),
 			"getTransactionStatus": methods.NewGetTransactionStatusHandler(params.TransactionProxy),
 			"sendTransaction":      methods.NewSendTransactionHandler(params.TransactionProxy),
-			"simulateTransaction":  methods.NewSimulateTransactionHandler(params.CoreClient),
+			"simulateTransaction":  methods.NewSimulateTransactionHandler(params.Logger, params.CoreClient),
 		}, nil),
 		logger:           params.Logger,
 		transactionProxy: params.TransactionProxy,
