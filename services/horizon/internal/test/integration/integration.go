@@ -528,17 +528,22 @@ func (i *Test) WaitForHorizon() {
 	i.t.Fatal("Horizon not ingesting...")
 }
 
+// CoreClient returns a stellar core client connected to the Stellar Core instance.
+func (i *Test) CoreClient() *stellarcore.Client {
+	return i.coreClient
+}
+
 // Client returns horizon.Client connected to started Horizon instance.
 func (i *Test) Client() *sdk.Client {
 	return i.horizonClient
 }
 
-// Client returns horizon.Client connected to started Horizon instance.
+// AdminClient returns horizon.Client connected to started Horizon instance.
 func (i *Test) AdminClient() *sdk.AdminClient {
 	return i.horizonAdminClient
 }
 
-// Horizon returns the horizon.App instance for the current integration test
+// HorizonWeb returns the horizon.App instance for the current integration test
 func (i *Test) HorizonWeb() *horizon.App {
 	return i.webNode
 }

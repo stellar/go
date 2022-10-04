@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
@@ -9,9 +10,11 @@ import (
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,6 +35,22 @@ func TestInvokeHostFunctionCreateContractByKey(t *testing.T) {
 	require.NoError(t, err)
 
 	createContractOp := assembleCreateContractOp(t, &sourceAccount, itest.Master())
+	opXDR, err := createContractOp.BuildXDR()
+	require.NoError(t, err)
+
+	invokeHostFunctionOp := opXDR.Body.MustInvokeHostFunctionOp()
+	expectedFootPrint, err := xdr.MarshalBase64(invokeHostFunctionOp.Footprint)
+	require.NoError(t, err)
+
+	// clear footprint so we can verify preflight response
+	invokeHostFunctionOp.Footprint = xdr.LedgerFootprint{}
+	response, err := itest.CoreClient().Preflight(context.Background(), invokeHostFunctionOp)
+	require.NoError(t, err)
+	require.Equal(t, stellarcore.PreflightStatusOk, response.Status)
+	require.Equal(t, expectedFootPrint, response.Footprint)
+	require.Greater(t, response.CPUInstructions, uint64(0))
+	require.Greater(t, response.MemoryBytes, uint64(0))
+	require.Empty(t, response.Detail)
 
 	paramsBin, err := createContractOp.Parameters.MarshalBinary()
 	require.NoError(t, err)

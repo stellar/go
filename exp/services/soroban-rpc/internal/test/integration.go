@@ -24,7 +24,7 @@ import (
 
 const (
 	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
-	stellarCoreProtocolVersion  = 19
+	stellarCoreProtocolVersion  = 20
 	stellarCorePort             = 11626
 )
 
@@ -54,7 +54,7 @@ func NewTest(t *testing.T) *Test {
 		composePath: composePath,
 	}
 
-	// Only run Stellar Core container and its dependencies.
+	i.runComposeCommand("build")
 	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color")
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
@@ -83,6 +83,7 @@ func (i *Test) configureJSONRPCServer() {
 			Client: i.horizonClient,
 		},
 		TransactionProxy: proxy,
+		CoreClient:       i.coreClient,
 		Logger:           logger,
 	})
 	if err != nil {

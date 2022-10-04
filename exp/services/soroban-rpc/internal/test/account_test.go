@@ -17,19 +17,19 @@ func TestAccount(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	request := methods.AccountRequest{
 		Address: keypair.Master(StandaloneNetworkPassphrase).Address(),
 	}
 	var result methods.AccountInfo
-	if err := cli.CallResult(context.Background(), "getAccount", request, &result); err != nil {
+	if err := client.CallResult(context.Background(), "getAccount", request, &result); err != nil {
 		t.Fatalf("rpc call failed: %v", err)
 	}
 	assert.Equal(t, methods.AccountInfo{ID: request.Address, Sequence: 0}, result)
 
 	request.Address = "invalid"
-	err := cli.CallResult(context.Background(), "getAccount", request, &result).(*jrpc2.Error)
+	err := client.CallResult(context.Background(), "getAccount", request, &result).(*jrpc2.Error)
 	assert.Equal(t, "Bad Request", err.Message)
 	assert.Equal(t, code.InvalidRequest, err.Code)
 	assert.Equal(

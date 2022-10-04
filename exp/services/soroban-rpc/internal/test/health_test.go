@@ -14,10 +14,10 @@ func TestHealth(t *testing.T) {
 	test := NewTest(t)
 
 	ch := jhttp.NewChannel(test.server.URL, nil)
-	cli := jrpc2.NewClient(ch, nil)
+	client := jrpc2.NewClient(ch, nil)
 
 	var result methods.HealthCheckResult
-	if err := cli.CallResult(context.Background(), "getHealth", nil, &result); err != nil {
+	if err := client.CallResult(context.Background(), "getHealth", nil, &result); err != nil {
 		t.Fatalf("rpc call failed: %v", err)
 	}
 	assert.Equal(t, methods.HealthCheckResult{Status: "healthy"}, result)

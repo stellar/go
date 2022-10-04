@@ -7,6 +7,7 @@ import (
 	"github.com/creachadair/jrpc2/handler"
 	"github.com/creachadair/jrpc2/jhttp"
 
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
 	"github.com/stellar/go/support/log"
 )
@@ -40,6 +41,7 @@ func (h Handler) Close() {
 type HandlerParams struct {
 	AccountStore     methods.AccountStore
 	TransactionProxy *methods.TransactionProxy
+	CoreClient       *stellarcore.Client
 	Logger           *log.Entry
 }
 
@@ -51,6 +53,7 @@ func NewJSONRPCHandler(params HandlerParams) (Handler, error) {
 			"getAccount":           methods.NewAccountHandler(params.AccountStore),
 			"getTransactionStatus": methods.NewGetTransactionStatusHandler(params.TransactionProxy),
 			"sendTransaction":      methods.NewSendTransactionHandler(params.TransactionProxy),
+			"simulateTransaction":  methods.NewSimulateTransactionHandler(params.Logger, params.CoreClient),
 		}, nil),
 		logger:           params.Logger,
 		transactionProxy: params.TransactionProxy,
