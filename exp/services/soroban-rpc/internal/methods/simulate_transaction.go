@@ -17,8 +17,8 @@ type SimulateTransactionRequest struct {
 }
 
 type SimulateTransactionCost struct {
-	CPUInstructions uint64 `json:"cpu_insns,string"`
-	MemoryBytes     uint64 `json:"mem_bytes,string"`
+	CPUInstructions uint64 `json:"cpuInsns,string"`
+	MemoryBytes     uint64 `json:"memBytes,string"`
 }
 
 type SimulateTransactionResponse struct {
