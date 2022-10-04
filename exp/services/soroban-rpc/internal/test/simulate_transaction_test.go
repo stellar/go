@@ -109,17 +109,21 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	var result methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
+	assert.Greater(t, result.LatestLedger, int64(0))
+	assert.Greater(t, result.Cost.CPUInstructions, uint64(0))
+	assert.Greater(t, result.Cost.MemoryBytes, uint64(0))
 	assert.Equal(
 		t,
 		methods.SimulateTransactionResponse{
 			Footprint: "AAAAAAAAAAEAAAAGZttrtpUkdC5jC1UBpB02FFK7o/ENatQ8awoFGJS6bSAAAAADAAAAAw==",
 			Cost: methods.SimulateTransactionCost{
-				CPUInstructions: 606,
-				MemoryBytes:     66,
+				CPUInstructions: result.Cost.CPUInstructions,
+				MemoryBytes:     result.Cost.MemoryBytes,
 			},
 			Results: []methods.InvokeHostFunctionResult{
 				{XDR: "AAAABAAAAAEAAAAEAAAAIGbba7aVJHQuYwtVAaQdNhRSu6PxDWrUPGsKBRiUum0g"},
 			},
+			LatestLedger: result.LatestLedger,
 		},
 		result,
 	)
