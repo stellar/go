@@ -50,6 +50,13 @@ func NewSimulateTransactionHandler(logger *log.Entry, coreClient *stellarcore.Cl
 			}
 		}
 
+		var sourceAccount string
+		if opSourceAccount := txEnvelope.Operations()[0].SourceAccount; opSourceAccount != nil {
+			sourceAccount = opSourceAccount.ToAccountId().Address()
+		} else {
+			sourceAccount = txEnvelope.SourceAccount().ToAccountId().Address()
+		}
+
 		xdrOp, ok := txEnvelope.Operations()[0].Body.GetInvokeHostFunctionOp()
 		if !ok {
 			return SimulateTransactionResponse{
@@ -57,7 +64,7 @@ func NewSimulateTransactionHandler(logger *log.Entry, coreClient *stellarcore.Cl
 			}
 		}
 
-		coreResponse, err := coreClient.Preflight(ctx, xdrOp)
+		coreResponse, err := coreClient.Preflight(ctx, sourceAccount, xdrOp)
 		if err != nil {
 			logger.WithError(err).WithField("request", request).
 				Info("could not submit preflight request to core")

@@ -70,10 +70,6 @@ func (kp *Full) FromAddress() *FromAddress {
 	return newFromAddressWithPublicKey(kp.address, kp.publicKey)
 }
 
-func (kp *Full) PublicKey() ed25519.PublicKey {
-	return kp.publicKey
-}
-
 func (kp *Full) Hint() (r [4]byte) {
 	copy(r[:], kp.publicKey[28:])
 	return

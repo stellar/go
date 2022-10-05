@@ -55,13 +55,14 @@ func (c *Client) Upgrade(ctx context.Context, version int) error {
 
 // Preflight submits a preflight request to the stellar core instance. The response will contain the footprint
 // of the invoke host function operation among other information.
-func (c *Client) Preflight(ctx context.Context, invokeHostFunctionOp xdr.InvokeHostFunctionOp) (proto.PreflightResponse, error) {
+func (c *Client) Preflight(ctx context.Context, sourceAccount string, invokeHostFunctionOp xdr.InvokeHostFunctionOp) (proto.PreflightResponse, error) {
 	b64, err := xdr.MarshalBase64(invokeHostFunctionOp)
 	if err != nil {
 		return proto.PreflightResponse{}, errors.Wrap(err, "failed to marshal invoke host function op")
 	}
 	q := url.Values{}
 	q.Set("blob", b64)
+	q.Set("source_account", sourceAccount)
 
 	req, err := c.simpleGet(ctx, "preflight", q)
 	if err != nil {

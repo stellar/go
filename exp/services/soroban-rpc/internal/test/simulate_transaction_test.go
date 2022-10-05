@@ -18,20 +18,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func createInvokeHostOperation(t *testing.T) *txnbuild.InvokeHostFunction {
-	accountKp := keypair.Root(StandaloneNetworkPassphrase)
-	sha256Hash := sha256.New()
+func createInvokeHostOperation(sourceAccount string) *txnbuild.InvokeHostFunction {
 	contract := []byte("a contract")
 	salt := sha256.Sum256([]byte("a1"))
-	separator := []byte("create_contract_from_ed25519(contract: Vec<u8>, salt: u256, key: u256, sig: Vec<u8>)")
-
-	sha256Hash.Write(separator)
-	sha256Hash.Write(salt[:])
-	sha256Hash.Write(contract)
-
-	contractHash := sha256Hash.Sum([]byte{})
-	contractSig, err := accountKp.Sign(contractHash)
-	require.NoError(t, err)
 
 	contractNameParameterAddr := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoBytes,
@@ -52,33 +41,13 @@ func createInvokeHostOperation(t *testing.T) *txnbuild.InvokeHostFunction {
 		Obj:  &saltParameterAddr,
 	}
 
-	publicKeySlice := []byte(accountKp.PublicKey())
-	publicKeyParameterAddr := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &publicKeySlice,
-	}
-	publicKeyParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &publicKeyParameterAddr,
-	}
-
-	contractSignatureParaeterAddr := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &contractSig,
-	}
-	contractSignatureParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &contractSignatureParaeterAddr,
-	}
-
 	return &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnCreateContractWithEd25519,
+		Function: xdr.HostFunctionHostFnCreateContractWithSourceAccount,
 		Parameters: xdr.ScVec{
 			contractNameParameter,
 			saltParameter,
-			publicKeyParameter,
-			contractSignatureParameter,
 		},
+		SourceAccount: sourceAccount,
 	}
 }
 
@@ -88,13 +57,14 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
+	sourceAccount := keypair.Root(StandaloneNetworkPassphrase).Address()
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			AccountID: sourceAccount,
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(t)},
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(sourceAccount)},
 		BaseFee:              txnbuild.MinBaseFee,
 		Memo:                 nil,
 		Preconditions: txnbuild.Preconditions{
@@ -115,18 +85,67 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	assert.Equal(
 		t,
 		methods.SimulateTransactionResponse{
-			Footprint: "AAAAAAAAAAEAAAAGZttrtpUkdC5jC1UBpB02FFK7o/ENatQ8awoFGJS6bSAAAAADAAAAAw==",
+			Footprint: "AAAAAAAAAAEAAAAGkvS4fCJA01o8HRusdDVaD5Z7F2lkyM3UfhQOjETmlDMAAAADAAAAAw==",
 			Cost: methods.SimulateTransactionCost{
 				CPUInstructions: result.Cost.CPUInstructions,
 				MemoryBytes:     result.Cost.MemoryBytes,
 			},
 			Results: []methods.InvokeHostFunctionResult{
-				{XDR: "AAAABAAAAAEAAAAEAAAAIGbba7aVJHQuYwtVAaQdNhRSu6PxDWrUPGsKBRiUum0g"},
+				{XDR: "AAAABAAAAAEAAAAEAAAAIJL0uHwiQNNaPB0brHQ1Wg+WexdpZMjN1H4UDoxE5pQz"},
 			},
 			LatestLedger: result.LatestLedger,
 		},
 		result,
 	)
+
+	// test operation which does not have a source account
+	withoutSourceAccountOp := createInvokeHostOperation("")
+	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: sourceAccount,
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations:           []txnbuild.Operation{withoutSourceAccountOp},
+		BaseFee:              txnbuild.MinBaseFee,
+		Memo:                 nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
+	require.NoError(t, err)
+	txB64, err = tx.Base64()
+	require.NoError(t, err)
+	request = methods.SimulateTransactionRequest{Transaction: txB64}
+
+	var resultForRequestWithoutOpSource methods.SimulateTransactionResponse
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &resultForRequestWithoutOpSource)
+	assert.NoError(t, err)
+	assert.Equal(t, result, resultForRequestWithoutOpSource)
+
+	// test that operation source account takes precedence over tx source account
+	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &txnbuild.SimpleAccount{
+			AccountID: keypair.Root("test passphrase").Address(),
+			Sequence:  0,
+		},
+		IncrementSequenceNum: false,
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(sourceAccount)},
+		BaseFee:              txnbuild.MinBaseFee,
+		Memo:                 nil,
+		Preconditions: txnbuild.Preconditions{
+			TimeBounds: txnbuild.NewInfiniteTimeout(),
+		},
+	})
+	require.NoError(t, err)
+	txB64, err = tx.Base64()
+	require.NoError(t, err)
+	request = methods.SimulateTransactionRequest{Transaction: txB64}
+
+	var resultForRequestWithDifferentTxSource methods.SimulateTransactionResponse
+	err = client.CallResult(context.Background(), "simulateTransaction", request, &resultForRequestWithDifferentTxSource)
+	assert.NoError(t, err)
+	assert.Equal(t, result, resultForRequestWithDifferentTxSource)
 }
 
 func TestSimulateTransactionError(t *testing.T) {
@@ -135,7 +154,8 @@ func TestSimulateTransactionError(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
-	invokeHostOp := createInvokeHostOperation(t)
+	sourceAccount := keypair.Root(StandaloneNetworkPassphrase).Address()
+	invokeHostOp := createInvokeHostOperation(sourceAccount)
 	invokeHostOp.Parameters = invokeHostOp.Parameters[:len(invokeHostOp.Parameters)-1]
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
@@ -161,7 +181,7 @@ func TestSimulateTransactionError(t *testing.T) {
 	assert.Equal(
 		t,
 		methods.SimulateTransactionResponse{
-			Error: "HostError\nValue: Status(HostFunctionError(InputArgsWrongLength))\n\nDebug events (newest first):\n   0: \"unexpected arguments to 'CreateContractWithEd25519' host function\"\n\nBacktrace (newest first):\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: <unknown>\n  13: <unknown>\n  14: <unknown>\n  15: <unknown>\n  16: <unknown>\n  17: <unknown>\n  18: <unknown>\n  19: <unknown>\n  20: <unknown>\n  21: <unknown>\n  22: <unknown>\n  23: <unknown>\n  24: <unknown>\n  25: __libc_start_main\n  26: <unknown>\n\n",
+			Error: "HostError\nValue: Status(HostFunctionError(InputArgsWrongLength))\n\nDebug events (newest first):\n   0: \"unexpected arguments to 'CreateContractWithSourceAccount' host function\"\n\nBacktrace (newest first):\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: <unknown>\n  13: <unknown>\n  14: <unknown>\n  15: <unknown>\n  16: <unknown>\n  17: <unknown>\n  18: <unknown>\n  19: <unknown>\n  20: <unknown>\n  21: <unknown>\n  22: <unknown>\n  23: <unknown>\n  24: <unknown>\n  25: __libc_start_main\n  26: <unknown>\n\n",
 		},
 		result,
 	)
@@ -173,15 +193,20 @@ func TestSimulateTransactionMultipleOperations(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
+	sourceAccount := keypair.Root(StandaloneNetworkPassphrase).Address()
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(t), createInvokeHostOperation(t)},
-		BaseFee:              txnbuild.MinBaseFee,
-		Memo:                 nil,
+		Operations: []txnbuild.Operation{
+			createInvokeHostOperation(sourceAccount),
+
+			createInvokeHostOperation(sourceAccount),
+		},
+		BaseFee: txnbuild.MinBaseFee,
+		Memo:    nil,
 		Preconditions: txnbuild.Preconditions{
 			TimeBounds: txnbuild.NewInfiniteTimeout(),
 		},
@@ -267,13 +292,14 @@ func TestSimulateTransactionDeadlineError(t *testing.T) {
 	ch := jhttp.NewChannel(test.server.URL, nil)
 	client := jrpc2.NewClient(ch, nil)
 
+	sourceAccount := keypair.Root(StandaloneNetworkPassphrase).Address()
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
-			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
+			AccountID: sourceAccount,
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(t)},
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(sourceAccount)},
 		BaseFee:              txnbuild.MinBaseFee,
 		Memo:                 nil,
 		Preconditions: txnbuild.Preconditions{

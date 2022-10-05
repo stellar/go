@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
@@ -34,7 +33,7 @@ func TestInvokeHostFunctionCreateContractByKey(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	createContractOp := assembleCreateContractOp(t, &sourceAccount, itest.Master())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address())
 	opXDR, err := createContractOp.BuildXDR()
 	require.NoError(t, err)
 
@@ -44,7 +43,13 @@ func TestInvokeHostFunctionCreateContractByKey(t *testing.T) {
 
 	// clear footprint so we can verify preflight response
 	invokeHostFunctionOp.Footprint = xdr.LedgerFootprint{}
-	response, err := itest.CoreClient().Preflight(context.Background(), invokeHostFunctionOp)
+	response, err := itest.CoreClient().Preflight(
+		context.Background(),
+		createContractOp.SourceAccount,
+		invokeHostFunctionOp,
+	)
+	require.NoError(t, err)
+	err = xdr.SafeUnmarshalBase64(response.Footprint, &invokeHostFunctionOp.Footprint)
 	require.NoError(t, err)
 	require.Equal(t, stellarcore.PreflightStatusOk, response.Status)
 	require.Equal(t, expectedFootPrint, response.Footprint)
@@ -75,7 +80,7 @@ func TestInvokeHostFunctionCreateContractByKey(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 }
 
-func assembleCreateContractOp(t *testing.T, account txnbuild.Account, accountKp *keypair.Full) *txnbuild.InvokeHostFunction {
+func assembleCreateContractOp(t *testing.T, sourceAccount string) *txnbuild.InvokeHostFunction {
 	// Assemble the InvokeHostFunction CreateContract operation, this is supposed to follow the
 	// specs in CAP-0047 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0047.md#creating-a-contract-using-invokehostfunctionop
 
@@ -107,33 +112,19 @@ func assembleCreateContractOp(t *testing.T, account txnbuild.Account, accountKp 
 			}
 	*/
 
-	sha256Hash := sha256.New()
 	contract, err := os.ReadFile(filepath.Join("testdata", "example_add_i32.wasm"))
 	require.NoError(t, err)
 	t.Logf("Contract File Contents: %v", hex.EncodeToString(contract))
 	salt := sha256.Sum256([]byte("a1"))
 	t.Logf("Salt hash: %v", hex.EncodeToString(salt[:]))
-	separator := []byte("create_contract_from_ed25519(contract: Vec<u8>, salt: u256, key: u256, sig: Vec<u8>)")
 
-	sha256Hash.Write(separator)
-	sha256Hash.Write(salt[:])
-	sha256Hash.Write(contract)
-
-	contractHash := sha256Hash.Sum([]byte{})
-	t.Logf("hash to sign: %v", hex.EncodeToString(contractHash))
-	contractSig, err := accountKp.Sign(contractHash)
-	require.NoError(t, err)
-
-	t.Logf("Signature of contract hash: %v", hex.EncodeToString(contractSig))
-	var publicKeyXDR xdr.Uint256
-	copy(publicKeyXDR[:], accountKp.PublicKey())
 	preImage := xdr.HashIdPreimage{
-		Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromEd25519,
-		Ed25519ContractId: &xdr.HashIdPreimageEd25519ContractId{
-			Salt:    salt,
-			Ed25519: publicKeyXDR,
+		Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount,
+		SourceAccountContractId: &xdr.HashIdPreimageSourceAccountContractId{
+			Salt: salt,
 		},
 	}
+	preImage.SourceAccountContractId.SourceAccount.SetAddress(sourceAccount)
 	xdrPreImageBytes, err := preImage.MarshalBinary()
 	require.NoError(t, err)
 	hashedContractID := sha256.Sum256(xdrPreImageBytes)
@@ -157,25 +148,6 @@ func assembleCreateContractOp(t *testing.T, account txnbuild.Account, accountKp 
 		Obj:  &saltParameterAddr,
 	}
 
-	publicKeySlice := []byte(accountKp.PublicKey())
-	publicKeyParameterAddr := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &publicKeySlice,
-	}
-	publicKeyParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &publicKeyParameterAddr,
-	}
-
-	contractSignatureParaeterAddr := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &contractSig,
-	}
-	contractSignatureParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &contractSignatureParaeterAddr,
-	}
-
 	ledgerKeyContractCodeAddr := xdr.ScStaticScsLedgerKeyContractCode
 	ledgerKey := xdr.LedgerKeyContractData{
 		ContractId: xdr.Hash(hashedContractID),
@@ -186,7 +158,7 @@ func assembleCreateContractOp(t *testing.T, account txnbuild.Account, accountKp 
 	}
 
 	return &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnCreateContractWithEd25519,
+		Function: xdr.HostFunctionHostFnCreateContractWithSourceAccount,
 		Footprint: xdr.LedgerFootprint{
 			ReadWrite: []xdr.LedgerKey{
 				{
@@ -198,8 +170,7 @@ func assembleCreateContractOp(t *testing.T, account txnbuild.Account, accountKp 
 		Parameters: xdr.ScVec{
 			contractNameParameter,
 			saltParameter,
-			publicKeyParameter,
-			contractSignatureParameter,
 		},
+		SourceAccount: sourceAccount,
 	}
 }
