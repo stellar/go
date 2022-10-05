@@ -1,6 +1,6 @@
 -- +migrate Up
 
-CREATE INDEX "trust_lines_by_account_type_code_issuer" ON trust_lines USING btree (account_id, asset_type, asset_code, asset_issuer);
+CREATE INDEX "trust_lines_by_type_code_issuer_account" ON trust_lines USING btree (asset_type, asset_code, asset_issuer, account_id);
 
 -- +migrate Down
 
