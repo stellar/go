@@ -57,6 +57,7 @@
 // migrations/59_remove_foreign_key_constraints.sql (981B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/60_add_asset_id_indexes.sql (289B)
+// migrations/61_trust_lines_by_account_type_code_issuer.sql (223B)
 // migrations/6_create_assets_table.sql (366B)
 // migrations/7_modify_trades_table.sql (2.303kB)
 // migrations/8_add_aggregators.sql (907B)
@@ -1270,6 +1271,26 @@ func migrations60_add_asset_id_indexesSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations61_trust_lines_by_account_type_code_issuerSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x72\x0e\x72\x75\x0c\x71\x55\xf0\xf4\x73\x71\x8d\x50\x50\x2a\x29\x2a\x2d\x2e\x89\xcf\xc9\xcc\x4b\x2d\x8e\x4f\xaa\x8c\x4f\x4c\x4e\xce\x2f\xcd\x2b\x89\x2f\xa9\x2c\x48\x8d\x4f\xce\x4f\x49\x8d\xcf\x2c\x2e\x2e\x4d\x2d\x52\x52\xf0\xf4\x53\x40\x52\xab\x10\x1a\xec\xe9\xe7\xae\x90\x54\x52\x94\x9a\xaa\xa0\x01\xd3\x95\x99\xa2\xa3\x90\x58\x5c\x9c\x0a\xd1\x0f\x63\x83\x8c\x81\xb1\x21\xa6\x69\x5a\x73\x71\x21\x3b\xcb\x25\xbf\x3c\x8f\x8b\xcb\x25\xc8\x3f\x80\x54\x67\x59\x73\x01\x02\x00\x00\xff\xff\x3a\x6a\xef\x05\xdf\x00\x00\x00")
+
+func migrations61_trust_lines_by_account_type_code_issuerSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations61_trust_lines_by_account_type_code_issuerSql,
+		"migrations/61_trust_lines_by_account_type_code_issuer.sql",
+	)
+}
+
+func migrations61_trust_lines_by_account_type_code_issuerSql() (*asset, error) {
+	bytes, err := migrations61_trust_lines_by_account_type_code_issuerSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/61_trust_lines_by_account_type_code_issuer.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xfe, 0xc8, 0xfb, 0x77, 0x81, 0x94, 0x80, 0xcb, 0x1e, 0x56, 0x6d, 0x54, 0xf6, 0x30, 0x46, 0xc4, 0x91, 0x61, 0x5d, 0x64, 0x35, 0xf8, 0x14, 0x13, 0x4f, 0x31, 0x5f, 0x66, 0xbb, 0x96, 0xed, 0x38}}
+	return a, nil
+}
+
 var _migrations6_create_assets_tableSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x6c\x90\x3d\x4f\xc3\x30\x18\x84\x77\xff\x8a\x1b\x1d\x91\x0e\x20\xe8\x92\xc9\x34\x16\x58\x18\xa7\xb8\x31\xa2\x53\xe5\x26\x16\x78\x80\x54\xb6\x11\xca\xbf\x47\xaa\x28\xf9\x50\xe6\x7b\xf4\xbc\xef\xdd\x6a\x85\xab\x4f\xff\x1e\x6c\x72\x30\x27\xb2\xd1\x9c\xd5\x1c\x35\xbb\x97\x1c\x1f\x3e\xa6\x2e\xf4\x07\x1b\xa3\x4b\x11\x94\x00\x80\x6f\xb1\xe3\x5a\x30\x89\xad\x16\xcf\x4c\xef\xf1\xc4\xf7\xc8\xcf\xd9\x19\x3c\xa4\xfe\xe4\xf0\xca\xf4\xe6\x91\x69\xba\xbe\xcd\xa0\xaa\x1a\xca\x48\x39\x86\x9a\xae\x1d\xa0\xeb\x9b\x65\xc8\xc7\xf8\xed\xc2\x3f\x76\xb7\x9e\x63\x46\x89\x17\xc3\xe9\xa0\xcc\x47\x3f\xe4\x13\x4b\x46\xb2\x82\x5c\xfa\x09\x55\xf2\xb7\xbf\xf8\xd8\x5f\xee\x54\x6a\x5e\xd9\xec\x84\x7a\xc0\x31\x05\xe7\x40\x27\xb6\x82\x90\xf1\x74\x65\xf7\xf3\x45\x4a\x5d\x6d\x97\xa7\x6b\x6c\x6c\x6c\xeb\x8a\xdf\x00\x00\x00\xff\xff\xfb\x53\x3e\x81\x6e\x01\x00\x00")
 
 func migrations6_create_assets_tableSqlBytes() ([]byte, error) {
@@ -1518,6 +1539,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/59_remove_foreign_key_constraints.sql":                   migrations59_remove_foreign_key_constraintsSql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/60_add_asset_id_indexes.sql":                             migrations60_add_asset_id_indexesSql,
+	"migrations/61_trust_lines_by_account_type_code_issuer.sql":          migrations61_trust_lines_by_account_type_code_issuerSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
 	"migrations/7_modify_trades_table.sql":                               migrations7_modify_trades_tableSql,
 	"migrations/8_add_aggregators.sql":                                   migrations8_add_aggregatorsSql,
@@ -1529,13 +1551,11 @@ var _bindata = map[string]func() (*asset, error){
 // directory embedded in the file by go-bindata.
 // For example if you run go-bindata on data/... and data contains the
 // following hierarchy:
-//
-//	data/
-//	  foo.txt
-//	  img/
-//	    a.png
-//	    b.png
-//
+//     data/
+//       foo.txt
+//       img/
+//         a.png
+//         b.png
 // then AssetDir("data") would return []string{"foo.txt", "img"},
 // AssetDir("data/img") would return []string{"a.png", "b.png"},
 // AssetDir("foo.txt") and AssetDir("notexist") would return an error, and
@@ -1626,6 +1646,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"59_remove_foreign_key_constraints.sql":                   &bintree{migrations59_remove_foreign_key_constraintsSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"60_add_asset_id_indexes.sql":                             &bintree{migrations60_add_asset_id_indexesSql, map[string]*bintree{}},
+		"61_trust_lines_by_account_type_code_issuer.sql":          &bintree{migrations61_trust_lines_by_account_type_code_issuerSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
 		"7_modify_trades_table.sql":                               &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
 		"8_add_aggregators.sql":                                   &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
