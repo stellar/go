@@ -4,4 +4,4 @@ CREATE INDEX "trust_lines_by_type_code_issuer_account" ON trust_lines USING btre
 
 -- +migrate Down
 
-DROP INDEX "trust_lines_by_account_type_code_issuer";
+DROP INDEX "trust_lines_by_type_code_issuer_account";
