@@ -124,7 +124,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		filters:        &MockFilters{},
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(63, MaxSupportedProtocolVersion, bucketListHash)
+	_, err := runner.RunHistoryArchiveIngestion(63, false, MaxSupportedProtocolVersion, bucketListHash)
 	assert.NoError(t, err)
 }
 
@@ -159,7 +159,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 		filters:        &MockFilters{},
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
+	_, err := runner.RunHistoryArchiveIngestion(100, false, 200, xdr.Hash{})
 	assert.EqualError(t, err,
 		fmt.Sprintf(
 			"Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
