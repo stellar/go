@@ -173,6 +173,7 @@ type System interface {
 	Metrics() Metrics
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
+	BuildState(sequence uint32, skipChecks bool) error
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
 	BuildGenesisState() error
 	Shutdown()
@@ -526,6 +527,16 @@ func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 		fromLedger:  fromLedger,
 		toLedger:    toLedger,
 		verifyState: verifyState,
+	})
+}
+
+// BuildState runs the state ingestion on selected checkpoint ledger then exits.
+// When skipChecks is true it skips bucket list hash verification and protocol version check.
+func (s *system) BuildState(sequence uint32, skipChecks bool) error {
+	return s.runStateMachine(buildState{
+		checkpointLedger: sequence,
+		skipChecks:       skipChecks,
+		stop:             true,
 	})
 }
 
