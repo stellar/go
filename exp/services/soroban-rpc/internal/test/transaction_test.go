@@ -277,5 +277,5 @@ func TestSendTransactionFailedInvalidXDR(t *testing.T) {
 	assert.Equal(t, "", response.ID)
 	assert.Equal(t, methods.TransactionError, response.Status)
 	assert.Equal(t, "invalid_xdr", response.Error.Code)
-	assert.Equal(t, "cannot unmarshall transaction: decoding EnvelopeType: decoding EnvelopeType: xdr:DecodeInt: unexpected EOF while decoding 4 bytes - read: '[105 183 29]'", response.Error.Message)
+	assert.Equal(t, "cannot unmarshal transaction: decoding EnvelopeType: decoding EnvelopeType: xdr:DecodeInt: unexpected EOF while decoding 4 bytes - read: '[105 183 29]'", response.Error.Message)
 }
