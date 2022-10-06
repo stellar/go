@@ -259,7 +259,7 @@ func parseResults(tx horizon.Transaction) ([]SCVal, *TransactionResponseError) {
 		if err != nil {
 			return nil, &TransactionResponseError{
 				Code:    "invalid_xdr",
-				Message: fmt.Sprintf("cannot unmarshall scval: %v", err),
+				Message: fmt.Sprintf("cannot unmarshal scval: %v", err),
 				Data: map[string]interface{}{
 					"transaction": tx,
 				},
