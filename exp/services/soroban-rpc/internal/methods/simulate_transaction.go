@@ -27,7 +27,7 @@ type InvokeHostFunctionResult struct {
 
 type SimulateTransactionResponse struct {
 	Error        string                     `json:"error,omitempty"`
-	Results      []InvokeHostFunctionResult `json:"result"`
+	Results      []InvokeHostFunctionResult `json:"result,omitempty"`
 	Footprint    string                     `json:"footprint"`
 	Cost         SimulateTransactionCost    `json:"cost"`
 	LatestLedger int64                      `json:"latestLedger,string"`

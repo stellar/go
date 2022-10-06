@@ -44,9 +44,9 @@ type TransactionResponseError struct {
 type TransactionStatusResponse struct {
 	ID      string  `json:"id"`
 	Status  string  `json:"status"`
-	Results []SCVal `json:"results"`
+	Results []SCVal `json:"results,omitempty"`
 	// Error will be nil unless Status is equal to "error"
-	Error *TransactionResponseError `json:"error"`
+	Error *TransactionResponseError `json:"error,omitempty"`
 }
 
 type SendTransactionResponse struct {
