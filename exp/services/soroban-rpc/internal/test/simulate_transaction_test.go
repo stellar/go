@@ -176,6 +176,9 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	var resultForRequestWithDifferentTxSource methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &resultForRequestWithDifferentTxSource)
 	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, resultForRequestWithDifferentTxSource.LatestLedger, result.LatestLedger)
+	// apart from latest ledger the response should be the same
+	resultForRequestWithDifferentTxSource.LatestLedger = result.LatestLedger
 	assert.Equal(t, result, resultForRequestWithDifferentTxSource)
 }
 
