@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
 
@@ -32,24 +31,35 @@ type GetTransactionStatusRequest struct {
 	Hash string `json:"hash"`
 }
 
+type SCVal struct {
+	XDR string `json:"xdr"`
+}
+
+type TransactionResponseError struct {
+	Code    string                 `json:"code"`
+	Message string                 `json:"message"`
+	Data    map[string]interface{} `json:"data"`
+}
+
 type TransactionStatusResponse struct {
-	ID     string               `json:"id"`
-	Status string               `json:"status"`
-	Result *horizon.Transaction `json:"result"`
+	ID      string  `json:"id"`
+	Status  string  `json:"status"`
+	Results []SCVal `json:"results"`
 	// Error will be nil unless Status is equal to "error"
-	Error *problem.P `json:"error"`
+	Error *TransactionResponseError `json:"error"`
 }
 
 type SendTransactionResponse struct {
-	ID     string     `json:"id"`
-	Status string     `json:"status"`
-	Error  *problem.P `json:"error"`
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	// Error will be nil unless Status is equal to "error"
+	Error *TransactionResponseError `json:"error"`
 }
 
 type transactionResult struct {
 	timestamp time.Time
 	pending   bool
-	err       *problem.P
+	err       *TransactionResponseError
 }
 
 type horizonRequest struct {
@@ -109,10 +119,10 @@ func (p *TransactionProxy) SendTransaction(ctx context.Context, request SendTran
 	if err != nil {
 		return SendTransactionResponse{
 			Status: TransactionError,
-			Error: problem.MakeInvalidFieldProblem(
-				"transaction",
-				fmt.Errorf("cannot unmarshall transaction: %v", err),
-			),
+			Error: &TransactionResponseError{
+				Code:    "invalid_xdr",
+				Message: fmt.Sprintf("cannot unmarshal transaction: %v", err),
+			},
 		}
 	}
 
@@ -121,10 +131,10 @@ func (p *TransactionProxy) SendTransaction(ctx context.Context, request SendTran
 	if err != nil {
 		return SendTransactionResponse{
 			Status: TransactionError,
-			Error: problem.MakeInvalidFieldProblem(
-				"transaction",
-				fmt.Errorf("cannot hash transaction: %v", err),
-			),
+			Error: &TransactionResponseError{
+				Code:    "invalid_hash",
+				Message: fmt.Sprintf("cannot hash transaction: %v", err),
+			},
 		}
 	}
 	txHash := hex.EncodeToString(hash[:])
@@ -155,12 +165,13 @@ func (p *TransactionProxy) SendTransaction(ctx context.Context, request SendTran
 		}
 	default:
 		delete(p.results, txHash)
-		problemErr := problem.ServerError
-		problemErr.Detail = "Transaction queue is full"
 		return SendTransactionResponse{
 			ID:     txHash,
 			Status: TransactionError,
-			Error:  &problemErr,
+			Error: &TransactionResponseError{
+				Code:    "full_queue",
+				Message: "Transaction queue is full",
+			},
 		}
 	}
 }
@@ -188,11 +199,16 @@ func (p *TransactionProxy) startWorker(ctx context.Context) {
 			if err != nil {
 				result := transactionResult{timestamp: time.Now()}
 				if herr, ok := err.(*horizonclient.Error); ok {
-					result.err = &herr.Problem
+					result.err = &TransactionResponseError{
+						Code:    "tx_submission_failed",
+						Message: "Transaction submission failed",
+						Data:    herr.Problem.Extras,
+					}
 				} else {
-					problemErr := problem.ServerError
-					problemErr.Detail = fmt.Sprintf("transaction submission failed: %v", err)
-					result.err = &problemErr
+					result.err = &TransactionResponseError{
+						Code:    "http_error",
+						Message: fmt.Sprintf("transaction submission failed: %v", err),
+					}
 				}
 				p.setTxResult(request.txHash, result)
 			} else {
@@ -200,6 +216,59 @@ func (p *TransactionProxy) startWorker(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func parseResults(tx horizon.Transaction) ([]SCVal, *TransactionResponseError) {
+	var txResult xdr.TransactionResult
+	if err := xdr.SafeUnmarshalBase64(tx.ResultXdr, &txResult); err != nil {
+		return nil, &TransactionResponseError{
+			Code:    "invalid_xdr",
+			Message: fmt.Sprintf("cannot unmarshal transaction result: %v", err),
+			Data: map[string]interface{}{
+				"transaction": tx,
+			},
+		}
+	}
+
+	var scvals []SCVal
+	opResults, ok := txResult.OperationResults()
+	if !ok {
+		return nil, &TransactionResponseError{
+			Code:    "no_tx_results",
+			Message: "Transaction succeeded but had no results",
+			Data: map[string]interface{}{
+				"transaction": tx,
+			},
+		}
+	}
+
+	for _, opResult := range opResults {
+		result, ok := opResult.GetTr()
+		if !ok {
+			continue
+		}
+		invokeHostFunctionResult, ok := result.GetInvokeHostFunctionResult()
+		if !ok {
+			continue
+		}
+		scval, ok := invokeHostFunctionResult.GetSuccess()
+		if !ok {
+			continue
+		}
+		scvalB64, err := xdr.MarshalBase64(scval)
+		if err != nil {
+			return nil, &TransactionResponseError{
+				Code:    "invalid_xdr",
+				Message: fmt.Sprintf("cannot unmarshal scval: %v", err),
+				Data: map[string]interface{}{
+					"transaction": tx,
+				},
+			}
+		}
+		scvals = append(scvals, SCVal{XDR: scvalB64})
+	}
+
+	return scvals, nil
 }
 
 func (p *TransactionProxy) GetTransactionStatus(ctx context.Context, request GetTransactionStatusRequest) TransactionStatusResponse {
@@ -210,27 +279,48 @@ func (p *TransactionProxy) GetTransactionStatus(ctx context.Context, request Get
 				return TransactionStatusResponse{
 					ID:     request.Hash,
 					Status: TransactionError,
-					Error:  &herr.Problem,
+					Error: &TransactionResponseError{
+						Code:    herr.Problem.Title,
+						Message: herr.Problem.Detail,
+						Data:    herr.Problem.Extras,
+					},
 				}
 			}
 		} else {
-			problemErr := problem.ServerError
-			problemErr.Detail = fmt.Sprintf("transaction submission failed: %v", err)
 			return TransactionStatusResponse{
 				ID:     request.Hash,
 				Status: TransactionError,
-				Error:  &problemErr,
+				Error: &TransactionResponseError{
+					Code:    "http_error",
+					Message: fmt.Sprintf("transaction submission failed: %v", err),
+				},
 			}
 		}
 	} else {
-		status := TransactionSuccess
 		if !tx.Successful {
+			return TransactionStatusResponse{
+				ID:     request.Hash,
+				Status: TransactionError,
+				Error: &TransactionResponseError{
+					Code:    "tx_failed",
+					Message: "transaction included in ledger but failed",
+					Data: map[string]interface{}{
+						"transaction": tx,
+					},
+				},
+			}
+		}
+
+		results, err := parseResults(tx)
+		status := TransactionSuccess
+		if err != nil {
 			status = TransactionError
 		}
 		return TransactionStatusResponse{
-			ID:     request.Hash,
-			Status: status,
-			Result: &tx,
+			ID:      request.Hash,
+			Status:  status,
+			Results: results,
+			Error:   err,
 		}
 	}
 
@@ -243,7 +333,10 @@ func (p *TransactionProxy) GetTransactionStatus(ctx context.Context, request Get
 		return TransactionStatusResponse{
 			ID:     request.Hash,
 			Status: TransactionError,
-			Error:  problem.MakeInvalidFieldProblem("hash", fmt.Errorf("transaction not found")),
+			Error: &TransactionResponseError{
+				Code:    "tx_not_found",
+				Message: "transaction not found",
+			},
 		}
 	}
 
