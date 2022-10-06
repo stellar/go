@@ -18,7 +18,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func createInvokeHostOperation(sourceAccount string) *txnbuild.InvokeHostFunction {
+func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootprint bool) *txnbuild.InvokeHostFunction {
 	contract := []byte("a contract")
 	salt := sha256.Sum256([]byte("a1"))
 
@@ -41,8 +41,39 @@ func createInvokeHostOperation(sourceAccount string) *txnbuild.InvokeHostFunctio
 		Obj:  &saltParameterAddr,
 	}
 
+	var footprint xdr.LedgerFootprint
+	if includeFootprint {
+		preImage := xdr.HashIdPreimage{
+			Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount,
+			SourceAccountContractId: &xdr.HashIdPreimageSourceAccountContractId{
+				Salt: salt,
+			},
+		}
+		preImage.SourceAccountContractId.SourceAccount.SetAddress(sourceAccount)
+		xdrPreImageBytes, err := preImage.MarshalBinary()
+		require.NoError(t, err)
+		hashedContractID := sha256.Sum256(xdrPreImageBytes)
+		ledgerKeyContractCodeAddr := xdr.ScStaticScsLedgerKeyContractCode
+		ledgerKey := xdr.LedgerKeyContractData{
+			ContractId: xdr.Hash(hashedContractID),
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvStatic,
+				Ic:   &ledgerKeyContractCodeAddr,
+			},
+		}
+		footprint = xdr.LedgerFootprint{
+			ReadWrite: []xdr.LedgerKey{
+				{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &ledgerKey,
+				},
+			},
+		}
+	}
+
 	return &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnCreateContractWithSourceAccount,
+		Footprint: footprint,
+		Function:  xdr.HostFunctionHostFnCreateContractWithSourceAccount,
 		Parameters: xdr.ScVec{
 			contractNameParameter,
 			saltParameter,
@@ -64,7 +95,7 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(sourceAccount)},
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(t, sourceAccount, false)},
 		BaseFee:              txnbuild.MinBaseFee,
 		Memo:                 nil,
 		Preconditions: txnbuild.Preconditions{
@@ -99,7 +130,7 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	)
 
 	// test operation which does not have a source account
-	withoutSourceAccountOp := createInvokeHostOperation("")
+	withoutSourceAccountOp := createInvokeHostOperation(t, "", false)
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: sourceAccount,
@@ -130,7 +161,7 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(sourceAccount)},
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(t, sourceAccount, false)},
 		BaseFee:              txnbuild.MinBaseFee,
 		Memo:                 nil,
 		Preconditions: txnbuild.Preconditions{
@@ -155,7 +186,7 @@ func TestSimulateTransactionError(t *testing.T) {
 	client := jrpc2.NewClient(ch, nil)
 
 	sourceAccount := keypair.Root(StandaloneNetworkPassphrase).Address()
-	invokeHostOp := createInvokeHostOperation(sourceAccount)
+	invokeHostOp := createInvokeHostOperation(t, sourceAccount, false)
 	invokeHostOp.Parameters = invokeHostOp.Parameters[:len(invokeHostOp.Parameters)-1]
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
@@ -201,9 +232,8 @@ func TestSimulateTransactionMultipleOperations(t *testing.T) {
 		},
 		IncrementSequenceNum: false,
 		Operations: []txnbuild.Operation{
-			createInvokeHostOperation(sourceAccount),
-
-			createInvokeHostOperation(sourceAccount),
+			createInvokeHostOperation(t, sourceAccount, false),
+			createInvokeHostOperation(t, sourceAccount, false),
 		},
 		BaseFee: txnbuild.MinBaseFee,
 		Memo:    nil,
@@ -299,7 +329,7 @@ func TestSimulateTransactionDeadlineError(t *testing.T) {
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(sourceAccount)},
+		Operations:           []txnbuild.Operation{createInvokeHostOperation(t, sourceAccount, false)},
 		BaseFee:              txnbuild.MinBaseFee,
 		Memo:                 nil,
 		Preconditions: txnbuild.Preconditions{
