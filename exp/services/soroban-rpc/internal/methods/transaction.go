@@ -121,7 +121,7 @@ func (p *TransactionProxy) SendTransaction(ctx context.Context, request SendTran
 			Status: TransactionError,
 			Error: &TransactionResponseError{
 				Code:    "invalid_xdr",
-				Message: fmt.Sprintf("cannot unmarshall transaction: %v", err),
+				Message: fmt.Sprintf("cannot unmarshal transaction: %v", err),
 			},
 		}
 	}
