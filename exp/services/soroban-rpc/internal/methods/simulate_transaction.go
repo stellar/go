@@ -75,7 +75,8 @@ func NewSimulateTransactionHandler(logger *log.Entry, coreClient *stellarcore.Cl
 
 		if coreResponse.Status == proto.PreflightStatusError {
 			return SimulateTransactionResponse{
-				Error: coreResponse.Detail,
+				Error:        coreResponse.Detail,
+				LatestLedger: coreResponse.Ledger,
 			}
 		}
 

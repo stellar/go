@@ -176,6 +176,9 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 	var resultForRequestWithDifferentTxSource methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &resultForRequestWithDifferentTxSource)
 	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, resultForRequestWithDifferentTxSource.LatestLedger, result.LatestLedger)
+	// apart from latest ledger the response should be the same
+	resultForRequestWithDifferentTxSource.LatestLedger = result.LatestLedger
 	assert.Equal(t, result, resultForRequestWithDifferentTxSource)
 }
 
@@ -209,13 +212,9 @@ func TestSimulateTransactionError(t *testing.T) {
 	var result methods.SimulateTransactionResponse
 	err = client.CallResult(context.Background(), "simulateTransaction", request, &result)
 	assert.NoError(t, err)
-	assert.Equal(
-		t,
-		methods.SimulateTransactionResponse{
-			Error: "HostError\nValue: Status(HostFunctionError(InputArgsWrongLength))\n\nDebug events (newest first):\n   0: \"unexpected arguments to 'CreateContractWithSourceAccount' host function\"\n\nBacktrace (newest first):\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: <unknown>\n  13: <unknown>\n  14: <unknown>\n  15: <unknown>\n  16: <unknown>\n  17: <unknown>\n  18: <unknown>\n  19: <unknown>\n  20: <unknown>\n  21: <unknown>\n  22: <unknown>\n  23: <unknown>\n  24: <unknown>\n  25: __libc_start_main\n  26: <unknown>\n\n",
-		},
-		result,
-	)
+	assert.Empty(t, result.Results)
+	assert.Greater(t, result.LatestLedger, int64(0))
+	assert.Contains(t, result.Error, "InputArgsWrongLength")
 }
 
 func TestSimulateTransactionMultipleOperations(t *testing.T) {
