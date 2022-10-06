@@ -6,6 +6,7 @@ import (
 
 	"github.com/creachadair/jrpc2/handler"
 	"github.com/creachadair/jrpc2/jhttp"
+	"github.com/rs/cors"
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/services/soroban-rpc/internal/methods"
@@ -17,6 +18,7 @@ type Handler struct {
 	bridge           jhttp.Bridge
 	logger           *log.Entry
 	transactionProxy *methods.TransactionProxy
+	http.Handler
 }
 
 // Start spawns the background workers necessary for the JSON RPC handlers.
@@ -24,12 +26,7 @@ func (h Handler) Start() {
 	h.transactionProxy.Start(context.Background())
 }
 
-// ServeHTTP implements the http.Handler interface
-func (h Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	h.bridge.ServeHTTP(w, req)
-}
-
-// Close closes all of the resources held by the Handler instances.
+// Close closes all the resources held by the Handler instances.
 // After Close is called the Handler instance will stop accepting JSON RPC requests.
 func (h Handler) Close() {
 	if err := h.bridge.Close(); err != nil {
@@ -47,15 +44,23 @@ type HandlerParams struct {
 
 // NewJSONRPCHandler constructs a Handler instance
 func NewJSONRPCHandler(params HandlerParams) (Handler, error) {
+	bridge := jhttp.NewBridge(handler.Map{
+		"getHealth":            methods.NewHealthCheck(),
+		"getAccount":           methods.NewAccountHandler(params.AccountStore),
+		"getTransactionStatus": methods.NewGetTransactionStatusHandler(params.TransactionProxy),
+		"sendTransaction":      methods.NewSendTransactionHandler(params.TransactionProxy),
+		"simulateTransaction":  methods.NewSimulateTransactionHandler(params.Logger, params.CoreClient),
+	}, nil)
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedHeaders: []string{"*"},
+		AllowedMethods: []string{"GET", "PUT", "POST", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+	})
+
 	return Handler{
-		bridge: jhttp.NewBridge(handler.Map{
-			"getHealth":            methods.NewHealthCheck(),
-			"getAccount":           methods.NewAccountHandler(params.AccountStore),
-			"getTransactionStatus": methods.NewGetTransactionStatusHandler(params.TransactionProxy),
-			"sendTransaction":      methods.NewSendTransactionHandler(params.TransactionProxy),
-			"simulateTransaction":  methods.NewSimulateTransactionHandler(params.Logger, params.CoreClient),
-		}, nil),
+		bridge:           bridge,
 		logger:           params.Logger,
 		transactionProxy: params.TransactionProxy,
+		Handler:          corsMiddleware.Handler(bridge),
 	}, nil
 }
