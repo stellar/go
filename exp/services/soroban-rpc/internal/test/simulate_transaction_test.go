@@ -18,20 +18,22 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootprint bool) *txnbuild.InvokeHostFunction {
-	contract := []byte("a contract")
-	salt := sha256.Sum256([]byte("a1"))
+var (
+	testContract = []byte("a contract")
+	testSalt     = sha256.Sum256([]byte("a1"))
+)
 
+func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootprint bool) *txnbuild.InvokeHostFunction {
 	contractNameParameterAddr := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &contract,
+		Bin:  &testContract,
 	}
 	contractNameParameter := xdr.ScVal{
 		Type: xdr.ScValTypeScvObject,
 		Obj:  &contractNameParameterAddr,
 	}
 
-	saltySlice := salt[:]
+	saltySlice := testSalt[:]
 	saltParameterAddr := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoBytes,
 		Bin:  &saltySlice,
@@ -43,23 +45,9 @@ func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootpr
 
 	var footprint xdr.LedgerFootprint
 	if includeFootprint {
-		preImage := xdr.HashIdPreimage{
-			Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount,
-			SourceAccountContractId: &xdr.HashIdPreimageSourceAccountContractId{
-				Salt: salt,
-			},
-		}
-		preImage.SourceAccountContractId.SourceAccount.SetAddress(sourceAccount)
-		xdrPreImageBytes, err := preImage.MarshalBinary()
-		require.NoError(t, err)
-		hashedContractID := sha256.Sum256(xdrPreImageBytes)
-		ledgerKeyContractCodeAddr := xdr.ScStaticScsLedgerKeyContractCode
 		ledgerKey := xdr.LedgerKeyContractData{
-			ContractId: xdr.Hash(hashedContractID),
-			Key: xdr.ScVal{
-				Type: xdr.ScValTypeScvStatic,
-				Ic:   &ledgerKeyContractCodeAddr,
-			},
+			ContractId: xdr.Hash(getContractID(t, sourceAccount, testSalt)),
+			Key:        getContractCodeLedgerKey(),
 		}
 		footprint = xdr.LedgerFootprint{
 			ReadWrite: []xdr.LedgerKey{
@@ -80,6 +68,29 @@ func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootpr
 		},
 		SourceAccount: sourceAccount,
 	}
+}
+
+func getContractCodeLedgerKey() xdr.ScVal {
+	ledgerKeyContractCodeAddr := xdr.ScStaticScsLedgerKeyContractCode
+	contractCodeLedgerKey := xdr.ScVal{
+		Type: xdr.ScValTypeScvStatic,
+		Ic:   &ledgerKeyContractCodeAddr,
+	}
+	return contractCodeLedgerKey
+}
+
+func getContractID(t *testing.T, sourceAccount string, salt [32]byte) [32]byte {
+	preImage := xdr.HashIdPreimage{
+		Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount,
+		SourceAccountContractId: &xdr.HashIdPreimageSourceAccountContractId{
+			Salt: salt,
+		},
+	}
+	preImage.SourceAccountContractId.SourceAccount.SetAddress(sourceAccount)
+	xdrPreImageBytes, err := preImage.MarshalBinary()
+	require.NoError(t, err)
+	hashedContractID := sha256.Sum256(xdrPreImageBytes)
+	return hashedContractID
 }
 
 func TestSimulateTransactionSucceeds(t *testing.T) {
