@@ -1,9 +1,11 @@
 package stellarcore
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -78,6 +80,38 @@ func (c *Client) Preflight(ctx context.Context, sourceAccount string, invokeHost
 	var response proto.PreflightResponse
 	if err = json.NewDecoder(hresp.Body).Decode(&response); err != nil {
 		return proto.PreflightResponse{}, errors.Wrap(err, "json decode failed")
+	}
+	return response, nil
+}
+
+// GetLedgerEntry submits a request to the stellar core instance to get the latest
+// state of a given ledger entry.
+func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (proto.GetLedgerEntryResponse, error) {
+	b64, err := xdr.MarshalBase64(ledgerKey)
+	if err != nil {
+		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "failed to marshal ledger key")
+	}
+	q := url.Values{}
+	q.Set("key", b64)
+
+	req, err := c.simpleGet(ctx, "getledgerentry", q)
+	if err != nil {
+		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "failed to create request")
+	}
+
+	hresp, err := c.http().Do(req)
+	if err != nil {
+		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "http request errored")
+	}
+	defer hresp.Body.Close()
+	responseBytes, err := io.ReadAll(hresp.Body)
+	if err != nil {
+		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "could not read response")
+	}
+
+	var response proto.GetLedgerEntryResponse
+	if err = json.NewDecoder(bytes.NewReader(responseBytes)).Decode(&response); err != nil {
+		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "json decode failed: "+string(responseBytes))
 	}
 	return response, nil
 }
