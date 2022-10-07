@@ -80,7 +80,7 @@ func NewGetContractDataHandler(logger *log.Entry, coreClient *stellarcore.Client
 		}
 
 		var ledgerEntry xdr.LedgerEntry
-		if err := xdr.SafeUnmarshalBase64(coreResponse.Entry, &ledgerEntry); err != nil {
+		if err = xdr.SafeUnmarshalBase64(coreResponse.Entry, &ledgerEntry); err != nil {
 			logger.WithError(err).WithField("request", request).
 				WithField("response", coreResponse).
 				Info("could not parse ledger entry")
