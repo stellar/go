@@ -362,6 +362,9 @@ LoopBucketEntry:
 				case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 					liveEntry := entry.MustLiveEntry()
 					key = liveEntry.LedgerKey()
+					if (key.ContractData != nil) {
+						continue
+					}
 				case xdr.BucketEntryTypeDeadentry:
 					key = entry.MustDeadEntry()
 				default:
