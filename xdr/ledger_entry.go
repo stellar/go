@@ -40,6 +40,12 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 		body = LedgerKeyLiquidityPool{
 			LiquidityPoolId: lPool.LiquidityPoolId,
 		}
+	case LedgerEntryTypeContractData:
+		contractData := entry.Data.MustContractData()
+		body = LedgerKeyContractData{
+			ContractId: contractData.ContractId,
+			Key:        contractData.Key,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}

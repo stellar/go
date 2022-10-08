@@ -148,6 +148,9 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 	case LedgerEntryTypeLiquidityPool:
 		_, err := e.xdrEncoderBuf.Write(key.LiquidityPool.LiquidityPoolId[:])
 		return err
+	case LedgerEntryTypeContractData:
+		_, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:])
+		return err
 	default:
 		panic("Unknown type")
 	}
