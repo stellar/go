@@ -44,8 +44,8 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 		contractData := entry.Data.MustContractData()
 		body = LedgerKeyContractData{
 			ContractId: contractData.ContractId,
-			Key: contractData.Key,
-		}	
+			Key:        contractData.Key,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}

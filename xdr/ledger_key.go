@@ -150,7 +150,7 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		return err
 	case LedgerEntryTypeContractData:
 		_, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:])
-		return err	
+		return err
 	default:
 		panic("Unknown type")
 	}
