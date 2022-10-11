@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.22.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### Fixes
+
+- Database migrations will now acquire a lock on ingestion, preventing possible deadlocks ([4587](https://github.com/stellar/go/pull/4587)).
+
+### Changes
+
+- Optimizes startup by preserving the Captive Core storage directory if Horizon has ingested ahead of the requested ledger ([4605](https://github.com/stellar/go/pull/4605)).
+
+### DB Schema Migration
+
+- Introduces a new index that optimizes account queries filtered by asset ([4635](https://github.com/stellar/go/pull/4635)).
+
+## 2.21.0
+
+**Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+### Changes
+
+- Bump Go to the latest version, including net/http and net/url security fixes ([4577](https://github.com/stellar/go/pull/4577))
+
+### DB Schema Migration
+
+- Added indexes by id for assets in the respective `history_trades` tables. Ingestion will stop while the migration is being applied. ([4565](https://github.com/stellar/go/pull/4565))
+
 ## 2.20.0
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
