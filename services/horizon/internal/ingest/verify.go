@@ -193,6 +193,9 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			case xdr.LedgerEntryTypeLiquidityPool:
 				lPools = append(lPools, key.LiquidityPool.LiquidityPoolId)
 				totalByType["liquidity_pools"]++
+			case xdr.LedgerEntryTypeContractData, xdr.LedgerEntryTypeConfigSetting:
+				// TODO: add support for protocol 20 ledger entries
+				continue
 			default:
 				return errors.New("GetLedgerKeys return unexpected type")
 			}

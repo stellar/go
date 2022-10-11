@@ -37,6 +37,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustLiquidityPool()
 		r := other.MustLiquidityPool()
 		return l.LiquidityPoolId == r.LiquidityPoolId
+	case LedgerEntryTypeConfigSetting:
+		l := key.MustConfigSetting()
+		r := other.MustConfigSetting()
+		return l.ConfigSettingId == r.ConfigSettingId
 	default:
 		panic(fmt.Errorf("Unknown ledger key type: %v", key.Type))
 	}
@@ -151,6 +155,8 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 	case LedgerEntryTypeContractData:
 		_, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:])
 		return err
+	case LedgerEntryTypeConfigSetting:
+		return key.ConfigSetting.ConfigSettingId.EncodeTo(e.encoder)
 	default:
 		panic("Unknown type")
 	}

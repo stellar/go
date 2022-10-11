@@ -46,6 +46,11 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 			ContractId: contractData.ContractId,
 			Key:        contractData.Key,
 		}
+	case LedgerEntryTypeConfigSetting:
+		configSetting := entry.Data.MustConfigSetting()
+		body = LedgerKeyConfigSetting{
+			ConfigSettingId: configSetting.ConfigSettingId,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}
