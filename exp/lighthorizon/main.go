@@ -106,16 +106,24 @@ break down accounts by active ledgers.`,
 
 			cachePreloadCount, _ := cmd.Flags().GetUint32("ledger-cache-preload")
 			cachePreloadStart, _ := cmd.Flags().GetUint32("ledger-cache-preload-start")
-			if cacheDir != "" && cachePreloadCount > 0 {
-				startLedger := latestLedger - cachePreloadCount
-				if cachePreloadStart > 0 {
-					startLedger = cachePreloadStart
-				}
+			if cachePreloadCount > 0 {
+				if cacheDir == "" {
+					log.Warnf("--ledger-cache-preload=%d specified but no "+
+						"--ledger-cache directory provided, ignoring...",
+						cachePreloadCount)
+				} else {
+					startLedger := latestLedger - cachePreloadCount
+					if cachePreloadStart > 0 {
+						startLedger = cachePreloadStart
+					}
 
-				go func() {
-					tools.BuildCache(sourceUrl, cacheDir,
-						startLedger, cachePreloadCount, false)
-				}()
+					log.Infof("Preloading cache at %s with %d ledgers, starting at ledger %d.",
+						cacheDir, startLedger, cachePreloadCount)
+					go func() {
+						tools.BuildCache(sourceUrl, cacheDir,
+							startLedger, cachePreloadCount, false)
+					}()
+				}
 			}
 
 			Config := services.Config{
