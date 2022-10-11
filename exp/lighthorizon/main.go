@@ -108,9 +108,10 @@ break down accounts by active ledgers.`,
 			cachePreloadStart, _ := cmd.Flags().GetUint32("ledger-cache-preload-start")
 			if cachePreloadCount > 0 {
 				if cacheDir == "" {
-					log.Warnf("--ledger-cache-preload=%d specified but no "+
+					log.Fatalf("--ledger-cache-preload=%d specified but no "+
 						"--ledger-cache directory provided, ignoring...",
 						cachePreloadCount)
+					return
 				} else {
 					startLedger := latestLedger - cachePreloadCount
 					if cachePreloadStart > 0 {
