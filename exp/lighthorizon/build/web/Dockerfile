@@ -16,6 +16,9 @@ COPY --from=builder /go/bin/lighthorizon ./
 
 ENTRYPOINT ./lighthorizon serve \
   --network-passphrase "$NETWORK_PASSPHRASE" \
-  --ledger-cache "$CACHE_PATH" \
   --parallel-downloads "$MAX_PARALLEL_DOWNLOADS" \
-  "$TXMETA_SOURCE" "$INDEXES_SOURCE" \
+  --ledger-cache "$CACHE_PATH" \
+  --ledger-cache-preload "$CACHE_PRELOAD_COUNT" \
+  --ledger-cache-preload-start "$CACHE_PRELOAD_START_LEDGER" \
+  --log-level debug \
+  "$TXMETA_SOURCE" "$INDEXES_SOURCE"

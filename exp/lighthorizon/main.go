@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -96,6 +97,41 @@ break down accounts by active ledgers.`,
 				return
 			}
 
+			latestLedger, err := ingester.GetLatestLedgerSequence(context.Background())
+			if err != nil {
+				log.Fatalf("Failed to retrieve latest ledger from %s: %v", sourceUrl, err)
+				return
+			}
+			log.Infof("The latest ledger stored at %s is %d.", sourceUrl, latestLedger)
+
+			cachePreloadCount, _ := cmd.Flags().GetUint32("ledger-cache-preload")
+			cachePreloadStart, _ := cmd.Flags().GetUint32("ledger-cache-preload-start")
+			if cachePreloadCount > 0 {
+				if cacheDir == "" {
+					log.Fatalf("--ledger-cache-preload=%d specified but no "+
+						"--ledger-cache directory provided.",
+						cachePreloadCount)
+					return
+				} else {
+					startLedger := int(latestLedger) - int(cachePreloadCount)
+					if cachePreloadStart > 0 {
+						startLedger = int(cachePreloadStart)
+					}
+					if startLedger <= 0 {
+						log.Warnf("Starting ledger invalid (%d), defaulting to 2.",
+							startLedger)
+						startLedger = 2
+					}
+
+					log.Infof("Preloading cache at %s with %d ledgers, starting at ledger %d.",
+						cacheDir, startLedger, cachePreloadCount)
+					go func() {
+						tools.BuildCache(sourceUrl, cacheDir,
+							uint32(startLedger), cachePreloadCount, false)
+					}()
+				}
+			}
+
 			Config := services.Config{
 				Ingester:   ingester,
 				Passphrase: networkPassphrase,
@@ -118,6 +154,8 @@ break down accounts by active ledgers.`,
 				Version:      HorizonLiteVersion,
 				LedgerSource: sourceUrl,
 				IndexSource:  indexStoreUrl,
+
+				LatestLedger: latestLedger,
 			}))
 
 			log.Fatal(http.ListenAndServe(":8080", router))
@@ -131,6 +169,10 @@ break down accounts by active ledgers.`,
 		"if left empty, uses a temporary directory")
 	serve.Flags().Uint("ledger-cache-size", defaultCacheSize,
 		"number of ledgers to store in the cache")
+	serve.Flags().Uint32("ledger-cache-preload", 0,
+		"should the cache come preloaded with the latest <n> ledgers?")
+	serve.Flags().Uint32("ledger-cache-preload-start", 0,
+		"the preload should start at ledger <n>")
 	serve.Flags().Uint("parallel-downloads", 1,
 		"how many workers should download ledgers in parallel?")
 

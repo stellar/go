@@ -7,11 +7,13 @@ metadata:
     app: lighthorizon-pubnet-web
   name: lighthorizon-pubnet-web-env
 data:
-  TXMETA_SOURCE: "s3://horizon-ledgermeta-prodnet-test"
-  INDEXES_SOURCE: "s3://horizon-index-prodnet-test"
+  TXMETA_SOURCE: "s3://horizon-indices-pubnet"
+  INDEXES_SOURCE: "s3://horizon-ledgermeta-pubnet"
   NETWORK_PASSPHRASE: "Public Global Stellar Network ; September 2015"
   MAX_PARALLEL_DOWNLOADS: 16
   CACHE_PATH: "/ledgercache"
+  CACHE_PRELOAD_START_LEDGER: 0
+  CACHE_PRELOAD_COUNT: 14400
 ---  
 apiVersion: v1
 kind: Secret

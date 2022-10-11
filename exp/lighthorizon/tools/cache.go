@@ -103,9 +103,9 @@ purge /tmp/example 1000 1005    # purge a ledger range`,
 				return cmd.Usage()
 			}
 
-			count, err := cmd.Flags().GetUint("count")
+			count, err := cmd.Flags().GetUint32("count")
 			if err != nil || count <= 0 {
-				cmd.Println("--count should be a positive integer")
+				cmd.Println("--count should be a positive 32-bit integer")
 				return cmd.Usage()
 			}
 			repair, _ := cmd.Flags().GetBool("repair")
@@ -115,7 +115,7 @@ purge /tmp/example 1000 1005    # purge a ledger range`,
 
 	build.Flags().Bool("repair", false, "attempt to purge the cache and retry ledgers that error")
 	build.Flags().Uint32("start", 0, "first ledger to cache (required)")
-	build.Flags().Uint("count", defaultCacheCount, "number of ledgers to cache")
+	build.Flags().Uint32("count", defaultCacheCount, "number of ledgers to cache")
 
 	cmd.AddCommand(build, purge, show)
 	if parent == nil {
@@ -126,7 +126,7 @@ purge /tmp/example 1000 1005    # purge a ledger range`,
 	return parent
 }
 
-func BuildCache(ledgerSource, cacheDir string, start uint32, count uint, repair bool) error {
+func BuildCache(ledgerSource, cacheDir string, start uint32, count uint32, repair bool) error {
 	fullStart := time.Now()
 	L := log.DefaultLogger
 	L.SetLevel(log.InfoLevel)
@@ -136,7 +136,7 @@ func BuildCache(ledgerSource, cacheDir string, start uint32, count uint, repair 
 	store, err := storage.ConnectBackend(ledgerSource, storage.ConnectOptions{
 		Context: ctx,
 		Wrap: func(store storage.Storage) (storage.Storage, error) {
-			return storage.MakeOnDiskCache(store, cacheDir, count)
+			return storage.MakeOnDiskCache(store, cacheDir, uint(count))
 		},
 	})
 	if err != nil {
@@ -151,10 +151,10 @@ func BuildCache(ledgerSource, cacheDir string, start uint32, count uint, repair 
 	source := metaarchive.NewMetaArchive(store)
 	log.Infof("Filling local cache of ledgers at %s...", cacheDir)
 	log.Infof("Ledger range: [%d, %d] (%d ledgers)",
-		start, uint(start)+count-1, count)
+		start, start+count-1, count)
 
 	successful := uint(0)
-	for i := uint(0); i < count; i++ {
+	for i := uint32(0); i < count; i++ {
 		ledgerSeq := start + uint32(i)
 
 		// do "best effort" caching, skipping if too slow
@@ -186,7 +186,7 @@ func BuildCache(ledgerSource, cacheDir string, start uint32, count uint, repair 
 				Warnf("Downloading ledger %d took a while.", ledgerSeq)
 		}
 
-		log = log.WithField("failures", 1+i-successful)
+		log = log.WithField("failures", 1+uint(i)-successful)
 		if successful%97 == 0 {
 			log.Infof("Cached %d/%d ledgers (%0.1f%%)", successful, count,
 				100*float64(successful)/float64(count))
