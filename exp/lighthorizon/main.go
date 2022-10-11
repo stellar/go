@@ -109,20 +109,25 @@ break down accounts by active ledgers.`,
 			if cachePreloadCount > 0 {
 				if cacheDir == "" {
 					log.Fatalf("--ledger-cache-preload=%d specified but no "+
-						"--ledger-cache directory provided, ignoring...",
+						"--ledger-cache directory provided.",
 						cachePreloadCount)
 					return
 				} else {
-					startLedger := latestLedger - cachePreloadCount
+					startLedger := int(latestLedger) - int(cachePreloadCount)
 					if cachePreloadStart > 0 {
-						startLedger = cachePreloadStart
+						startLedger = int(cachePreloadStart)
+					}
+					if startLedger <= 0 {
+						log.Warnf("Starting ledger invalid (%d), defaulting to 2.",
+							startLedger)
+						startLedger = 2
 					}
 
 					log.Infof("Preloading cache at %s with %d ledgers, starting at ledger %d.",
 						cacheDir, startLedger, cachePreloadCount)
 					go func() {
 						tools.BuildCache(sourceUrl, cacheDir,
-							startLedger, cachePreloadCount, false)
+							uint32(startLedger), cachePreloadCount, false)
 					}()
 				}
 			}
