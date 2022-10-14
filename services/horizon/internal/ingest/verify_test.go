@@ -208,11 +208,15 @@ func TestStateVerifier(t *testing.T) {
 			genConfigSetting(tt, gen),
 		)
 	}
+
+	coverage := map[xdr.LedgerEntryType]int{}
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
 		mockChangeReader.On("Read").Return(change, nil).Once()
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+		coverage[change.Type]++
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 

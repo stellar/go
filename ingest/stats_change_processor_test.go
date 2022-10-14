@@ -12,152 +12,26 @@ func TestStatsChangeProcessor(t *testing.T) {
 	ctx := context.Background()
 	processor := &StatsChangeProcessor{}
 
-	// Created
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeAccount,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeClaimableBalance,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeData,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeOffer,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeTrustline,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeLiquidityPool,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeConfigSetting,
-		Pre:  nil,
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	// Updated
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeAccount,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeClaimableBalance,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeData,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeOffer,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeTrustline,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeLiquidityPool,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeConfigSetting,
-		Pre:  &xdr.LedgerEntry{},
-		Post: &xdr.LedgerEntry{},
-	}))
-
-	// Removed
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeAccount,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeClaimableBalance,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeData,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeOffer,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeTrustline,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeLiquidityPool,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeContractData,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
-
-	assert.NoError(t, processor.ProcessChange(ctx, Change{
-		Type: xdr.LedgerEntryTypeConfigSetting,
-		Pre:  &xdr.LedgerEntry{},
-		Post: nil,
-	}))
+	for ledgerEntryType := range xdr.LedgerEntryTypeMap {
+		// Created
+		assert.NoError(t, processor.ProcessChange(ctx, Change{
+			Type: xdr.LedgerEntryType(ledgerEntryType),
+			Pre:  nil,
+			Post: &xdr.LedgerEntry{},
+		}))
+		// Updated
+		assert.NoError(t, processor.ProcessChange(ctx, Change{
+			Type: xdr.LedgerEntryType(ledgerEntryType),
+			Pre:  &xdr.LedgerEntry{},
+			Post: &xdr.LedgerEntry{},
+		}))
+		// Removed
+		assert.NoError(t, processor.ProcessChange(ctx, Change{
+			Type: xdr.LedgerEntryType(ledgerEntryType),
+			Pre:  &xdr.LedgerEntry{},
+			Post: nil,
+		}))
+	}
 
 	results := processor.GetResults()
 

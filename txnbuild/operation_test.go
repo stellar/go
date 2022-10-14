@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/gxdr"
+	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/xdr"
+	goxdr "github.com/xdrpp/goxdr/xdr"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -489,5 +492,34 @@ func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation, wi
 
 	for i := 0; i < len(operations); i++ {
 		assert.Equal(t, operations[i], tx.Operations()[i])
+	}
+}
+
+func TestOperationCoverage(t *testing.T) {
+	gen := randxdr.NewGenerator()
+	for i := 0; i < 10000; i++ {
+		op := xdr.Operation{}
+		shape := &gxdr.Operation{}
+		gen.Next(
+			shape,
+			[]randxdr.Preset{
+				{
+					randxdr.FieldEquals("body.revokeSponsorshipOp.ledgerKey.type"),
+					randxdr.SetU32(
+						gxdr.ACCOUNT.GetU32(),
+						gxdr.TRUSTLINE.GetU32(),
+						gxdr.OFFER.GetU32(),
+						gxdr.DATA.GetU32(),
+						gxdr.CLAIMABLE_BALANCE.GetU32(),
+					),
+				},
+			},
+		)
+		assert.NoError(t, gxdr.Convert(shape, &op))
+
+		_, err := operationFromXDR(op)
+		if !assert.NoError(t, err) {
+			t.Log(goxdr.XdrToString(shape))
+		}
 	}
 }

@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/xdr"
 )
@@ -121,6 +122,8 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			p.results.ConfigSettingsRemoved++
 		}
+	default:
+		return fmt.Errorf("unsupported ledger entry type: %s", change.Type.String())
 	}
 
 	return nil

@@ -25,6 +25,8 @@ var _ = LedgerKey{}
 
 var OperationTypeToStringMap = operationTypeMap
 
+var LedgerEntryTypeMap = ledgerEntryTypeMap
+
 func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)

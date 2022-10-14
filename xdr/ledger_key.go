@@ -41,8 +41,16 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustConfigSetting()
 		r := other.MustConfigSetting()
 		return l.ConfigSettingId == r.ConfigSettingId
+	case LedgerEntryTypeContractData:
+		l := key.MustContractData()
+		r := other.MustContractData()
+		return l.ContractId == r.ContractId && l.Key.Equals(r.Key)
+	case LedgerEntryTypeClaimableBalance:
+		l := key.MustClaimableBalance()
+		r := other.MustClaimableBalance()
+		return l.BalanceId.MustV0() == r.BalanceId.MustV0()
 	default:
-		panic(fmt.Errorf("Unknown ledger key type: %v", key.Type))
+		panic(fmt.Errorf("unknown ledger key type: %v", key.Type))
 	}
 }
 
