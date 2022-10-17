@@ -95,6 +95,11 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 
 		keys = append(keys, ledgerKey)
 		entry.Normalize()
+		entryType := entry.Data.Type
+		// TODO: #4617, add support for protocol 20 ledger entries
+		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractData {
+			continue
+		}
 		v.currentEntries[string(key)] = entry
 
 		count--

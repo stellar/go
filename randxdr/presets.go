@@ -86,11 +86,12 @@ func SetVecLen(vecLen uint32) Setter {
 	}
 }
 
-// SetU32 returns a Setter which sets a uint32 XDR field to a fixed value
-func SetU32(val uint32) Setter {
+// SetU32 returns a Setter which sets a uint32 XDR field to a randomly selected
+// element from vals
+func SetU32(vals ...uint32) Setter {
 	return func(x *randMarshaller, field string, xdrType goxdr.XdrType) {
 		f := goxdr.XdrBaseType(xdrType).(goxdr.XdrNum32)
-		f.SetU32(val)
+		f.SetU32(vals[x.rand.Intn(len(vals))])
 	}
 }
 

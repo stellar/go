@@ -156,6 +156,34 @@ func genClaimableBalance(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChang
 	return change
 }
 
+func genContractData(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONTRACT_DATA.GetU32())},
+		},
+	)
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
+func genConfigSetting(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONFIG_SETTING.GetU32())},
+		},
+	)
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
 func TestStateVerifier(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -176,13 +204,19 @@ func TestStateVerifier(t *testing.T) {
 			genTrustLine(tt, gen),
 			genAccount(tt, gen),
 			genAccountData(tt, gen),
+			genContractData(tt, gen),
+			genConfigSetting(tt, gen),
 		)
 	}
+
+	coverage := map[xdr.LedgerEntryType]int{}
 	for _, change := range ingest.GetChangesFromLedgerEntryChanges(changes) {
 		mockChangeReader.On("Read").Return(change, nil).Once()
 		tt.Assert.NoError(changeProcessor.ProcessChange(tt.Ctx, change))
+		coverage[change.Type]++
 	}
 	tt.Assert.NoError(changeProcessor.Commit(tt.Ctx))
+	tt.Assert.Equal(len(xdr.LedgerEntryTypeMap), len(coverage))
 
 	q.UpdateLastLedgerIngest(tt.Ctx, checkpointLedger)
 
