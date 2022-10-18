@@ -529,6 +529,48 @@ func command(horizonConfig horizon.Config, args ...string) []string {
 	}, args...)
 }
 
+func TestMigrateIngestIsTrueByDefault(t *testing.T) {
+	tt := assert.New(t)
+	// Create a fresh Horizon database
+	newDB := dbtest.Postgres(t)
+	freshHorizonPostgresURL := newDB.DSN
+
+	horizoncmd.RootCmd.SetArgs([]string{
+		// ingest is set to true by default
+		"--db-url", freshHorizonPostgresURL,
+		"db", "migrate", "up",
+	})
+	tt.NoError(horizoncmd.RootCmd.Execute())
+
+	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
+	tt.NoError(err)
+
+	status, err := schema.Status(dbConn.DB.DB)
+	tt.NoError(err)
+	tt.NotContains(status, "1_initial_schema.sql\t\t\t\t\t\tno")
+}
+
+func TestMigrateChecksIngestFlag(t *testing.T) {
+	tt := assert.New(t)
+	// Create a fresh Horizon database
+	newDB := dbtest.Postgres(t)
+	freshHorizonPostgresURL := newDB.DSN
+
+	horizoncmd.RootCmd.SetArgs([]string{
+		"--ingest=false",
+		"--db-url", freshHorizonPostgresURL,
+		"db", "migrate", "up",
+	})
+	tt.NoError(horizoncmd.RootCmd.Execute())
+
+	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
+	tt.NoError(err)
+
+	status, err := schema.Status(dbConn.DB.DB)
+	tt.NoError(err)
+	tt.Contains(status, "1_initial_schema.sql\t\t\t\t\t\tno")
+}
+
 func TestFillGaps(t *testing.T) {
 	itest, reachedLedger := initializeDBIntegrationTest(t)
 	tt := assert.New(t)
