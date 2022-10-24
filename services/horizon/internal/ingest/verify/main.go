@@ -96,7 +96,8 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 		keys = append(keys, ledgerKey)
 		entry.Normalize()
 		entryType := entry.Data.Type
-		// TODO: #4617, add support for protocol 20 ledger entries
+		// Won't be persisting protocol 20 ContractData ledger entries to history db, therefore must not allow it
+		// to be counted in history state-verifier accumulators.
 		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractData {
 			continue
 		}
