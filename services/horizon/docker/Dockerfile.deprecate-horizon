@@ -1,0 +1,6 @@
+FROM stellar/horizon
+
+RUN mv /horizon /horizon.bin
+RUN echo "#!/bin/sh\necho WARNING: The stellar/horizon Docker image is outdated deprecated, please use stellar/stellar-horizon instead.\necho WARNING: The stellar/horizon image will be removed from DockerHub on March 27 2023.\nexec /horizon.bin" > /horizon
+RUN chmod +x /horizon
+
