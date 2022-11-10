@@ -89,6 +89,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 	return sql, nil
 }
 
+// ClaimableBalanceClaimant is a row of data from the `claimable_balances_claimants` table.
+// This table exists to allow faster querying for claimable balances for a specific claimant.
+type ClaimableBalanceClaimant struct {
+	BalanceID   string `db:"id"`
+	Destination string `db:"destination"`
+}
+
 // ClaimableBalance is a row of data from the `claimable_balances` table.
 type ClaimableBalance struct {
 	BalanceID          string      `db:"id"`
@@ -124,8 +131,10 @@ type Claimant struct {
 type QClaimableBalances interface {
 	UpsertClaimableBalances(ctx context.Context, cb []ClaimableBalance) error
 	RemoveClaimableBalances(ctx context.Context, ids []string) (int64, error)
+	RemoveClaimableBalanceClaimants(ctx context.Context, ids []string) (int64, error)
 	GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error)
 	CountClaimableBalances(ctx context.Context) (int, error)
+	NewClaimableBalanceClaimantBatchInsertBuilder(maxBatchSize int) ClaimableBalanceClaimantBatchInsertBuilder
 }
 
 // CountClaimableBalances returns the total number of claimable balances in the DB
@@ -191,6 +200,19 @@ func (q *Q) RemoveClaimableBalances(ctx context.Context, ids []string) (int64, e
 	return result.RowsAffected()
 }
 
+// RemoveClaimableBalanceClaimants deletes claimable balance claimants.
+// Returns number of rows affected and error.
+func (q *Q) RemoveClaimableBalanceClaimants(ctx context.Context, ids []string) (int64, error) {
+	sql := sq.Delete("claimable_balance_claimants").
+		Where(sq.Eq{"id": ids})
+	result, err := q.Exec(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
 // FindClaimableBalanceByID returns a claimable balance.
 func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID string) (ClaimableBalance, error) {
 	var claimableBalance ClaimableBalance
@@ -222,7 +244,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 
 	if query.Claimant != nil {
 		sql = sql.
-			Where(`cb.claimants @> '[{"destination": "` + query.Claimant.Address() + `"}]'`)
+			Where(`cb.id IN (select distinct id from claimable_balance_claimants where destination = '` + query.Claimant.Address() + `')`)
 		// when search by claimant, profiling has shown the LIMIT should be on the outer query to
 		// hint appropriate indexes for best performance
 		limitClausePlacement = ") select " + claimableBalancesSelectStatement + " from cb LIMIT ?"
