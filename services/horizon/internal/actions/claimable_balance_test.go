@@ -46,6 +46,16 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	err = q.UpsertClaimableBalances(tt.Ctx, []history.ClaimableBalance{cBalance})
 	tt.Assert.NoError(err)
 
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
+	for _, claimant := range cBalance.Claimants {
+		claimant := history.ClaimableBalanceClaimant{
+			BalanceID:   cBalance.BalanceID,
+			Destination: claimant.Destination,
+		}
+		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
+		tt.Assert.NoError(err)
+	}
+
 	handler := GetClaimableBalanceByIDHandler{}
 	response, err := handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
