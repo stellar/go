@@ -189,6 +189,22 @@ func TestGetClaimableBalances(t *testing.T) {
 	err := q.UpsertClaimableBalances(tt.Ctx, hCBs)
 	tt.Assert.NoError(err)
 
+	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
+
+	for _, cBalance := range hCBs {
+		for _, claimant := range cBalance.Claimants {
+			claimant := history.ClaimableBalanceClaimant{
+				BalanceID:   cBalance.BalanceID,
+				Destination: claimant.Destination,
+			}
+			err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
+			tt.Assert.NoError(err)
+		}
+	}
+
+	err = claimantsInsertBuilder.Exec(tt.Ctx)
+	tt.Assert.NoError(err)
+
 	handler := GetClaimableBalancesHandler{}
 	response, err := handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
@@ -299,6 +315,20 @@ func TestGetClaimableBalances(t *testing.T) {
 	}
 
 	err = q.UpsertClaimableBalances(tt.Ctx, hCBs)
+	tt.Assert.NoError(err)
+
+	for _, cBalance := range hCBs {
+		for _, claimant := range cBalance.Claimants {
+			claimant := history.ClaimableBalanceClaimant{
+				BalanceID:   cBalance.BalanceID,
+				Destination: claimant.Destination,
+			}
+			err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
+			tt.Assert.NoError(err)
+		}
+	}
+
+	err = claimantsInsertBuilder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
