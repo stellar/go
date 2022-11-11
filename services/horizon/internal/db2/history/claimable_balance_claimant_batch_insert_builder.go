@@ -27,6 +27,7 @@ func (q *Q) NewClaimableBalanceClaimantBatchInsertBuilder(maxBatchSize int) Clai
 		builder: db.BatchInsertBuilder{
 			Table:        q.GetTable("claimable_balance_claimants"),
 			MaxBatchSize: maxBatchSize,
+			Suffix:       "ON CONFLICT (id, destination) DO NOTHING",
 		},
 	}
 }
