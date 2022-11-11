@@ -135,6 +135,7 @@ type QClaimableBalances interface {
 	GetClaimableBalancesByID(ctx context.Context, ids []string) ([]ClaimableBalance, error)
 	CountClaimableBalances(ctx context.Context) (int, error)
 	NewClaimableBalanceClaimantBatchInsertBuilder(maxBatchSize int) ClaimableBalanceClaimantBatchInsertBuilder
+	GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (map[string][]string, error)
 }
 
 // CountClaimableBalances returns the total number of claimable balances in the DB
@@ -155,6 +156,22 @@ func (q *Q) GetClaimableBalancesByID(ctx context.Context, ids []string) ([]Claim
 	sql := selectClaimableBalances.Where(map[string]interface{}{"cb.id": ids})
 	err := q.Select(ctx, &cBalances, sql)
 	return cBalances, err
+}
+
+// GetClaimantsByClaimableBalances finds all claimants for ClaimableBalanceIds.
+// The returned list is sorted by ids and then destination ids for each balance id.
+func (q *Q) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (map[string][]string, error) {
+	var claimants []ClaimableBalanceClaimant
+	sql := sq.Select("*").From("claimable_balance_claimants cbc").
+		Where(map[string]interface{}{"cbc.id": ids}).
+		OrderBy("id asc, destination asc")
+	err := q.Select(ctx, &claimants, sql)
+
+	claimantsMap := make(map[string][]string)
+	for _, claimant := range claimants {
+		claimantsMap[claimant.BalanceID] = append(claimantsMap[claimant.BalanceID], claimant.Destination)
+	}
+	return claimantsMap, err
 }
 
 // UpsertClaimableBalances upserts a batch of claimable balances in the claimable_balances table.

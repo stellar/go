@@ -672,6 +672,11 @@ func addClaimableBalanceToStateVerifier(
 		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
 	}
 
+	cBalancesClaimants, err := q.GetClaimantsByClaimableBalances(ctx, idStrings)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetClaimantsByClaimableBalances")
+	}
+
 	for _, row := range cBalances {
 		claimants := []xdr.Claimant{}
 		for _, claimant := range row.Claimants {
@@ -684,6 +689,28 @@ func addClaimableBalanceToStateVerifier(
 			})
 		}
 		claimants = xdr.SortClaimantsByDestination(claimants)
+
+		// Check if balances in claimable_balance_claimants table match.
+		if len(claimants) != len(cBalancesClaimants[row.BalanceID]) {
+			return ingest.NewStateError(
+				fmt.Errorf(
+					"claimable_balance_claimants length (%d) for claimants doesn't match claimable_balance table (%d)",
+					len(cBalancesClaimants[row.BalanceID]), len(claimants),
+				),
+			)
+		}
+
+		for i, claimant := range claimants {
+			if claimant.MustV0().Destination.Address() != cBalancesClaimants[row.BalanceID][i] {
+				return fmt.Errorf(
+					"claimable_balance_claimants table for balance %s does not match. expected=%s actual=%s",
+					row.BalanceID,
+					claimant.MustV0().Destination.Address(),
+					cBalancesClaimants[row.BalanceID][i],
+				)
+			}
+		}
+
 		var balanceID xdr.ClaimableBalanceId
 		if err := xdr.SafeUnmarshalHex(row.BalanceID, &balanceID); err != nil {
 			return err
