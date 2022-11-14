@@ -914,11 +914,52 @@ type BucketEntry struct {
 	_u   interface{}
 }
 
+type TxSetComponentType int32
+
+const (
+	// txs with effective fee <= bid derived from a base fee (if any).
+	// If base fee is not specified, no discount is applied.
+	TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE TxSetComponentType = 0
+)
+
+type TxSetComponent struct {
+	// The union discriminant Type selects among the following arms:
+	//   TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+	//      TxsMaybeDiscountedFee() *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee
+	Type TxSetComponentType
+	_u   interface{}
+}
+type XdrAnon_TxSetComponent_TxsMaybeDiscountedFee struct {
+	BaseFee *Int64
+	Txs     []TransactionEnvelope
+}
+
+type TransactionPhase struct {
+	// The union discriminant V selects among the following arms:
+	//   0:
+	//      V0Components() *[]TxSetComponent
+	V  int32
+	_u interface{}
+}
+
 // Transaction sets are the unit used by SCP to decide on transitions
 // between ledgers
 type TransactionSet struct {
 	PreviousLedgerHash Hash
 	Txs                []TransactionEnvelope
+}
+
+type TransactionSetV1 struct {
+	PreviousLedgerHash Hash
+	Phases             []TransactionPhase
+}
+
+type GeneralizedTransactionSet struct {
+	// The union discriminant V selects among the following arms:
+	//   1:
+	//      V1TxSet() *TransactionSetV1
+	V  int32
+	_u interface{}
 }
 
 type TransactionResultPair struct {
@@ -938,11 +979,13 @@ type TransactionHistoryEntry struct {
 	Ext       XdrAnon_TransactionHistoryEntry_Ext
 }
 
-// reserved for future use
+// when v != 0, txSet must be empty
 type XdrAnon_TransactionHistoryEntry_Ext struct {
 	// The union discriminant V selects among the following arms:
 	//   0:
 	//      void
+	//   1:
+	//      GeneralizedTxSet() *GeneralizedTransactionSet
 	V  int32
 	_u interface{}
 }
@@ -1092,10 +1135,25 @@ type LedgerCloseMetaV0 struct {
 	ScpInfo []SCPHistoryEntry
 }
 
+type LedgerCloseMetaV1 struct {
+	LedgerHeader LedgerHeaderHistoryEntry
+	TxSet        GeneralizedTransactionSet
+	// NB: transactions are sorted in apply order here
+	// fees for all transactions are processed first
+	// followed by applying transactions
+	TxProcessing []TransactionResultMeta
+	// upgrades are applied last
+	UpgradesProcessing []UpgradeEntryMeta
+	// other misc information attached to the ledger close
+	ScpInfo []SCPHistoryEntry
+}
+
 type LedgerCloseMeta struct {
 	// The union discriminant V selects among the following arms:
 	//   0:
 	//      V0() *LedgerCloseMetaV0
+	//   1:
+	//      V1() *LedgerCloseMetaV1
 	V  int32
 	_u interface{}
 }
@@ -1142,10 +1200,18 @@ type Hello struct {
 	Nonce             Uint256
 }
 
+// During the roll-out phrase, pull mode will be optional.
+// Therefore, we need a way to communicate with other nodes
+// that we want/don't want pull mode.
+// However, the goal is for everyone to enable it by default,
+// so we don't want to introduce a new member variable.
+// For now, we'll use the `flags` field (originally named
+// `unused`) in `Auth`.
+// 100 is just a number that is not 0.
+const AUTH_MSG_FLAG_PULL_MODE_REQUESTED = 100
+
 type Auth struct {
-	// Empty message, just to confirm
-	// establishment of MAC keys.
-	Unused int32
+	Flags int32
 }
 
 type IPAddrType int32
@@ -1170,6 +1236,7 @@ type XdrAnon_PeerAddress_Ip struct {
 	_u   interface{}
 }
 
+// Next ID: 18
 type MessageType int32
 
 const (
@@ -1180,8 +1247,9 @@ const (
 	GET_PEERS MessageType = 4
 	PEERS     MessageType = 5
 	// gets a particular txset by hash
-	GET_TX_SET MessageType = 6
-	TX_SET     MessageType = 7
+	GET_TX_SET         MessageType = 6
+	TX_SET             MessageType = 7
+	GENERALIZED_TX_SET MessageType = 17
 	// pass on a tx you have heard about
 	TRANSACTION MessageType = 8
 	// SCP
@@ -1194,6 +1262,8 @@ const (
 	SURVEY_REQUEST  MessageType = 14
 	SURVEY_RESPONSE MessageType = 15
 	SEND_MORE       MessageType = 16
+	FLOOD_ADVERT    MessageType = 18
+	FLOOD_DEMAND    MessageType = 19
 )
 
 type DontHave struct {
@@ -1270,6 +1340,22 @@ type SurveyResponseBody struct {
 	_u   interface{}
 }
 
+const TX_ADVERT_VECTOR_MAX_SIZE = 1000
+
+type TxAdvertVector = []Hash // bound TX_ADVERT_VECTOR_MAX_SIZE
+
+type FloodAdvert struct {
+	TxHashes TxAdvertVector
+}
+
+const TX_DEMAND_VECTOR_MAX_SIZE = 1000
+
+type TxDemandVector = []Hash // bound TX_DEMAND_VECTOR_MAX_SIZE
+
+type FloodDemand struct {
+	TxHashes TxDemandVector
+}
+
 type StellarMessage struct {
 	// The union discriminant Type selects among the following arms:
 	//   ERROR_MSG:
@@ -1288,6 +1374,8 @@ type StellarMessage struct {
 	//      TxSetHash() *Uint256
 	//   TX_SET:
 	//      TxSet() *TransactionSet
+	//   GENERALIZED_TX_SET:
+	//      GeneralizedTxSet() *GeneralizedTransactionSet
 	//   TRANSACTION:
 	//      Transaction() *TransactionEnvelope
 	//   SURVEY_REQUEST:
@@ -1304,6 +1392,10 @@ type StellarMessage struct {
 	//      GetSCPLedgerSeq() *Uint32
 	//   SEND_MORE:
 	//      SendMoreMessage() *SendMore
+	//   FLOOD_ADVERT:
+	//      FloodAdvert() *FloodAdvert
+	//   FLOOD_DEMAND:
+	//      FloodDemand() *FloodDemand
 	Type MessageType
 	_u   interface{}
 }
@@ -8238,6 +8330,130 @@ func (u *BucketEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_BucketEntry(v *BucketEntry) *BucketEntry { return v }
 
+var _XdrNames_TxSetComponentType = map[int32]string{
+	int32(TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE): "TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE",
+}
+var _XdrValues_TxSetComponentType = map[string]int32{
+	"TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE": int32(TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE),
+}
+
+func (TxSetComponentType) XdrEnumNames() map[int32]string {
+	return _XdrNames_TxSetComponentType
+}
+func (v TxSetComponentType) String() string {
+	if s, ok := _XdrNames_TxSetComponentType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("TxSetComponentType#%d", v)
+}
+func (v *TxSetComponentType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_TxSetComponentType[stok]; ok {
+			*v = TxSetComponentType(val)
+			return nil
+		} else if stok == "TxSetComponentType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid TxSetComponentType.", stok))
+	}
+}
+func (v TxSetComponentType) GetU32() uint32                 { return uint32(v) }
+func (v *TxSetComponentType) SetU32(n uint32)               { *v = TxSetComponentType(n) }
+func (v *TxSetComponentType) XdrPointer() interface{}       { return v }
+func (TxSetComponentType) XdrTypeName() string              { return "TxSetComponentType" }
+func (v TxSetComponentType) XdrValue() interface{}          { return v }
+func (v *TxSetComponentType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_TxSetComponentType = *TxSetComponentType
+
+func XDR_TxSetComponentType(v *TxSetComponentType) *TxSetComponentType { return v }
+
+var _XdrComments_TxSetComponentType = map[int32]string{
+	int32(TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE): "txs with effective fee <= bid derived from a base fee (if any). If base fee is not specified, no discount is applied.",
+}
+
+func (e TxSetComponentType) XdrEnumComments() map[int32]string {
+	return _XdrComments_TxSetComponentType
+}
+
+type _XdrPtr_Int64 struct {
+	p **Int64
+}
+type _ptrflag_Int64 _XdrPtr_Int64
+
+func (v _ptrflag_Int64) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_Int64) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("Int64 flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_Int64) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_Int64) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(Int64)
+		}
+	default:
+		XdrPanic("*Int64 present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_Int64) XdrTypeName() string             { return "Int64?" }
+func (v _ptrflag_Int64) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_Int64) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_Int64) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_Int64) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_Int64) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_Int64) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(Int64)
+	}
+}
+func (v _XdrPtr_Int64) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_Int64(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_Int64) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_Int64) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_Int64(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_Int64) XdrTypeName() string       { return "Int64*" }
+func (v _XdrPtr_Int64) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_Int64) XdrValue() interface{}   { return *v.p }
+
 type _XdrVec_unbounded_TransactionEnvelope []TransactionEnvelope
 
 func (_XdrVec_unbounded_TransactionEnvelope) XdrBound() uint32 {
@@ -8299,6 +8515,224 @@ func (v _XdrVec_unbounded_TransactionEnvelope) XdrValue() interface{} {
 }
 func (v *_XdrVec_unbounded_TransactionEnvelope) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
+type XdrType_XdrAnon_TxSetComponent_TxsMaybeDiscountedFee = *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee
+
+func (v *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee) XdrPointer() interface{} { return v }
+func (XdrAnon_TxSetComponent_TxsMaybeDiscountedFee) XdrTypeName() string {
+	return "XdrAnon_TxSetComponent_TxsMaybeDiscountedFee"
+}
+func (v XdrAnon_TxSetComponent_TxsMaybeDiscountedFee) XdrValue() interface{} { return v }
+func (v *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee) XdrMarshal(x XDR, name string) {
+	x.Marshal(name, v)
+}
+func (v *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sbaseFee", name), _XdrPtr_Int64{&v.BaseFee})
+	x.Marshal(x.Sprintf("%stxs", name), (*_XdrVec_unbounded_TransactionEnvelope)(&v.Txs))
+}
+func XDR_XdrAnon_TxSetComponent_TxsMaybeDiscountedFee(v *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee) *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee {
+	return v
+}
+
+var _XdrTags_TxSetComponent = map[int32]bool{
+	XdrToI32(TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE): true,
+}
+
+func (_ TxSetComponent) XdrValidTags() map[int32]bool {
+	return _XdrTags_TxSetComponent
+}
+func (u *TxSetComponent) TxsMaybeDiscountedFee() *XdrAnon_TxSetComponent_TxsMaybeDiscountedFee {
+	switch u.Type {
+	case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+		if v, ok := u._u.(*XdrAnon_TxSetComponent_TxsMaybeDiscountedFee); ok {
+			return v
+		} else {
+			var zero XdrAnon_TxSetComponent_TxsMaybeDiscountedFee
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("TxSetComponent.TxsMaybeDiscountedFee accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u TxSetComponent) XdrValid() bool {
+	switch u.Type {
+	case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+		return true
+	}
+	return false
+}
+func (u *TxSetComponent) XdrUnionTag() XdrNum32 {
+	return XDR_TxSetComponentType(&u.Type)
+}
+func (u *TxSetComponent) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *TxSetComponent) XdrUnionBody() XdrType {
+	switch u.Type {
+	case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+		return XDR_XdrAnon_TxSetComponent_TxsMaybeDiscountedFee(u.TxsMaybeDiscountedFee())
+	}
+	return nil
+}
+func (u *TxSetComponent) XdrUnionBodyName() string {
+	switch u.Type {
+	case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+		return "TxsMaybeDiscountedFee"
+	}
+	return ""
+}
+
+type XdrType_TxSetComponent = *TxSetComponent
+
+func (v *TxSetComponent) XdrPointer() interface{}       { return v }
+func (TxSetComponent) XdrTypeName() string              { return "TxSetComponent" }
+func (v TxSetComponent) XdrValue() interface{}          { return v }
+func (v *TxSetComponent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *TxSetComponent) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_TxSetComponentType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+		x.Marshal(x.Sprintf("%stxsMaybeDiscountedFee", name), XDR_XdrAnon_TxSetComponent_TxsMaybeDiscountedFee(u.TxsMaybeDiscountedFee()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in TxSetComponent", u.Type)
+}
+func XDR_TxSetComponent(v *TxSetComponent) *TxSetComponent { return v }
+
+type _XdrVec_unbounded_TxSetComponent []TxSetComponent
+
+func (_XdrVec_unbounded_TxSetComponent) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_TxSetComponent) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_TxSetComponent length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_TxSetComponent length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_TxSetComponent) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_TxSetComponent) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]TxSetComponent, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_TxSetComponent) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_TxSetComponent(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_TxSetComponent) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_TxSetComponent) XdrTypeName() string              { return "TxSetComponent<>" }
+func (v *_XdrVec_unbounded_TxSetComponent) XdrPointer() interface{}       { return (*[]TxSetComponent)(v) }
+func (v _XdrVec_unbounded_TxSetComponent) XdrValue() interface{}          { return ([]TxSetComponent)(v) }
+func (v *_XdrVec_unbounded_TxSetComponent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+var _XdrTags_TransactionPhase = map[int32]bool{
+	XdrToI32(0): true,
+}
+
+func (_ TransactionPhase) XdrValidTags() map[int32]bool {
+	return _XdrTags_TransactionPhase
+}
+func (u *TransactionPhase) V0Components() *[]TxSetComponent {
+	switch u.V {
+	case 0:
+		if v, ok := u._u.(*[]TxSetComponent); ok {
+			return v
+		} else {
+			var zero []TxSetComponent
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("TransactionPhase.V0Components accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u TransactionPhase) XdrValid() bool {
+	switch u.V {
+	case 0:
+		return true
+	}
+	return false
+}
+func (u *TransactionPhase) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *TransactionPhase) XdrUnionTagName() string {
+	return "V"
+}
+func (u *TransactionPhase) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return (*_XdrVec_unbounded_TxSetComponent)(u.V0Components())
+	}
+	return nil
+}
+func (u *TransactionPhase) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return "V0Components"
+	}
+	return ""
+}
+
+type XdrType_TransactionPhase = *TransactionPhase
+
+func (v *TransactionPhase) XdrPointer() interface{}       { return v }
+func (TransactionPhase) XdrTypeName() string              { return "TransactionPhase" }
+func (v TransactionPhase) XdrValue() interface{}          { return v }
+func (v *TransactionPhase) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *TransactionPhase) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		x.Marshal(x.Sprintf("%sv0Components", name), (*_XdrVec_unbounded_TxSetComponent)(u.V0Components()))
+		return
+	}
+	XdrPanic("invalid V (%v) in TransactionPhase", u.V)
+}
+func XDR_TransactionPhase(v *TransactionPhase) *TransactionPhase { return v }
+
 type XdrType_TransactionSet = *TransactionSet
 
 func (v *TransactionSet) XdrPointer() interface{}       { return v }
@@ -8313,6 +8747,160 @@ func (v *TransactionSet) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%stxs", name), (*_XdrVec_unbounded_TransactionEnvelope)(&v.Txs))
 }
 func XDR_TransactionSet(v *TransactionSet) *TransactionSet { return v }
+
+type _XdrVec_unbounded_TransactionPhase []TransactionPhase
+
+func (_XdrVec_unbounded_TransactionPhase) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_TransactionPhase) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_TransactionPhase length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_TransactionPhase length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_TransactionPhase) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_TransactionPhase) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]TransactionPhase, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_TransactionPhase) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_TransactionPhase(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_TransactionPhase) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_TransactionPhase) XdrTypeName() string { return "TransactionPhase<>" }
+func (v *_XdrVec_unbounded_TransactionPhase) XdrPointer() interface{} {
+	return (*[]TransactionPhase)(v)
+}
+func (v _XdrVec_unbounded_TransactionPhase) XdrValue() interface{}          { return ([]TransactionPhase)(v) }
+func (v *_XdrVec_unbounded_TransactionPhase) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_TransactionSetV1 = *TransactionSetV1
+
+func (v *TransactionSetV1) XdrPointer() interface{}       { return v }
+func (TransactionSetV1) XdrTypeName() string              { return "TransactionSetV1" }
+func (v TransactionSetV1) XdrValue() interface{}          { return v }
+func (v *TransactionSetV1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *TransactionSetV1) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%spreviousLedgerHash", name), XDR_Hash(&v.PreviousLedgerHash))
+	x.Marshal(x.Sprintf("%sphases", name), (*_XdrVec_unbounded_TransactionPhase)(&v.Phases))
+}
+func XDR_TransactionSetV1(v *TransactionSetV1) *TransactionSetV1 { return v }
+
+var _XdrTags_GeneralizedTransactionSet = map[int32]bool{
+	XdrToI32(1): true,
+}
+
+func (_ GeneralizedTransactionSet) XdrValidTags() map[int32]bool {
+	return _XdrTags_GeneralizedTransactionSet
+}
+func (u *GeneralizedTransactionSet) V1TxSet() *TransactionSetV1 {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*TransactionSetV1); ok {
+			return v
+		} else {
+			var zero TransactionSetV1
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("GeneralizedTransactionSet.V1TxSet accessed when V == %v", u.V)
+		return nil
+	}
+}
+func (u GeneralizedTransactionSet) XdrValid() bool {
+	switch u.V {
+	case 1:
+		return true
+	}
+	return false
+}
+func (u *GeneralizedTransactionSet) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *GeneralizedTransactionSet) XdrUnionTagName() string {
+	return "V"
+}
+func (u *GeneralizedTransactionSet) XdrUnionBody() XdrType {
+	switch u.V {
+	case 1:
+		return XDR_TransactionSetV1(u.V1TxSet())
+	}
+	return nil
+}
+func (u *GeneralizedTransactionSet) XdrUnionBodyName() string {
+	switch u.V {
+	case 1:
+		return "V1TxSet"
+	}
+	return ""
+}
+
+type XdrType_GeneralizedTransactionSet = *GeneralizedTransactionSet
+
+func (v *GeneralizedTransactionSet) XdrPointer() interface{}       { return v }
+func (GeneralizedTransactionSet) XdrTypeName() string              { return "GeneralizedTransactionSet" }
+func (v GeneralizedTransactionSet) XdrValue() interface{}          { return v }
+func (v *GeneralizedTransactionSet) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *GeneralizedTransactionSet) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 1:
+		x.Marshal(x.Sprintf("%sv1TxSet", name), XDR_TransactionSetV1(u.V1TxSet()))
+		return
+	}
+	XdrPanic("invalid V (%v) in GeneralizedTransactionSet", u.V)
+}
+func (v *GeneralizedTransactionSet) XdrInitialize() {
+	var zero int32
+	switch zero {
+	case 1:
+	default:
+		if v.V == zero {
+			v.V = 1
+		}
+	}
+}
+func XDR_GeneralizedTransactionSet(v *GeneralizedTransactionSet) *GeneralizedTransactionSet { return v }
 
 type XdrType_TransactionResultPair = *TransactionResultPair
 
@@ -8406,14 +8994,30 @@ func XDR_TransactionResultSet(v *TransactionResultSet) *TransactionResultSet { r
 
 var _XdrTags_XdrAnon_TransactionHistoryEntry_Ext = map[int32]bool{
 	XdrToI32(0): true,
+	XdrToI32(1): true,
 }
 
 func (_ XdrAnon_TransactionHistoryEntry_Ext) XdrValidTags() map[int32]bool {
 	return _XdrTags_XdrAnon_TransactionHistoryEntry_Ext
 }
+func (u *XdrAnon_TransactionHistoryEntry_Ext) GeneralizedTxSet() *GeneralizedTransactionSet {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*GeneralizedTransactionSet); ok {
+			return v
+		} else {
+			var zero GeneralizedTransactionSet
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_TransactionHistoryEntry_Ext.GeneralizedTxSet accessed when V == %v", u.V)
+		return nil
+	}
+}
 func (u XdrAnon_TransactionHistoryEntry_Ext) XdrValid() bool {
 	switch u.V {
-	case 0:
+	case 0, 1:
 		return true
 	}
 	return false
@@ -8428,6 +9032,8 @@ func (u *XdrAnon_TransactionHistoryEntry_Ext) XdrUnionBody() XdrType {
 	switch u.V {
 	case 0:
 		return nil
+	case 1:
+		return XDR_GeneralizedTransactionSet(u.GeneralizedTxSet())
 	}
 	return nil
 }
@@ -8435,6 +9041,8 @@ func (u *XdrAnon_TransactionHistoryEntry_Ext) XdrUnionBodyName() string {
 	switch u.V {
 	case 0:
 		return ""
+	case 1:
+		return "GeneralizedTxSet"
 	}
 	return ""
 }
@@ -8454,6 +9062,9 @@ func (u *XdrAnon_TransactionHistoryEntry_Ext) XdrRecurse(x XDR, name string) {
 	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
 	switch u.V {
 	case 0:
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sgeneralizedTxSet", name), XDR_GeneralizedTransactionSet(u.GeneralizedTxSet()))
 		return
 	}
 	XdrPanic("invalid V (%v) in XdrAnon_TransactionHistoryEntry_Ext", u.V)
@@ -9499,8 +10110,27 @@ func (v *LedgerCloseMetaV0) XdrRecurse(x XDR, name string) {
 }
 func XDR_LedgerCloseMetaV0(v *LedgerCloseMetaV0) *LedgerCloseMetaV0 { return v }
 
+type XdrType_LedgerCloseMetaV1 = *LedgerCloseMetaV1
+
+func (v *LedgerCloseMetaV1) XdrPointer() interface{}       { return v }
+func (LedgerCloseMetaV1) XdrTypeName() string              { return "LedgerCloseMetaV1" }
+func (v LedgerCloseMetaV1) XdrValue() interface{}          { return v }
+func (v *LedgerCloseMetaV1) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerCloseMetaV1) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sledgerHeader", name), XDR_LedgerHeaderHistoryEntry(&v.LedgerHeader))
+	x.Marshal(x.Sprintf("%stxSet", name), XDR_GeneralizedTransactionSet(&v.TxSet))
+	x.Marshal(x.Sprintf("%stxProcessing", name), (*_XdrVec_unbounded_TransactionResultMeta)(&v.TxProcessing))
+	x.Marshal(x.Sprintf("%supgradesProcessing", name), (*_XdrVec_unbounded_UpgradeEntryMeta)(&v.UpgradesProcessing))
+	x.Marshal(x.Sprintf("%sscpInfo", name), (*_XdrVec_unbounded_SCPHistoryEntry)(&v.ScpInfo))
+}
+func XDR_LedgerCloseMetaV1(v *LedgerCloseMetaV1) *LedgerCloseMetaV1 { return v }
+
 var _XdrTags_LedgerCloseMeta = map[int32]bool{
 	XdrToI32(0): true,
+	XdrToI32(1): true,
 }
 
 func (_ LedgerCloseMeta) XdrValidTags() map[int32]bool {
@@ -9521,9 +10151,24 @@ func (u *LedgerCloseMeta) V0() *LedgerCloseMetaV0 {
 		return nil
 	}
 }
+func (u *LedgerCloseMeta) V1() *LedgerCloseMetaV1 {
+	switch u.V {
+	case 1:
+		if v, ok := u._u.(*LedgerCloseMetaV1); ok {
+			return v
+		} else {
+			var zero LedgerCloseMetaV1
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerCloseMeta.V1 accessed when V == %v", u.V)
+		return nil
+	}
+}
 func (u LedgerCloseMeta) XdrValid() bool {
 	switch u.V {
-	case 0:
+	case 0, 1:
 		return true
 	}
 	return false
@@ -9538,6 +10183,8 @@ func (u *LedgerCloseMeta) XdrUnionBody() XdrType {
 	switch u.V {
 	case 0:
 		return XDR_LedgerCloseMetaV0(u.V0())
+	case 1:
+		return XDR_LedgerCloseMetaV1(u.V1())
 	}
 	return nil
 }
@@ -9545,6 +10192,8 @@ func (u *LedgerCloseMeta) XdrUnionBodyName() string {
 	switch u.V {
 	case 0:
 		return "V0"
+	case 1:
+		return "V1"
 	}
 	return ""
 }
@@ -9563,6 +10212,9 @@ func (u *LedgerCloseMeta) XdrRecurse(x XDR, name string) {
 	switch u.V {
 	case 0:
 		x.Marshal(x.Sprintf("%sv0", name), XDR_LedgerCloseMetaV0(u.V0()))
+		return
+	case 1:
+		x.Marshal(x.Sprintf("%sv1", name), XDR_LedgerCloseMetaV1(u.V1()))
 		return
 	}
 	XdrPanic("invalid V (%v) in LedgerCloseMeta", u.V)
@@ -9709,7 +10361,7 @@ func (v *Auth) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sunused", name), XDR_int32(&v.Unused))
+	x.Marshal(x.Sprintf("%sflags", name), XDR_int32(&v.Flags))
 }
 func XDR_Auth(v *Auth) *Auth { return v }
 
@@ -9884,40 +10536,46 @@ func (v *PeerAddress) XdrRecurse(x XDR, name string) {
 func XDR_PeerAddress(v *PeerAddress) *PeerAddress { return v }
 
 var _XdrNames_MessageType = map[int32]string{
-	int32(ERROR_MSG):         "ERROR_MSG",
-	int32(AUTH):              "AUTH",
-	int32(DONT_HAVE):         "DONT_HAVE",
-	int32(GET_PEERS):         "GET_PEERS",
-	int32(PEERS):             "PEERS",
-	int32(GET_TX_SET):        "GET_TX_SET",
-	int32(TX_SET):            "TX_SET",
-	int32(TRANSACTION):       "TRANSACTION",
-	int32(GET_SCP_QUORUMSET): "GET_SCP_QUORUMSET",
-	int32(SCP_QUORUMSET):     "SCP_QUORUMSET",
-	int32(SCP_MESSAGE):       "SCP_MESSAGE",
-	int32(GET_SCP_STATE):     "GET_SCP_STATE",
-	int32(HELLO):             "HELLO",
-	int32(SURVEY_REQUEST):    "SURVEY_REQUEST",
-	int32(SURVEY_RESPONSE):   "SURVEY_RESPONSE",
-	int32(SEND_MORE):         "SEND_MORE",
+	int32(ERROR_MSG):          "ERROR_MSG",
+	int32(AUTH):               "AUTH",
+	int32(DONT_HAVE):          "DONT_HAVE",
+	int32(GET_PEERS):          "GET_PEERS",
+	int32(PEERS):              "PEERS",
+	int32(GET_TX_SET):         "GET_TX_SET",
+	int32(TX_SET):             "TX_SET",
+	int32(GENERALIZED_TX_SET): "GENERALIZED_TX_SET",
+	int32(TRANSACTION):        "TRANSACTION",
+	int32(GET_SCP_QUORUMSET):  "GET_SCP_QUORUMSET",
+	int32(SCP_QUORUMSET):      "SCP_QUORUMSET",
+	int32(SCP_MESSAGE):        "SCP_MESSAGE",
+	int32(GET_SCP_STATE):      "GET_SCP_STATE",
+	int32(HELLO):              "HELLO",
+	int32(SURVEY_REQUEST):     "SURVEY_REQUEST",
+	int32(SURVEY_RESPONSE):    "SURVEY_RESPONSE",
+	int32(SEND_MORE):          "SEND_MORE",
+	int32(FLOOD_ADVERT):       "FLOOD_ADVERT",
+	int32(FLOOD_DEMAND):       "FLOOD_DEMAND",
 }
 var _XdrValues_MessageType = map[string]int32{
-	"ERROR_MSG":         int32(ERROR_MSG),
-	"AUTH":              int32(AUTH),
-	"DONT_HAVE":         int32(DONT_HAVE),
-	"GET_PEERS":         int32(GET_PEERS),
-	"PEERS":             int32(PEERS),
-	"GET_TX_SET":        int32(GET_TX_SET),
-	"TX_SET":            int32(TX_SET),
-	"TRANSACTION":       int32(TRANSACTION),
-	"GET_SCP_QUORUMSET": int32(GET_SCP_QUORUMSET),
-	"SCP_QUORUMSET":     int32(SCP_QUORUMSET),
-	"SCP_MESSAGE":       int32(SCP_MESSAGE),
-	"GET_SCP_STATE":     int32(GET_SCP_STATE),
-	"HELLO":             int32(HELLO),
-	"SURVEY_REQUEST":    int32(SURVEY_REQUEST),
-	"SURVEY_RESPONSE":   int32(SURVEY_RESPONSE),
-	"SEND_MORE":         int32(SEND_MORE),
+	"ERROR_MSG":          int32(ERROR_MSG),
+	"AUTH":               int32(AUTH),
+	"DONT_HAVE":          int32(DONT_HAVE),
+	"GET_PEERS":          int32(GET_PEERS),
+	"PEERS":              int32(PEERS),
+	"GET_TX_SET":         int32(GET_TX_SET),
+	"TX_SET":             int32(TX_SET),
+	"GENERALIZED_TX_SET": int32(GENERALIZED_TX_SET),
+	"TRANSACTION":        int32(TRANSACTION),
+	"GET_SCP_QUORUMSET":  int32(GET_SCP_QUORUMSET),
+	"SCP_QUORUMSET":      int32(SCP_QUORUMSET),
+	"SCP_MESSAGE":        int32(SCP_MESSAGE),
+	"GET_SCP_STATE":      int32(GET_SCP_STATE),
+	"HELLO":              int32(HELLO),
+	"SURVEY_REQUEST":     int32(SURVEY_REQUEST),
+	"SURVEY_RESPONSE":    int32(SURVEY_RESPONSE),
+	"SEND_MORE":          int32(SEND_MORE),
+	"FLOOD_ADVERT":       int32(FLOOD_ADVERT),
+	"FLOOD_DEMAND":       int32(FLOOD_DEMAND),
 }
 
 func (MessageType) XdrEnumNames() map[int32]string {
@@ -10288,6 +10946,111 @@ func (u *SurveyResponseBody) XdrRecurse(x XDR, name string) {
 }
 func XDR_SurveyResponseBody(v *SurveyResponseBody) *SurveyResponseBody { return v }
 
+type _XdrVec_1000_Hash []Hash
+
+func (_XdrVec_1000_Hash) XdrBound() uint32 {
+	const bound uint32 = 1000 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_1000_Hash) XdrCheckLen(length uint32) {
+	if length > uint32(1000) {
+		XdrPanic("_XdrVec_1000_Hash length %d exceeds bound 1000", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_1000_Hash length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_1000_Hash) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_1000_Hash) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(1000); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]Hash, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_1000_Hash) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_Hash(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_1000_Hash) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 1000}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_1000_Hash) XdrTypeName() string              { return "Hash<>" }
+func (v *_XdrVec_1000_Hash) XdrPointer() interface{}       { return (*[]Hash)(v) }
+func (v _XdrVec_1000_Hash) XdrValue() interface{}          { return ([]Hash)(v) }
+func (v *_XdrVec_1000_Hash) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_TxAdvertVector struct {
+	*_XdrVec_1000_Hash
+}
+
+func XDR_TxAdvertVector(v *TxAdvertVector) XdrType_TxAdvertVector {
+	return XdrType_TxAdvertVector{(*_XdrVec_1000_Hash)(v)}
+}
+func (XdrType_TxAdvertVector) XdrTypeName() string  { return "TxAdvertVector" }
+func (v XdrType_TxAdvertVector) XdrUnwrap() XdrType { return v._XdrVec_1000_Hash }
+
+type XdrType_FloodAdvert = *FloodAdvert
+
+func (v *FloodAdvert) XdrPointer() interface{}       { return v }
+func (FloodAdvert) XdrTypeName() string              { return "FloodAdvert" }
+func (v FloodAdvert) XdrValue() interface{}          { return v }
+func (v *FloodAdvert) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *FloodAdvert) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stxHashes", name), XDR_TxAdvertVector(&v.TxHashes))
+}
+func XDR_FloodAdvert(v *FloodAdvert) *FloodAdvert { return v }
+
+type XdrType_TxDemandVector struct {
+	*_XdrVec_1000_Hash
+}
+
+func XDR_TxDemandVector(v *TxDemandVector) XdrType_TxDemandVector {
+	return XdrType_TxDemandVector{(*_XdrVec_1000_Hash)(v)}
+}
+func (XdrType_TxDemandVector) XdrTypeName() string  { return "TxDemandVector" }
+func (v XdrType_TxDemandVector) XdrUnwrap() XdrType { return v._XdrVec_1000_Hash }
+
+type XdrType_FloodDemand = *FloodDemand
+
+func (v *FloodDemand) XdrPointer() interface{}       { return v }
+func (FloodDemand) XdrTypeName() string              { return "FloodDemand" }
+func (v FloodDemand) XdrValue() interface{}          { return v }
+func (v *FloodDemand) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *FloodDemand) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stxHashes", name), XDR_TxDemandVector(&v.TxHashes))
+}
+func XDR_FloodDemand(v *FloodDemand) *FloodDemand { return v }
+
 type _XdrVec_100_PeerAddress []PeerAddress
 
 func (_XdrVec_100_PeerAddress) XdrBound() uint32 {
@@ -10346,22 +11109,25 @@ func (v _XdrVec_100_PeerAddress) XdrValue() interface{}          { return ([]Pee
 func (v *_XdrVec_100_PeerAddress) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 var _XdrTags_StellarMessage = map[int32]bool{
-	XdrToI32(ERROR_MSG):         true,
-	XdrToI32(HELLO):             true,
-	XdrToI32(AUTH):              true,
-	XdrToI32(DONT_HAVE):         true,
-	XdrToI32(GET_PEERS):         true,
-	XdrToI32(PEERS):             true,
-	XdrToI32(GET_TX_SET):        true,
-	XdrToI32(TX_SET):            true,
-	XdrToI32(TRANSACTION):       true,
-	XdrToI32(SURVEY_REQUEST):    true,
-	XdrToI32(SURVEY_RESPONSE):   true,
-	XdrToI32(GET_SCP_QUORUMSET): true,
-	XdrToI32(SCP_QUORUMSET):     true,
-	XdrToI32(SCP_MESSAGE):       true,
-	XdrToI32(GET_SCP_STATE):     true,
-	XdrToI32(SEND_MORE):         true,
+	XdrToI32(ERROR_MSG):          true,
+	XdrToI32(HELLO):              true,
+	XdrToI32(AUTH):               true,
+	XdrToI32(DONT_HAVE):          true,
+	XdrToI32(GET_PEERS):          true,
+	XdrToI32(PEERS):              true,
+	XdrToI32(GET_TX_SET):         true,
+	XdrToI32(TX_SET):             true,
+	XdrToI32(GENERALIZED_TX_SET): true,
+	XdrToI32(TRANSACTION):        true,
+	XdrToI32(SURVEY_REQUEST):     true,
+	XdrToI32(SURVEY_RESPONSE):    true,
+	XdrToI32(GET_SCP_QUORUMSET):  true,
+	XdrToI32(SCP_QUORUMSET):      true,
+	XdrToI32(SCP_MESSAGE):        true,
+	XdrToI32(GET_SCP_STATE):      true,
+	XdrToI32(SEND_MORE):          true,
+	XdrToI32(FLOOD_ADVERT):       true,
+	XdrToI32(FLOOD_DEMAND):       true,
 }
 
 func (_ StellarMessage) XdrValidTags() map[int32]bool {
@@ -10469,6 +11235,21 @@ func (u *StellarMessage) TxSet() *TransactionSet {
 		}
 	default:
 		XdrPanic("StellarMessage.TxSet accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *StellarMessage) GeneralizedTxSet() *GeneralizedTransactionSet {
+	switch u.Type {
+	case GENERALIZED_TX_SET:
+		if v, ok := u._u.(*GeneralizedTransactionSet); ok {
+			return v
+		} else {
+			var zero GeneralizedTransactionSet
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.GeneralizedTxSet accessed when Type == %v", u.Type)
 		return nil
 	}
 }
@@ -10594,9 +11375,39 @@ func (u *StellarMessage) SendMoreMessage() *SendMore {
 		return nil
 	}
 }
+func (u *StellarMessage) FloodAdvert() *FloodAdvert {
+	switch u.Type {
+	case FLOOD_ADVERT:
+		if v, ok := u._u.(*FloodAdvert); ok {
+			return v
+		} else {
+			var zero FloodAdvert
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.FloodAdvert accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *StellarMessage) FloodDemand() *FloodDemand {
+	switch u.Type {
+	case FLOOD_DEMAND:
+		if v, ok := u._u.(*FloodDemand); ok {
+			return v
+		} else {
+			var zero FloodDemand
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("StellarMessage.FloodDemand accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u StellarMessage) XdrValid() bool {
 	switch u.Type {
-	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE:
+	case ERROR_MSG, HELLO, AUTH, DONT_HAVE, GET_PEERS, PEERS, GET_TX_SET, TX_SET, GENERALIZED_TX_SET, TRANSACTION, SURVEY_REQUEST, SURVEY_RESPONSE, GET_SCP_QUORUMSET, SCP_QUORUMSET, SCP_MESSAGE, GET_SCP_STATE, SEND_MORE, FLOOD_ADVERT, FLOOD_DEMAND:
 		return true
 	}
 	return false
@@ -10625,6 +11436,8 @@ func (u *StellarMessage) XdrUnionBody() XdrType {
 		return XDR_Uint256(u.TxSetHash())
 	case TX_SET:
 		return XDR_TransactionSet(u.TxSet())
+	case GENERALIZED_TX_SET:
+		return XDR_GeneralizedTransactionSet(u.GeneralizedTxSet())
 	case TRANSACTION:
 		return XDR_TransactionEnvelope(u.Transaction())
 	case SURVEY_REQUEST:
@@ -10641,6 +11454,10 @@ func (u *StellarMessage) XdrUnionBody() XdrType {
 		return XDR_Uint32(u.GetSCPLedgerSeq())
 	case SEND_MORE:
 		return XDR_SendMore(u.SendMoreMessage())
+	case FLOOD_ADVERT:
+		return XDR_FloodAdvert(u.FloodAdvert())
+	case FLOOD_DEMAND:
+		return XDR_FloodDemand(u.FloodDemand())
 	}
 	return nil
 }
@@ -10662,6 +11479,8 @@ func (u *StellarMessage) XdrUnionBodyName() string {
 		return "TxSetHash"
 	case TX_SET:
 		return "TxSet"
+	case GENERALIZED_TX_SET:
+		return "GeneralizedTxSet"
 	case TRANSACTION:
 		return "Transaction"
 	case SURVEY_REQUEST:
@@ -10678,6 +11497,10 @@ func (u *StellarMessage) XdrUnionBodyName() string {
 		return "GetSCPLedgerSeq"
 	case SEND_MORE:
 		return "SendMoreMessage"
+	case FLOOD_ADVERT:
+		return "FloodAdvert"
+	case FLOOD_DEMAND:
+		return "FloodDemand"
 	}
 	return ""
 }
@@ -10717,6 +11540,9 @@ func (u *StellarMessage) XdrRecurse(x XDR, name string) {
 	case TX_SET:
 		x.Marshal(x.Sprintf("%stxSet", name), XDR_TransactionSet(u.TxSet()))
 		return
+	case GENERALIZED_TX_SET:
+		x.Marshal(x.Sprintf("%sgeneralizedTxSet", name), XDR_GeneralizedTransactionSet(u.GeneralizedTxSet()))
+		return
 	case TRANSACTION:
 		x.Marshal(x.Sprintf("%stransaction", name), XDR_TransactionEnvelope(u.Transaction()))
 		return
@@ -10740,6 +11566,12 @@ func (u *StellarMessage) XdrRecurse(x XDR, name string) {
 		return
 	case SEND_MORE:
 		x.Marshal(x.Sprintf("%ssendMoreMessage", name), XDR_SendMore(u.SendMoreMessage()))
+		return
+	case FLOOD_ADVERT:
+		x.Marshal(x.Sprintf("%sfloodAdvert", name), XDR_FloodAdvert(u.FloodAdvert()))
+		return
+	case FLOOD_DEMAND:
+		x.Marshal(x.Sprintf("%sfloodDemand", name), XDR_FloodDemand(u.FloodDemand()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in StellarMessage", u.Type)

@@ -22,6 +22,16 @@ import (
 	"github.com/stellar/go-xdr/xdr3"
 )
 
+// XdrFilesSHA256 is the SHA256 hashes of source files.
+var XdrFilesSHA256 = map[string]string{
+	"xdr/Stellar-SCP.x":            "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
+	"xdr/Stellar-ledger-entries.x": "3aa135c309c2d67883f165961739b4940c90df59240d8aeef55deced8d7708b5",
+	"xdr/Stellar-ledger.x":         "96ac88de23d2b0f2f23a0495527c8aefb8623b4db0e39ba34f357d10a211c214",
+	"xdr/Stellar-overlay.x":        "3093b425866f34b32702d80d5298f9f2dc00736b0fdaac7efa653490a39fb231",
+	"xdr/Stellar-transaction.x":    "45fdeb428e68d6b07e3e3157b6404567e0efb712c9d4c90a61a1035854c32b90",
+	"xdr/Stellar-types.x":          "60b7588e573f5e5518766eb5e6b6ea42f0e53144663cbe557e485cceb6306c85",
+}
+
 type xdrType interface {
 	xdrType()
 }
@@ -11445,6 +11455,481 @@ func (s BucketEntry) xdrType() {}
 
 var _ xdrType = (*BucketEntry)(nil)
 
+// TxSetComponentType is an XDR Enum defines as:
+//
+//	enum TxSetComponentType
+//	 {
+//	   // txs with effective fee <= bid derived from a base fee (if any).
+//	   // If base fee is not specified, no discount is applied.
+//	   TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE = 0
+//	 };
+type TxSetComponentType int32
+
+const (
+	TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee TxSetComponentType = 0
+)
+
+var txSetComponentTypeMap = map[int32]string{
+	0: "TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for TxSetComponentType
+func (e TxSetComponentType) ValidEnum(v int32) bool {
+	_, ok := txSetComponentTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e TxSetComponentType) String() string {
+	name, _ := txSetComponentTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e TxSetComponentType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := txSetComponentTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid TxSetComponentType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*TxSetComponentType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *TxSetComponentType) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding TxSetComponentType: %s", err)
+	}
+	if _, ok := txSetComponentTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid TxSetComponentType enum value", v)
+	}
+	*e = TxSetComponentType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TxSetComponentType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TxSetComponentType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TxSetComponentType)(nil)
+	_ encoding.BinaryUnmarshaler = (*TxSetComponentType)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TxSetComponentType) xdrType() {}
+
+var _ xdrType = (*TxSetComponentType)(nil)
+
+// TxSetComponentTxsMaybeDiscountedFee is an XDR NestedStruct defines as:
+//
+//	struct
+//	   {
+//	     int64* baseFee;
+//	     TransactionEnvelope txs<>;
+//	   }
+type TxSetComponentTxsMaybeDiscountedFee struct {
+	BaseFee *Int64
+	Txs     []TransactionEnvelope
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TxSetComponentTxsMaybeDiscountedFee) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeBool(s.BaseFee != nil); err != nil {
+		return err
+	}
+	if s.BaseFee != nil {
+		if err = (*s.BaseFee).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Txs))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Txs); i++ {
+		if err = s.Txs[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TxSetComponentTxsMaybeDiscountedFee) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var b bool
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	s.BaseFee = nil
+	if b {
+		s.BaseFee = new(Int64)
+		nTmp, err = s.BaseFee.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Int64: %s", err)
+		}
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TransactionEnvelope: %s", err)
+	}
+	s.Txs = nil
+	if l > 0 {
+		s.Txs = make([]TransactionEnvelope, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Txs[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding TransactionEnvelope: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TxSetComponentTxsMaybeDiscountedFee) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TxSetComponentTxsMaybeDiscountedFee) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
+	_ encoding.BinaryUnmarshaler = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TxSetComponentTxsMaybeDiscountedFee) xdrType() {}
+
+var _ xdrType = (*TxSetComponentTxsMaybeDiscountedFee)(nil)
+
+// TxSetComponent is an XDR Union defines as:
+//
+//	union TxSetComponent switch (TxSetComponentType type)
+//	 {
+//	 case TXSET_COMP_TXS_MAYBE_DISCOUNTED_FEE:
+//	   struct
+//	   {
+//	     int64* baseFee;
+//	     TransactionEnvelope txs<>;
+//	   } txsMaybeDiscountedFee;
+//	 };
+type TxSetComponent struct {
+	Type                  TxSetComponentType
+	TxsMaybeDiscountedFee *TxSetComponentTxsMaybeDiscountedFee
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u TxSetComponent) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of TxSetComponent
+func (u TxSetComponent) ArmForSwitch(sw int32) (string, bool) {
+	switch TxSetComponentType(sw) {
+	case TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee:
+		return "TxsMaybeDiscountedFee", true
+	}
+	return "-", false
+}
+
+// NewTxSetComponent creates a new  TxSetComponent.
+func NewTxSetComponent(aType TxSetComponentType, value interface{}) (result TxSetComponent, err error) {
+	result.Type = aType
+	switch TxSetComponentType(aType) {
+	case TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee:
+		tv, ok := value.(TxSetComponentTxsMaybeDiscountedFee)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TxSetComponentTxsMaybeDiscountedFee")
+			return
+		}
+		result.TxsMaybeDiscountedFee = &tv
+	}
+	return
+}
+
+// MustTxsMaybeDiscountedFee retrieves the TxsMaybeDiscountedFee value from the union,
+// panicing if the value is not set.
+func (u TxSetComponent) MustTxsMaybeDiscountedFee() TxSetComponentTxsMaybeDiscountedFee {
+	val, ok := u.GetTxsMaybeDiscountedFee()
+
+	if !ok {
+		panic("arm TxsMaybeDiscountedFee is not set")
+	}
+
+	return val
+}
+
+// GetTxsMaybeDiscountedFee retrieves the TxsMaybeDiscountedFee value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TxSetComponent) GetTxsMaybeDiscountedFee() (result TxSetComponentTxsMaybeDiscountedFee, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "TxsMaybeDiscountedFee" {
+		result = *u.TxsMaybeDiscountedFee
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u TxSetComponent) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch TxSetComponentType(u.Type) {
+	case TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee:
+		if err = (*u.TxsMaybeDiscountedFee).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Type (TxSetComponentType) switch value '%d' is not valid for union TxSetComponent", u.Type)
+}
+
+var _ decoderFrom = (*TxSetComponent)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *TxSetComponent) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TxSetComponentType: %s", err)
+	}
+	switch TxSetComponentType(u.Type) {
+	case TxSetComponentTypeTxsetCompTxsMaybeDiscountedFee:
+		u.TxsMaybeDiscountedFee = new(TxSetComponentTxsMaybeDiscountedFee)
+		nTmp, err = (*u.TxsMaybeDiscountedFee).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TxSetComponentTxsMaybeDiscountedFee: %s", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union TxSetComponent has invalid Type (TxSetComponentType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TxSetComponent) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TxSetComponent) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TxSetComponent)(nil)
+	_ encoding.BinaryUnmarshaler = (*TxSetComponent)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TxSetComponent) xdrType() {}
+
+var _ xdrType = (*TxSetComponent)(nil)
+
+// TransactionPhase is an XDR Union defines as:
+//
+//	union TransactionPhase switch (int v)
+//	 {
+//	 case 0:
+//	     TxSetComponent v0Components<>;
+//	 };
+type TransactionPhase struct {
+	V            int32
+	V0Components *[]TxSetComponent
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u TransactionPhase) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of TransactionPhase
+func (u TransactionPhase) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "V0Components", true
+	}
+	return "-", false
+}
+
+// NewTransactionPhase creates a new  TransactionPhase.
+func NewTransactionPhase(v int32, value interface{}) (result TransactionPhase, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		tv, ok := value.([]TxSetComponent)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be []TxSetComponent")
+			return
+		}
+		result.V0Components = &tv
+	}
+	return
+}
+
+// MustV0Components retrieves the V0Components value from the union,
+// panicing if the value is not set.
+func (u TransactionPhase) MustV0Components() []TxSetComponent {
+	val, ok := u.GetV0Components()
+
+	if !ok {
+		panic("arm V0Components is not set")
+	}
+
+	return val
+}
+
+// GetV0Components retrieves the V0Components value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionPhase) GetV0Components() (result []TxSetComponent, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V0Components" {
+		result = *u.V0Components
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u TransactionPhase) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 0:
+		if _, err = e.EncodeUint(uint32(len((*u.V0Components)))); err != nil {
+			return err
+		}
+		for i := 0; i < len((*u.V0Components)); i++ {
+			if err = (*u.V0Components)[i].EncodeTo(e); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionPhase", u.V)
+}
+
+var _ decoderFrom = (*TransactionPhase)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *TransactionPhase) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %s", err)
+	}
+	switch int32(u.V) {
+	case 0:
+		u.V0Components = new([]TxSetComponent)
+		var l uint32
+		l, nTmp, err = d.DecodeUint()
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TxSetComponent: %s", err)
+		}
+		(*u.V0Components) = nil
+		if l > 0 {
+			(*u.V0Components) = make([]TxSetComponent, l)
+			for i := uint32(0); i < l; i++ {
+				nTmp, err = (*u.V0Components)[i].DecodeFrom(d)
+				n += nTmp
+				if err != nil {
+					return n, fmt.Errorf("decoding TxSetComponent: %s", err)
+				}
+			}
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union TransactionPhase has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionPhase) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionPhase) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionPhase)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionPhase)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TransactionPhase) xdrType() {}
+
+var _ xdrType = (*TransactionPhase)(nil)
+
 // TransactionSet is an XDR Struct defines as:
 //
 //	struct TransactionSet
@@ -11531,6 +12016,229 @@ var (
 func (s TransactionSet) xdrType() {}
 
 var _ xdrType = (*TransactionSet)(nil)
+
+// TransactionSetV1 is an XDR Struct defines as:
+//
+//	struct TransactionSetV1
+//	 {
+//	     Hash previousLedgerHash;
+//	     TransactionPhase phases<>;
+//	 };
+type TransactionSetV1 struct {
+	PreviousLedgerHash Hash
+	Phases             []TransactionPhase
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TransactionSetV1) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.PreviousLedgerHash.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Phases))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Phases); i++ {
+		if err = s.Phases[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TransactionSetV1)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TransactionSetV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.PreviousLedgerHash.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TransactionPhase: %s", err)
+	}
+	s.Phases = nil
+	if l > 0 {
+		s.Phases = make([]TransactionPhase, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Phases[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding TransactionPhase: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionSetV1) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionSetV1) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionSetV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionSetV1)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TransactionSetV1) xdrType() {}
+
+var _ xdrType = (*TransactionSetV1)(nil)
+
+// GeneralizedTransactionSet is an XDR Union defines as:
+//
+//	union GeneralizedTransactionSet switch (int v)
+//	 {
+//	 // We consider the legacy TransactionSet to be v0.
+//	 case 1:
+//	     TransactionSetV1 v1TxSet;
+//	 };
+type GeneralizedTransactionSet struct {
+	V       int32
+	V1TxSet *TransactionSetV1
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u GeneralizedTransactionSet) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of GeneralizedTransactionSet
+func (u GeneralizedTransactionSet) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 1:
+		return "V1TxSet", true
+	}
+	return "-", false
+}
+
+// NewGeneralizedTransactionSet creates a new  GeneralizedTransactionSet.
+func NewGeneralizedTransactionSet(v int32, value interface{}) (result GeneralizedTransactionSet, err error) {
+	result.V = v
+	switch int32(v) {
+	case 1:
+		tv, ok := value.(TransactionSetV1)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TransactionSetV1")
+			return
+		}
+		result.V1TxSet = &tv
+	}
+	return
+}
+
+// MustV1TxSet retrieves the V1TxSet value from the union,
+// panicing if the value is not set.
+func (u GeneralizedTransactionSet) MustV1TxSet() TransactionSetV1 {
+	val, ok := u.GetV1TxSet()
+
+	if !ok {
+		panic("arm V1TxSet is not set")
+	}
+
+	return val
+}
+
+// GetV1TxSet retrieves the V1TxSet value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u GeneralizedTransactionSet) GetV1TxSet() (result TransactionSetV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V1TxSet" {
+		result = *u.V1TxSet
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u GeneralizedTransactionSet) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+		return err
+	}
+	switch int32(u.V) {
+	case 1:
+		if err = (*u.V1TxSet).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("V (int32) switch value '%d' is not valid for union GeneralizedTransactionSet", u.V)
+}
+
+var _ decoderFrom = (*GeneralizedTransactionSet)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *GeneralizedTransactionSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	u.V, nTmp, err = d.DecodeInt()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int: %s", err)
+	}
+	switch int32(u.V) {
+	case 1:
+		u.V1TxSet = new(TransactionSetV1)
+		nTmp, err = (*u.V1TxSet).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TransactionSetV1: %s", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union GeneralizedTransactionSet has invalid V (int32) switch value '%d'", u.V)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s GeneralizedTransactionSet) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *GeneralizedTransactionSet) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*GeneralizedTransactionSet)(nil)
+	_ encoding.BinaryUnmarshaler = (*GeneralizedTransactionSet)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s GeneralizedTransactionSet) xdrType() {}
+
+var _ xdrType = (*GeneralizedTransactionSet)(nil)
 
 // TransactionResultPair is an XDR Struct defines as:
 //
@@ -11685,9 +12393,12 @@ var _ xdrType = (*TransactionResultSet)(nil)
 //	     {
 //	     case 0:
 //	         void;
+//	     case 1:
+//	         GeneralizedTransactionSet generalizedTxSet;
 //	     }
 type TransactionHistoryEntryExt struct {
-	V int32
+	V                int32
+	GeneralizedTxSet *GeneralizedTransactionSet
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -11702,6 +12413,8 @@ func (u TransactionHistoryEntryExt) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "", true
+	case 1:
+		return "GeneralizedTxSet", true
 	}
 	return "-", false
 }
@@ -11712,7 +12425,39 @@ func NewTransactionHistoryEntryExt(v int32, value interface{}) (result Transacti
 	switch int32(v) {
 	case 0:
 		// void
+	case 1:
+		tv, ok := value.(GeneralizedTransactionSet)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be GeneralizedTransactionSet")
+			return
+		}
+		result.GeneralizedTxSet = &tv
 	}
+	return
+}
+
+// MustGeneralizedTxSet retrieves the GeneralizedTxSet value from the union,
+// panicing if the value is not set.
+func (u TransactionHistoryEntryExt) MustGeneralizedTxSet() GeneralizedTransactionSet {
+	val, ok := u.GetGeneralizedTxSet()
+
+	if !ok {
+		panic("arm GeneralizedTxSet is not set")
+	}
+
+	return val
+}
+
+// GetGeneralizedTxSet retrieves the GeneralizedTxSet value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionHistoryEntryExt) GetGeneralizedTxSet() (result GeneralizedTransactionSet, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "GeneralizedTxSet" {
+		result = *u.GeneralizedTxSet
+		ok = true
+	}
+
 	return
 }
 
@@ -11725,6 +12470,11 @@ func (u TransactionHistoryEntryExt) EncodeTo(e *xdr.Encoder) error {
 	switch int32(u.V) {
 	case 0:
 		// Void
+		return nil
+	case 1:
+		if err = (*u.GeneralizedTxSet).EncodeTo(e); err != nil {
+			return err
+		}
 		return nil
 	}
 	return fmt.Errorf("V (int32) switch value '%d' is not valid for union TransactionHistoryEntryExt", u.V)
@@ -11744,6 +12494,14 @@ func (u *TransactionHistoryEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch int32(u.V) {
 	case 0:
 		// Void
+		return n, nil
+	case 1:
+		u.GeneralizedTxSet = new(GeneralizedTransactionSet)
+		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
+		}
 		return n, nil
 	}
 	return n, fmt.Errorf("union TransactionHistoryEntryExt has invalid V (int32) switch value '%d'", u.V)
@@ -11783,11 +12541,13 @@ var _ xdrType = (*TransactionHistoryEntryExt)(nil)
 //	     uint32 ledgerSeq;
 //	     TransactionSet txSet;
 //
-//	     // reserved for future use
+//	     // when v != 0, txSet must be empty
 //	     union switch (int v)
 //	     {
 //	     case 0:
 //	         void;
+//	     case 1:
+//	         GeneralizedTransactionSet generalizedTxSet;
 //	     }
 //	     ext;
 //	 };
@@ -13792,16 +14552,177 @@ func (s LedgerCloseMetaV0) xdrType() {}
 
 var _ xdrType = (*LedgerCloseMetaV0)(nil)
 
+// LedgerCloseMetaV1 is an XDR Struct defines as:
+//
+//	struct LedgerCloseMetaV1
+//	 {
+//	     LedgerHeaderHistoryEntry ledgerHeader;
+//
+//	     GeneralizedTransactionSet txSet;
+//
+//	     // NB: transactions are sorted in apply order here
+//	     // fees for all transactions are processed first
+//	     // followed by applying transactions
+//	     TransactionResultMeta txProcessing<>;
+//
+//	     // upgrades are applied last
+//	     UpgradeEntryMeta upgradesProcessing<>;
+//
+//	     // other misc information attached to the ledger close
+//	     SCPHistoryEntry scpInfo<>;
+//	 };
+type LedgerCloseMetaV1 struct {
+	LedgerHeader       LedgerHeaderHistoryEntry
+	TxSet              GeneralizedTransactionSet
+	TxProcessing       []TransactionResultMeta
+	UpgradesProcessing []UpgradeEntryMeta
+	ScpInfo            []ScpHistoryEntry
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *LedgerCloseMetaV1) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.LedgerHeader.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TxSet.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.TxProcessing))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.TxProcessing); i++ {
+		if err = s.TxProcessing[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.UpgradesProcessing))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.UpgradesProcessing); i++ {
+		if err = s.UpgradesProcessing[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.ScpInfo))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.ScpInfo); i++ {
+		if err = s.ScpInfo[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*LedgerCloseMetaV1)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *LedgerCloseMetaV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.LedgerHeader.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding LedgerHeaderHistoryEntry: %s", err)
+	}
+	nTmp, err = s.TxSet.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TransactionResultMeta: %s", err)
+	}
+	s.TxProcessing = nil
+	if l > 0 {
+		s.TxProcessing = make([]TransactionResultMeta, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.TxProcessing[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding TransactionResultMeta: %s", err)
+			}
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding UpgradeEntryMeta: %s", err)
+	}
+	s.UpgradesProcessing = nil
+	if l > 0 {
+		s.UpgradesProcessing = make([]UpgradeEntryMeta, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.UpgradesProcessing[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding UpgradeEntryMeta: %s", err)
+			}
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScpHistoryEntry: %s", err)
+	}
+	s.ScpInfo = nil
+	if l > 0 {
+		s.ScpInfo = make([]ScpHistoryEntry, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.ScpInfo[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScpHistoryEntry: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerCloseMetaV1) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerCloseMetaV1) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerCloseMetaV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerCloseMetaV1)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s LedgerCloseMetaV1) xdrType() {}
+
+var _ xdrType = (*LedgerCloseMetaV1)(nil)
+
 // LedgerCloseMeta is an XDR Union defines as:
 //
 //	union LedgerCloseMeta switch (int v)
 //	 {
 //	 case 0:
 //	     LedgerCloseMetaV0 v0;
+//	 case 1:
+//	     LedgerCloseMetaV1 v1;
 //	 };
 type LedgerCloseMeta struct {
 	V  int32
 	V0 *LedgerCloseMetaV0
+	V1 *LedgerCloseMetaV1
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -13816,6 +14737,8 @@ func (u LedgerCloseMeta) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "V0", true
+	case 1:
+		return "V1", true
 	}
 	return "-", false
 }
@@ -13831,6 +14754,13 @@ func NewLedgerCloseMeta(v int32, value interface{}) (result LedgerCloseMeta, err
 			return
 		}
 		result.V0 = &tv
+	case 1:
+		tv, ok := value.(LedgerCloseMetaV1)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be LedgerCloseMetaV1")
+			return
+		}
+		result.V1 = &tv
 	}
 	return
 }
@@ -13860,6 +14790,31 @@ func (u LedgerCloseMeta) GetV0() (result LedgerCloseMetaV0, ok bool) {
 	return
 }
 
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u LedgerCloseMeta) MustV1() LedgerCloseMetaV1 {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u LedgerCloseMeta) GetV1() (result LedgerCloseMetaV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u LedgerCloseMeta) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -13869,6 +14824,11 @@ func (u LedgerCloseMeta) EncodeTo(e *xdr.Encoder) error {
 	switch int32(u.V) {
 	case 0:
 		if err = (*u.V0).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case 1:
+		if err = (*u.V1).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -13894,6 +14854,14 @@ func (u *LedgerCloseMeta) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding LedgerCloseMetaV0: %s", err)
+		}
+		return n, nil
+	case 1:
+		u.V1 = new(LedgerCloseMetaV1)
+		nTmp, err = (*u.V1).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding LedgerCloseMetaV1: %s", err)
 		}
 		return n, nil
 	}
@@ -14369,22 +15337,25 @@ func (s Hello) xdrType() {}
 
 var _ xdrType = (*Hello)(nil)
 
+// AuthMsgFlagPullModeRequested is an XDR Const defines as:
+//
+//	const AUTH_MSG_FLAG_PULL_MODE_REQUESTED = 100;
+const AuthMsgFlagPullModeRequested = 100
+
 // Auth is an XDR Struct defines as:
 //
 //	struct Auth
 //	 {
-//	     // Empty message, just to confirm
-//	     // establishment of MAC keys.
-//	     int unused;
+//	     int flags;
 //	 };
 type Auth struct {
-	Unused int32
+	Flags int32
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *Auth) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if _, err = e.EncodeInt(int32(s.Unused)); err != nil {
+	if _, err = e.EncodeInt(int32(s.Flags)); err != nil {
 		return err
 	}
 	return nil
@@ -14396,7 +15367,7 @@ var _ decoderFrom = (*Auth)(nil)
 func (s *Auth) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	s.Unused, nTmp, err = d.DecodeInt()
+	s.Flags, nTmp, err = d.DecodeInt()
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int: %s", err)
@@ -14799,6 +15770,7 @@ var _ xdrType = (*PeerAddress)(nil)
 //
 //	     GET_TX_SET = 6, // gets a particular txset by hash
 //	     TX_SET = 7,
+//	     GENERALIZED_TX_SET = 17,
 //
 //	     TRANSACTION = 8, // pass on a tx you have heard about
 //
@@ -14814,27 +15786,32 @@ var _ xdrType = (*PeerAddress)(nil)
 //	     SURVEY_REQUEST = 14,
 //	     SURVEY_RESPONSE = 15,
 //
-//	     SEND_MORE = 16
+//	     SEND_MORE = 16,
+//	     FLOOD_ADVERT = 18,
+//	     FLOOD_DEMAND = 19
 //	 };
 type MessageType int32
 
 const (
-	MessageTypeErrorMsg        MessageType = 0
-	MessageTypeAuth            MessageType = 2
-	MessageTypeDontHave        MessageType = 3
-	MessageTypeGetPeers        MessageType = 4
-	MessageTypePeers           MessageType = 5
-	MessageTypeGetTxSet        MessageType = 6
-	MessageTypeTxSet           MessageType = 7
-	MessageTypeTransaction     MessageType = 8
-	MessageTypeGetScpQuorumset MessageType = 9
-	MessageTypeScpQuorumset    MessageType = 10
-	MessageTypeScpMessage      MessageType = 11
-	MessageTypeGetScpState     MessageType = 12
-	MessageTypeHello           MessageType = 13
-	MessageTypeSurveyRequest   MessageType = 14
-	MessageTypeSurveyResponse  MessageType = 15
-	MessageTypeSendMore        MessageType = 16
+	MessageTypeErrorMsg         MessageType = 0
+	MessageTypeAuth             MessageType = 2
+	MessageTypeDontHave         MessageType = 3
+	MessageTypeGetPeers         MessageType = 4
+	MessageTypePeers            MessageType = 5
+	MessageTypeGetTxSet         MessageType = 6
+	MessageTypeTxSet            MessageType = 7
+	MessageTypeGeneralizedTxSet MessageType = 17
+	MessageTypeTransaction      MessageType = 8
+	MessageTypeGetScpQuorumset  MessageType = 9
+	MessageTypeScpQuorumset     MessageType = 10
+	MessageTypeScpMessage       MessageType = 11
+	MessageTypeGetScpState      MessageType = 12
+	MessageTypeHello            MessageType = 13
+	MessageTypeSurveyRequest    MessageType = 14
+	MessageTypeSurveyResponse   MessageType = 15
+	MessageTypeSendMore         MessageType = 16
+	MessageTypeFloodAdvert      MessageType = 18
+	MessageTypeFloodDemand      MessageType = 19
 )
 
 var messageTypeMap = map[int32]string{
@@ -14845,6 +15822,7 @@ var messageTypeMap = map[int32]string{
 	5:  "MessageTypePeers",
 	6:  "MessageTypeGetTxSet",
 	7:  "MessageTypeTxSet",
+	17: "MessageTypeGeneralizedTxSet",
 	8:  "MessageTypeTransaction",
 	9:  "MessageTypeGetScpQuorumset",
 	10: "MessageTypeScpQuorumset",
@@ -14854,6 +15832,8 @@ var messageTypeMap = map[int32]string{
 	14: "MessageTypeSurveyRequest",
 	15: "MessageTypeSurveyResponse",
 	16: "MessageTypeSendMore",
+	18: "MessageTypeFloodAdvert",
+	19: "MessageTypeFloodDemand",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -15978,6 +16958,296 @@ func (s SurveyResponseBody) xdrType() {}
 
 var _ xdrType = (*SurveyResponseBody)(nil)
 
+// TxAdvertVectorMaxSize is an XDR Const defines as:
+//
+//	const TX_ADVERT_VECTOR_MAX_SIZE = 1000;
+const TxAdvertVectorMaxSize = 1000
+
+// TxAdvertVector is an XDR Typedef defines as:
+//
+//	typedef Hash TxAdvertVector<TX_ADVERT_VECTOR_MAX_SIZE>;
+type TxAdvertVector []Hash
+
+// XDRMaxSize implements the Sized interface for TxAdvertVector
+func (e TxAdvertVector) XDRMaxSize() int {
+	return 1000
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s TxAdvertVector) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TxAdvertVector)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TxAdvertVector) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %s", err)
+	}
+	if l > 1000 {
+		return n, fmt.Errorf("decoding Hash: data size (%d) exceeds size limit (1000)", l)
+	}
+	(*s) = nil
+	if l > 0 {
+		(*s) = make([]Hash, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding Hash: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TxAdvertVector) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TxAdvertVector) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TxAdvertVector)(nil)
+	_ encoding.BinaryUnmarshaler = (*TxAdvertVector)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TxAdvertVector) xdrType() {}
+
+var _ xdrType = (*TxAdvertVector)(nil)
+
+// FloodAdvert is an XDR Struct defines as:
+//
+//	struct FloodAdvert
+//	 {
+//	     TxAdvertVector txHashes;
+//	 };
+type FloodAdvert struct {
+	TxHashes TxAdvertVector
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *FloodAdvert) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.TxHashes.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*FloodAdvert)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *FloodAdvert) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.TxHashes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TxAdvertVector: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s FloodAdvert) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *FloodAdvert) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*FloodAdvert)(nil)
+	_ encoding.BinaryUnmarshaler = (*FloodAdvert)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s FloodAdvert) xdrType() {}
+
+var _ xdrType = (*FloodAdvert)(nil)
+
+// TxDemandVectorMaxSize is an XDR Const defines as:
+//
+//	const TX_DEMAND_VECTOR_MAX_SIZE = 1000;
+const TxDemandVectorMaxSize = 1000
+
+// TxDemandVector is an XDR Typedef defines as:
+//
+//	typedef Hash TxDemandVector<TX_DEMAND_VECTOR_MAX_SIZE>;
+type TxDemandVector []Hash
+
+// XDRMaxSize implements the Sized interface for TxDemandVector
+func (e TxDemandVector) XDRMaxSize() int {
+	return 1000
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s TxDemandVector) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TxDemandVector)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TxDemandVector) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %s", err)
+	}
+	if l > 1000 {
+		return n, fmt.Errorf("decoding Hash: data size (%d) exceeds size limit (1000)", l)
+	}
+	(*s) = nil
+	if l > 0 {
+		(*s) = make([]Hash, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding Hash: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TxDemandVector) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TxDemandVector) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TxDemandVector)(nil)
+	_ encoding.BinaryUnmarshaler = (*TxDemandVector)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TxDemandVector) xdrType() {}
+
+var _ xdrType = (*TxDemandVector)(nil)
+
+// FloodDemand is an XDR Struct defines as:
+//
+//	struct FloodDemand
+//	 {
+//	     TxDemandVector txHashes;
+//	 };
+type FloodDemand struct {
+	TxHashes TxDemandVector
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *FloodDemand) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.TxHashes.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*FloodDemand)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *FloodDemand) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.TxHashes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding TxDemandVector: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s FloodDemand) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *FloodDemand) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*FloodDemand)(nil)
+	_ encoding.BinaryUnmarshaler = (*FloodDemand)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s FloodDemand) xdrType() {}
+
+var _ xdrType = (*FloodDemand)(nil)
+
 // StellarMessage is an XDR Union defines as:
 //
 //	union StellarMessage switch (MessageType type)
@@ -15999,6 +17269,8 @@ var _ xdrType = (*SurveyResponseBody)(nil)
 //	     uint256 txSetHash;
 //	 case TX_SET:
 //	     TransactionSet txSet;
+//	 case GENERALIZED_TX_SET:
+//	     GeneralizedTransactionSet generalizedTxSet;
 //
 //	 case TRANSACTION:
 //	     TransactionEnvelope transaction;
@@ -16020,6 +17292,12 @@ var _ xdrType = (*SurveyResponseBody)(nil)
 //	     uint32 getSCPLedgerSeq; // ledger seq requested ; if 0, requests the latest
 //	 case SEND_MORE:
 //	     SendMore sendMoreMessage;
+//
+//	 // Pull mode
+//	 case FLOOD_ADVERT:
+//	      FloodAdvert floodAdvert;
+//	 case FLOOD_DEMAND:
+//	      FloodDemand floodDemand;
 //	 };
 type StellarMessage struct {
 	Type                        MessageType
@@ -16030,6 +17308,7 @@ type StellarMessage struct {
 	Peers                       *[]PeerAddress `xdrmaxsize:"100"`
 	TxSetHash                   *Uint256
 	TxSet                       *TransactionSet
+	GeneralizedTxSet            *GeneralizedTransactionSet
 	Transaction                 *TransactionEnvelope
 	SignedSurveyRequestMessage  *SignedSurveyRequestMessage
 	SignedSurveyResponseMessage *SignedSurveyResponseMessage
@@ -16038,6 +17317,8 @@ type StellarMessage struct {
 	Envelope                    *ScpEnvelope
 	GetScpLedgerSeq             *Uint32
 	SendMoreMessage             *SendMore
+	FloodAdvert                 *FloodAdvert
+	FloodDemand                 *FloodDemand
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -16066,6 +17347,8 @@ func (u StellarMessage) ArmForSwitch(sw int32) (string, bool) {
 		return "TxSetHash", true
 	case MessageTypeTxSet:
 		return "TxSet", true
+	case MessageTypeGeneralizedTxSet:
+		return "GeneralizedTxSet", true
 	case MessageTypeTransaction:
 		return "Transaction", true
 	case MessageTypeSurveyRequest:
@@ -16082,6 +17365,10 @@ func (u StellarMessage) ArmForSwitch(sw int32) (string, bool) {
 		return "GetScpLedgerSeq", true
 	case MessageTypeSendMore:
 		return "SendMoreMessage", true
+	case MessageTypeFloodAdvert:
+		return "FloodAdvert", true
+	case MessageTypeFloodDemand:
+		return "FloodDemand", true
 	}
 	return "-", false
 }
@@ -16141,6 +17428,13 @@ func NewStellarMessage(aType MessageType, value interface{}) (result StellarMess
 			return
 		}
 		result.TxSet = &tv
+	case MessageTypeGeneralizedTxSet:
+		tv, ok := value.(GeneralizedTransactionSet)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be GeneralizedTransactionSet")
+			return
+		}
+		result.GeneralizedTxSet = &tv
 	case MessageTypeTransaction:
 		tv, ok := value.(TransactionEnvelope)
 		if !ok {
@@ -16197,6 +17491,20 @@ func NewStellarMessage(aType MessageType, value interface{}) (result StellarMess
 			return
 		}
 		result.SendMoreMessage = &tv
+	case MessageTypeFloodAdvert:
+		tv, ok := value.(FloodAdvert)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be FloodAdvert")
+			return
+		}
+		result.FloodAdvert = &tv
+	case MessageTypeFloodDemand:
+		tv, ok := value.(FloodDemand)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be FloodDemand")
+			return
+		}
+		result.FloodDemand = &tv
 	}
 	return
 }
@@ -16370,6 +17678,31 @@ func (u StellarMessage) GetTxSet() (result TransactionSet, ok bool) {
 
 	if armName == "TxSet" {
 		result = *u.TxSet
+		ok = true
+	}
+
+	return
+}
+
+// MustGeneralizedTxSet retrieves the GeneralizedTxSet value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustGeneralizedTxSet() GeneralizedTransactionSet {
+	val, ok := u.GetGeneralizedTxSet()
+
+	if !ok {
+		panic("arm GeneralizedTxSet is not set")
+	}
+
+	return val
+}
+
+// GetGeneralizedTxSet retrieves the GeneralizedTxSet value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetGeneralizedTxSet() (result GeneralizedTransactionSet, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "GeneralizedTxSet" {
+		result = *u.GeneralizedTxSet
 		ok = true
 	}
 
@@ -16576,6 +17909,56 @@ func (u StellarMessage) GetSendMoreMessage() (result SendMore, ok bool) {
 	return
 }
 
+// MustFloodAdvert retrieves the FloodAdvert value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustFloodAdvert() FloodAdvert {
+	val, ok := u.GetFloodAdvert()
+
+	if !ok {
+		panic("arm FloodAdvert is not set")
+	}
+
+	return val
+}
+
+// GetFloodAdvert retrieves the FloodAdvert value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetFloodAdvert() (result FloodAdvert, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "FloodAdvert" {
+		result = *u.FloodAdvert
+		ok = true
+	}
+
+	return
+}
+
+// MustFloodDemand retrieves the FloodDemand value from the union,
+// panicing if the value is not set.
+func (u StellarMessage) MustFloodDemand() FloodDemand {
+	val, ok := u.GetFloodDemand()
+
+	if !ok {
+		panic("arm FloodDemand is not set")
+	}
+
+	return val
+}
+
+// GetFloodDemand retrieves the FloodDemand value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u StellarMessage) GetFloodDemand() (result FloodDemand, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "FloodDemand" {
+		result = *u.FloodDemand
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -16626,6 +18009,11 @@ func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
+	case MessageTypeGeneralizedTxSet:
+		if err = (*u.GeneralizedTxSet).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
 	case MessageTypeTransaction:
 		if err = (*u.Transaction).EncodeTo(e); err != nil {
 			return err
@@ -16663,6 +18051,16 @@ func (u StellarMessage) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case MessageTypeSendMore:
 		if err = (*u.SendMoreMessage).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case MessageTypeFloodAdvert:
+		if err = (*u.FloodAdvert).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case MessageTypeFloodDemand:
+		if err = (*u.FloodDemand).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -16756,6 +18154,14 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding TransactionSet: %s", err)
 		}
 		return n, nil
+	case MessageTypeGeneralizedTxSet:
+		u.GeneralizedTxSet = new(GeneralizedTransactionSet)
+		nTmp, err = (*u.GeneralizedTxSet).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding GeneralizedTransactionSet: %s", err)
+		}
+		return n, nil
 	case MessageTypeTransaction:
 		u.Transaction = new(TransactionEnvelope)
 		nTmp, err = (*u.Transaction).DecodeFrom(d)
@@ -16818,6 +18224,22 @@ func (u *StellarMessage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding SendMore: %s", err)
+		}
+		return n, nil
+	case MessageTypeFloodAdvert:
+		u.FloodAdvert = new(FloodAdvert)
+		nTmp, err = (*u.FloodAdvert).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding FloodAdvert: %s", err)
+		}
+		return n, nil
+	case MessageTypeFloodDemand:
+		u.FloodDemand = new(FloodDemand)
+		nTmp, err = (*u.FloodDemand).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding FloodDemand: %s", err)
 		}
 		return n, nil
 	}
