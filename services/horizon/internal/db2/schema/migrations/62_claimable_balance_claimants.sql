@@ -6,6 +6,8 @@ CREATE TABLE claimable_balance_claimants (
     PRIMARY KEY (id, destination)
 );
 
+CREATE INDEX "claimable_balance_claimants_by_destination" ON claimable_balance_claimants USING btree (destination);
+
 -- +migrate Down
 
 DROP TABLE claimable_balance_claimants cascade;
