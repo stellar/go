@@ -458,10 +458,11 @@ func (m *mockProcessorsRunner) RunGenesisStateIngestion() (ingest.StatsChangePro
 
 func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
 	checkpointLedger uint32,
+	skipChecks bool,
 	ledgerProtocolVersion uint32,
 	bucketListHash xdr.Hash,
 ) (ingest.StatsChangeProcessorResults, error) {
-	args := m.Called(checkpointLedger, ledgerProtocolVersion, bucketListHash)
+	args := m.Called(checkpointLedger, skipChecks, ledgerProtocolVersion, bucketListHash)
 	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
 }
 
@@ -524,6 +525,11 @@ func (m *mockSystem) StressTest(numTransactions, changesPerTransaction int) erro
 
 func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
 	args := m.Called(fromLedger, toLedger, verifyState)
+	return args.Error(0)
+}
+
+func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
+	args := m.Called(sequence, skipChecks)
 	return args.Error(0)
 }
 
