@@ -261,7 +261,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 
 	if query.Claimant != nil {
 		sql = sql.
-			Where(`cb.id IN (select distinct id from claimable_balance_claimants where destination = '` + query.Claimant.Address() + `')`)
+			Where(`cb.id IN (select id from claimable_balance_claimants where destination = '` + query.Claimant.Address() + `')`)
 		// when search by claimant, profiling has shown the LIMIT should be on the outer query to
 		// hint appropriate indexes for best performance
 		limitClausePlacement = ") select " + claimableBalancesSelectStatement + " from cb LIMIT ?"
