@@ -127,7 +127,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		ingestConfig := ingest.Config{
 			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			HistoryArchiveURLs:       config.HistoryArchiveURLs,
 			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
 			CaptiveCoreBinaryPath:    config.CaptiveCoreBinaryPath,
 			CaptiveCoreConfigUseDB:   config.CaptiveCoreConfigUseDB,
@@ -223,7 +223,7 @@ var ingestStressTestCmd = &cobra.Command{
 		ingestConfig := ingest.Config{
 			NetworkPassphrase:      config.NetworkPassphrase,
 			HistorySession:         horizonSession,
-			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
+			HistoryArchiveURLs:     config.HistoryArchiveURLs,
 			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
 			RoundingSlippageFilter: config.RoundingSlippageFilter,
 		}
@@ -314,7 +314,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		ingestConfig := ingest.Config{
 			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			HistoryArchiveURLs:       config.HistoryArchiveURLs,
 			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
 			CheckpointFrequency:      config.CheckpointFrequency,
 			RoundingSlippageFilter:   config.RoundingSlippageFilter,
@@ -391,7 +391,7 @@ var ingestBuildStateCmd = &cobra.Command{
 		ingestConfig := ingest.Config{
 			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			HistoryArchiveURLs:       config.HistoryArchiveURLs,
 			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
 			CaptiveCoreBinaryPath:    config.CaptiveCoreBinaryPath,
 			CaptiveCoreConfigUseDB:   config.CaptiveCoreConfigUseDB,

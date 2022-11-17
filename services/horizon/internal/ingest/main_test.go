@@ -84,7 +84,7 @@ func TestNewSystem(t *testing.T) {
 		CoreSession:              &db.Session{DB: &sqlx.DB{}},
 		HistorySession:           &db.Session{DB: &sqlx.DB{}},
 		DisableStateVerification: true,
-		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
+		HistoryArchiveURLs:       []string{"https://history.stellar.org/prd/core-live/core_live_001"},
 		CheckpointFrequency:      64,
 	}
 

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+
+## Unreleased
+
+### Fixes
+
+* The ingestion subsystem will now properly use a pool of history archives if more than one is provided ([#4687](https://github.com/stellar/go/pull/4687)).
+
+
 ## 2.22.1
 
 **Upgrading to this version from <= v2.8.3 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
