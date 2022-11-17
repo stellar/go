@@ -391,7 +391,7 @@ var ingestBuildStateCmd = &cobra.Command{
 		ingestConfig := ingest.Config{
 			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
+			HistoryArchiveURLs:       config.HistoryArchiveURLs,
 			EnableCaptiveCore:        config.EnableCaptiveCoreIngestion,
 			CaptiveCoreBinaryPath:    config.CaptiveCoreBinaryPath,
 			CaptiveCoreConfigUseDB:   config.CaptiveCoreConfigUseDB,
