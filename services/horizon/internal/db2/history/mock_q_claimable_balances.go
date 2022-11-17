@@ -41,7 +41,7 @@ func (m *MockQClaimableBalances) NewClaimableBalanceClaimantBatchInsertBuilder(m
 	return a.Get(0).(ClaimableBalanceClaimantBatchInsertBuilder)
 }
 
-func (m *MockQClaimableBalances) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (map[string][]string, error) {
+func (m *MockQClaimableBalances) GetClaimantsByClaimableBalances(ctx context.Context, ids []string) (map[string][]ClaimableBalanceClaimant, error) {
 	a := m.Called(ctx, ids)
-	return a.Get(0).(map[string][]string), a.Error(1)
+	return a.Get(0).(map[string][]ClaimableBalanceClaimant), a.Error(1)
 }

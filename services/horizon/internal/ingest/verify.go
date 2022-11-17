@@ -701,12 +701,15 @@ func addClaimableBalanceToStateVerifier(
 		}
 
 		for i, claimant := range claimants {
-			if claimant.MustV0().Destination.Address() != cBalancesClaimants[row.BalanceID][i] {
+			if claimant.MustV0().Destination.Address() != cBalancesClaimants[row.BalanceID][i].Destination ||
+				row.LastModifiedLedger != cBalancesClaimants[row.BalanceID][i].LastModifiedLedger {
 				return fmt.Errorf(
-					"claimable_balance_claimants table for balance %s does not match. expected=%s actual=%s",
+					"claimable_balance_claimants table for balance %s does not match. expectedDestination=%s actualDestination=%s, expectedLastModifiedLedger=%d actualLastModifiedLedger=%d",
 					row.BalanceID,
 					claimant.MustV0().Destination.Address(),
-					cBalancesClaimants[row.BalanceID][i],
+					cBalancesClaimants[row.BalanceID][i].Destination,
+					row.LastModifiedLedger,
+					cBalancesClaimants[row.BalanceID][i].LastModifiedLedger,
 				)
 			}
 		}

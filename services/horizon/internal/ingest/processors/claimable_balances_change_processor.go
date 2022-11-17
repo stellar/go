@@ -93,8 +93,9 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 		for _, cb := range cbsToUpsert {
 			for _, claimant := range cb.Claimants {
 				claimant := history.ClaimableBalanceClaimant{
-					BalanceID:   cb.BalanceID,
-					Destination: claimant.Destination,
+					BalanceID:          cb.BalanceID,
+					Destination:        claimant.Destination,
+					LastModifiedLedger: cb.LastModifiedLedger,
 				}
 				if err := p.claimantsInsertBuilder.Add(ctx, claimant); err != nil {
 					return errors.Wrap(err, "error adding to claimantsInsertBuilder")

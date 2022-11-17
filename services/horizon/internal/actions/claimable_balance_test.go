@@ -49,8 +49,9 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
 	for _, claimant := range cBalance.Claimants {
 		claimant := history.ClaimableBalanceClaimant{
-			BalanceID:   cBalance.BalanceID,
-			Destination: claimant.Destination,
+			BalanceID:          cBalance.BalanceID,
+			Destination:        claimant.Destination,
+			LastModifiedLedger: cBalance.LastModifiedLedger,
 		}
 		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
 		tt.Assert.NoError(err)
@@ -194,8 +195,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	for _, cBalance := range hCBs {
 		for _, claimant := range cBalance.Claimants {
 			claimant := history.ClaimableBalanceClaimant{
-				BalanceID:   cBalance.BalanceID,
-				Destination: claimant.Destination,
+				BalanceID:          cBalance.BalanceID,
+				Destination:        claimant.Destination,
+				LastModifiedLedger: cBalance.LastModifiedLedger,
 			}
 			err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
 			tt.Assert.NoError(err)
@@ -320,8 +322,9 @@ func TestGetClaimableBalances(t *testing.T) {
 	for _, cBalance := range hCBs {
 		for _, claimant := range cBalance.Claimants {
 			claimant := history.ClaimableBalanceClaimant{
-				BalanceID:   cBalance.BalanceID,
-				Destination: claimant.Destination,
+				BalanceID:          cBalance.BalanceID,
+				Destination:        claimant.Destination,
+				LastModifiedLedger: cBalance.LastModifiedLedger,
 			}
 			err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
 			tt.Assert.NoError(err)

@@ -91,8 +91,9 @@ func TestRemoveClaimableBalanceClaimants(t *testing.T) {
 
 	for _, claimant := range cBalance.Claimants {
 		claimant := ClaimableBalanceClaimant{
-			BalanceID:   cBalance.BalanceID,
-			Destination: claimant.Destination,
+			BalanceID:          cBalance.BalanceID,
+			Destination:        claimant.Destination,
+			LastModifiedLedger: cBalance.LastModifiedLedger,
 		}
 		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
 		tt.Assert.NoError(err)
@@ -143,8 +144,9 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	claimantsInsertBuilder := q.NewClaimableBalanceClaimantBatchInsertBuilder(10)
 	for _, claimant := range cBalance.Claimants {
 		claimant := ClaimableBalanceClaimant{
-			BalanceID:   cBalance.BalanceID,
-			Destination: claimant.Destination,
+			BalanceID:          cBalance.BalanceID,
+			Destination:        claimant.Destination,
+			LastModifiedLedger: cBalance.LastModifiedLedger,
 		}
 		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
 		tt.Assert.NoError(err)
@@ -182,8 +184,9 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 
 	for _, claimant := range cBalance.Claimants {
 		claimant := ClaimableBalanceClaimant{
-			BalanceID:   cBalance.BalanceID,
-			Destination: claimant.Destination,
+			BalanceID:          cBalance.BalanceID,
+			Destination:        claimant.Destination,
+			LastModifiedLedger: cBalance.LastModifiedLedger,
 		}
 		err = claimantsInsertBuilder.Add(tt.Ctx, claimant)
 		tt.Assert.NoError(err)
