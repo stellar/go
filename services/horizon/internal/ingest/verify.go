@@ -29,7 +29,7 @@ const assetStatsBatchSize = 500
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 15
+const stateVerifierExpectedIngestionVersion = 16
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -672,6 +672,11 @@ func addClaimableBalanceToStateVerifier(
 		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
 	}
 
+	cBalancesClaimants, err := q.GetClaimantsByClaimableBalances(ctx, idStrings)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetClaimantsByClaimableBalances")
+	}
+
 	for _, row := range cBalances {
 		claimants := []xdr.Claimant{}
 		for _, claimant := range row.Claimants {
@@ -684,6 +689,31 @@ func addClaimableBalanceToStateVerifier(
 			})
 		}
 		claimants = xdr.SortClaimantsByDestination(claimants)
+
+		// Check if balances in claimable_balance_claimants table match.
+		if len(claimants) != len(cBalancesClaimants[row.BalanceID]) {
+			return ingest.NewStateError(
+				fmt.Errorf(
+					"claimable_balance_claimants length (%d) for claimants doesn't match claimable_balance table (%d)",
+					len(cBalancesClaimants[row.BalanceID]), len(claimants),
+				),
+			)
+		}
+
+		for i, claimant := range claimants {
+			if claimant.MustV0().Destination.Address() != cBalancesClaimants[row.BalanceID][i].Destination ||
+				row.LastModifiedLedger != cBalancesClaimants[row.BalanceID][i].LastModifiedLedger {
+				return fmt.Errorf(
+					"claimable_balance_claimants table for balance %s does not match. expectedDestination=%s actualDestination=%s, expectedLastModifiedLedger=%d actualLastModifiedLedger=%d",
+					row.BalanceID,
+					claimant.MustV0().Destination.Address(),
+					cBalancesClaimants[row.BalanceID][i].Destination,
+					row.LastModifiedLedger,
+					cBalancesClaimants[row.BalanceID][i].LastModifiedLedger,
+				)
+			}
+		}
+
 		var balanceID xdr.ClaimableBalanceId
 		if err := xdr.SafeUnmarshalHex(row.BalanceID, &balanceID); err != nil {
 			return err

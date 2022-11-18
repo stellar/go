@@ -573,6 +573,18 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		On("GetClaimableBalancesByID", s.ctx, []string{balanceIDStr}).
 		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
 
+	clonedQ.MockQClaimableBalances.
+		On("GetClaimantsByClaimableBalances", s.ctx, []string{balanceIDStr}).
+		Return(map[string][]history.ClaimableBalanceClaimant{
+			claimableBalance.BalanceID: {
+				{
+					BalanceID:          claimableBalance.BalanceID,
+					Destination:        claimableBalance.Claimants[0].Destination,
+					LastModifiedLedger: claimableBalance.LastModifiedLedger,
+				},
+			},
+		}, nil).Once()
+
 	clonedQ.MockQLiquidityPools.On("CountLiquidityPools", s.ctx).Return(1, nil).Once()
 	clonedQ.MockQLiquidityPools.
 		On("GetLiquidityPoolsByID", s.ctx, []string{liquidityPool.PoolID}).
