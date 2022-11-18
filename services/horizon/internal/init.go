@@ -102,11 +102,8 @@ func initIngester(app *App) {
 		HistorySession: mustNewDBSession(
 			db.IngestSubservice, app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry,
 		),
-		NetworkPassphrase: app.config.NetworkPassphrase,
-		// TODO:
-		// Use the first archive for now. We don't have a mechanism to
-		// use multiple archives at the same time currently.
-		HistoryArchiveURL:            app.config.HistoryArchiveURLs[0],
+		NetworkPassphrase:            app.config.NetworkPassphrase,
+		HistoryArchiveURLs:           app.config.HistoryArchiveURLs,
 		CheckpointFrequency:          app.config.CheckpointFrequency,
 		StellarCoreURL:               app.config.StellarCoreURL,
 		StellarCoreCursor:            app.config.CursorName,

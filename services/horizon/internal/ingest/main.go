@@ -83,8 +83,8 @@ type Config struct {
 	RemoteCaptiveCoreURL   string
 	NetworkPassphrase      string
 
-	HistorySession    db.SessionInterface
-	HistoryArchiveURL string
+	HistorySession     db.SessionInterface
+	HistoryArchiveURLs []string
 
 	DisableStateVerification     bool
 	EnableReapLookupTables       bool
@@ -175,6 +175,7 @@ type System interface {
 	Metrics() Metrics
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
+	BuildState(sequence uint32, skipChecks bool) error
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
 	BuildGenesisState() error
 	Shutdown()
@@ -215,8 +216,8 @@ type system struct {
 func NewSystem(config Config) (System, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	archive, err := historyarchive.Connect(
-		config.HistoryArchiveURL,
+	archive, err := historyarchive.NewArchivePool(
+		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
 			Context:             ctx,
 			NetworkPassphrase:   config.NetworkPassphrase,
@@ -246,7 +247,7 @@ func NewSystem(config Config) (System, error) {
 					UseDB:               config.CaptiveCoreConfigUseDB,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
-					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
+					HistoryArchiveURLs:  config.HistoryArchiveURLs,
 					CheckpointFrequency: config.CheckpointFrequency,
 					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                 logger,
@@ -528,6 +529,16 @@ func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 		fromLedger:  fromLedger,
 		toLedger:    toLedger,
 		verifyState: verifyState,
+	})
+}
+
+// BuildState runs the state ingestion on selected checkpoint ledger then exits.
+// When skipChecks is true it skips bucket list hash verification and protocol version check.
+func (s *system) BuildState(sequence uint32, skipChecks bool) error {
+	return s.runStateMachine(buildState{
+		checkpointLedger: sequence,
+		skipChecks:       skipChecks,
+		stop:             true,
 	})
 }
 
