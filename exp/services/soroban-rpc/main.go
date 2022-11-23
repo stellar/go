@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"go/types"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest/ledgerbackend"
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
@@ -21,7 +24,10 @@ import (
 )
 
 func main() {
-	var endpoint, horizonURL, stellarCoreURL, networkPassphrase string
+	var endpoint, horizonURL, binaryPath, configPath, networkPassphrase string
+	var captiveCoreTomlParams ledgerbackend.CaptiveCoreTomlParams
+	var historyArchiveURLs []string
+	var checkpointFrequency uint32
 	var txConcurrency, txQueueSize int
 	var logLevel logrus.Level
 	logger := supportlog.New()
@@ -44,12 +50,13 @@ func main() {
 			Usage:       "URL used to query Horizon",
 		},
 		&config.ConfigOption{
-			Name:        "stellar-core-url",
-			ConfigKey:   &stellarCoreURL,
-			OptType:     types.String,
-			Required:    true,
-			FlagDefault: "",
-			Usage:       "URL used to query Stellar Core",
+			Name:           "stellar-captive-core-http-port",
+			ConfigKey:      &captiveCoreTomlParams.HTTPPort,
+			OptType:        types.Uint,
+			CustomSetValue: config.SetOptionalUint,
+			Required:       false,
+			FlagDefault:    uint(11626),
+			Usage:          "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
 		},
 		&config.ConfigOption{
 			Name:        "log-level",
@@ -65,6 +72,37 @@ func main() {
 				return nil
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
+		},
+		&config.ConfigOption{
+			Name:        "stellar-core-binary-path",
+			OptType:     types.String,
+			FlagDefault: "",
+			Required:    true,
+			Usage:       "path to stellar core binary",
+			ConfigKey:   &binaryPath,
+		},
+		&config.ConfigOption{
+			Name:        "captive-core-config-path",
+			OptType:     types.String,
+			FlagDefault: "",
+			Required:    true,
+			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
+			ConfigKey:   &configPath,
+		},
+		&config.ConfigOption{
+			Name:        "history-archive-urls",
+			ConfigKey:   &historyArchiveURLs,
+			OptType:     types.String,
+			Required:    true,
+			FlagDefault: "",
+			CustomSetValue: func(co *config.ConfigOption) error {
+				stringOfUrls := viper.GetString(co.Name)
+				urlStrings := strings.Split(stringOfUrls, ",")
+
+				*(co.ConfigKey.(*[]string)) = urlStrings
+				return nil
+			},
+			Usage: "comma-separated list of stellar history archives to connect with",
 		},
 		{
 			Name:        "network-passphrase",
@@ -116,11 +154,43 @@ func main() {
 				5*time.Minute,
 			)
 
+			captiveCoreTomlParams.HistoryArchiveURLs = historyArchiveURLs
+			captiveCoreTomlParams.NetworkPassphrase = networkPassphrase
+			captiveCoreTomlParams.Strict = true
+			captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(configPath, captiveCoreTomlParams)
+			if err != nil {
+				logger.WithError(err).Fatal("Invalid captive core toml")
+			}
+
+			captiveConfig := ledgerbackend.CaptiveCoreConfig{
+				BinaryPath:          binaryPath,
+				NetworkPassphrase:   networkPassphrase,
+				HistoryArchiveURLs:  historyArchiveURLs,
+				CheckpointFrequency: checkpointFrequency,
+				Log:                 logger.WithField("subservice", "stellar-core"),
+				Toml:                captiveCoreToml,
+				UserAgent:           "captivecore",
+			}
+			core, err := ledgerbackend.NewCaptive(captiveConfig)
+			if err != nil {
+				logger.Fatalf("could not create captive core: %v", err)
+			}
+
+			defer core.Close()
+
+			historyArchive, err := historyarchive.Connect(
+				historyArchiveURLs[0],
+				historyarchive.ConnectOptions{},
+			)
+
+			storage, err := internal.NewLedgerEntryStorage(networkPassphrase, historyArchive, core)
+			defer storage.Close()
+
 			handler, err := internal.NewJSONRPCHandler(internal.HandlerParams{
 				AccountStore:     methods.AccountStore{Client: hc},
 				Logger:           logger,
 				TransactionProxy: transactionProxy,
-				CoreClient:       &stellarcore.Client{URL: stellarCoreURL},
+				CoreClient:       &stellarcore.Client{URL: fmt.Sprintf("http://localhost:%d/", captiveCoreTomlParams.HTTPPort)},
 			})
 			if err != nil {
 				logger.Fatalf("could not create handler: %v", err)
