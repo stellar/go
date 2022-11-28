@@ -6,10 +6,16 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## 2.23.0
+
+**Upgrading to this version will trigger a state rebuild. During this process, Horizon will not ingest new ledgers.**
+
 ### Fixes
 
-* The ingestion subsystem will now properly use a pool of history archives if more than one is provided ([#4687](https://github.com/stellar/go/pull/4687)).
-
+* Improve performance of `/claimable_balances` filters. This change should significantly improve `?asset=` and `?claimant=` filters. ([#4690](https://github.com/stellar/go/pull/4690)).
+* Reallocate slices after offer removals in order book graph. This is done to prevent keeping a large chunks of allocated but unused memory that can lead to OOM crash.
+* The ingestion subsystem will now properly use a pool of history archives if more than one is provided. ([#4687](https://github.com/stellar/go/pull/4687))
+* Add `horizon ingest build-state` command which builds state at a specific ledger. Useful for debugging. ([#4636](https://github.com/stellar/go/pull/4636))
 
 ## 2.22.1
 
