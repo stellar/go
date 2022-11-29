@@ -165,9 +165,11 @@ func submitPaymentOps(itest *integration.Test, tt *assert.Assertions) (submitted
 func submitInvokeHostFunction(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
 	ops := []txnbuild.Operation{
 		&txnbuild.InvokeHostFunction{
-			Function:   xdr.HostFunctionHostFnInvokeContract,
-			Footprint:  xdr.LedgerFootprint{},
-			Parameters: xdr.ScVec{},
+			Function: xdr.HostFunction{
+				Type:       xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+				InvokeArgs: &xdr.ScVec{},
+			},
+			Footprint: xdr.LedgerFootprint{},
 		},
 	}
 	txResp, _ := itest.SubmitOperations(itest.MasterAccount(), itest.Master(), ops...)

@@ -123,35 +123,37 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 			Body: xdr.OperationBody{
 				Type: xdr.OperationTypeInvokeHostFunction,
 				InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-					Function: xdr.HostFunctionHostFnInvokeContract,
-					Parameters: []xdr.ScVal{
-						{
-							Type: xdr.ScValTypeScvSymbol,
-							Sym:  &contractParamVal1,
-						},
-						{
-							Type: xdr.ScValTypeScvI32,
-							I32:  &contractParamVal2,
-						},
-						{
-							Type: xdr.ScValTypeScvU32,
-							U32:  &contractParamVal3,
-						},
-						{
-							Type: xdr.ScValTypeScvBitset,
-							Bits: &contractParamVal4,
-						},
-						{
-							Type: xdr.ScValTypeScvObject,
-							Obj:  &contractParamVal5Addr,
-						},
-						{
-							Type: xdr.ScValTypeScvStatic,
-							Ic:   &contractParamVal6,
-						},
-						{
-							// invalid ScVal
-							Type: 5555,
+					Function: xdr.HostFunction{
+						Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+						InvokeArgs: &xdr.ScVec{
+							{
+								Type: xdr.ScValTypeScvSymbol,
+								Sym:  &contractParamVal1,
+							},
+							{
+								Type: xdr.ScValTypeScvI32,
+								I32:  &contractParamVal2,
+							},
+							{
+								Type: xdr.ScValTypeScvU32,
+								U32:  &contractParamVal3,
+							},
+							{
+								Type: xdr.ScValTypeScvBitset,
+								Bits: &contractParamVal4,
+							},
+							{
+								Type: xdr.ScValTypeScvObject,
+								Obj:  &contractParamVal5Addr,
+							},
+							{
+								Type: xdr.ScValTypeScvStatic,
+								Ic:   &contractParamVal6,
+							},
+							{
+								// invalid ScVal
+								Type: 5555,
+							},
 						},
 					},
 					Footprint: xdr.LedgerFootprint{
