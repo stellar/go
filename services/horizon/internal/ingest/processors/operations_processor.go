@@ -609,28 +609,31 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			details["parameters"] = params
 		case xdr.HostFunctionTypeHostFunctionTypeCreateContract:
 			args := op.Function.MustCreateContractArgs()
-			serializedContractId := map[string]string{}
-			serializedContractId["type"] = args.ContractId.Type.String()
+			details["type"] = args.ContractId.Type.String()
 			switch args.ContractId.Type {
 			case xdr.ContractIdTypeContractIdFromSourceAccount:
-				serializedContractId["salt"] = args.ContractId.MustSalt().String()
+				details["salt"] = args.ContractId.MustSalt().String()
 			case xdr.ContractIdTypeContractIdFromEd25519PublicKey:
 				fromEd25519PublicKey := args.ContractId.MustFromEd25519PublicKey()
-				serializedContractId["key"] = fromEd25519PublicKey.Key.String()
+				details["key"] = xdr.AccountId(xdr.PublicKey{
+					Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
+					Ed25519: &fromEd25519PublicKey.Key,
+				}).Address()
 				signature, err := xdr.MarshalBase64(fromEd25519PublicKey.Signature)
 				if err != nil {
 					return nil, err
 				}
-				serializedContractId["signature"] = signature
-				serializedContractId["salt"] = fromEd25519PublicKey.Salt.String()
+				details["signature"] = signature
+				details["salt"] = fromEd25519PublicKey.Salt.String()
 			case xdr.ContractIdTypeContractIdFromAsset:
-				serializedContractId["asset"] = args.ContractId.MustAsset().StringCanonical()
+				details["asset"] = args.ContractId.MustAsset().StringCanonical()
 			default:
 				panic(fmt.Errorf("Unknown contract id type: %s", args.ContractId.Type))
 			}
-			details["contract_id"] = args.ContractId
 			details["source"] = args.Source
 		case xdr.HostFunctionTypeHostFunctionTypeInstallContractCode:
+			args := op.Function.MustInstallContractCodeArgs()
+			details["code"] = base64.StdEncoding.EncodeToString(args.Code)
 		default:
 			panic(fmt.Errorf("Unknown host function type: %s", op.Function.Type))
 		}
