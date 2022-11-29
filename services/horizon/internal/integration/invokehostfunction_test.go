@@ -276,10 +276,12 @@ func TestInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	contractCodeLedgerkeyAddr := xdr.ScStaticScsLedgerKeyContractCode
 
 	invokeHostFunctionOp := &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnInvokeContract,
-		Parameters: xdr.ScVec{
-			contractIdParameter,
-			contractFnParameter,
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIdParameter,
+				contractFnParameter,
+			},
 		},
 		Footprint: xdr.LedgerFootprint{
 			ReadOnly: []xdr.LedgerKey{
