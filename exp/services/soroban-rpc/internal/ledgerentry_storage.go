@@ -39,8 +39,8 @@ func NewLedgerEntryStorage(
 }
 
 type ledgerEntryStorage struct {
+	encodingBuffer    *xdr.EncodingBuffer
 	networkPassPhrase string
-
 	// from serialized ledger key to ledger entry
 	storage map[string]xdr.LedgerEntry
 	// What's the latest processed ledger
@@ -51,10 +51,9 @@ type ledgerEntryStorage struct {
 }
 
 func (ls *ledgerEntryStorage) GetLedgerEntry(key xdr.LedgerKey) (xdr.LedgerEntry, bool, uint32, error) {
-
-	stringKey, err := xdr.MarshalBase64(key)
-	if err != nil {
-		return xdr.LedgerEntry{}, false, 0, err
+	stringKey := getRelevantLedgerKey(ls.encodingBuffer, key)
+	if stringKey == "" {
+		return xdr.LedgerEntry{}, false, 0, nil
 	}
 	ls.RLock()
 	defer ls.RUnlock()
@@ -87,6 +86,8 @@ func (ls *ledgerEntryStorage) run(ctx context.Context, startCheckpointLedger uin
 		// TODO: implement retries instead
 		panic(err)
 	}
+	// We intentionally use this local encoding buffer to avoid race conditions with the main one
+	buffer := xdr.NewEncodingBuffer()
 
 	for {
 		select {
@@ -105,7 +106,7 @@ func (ls *ledgerEntryStorage) run(ctx context.Context, startCheckpointLedger uin
 		}
 
 		entry := change.Post
-		key := getRelevantLedgerKey(entry.Data)
+		key := getRelevantLedgerKeyFromData(buffer, entry.Data)
 		if key == "" {
 			// not relevant
 			continue
@@ -114,7 +115,7 @@ func (ls *ledgerEntryStorage) run(ctx context.Context, startCheckpointLedger uin
 		// no need to Write-lock until we process the full checkpoint, since the reader checks latestLedger to be non-zero
 		ls.storage[key] = *entry
 
-		if len(ls.storage)%200 == 0 {
+		if len(ls.storage)%2000 == 0 {
 			fmt.Printf("  processed %d checkpoint ledger entries\n", len(ls.storage))
 		}
 	}
@@ -129,7 +130,7 @@ func (ls *ledgerEntryStorage) run(ctx context.Context, startCheckpointLedger uin
 	// Now, continuously process txmeta deltas
 
 	// TODO: we can probably do the preparation in parallel with the checkpoint processing
-	prepareRangeCtx, cancelPrepareRange := context.WithTimeout(ctx, 10*time.Minute)
+	prepareRangeCtx, cancelPrepareRange := context.WithTimeout(ctx, 30*time.Minute)
 	if err := ledgerBackend.PrepareRange(prepareRangeCtx, backends.UnboundedRange(startCheckpointLedger)); err != nil {
 		// TODO: we probably shouldn't panic, at least in case of timeout
 		panic(err)
@@ -158,13 +159,13 @@ func (ls *ledgerEntryStorage) run(ctx context.Context, startCheckpointLedger uin
 				panic(err)
 			}
 			if change.Post == nil {
-				key := getRelevantLedgerKey(change.Pre.Data)
+				key := getRelevantLedgerKeyFromData(buffer, change.Pre.Data)
 				if key == "" {
 					continue
 				}
 				delete(ls.storage, key)
 			} else {
-				key := getRelevantLedgerKey(change.Post.Data)
+				key := getRelevantLedgerKeyFromData(buffer, change.Post.Data)
 				if key == "" {
 					continue
 				}
@@ -180,7 +181,17 @@ func (ls *ledgerEntryStorage) run(ctx context.Context, startCheckpointLedger uin
 
 }
 
-func getRelevantLedgerKey(data xdr.LedgerEntryData) string {
+func getRelevantLedgerKey(buffer *xdr.EncodingBuffer, key xdr.LedgerKey) string {
+	// this is safe since we are converting to string right away, which causes a copy
+	binKey, err := buffer.LedgerKeyUnsafeMarshalBinaryCompress(key)
+	if err != nil {
+		// TODO: we probably don't want to panic
+		panic(err)
+	}
+	return string(binKey)
+}
+
+func getRelevantLedgerKeyFromData(buffer *xdr.EncodingBuffer, data xdr.LedgerEntryData) string {
 	var key xdr.LedgerKey
 	switch data.Type {
 	case xdr.LedgerEntryTypeAccount:
@@ -193,10 +204,5 @@ func getRelevantLedgerKey(data xdr.LedgerEntryData) string {
 		// we don't care about any other entry types for now
 		return ""
 	}
-	stringKey, err := xdr.MarshalBase64(key)
-	if err != nil {
-		// TODO: we probably don't want to panic
-		panic(err)
-	}
-	return stringKey
+	return getRelevantLedgerKey(buffer, key)
 }
