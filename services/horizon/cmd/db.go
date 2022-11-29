@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -32,15 +33,28 @@ var dbMigrateCmd = &cobra.Command{
 	Short: "commands to run schema migrations on horizon's postgres db",
 }
 
-func requireAndSetFlag(name string) error {
+func requireAndSetFlags(names ...string) error {
+	set := map[string]bool{}
+	for _, name := range names {
+		set[name] = true
+	}
 	for _, flag := range flags {
-		if flag.Name == name {
+		if set[flag.Name] {
 			flag.Require()
-			flag.SetValue()
-			return nil
+			if err := flag.SetValue(); err != nil {
+				return err
+			}
+			delete(set, flag.Name)
 		}
 	}
-	return fmt.Errorf("could not find %s flag", name)
+	if len(set) == 0 {
+		return nil
+	}
+	var missing []string
+	for name := range set {
+		missing = append(missing, name)
+	}
+	return fmt.Errorf("could not find %s flags", strings.Join(missing, ","))
 }
 
 var dbInitCmd = &cobra.Command{
@@ -48,7 +62,7 @@ var dbInitCmd = &cobra.Command{
 	Short: "install schema",
 	Long:  "init initializes the postgres database used by horizon.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+		if err := requireAndSetFlags(horizon.DatabaseURLFlagName, horizon.IngestFlagName); err != nil {
 			return err
 		}
 
@@ -72,6 +86,11 @@ var dbInitCmd = &cobra.Command{
 }
 
 func migrate(dir schema.MigrateDir, count int) error {
+	if !config.Ingest {
+		log.Println("Skipping migrations because ingest flag is not enabled")
+		return nil
+	}
+
 	dbConn, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return err
@@ -95,7 +114,7 @@ var dbMigrateDownCmd = &cobra.Command{
 	Short: "run downwards db schema migrations",
 	Long:  "performs a downards schema migration command",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+		if err := requireAndSetFlags(horizon.DatabaseURLFlagName, horizon.IngestFlagName); err != nil {
 			return err
 		}
 
@@ -119,7 +138,7 @@ var dbMigrateRedoCmd = &cobra.Command{
 	Short: "redo db schema migrations",
 	Long:  "performs a redo schema migration command",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+		if err := requireAndSetFlags(horizon.DatabaseURLFlagName, horizon.IngestFlagName); err != nil {
 			return err
 		}
 
@@ -143,7 +162,7 @@ var dbMigrateStatusCmd = &cobra.Command{
 	Short: "print current database migration status",
 	Long:  "print current database migration status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+		if err := requireAndSetFlags(horizon.DatabaseURLFlagName); err != nil {
 			return err
 		}
 
@@ -173,7 +192,7 @@ var dbMigrateUpCmd = &cobra.Command{
 	Short: "run upwards db schema migrations",
 	Long:  "performs an upwards schema migration command",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+		if err := requireAndSetFlags(horizon.DatabaseURLFlagName, horizon.IngestFlagName); err != nil {
 			return err
 		}
 
@@ -382,7 +401,7 @@ func runDBReingestRange(ledgerRanges []history.LedgerRange, reingestForce bool, 
 
 	ingestConfig := ingest.Config{
 		NetworkPassphrase:           config.NetworkPassphrase,
-		HistoryArchiveURL:           config.HistoryArchiveURLs[0],
+		HistoryArchiveURLs:          config.HistoryArchiveURLs,
 		CheckpointFrequency:         config.CheckpointFrequency,
 		ReingestEnabled:             true,
 		MaxReingestRetries:          int(retries),
@@ -453,7 +472,7 @@ var dbDetectGapsCmd = &cobra.Command{
 	Short: "detects ingestion gaps in Horizon's database",
 	Long:  "detects ingestion gaps in Horizon's database and prints a list of reingest commands needed to fill the gaps",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireAndSetFlag(horizon.DatabaseURLFlagName); err != nil {
+		if err := requireAndSetFlags(horizon.DatabaseURLFlagName); err != nil {
 			return err
 		}
 

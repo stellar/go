@@ -65,6 +65,7 @@ type ProcessorRunnerInterface interface {
 	RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error)
 	RunHistoryArchiveIngestion(
 		checkpointLedger uint32,
+		skipChecks bool,
 		ledgerProtocolVersion uint32,
 		bucketListHash xdr.Hash,
 	) (ingest.StatsChangeProcessorResults, error)
@@ -212,11 +213,12 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32, ledgerBucket
 }
 
 func (s *ProcessorRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
-	return s.RunHistoryArchiveIngestion(1, 0, xdr.Hash{})
+	return s.RunHistoryArchiveIngestion(1, false, 0, xdr.Hash{})
 }
 
 func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	checkpointLedger uint32,
+	skipChecks bool,
 	ledgerProtocolVersion uint32,
 	bucketListHash xdr.Hash,
 ) (ingest.StatsChangeProcessorResults, error) {
@@ -228,12 +230,14 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
 		}
 	} else {
-		if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
-		}
+		if !skipChecks {
+			if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
+				return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
+			}
 
-		if err := s.validateBucketList(checkpointLedger, bucketListHash); err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
+			if err := s.validateBucketList(checkpointLedger, bucketListHash); err != nil {
+				return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
+			}
 		}
 
 		changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
