@@ -19,9 +19,8 @@ import (
 )
 
 var (
-	testContract     = []byte("a contract")
-	testSalt         = sha256.Sum256([]byte("a1"))
-	testContractHash = sha256.Sum256(testContract)
+	testContract = []byte("a contract")
+	testSalt     = sha256.Sum256([]byte("a1"))
 )
 
 // createInvokeHostOperation creates a dummy InvokeHostFunctionOp. In this case by installing a contract code.
@@ -59,7 +58,7 @@ func createInstallContractCodeOperation(t *testing.T, sourceAccount string, cont
 	}
 }
 
-func createCreateContractOperation(t *testing.T, sourceAccount string, contractHash xdr.Hash, includeFootprint bool) *txnbuild.InvokeHostFunction {
+func createCreateContractOperation(t *testing.T, sourceAccount string, contractCode []byte, includeFootprint bool) *txnbuild.InvokeHostFunction {
 	saltParam := xdr.Uint256(testSalt)
 
 	var footprint xdr.LedgerFootprint
@@ -78,6 +77,10 @@ func createCreateContractOperation(t *testing.T, sourceAccount string, contractH
 			},
 		}
 	}
+
+	installContractCodeArgs, err := xdr.InstallContractCodeArgs{Code: contractCode}.MarshalBinary()
+	assert.NoError(t, err)
+	contractHash := xdr.Hash(sha256.Sum256(installContractCodeArgs))
 
 	// two operations, install, then create.
 	return &txnbuild.InvokeHostFunction{
@@ -274,7 +277,7 @@ func TestSimulateTransactionMultipleOperations(t *testing.T) {
 		IncrementSequenceNum: false,
 		Operations: []txnbuild.Operation{
 			createInstallContractCodeOperation(t, sourceAccount, testContract, false),
-			createCreateContractOperation(t, sourceAccount, testContractHash, false),
+			createCreateContractOperation(t, sourceAccount, testContract, false),
 		},
 		BaseFee: txnbuild.MinBaseFee,
 		Memo:    nil,
