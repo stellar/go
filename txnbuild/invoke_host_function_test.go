@@ -13,8 +13,10 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761100))
 
 	invokeHostFunctionOp := InvokeHostFunction{
-		Function:      xdr.HostFunctionHostFnInvokeContract,
-		Parameters:    xdr.ScVec{},
+		Function: xdr.HostFunction{
+			Type:       xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{},
+		},
 		Footprint:     xdr.LedgerFootprint{},
 		SourceAccount: sourceAccount.AccountID,
 	}
@@ -24,8 +26,10 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 
 func TestCreateInvokeHostFunctionInvalid(t *testing.T) {
 	invokeHostFunctionOp := InvokeHostFunction{
-		Function:      xdr.HostFunctionHostFnInvokeContract,
-		Parameters:    xdr.ScVec{},
+		Function: xdr.HostFunction{
+			Type:       xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{},
+		},
 		Footprint:     xdr.LedgerFootprint{},
 		SourceAccount: "invalid account value",
 	}
@@ -35,12 +39,12 @@ func TestCreateInvokeHostFunctionInvalid(t *testing.T) {
 
 func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 	val := xdr.Int32(4)
-	code := []byte{1, 2, 3, 4}
+	wasmId := xdr.Hash{1, 2, 3, 4}
 	obj := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoContractCode,
 		ContractCode: &xdr.ScContractCode{
-			Type: xdr.ScContractCodeTypeSccontractCodeWasm,
-			Wasm: &code,
+			Type:   xdr.ScContractCodeTypeSccontractCodeWasmRef,
+			WasmId: &wasmId,
 		},
 	}
 	i64 := xdr.Int64(45)
@@ -49,11 +53,13 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 		I64:  &i64,
 	}
 	invokeHostFunctionOp := &InvokeHostFunction{
-		Function: xdr.HostFunctionHostFnInvokeContract,
-		Parameters: xdr.ScVec{
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvI32,
-				I32:  &val,
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				xdr.ScVal{
+					Type: xdr.ScValTypeScvI32,
+					I32:  &val,
+				},
 			},
 		},
 		Footprint: xdr.LedgerFootprint{

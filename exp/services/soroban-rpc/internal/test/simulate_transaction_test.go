@@ -19,32 +19,20 @@ import (
 )
 
 var (
-	testContract = []byte("a contract")
-	testSalt     = sha256.Sum256([]byte("a1"))
+	testContract     = []byte("a contract")
+	testSalt         = sha256.Sum256([]byte("a1"))
+	testContractHash = sha256.Sum256(testContract)
 )
 
+// createInvokeHostOperation creates a dummy InvokeHostFunctionOp. In this case by installing a contract code.
 func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootprint bool) *txnbuild.InvokeHostFunction {
-	contractNameParameterAddr := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &testContract,
-	}
-	contractNameParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &contractNameParameterAddr,
-	}
+	return createInstallContractCodeOperation(t, sourceAccount, testContract, includeFootprint)
+}
 
-	saltySlice := testSalt[:]
-	saltParameterAddr := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &saltySlice,
-	}
-	saltParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &saltParameterAddr,
-	}
-
+func createInstallContractCodeOperation(t *testing.T, sourceAccount string, contractCode []byte, includeFootprint bool) *txnbuild.InvokeHostFunction {
 	var footprint xdr.LedgerFootprint
 	if includeFootprint {
+		// TODO: Check this is still right
 		ledgerKey := xdr.LedgerKeyContractData{
 			ContractId: xdr.Hash(getContractID(t, sourceAccount, testSalt)),
 			Key:        getContractCodeLedgerKey(),
@@ -61,10 +49,51 @@ func createInvokeHostOperation(t *testing.T, sourceAccount string, includeFootpr
 
 	return &txnbuild.InvokeHostFunction{
 		Footprint: footprint,
-		Function:  xdr.HostFunctionHostFnCreateContractWithSourceAccount,
-		Parameters: xdr.ScVec{
-			contractNameParameter,
-			saltParameter,
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInstallContractCode,
+			InstallContractCodeArgs: &xdr.InstallContractCodeArgs{
+				Code: contractCode,
+			},
+		},
+		SourceAccount: sourceAccount,
+	}
+}
+
+func createCreateContractOperation(t *testing.T, sourceAccount string, contractHash xdr.Hash, includeFootprint bool) *txnbuild.InvokeHostFunction {
+	saltParam := xdr.Uint256(testSalt)
+
+	var footprint xdr.LedgerFootprint
+	if includeFootprint {
+		// TODO: Check this is still right
+		ledgerKey := xdr.LedgerKeyContractData{
+			ContractId: xdr.Hash(getContractID(t, sourceAccount, testSalt)),
+			Key:        getContractCodeLedgerKey(),
+		}
+		footprint = xdr.LedgerFootprint{
+			ReadWrite: []xdr.LedgerKey{
+				{
+					Type:         xdr.LedgerEntryTypeContractData,
+					ContractData: &ledgerKey,
+				},
+			},
+		}
+	}
+
+	// two operations, install, then create.
+	return &txnbuild.InvokeHostFunction{
+		Footprint: footprint,
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+			CreateContractArgs: &xdr.CreateContractArgs{
+				ContractId: xdr.ContractId{
+					Type: xdr.ContractIdTypeContractIdFromSourceAccount,
+					Salt: &saltParam,
+				},
+				Source: xdr.ScContractCode{
+					Type:   xdr.ScContractCodeTypeSccontractCodeWasmRef,
+					WasmId: &contractHash,
+				},
+			},
 		},
 		SourceAccount: sourceAccount,
 	}
@@ -106,9 +135,11 @@ func TestSimulateTransactionSucceeds(t *testing.T) {
 			Sequence:  0,
 		},
 		IncrementSequenceNum: false,
-		Operations:           []txnbuild.Operation{createInvokeHostOperation(t, sourceAccount, false)},
-		BaseFee:              txnbuild.MinBaseFee,
-		Memo:                 nil,
+		Operations: []txnbuild.Operation{
+			createInvokeHostOperation(t, sourceAccount, false),
+		},
+		BaseFee: txnbuild.MinBaseFee,
+		Memo:    nil,
 		Preconditions: txnbuild.Preconditions{
 			TimeBounds: txnbuild.NewInfiniteTimeout(),
 		},
@@ -201,7 +232,7 @@ func TestSimulateTransactionError(t *testing.T) {
 
 	sourceAccount := keypair.Root(StandaloneNetworkPassphrase).Address()
 	invokeHostOp := createInvokeHostOperation(t, sourceAccount, false)
-	invokeHostOp.Parameters = invokeHostOp.Parameters[:len(invokeHostOp.Parameters)-1]
+	invokeHostOp.Function.InstallContractCodeArgs = nil
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &txnbuild.SimpleAccount{
 			AccountID: keypair.Root(StandaloneNetworkPassphrase).Address(),
@@ -242,8 +273,8 @@ func TestSimulateTransactionMultipleOperations(t *testing.T) {
 		},
 		IncrementSequenceNum: false,
 		Operations: []txnbuild.Operation{
-			createInvokeHostOperation(t, sourceAccount, false),
-			createInvokeHostOperation(t, sourceAccount, false),
+			createInstallContractCodeOperation(t, sourceAccount, testContract, false),
+			createCreateContractOperation(t, sourceAccount, testContractHash, false),
 		},
 		BaseFee: txnbuild.MinBaseFee,
 		Memo:    nil,
