@@ -113,6 +113,15 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			p.results.ContractDataRemoved++
 		}
+	case xdr.LedgerEntryTypeContractCode:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.ContractDataCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.ContractDataUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.ContractDataRemoved++
+		}
 	case xdr.LedgerEntryTypeConfigSetting:
 		switch change.LedgerEntryChangeType() {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
