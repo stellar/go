@@ -43,6 +43,10 @@ type StatsChangeProcessorResults struct {
 	ContractDataUpdated int64
 	ContractDataRemoved int64
 
+	ContractCodeCreated int64
+	ContractCodeUpdated int64
+	ContractCodeRemoved int64
+
 	ConfigSettingsCreated int64
 	ConfigSettingsUpdated int64
 	ConfigSettingsRemoved int64
@@ -116,11 +120,11 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 	case xdr.LedgerEntryTypeContractCode:
 		switch change.LedgerEntryChangeType() {
 		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-			p.results.ContractDataCreated++
+			p.results.ContractCodeCreated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-			p.results.ContractDataUpdated++
+			p.results.ContractCodeUpdated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-			p.results.ContractDataRemoved++
+			p.results.ContractCodeRemoved++
 		}
 	case xdr.LedgerEntryTypeConfigSetting:
 		switch change.LedgerEntryChangeType() {

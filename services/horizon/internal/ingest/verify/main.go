@@ -98,7 +98,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 		entryType := entry.Data.Type
 		// Won't be persisting protocol 20 ContractData ledger entries to history db, therefore must not allow it
 		// to be counted in history state-verifier accumulators.
-		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractData {
+		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractCode || entryType == xdr.LedgerEntryTypeContractData {
 			continue
 		}
 		v.currentEntries[string(key)] = entry
