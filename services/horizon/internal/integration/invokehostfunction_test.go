@@ -384,7 +384,7 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 	t.Logf("Contract File Contents: %v", hex.EncodeToString(contract))
 	salt := sha256.Sum256([]byte(contractSalt))
 	t.Logf("Salt hash: %v", hex.EncodeToString(salt[:]))
-	
+
 	networkId := xdr.Hash(sha256.Sum256([]byte(passPhrase)))
 	preImage := xdr.HashIdPreimage{
 		Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount,
