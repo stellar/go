@@ -45,6 +45,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustContractData()
 		r := other.MustContractData()
 		return l.ContractId == r.ContractId && l.Key.Equals(r.Key)
+	case LedgerEntryTypeContractCode:
+		l := key.MustContractCode()
+		r := other.MustContractCode()
+		return l.Hash == r.Hash
 	case LedgerEntryTypeClaimableBalance:
 		l := key.MustClaimableBalance()
 		r := other.MustClaimableBalance()
