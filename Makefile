@@ -42,6 +42,9 @@ gxdr/xdr_generated.go: $(XDRS)
 xdr/%.x:
 	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-xdr-next/$(XDRNEXT_COMMIT)/$(@F)
 
+xdr/xdr_commit_generated.txt:
+	printf "%s" ${XDRNEXT_COMMIT} > xdr/xdr_commit_generated.txt
+
 xdr/xdr_generated.go: $(XDRS)
 	docker run -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
 		gem install specific_install -v 0.3.7 && \
@@ -53,7 +56,7 @@ xdr/xdr_generated.go: $(XDRS)
 			$(XDRS)'
 	go fmt $@
 
-xdr: gxdr/xdr_generated.go xdr/xdr_generated.go
+xdr: gxdr/xdr_generated.go xdr/xdr_generated.go xdr/xdr_commit_generated.txt
 
 xdr-clean:
 	rm xdr/*.x || true

@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ExampleUnmarshal shows the lowest-level process to decode a base64
@@ -219,4 +220,8 @@ func TestLedgerKeyBinaryCompressCoverage(t *testing.T) {
 		_, err := e.LedgerKeyUnsafeMarshalBinaryCompress(ledgerKey)
 		assert.NoError(t, err)
 	}
+}
+
+func TestCommitHashLength(t *testing.T) {
+	require.Equal(t, 40, len(CommitHash))
 }
