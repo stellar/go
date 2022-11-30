@@ -82,7 +82,7 @@ func TestInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: Install the contract first, then create it. Two transactions.
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "test_add_u64.wasm", "a1")
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "test_add_u64.wasm", "a1", itest.GetPassPhrase())
 	opXDR, err := createContractOp.BuildXDR()
 	require.NoError(t, err)
 
@@ -142,7 +142,7 @@ func TestInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: Install the contract first, then create it. Two transactions.
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "test_add_u64.wasm", "a1")
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "test_add_u64.wasm", "a1", itest.GetPassPhrase())
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
 	require.NoError(t, err)
 
@@ -252,7 +252,7 @@ func TestInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: Install the contract first, then create it. Two transactions.
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "soroban_increment_contract.wasm", "a1")
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "soroban_increment_contract.wasm", "a1", itest.GetPassPhrase())
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
 	require.NoError(t, err)
 
@@ -374,7 +374,7 @@ func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileN
 	}
 }
 
-func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName string, contractSalt string) *txnbuild.InvokeHostFunction {
+func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName string, contractSalt string, passPhrase string) *txnbuild.InvokeHostFunction {
 	// Assemble the InvokeHostFunction CreateContract operation:
 	// CAP-0047 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0047.md#creating-a-contract-using-invokehostfunctionop
 
@@ -386,7 +386,7 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 	t.Logf("Salt hash: %v", hex.EncodeToString(salt[:]))
 
 	// TODO: Get the network passphrase from somewhere
-	networkId := xdr.Hash(sha256.Sum256([]byte(integration.NetworkPassphrase())))
+	networkId := xdr.Hash(sha256.Sum256([]byte(passPhrase)))
 	preImage := xdr.HashIdPreimage{
 		Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount,
 		SourceAccountContractId: &xdr.HashIdPreimageSourceAccountContractId{
