@@ -167,6 +167,9 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 	case LedgerEntryTypeContractData:
 		_, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:])
 		return err
+	case LedgerEntryTypeContractCode:
+		_, err := e.xdrEncoderBuf.Write(key.ContractCode.Hash[:])
+		return err
 	case LedgerEntryTypeConfigSetting:
 		return key.ConfigSetting.ConfigSettingId.EncodeTo(e.encoder)
 	default:
