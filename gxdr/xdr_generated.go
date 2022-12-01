@@ -207,7 +207,8 @@ const (
 	CLAIMABLE_BALANCE LedgerEntryType = 4
 	LIQUIDITY_POOL    LedgerEntryType = 5
 	CONTRACT_DATA     LedgerEntryType = 6
-	CONFIG_SETTING    LedgerEntryType = 7
+	CONTRACT_CODE     LedgerEntryType = 7
+	CONFIG_SETTING    LedgerEntryType = 8
 )
 
 type Signer struct {
@@ -632,6 +633,12 @@ type ContractDataEntry struct {
 	Val        SCVal
 }
 
+type ContractCodeEntry struct {
+	Ext  ExtensionPoint
+	Hash Hash
+	Code []byte // bound SCVAL_LIMIT
+}
+
 type ConfigSettingType int32
 
 const (
@@ -699,6 +706,8 @@ type XdrAnon_LedgerEntry_Data struct {
 	//      LiquidityPool() *LiquidityPoolEntry
 	//   CONTRACT_DATA:
 	//      ContractData() *ContractDataEntry
+	//   CONTRACT_CODE:
+	//      ContractCode() *ContractCodeEntry
 	//   CONFIG_SETTING:
 	//      ConfigSetting() *ConfigSettingEntry
 	Type LedgerEntryType
@@ -732,6 +741,8 @@ type LedgerKey struct {
 	//      LiquidityPool() *XdrAnon_LedgerKey_LiquidityPool
 	//   CONTRACT_DATA:
 	//      ContractData() *XdrAnon_LedgerKey_ContractData
+	//   CONTRACT_CODE:
+	//      ContractCode() *XdrAnon_LedgerKey_ContractCode
 	//   CONFIG_SETTING:
 	//      ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting
 	Type LedgerEntryType
@@ -762,6 +773,9 @@ type XdrAnon_LedgerKey_ContractData struct {
 	ContractID Hash
 	Key        SCVal
 }
+type XdrAnon_LedgerKey_ContractCode struct {
+	Hash Hash
+}
 type XdrAnon_LedgerKey_ConfigSetting struct {
 	ConfigSettingID ConfigSettingID
 }
@@ -784,6 +798,7 @@ const (
 	ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT       EnvelopeType = 9
 	ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET          EnvelopeType = 10
 	ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT EnvelopeType = 11
+	ENVELOPE_TYPE_CREATE_CONTRACT_ARGS            EnvelopeType = 12
 )
 
 type UpgradeType = []byte // bound 128
@@ -1214,6 +1229,10 @@ type XdrAnon_ContractEvent_Body_V0 struct {
 	Data   SCVal
 }
 
+type OperationEvents struct {
+	Events []ContractEvent
+}
+
 type TransactionMetaV3 struct {
 	// tx level changes before operations
 	TxChangesBefore LedgerEntryChanges
@@ -1222,8 +1241,8 @@ type TransactionMetaV3 struct {
 	// tx level changes after operations are
 	TxChangesAfter LedgerEntryChanges
 	// applied if any
-	Events []ContractEvent
-	// contracts themselves
+	Events []OperationEvents
+	// contracts themselves. One list per operation.
 	TxResult TransactionResult
 	// stores sha256(txChangesBefore, operations, txChangesAfter),
 	Hashes [3]Hash
@@ -1494,6 +1513,14 @@ type TopologyResponseBody struct {
 	TotalOutboundPeerCount Uint32
 }
 
+type SurveyResponseBody struct {
+	// The union discriminant Type selects among the following arms:
+	//   SURVEY_TOPOLOGY:
+	//      TopologyResponseBody() *TopologyResponseBody
+	Type SurveyMessageCommandType
+	_u   interface{}
+}
+
 const TX_ADVERT_VECTOR_MAX_SIZE = 1000
 
 type TxAdvertVector = []Hash // bound TX_ADVERT_VECTOR_MAX_SIZE
@@ -1508,14 +1535,6 @@ type TxDemandVector = []Hash // bound TX_DEMAND_VECTOR_MAX_SIZE
 
 type FloodDemand struct {
 	TxHashes TxDemandVector
-}
-
-type SurveyResponseBody struct {
-	// The union discriminant Type selects among the following arms:
-	//   SURVEY_TOPOLOGY:
-	//      TopologyResponseBody() *TopologyResponseBody
-	Type SurveyMessageCommandType
-	_u   interface{}
 }
 
 type StellarMessage struct {
@@ -2038,21 +2057,70 @@ type LiquidityPoolWithdrawOp struct {
 	MinAmountB Int64
 }
 
-type HostFunction int32
+type HostFunctionType int32
 
 const (
-	HOST_FN_INVOKE_CONTRACT                           HostFunction = 0
-	HOST_FN_CREATE_CONTRACT_WITH_ED25519              HostFunction = 1
-	HOST_FN_CREATE_CONTRACT_WITH_SOURCE_ACCOUNT       HostFunction = 2
-	HOST_FN_CREATE_TOKEN_CONTRACT_WITH_SOURCE_ACCOUNT HostFunction = 3
-	HOST_FN_CREATE_TOKEN_CONTRACT_WITH_ASSET          HostFunction = 4
+	HOST_FUNCTION_TYPE_INVOKE_CONTRACT       HostFunctionType = 0
+	HOST_FUNCTION_TYPE_CREATE_CONTRACT       HostFunctionType = 1
+	HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE HostFunctionType = 2
 )
+
+type ContractIDType int32
+
+const (
+	CONTRACT_ID_FROM_SOURCE_ACCOUNT     ContractIDType = 0
+	CONTRACT_ID_FROM_ED25519_PUBLIC_KEY ContractIDType = 1
+	CONTRACT_ID_FROM_ASSET              ContractIDType = 2
+)
+
+type ContractIDPublicKeyType int32
+
+const (
+	CONTRACT_ID_PUBLIC_KEY_SOURCE_ACCOUNT ContractIDPublicKeyType = 0
+	CONTRACT_ID_PUBLIC_KEY_ED25519        ContractIDPublicKeyType = 1
+)
+
+type InstallContractCodeArgs struct {
+	Code []byte // bound SCVAL_LIMIT
+}
+
+type ContractID struct {
+	// The union discriminant Type selects among the following arms:
+	//   CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+	//      Salt() *Uint256
+	//   CONTRACT_ID_FROM_ED25519_PUBLIC_KEY:
+	//      FromEd25519PublicKey() *XdrAnon_ContractID_FromEd25519PublicKey
+	//   CONTRACT_ID_FROM_ASSET:
+	//      Asset() *Asset
+	Type ContractIDType
+	_u   interface{}
+}
+type XdrAnon_ContractID_FromEd25519PublicKey struct {
+	Key       Uint256
+	Signature Signature
+	Salt      Uint256
+}
+
+type CreateContractArgs struct {
+	ContractID ContractID
+	Source     SCContractCode
+}
+
+type HostFunction struct {
+	// The union discriminant Type selects among the following arms:
+	//   HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
+	//      InvokeArgs() *SCVec
+	//   HOST_FUNCTION_TYPE_CREATE_CONTRACT:
+	//      CreateContractArgs() *CreateContractArgs
+	//   HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE:
+	//      InstallContractCodeArgs() *InstallContractCodeArgs
+	Type HostFunctionType
+	_u   interface{}
+}
 
 type InvokeHostFunctionOp struct {
 	// The host function to invoke
 	Function HostFunction
-	// Parameters to the host function
-	Parameters SCVec
 	// The footprint for this invocation
 	Footprint LedgerFootprint
 }
@@ -2132,9 +2200,11 @@ type HashIDPreimage struct {
 	//   ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT:
 	//      ContractID() *XdrAnon_HashIDPreimage_ContractID
 	//   ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET:
-	//      FromAsset() *Asset
+	//      FromAsset() *XdrAnon_HashIDPreimage_FromAsset
 	//   ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
 	//      SourceAccountContractID() *XdrAnon_HashIDPreimage_SourceAccountContractID
+	//   ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
+	//      CreateContractArgs() *XdrAnon_HashIDPreimage_CreateContractArgs
 	Type EnvelopeType
 	_u   interface{}
 }
@@ -2151,16 +2221,28 @@ type XdrAnon_HashIDPreimage_RevokeID struct {
 	Asset           Asset
 }
 type XdrAnon_HashIDPreimage_Ed25519ContractID struct {
-	Ed25519 Uint256
-	Salt    Uint256
+	NetworkID Hash
+	Ed25519   Uint256
+	Salt      Uint256
 }
 type XdrAnon_HashIDPreimage_ContractID struct {
+	NetworkID  Hash
 	ContractID Hash
 	Salt       Uint256
 }
+type XdrAnon_HashIDPreimage_FromAsset struct {
+	NetworkID Hash
+	Asset     Asset
+}
 type XdrAnon_HashIDPreimage_SourceAccountContractID struct {
+	NetworkID     Hash
 	SourceAccount AccountID
 	Salt          Uint256
+}
+type XdrAnon_HashIDPreimage_CreateContractArgs struct {
+	NetworkID Hash
+	Source    SCContractCode
+	Salt      Uint256
 }
 
 type MemoType int32
@@ -3468,14 +3550,15 @@ const (
 	SC_SPEC_TYPE_I32        SCSpecType = 2
 	SC_SPEC_TYPE_U64        SCSpecType = 3
 	SC_SPEC_TYPE_I64        SCSpecType = 4
-	SC_SPEC_TYPE_BOOL       SCSpecType = 5
-	SC_SPEC_TYPE_SYMBOL     SCSpecType = 6
-	SC_SPEC_TYPE_BITSET     SCSpecType = 7
-	SC_SPEC_TYPE_STATUS     SCSpecType = 8
-	SC_SPEC_TYPE_BYTES      SCSpecType = 9
-	SC_SPEC_TYPE_BIG_INT    SCSpecType = 10
-	SC_SPEC_TYPE_INVOKER    SCSpecType = 11
-	SC_SPEC_TYPE_ACCOUNT_ID SCSpecType = 12
+	SC_SPEC_TYPE_U128       SCSpecType = 5
+	SC_SPEC_TYPE_I128       SCSpecType = 6
+	SC_SPEC_TYPE_BOOL       SCSpecType = 7
+	SC_SPEC_TYPE_SYMBOL     SCSpecType = 8
+	SC_SPEC_TYPE_BITSET     SCSpecType = 9
+	SC_SPEC_TYPE_STATUS     SCSpecType = 10
+	SC_SPEC_TYPE_BYTES      SCSpecType = 11
+	SC_SPEC_TYPE_INVOKER    SCSpecType = 12
+	SC_SPEC_TYPE_ACCOUNT_ID SCSpecType = 13
 	// Types with parameters.
 	SC_SPEC_TYPE_OPTION  SCSpecType = 1000
 	SC_SPEC_TYPE_RESULT  SCSpecType = 1001
@@ -3524,7 +3607,7 @@ type SCSpecTypeUDT struct {
 
 type SCSpecTypeDef struct {
 	// The union discriminant Type selects among the following arms:
-	//   SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_BIG_INT, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
+	//   SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
 	//      void
 	//   SC_SPEC_TYPE_OPTION:
 	//      Option() *SCSpecTypeOption
@@ -3810,10 +3893,11 @@ const (
 	SCO_MAP           SCObjectType = 1
 	SCO_U64           SCObjectType = 2
 	SCO_I64           SCObjectType = 3
-	SCO_BYTES         SCObjectType = 4
-	SCO_BIG_INT       SCObjectType = 5
-	SCO_CONTRACT_CODE SCObjectType = 6
-	SCO_ACCOUNT_ID    SCObjectType = 7
+	SCO_U128          SCObjectType = 4
+	SCO_I128          SCObjectType = 5
+	SCO_BYTES         SCObjectType = 6
+	SCO_CONTRACT_CODE SCObjectType = 7
+	SCO_ACCOUNT_ID    SCObjectType = 8
 )
 
 type SCMapEntry struct {
@@ -3827,39 +3911,29 @@ type SCVec = []SCVal // bound SCVAL_LIMIT
 
 type SCMap = []SCMapEntry // bound SCVAL_LIMIT
 
-type SCNumSign int32
-
-const (
-	NEGATIVE SCNumSign = -1
-	ZERO     SCNumSign = 0
-	POSITIVE SCNumSign = 1
-)
-
-type SCBigInt struct {
-	// The union discriminant Sign selects among the following arms:
-	//   ZERO:
-	//      void
-	//   POSITIVE, NEGATIVE:
-	//      Magnitude() *[]byte // bound 256000
-	Sign SCNumSign
-	_u   interface{}
-}
-
 type SCContractCodeType int32
 
 const (
-	SCCONTRACT_CODE_WASM  SCContractCodeType = 0
-	SCCONTRACT_CODE_TOKEN SCContractCodeType = 1
+	SCCONTRACT_CODE_WASM_REF SCContractCodeType = 0
+	SCCONTRACT_CODE_TOKEN    SCContractCodeType = 1
 )
 
 type SCContractCode struct {
 	// The union discriminant Type selects among the following arms:
-	//   SCCONTRACT_CODE_WASM:
-	//      Wasm() *[]byte // bound SCVAL_LIMIT
+	//   SCCONTRACT_CODE_WASM_REF:
+	//      Wasm_id() *Hash
 	//   SCCONTRACT_CODE_TOKEN:
 	//      void
 	Type SCContractCodeType
 	_u   interface{}
+}
+
+type Int128Parts struct {
+	// Both signed and unsigned 128-bit ints
+	// are transported in a pair of uint64s
+	// to reduce the risk of sign-extension.
+	Lo Uint64
+	Hi Uint64
 }
 
 type SCObject struct {
@@ -3872,10 +3946,12 @@ type SCObject struct {
 	//      U64() *Uint64
 	//   SCO_I64:
 	//      I64() *Int64
+	//   SCO_U128:
+	//      U128() *Int128Parts
+	//   SCO_I128:
+	//      I128() *Int128Parts
 	//   SCO_BYTES:
 	//      Bin() *[]byte // bound SCVAL_LIMIT
-	//   SCO_BIG_INT:
-	//      BigInt() *SCBigInt
 	//   SCO_CONTRACT_CODE:
 	//      ContractCode() *SCContractCode
 	//   SCO_ACCOUNT_ID:
@@ -5008,6 +5084,7 @@ var _XdrNames_LedgerEntryType = map[int32]string{
 	int32(CLAIMABLE_BALANCE): "CLAIMABLE_BALANCE",
 	int32(LIQUIDITY_POOL):    "LIQUIDITY_POOL",
 	int32(CONTRACT_DATA):     "CONTRACT_DATA",
+	int32(CONTRACT_CODE):     "CONTRACT_CODE",
 	int32(CONFIG_SETTING):    "CONFIG_SETTING",
 }
 var _XdrValues_LedgerEntryType = map[string]int32{
@@ -5018,6 +5095,7 @@ var _XdrValues_LedgerEntryType = map[string]int32{
 	"CLAIMABLE_BALANCE": int32(CLAIMABLE_BALANCE),
 	"LIQUIDITY_POOL":    int32(LIQUIDITY_POOL),
 	"CONTRACT_DATA":     int32(CONTRACT_DATA),
+	"CONTRACT_CODE":     int32(CONTRACT_CODE),
 	"CONFIG_SETTING":    int32(CONFIG_SETTING),
 }
 
@@ -7396,6 +7474,22 @@ func (v *ContractDataEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_ContractDataEntry(v *ContractDataEntry) *ContractDataEntry { return v }
 
+type XdrType_ContractCodeEntry = *ContractCodeEntry
+
+func (v *ContractCodeEntry) XdrPointer() interface{}       { return v }
+func (ContractCodeEntry) XdrTypeName() string              { return "ContractCodeEntry" }
+func (v ContractCodeEntry) XdrValue() interface{}          { return v }
+func (v *ContractCodeEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ContractCodeEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
+	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
+	x.Marshal(x.Sprintf("%scode", name), XdrVecOpaque{&v.Code, SCVAL_LIMIT})
+}
+func XDR_ContractCodeEntry(v *ContractCodeEntry) *ContractCodeEntry { return v }
+
 var _XdrNames_ConfigSettingType = map[int32]string{
 	int32(CONFIG_SETTING_TYPE_UINT32): "CONFIG_SETTING_TYPE_UINT32",
 }
@@ -7705,6 +7799,7 @@ var _XdrTags_XdrAnon_LedgerEntry_Data = map[int32]bool{
 	XdrToI32(CLAIMABLE_BALANCE): true,
 	XdrToI32(LIQUIDITY_POOL):    true,
 	XdrToI32(CONTRACT_DATA):     true,
+	XdrToI32(CONTRACT_CODE):     true,
 	XdrToI32(CONFIG_SETTING):    true,
 }
 
@@ -7816,6 +7911,21 @@ func (u *XdrAnon_LedgerEntry_Data) ContractData() *ContractDataEntry {
 		return nil
 	}
 }
+func (u *XdrAnon_LedgerEntry_Data) ContractCode() *ContractCodeEntry {
+	switch u.Type {
+	case CONTRACT_CODE:
+		if v, ok := u._u.(*ContractCodeEntry); ok {
+			return v
+		} else {
+			var zero ContractCodeEntry
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_LedgerEntry_Data.ContractCode accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u *XdrAnon_LedgerEntry_Data) ConfigSetting() *ConfigSettingEntry {
 	switch u.Type {
 	case CONFIG_SETTING:
@@ -7833,7 +7943,7 @@ func (u *XdrAnon_LedgerEntry_Data) ConfigSetting() *ConfigSettingEntry {
 }
 func (u XdrAnon_LedgerEntry_Data) XdrValid() bool {
 	switch u.Type {
-	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONFIG_SETTING:
+	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING:
 		return true
 	}
 	return false
@@ -7860,6 +7970,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrUnionBody() XdrType {
 		return XDR_LiquidityPoolEntry(u.LiquidityPool())
 	case CONTRACT_DATA:
 		return XDR_ContractDataEntry(u.ContractData())
+	case CONTRACT_CODE:
+		return XDR_ContractCodeEntry(u.ContractCode())
 	case CONFIG_SETTING:
 		return XDR_ConfigSettingEntry(u.ConfigSetting())
 	}
@@ -7881,6 +7993,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrUnionBodyName() string {
 		return "LiquidityPool"
 	case CONTRACT_DATA:
 		return "ContractData"
+	case CONTRACT_CODE:
+		return "ContractCode"
 	case CONFIG_SETTING:
 		return "ConfigSetting"
 	}
@@ -7919,6 +8033,9 @@ func (u *XdrAnon_LedgerEntry_Data) XdrRecurse(x XDR, name string) {
 		return
 	case CONTRACT_DATA:
 		x.Marshal(x.Sprintf("%scontractData", name), XDR_ContractDataEntry(u.ContractData()))
+		return
+	case CONTRACT_CODE:
+		x.Marshal(x.Sprintf("%scontractCode", name), XDR_ContractCodeEntry(u.ContractCode()))
 		return
 	case CONFIG_SETTING:
 		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_ConfigSettingEntry(u.ConfigSetting()))
@@ -8133,6 +8250,22 @@ func XDR_XdrAnon_LedgerKey_ContractData(v *XdrAnon_LedgerKey_ContractData) *XdrA
 	return v
 }
 
+type XdrType_XdrAnon_LedgerKey_ContractCode = *XdrAnon_LedgerKey_ContractCode
+
+func (v *XdrAnon_LedgerKey_ContractCode) XdrPointer() interface{}       { return v }
+func (XdrAnon_LedgerKey_ContractCode) XdrTypeName() string              { return "XdrAnon_LedgerKey_ContractCode" }
+func (v XdrAnon_LedgerKey_ContractCode) XdrValue() interface{}          { return v }
+func (v *XdrAnon_LedgerKey_ContractCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_LedgerKey_ContractCode) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
+}
+func XDR_XdrAnon_LedgerKey_ContractCode(v *XdrAnon_LedgerKey_ContractCode) *XdrAnon_LedgerKey_ContractCode {
+	return v
+}
+
 type XdrType_XdrAnon_LedgerKey_ConfigSetting = *XdrAnon_LedgerKey_ConfigSetting
 
 func (v *XdrAnon_LedgerKey_ConfigSetting) XdrPointer() interface{}       { return v }
@@ -8157,6 +8290,7 @@ var _XdrTags_LedgerKey = map[int32]bool{
 	XdrToI32(CLAIMABLE_BALANCE): true,
 	XdrToI32(LIQUIDITY_POOL):    true,
 	XdrToI32(CONTRACT_DATA):     true,
+	XdrToI32(CONTRACT_CODE):     true,
 	XdrToI32(CONFIG_SETTING):    true,
 }
 
@@ -8268,6 +8402,21 @@ func (u *LedgerKey) ContractData() *XdrAnon_LedgerKey_ContractData {
 		return nil
 	}
 }
+func (u *LedgerKey) ContractCode() *XdrAnon_LedgerKey_ContractCode {
+	switch u.Type {
+	case CONTRACT_CODE:
+		if v, ok := u._u.(*XdrAnon_LedgerKey_ContractCode); ok {
+			return v
+		} else {
+			var zero XdrAnon_LedgerKey_ContractCode
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerKey.ContractCode accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u *LedgerKey) ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting {
 	switch u.Type {
 	case CONFIG_SETTING:
@@ -8285,7 +8434,7 @@ func (u *LedgerKey) ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting {
 }
 func (u LedgerKey) XdrValid() bool {
 	switch u.Type {
-	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONFIG_SETTING:
+	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING:
 		return true
 	}
 	return false
@@ -8312,6 +8461,8 @@ func (u *LedgerKey) XdrUnionBody() XdrType {
 		return XDR_XdrAnon_LedgerKey_LiquidityPool(u.LiquidityPool())
 	case CONTRACT_DATA:
 		return XDR_XdrAnon_LedgerKey_ContractData(u.ContractData())
+	case CONTRACT_CODE:
+		return XDR_XdrAnon_LedgerKey_ContractCode(u.ContractCode())
 	case CONFIG_SETTING:
 		return XDR_XdrAnon_LedgerKey_ConfigSetting(u.ConfigSetting())
 	}
@@ -8333,6 +8484,8 @@ func (u *LedgerKey) XdrUnionBodyName() string {
 		return "LiquidityPool"
 	case CONTRACT_DATA:
 		return "ContractData"
+	case CONTRACT_CODE:
+		return "ContractCode"
 	case CONFIG_SETTING:
 		return "ConfigSetting"
 	}
@@ -8372,6 +8525,9 @@ func (u *LedgerKey) XdrRecurse(x XDR, name string) {
 	case CONTRACT_DATA:
 		x.Marshal(x.Sprintf("%scontractData", name), XDR_XdrAnon_LedgerKey_ContractData(u.ContractData()))
 		return
+	case CONTRACT_CODE:
+		x.Marshal(x.Sprintf("%scontractCode", name), XDR_XdrAnon_LedgerKey_ContractCode(u.ContractCode()))
+		return
 	case CONFIG_SETTING:
 		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_XdrAnon_LedgerKey_ConfigSetting(u.ConfigSetting()))
 		return
@@ -8393,6 +8549,7 @@ var _XdrNames_EnvelopeType = map[int32]string{
 	int32(ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT):       "ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT",
 	int32(ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET):          "ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET",
 	int32(ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT): "ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT",
+	int32(ENVELOPE_TYPE_CREATE_CONTRACT_ARGS):            "ENVELOPE_TYPE_CREATE_CONTRACT_ARGS",
 }
 var _XdrValues_EnvelopeType = map[string]int32{
 	"ENVELOPE_TYPE_TX_V0":                           int32(ENVELOPE_TYPE_TX_V0),
@@ -8407,6 +8564,7 @@ var _XdrValues_EnvelopeType = map[string]int32{
 	"ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT":       int32(ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT),
 	"ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET":          int32(ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET),
 	"ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT": int32(ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT),
+	"ENVELOPE_TYPE_CREATE_CONTRACT_ARGS":            int32(ENVELOPE_TYPE_CREATE_CONTRACT_ARGS),
 }
 
 func (EnvelopeType) XdrEnumNames() map[int32]string {
@@ -11349,6 +11507,77 @@ func (v *_XdrVec_unbounded_ContractEvent) XdrPointer() interface{}       { retur
 func (v _XdrVec_unbounded_ContractEvent) XdrValue() interface{}          { return ([]ContractEvent)(v) }
 func (v *_XdrVec_unbounded_ContractEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
+type XdrType_OperationEvents = *OperationEvents
+
+func (v *OperationEvents) XdrPointer() interface{}       { return v }
+func (OperationEvents) XdrTypeName() string              { return "OperationEvents" }
+func (v OperationEvents) XdrValue() interface{}          { return v }
+func (v *OperationEvents) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *OperationEvents) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sevents", name), (*_XdrVec_unbounded_ContractEvent)(&v.Events))
+}
+func XDR_OperationEvents(v *OperationEvents) *OperationEvents { return v }
+
+type _XdrVec_unbounded_OperationEvents []OperationEvents
+
+func (_XdrVec_unbounded_OperationEvents) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_OperationEvents) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_OperationEvents length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_OperationEvents length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_OperationEvents) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_OperationEvents) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]OperationEvents, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_OperationEvents) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_OperationEvents(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_OperationEvents) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_OperationEvents) XdrTypeName() string              { return "OperationEvents<>" }
+func (v *_XdrVec_unbounded_OperationEvents) XdrPointer() interface{}       { return (*[]OperationEvents)(v) }
+func (v _XdrVec_unbounded_OperationEvents) XdrValue() interface{}          { return ([]OperationEvents)(v) }
+func (v *_XdrVec_unbounded_OperationEvents) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
 type _XdrArray_3_Hash [3]Hash
 
 func (_XdrArray_3_Hash) XdrArraySize() uint32 {
@@ -11378,7 +11607,7 @@ func (v *TransactionMetaV3) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%stxChangesBefore", name), XDR_LedgerEntryChanges(&v.TxChangesBefore))
 	x.Marshal(x.Sprintf("%soperations", name), (*_XdrVec_unbounded_OperationMeta)(&v.Operations))
 	x.Marshal(x.Sprintf("%stxChangesAfter", name), XDR_LedgerEntryChanges(&v.TxChangesAfter))
-	x.Marshal(x.Sprintf("%sevents", name), (*_XdrVec_unbounded_ContractEvent)(&v.Events))
+	x.Marshal(x.Sprintf("%sevents", name), (*_XdrVec_unbounded_OperationEvents)(&v.Events))
 	x.Marshal(x.Sprintf("%stxResult", name), XDR_TransactionResult(&v.TxResult))
 	x.Marshal(x.Sprintf("%shashes", name), (*_XdrArray_3_Hash)(&v.Hashes))
 }
@@ -12637,6 +12866,76 @@ func (v *TopologyResponseBody) XdrRecurse(x XDR, name string) {
 }
 func XDR_TopologyResponseBody(v *TopologyResponseBody) *TopologyResponseBody { return v }
 
+var _XdrTags_SurveyResponseBody = map[int32]bool{
+	XdrToI32(SURVEY_TOPOLOGY): true,
+}
+
+func (_ SurveyResponseBody) XdrValidTags() map[int32]bool {
+	return _XdrTags_SurveyResponseBody
+}
+func (u *SurveyResponseBody) TopologyResponseBody() *TopologyResponseBody {
+	switch u.Type {
+	case SURVEY_TOPOLOGY:
+		if v, ok := u._u.(*TopologyResponseBody); ok {
+			return v
+		} else {
+			var zero TopologyResponseBody
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SurveyResponseBody.TopologyResponseBody accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u SurveyResponseBody) XdrValid() bool {
+	switch u.Type {
+	case SURVEY_TOPOLOGY:
+		return true
+	}
+	return false
+}
+func (u *SurveyResponseBody) XdrUnionTag() XdrNum32 {
+	return XDR_SurveyMessageCommandType(&u.Type)
+}
+func (u *SurveyResponseBody) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *SurveyResponseBody) XdrUnionBody() XdrType {
+	switch u.Type {
+	case SURVEY_TOPOLOGY:
+		return XDR_TopologyResponseBody(u.TopologyResponseBody())
+	}
+	return nil
+}
+func (u *SurveyResponseBody) XdrUnionBodyName() string {
+	switch u.Type {
+	case SURVEY_TOPOLOGY:
+		return "TopologyResponseBody"
+	}
+	return ""
+}
+
+type XdrType_SurveyResponseBody = *SurveyResponseBody
+
+func (v *SurveyResponseBody) XdrPointer() interface{}       { return v }
+func (SurveyResponseBody) XdrTypeName() string              { return "SurveyResponseBody" }
+func (v SurveyResponseBody) XdrValue() interface{}          { return v }
+func (v *SurveyResponseBody) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *SurveyResponseBody) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_SurveyMessageCommandType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case SURVEY_TOPOLOGY:
+		x.Marshal(x.Sprintf("%stopologyResponseBody", name), XDR_TopologyResponseBody(u.TopologyResponseBody()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in SurveyResponseBody", u.Type)
+}
+func XDR_SurveyResponseBody(v *SurveyResponseBody) *SurveyResponseBody { return v }
+
 type _XdrVec_1000_Hash []Hash
 
 func (_XdrVec_1000_Hash) XdrBound() uint32 {
@@ -12741,76 +13040,6 @@ func (v *FloodDemand) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%stxHashes", name), XDR_TxDemandVector(&v.TxHashes))
 }
 func XDR_FloodDemand(v *FloodDemand) *FloodDemand { return v }
-
-var _XdrTags_SurveyResponseBody = map[int32]bool{
-	XdrToI32(SURVEY_TOPOLOGY): true,
-}
-
-func (_ SurveyResponseBody) XdrValidTags() map[int32]bool {
-	return _XdrTags_SurveyResponseBody
-}
-func (u *SurveyResponseBody) TopologyResponseBody() *TopologyResponseBody {
-	switch u.Type {
-	case SURVEY_TOPOLOGY:
-		if v, ok := u._u.(*TopologyResponseBody); ok {
-			return v
-		} else {
-			var zero TopologyResponseBody
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SurveyResponseBody.TopologyResponseBody accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u SurveyResponseBody) XdrValid() bool {
-	switch u.Type {
-	case SURVEY_TOPOLOGY:
-		return true
-	}
-	return false
-}
-func (u *SurveyResponseBody) XdrUnionTag() XdrNum32 {
-	return XDR_SurveyMessageCommandType(&u.Type)
-}
-func (u *SurveyResponseBody) XdrUnionTagName() string {
-	return "Type"
-}
-func (u *SurveyResponseBody) XdrUnionBody() XdrType {
-	switch u.Type {
-	case SURVEY_TOPOLOGY:
-		return XDR_TopologyResponseBody(u.TopologyResponseBody())
-	}
-	return nil
-}
-func (u *SurveyResponseBody) XdrUnionBodyName() string {
-	switch u.Type {
-	case SURVEY_TOPOLOGY:
-		return "TopologyResponseBody"
-	}
-	return ""
-}
-
-type XdrType_SurveyResponseBody = *SurveyResponseBody
-
-func (v *SurveyResponseBody) XdrPointer() interface{}       { return v }
-func (SurveyResponseBody) XdrTypeName() string              { return "SurveyResponseBody" }
-func (v SurveyResponseBody) XdrValue() interface{}          { return v }
-func (v *SurveyResponseBody) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *SurveyResponseBody) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_SurveyMessageCommandType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
-	switch u.Type {
-	case SURVEY_TOPOLOGY:
-		x.Marshal(x.Sprintf("%stopologyResponseBody", name), XDR_TopologyResponseBody(u.TopologyResponseBody()))
-		return
-	}
-	XdrPanic("invalid Type (%v) in SurveyResponseBody", u.Type)
-}
-func XDR_SurveyResponseBody(v *SurveyResponseBody) *SurveyResponseBody { return v }
 
 type _XdrVec_100_PeerAddress []PeerAddress
 
@@ -14750,55 +14979,424 @@ func (v *LiquidityPoolWithdrawOp) XdrRecurse(x XDR, name string) {
 }
 func XDR_LiquidityPoolWithdrawOp(v *LiquidityPoolWithdrawOp) *LiquidityPoolWithdrawOp { return v }
 
-var _XdrNames_HostFunction = map[int32]string{
-	int32(HOST_FN_INVOKE_CONTRACT):                           "HOST_FN_INVOKE_CONTRACT",
-	int32(HOST_FN_CREATE_CONTRACT_WITH_ED25519):              "HOST_FN_CREATE_CONTRACT_WITH_ED25519",
-	int32(HOST_FN_CREATE_CONTRACT_WITH_SOURCE_ACCOUNT):       "HOST_FN_CREATE_CONTRACT_WITH_SOURCE_ACCOUNT",
-	int32(HOST_FN_CREATE_TOKEN_CONTRACT_WITH_SOURCE_ACCOUNT): "HOST_FN_CREATE_TOKEN_CONTRACT_WITH_SOURCE_ACCOUNT",
-	int32(HOST_FN_CREATE_TOKEN_CONTRACT_WITH_ASSET):          "HOST_FN_CREATE_TOKEN_CONTRACT_WITH_ASSET",
+var _XdrNames_HostFunctionType = map[int32]string{
+	int32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT):       "HOST_FUNCTION_TYPE_INVOKE_CONTRACT",
+	int32(HOST_FUNCTION_TYPE_CREATE_CONTRACT):       "HOST_FUNCTION_TYPE_CREATE_CONTRACT",
+	int32(HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE): "HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE",
 }
-var _XdrValues_HostFunction = map[string]int32{
-	"HOST_FN_INVOKE_CONTRACT":                           int32(HOST_FN_INVOKE_CONTRACT),
-	"HOST_FN_CREATE_CONTRACT_WITH_ED25519":              int32(HOST_FN_CREATE_CONTRACT_WITH_ED25519),
-	"HOST_FN_CREATE_CONTRACT_WITH_SOURCE_ACCOUNT":       int32(HOST_FN_CREATE_CONTRACT_WITH_SOURCE_ACCOUNT),
-	"HOST_FN_CREATE_TOKEN_CONTRACT_WITH_SOURCE_ACCOUNT": int32(HOST_FN_CREATE_TOKEN_CONTRACT_WITH_SOURCE_ACCOUNT),
-	"HOST_FN_CREATE_TOKEN_CONTRACT_WITH_ASSET":          int32(HOST_FN_CREATE_TOKEN_CONTRACT_WITH_ASSET),
+var _XdrValues_HostFunctionType = map[string]int32{
+	"HOST_FUNCTION_TYPE_INVOKE_CONTRACT":       int32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT),
+	"HOST_FUNCTION_TYPE_CREATE_CONTRACT":       int32(HOST_FUNCTION_TYPE_CREATE_CONTRACT),
+	"HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE": int32(HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE),
 }
 
-func (HostFunction) XdrEnumNames() map[int32]string {
-	return _XdrNames_HostFunction
+func (HostFunctionType) XdrEnumNames() map[int32]string {
+	return _XdrNames_HostFunctionType
 }
-func (v HostFunction) String() string {
-	if s, ok := _XdrNames_HostFunction[int32(v)]; ok {
+func (v HostFunctionType) String() string {
+	if s, ok := _XdrNames_HostFunctionType[int32(v)]; ok {
 		return s
 	}
-	return fmt.Sprintf("HostFunction#%d", v)
+	return fmt.Sprintf("HostFunctionType#%d", v)
 }
-func (v *HostFunction) Scan(ss fmt.ScanState, _ rune) error {
+func (v *HostFunctionType) Scan(ss fmt.ScanState, _ rune) error {
 	if tok, err := ss.Token(true, XdrSymChar); err != nil {
 		return err
 	} else {
 		stok := string(tok)
-		if val, ok := _XdrValues_HostFunction[stok]; ok {
-			*v = HostFunction(val)
+		if val, ok := _XdrValues_HostFunctionType[stok]; ok {
+			*v = HostFunctionType(val)
 			return nil
-		} else if stok == "HostFunction" {
+		} else if stok == "HostFunctionType" {
 			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
 				return nil
 			}
 		}
-		return XdrError(fmt.Sprintf("%s is not a valid HostFunction.", stok))
+		return XdrError(fmt.Sprintf("%s is not a valid HostFunctionType.", stok))
 	}
 }
-func (v HostFunction) GetU32() uint32                 { return uint32(v) }
-func (v *HostFunction) SetU32(n uint32)               { *v = HostFunction(n) }
+func (v HostFunctionType) GetU32() uint32                 { return uint32(v) }
+func (v *HostFunctionType) SetU32(n uint32)               { *v = HostFunctionType(n) }
+func (v *HostFunctionType) XdrPointer() interface{}       { return v }
+func (HostFunctionType) XdrTypeName() string              { return "HostFunctionType" }
+func (v HostFunctionType) XdrValue() interface{}          { return v }
+func (v *HostFunctionType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_HostFunctionType = *HostFunctionType
+
+func XDR_HostFunctionType(v *HostFunctionType) *HostFunctionType { return v }
+
+var _XdrNames_ContractIDType = map[int32]string{
+	int32(CONTRACT_ID_FROM_SOURCE_ACCOUNT):     "CONTRACT_ID_FROM_SOURCE_ACCOUNT",
+	int32(CONTRACT_ID_FROM_ED25519_PUBLIC_KEY): "CONTRACT_ID_FROM_ED25519_PUBLIC_KEY",
+	int32(CONTRACT_ID_FROM_ASSET):              "CONTRACT_ID_FROM_ASSET",
+}
+var _XdrValues_ContractIDType = map[string]int32{
+	"CONTRACT_ID_FROM_SOURCE_ACCOUNT":     int32(CONTRACT_ID_FROM_SOURCE_ACCOUNT),
+	"CONTRACT_ID_FROM_ED25519_PUBLIC_KEY": int32(CONTRACT_ID_FROM_ED25519_PUBLIC_KEY),
+	"CONTRACT_ID_FROM_ASSET":              int32(CONTRACT_ID_FROM_ASSET),
+}
+
+func (ContractIDType) XdrEnumNames() map[int32]string {
+	return _XdrNames_ContractIDType
+}
+func (v ContractIDType) String() string {
+	if s, ok := _XdrNames_ContractIDType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("ContractIDType#%d", v)
+}
+func (v *ContractIDType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_ContractIDType[stok]; ok {
+			*v = ContractIDType(val)
+			return nil
+		} else if stok == "ContractIDType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid ContractIDType.", stok))
+	}
+}
+func (v ContractIDType) GetU32() uint32                 { return uint32(v) }
+func (v *ContractIDType) SetU32(n uint32)               { *v = ContractIDType(n) }
+func (v *ContractIDType) XdrPointer() interface{}       { return v }
+func (ContractIDType) XdrTypeName() string              { return "ContractIDType" }
+func (v ContractIDType) XdrValue() interface{}          { return v }
+func (v *ContractIDType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ContractIDType = *ContractIDType
+
+func XDR_ContractIDType(v *ContractIDType) *ContractIDType { return v }
+
+var _XdrNames_ContractIDPublicKeyType = map[int32]string{
+	int32(CONTRACT_ID_PUBLIC_KEY_SOURCE_ACCOUNT): "CONTRACT_ID_PUBLIC_KEY_SOURCE_ACCOUNT",
+	int32(CONTRACT_ID_PUBLIC_KEY_ED25519):        "CONTRACT_ID_PUBLIC_KEY_ED25519",
+}
+var _XdrValues_ContractIDPublicKeyType = map[string]int32{
+	"CONTRACT_ID_PUBLIC_KEY_SOURCE_ACCOUNT": int32(CONTRACT_ID_PUBLIC_KEY_SOURCE_ACCOUNT),
+	"CONTRACT_ID_PUBLIC_KEY_ED25519":        int32(CONTRACT_ID_PUBLIC_KEY_ED25519),
+}
+
+func (ContractIDPublicKeyType) XdrEnumNames() map[int32]string {
+	return _XdrNames_ContractIDPublicKeyType
+}
+func (v ContractIDPublicKeyType) String() string {
+	if s, ok := _XdrNames_ContractIDPublicKeyType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("ContractIDPublicKeyType#%d", v)
+}
+func (v *ContractIDPublicKeyType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_ContractIDPublicKeyType[stok]; ok {
+			*v = ContractIDPublicKeyType(val)
+			return nil
+		} else if stok == "ContractIDPublicKeyType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid ContractIDPublicKeyType.", stok))
+	}
+}
+func (v ContractIDPublicKeyType) GetU32() uint32                 { return uint32(v) }
+func (v *ContractIDPublicKeyType) SetU32(n uint32)               { *v = ContractIDPublicKeyType(n) }
+func (v *ContractIDPublicKeyType) XdrPointer() interface{}       { return v }
+func (ContractIDPublicKeyType) XdrTypeName() string              { return "ContractIDPublicKeyType" }
+func (v ContractIDPublicKeyType) XdrValue() interface{}          { return v }
+func (v *ContractIDPublicKeyType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ContractIDPublicKeyType = *ContractIDPublicKeyType
+
+func XDR_ContractIDPublicKeyType(v *ContractIDPublicKeyType) *ContractIDPublicKeyType { return v }
+
+type XdrType_InstallContractCodeArgs = *InstallContractCodeArgs
+
+func (v *InstallContractCodeArgs) XdrPointer() interface{}       { return v }
+func (InstallContractCodeArgs) XdrTypeName() string              { return "InstallContractCodeArgs" }
+func (v InstallContractCodeArgs) XdrValue() interface{}          { return v }
+func (v *InstallContractCodeArgs) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *InstallContractCodeArgs) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%scode", name), XdrVecOpaque{&v.Code, SCVAL_LIMIT})
+}
+func XDR_InstallContractCodeArgs(v *InstallContractCodeArgs) *InstallContractCodeArgs { return v }
+
+type XdrType_XdrAnon_ContractID_FromEd25519PublicKey = *XdrAnon_ContractID_FromEd25519PublicKey
+
+func (v *XdrAnon_ContractID_FromEd25519PublicKey) XdrPointer() interface{} { return v }
+func (XdrAnon_ContractID_FromEd25519PublicKey) XdrTypeName() string {
+	return "XdrAnon_ContractID_FromEd25519PublicKey"
+}
+func (v XdrAnon_ContractID_FromEd25519PublicKey) XdrValue() interface{}          { return v }
+func (v *XdrAnon_ContractID_FromEd25519PublicKey) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_ContractID_FromEd25519PublicKey) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%skey", name), XDR_Uint256(&v.Key))
+	x.Marshal(x.Sprintf("%ssignature", name), XDR_Signature(&v.Signature))
+	x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(&v.Salt))
+}
+func XDR_XdrAnon_ContractID_FromEd25519PublicKey(v *XdrAnon_ContractID_FromEd25519PublicKey) *XdrAnon_ContractID_FromEd25519PublicKey {
+	return v
+}
+
+var _XdrTags_ContractID = map[int32]bool{
+	XdrToI32(CONTRACT_ID_FROM_SOURCE_ACCOUNT):     true,
+	XdrToI32(CONTRACT_ID_FROM_ED25519_PUBLIC_KEY): true,
+	XdrToI32(CONTRACT_ID_FROM_ASSET):              true,
+}
+
+func (_ ContractID) XdrValidTags() map[int32]bool {
+	return _XdrTags_ContractID
+}
+func (u *ContractID) Salt() *Uint256 {
+	switch u.Type {
+	case CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+		if v, ok := u._u.(*Uint256); ok {
+			return v
+		} else {
+			var zero Uint256
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ContractID.Salt accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *ContractID) FromEd25519PublicKey() *XdrAnon_ContractID_FromEd25519PublicKey {
+	switch u.Type {
+	case CONTRACT_ID_FROM_ED25519_PUBLIC_KEY:
+		if v, ok := u._u.(*XdrAnon_ContractID_FromEd25519PublicKey); ok {
+			return v
+		} else {
+			var zero XdrAnon_ContractID_FromEd25519PublicKey
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ContractID.FromEd25519PublicKey accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *ContractID) Asset() *Asset {
+	switch u.Type {
+	case CONTRACT_ID_FROM_ASSET:
+		if v, ok := u._u.(*Asset); ok {
+			return v
+		} else {
+			var zero Asset
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ContractID.Asset accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u ContractID) XdrValid() bool {
+	switch u.Type {
+	case CONTRACT_ID_FROM_SOURCE_ACCOUNT, CONTRACT_ID_FROM_ED25519_PUBLIC_KEY, CONTRACT_ID_FROM_ASSET:
+		return true
+	}
+	return false
+}
+func (u *ContractID) XdrUnionTag() XdrNum32 {
+	return XDR_ContractIDType(&u.Type)
+}
+func (u *ContractID) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *ContractID) XdrUnionBody() XdrType {
+	switch u.Type {
+	case CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+		return XDR_Uint256(u.Salt())
+	case CONTRACT_ID_FROM_ED25519_PUBLIC_KEY:
+		return XDR_XdrAnon_ContractID_FromEd25519PublicKey(u.FromEd25519PublicKey())
+	case CONTRACT_ID_FROM_ASSET:
+		return XDR_Asset(u.Asset())
+	}
+	return nil
+}
+func (u *ContractID) XdrUnionBodyName() string {
+	switch u.Type {
+	case CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+		return "Salt"
+	case CONTRACT_ID_FROM_ED25519_PUBLIC_KEY:
+		return "FromEd25519PublicKey"
+	case CONTRACT_ID_FROM_ASSET:
+		return "Asset"
+	}
+	return ""
+}
+
+type XdrType_ContractID = *ContractID
+
+func (v *ContractID) XdrPointer() interface{}       { return v }
+func (ContractID) XdrTypeName() string              { return "ContractID" }
+func (v ContractID) XdrValue() interface{}          { return v }
+func (v *ContractID) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *ContractID) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_ContractIDType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+		x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(u.Salt()))
+		return
+	case CONTRACT_ID_FROM_ED25519_PUBLIC_KEY:
+		x.Marshal(x.Sprintf("%sfromEd25519PublicKey", name), XDR_XdrAnon_ContractID_FromEd25519PublicKey(u.FromEd25519PublicKey()))
+		return
+	case CONTRACT_ID_FROM_ASSET:
+		x.Marshal(x.Sprintf("%sasset", name), XDR_Asset(u.Asset()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in ContractID", u.Type)
+}
+func XDR_ContractID(v *ContractID) *ContractID { return v }
+
+type XdrType_CreateContractArgs = *CreateContractArgs
+
+func (v *CreateContractArgs) XdrPointer() interface{}       { return v }
+func (CreateContractArgs) XdrTypeName() string              { return "CreateContractArgs" }
+func (v CreateContractArgs) XdrValue() interface{}          { return v }
+func (v *CreateContractArgs) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *CreateContractArgs) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%scontractID", name), XDR_ContractID(&v.ContractID))
+	x.Marshal(x.Sprintf("%ssource", name), XDR_SCContractCode(&v.Source))
+}
+func XDR_CreateContractArgs(v *CreateContractArgs) *CreateContractArgs { return v }
+
+var _XdrTags_HostFunction = map[int32]bool{
+	XdrToI32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT):       true,
+	XdrToI32(HOST_FUNCTION_TYPE_CREATE_CONTRACT):       true,
+	XdrToI32(HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE): true,
+}
+
+func (_ HostFunction) XdrValidTags() map[int32]bool {
+	return _XdrTags_HostFunction
+}
+func (u *HostFunction) InvokeArgs() *SCVec {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
+		if v, ok := u._u.(*SCVec); ok {
+			return v
+		} else {
+			var zero SCVec
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HostFunction.InvokeArgs accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *HostFunction) CreateContractArgs() *CreateContractArgs {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT:
+		if v, ok := u._u.(*CreateContractArgs); ok {
+			return v
+		} else {
+			var zero CreateContractArgs
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HostFunction.CreateContractArgs accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *HostFunction) InstallContractCodeArgs() *InstallContractCodeArgs {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE:
+		if v, ok := u._u.(*InstallContractCodeArgs); ok {
+			return v
+		} else {
+			var zero InstallContractCodeArgs
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HostFunction.InstallContractCodeArgs accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u HostFunction) XdrValid() bool {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT, HOST_FUNCTION_TYPE_CREATE_CONTRACT, HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE:
+		return true
+	}
+	return false
+}
+func (u *HostFunction) XdrUnionTag() XdrNum32 {
+	return XDR_HostFunctionType(&u.Type)
+}
+func (u *HostFunction) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *HostFunction) XdrUnionBody() XdrType {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
+		return XDR_SCVec(u.InvokeArgs())
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT:
+		return XDR_CreateContractArgs(u.CreateContractArgs())
+	case HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE:
+		return XDR_InstallContractCodeArgs(u.InstallContractCodeArgs())
+	}
+	return nil
+}
+func (u *HostFunction) XdrUnionBodyName() string {
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
+		return "InvokeArgs"
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT:
+		return "CreateContractArgs"
+	case HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE:
+		return "InstallContractCodeArgs"
+	}
+	return ""
+}
+
+type XdrType_HostFunction = *HostFunction
+
 func (v *HostFunction) XdrPointer() interface{}       { return v }
 func (HostFunction) XdrTypeName() string              { return "HostFunction" }
 func (v HostFunction) XdrValue() interface{}          { return v }
 func (v *HostFunction) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_HostFunction = *HostFunction
-
+func (u *HostFunction) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_HostFunctionType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
+		x.Marshal(x.Sprintf("%sinvokeArgs", name), XDR_SCVec(u.InvokeArgs()))
+		return
+	case HOST_FUNCTION_TYPE_CREATE_CONTRACT:
+		x.Marshal(x.Sprintf("%screateContractArgs", name), XDR_CreateContractArgs(u.CreateContractArgs()))
+		return
+	case HOST_FUNCTION_TYPE_INSTALL_CONTRACT_CODE:
+		x.Marshal(x.Sprintf("%sinstallContractCodeArgs", name), XDR_InstallContractCodeArgs(u.InstallContractCodeArgs()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in HostFunction", u.Type)
+}
 func XDR_HostFunction(v *HostFunction) *HostFunction { return v }
 
 type XdrType_InvokeHostFunctionOp = *InvokeHostFunctionOp
@@ -14812,7 +15410,6 @@ func (v *InvokeHostFunctionOp) XdrRecurse(x XDR, name string) {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%sfunction", name), XDR_HostFunction(&v.Function))
-	x.Marshal(x.Sprintf("%sparameters", name), XDR_SCVec(&v.Parameters))
 	x.Marshal(x.Sprintf("%sfootprint", name), XDR_LedgerFootprint(&v.Footprint))
 }
 func XDR_InvokeHostFunctionOp(v *InvokeHostFunctionOp) *InvokeHostFunctionOp { return v }
@@ -15547,6 +16144,7 @@ func (v *XdrAnon_HashIDPreimage_Ed25519ContractID) XdrRecurse(x XDR, name string
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
 	x.Marshal(x.Sprintf("%sed25519", name), XDR_Uint256(&v.Ed25519))
 	x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(&v.Salt))
 }
@@ -15566,10 +16164,30 @@ func (v *XdrAnon_HashIDPreimage_ContractID) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
 	x.Marshal(x.Sprintf("%scontractID", name), XDR_Hash(&v.ContractID))
 	x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(&v.Salt))
 }
 func XDR_XdrAnon_HashIDPreimage_ContractID(v *XdrAnon_HashIDPreimage_ContractID) *XdrAnon_HashIDPreimage_ContractID {
+	return v
+}
+
+type XdrType_XdrAnon_HashIDPreimage_FromAsset = *XdrAnon_HashIDPreimage_FromAsset
+
+func (v *XdrAnon_HashIDPreimage_FromAsset) XdrPointer() interface{} { return v }
+func (XdrAnon_HashIDPreimage_FromAsset) XdrTypeName() string {
+	return "XdrAnon_HashIDPreimage_FromAsset"
+}
+func (v XdrAnon_HashIDPreimage_FromAsset) XdrValue() interface{}          { return v }
+func (v *XdrAnon_HashIDPreimage_FromAsset) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_HashIDPreimage_FromAsset) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
+	x.Marshal(x.Sprintf("%sasset", name), XDR_Asset(&v.Asset))
+}
+func XDR_XdrAnon_HashIDPreimage_FromAsset(v *XdrAnon_HashIDPreimage_FromAsset) *XdrAnon_HashIDPreimage_FromAsset {
 	return v
 }
 
@@ -15587,10 +16205,33 @@ func (v *XdrAnon_HashIDPreimage_SourceAccountContractID) XdrRecurse(x XDR, name 
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
 	x.Marshal(x.Sprintf("%ssourceAccount", name), XDR_AccountID(&v.SourceAccount))
 	x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(&v.Salt))
 }
 func XDR_XdrAnon_HashIDPreimage_SourceAccountContractID(v *XdrAnon_HashIDPreimage_SourceAccountContractID) *XdrAnon_HashIDPreimage_SourceAccountContractID {
+	return v
+}
+
+type XdrType_XdrAnon_HashIDPreimage_CreateContractArgs = *XdrAnon_HashIDPreimage_CreateContractArgs
+
+func (v *XdrAnon_HashIDPreimage_CreateContractArgs) XdrPointer() interface{} { return v }
+func (XdrAnon_HashIDPreimage_CreateContractArgs) XdrTypeName() string {
+	return "XdrAnon_HashIDPreimage_CreateContractArgs"
+}
+func (v XdrAnon_HashIDPreimage_CreateContractArgs) XdrValue() interface{} { return v }
+func (v *XdrAnon_HashIDPreimage_CreateContractArgs) XdrMarshal(x XDR, name string) {
+	x.Marshal(name, v)
+}
+func (v *XdrAnon_HashIDPreimage_CreateContractArgs) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
+	x.Marshal(x.Sprintf("%ssource", name), XDR_SCContractCode(&v.Source))
+	x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(&v.Salt))
+}
+func XDR_XdrAnon_HashIDPreimage_CreateContractArgs(v *XdrAnon_HashIDPreimage_CreateContractArgs) *XdrAnon_HashIDPreimage_CreateContractArgs {
 	return v
 }
 
@@ -15601,6 +16242,7 @@ var _XdrTags_HashIDPreimage = map[int32]bool{
 	XdrToI32(ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT):       true,
 	XdrToI32(ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET):          true,
 	XdrToI32(ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT): true,
+	XdrToI32(ENVELOPE_TYPE_CREATE_CONTRACT_ARGS):            true,
 }
 
 func (_ HashIDPreimage) XdrValidTags() map[int32]bool {
@@ -15666,13 +16308,13 @@ func (u *HashIDPreimage) ContractID() *XdrAnon_HashIDPreimage_ContractID {
 		return nil
 	}
 }
-func (u *HashIDPreimage) FromAsset() *Asset {
+func (u *HashIDPreimage) FromAsset() *XdrAnon_HashIDPreimage_FromAsset {
 	switch u.Type {
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET:
-		if v, ok := u._u.(*Asset); ok {
+		if v, ok := u._u.(*XdrAnon_HashIDPreimage_FromAsset); ok {
 			return v
 		} else {
-			var zero Asset
+			var zero XdrAnon_HashIDPreimage_FromAsset
 			u._u = &zero
 			return &zero
 		}
@@ -15696,9 +16338,24 @@ func (u *HashIDPreimage) SourceAccountContractID() *XdrAnon_HashIDPreimage_Sourc
 		return nil
 	}
 }
+func (u *HashIDPreimage) CreateContractArgs() *XdrAnon_HashIDPreimage_CreateContractArgs {
+	switch u.Type {
+	case ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
+		if v, ok := u._u.(*XdrAnon_HashIDPreimage_CreateContractArgs); ok {
+			return v
+		} else {
+			var zero XdrAnon_HashIDPreimage_CreateContractArgs
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("HashIDPreimage.CreateContractArgs accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u HashIDPreimage) XdrValid() bool {
 	switch u.Type {
-	case ENVELOPE_TYPE_OP_ID, ENVELOPE_TYPE_POOL_REVOKE_OP_ID, ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519, ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT, ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET, ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+	case ENVELOPE_TYPE_OP_ID, ENVELOPE_TYPE_POOL_REVOKE_OP_ID, ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519, ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT, ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET, ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT, ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
 		return true
 	}
 	return false
@@ -15720,9 +16377,11 @@ func (u *HashIDPreimage) XdrUnionBody() XdrType {
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT:
 		return XDR_XdrAnon_HashIDPreimage_ContractID(u.ContractID())
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET:
-		return XDR_Asset(u.FromAsset())
+		return XDR_XdrAnon_HashIDPreimage_FromAsset(u.FromAsset())
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
 		return XDR_XdrAnon_HashIDPreimage_SourceAccountContractID(u.SourceAccountContractID())
+	case ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
+		return XDR_XdrAnon_HashIDPreimage_CreateContractArgs(u.CreateContractArgs())
 	}
 	return nil
 }
@@ -15740,6 +16399,8 @@ func (u *HashIDPreimage) XdrUnionBodyName() string {
 		return "FromAsset"
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
 		return "SourceAccountContractID"
+	case ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
+		return "CreateContractArgs"
 	}
 	return ""
 }
@@ -15769,10 +16430,13 @@ func (u *HashIDPreimage) XdrRecurse(x XDR, name string) {
 		x.Marshal(x.Sprintf("%scontractID", name), XDR_XdrAnon_HashIDPreimage_ContractID(u.ContractID()))
 		return
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET:
-		x.Marshal(x.Sprintf("%sfromAsset", name), XDR_Asset(u.FromAsset()))
+		x.Marshal(x.Sprintf("%sfromAsset", name), XDR_XdrAnon_HashIDPreimage_FromAsset(u.FromAsset()))
 		return
 	case ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
 		x.Marshal(x.Sprintf("%ssourceAccountContractID", name), XDR_XdrAnon_HashIDPreimage_SourceAccountContractID(u.SourceAccountContractID()))
+		return
+	case ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
+		x.Marshal(x.Sprintf("%screateContractArgs", name), XDR_XdrAnon_HashIDPreimage_CreateContractArgs(u.CreateContractArgs()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in HashIDPreimage", u.Type)
@@ -15780,7 +16444,7 @@ func (u *HashIDPreimage) XdrRecurse(x XDR, name string) {
 func (v *HashIDPreimage) XdrInitialize() {
 	var zero EnvelopeType
 	switch zero {
-	case ENVELOPE_TYPE_OP_ID, ENVELOPE_TYPE_POOL_REVOKE_OP_ID, ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519, ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT, ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET, ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT:
+	case ENVELOPE_TYPE_OP_ID, ENVELOPE_TYPE_POOL_REVOKE_OP_ID, ENVELOPE_TYPE_CONTRACT_ID_FROM_ED25519, ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT, ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET, ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT, ENVELOPE_TYPE_CREATE_CONTRACT_ARGS:
 	default:
 		if v.Type == zero {
 			v.Type = ENVELOPE_TYPE_OP_ID
@@ -23208,12 +23872,13 @@ var _XdrNames_SCSpecType = map[int32]string{
 	int32(SC_SPEC_TYPE_I32):        "SC_SPEC_TYPE_I32",
 	int32(SC_SPEC_TYPE_U64):        "SC_SPEC_TYPE_U64",
 	int32(SC_SPEC_TYPE_I64):        "SC_SPEC_TYPE_I64",
+	int32(SC_SPEC_TYPE_U128):       "SC_SPEC_TYPE_U128",
+	int32(SC_SPEC_TYPE_I128):       "SC_SPEC_TYPE_I128",
 	int32(SC_SPEC_TYPE_BOOL):       "SC_SPEC_TYPE_BOOL",
 	int32(SC_SPEC_TYPE_SYMBOL):     "SC_SPEC_TYPE_SYMBOL",
 	int32(SC_SPEC_TYPE_BITSET):     "SC_SPEC_TYPE_BITSET",
 	int32(SC_SPEC_TYPE_STATUS):     "SC_SPEC_TYPE_STATUS",
 	int32(SC_SPEC_TYPE_BYTES):      "SC_SPEC_TYPE_BYTES",
-	int32(SC_SPEC_TYPE_BIG_INT):    "SC_SPEC_TYPE_BIG_INT",
 	int32(SC_SPEC_TYPE_INVOKER):    "SC_SPEC_TYPE_INVOKER",
 	int32(SC_SPEC_TYPE_ACCOUNT_ID): "SC_SPEC_TYPE_ACCOUNT_ID",
 	int32(SC_SPEC_TYPE_OPTION):     "SC_SPEC_TYPE_OPTION",
@@ -23231,12 +23896,13 @@ var _XdrValues_SCSpecType = map[string]int32{
 	"SC_SPEC_TYPE_I32":        int32(SC_SPEC_TYPE_I32),
 	"SC_SPEC_TYPE_U64":        int32(SC_SPEC_TYPE_U64),
 	"SC_SPEC_TYPE_I64":        int32(SC_SPEC_TYPE_I64),
+	"SC_SPEC_TYPE_U128":       int32(SC_SPEC_TYPE_U128),
+	"SC_SPEC_TYPE_I128":       int32(SC_SPEC_TYPE_I128),
 	"SC_SPEC_TYPE_BOOL":       int32(SC_SPEC_TYPE_BOOL),
 	"SC_SPEC_TYPE_SYMBOL":     int32(SC_SPEC_TYPE_SYMBOL),
 	"SC_SPEC_TYPE_BITSET":     int32(SC_SPEC_TYPE_BITSET),
 	"SC_SPEC_TYPE_STATUS":     int32(SC_SPEC_TYPE_STATUS),
 	"SC_SPEC_TYPE_BYTES":      int32(SC_SPEC_TYPE_BYTES),
-	"SC_SPEC_TYPE_BIG_INT":    int32(SC_SPEC_TYPE_BIG_INT),
 	"SC_SPEC_TYPE_INVOKER":    int32(SC_SPEC_TYPE_INVOKER),
 	"SC_SPEC_TYPE_ACCOUNT_ID": int32(SC_SPEC_TYPE_ACCOUNT_ID),
 	"SC_SPEC_TYPE_OPTION":     int32(SC_SPEC_TYPE_OPTION),
@@ -23470,6 +24136,8 @@ var _XdrTags_SCSpecTypeDef = map[int32]bool{
 	XdrToI32(SC_SPEC_TYPE_VAL):        true,
 	XdrToI32(SC_SPEC_TYPE_U64):        true,
 	XdrToI32(SC_SPEC_TYPE_I64):        true,
+	XdrToI32(SC_SPEC_TYPE_U128):       true,
+	XdrToI32(SC_SPEC_TYPE_I128):       true,
 	XdrToI32(SC_SPEC_TYPE_U32):        true,
 	XdrToI32(SC_SPEC_TYPE_I32):        true,
 	XdrToI32(SC_SPEC_TYPE_BOOL):       true,
@@ -23477,7 +24145,6 @@ var _XdrTags_SCSpecTypeDef = map[int32]bool{
 	XdrToI32(SC_SPEC_TYPE_BITSET):     true,
 	XdrToI32(SC_SPEC_TYPE_STATUS):     true,
 	XdrToI32(SC_SPEC_TYPE_BYTES):      true,
-	XdrToI32(SC_SPEC_TYPE_BIG_INT):    true,
 	XdrToI32(SC_SPEC_TYPE_INVOKER):    true,
 	XdrToI32(SC_SPEC_TYPE_ACCOUNT_ID): true,
 	XdrToI32(SC_SPEC_TYPE_OPTION):     true,
@@ -23615,7 +24282,7 @@ func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 }
 func (u SCSpecTypeDef) XdrValid() bool {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_BIG_INT, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_SET, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_SET, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
 		return true
 	}
 	return false
@@ -23628,7 +24295,7 @@ func (u *SCSpecTypeDef) XdrUnionTagName() string {
 }
 func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_BIG_INT, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
 		return nil
 	case SC_SPEC_TYPE_OPTION:
 		return XDR_SCSpecTypeOption(u.Option())
@@ -23651,7 +24318,7 @@ func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 }
 func (u *SCSpecTypeDef) XdrUnionBodyName() string {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_BIG_INT, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
 		return ""
 	case SC_SPEC_TYPE_OPTION:
 		return "Option"
@@ -23685,7 +24352,7 @@ func (u *SCSpecTypeDef) XdrRecurse(x XDR, name string) {
 	}
 	XDR_SCSpecType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_BIG_INT, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_INVOKER, SC_SPEC_TYPE_ACCOUNT_ID:
 		return
 	case SC_SPEC_TYPE_OPTION:
 		x.Marshal(x.Sprintf("%soption", name), XDR_SCSpecTypeOption(u.Option()))
@@ -25626,8 +26293,9 @@ var _XdrNames_SCObjectType = map[int32]string{
 	int32(SCO_MAP):           "SCO_MAP",
 	int32(SCO_U64):           "SCO_U64",
 	int32(SCO_I64):           "SCO_I64",
+	int32(SCO_U128):          "SCO_U128",
+	int32(SCO_I128):          "SCO_I128",
 	int32(SCO_BYTES):         "SCO_BYTES",
-	int32(SCO_BIG_INT):       "SCO_BIG_INT",
 	int32(SCO_CONTRACT_CODE): "SCO_CONTRACT_CODE",
 	int32(SCO_ACCOUNT_ID):    "SCO_ACCOUNT_ID",
 }
@@ -25636,8 +26304,9 @@ var _XdrValues_SCObjectType = map[string]int32{
 	"SCO_MAP":           int32(SCO_MAP),
 	"SCO_U64":           int32(SCO_U64),
 	"SCO_I64":           int32(SCO_I64),
+	"SCO_U128":          int32(SCO_U128),
+	"SCO_I128":          int32(SCO_I128),
 	"SCO_BYTES":         int32(SCO_BYTES),
-	"SCO_BIG_INT":       int32(SCO_BIG_INT),
 	"SCO_CONTRACT_CODE": int32(SCO_CONTRACT_CODE),
 	"SCO_ACCOUNT_ID":    int32(SCO_ACCOUNT_ID),
 }
@@ -25827,138 +26496,13 @@ func XDR_SCMap(v *SCMap) XdrType_SCMap {
 func (XdrType_SCMap) XdrTypeName() string  { return "SCMap" }
 func (v XdrType_SCMap) XdrUnwrap() XdrType { return v._XdrVec_256000_SCMapEntry }
 
-var _XdrNames_SCNumSign = map[int32]string{
-	int32(NEGATIVE): "NEGATIVE",
-	int32(ZERO):     "ZERO",
-	int32(POSITIVE): "POSITIVE",
-}
-var _XdrValues_SCNumSign = map[string]int32{
-	"NEGATIVE": int32(NEGATIVE),
-	"ZERO":     int32(ZERO),
-	"POSITIVE": int32(POSITIVE),
-}
-
-func (SCNumSign) XdrEnumNames() map[int32]string {
-	return _XdrNames_SCNumSign
-}
-func (v SCNumSign) String() string {
-	if s, ok := _XdrNames_SCNumSign[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("SCNumSign#%d", v)
-}
-func (v *SCNumSign) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_SCNumSign[stok]; ok {
-			*v = SCNumSign(val)
-			return nil
-		} else if stok == "SCNumSign" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid SCNumSign.", stok))
-	}
-}
-func (v SCNumSign) GetU32() uint32                 { return uint32(v) }
-func (v *SCNumSign) SetU32(n uint32)               { *v = SCNumSign(n) }
-func (v *SCNumSign) XdrPointer() interface{}       { return v }
-func (SCNumSign) XdrTypeName() string              { return "SCNumSign" }
-func (v SCNumSign) XdrValue() interface{}          { return v }
-func (v *SCNumSign) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_SCNumSign = *SCNumSign
-
-func XDR_SCNumSign(v *SCNumSign) *SCNumSign { return v }
-
-var _XdrTags_SCBigInt = map[int32]bool{
-	XdrToI32(ZERO):     true,
-	XdrToI32(POSITIVE): true,
-	XdrToI32(NEGATIVE): true,
-}
-
-func (_ SCBigInt) XdrValidTags() map[int32]bool {
-	return _XdrTags_SCBigInt
-}
-func (u *SCBigInt) Magnitude() *[]byte {
-	switch u.Sign {
-	case POSITIVE, NEGATIVE:
-		if v, ok := u._u.(*[]byte); ok {
-			return v
-		} else {
-			var zero []byte
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCBigInt.Magnitude accessed when Sign == %v", u.Sign)
-		return nil
-	}
-}
-func (u SCBigInt) XdrValid() bool {
-	switch u.Sign {
-	case ZERO, POSITIVE, NEGATIVE:
-		return true
-	}
-	return false
-}
-func (u *SCBigInt) XdrUnionTag() XdrNum32 {
-	return XDR_SCNumSign(&u.Sign)
-}
-func (u *SCBigInt) XdrUnionTagName() string {
-	return "Sign"
-}
-func (u *SCBigInt) XdrUnionBody() XdrType {
-	switch u.Sign {
-	case ZERO:
-		return nil
-	case POSITIVE, NEGATIVE:
-		return XdrVecOpaque{u.Magnitude(), 256000}
-	}
-	return nil
-}
-func (u *SCBigInt) XdrUnionBodyName() string {
-	switch u.Sign {
-	case ZERO:
-		return ""
-	case POSITIVE, NEGATIVE:
-		return "Magnitude"
-	}
-	return ""
-}
-
-type XdrType_SCBigInt = *SCBigInt
-
-func (v *SCBigInt) XdrPointer() interface{}       { return v }
-func (SCBigInt) XdrTypeName() string              { return "SCBigInt" }
-func (v SCBigInt) XdrValue() interface{}          { return v }
-func (v *SCBigInt) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *SCBigInt) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_SCNumSign(&u.Sign).XdrMarshal(x, x.Sprintf("%ssign", name))
-	switch u.Sign {
-	case ZERO:
-		return
-	case POSITIVE, NEGATIVE:
-		x.Marshal(x.Sprintf("%smagnitude", name), XdrVecOpaque{u.Magnitude(), 256000})
-		return
-	}
-	XdrPanic("invalid Sign (%v) in SCBigInt", u.Sign)
-}
-func XDR_SCBigInt(v *SCBigInt) *SCBigInt { return v }
-
 var _XdrNames_SCContractCodeType = map[int32]string{
-	int32(SCCONTRACT_CODE_WASM):  "SCCONTRACT_CODE_WASM",
-	int32(SCCONTRACT_CODE_TOKEN): "SCCONTRACT_CODE_TOKEN",
+	int32(SCCONTRACT_CODE_WASM_REF): "SCCONTRACT_CODE_WASM_REF",
+	int32(SCCONTRACT_CODE_TOKEN):    "SCCONTRACT_CODE_TOKEN",
 }
 var _XdrValues_SCContractCodeType = map[string]int32{
-	"SCCONTRACT_CODE_WASM":  int32(SCCONTRACT_CODE_WASM),
-	"SCCONTRACT_CODE_TOKEN": int32(SCCONTRACT_CODE_TOKEN),
+	"SCCONTRACT_CODE_WASM_REF": int32(SCCONTRACT_CODE_WASM_REF),
+	"SCCONTRACT_CODE_TOKEN":    int32(SCCONTRACT_CODE_TOKEN),
 }
 
 func (SCContractCodeType) XdrEnumNames() map[int32]string {
@@ -25998,31 +26542,31 @@ type XdrType_SCContractCodeType = *SCContractCodeType
 func XDR_SCContractCodeType(v *SCContractCodeType) *SCContractCodeType { return v }
 
 var _XdrTags_SCContractCode = map[int32]bool{
-	XdrToI32(SCCONTRACT_CODE_WASM):  true,
-	XdrToI32(SCCONTRACT_CODE_TOKEN): true,
+	XdrToI32(SCCONTRACT_CODE_WASM_REF): true,
+	XdrToI32(SCCONTRACT_CODE_TOKEN):    true,
 }
 
 func (_ SCContractCode) XdrValidTags() map[int32]bool {
 	return _XdrTags_SCContractCode
 }
-func (u *SCContractCode) Wasm() *[]byte {
+func (u *SCContractCode) Wasm_id() *Hash {
 	switch u.Type {
-	case SCCONTRACT_CODE_WASM:
-		if v, ok := u._u.(*[]byte); ok {
+	case SCCONTRACT_CODE_WASM_REF:
+		if v, ok := u._u.(*Hash); ok {
 			return v
 		} else {
-			var zero []byte
+			var zero Hash
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("SCContractCode.Wasm accessed when Type == %v", u.Type)
+		XdrPanic("SCContractCode.Wasm_id accessed when Type == %v", u.Type)
 		return nil
 	}
 }
 func (u SCContractCode) XdrValid() bool {
 	switch u.Type {
-	case SCCONTRACT_CODE_WASM, SCCONTRACT_CODE_TOKEN:
+	case SCCONTRACT_CODE_WASM_REF, SCCONTRACT_CODE_TOKEN:
 		return true
 	}
 	return false
@@ -26035,8 +26579,8 @@ func (u *SCContractCode) XdrUnionTagName() string {
 }
 func (u *SCContractCode) XdrUnionBody() XdrType {
 	switch u.Type {
-	case SCCONTRACT_CODE_WASM:
-		return XdrVecOpaque{u.Wasm(), SCVAL_LIMIT}
+	case SCCONTRACT_CODE_WASM_REF:
+		return XDR_Hash(u.Wasm_id())
 	case SCCONTRACT_CODE_TOKEN:
 		return nil
 	}
@@ -26044,8 +26588,8 @@ func (u *SCContractCode) XdrUnionBody() XdrType {
 }
 func (u *SCContractCode) XdrUnionBodyName() string {
 	switch u.Type {
-	case SCCONTRACT_CODE_WASM:
-		return "Wasm"
+	case SCCONTRACT_CODE_WASM_REF:
+		return "Wasm_id"
 	case SCCONTRACT_CODE_TOKEN:
 		return ""
 	}
@@ -26064,8 +26608,8 @@ func (u *SCContractCode) XdrRecurse(x XDR, name string) {
 	}
 	XDR_SCContractCodeType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
-	case SCCONTRACT_CODE_WASM:
-		x.Marshal(x.Sprintf("%swasm", name), XdrVecOpaque{u.Wasm(), SCVAL_LIMIT})
+	case SCCONTRACT_CODE_WASM_REF:
+		x.Marshal(x.Sprintf("%swasm_id", name), XDR_Hash(u.Wasm_id()))
 		return
 	case SCCONTRACT_CODE_TOKEN:
 		return
@@ -26074,13 +26618,29 @@ func (u *SCContractCode) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCContractCode(v *SCContractCode) *SCContractCode { return v }
 
+type XdrType_Int128Parts = *Int128Parts
+
+func (v *Int128Parts) XdrPointer() interface{}       { return v }
+func (Int128Parts) XdrTypeName() string              { return "Int128Parts" }
+func (v Int128Parts) XdrValue() interface{}          { return v }
+func (v *Int128Parts) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *Int128Parts) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%slo", name), XDR_Uint64(&v.Lo))
+	x.Marshal(x.Sprintf("%shi", name), XDR_Uint64(&v.Hi))
+}
+func XDR_Int128Parts(v *Int128Parts) *Int128Parts { return v }
+
 var _XdrTags_SCObject = map[int32]bool{
 	XdrToI32(SCO_VEC):           true,
 	XdrToI32(SCO_MAP):           true,
 	XdrToI32(SCO_U64):           true,
 	XdrToI32(SCO_I64):           true,
+	XdrToI32(SCO_U128):          true,
+	XdrToI32(SCO_I128):          true,
 	XdrToI32(SCO_BYTES):         true,
-	XdrToI32(SCO_BIG_INT):       true,
 	XdrToI32(SCO_CONTRACT_CODE): true,
 	XdrToI32(SCO_ACCOUNT_ID):    true,
 }
@@ -26148,6 +26708,36 @@ func (u *SCObject) I64() *Int64 {
 		return nil
 	}
 }
+func (u *SCObject) U128() *Int128Parts {
+	switch u.Type {
+	case SCO_U128:
+		if v, ok := u._u.(*Int128Parts); ok {
+			return v
+		} else {
+			var zero Int128Parts
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCObject.U128 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCObject) I128() *Int128Parts {
+	switch u.Type {
+	case SCO_I128:
+		if v, ok := u._u.(*Int128Parts); ok {
+			return v
+		} else {
+			var zero Int128Parts
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCObject.I128 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u *SCObject) Bin() *[]byte {
 	switch u.Type {
 	case SCO_BYTES:
@@ -26160,21 +26750,6 @@ func (u *SCObject) Bin() *[]byte {
 		}
 	default:
 		XdrPanic("SCObject.Bin accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCObject) BigInt() *SCBigInt {
-	switch u.Type {
-	case SCO_BIG_INT:
-		if v, ok := u._u.(*SCBigInt); ok {
-			return v
-		} else {
-			var zero SCBigInt
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCObject.BigInt accessed when Type == %v", u.Type)
 		return nil
 	}
 }
@@ -26210,7 +26785,7 @@ func (u *SCObject) AccountID() *AccountID {
 }
 func (u SCObject) XdrValid() bool {
 	switch u.Type {
-	case SCO_VEC, SCO_MAP, SCO_U64, SCO_I64, SCO_BYTES, SCO_BIG_INT, SCO_CONTRACT_CODE, SCO_ACCOUNT_ID:
+	case SCO_VEC, SCO_MAP, SCO_U64, SCO_I64, SCO_U128, SCO_I128, SCO_BYTES, SCO_CONTRACT_CODE, SCO_ACCOUNT_ID:
 		return true
 	}
 	return false
@@ -26231,10 +26806,12 @@ func (u *SCObject) XdrUnionBody() XdrType {
 		return XDR_Uint64(u.U64())
 	case SCO_I64:
 		return XDR_Int64(u.I64())
+	case SCO_U128:
+		return XDR_Int128Parts(u.U128())
+	case SCO_I128:
+		return XDR_Int128Parts(u.I128())
 	case SCO_BYTES:
 		return XdrVecOpaque{u.Bin(), SCVAL_LIMIT}
-	case SCO_BIG_INT:
-		return XDR_SCBigInt(u.BigInt())
 	case SCO_CONTRACT_CODE:
 		return XDR_SCContractCode(u.ContractCode())
 	case SCO_ACCOUNT_ID:
@@ -26252,10 +26829,12 @@ func (u *SCObject) XdrUnionBodyName() string {
 		return "U64"
 	case SCO_I64:
 		return "I64"
+	case SCO_U128:
+		return "U128"
+	case SCO_I128:
+		return "I128"
 	case SCO_BYTES:
 		return "Bin"
-	case SCO_BIG_INT:
-		return "BigInt"
 	case SCO_CONTRACT_CODE:
 		return "ContractCode"
 	case SCO_ACCOUNT_ID:
@@ -26288,11 +26867,14 @@ func (u *SCObject) XdrRecurse(x XDR, name string) {
 	case SCO_I64:
 		x.Marshal(x.Sprintf("%si64", name), XDR_Int64(u.I64()))
 		return
+	case SCO_U128:
+		x.Marshal(x.Sprintf("%su128", name), XDR_Int128Parts(u.U128()))
+		return
+	case SCO_I128:
+		x.Marshal(x.Sprintf("%si128", name), XDR_Int128Parts(u.I128()))
+		return
 	case SCO_BYTES:
 		x.Marshal(x.Sprintf("%sbin", name), XdrVecOpaque{u.Bin(), SCVAL_LIMIT})
-		return
-	case SCO_BIG_INT:
-		x.Marshal(x.Sprintf("%sbigInt", name), XDR_SCBigInt(u.BigInt()))
 		return
 	case SCO_CONTRACT_CODE:
 		x.Marshal(x.Sprintf("%scontractCode", name), XDR_SCContractCode(u.ContractCode()))

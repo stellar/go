@@ -7,7 +7,6 @@ import (
 
 type InvokeHostFunction struct {
 	Function      xdr.HostFunction
-	Parameters    xdr.ScVec
 	Footprint     xdr.LedgerFootprint
 	SourceAccount string
 }
@@ -16,9 +15,8 @@ func (f *InvokeHostFunction) BuildXDR() (xdr.Operation, error) {
 
 	opType := xdr.OperationTypeInvokeHostFunction
 	xdrOp := xdr.InvokeHostFunctionOp{
-		Function:   f.Function,
-		Parameters: f.Parameters,
-		Footprint:  f.Footprint,
+		Function:  f.Function,
+		Footprint: f.Footprint,
 	}
 
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -41,7 +39,6 @@ func (f *InvokeHostFunction) FromXDR(xdrOp xdr.Operation) error {
 	f.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	f.Footprint = result.Footprint
 	f.Function = result.Function
-	f.Parameters = result.Parameters
 
 	return nil
 }

@@ -45,6 +45,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustContractData()
 		r := other.MustContractData()
 		return l.ContractId == r.ContractId && l.Key.Equals(r.Key)
+	case LedgerEntryTypeContractCode:
+		l := key.MustContractCode()
+		r := other.MustContractCode()
+		return l.Hash == r.Hash
 	case LedgerEntryTypeClaimableBalance:
 		l := key.MustClaimableBalance()
 		r := other.MustClaimableBalance()
@@ -162,6 +166,9 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		return err
 	case LedgerEntryTypeContractData:
 		_, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:])
+		return err
+	case LedgerEntryTypeContractCode:
+		_, err := e.xdrEncoderBuf.Write(key.ContractCode.Hash[:])
 		return err
 	case LedgerEntryTypeConfigSetting:
 		return key.ConfigSetting.ConfigSettingId.EncodeTo(e.encoder)

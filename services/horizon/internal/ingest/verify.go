@@ -193,7 +193,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			case xdr.LedgerEntryTypeLiquidityPool:
 				lPools = append(lPools, key.LiquidityPool.LiquidityPoolId)
 				totalByType["liquidity_pools"]++
-			case xdr.LedgerEntryTypeContractData, xdr.LedgerEntryTypeConfigSetting:
+			case xdr.LedgerEntryTypeContractData, xdr.LedgerEntryTypeContractCode, xdr.LedgerEntryTypeConfigSetting:
 				// Won't be persisting protocol 20 ContractData ledger entries to history db, therefore must not allow it
 				// to be counted in history state-verififier accumulators.
 				continue

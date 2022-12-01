@@ -2,19 +2,8 @@ package xdr
 
 import "bytes"
 
-func (s ScBigInt) Equals(o ScBigInt) bool {
-	if s.Sign != o.Sign {
-		return false
-	}
-
-	switch s.Sign {
-	case ScNumSignZero:
-		return true
-	case ScNumSignNegative, ScNumSignPositive:
-		return bytes.Equal(s.MustMagnitude(), o.MustMagnitude())
-	default:
-		panic("unknown Sign type: " + s.Sign.String())
-	}
+func (s Int128Parts) Equals(o Int128Parts) bool {
+	return s.Lo == o.Lo && s.Hi == o.Hi
 }
 
 func (s ScContractCode) Equals(o ScContractCode) bool {
@@ -24,8 +13,8 @@ func (s ScContractCode) Equals(o ScContractCode) bool {
 	switch s.Type {
 	case ScContractCodeTypeSccontractCodeToken:
 		return true
-	case ScContractCodeTypeSccontractCodeWasm:
-		return bytes.Equal(s.MustWasm(), o.MustWasm())
+	case ScContractCodeTypeSccontractCodeWasmRef:
+		return s.MustWasmId().Equals(o.MustWasmId())
 	default:
 		panic("unknown ScContractCode type: " + s.Type.String())
 	}
@@ -47,8 +36,10 @@ func (s *ScObject) Equals(o *ScObject) bool {
 	case ScObjectTypeScoAccountId:
 		aid := s.MustAccountId()
 		return aid.Equals(o.MustAccountId())
-	case ScObjectTypeScoBigInt:
-		return s.MustBigInt().Equals(o.MustBigInt())
+	case ScObjectTypeScoU128:
+		return s.MustU128().Equals(o.MustU128())
+	case ScObjectTypeScoI128:
+		return s.MustI128().Equals(o.MustI128())
 	case ScObjectTypeScoBytes:
 		return bytes.Equal(s.MustBin(), o.MustBin())
 	case ScObjectTypeScoMap:

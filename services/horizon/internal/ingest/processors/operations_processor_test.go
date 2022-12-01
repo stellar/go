@@ -91,7 +91,10 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
-	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	sourceAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
+	source := xdr.MustMuxedAddress(sourceAddress)
+	sourceAccountId := source.ToAccountId()
+	sourcePublicKey := sourceAccountId.Ed25519
 
 	contractParamVal1 := xdr.ScSymbol("func1")
 	contractParamVal2 := xdr.Int32(-5)
@@ -116,73 +119,182 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		},
 	}
 
-	wrapper := transactionOperationWrapper{
-		transaction: tx,
-		operation: xdr.Operation{
-			SourceAccount: &source,
-			Body: xdr.OperationBody{
-				Type: xdr.OperationTypeInvokeHostFunction,
-				InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-					Function: xdr.HostFunctionHostFnInvokeContract,
-					Parameters: []xdr.ScVal{
-						{
-							Type: xdr.ScValTypeScvSymbol,
-							Sym:  &contractParamVal1,
+	s.T().Run("InvokeContract", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						Function: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeArgs: &xdr.ScVec{
+								{
+									Type: xdr.ScValTypeScvSymbol,
+									Sym:  &contractParamVal1,
+								},
+								{
+									Type: xdr.ScValTypeScvI32,
+									I32:  &contractParamVal2,
+								},
+								{
+									Type: xdr.ScValTypeScvU32,
+									U32:  &contractParamVal3,
+								},
+								{
+									Type: xdr.ScValTypeScvBitset,
+									Bits: &contractParamVal4,
+								},
+								{
+									Type: xdr.ScValTypeScvObject,
+									Obj:  &contractParamVal5Addr,
+								},
+								{
+									Type: xdr.ScValTypeScvStatic,
+									Ic:   &contractParamVal6,
+								},
+								{
+									// invalid ScVal
+									Type: 5555,
+								},
+							},
 						},
-						{
-							Type: xdr.ScValTypeScvI32,
-							I32:  &contractParamVal2,
-						},
-						{
-							Type: xdr.ScValTypeScvU32,
-							U32:  &contractParamVal3,
-						},
-						{
-							Type: xdr.ScValTypeScvBitset,
-							Bits: &contractParamVal4,
-						},
-						{
-							Type: xdr.ScValTypeScvObject,
-							Obj:  &contractParamVal5Addr,
-						},
-						{
-							Type: xdr.ScValTypeScvStatic,
-							Ic:   &contractParamVal6,
-						},
-						{
-							// invalid ScVal
-							Type: 5555,
-						},
-					},
-					Footprint: xdr.LedgerFootprint{
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type:    xdr.LedgerEntryTypeAccount,
-								Account: &ledgerKeyAccount,
+						Footprint: xdr.LedgerFootprint{
+							ReadOnly: []xdr.LedgerKey{
+								{
+									Type:    xdr.LedgerEntryTypeAccount,
+									Account: &ledgerKeyAccount,
+								},
 							},
 						},
 					},
 				},
 			},
-		},
-	}
+		}
 
-	details, err := wrapper.Details()
-	s.Assert().NoError(err)
-	s.Assert().Equal(details["function"].(string), "HostFunctionHostFnInvokeContract")
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["function"].(string), "HostFunctionTypeHostFunctionTypeInvokeContract")
 
-	raw, err := wrapper.operation.Body.InvokeHostFunctionOp.Footprint.MarshalBinary()
-	s.Assert().NoError(err)
-	s.Assert().Equal(details["footprint"].(string), base64.StdEncoding.EncodeToString(raw))
+		raw, err := wrapper.operation.Body.InvokeHostFunctionOp.Footprint.MarshalBinary()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["footprint"].(string), base64.StdEncoding.EncodeToString(raw))
 
-	serializedParams := details["parameters"].([]map[string]string)
-	s.assertInvokeHostFunctionParameter(serializedParams, 0, "Sym", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[0])
-	s.assertInvokeHostFunctionParameter(serializedParams, 1, "I32", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[1])
-	s.assertInvokeHostFunctionParameter(serializedParams, 2, "U32", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[2])
-	s.assertInvokeHostFunctionParameter(serializedParams, 3, "Bits", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[3])
-	s.assertInvokeHostFunctionParameter(serializedParams, 4, "Obj", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[4])
-	s.assertInvokeHostFunctionParameter(serializedParams, 5, "Ic", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[5])
-	s.assertInvokeHostFunctionParameter(serializedParams, 6, "n/a", wrapper.operation.Body.InvokeHostFunctionOp.Parameters[6])
+		serializedParams := details["parameters"].([]map[string]string)
+		var args []xdr.ScVal = *(wrapper.operation.Body.InvokeHostFunctionOp.Function.InvokeArgs)
+		s.assertInvokeHostFunctionParameter(serializedParams, 0, "Sym", args[0])
+		s.assertInvokeHostFunctionParameter(serializedParams, 1, "I32", args[1])
+		s.assertInvokeHostFunctionParameter(serializedParams, 2, "U32", args[2])
+		s.assertInvokeHostFunctionParameter(serializedParams, 3, "Bits", args[3])
+		s.assertInvokeHostFunctionParameter(serializedParams, 4, "Obj", args[4])
+		s.assertInvokeHostFunctionParameter(serializedParams, 5, "Ic", args[5])
+		s.assertInvokeHostFunctionParameter(serializedParams, 6, "n/a", args[6])
+	})
+
+	s.T().Run("CreateContract", func(t *testing.T) {
+		signature := xdr.Signature{
+			0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 5, 6, 7, 8,
+		}
+		signatureXdr, err := xdr.MarshalBase64(signature)
+		s.Assert().NoError(err)
+		salt := xdr.Uint256{
+			0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 1, 2, 3, 4,
+		}
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						Function: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+							CreateContractArgs: &xdr.CreateContractArgs{
+								ContractId: xdr.ContractId{
+									Type: xdr.ContractIdTypeContractIdFromEd25519PublicKey,
+									FromEd25519PublicKey: &xdr.ContractIdFromEd25519PublicKey{
+										Key:       *sourcePublicKey,
+										Signature: signature,
+										Salt:      salt,
+									},
+								},
+								Source: xdr.ScContractCode{
+									Type: xdr.ScContractCodeTypeSccontractCodeToken,
+								},
+							},
+						},
+						Footprint: xdr.LedgerFootprint{
+							ReadOnly: []xdr.LedgerKey{
+								{
+									Type:    xdr.LedgerEntryTypeAccount,
+									Account: &ledgerKeyAccount,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["function"].(string), "HostFunctionTypeHostFunctionTypeCreateContract")
+
+		raw, err := wrapper.operation.Body.InvokeHostFunctionOp.Footprint.MarshalBinary()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["footprint"].(string), base64.StdEncoding.EncodeToString(raw))
+
+		s.Assert().Equal(details["type"].(string), "ContractIdTypeContractIdFromEd25519PublicKey")
+		s.Assert().Equal(details["key"].(string), sourceAddress)
+		s.Assert().Equal(details["signature"].(string), signatureXdr)
+		s.Assert().Equal(details["salt"].(string), "16909060")
+	})
+
+	s.T().Run("InstallContractCode", func(t *testing.T) {
+		code := []byte("Some contract code")
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						Function: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeInstallContractCode,
+							InstallContractCodeArgs: &xdr.InstallContractCodeArgs{
+								Code: code,
+							},
+						},
+						Footprint: xdr.LedgerFootprint{
+							ReadOnly: []xdr.LedgerKey{
+								{
+									Type:    xdr.LedgerEntryTypeAccount,
+									Account: &ledgerKeyAccount,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["function"].(string), "HostFunctionTypeHostFunctionTypeInstallContractCode")
+
+		raw, err := wrapper.operation.Body.InvokeHostFunctionOp.Footprint.MarshalBinary()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["footprint"].(string), base64.StdEncoding.EncodeToString(raw))
+
+		s.Assert().Equal(details["code"].(string), base64.StdEncoding.EncodeToString(code))
+	})
 }
 
 func (s *OperationsProcessorTestSuiteLedger) assertInvokeHostFunctionParameter(parameters []map[string]string, paramPosition int, expectedType string, expectedVal xdr.ScVal) {

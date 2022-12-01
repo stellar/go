@@ -195,7 +195,7 @@ func TestLedgerKeyBinaryCompress(t *testing.T) {
 					ConfigSettingId: ConfigSettingIdConfigSettingContractMaxSize,
 				},
 			},
-			expectedOut: []byte{0x7, 0x0, 0x0, 0x0, 0x0},
+			expectedOut: []byte{0x8, 0x0, 0x0, 0x0, 0x0},
 		},
 	} {
 		b, err := e.LedgerKeyUnsafeMarshalBinaryCompress(tc.key)

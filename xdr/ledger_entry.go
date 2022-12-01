@@ -46,6 +46,11 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 			ContractId: contractData.ContractId,
 			Key:        contractData.Key,
 		}
+	case LedgerEntryTypeContractCode:
+		contractCode := entry.Data.MustContractCode()
+		body = LedgerKeyContractCode{
+			Hash: contractCode.Hash,
+		}
 	case LedgerEntryTypeConfigSetting:
 		configSetting := entry.Data.MustConfigSetting()
 		body = LedgerKeyConfigSetting{
