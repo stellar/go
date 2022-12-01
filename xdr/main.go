@@ -4,6 +4,7 @@ package xdr
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -14,6 +15,13 @@ import (
 	xdr "github.com/stellar/go-xdr/xdr3"
 	"github.com/stellar/go/support/errors"
 )
+
+// CommitHash is the commit hash that was used to generate the xdr in this folder.
+// During the process of updating the XDR, the text file below is being updated.
+// Then, during compile time, the file content are being embedded into the given string.
+//
+//go:embed xdr_commit_generated.txt
+var CommitHash string
 
 // Keyer represents a type that can be converted into a LedgerKey
 type Keyer interface {
