@@ -15,6 +15,10 @@ type edgeSet []edge
 type edge struct {
 	key   int32
 	value Venues
+
+	// reallocate is set to true when some offers were removed from the edge.
+	// See edgeSet.reallocate() godoc for more information.
+	reallocate bool
 }
 
 func (e edgeSet) find(key int32) int {
@@ -85,6 +89,7 @@ func (e edgeSet) removeOffer(key int32, offerID xdr.Int64) (edgeSet, bool) {
 		return slices.Delete(e, i, i+1), true
 	}
 	e[i].value.offers = updatedOffers
+	e[i].reallocate = true
 	return e, true
 }
 
@@ -100,4 +105,19 @@ func (e edgeSet) removePool(key int32) edgeSet {
 
 	e[i].value = Venues{offers: e[i].value.offers}
 	return e
+}
+
+// reallocate recreates offers slice when edge.reallocate is set to true and
+// this is true after an offer is removed.
+// Without periodic reallocations an arbitrary account could create 1000s of
+// offers in an orderbook, then remove them but the space occupied by these
+// offers would not be released by GC because an array used internally is
+// the same. This can lead to DoS attack by OOM.
+func (e edgeSet) reallocate() {
+	for i := 0; i < len(e); i++ {
+		if e[i].reallocate {
+			e[i].value.offers = append([]xdr.OfferEntry(nil), e[i].value.offers[:]...)
+			e[i].reallocate = false
+		}
+	}
 }
