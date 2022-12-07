@@ -9,7 +9,7 @@ jobs:
   complete:
     if: always()
     needs: [check, build, test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
       run: exit 1
@@ -17,8 +17,8 @@ jobs:
   check:
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        go: [1.19]
+        os: [ubuntu-20.04]
+        go: [1.19.4]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -37,8 +37,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        go: [1.18.6, 1.19]
+        os: [ubuntu-20.04]
+        go: [1.18.6, 1.19.4]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -55,8 +55,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        go: [1.18.6, 1.19]
+        os: [ubuntu-20.04]
+        go: [1.18.6, 1.19.4]
         pg: [9.6.5, 10]
     runs-on: ${{ matrix.os }}
     services:

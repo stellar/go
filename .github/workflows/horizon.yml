@@ -11,8 +11,8 @@ jobs:
     name: Integration tests
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        go: [1.18.6, 1.19]
+        os: [ubuntu-20.04]
+        go: [1.18.6, 1.19.4]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
         protocol-version: [18, 19]
@@ -108,7 +108,7 @@ jobs:
 
   verify-range:
     name: Test (and push) verify-range image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       STELLAR_CORE_VERSION: 19.5.0-1108.ca2fb0605.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
