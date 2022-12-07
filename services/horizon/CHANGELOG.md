@@ -6,6 +6,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## 2.23.1
+
+### Changes
+
+- Bump Go to the latest version, including net/http security fixes.
+
 ## 2.23.0
 
 **Upgrading to this version will trigger a state rebuild. During this process, Horizon will not ingest new ledgers.**
