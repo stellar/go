@@ -2,24 +2,42 @@ package orderbook
 
 import (
 	"math"
+	"math/big"
+	"math/rand"
 	"testing"
 
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLiquidityPoolExchanges(t *testing.T) {
+	graph := NewOrderBookGraph()
+	for _, poolEntry := range []xdr.LiquidityPoolEntry{
+		eurUsdLiquidityPool,
+		eurYenLiquidityPool,
+		nativeUsdPool,
+		usdChfLiquidityPool,
+	} {
+		params := poolEntry.Body.MustConstantProduct().Params
+		graph.getOrCreateAssetID(params.AssetA)
+		graph.getOrCreateAssetID(params.AssetB)
+	}
 	t.Run("happy path", func(t *testing.T) {
-		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeDeposit, 500)
+		for _, assetXDR := range []xdr.Asset{usdAsset, eurAsset} {
+			pool := graph.poolFromEntry(eurUsdLiquidityPool)
+			asset := graph.getOrCreateAssetID(assetXDR)
+			payout, err := makeTrade(pool, asset, tradeTypeDeposit, 500)
 			assert.NoError(t, err)
 			assert.EqualValues(t, 332, int64(payout))
 			// reserves would now be: 668 of A, 1500 of B
 			// note pool object is unchanged so looping is safe
 		}
 
-		for _, asset := range []xdr.Asset{usdAsset, eurAsset} {
-			payout, err := makeTrade(eurUsdLiquidityPool, asset, tradeTypeExpectation, 332)
+		for _, assetXDR := range []xdr.Asset{usdAsset, eurAsset} {
+			pool := graph.poolFromEntry(eurUsdLiquidityPool)
+			asset := graph.getOrCreateAssetID(assetXDR)
+			payout, err := makeTrade(pool, asset, tradeTypeExpectation, 332)
 			assert.NoError(t, err)
 			assert.EqualValues(t, 499, int64(payout))
 		}
@@ -43,13 +61,14 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 		}
 
 		for _, test := range testTable {
-			needed, err := makeTrade(test.pool, test.dstAsset,
-				tradeTypeExpectation, test.expectedPayout)
+			pool := graph.poolFromEntry(test.pool)
+			asset := graph.getOrCreateAssetID(test.dstAsset)
+			needed, err := makeTrade(pool, asset, tradeTypeExpectation, test.expectedPayout)
 
 			assert.NoError(t, err)
 			assert.EqualValuesf(t, test.expectedInput, needed,
 				"expected exchange of %d %s -> %d %s, got %d",
-				test.expectedInput, getCode(getOtherAsset(test.dstAsset, test.pool)),
+				test.expectedInput, graph.idToAssetString[getOtherAsset(asset, pool)],
 				test.expectedPayout, getCode(test.dstAsset),
 				needed)
 		}
@@ -58,7 +77,10 @@ func TestLiquidityPoolExchanges(t *testing.T) {
 	t.Run("fail on bad exchange amounts", func(t *testing.T) {
 		badValues := []xdr.Int64{math.MaxInt64, math.MaxInt64 - 99, 0, -100}
 		for _, badValue := range badValues {
-			_, err := makeTrade(eurUsdLiquidityPool, usdAsset, tradeTypeDeposit, badValue)
+			pool := graph.poolFromEntry(eurUsdLiquidityPool)
+			asset := graph.getOrCreateAssetID(usdAsset)
+
+			_, err := makeTrade(pool, asset, tradeTypeDeposit, badValue)
 			assert.Error(t, err)
 		}
 	})
@@ -147,6 +169,25 @@ func TestLiquidityPoolMath(t *testing.T) {
 		// ceil(10000 / 0.997) = 10031 we need to receive 10000.
 		assertPoolExchange(t, recv, 10000, -1, 20000, 10000, 30, true, 10031, -1)
 	})
+
+	t.Run("Potential Internal Overflow", func(t *testing.T) {
+
+		// Test for internal uint128 underflow/overflow in CalculatePoolPayout() and  CalculatePoolExpectation() by providing
+		// input values which cause the maximum internal calculations
+
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, 0, 0)
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, false, 0, 0)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 0, false, 0, 0)
+
+		// Check with reserveB < disbursed
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, 0, 1, 0, false, 0, 0)
+
+		// Check with poolFeeBips > 10000
+		assertPoolExchange(t, send, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, 10001, false, 0, 0)
+		assertPoolExchange(t, recv, math.MaxInt64, math.MaxInt64, math.MaxInt64, 0, 10010, false, 0, 0)
+
+		assertPoolExchange(t, send, 92017260901926686, 9157376027422527, 4000000000000000000, 30, 1, false, 0, 0)
+	})
 }
 
 // assertPoolExchange validates that pool inputs match their expected outputs.
@@ -162,14 +203,14 @@ func assertPoolExchange(t *testing.T,
 
 	switch exchangeType {
 	case tradeTypeDeposit:
-		fromPool, ok = calculatePoolPayout(
+		fromPool, _, ok = CalculatePoolPayout(
 			reservesBeingDeposited, reservesBeingDisbursed,
-			deposited, poolFeeBips)
+			deposited, poolFeeBips, false)
 
 	case tradeTypeExpectation:
-		toPool, ok = calculatePoolExpectation(
+		toPool, _, ok = CalculatePoolExpectation(
 			reservesBeingDeposited, reservesBeingDisbursed,
-			disbursed, poolFeeBips)
+			disbursed, poolFeeBips, false)
 
 	default:
 		t.FailNow()
@@ -179,4 +220,218 @@ func assertPoolExchange(t *testing.T,
 		assert.EqualValues(t, expectedDisbursed, fromPool, "wrong payout")
 		assert.EqualValues(t, expectedDeposited, toPool, "wrong expectation")
 	}
+}
+
+func TestCalculatePoolExpectations(t *testing.T) {
+	for i := 0; i < 1000000; i++ {
+		reserveA := xdr.Int64(rand.Int63())
+		reserveB := xdr.Int64(rand.Int63())
+		disbursed := xdr.Int64(rand.Int63())
+
+		result, roundingSlippage, ok := calculatePoolExpectationBig(reserveA, reserveB, disbursed, 30)
+		result1, roundingSlippage1, ok1 := CalculatePoolExpectation(reserveA, reserveB, disbursed, 30, true)
+		if assert.Equal(t, ok, ok1) {
+			assert.Equal(t, result, result1)
+			assert.Equal(t, roundingSlippage, roundingSlippage1)
+		}
+	}
+}
+
+func TestCalculatePoolExpectationsRoundingSlippage(t *testing.T) {
+	t.Run("big", func(t *testing.T) {
+		reserveA := xdr.Int64(3740000000)
+		reserveB := xdr.Int64(162020000000)
+		disbursed := xdr.Int64(1)
+
+		result, roundingSlippage, ok := CalculatePoolExpectation(reserveA, reserveB, disbursed, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(1), result)
+		assert.Equal(t, xdr.Int64(4229), roundingSlippage)
+	})
+
+	t.Run("small", func(t *testing.T) {
+		reserveA := xdr.Int64(200)
+		reserveB := xdr.Int64(400)
+		disbursed := xdr.Int64(20)
+
+		result, roundingSlippage, ok := CalculatePoolExpectation(reserveA, reserveB, disbursed, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(11), result)
+		assert.Equal(t, xdr.Int64(4), roundingSlippage)
+	})
+
+	t.Run("very small", func(t *testing.T) {
+		reserveA := xdr.Int64(200)
+		reserveB := xdr.Int64(400)
+		disbursed := xdr.Int64(50)
+
+		result, roundingSlippage, ok := CalculatePoolExpectation(reserveA, reserveB, disbursed, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(29), result)
+		assert.Equal(t, xdr.Int64(1), roundingSlippage)
+	})
+}
+
+func TestCalculatePoolPayout(t *testing.T) {
+	for i := 0; i < 1000000; i++ {
+		reserveA := xdr.Int64(rand.Int63())
+		reserveB := xdr.Int64(rand.Int63())
+		received := xdr.Int64(rand.Int63())
+
+		result, roundingSlippage, ok := calculatePoolPayoutBig(reserveA, reserveB, received, 30)
+		result1, roundingSlippage1, ok1 := CalculatePoolPayout(reserveA, reserveB, received, 30, true)
+		if assert.Equal(t, ok, ok1) {
+			assert.Equal(t, result, result1)
+			assert.Equal(t, roundingSlippage, roundingSlippage1)
+		}
+	}
+}
+
+func TestCalculatePoolPayoutRoundingSlippage(t *testing.T) {
+	t.Run("max", func(t *testing.T) {
+		reserveA := xdr.Int64(162020000000)
+		reserveB := xdr.Int64(3740000000)
+		received := xdr.Int64(1)
+
+		result, roundingSlippage, ok := CalculatePoolPayout(reserveA, reserveB, received, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(0), result)
+		assert.Equal(t, xdr.Int64(100), roundingSlippage)
+	})
+
+	t.Run("big", func(t *testing.T) {
+		reserveA := xdr.Int64(162020000000)
+		reserveB := xdr.Int64(3740000000)
+		received := xdr.Int64(2)
+
+		result, roundingSlippage, ok := CalculatePoolPayout(reserveA, reserveB, received, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(0), result)
+		assert.Equal(t, xdr.Int64(100), roundingSlippage)
+	})
+
+	t.Run("small", func(t *testing.T) {
+		reserveA := xdr.Int64(200)
+		reserveB := xdr.Int64(300)
+		received := xdr.Int64(1)
+
+		result, roundingSlippage, ok := CalculatePoolPayout(reserveA, reserveB, received, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(1), result)
+		assert.Equal(t, xdr.Int64(32), roundingSlippage)
+	})
+
+	t.Run("very small", func(t *testing.T) {
+		reserveA := xdr.Int64(200)
+		reserveB := xdr.Int64(210)
+		received := xdr.Int64(1)
+
+		result, roundingSlippage, ok := CalculatePoolPayout(reserveA, reserveB, received, 30, true)
+		require.True(t, ok)
+		assert.Equal(t, xdr.Int64(1), result)
+		assert.Equal(t, xdr.Int64(3), roundingSlippage)
+	})
+}
+
+// CalculatePoolPayout calculates the amount of `reserveB` disbursed from the
+// pool for a `received` amount of `reserveA` . From CAP-38:
+//
+//	y = floor[(1 - F) Yx / (X + x - Fx)]
+//
+// It returns false if the calculation overflows.
+func calculatePoolPayoutBig(reserveA, reserveB, received xdr.Int64, feeBips xdr.Int32) (xdr.Int64, xdr.Int64, bool) {
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, x := big.NewInt(int64(feeBips)), big.NewInt(int64(received))
+	S := new(big.Int) // Rounding Slippage
+
+	// would this deposit overflow the reserve?
+	if received > math.MaxInt64-reserveA {
+		return 0, 0, false
+	}
+
+	// We do all of the math in bips, so it's all upscaled by this value.
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
+
+	// right half: X + (1 - F)x
+	denom := X.Mul(X, maxBips).Add(X, new(big.Int).Mul(x, f))
+	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
+		return 0, 0, false
+	}
+
+	// left half, a: (1 - F) Yx
+	numer := Y.Mul(Y, x).Mul(Y, f)
+
+	// divide & check overflow
+	result, rem := new(big.Int), new(big.Int)
+	result.Div(numer, denom)
+	rem.Mod(numer, denom)
+
+	if rem.Cmp(big.NewInt(0)) > 0 {
+		// Recalculate with more precision
+		unrounded, rounded := new(big.Int), new(big.Int)
+		unrounded.Mul(numer, maxBips).Div(unrounded, denom)
+		rounded.Mul(result, maxBips)
+		S.Sub(unrounded, rounded)
+		S.Abs(S).Mul(S, maxBips)
+		S.Div(S, unrounded)
+		S.Div(S, big.NewInt(100))
+	}
+
+	i := xdr.Int64(result.Int64())
+	s := xdr.Int64(S.Int64())
+	ok := result.IsInt64() && i >= 0 && S.IsInt64() && s >= 0
+	return i, s, ok
+}
+
+// calculatePoolExpectation determines how much of `reserveA` you would need to
+// put into a pool to get the `disbursed` amount of `reserveB`.
+//
+//	x = ceil[Xy / ((Y - y)(1 - F))]
+//
+// It returns false if the calculation overflows.
+func calculatePoolExpectationBig(
+	reserveA, reserveB, disbursed xdr.Int64, feeBips xdr.Int32,
+) (xdr.Int64, xdr.Int64, bool) {
+	X, Y := big.NewInt(int64(reserveA)), big.NewInt(int64(reserveB))
+	F, y := big.NewInt(int64(feeBips)), big.NewInt(int64(disbursed))
+	S := new(big.Int) // Rounding Slippage
+
+	// sanity check: disbursing shouldn't underflow the reserve
+	if disbursed >= reserveB {
+		return 0, 0, false
+	}
+
+	// We do all of the math in bips, so it's all upscaled by this value.
+	maxBips := big.NewInt(10000)
+	f := new(big.Int).Sub(maxBips, F) // upscaled 1 - F
+
+	denom := Y.Sub(Y, y).Mul(Y, f)     // right half: (Y - y)(1 - F)
+	if denom.Cmp(big.NewInt(0)) == 0 { // avoid div-by-zero panic
+		return 0, 0, false
+	}
+
+	numer := X.Mul(X, y).Mul(X, maxBips) // left half: Xy
+
+	result, rem := new(big.Int), new(big.Int)
+	result.DivMod(numer, denom, rem)
+
+	// hacky way to ceil(): if there's a remainder, add 1
+	if rem.Cmp(big.NewInt(0)) > 0 {
+		result.Add(result, big.NewInt(1))
+
+		// Recalculate with more precision
+		unrounded, rounded := new(big.Int), new(big.Int)
+		unrounded.Mul(numer, maxBips).Div(unrounded, denom)
+		rounded.Mul(result, maxBips)
+		S.Sub(unrounded, rounded)
+		S.Abs(S).Mul(S, maxBips)
+		S.Div(S, unrounded)
+		S.Div(S, big.NewInt(100))
+	}
+
+	i := xdr.Int64(result.Int64())
+	s := xdr.Int64(S.Int64())
+	ok := result.IsInt64() && i >= 0 && S.IsInt64() && s >= 0
+	return i, s, ok
 }

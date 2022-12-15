@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -138,7 +139,7 @@ func stringsToKP(keys ...string) ([]*keypair.Full, error) {
 func concatHashX(signatures []xdr.DecoratedSignature, preimage []byte) ([]xdr.DecoratedSignature, error) {
 	if maxSize := xdr.Signature(preimage).XDRMaxSize(); len(preimage) > maxSize {
 		return nil, errors.Errorf(
-			"preimage cannnot be more than %d bytes", maxSize,
+			"preimage cannot be more than %d bytes", maxSize,
 		)
 	}
 	extended := make(
@@ -212,7 +213,7 @@ type Transaction struct {
 	sourceAccount SimpleAccount
 	operations    []Operation
 	memo          Memo
-	timebounds    Timebounds
+	preconditions Preconditions
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -241,8 +242,8 @@ func (t *Transaction) Memo() Memo {
 }
 
 // Timebounds returns the Timebounds configured for this transaction.
-func (t *Transaction) Timebounds() Timebounds {
-	return t.timebounds
+func (t *Transaction) Timebounds() TimeBounds {
+	return t.preconditions.TimeBounds
 }
 
 // Operations returns the list of operations included in this transaction.
@@ -321,6 +322,12 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	}
 
 	return t.clone(extendedSignatures), nil
+}
+
+// ClearSignatures returns a new Transaction instance which extends the current instance
+// with signatures removed.
+func (t *Transaction) ClearSignatures() (*Transaction, error) {
+	return t.clone(nil), nil
 }
 
 // AddSignatureDecorated returns a new Transaction instance which extends the current instance
@@ -519,6 +526,23 @@ func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, er
 	return t.clone(extendedSignatures), nil
 }
 
+// ClearSignatures returns a new Transaction instance which extends the current instance
+// with signatures removed.
+func (t *FeeBumpTransaction) ClearSignatures() (*FeeBumpTransaction, error) {
+	return t.clone(nil), nil
+}
+
+// AddSignatureDecorated returns a new FeeBumpTransaction instance which extends the current instance
+// with an additional decorated signature(s).
+func (t *FeeBumpTransaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*FeeBumpTransaction, error) {
+	extendedSignatures, err := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
+	if err != nil {
+		return nil, err
+	}
+
+	return t.clone(extendedSignatures), nil
+}
+
 // AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {
@@ -589,6 +613,18 @@ type GenericTransaction struct {
 	feeBump *FeeBumpTransaction
 }
 
+// NewGenericTransactionWithTransaction creates a GenericTransaction containing
+// a Transaction.
+func NewGenericTransactionWithTransaction(tx *Transaction) *GenericTransaction {
+	return &GenericTransaction{simple: tx}
+}
+
+// NewGenericTransactionWithFeeBumpTransaction creates a GenericTransaction
+// containing a FeeBumpTransaction.
+func NewGenericTransactionWithFeeBumpTransaction(feeBumpTx *FeeBumpTransaction) *GenericTransaction {
+	return &GenericTransaction{feeBump: feeBumpTx}
+}
+
 // Transaction unpacks the GenericTransaction instance into a Transaction.
 // The function also returns a boolean which is true if the GenericTransaction can be
 // unpacked into a Transaction.
@@ -601,6 +637,55 @@ func (t GenericTransaction) Transaction() (*Transaction, bool) {
 // can be unpacked into a FeeBumpTransaction.
 func (t GenericTransaction) FeeBump() (*FeeBumpTransaction, bool) {
 	return t.feeBump, t.feeBump != nil
+}
+
+// ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this
+// transaction. The envelope should not be modified because any changes applied
+// may affect the internals of the GenericTransaction.
+func (t *GenericTransaction) ToXDR() (xdr.TransactionEnvelope, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.envelope, nil
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.envelope, nil
+	}
+	return xdr.TransactionEnvelope{}, fmt.Errorf("unable to get xdr of empty GenericTransaction")
+}
+
+// Hash returns the network specific hash of this transaction
+// encoded as a byte array.
+func (t GenericTransaction) Hash(networkStr string) ([32]byte, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.Hash(networkStr)
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.Hash(networkStr)
+	}
+	return [32]byte{}, fmt.Errorf("unable to get hash of empty GenericTransaction")
+}
+
+// HashHex returns the network specific hash of this transaction
+// encoded as a hexadecimal string.
+func (t GenericTransaction) HashHex(network string) (string, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.HashHex(network)
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.HashHex(network)
+	}
+	return "", fmt.Errorf("unable to get hash of empty GenericTransaction")
+}
+
+// MarshalBinary returns the binary XDR representation of the transaction
+// envelope.
+func (t *GenericTransaction) MarshalBinary() ([]byte, error) {
+	if tx, ok := t.Transaction(); ok {
+		return tx.MarshalBinary()
+	}
+	if fbtx, ok := t.FeeBump(); ok {
+		return fbtx.MarshalBinary()
+	}
+	return nil, errors.New("unable to marshal empty GenericTransaction")
 }
 
 // MarshalText returns the base64 XDR representation of the transaction
@@ -626,33 +711,18 @@ func (t *GenericTransaction) UnmarshalText(b []byte) error {
 	return nil
 }
 
-type TransactionFromXDROption int
-
-const (
-	TransactionFromXDROptionEnableMuxedAccounts TransactionFromXDROption = iota
-)
-
-func areMuxedAccountsEnabled(options []TransactionFromXDROption) bool {
-	for _, opt := range options {
-		if opt == TransactionFromXDROptionEnableMuxedAccounts {
-			return true
-		}
-	}
-	return false
-}
-
 // TransactionFromXDR parses the supplied transaction envelope in base64 XDR
 // and returns a GenericTransaction instance.
-func TransactionFromXDR(txeB64 string, options ...TransactionFromXDROption) (*GenericTransaction, error) {
+func TransactionFromXDR(txeB64 string) (*GenericTransaction, error) {
 	var xdrEnv xdr.TransactionEnvelope
 	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to unmarshal transaction envelope")
 	}
-	return transactionFromParsedXDR(xdrEnv, areMuxedAccountsEnabled(options))
+	return transactionFromParsedXDR(xdrEnv)
 }
 
-func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts bool) (*GenericTransaction, error) {
+func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransaction, error) {
 	var err error
 	newTx := &GenericTransaction{}
 
@@ -661,18 +731,12 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 		innerTx, err = transactionFromParsedXDR(xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1:   xdrEnv.FeeBump.Tx.InnerTx.V1,
-		}, withMuxedAccounts)
+		})
 		if err != nil {
 			return newTx, errors.New("could not parse inner transaction")
 		}
-		var feeAccount string
-		if withMuxedAccounts {
-			feeBumpAccount := xdrEnv.FeeBumpAccount()
-			feeAccount = feeBumpAccount.Address()
-		} else {
-			feeBumpAccount := xdrEnv.FeeBumpAccount().ToAccountId()
-			feeAccount = feeBumpAccount.Address()
-		}
+		feeBumpAccount := xdrEnv.FeeBumpAccount()
+		feeAccount := feeBumpAccount.Address()
 
 		newTx.feeBump = &FeeBumpTransaction{
 			envelope: xdrEnv,
@@ -688,14 +752,8 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 
 		return newTx, nil
 	}
-	var accountID string
-	if withMuxedAccounts {
-		sourceAccount := xdrEnv.SourceAccount()
-		accountID = sourceAccount.Address()
-	} else {
-		sourceAccount := xdrEnv.SourceAccount().ToAccountId()
-		accountID = sourceAccount.Address()
-	}
+	sourceAccount := xdrEnv.SourceAccount()
+	accountID := sourceAccount.Address()
 
 	totalFee := int64(xdrEnv.Fee())
 	baseFee := totalFee
@@ -713,13 +771,9 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 		},
 		operations: nil,
 		memo:       nil,
-		timebounds: Timebounds{},
 	}
 
-	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
-		newTx.simple.timebounds = NewTimebounds(int64(timeBounds.MinTime), int64(timeBounds.MaxTime))
-	}
-
+	newTx.simple.preconditions.FromXDR(xdrEnv.Preconditions())
 	newTx.simple.memo, err = memoFromXDR(xdrEnv.Memo())
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse memo")
@@ -727,7 +781,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 
 	operations := xdrEnv.Operations()
 	for _, op := range operations {
-		newOp, err := operationFromXDR(op, withMuxedAccounts)
+		newOp, err := operationFromXDR(op)
 		if err != nil {
 			return nil, err
 		}
@@ -737,27 +791,25 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 	return newTx, nil
 }
 
-// TransactionParams is a container for parameters
-// which are used to construct new Transaction instances
+// TransactionParams is a container for parameters which are used to construct
+// new Transaction instances
 type TransactionParams struct {
 	SourceAccount        Account
 	IncrementSequenceNum bool
 	Operations           []Operation
 	BaseFee              int64
 	Memo                 Memo
-	Timebounds           Timebounds
-	EnableMuxedAccounts  bool
+	Preconditions        Preconditions
 }
 
 // NewTransaction returns a new Transaction instance
 func NewTransaction(params TransactionParams) (*Transaction, error) {
-	var sequence int64
-	var err error
-
 	if params.SourceAccount == nil {
 		return nil, errors.New("transaction has no source account")
 	}
 
+	var sequence int64
+	var err error
 	if params.IncrementSequenceNum {
 		sequence, err = params.SourceAccount.IncrementSequenceNumber()
 	} else {
@@ -773,23 +825,14 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 			AccountID: params.SourceAccount.GetAccountID(),
 			Sequence:  sequence,
 		},
-		operations: params.Operations,
-		memo:       params.Memo,
-		timebounds: params.Timebounds,
+		operations:    params.Operations,
+		memo:          params.Memo,
+		preconditions: params.Preconditions,
 	}
 	var sourceAccount xdr.MuxedAccount
-	if params.EnableMuxedAccounts {
-		if err = sourceAccount.SetAddress(tx.sourceAccount.AccountID); err != nil {
-			return nil, errors.Wrap(err, "account id is not valid")
-		}
-	} else {
-		accountID, err2 := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
-		if err2 != nil {
-			return nil, errors.Wrap(err2, "account id is not valid")
-		}
-		sourceAccount = accountID.ToMuxedAccount()
+	if err = sourceAccount.SetAddress(tx.sourceAccount.AccountID); err != nil {
+		return nil, errors.Wrap(err, "account id is not valid")
 	}
-
 	if tx.baseFee < 0 {
 		return nil, errors.Errorf("base fee cannot be negative")
 	}
@@ -803,14 +846,19 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	// if maxFee is negative then there must have been an int overflow
 	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Operations)))
 	if hi > 0 || lo > math.MaxUint32 {
-		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
+		return nil, errors.Errorf(
+			"base fee %d results in an overflow of max fee", params.BaseFee)
 	}
 	tx.maxFee = int64(lo)
 
-	// Check and set the timebounds
-	err = tx.timebounds.Validate()
+	// Check that all preconditions are valid
+	if err = tx.preconditions.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid preconditions")
+	}
+
+	precondXdr, err := tx.preconditions.BuildXDR()
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid time bounds")
+		return nil, errors.Wrap(err, "invalid preconditions")
 	}
 
 	envelope := xdr.TransactionEnvelope{
@@ -820,10 +868,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 				SourceAccount: sourceAccount,
 				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
-				TimeBounds: &xdr.TimeBounds{
-					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
-					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
-				},
+				Cond:          precondXdr,
 			},
 			Signatures: nil,
 		},
@@ -839,10 +884,10 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 
 	for _, op := range tx.operations {
-		if verr := op.Validate(params.EnableMuxedAccounts); verr != nil {
+		if verr := op.Validate(); verr != nil {
 			return nil, errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
 		}
-		xdrOperation, err2 := op.BuildXDR(params.EnableMuxedAccounts)
+		xdrOperation, err2 := op.BuildXDR()
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
@@ -856,10 +901,9 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 // FeeBumpTransactionParams is a container for parameters
 // which are used to construct new FeeBumpTransaction instances
 type FeeBumpTransactionParams struct {
-	Inner               *Transaction
-	FeeAccount          string
-	BaseFee             int64
-	EnableMuxedAccounts bool
+	Inner      *Transaction
+	FeeAccount string
+	BaseFee    int64
 }
 
 func convertToV1(tx *Transaction) (*Transaction, error) {
@@ -871,7 +915,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 		Operations:           tx.Operations(),
 		BaseFee:              tx.BaseFee(),
 		Memo:                 tx.Memo(),
-		Timebounds:           tx.Timebounds(),
+		Preconditions:        Preconditions{TimeBounds: tx.Timebounds()},
 	})
 	if err != nil {
 		return tx, err
@@ -931,17 +975,10 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	}
 
 	var feeSource xdr.MuxedAccount
-	if params.EnableMuxedAccounts {
-		if err := feeSource.SetAddress(tx.feeAccount); err != nil {
-			return tx, errors.Wrap(err, "fee account is not a valid address")
-		}
-	} else {
-		accountID, err := xdr.AddressToAccountId(tx.feeAccount)
-		if err != nil {
-			return tx, errors.Wrap(err, "fee account is not a valid address")
-		}
-		feeSource = accountID.ToMuxedAccount()
+	if err := feeSource.SetAddress(tx.feeAccount); err != nil {
+		return tx, errors.Wrap(err, "fee account is not a valid address")
 	}
+
 	tx.envelope = xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
 		FeeBump: &xdr.FeeBumpTransactionEnvelope{
@@ -1014,9 +1051,11 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 					Value:         []byte(webAuthDomain),
 				},
 			},
-			BaseFee:    MinBaseFee,
-			Memo:       nil,
-			Timebounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			BaseFee: MinBaseFee,
+			Memo:    nil,
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
 		},
 	)
 	if err != nil {
@@ -1198,11 +1237,11 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 // provided. If it does not match the function will return an error.
 //
 // Errors will be raised if:
-//  - The transaction is invalid according to ReadChallengeTx.
-//  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the
-//    server account or one of the signers provided in the arguments.
-//  - The signatures are all valid but do not meet the threshold.
+//   - The transaction is invalid according to ReadChallengeTx.
+//   - No client signatures are found on the transaction.
+//   - One or more signatures in the transaction are not identifiable as the
+//     server account or one of the signers provided in the arguments.
+//   - The signatures are all valid but do not meet the threshold.
 func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
@@ -1244,10 +1283,10 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDo
 // provided. If it does not match the function will return an error.
 //
 // Errors will be raised if:
-//  - The transaction is invalid according to ReadChallengeTx.
-//  - No client signatures are found on the transaction.
-//  - One or more signatures in the transaction are not identifiable as the
-//    server account or one of the signers provided in the arguments.
+//   - The transaction is invalid according to ReadChallengeTx.
+//   - No client signatures are found on the transaction.
+//   - One or more signatures in the transaction are not identifiable as the
+//     server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
 	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
@@ -1264,7 +1303,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 	// Deduplicate the client signers and ensure the server is not included
 	// anywhere we check or output the list of signers.
 	clientSigners := []string{}
-	clientSignersSeen := map[string]struct{}{}
+	clientSignersSeen := set.Set[string]{}
 	for _, signer := range signers {
 		// Ignore the server signer if it is in the signers list. It's
 		// important when verifying signers of a challenge transaction that we
@@ -1275,7 +1314,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 			continue
 		}
 		// Deduplicate.
-		if _, seen := clientSignersSeen[signer]; seen {
+		if clientSignersSeen.Contains(signer) {
 			continue
 		}
 		// Ignore non-G... account/address signers.
@@ -1287,7 +1326,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDoma
 			continue
 		}
 		clientSigners = append(clientSigners, signer)
-		clientSignersSeen[signer] = struct{}{}
+		clientSignersSeen.Add(signer)
 	}
 
 	// Don't continue if none of the signers provided are in the final list.
@@ -1354,7 +1393,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 
 	// find and verify signatures
 	signatureUsed := map[int]bool{}
-	signersFound := map[string]struct{}{}
+	signersFound := set.Set[string]{}
 	for _, signer := range signers {
 		kp, err := keypair.ParseAddress(signer)
 		if err != nil {
@@ -1371,7 +1410,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 			err := kp.Verify(txHash[:], decSig.Signature)
 			if err == nil {
 				signatureUsed[i] = true
-				signersFound[signer] = struct{}{}
+				signersFound.Add(signer)
 				break
 			}
 		}
@@ -1379,7 +1418,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 
 	signersFoundList := make([]string, 0, len(signersFound))
 	for _, signer := range signers {
-		if _, ok := signersFound[signer]; ok {
+		if signersFound.Contains(signer) {
 			signersFoundList = append(signersFoundList, signer)
 			delete(signersFound, signer)
 		}

@@ -2,14 +2,17 @@ package processors
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/guregu/null"
 
+	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,12 +21,26 @@ type TradeProcessor struct {
 	tradesQ history.QTrades
 	ledger  xdr.LedgerHeaderHistoryEntry
 	trades  []ingestTrade
+	stats   TradeStats
 }
 
 func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
 	return &TradeProcessor{
 		tradesQ: tradesQ,
 		ledger:  ledger,
+	}
+}
+
+type TradeStats struct {
+	count int64
+}
+
+func (p *TradeProcessor) GetStats() TradeStats {
+	return p.stats
+}
+func (stats *TradeStats) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"stats_count": stats.count,
 	}
 }
 
@@ -39,6 +56,7 @@ func (p *TradeProcessor) ProcessTransaction(ctx context.Context, transaction ing
 	}
 
 	p.trades = append(p.trades, trades...)
+	p.stats.count += int64(len(trades))
 	return nil
 }
 
@@ -109,6 +127,10 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 			row.BaseLiquidityPoolID, row.CounterLiquidityPoolID = row.CounterLiquidityPoolID, row.BaseLiquidityPoolID
 			row.BaseOfferID, row.CounterOfferID = row.CounterOfferID, row.BaseOfferID
 			row.PriceN, row.PriceD = row.PriceD, row.PriceN
+
+			if row.BaseIsExact.Valid {
+				row.BaseIsExact = null.BoolFrom(!row.BaseIsExact.Bool)
+			}
 		}
 
 		if err = batch.Add(ctx, row); err != nil {
@@ -158,6 +180,92 @@ func (p *TradeProcessor) findOperationChange(tx ingest.LedgerTransaction, opidx 
 		}
 	}
 	return ingest.Change{}, errors.Errorf("could not find operation for key %v", key)
+}
+
+func (p *TradeProcessor) liquidityPoolChange(
+	transaction ingest.LedgerTransaction,
+	opidx int,
+	trade xdr.ClaimAtom,
+) (*ingest.Change, error) {
+	if trade.Type != xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
+		return nil, nil
+	}
+
+	poolID := trade.LiquidityPool.LiquidityPoolId
+
+	key := xdr.LedgerKey{}
+	if err := key.SetLiquidityPool(poolID); err != nil {
+		return nil, errors.Wrap(err, "Could not create liquidity pool ledger key")
+	}
+
+	change, err := p.findOperationChange(transaction, opidx, key)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find change for liquidity pool")
+	}
+	return &change, nil
+}
+
+func (p *TradeProcessor) liquidityPoolReserves(trade xdr.ClaimAtom, change *ingest.Change) (int64, int64) {
+	pre := change.Pre.Data.MustLiquidityPool().Body.ConstantProduct
+	a := int64(pre.ReserveA)
+	b := int64(pre.ReserveB)
+	if !trade.AssetSold().Equals(pre.Params.AssetA) {
+		a, b = b, a
+	}
+	return a, b
+}
+
+func (p *TradeProcessor) roundingSlippage(
+	transaction ingest.LedgerTransaction,
+	opidx int,
+	trade xdr.ClaimAtom,
+	change *ingest.Change,
+) (null.Int, error) {
+	disbursedReserves, depositedReserves := p.liquidityPoolReserves(trade, change)
+
+	pre := change.Pre.Data.MustLiquidityPool().Body.ConstantProduct
+
+	op, found := transaction.GetOperation(uint32(opidx))
+	if !found {
+		return null.Int{}, errors.New("could not find operation")
+	}
+
+	amountDeposited := trade.AmountBought()
+	amountDisbursed := trade.AmountSold()
+
+	switch op.Body.Type {
+	case xdr.OperationTypePathPaymentStrictReceive:
+		// User specified the disbursed amount
+		_, roundingSlippageBips, ok := orderbook.CalculatePoolExpectation(
+			xdr.Int64(depositedReserves),
+			xdr.Int64(disbursedReserves),
+			amountDisbursed,
+			pre.Params.Fee,
+			true,
+		)
+		if !ok {
+			// Temporary workaround for https://github.com/stellar/go/issues/4203
+			// Give strict receives that would underflow here, maximum slippage so
+			// they get excluded.
+			roundingSlippageBips = xdr.Int64(math.MaxInt64)
+		}
+		return null.IntFrom(int64(roundingSlippageBips)), nil
+	case xdr.OperationTypePathPaymentStrictSend:
+		// User specified the disbursed amount
+		_, roundingSlippageBips, ok := orderbook.CalculatePoolPayout(
+			xdr.Int64(depositedReserves),
+			xdr.Int64(disbursedReserves),
+			amountDeposited,
+			pre.Params.Fee,
+			true,
+		)
+		if !ok {
+			return null.Int{}, errors.New("Liquidity pool overflows from this exchange")
+		}
+		return null.IntFrom(int64(roundingSlippageBips)), nil
+	default:
+		return null.Int{}, fmt.Errorf("unexpected trade operation type: %v", op.Body.Type)
+	}
 }
 
 func (p *TradeProcessor) findPoolFee(
@@ -275,6 +383,13 @@ func (p *TradeProcessor) extractTrades(
 				PriceD:             sellPriceD,
 			}
 
+			switch op.Body.Type {
+			case xdr.OperationTypePathPaymentStrictSend:
+				row.BaseIsExact = null.BoolFrom(false)
+			case xdr.OperationTypePathPaymentStrictReceive:
+				row.BaseIsExact = null.BoolFrom(true)
+			}
+
 			var sellerAccount, liquidityPoolID string
 			if trade.Type == xdr.ClaimAtomTypeClaimAtomTypeLiquidityPool {
 				id := trade.MustLiquidityPool().LiquidityPoolId
@@ -284,9 +399,22 @@ func (p *TradeProcessor) extractTrades(
 					return nil, err
 				}
 				row.LiquidityPoolFee = null.IntFrom(int64(fee))
+				row.Type = history.LiquidityPoolTradeType
+
+				change, err := p.liquidityPoolChange(transaction, opidx, trade)
+				if err != nil {
+					return nil, err
+				}
+				if change != nil {
+					row.RoundingSlippage, err = p.roundingSlippage(transaction, opidx, trade, change)
+					if err != nil {
+						return nil, err
+					}
+				}
 			} else {
 				row.BaseOfferID = null.IntFrom(int64(trade.OfferId()))
 				sellerAccount = trade.SellerId().Address()
+				row.Type = history.OrderbookTradeType
 			}
 
 			if buyOfferExists {

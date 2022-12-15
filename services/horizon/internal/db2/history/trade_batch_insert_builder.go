@@ -10,6 +10,16 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// TradeType is an enum which indicates the type of trade
+type TradeType int16
+
+const (
+	// OrderbookTradeType is a trade which exercises an offer on the orderbook.
+	OrderbookTradeType = TradeType(1)
+	// LiquidityPoolTradeType is a trade which exercises a liquidity pool.
+	LiquidityPoolTradeType = TradeType(2)
+)
+
 // InsertTrade represents the arguments to TradeBatchInsertBuilder.Add() which is used to insert
 // rows into the history_trades table
 type InsertTrade struct {
@@ -31,10 +41,15 @@ type InsertTrade struct {
 	BaseOfferID         null.Int `db:"base_offer_id"`
 	BaseLiquidityPoolID null.Int `db:"base_liquidity_pool_id"`
 
-	BaseIsSeller bool `db:"base_is_seller"`
+	BaseIsSeller bool      `db:"base_is_seller"`
+	BaseIsExact  null.Bool `db:"base_is_exact"`
+
+	Type TradeType `db:"trade_type"`
 
 	PriceN int64 `db:"price_n"`
 	PriceD int64 `db:"price_d"`
+
+	RoundingSlippage null.Int `db:"rounding_slippage"`
 }
 
 // TradeBatchInsertBuilder is used to insert trades into the

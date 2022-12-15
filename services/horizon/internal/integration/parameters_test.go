@@ -2,6 +2,8 @@
 package integration
 
 import (
+	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -44,10 +46,10 @@ func NewParameterTest(t *testing.T, params map[string]string) *integration.Test 
 
 func NewParameterTestWithEnv(t *testing.T, params, envvars map[string]string) *integration.Test {
 	config := integration.Config{
-		ProtocolVersion:    17,
-		SkipHorizonStart:   true,
-		HorizonParameters:  params,
-		HorizonEnvironment: envvars,
+		ProtocolVersion:         17,
+		SkipHorizonStart:        true,
+		HorizonIngestParameters: params,
+		HorizonEnvironment:      envvars,
 	}
 	return integration.NewTest(t, config)
 }
@@ -151,7 +153,7 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
-		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 15)
+		assert.Equal(t, test.HorizonIngest().Config().MaxAssetsPerPathRequest, 15)
 		test.Shutdown()
 	})
 	t.Run("set to 2", func(t *testing.T) {
@@ -159,7 +161,52 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
-		assert.Equal(t, test.Horizon().Config().MaxAssetsPerPathRequest, 2)
+		assert.Equal(t, test.HorizonIngest().Config().MaxAssetsPerPathRequest, 2)
+		test.Shutdown()
+	})
+}
+
+func TestMaxPathFindingRequests(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(0))
+		_, ok := test.HorizonIngest().Paths().(simplepath.InMemoryFinder)
+		assert.True(t, ok)
+		test.Shutdown()
+	})
+	t.Run("set to 5", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"max-path-finding-requests": "5"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(5))
+		finder, ok := test.HorizonIngest().Paths().(*paths.RateLimitedFinder)
+		assert.True(t, ok)
+		assert.Equal(t, finder.Limit(), 5)
+		test.Shutdown()
+	})
+}
+
+func TestDisablePathFinding(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Equal(t, test.HorizonIngest().Config().MaxPathFindingRequests, uint(0))
+		_, ok := test.HorizonIngest().Paths().(simplepath.InMemoryFinder)
+		assert.True(t, ok)
+		test.Shutdown()
+	})
+	t.Run("set to true", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"disable-path-finding": "true"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.WaitForHorizon()
+		assert.Nil(t, test.HorizonIngest().Paths())
 		test.Shutdown()
 	})
 }
@@ -244,7 +291,7 @@ func createCaptiveCoreConfig(contents string) (string, string, func()) {
 		panic(err)
 	}
 
-	storagePath, err := ioutil.TempDir("", "captive-core-test-*-storage")
+	storagePath, err := os.MkdirTemp("", "captive-core-test-*-storage")
 	if err != nil {
 		panic(err)
 	}

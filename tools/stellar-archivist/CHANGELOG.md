@@ -12,6 +12,8 @@ bumps.  A breaking change will get clearly notified in this log.
 * Dropped support for Go 1.10, 1.11, 1.12.
 * Add `log` command
 * Add `--recent` flag for `mirror` command
+* Improve logging to use structured logging and color, add `--trace`
+* Add `--skip-optional` flag to skip optional (SCP) checkpoint files
 
 ## [v0.1.0] - 2016-08-17
 

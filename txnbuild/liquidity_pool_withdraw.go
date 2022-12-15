@@ -45,7 +45,7 @@ func NewLiquidityPoolWithdraw(
 }
 
 // BuildXDR for LiquidityPoolWithdraw returns a fully configured XDR Operation.
-func (lpd *LiquidityPoolWithdraw) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (lpd *LiquidityPoolWithdraw) BuildXDR() (xdr.Operation, error) {
 	xdrLiquidityPoolId, err := lpd.LiquidityPoolID.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "couldn't build liquidity pool ID XDR")
@@ -79,16 +79,12 @@ func (lpd *LiquidityPoolWithdraw) BuildXDR(withMuxedAccounts bool) (xdr.Operatio
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, lpd.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, lpd.SourceAccount)
-	}
+	SetOpSourceAccount(&op, lpd.SourceAccount)
 	return op, nil
 }
 
 // FromXDR for LiquidityPoolWithdraw initializes the txnbuild struct from the corresponding xdr Operation.
-func (lpd *LiquidityPoolWithdraw) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (lpd *LiquidityPoolWithdraw) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetLiquidityPoolWithdrawOp()
 	if !ok {
 		return errors.New("error parsing liquidity_pool_withdraw operation from xdr")
@@ -100,7 +96,7 @@ func (lpd *LiquidityPoolWithdraw) FromXDR(xdrOp xdr.Operation, withMuxedAccounts
 	}
 	lpd.LiquidityPoolID = liquidityPoolID
 
-	lpd.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	lpd.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	lpd.Amount = amount.String(result.Amount)
 	lpd.MinAmountA = amount.String(result.MinAmountA)
 	lpd.MinAmountB = amount.String(result.MinAmountB)
@@ -110,7 +106,7 @@ func (lpd *LiquidityPoolWithdraw) FromXDR(xdrOp xdr.Operation, withMuxedAccounts
 
 // Validate for LiquidityPoolWithdraw validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (lpd *LiquidityPoolWithdraw) Validate(withMuxedAccounts bool) error {
+func (lpd *LiquidityPoolWithdraw) Validate() error {
 	err := validateAmount(lpd.Amount)
 	if err != nil {
 		return NewValidationError("Amount", err.Error())

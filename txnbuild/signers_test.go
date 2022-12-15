@@ -3,6 +3,8 @@ package txnbuild
 import (
 	"testing"
 
+	"github.com/stellar/go/price"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
 
@@ -27,7 +29,7 @@ func TestAccountMergeMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&accountMerge},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -58,7 +60,7 @@ func TestAllowTrustMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&allowTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -86,7 +88,7 @@ func TestBumpSequenceMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&bumpSequence},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -115,7 +117,7 @@ func TestChangeTrustMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&changeTrust},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -144,7 +146,7 @@ func TestCreateAccountMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createAccount},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -165,7 +167,7 @@ func TestCreatePassiveSellOfferMultSigners(t *testing.T) {
 		Selling:       NativeAsset{},
 		Buying:        CreditAsset{"ABCD", kp0.Address()},
 		Amount:        "10",
-		Price:         "1.0",
+		Price:         xdr.Price{1, 1},
 		SourceAccount: kp1.Address(),
 	}
 
@@ -175,7 +177,7 @@ func TestCreatePassiveSellOfferMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createPassiveOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -202,7 +204,7 @@ func TestInflationMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&inflation},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -231,7 +233,7 @@ func TestManageDataMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&manageData},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -251,8 +253,7 @@ func TestManageOfferCreateMultSigners(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "100"
-	price := "0.01"
-	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price, kp1.Address())
+	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price.MustParse("0.01"), kp1.Address())
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -261,7 +262,7 @@ func TestManageOfferCreateMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&createOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -288,7 +289,7 @@ func TestManageOfferDeleteMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&deleteOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -308,9 +309,8 @@ func TestManageOfferUpdateMultSigners(t *testing.T) {
 	selling := NativeAsset{}
 	buying := CreditAsset{"ABCD", kp0.Address()}
 	sellAmount := "50"
-	price := "0.02"
 	offerID := int64(2497628)
-	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID, kp1.Address())
+	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price.MustParse("0.02"), offerID, kp1.Address())
 	check(err)
 
 	received, err := newSignedTransaction(
@@ -319,7 +319,7 @@ func TestManageOfferUpdateMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&updateOffer},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -353,7 +353,7 @@ func TestPathPaymentMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&pathPayment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -384,7 +384,7 @@ func TestPaymentMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&payment},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -412,7 +412,7 @@ func TestSetOptionsMultSigners(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations:           []Operation{&setOptions},
 			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
+			Preconditions:        Preconditions{TimeBounds: NewInfiniteTimeout()},
 		},
 		network.TestNetworkPassphrase,
 		kp0, kp1,
@@ -462,7 +462,7 @@ func TestSigningImmutability(t *testing.T) {
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&Inflation{}},
 		BaseFee:       MinBaseFee,
-		Timebounds:    NewInfiniteTimeout(),
+		Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 	}
 	root, err := NewTransaction(params)
 	assert.NoError(t, err)
@@ -513,7 +513,7 @@ func TestFeeBumpSigningImmutability(t *testing.T) {
 		SourceAccount: &sourceAccount,
 		Operations:    []Operation{&Inflation{}},
 		BaseFee:       MinBaseFee,
-		Timebounds:    NewInfiniteTimeout(),
+		Preconditions: Preconditions{TimeBounds: NewInfiniteTimeout()},
 	}
 	inner, err := NewTransaction(innerParams)
 	assert.NoError(t, err)

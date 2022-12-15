@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	xdr3 "github.com/stellar/go-xdr/xdr3"
 
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -47,11 +48,11 @@ type metaResult struct {
 //
 // It solves the following issues:
 //
-//   * Decouples buffering from stellarCoreRunner so it can focus on running core.
-//   * Decouples unmarshalling and buffering of LedgerCloseMeta's from CaptiveCore.
-//   * By adding buffering it allows unmarshaling the ledgers available in Stellar-Core
+//   - Decouples buffering from stellarCoreRunner so it can focus on running core.
+//   - Decouples unmarshalling and buffering of LedgerCloseMeta's from CaptiveCore.
+//   - By adding buffering it allows unmarshaling the ledgers available in Stellar-Core
 //     while previous ledger are being processed.
-//   * Limits memory usage in case of large ledgers are closed by the network.
+//   - Limits memory usage in case of large ledgers are closed by the network.
 //
 // Internally, it keeps two buffers: bufio.Reader with binary ledger data and
 // buffered channel with unmarshaled xdr.LedgerCloseMeta objects ready for
@@ -63,26 +64,29 @@ type metaResult struct {
 // until xdr.LedgerCloseMeta objects channel is empty. This prevents memory
 // exhaustion when network closes a series a large ledgers.
 type bufferedLedgerMetaReader struct {
-	r *bufio.Reader
-	c chan metaResult
+	r       *bufio.Reader
+	c       chan metaResult
+	decoder *xdr3.Decoder
 }
 
 // newBufferedLedgerMetaReader creates a new meta reader that will shutdown
 // when stellar-core terminates.
 func newBufferedLedgerMetaReader(reader io.Reader) *bufferedLedgerMetaReader {
+	r := bufio.NewReaderSize(reader, metaPipeBufferSize)
 	return &bufferedLedgerMetaReader{
-		c: make(chan metaResult, ledgerReadAheadBufferSize),
-		r: bufio.NewReaderSize(reader, metaPipeBufferSize),
+		c:       make(chan metaResult, ledgerReadAheadBufferSize),
+		r:       r,
+		decoder: xdr3.NewDecoder(r),
 	}
 }
 
 // readLedgerMetaFromPipe unmarshalls the next ledger from meta pipe.
 // It can block for two reasons:
-//   * Meta pipe buffer is full so it will wait until it refills.
-//   * The next ledger available in the buffer exceeds the meta pipe buffer size.
+//   - Meta pipe buffer is full so it will wait until it refills.
+//   - The next ledger available in the buffer exceeds the meta pipe buffer size.
 //     In such case the method will block until LedgerCloseMeta buffer is empty.
 func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, error) {
-	frameLength, err := xdr.ReadFrameLength(b.r)
+	frameLength, err := xdr.ReadFrameLength(b.decoder)
 	if err != nil {
 		return nil, errors.Wrap(err, "error reading frame length")
 	}
@@ -93,7 +97,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 	}
 
 	var xlcm xdr.LedgerCloseMeta
-	_, err = xdr.Unmarshal(b.r, &xlcm)
+	_, err = xlcm.DecodeFrom(b.decoder)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshalling framed LedgerCloseMeta")
 	}

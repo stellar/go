@@ -72,6 +72,16 @@ func (m *MockSession) GetRaw(ctx context.Context, dest interface{}, query string
 	return argss.Error(0)
 }
 
+func (m *MockSession) Query(ctx context.Context, query squirrel.Sqlizer) (*sqlx.Rows, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).(*sqlx.Rows), args.Error(1)
+}
+
+func (m *MockSession) QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+	argss := m.Called(ctx, query, args)
+	return argss.Get(0).(*sqlx.Rows), argss.Error(1)
+}
+
 func (m *MockSession) Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) error {
 	argss := m.Called(ctx, dest, query)
 	return argss.Error(0)

@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/stellar/go/support/log"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockHash struct {
@@ -43,6 +45,10 @@ func (m *mockHash) hashFile(fp string) (hash, error) {
 }
 
 func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	ms := &mockHash{
 		hashResult:   hash{},
 		expectedPath: "/some/path",
@@ -52,14 +58,14 @@ func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
-	runner, err := newStellarCoreRunner(CaptiveCoreConfig{
+	runner := newStellarCoreRunner(CaptiveCoreConfig{
 		BinaryPath:         "/some/path",
 		HistoryArchiveURLs: []string{"http://localhost"},
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
-	}, stellarCoreRunnerModeOffline)
-	assert.NoError(t, err)
+		StoragePath:        storagePath,
+	})
 
 	fw, err := newFileWatcherWithOptions(runner, ms.hashFile, time.Millisecond)
 	assert.NoError(t, err)
@@ -69,6 +75,10 @@ func createFWFixtures(t *testing.T) (*mockHash, *stellarCoreRunner, *fileWatcher
 }
 
 func TestNewFileWatcherError(t *testing.T) {
+	storagePath, err := os.MkdirTemp("", "captive-core-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(storagePath)
+
 	ms := &mockHash{
 		hashResult:   hash{},
 		expectedPath: "/some/path",
@@ -79,14 +89,14 @@ func TestNewFileWatcherError(t *testing.T) {
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
-	runner, err := newStellarCoreRunner(CaptiveCoreConfig{
+	runner := newStellarCoreRunner(CaptiveCoreConfig{
 		BinaryPath:         "/some/path",
 		HistoryArchiveURLs: []string{"http://localhost"},
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
-	}, stellarCoreRunnerModeOffline)
-	assert.NoError(t, err)
+		StoragePath:        storagePath,
+	})
 
 	_, err = newFileWatcherWithOptions(runner, ms.hashFile, time.Millisecond)
 	assert.EqualError(t, err, "could not hash captive core binary: test error")

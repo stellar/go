@@ -9,7 +9,7 @@ import (
 // CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
 // setting the OfferID to "0". The sourceAccount is optional, and if not provided,
 // will be that of the surrounding transaction.
-func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ...string) (ManageSellOffer, error) {
+func CreateOfferOp(selling, buying Asset, amount string, price xdr.Price, sourceAccount ...string) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
 		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
@@ -29,7 +29,7 @@ func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ..
 // UpdateOfferOp returns a ManageSellOffer operation to update an offer.
 // The sourceAccount is optional, and if not provided, will be that of
 // the surrounding transaction.
-func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
+func UpdateOfferOp(selling, buying Asset, amount string, price xdr.Price, offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
 		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
@@ -61,7 +61,10 @@ func DeleteOfferOp(offerID int64, sourceAccount ...string) (ManageSellOffer, err
 		Selling: NativeAsset{},
 		Buying:  CreditAsset{Code: "FAKE", Issuer: "GBAQPADEYSKYMYXTMASBUIS5JI3LMOAWSTM2CHGDBJ3QDDPNCSO3DVAA"},
 		Amount:  "0",
-		Price:   "1",
+		Price: xdr.Price{
+			N: 1,
+			D: 1,
+		},
 		OfferID: offerID,
 	}
 	if len(sourceAccount) == 1 {
@@ -76,14 +79,13 @@ type ManageSellOffer struct {
 	Selling       Asset
 	Buying        Asset
 	Amount        string
-	Price         string
-	price         price
+	Price         xdr.Price
 	OfferID       int64
 	SourceAccount string
 }
 
 // BuildXDR for ManageSellOffer returns a fully configured XDR Operation.
-func (mo *ManageSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
+func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 	xdrSelling, err := mo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -99,16 +101,12 @@ func (mo *ManageSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, erro
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Amount'")
 	}
 
-	if err = mo.price.parse(mo.Price); err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "failed to parse 'Price'")
-	}
-
 	opType := xdr.OperationTypeManageSellOffer
 	xdrOp := xdr.ManageSellOfferOp{
 		Selling: xdrSelling,
 		Buying:  xdrBuying,
 		Amount:  xdrAmount,
-		Price:   mo.price.toXDR(),
+		Price:   mo.Price,
 		OfferId: xdr.Int64(mo.OfferID),
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -117,28 +115,21 @@ func (mo *ManageSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, erro
 	}
 
 	op := xdr.Operation{Body: body}
-	if withMuxedAccounts {
-		SetOpSourceMuxedAccount(&op, mo.SourceAccount)
-	} else {
-		SetOpSourceAccount(&op, mo.SourceAccount)
-	}
+	SetOpSourceAccount(&op, mo.SourceAccount)
 	return op, nil
 }
 
 // FromXDR for ManageSellOffer initialises the txnbuild struct from the corresponding xdr Operation.
-func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
+func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetManageSellOfferOp()
 	if !ok {
 		return errors.New("error parsing manage_sell_offer operation from xdr")
 	}
 
-	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.Amount)
-	if result.Price != (xdr.Price{}) {
-		mo.price.fromXDR(result.Price)
-		mo.Price = mo.price.string()
-	}
+	mo.Price = result.Price
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
 		return errors.Wrap(err, "error parsing buying_asset in manage_sell_offer operation")
@@ -155,7 +146,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) 
 
 // Validate for ManageSellOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (mo *ManageSellOffer) Validate(withMuxedAccounts bool) error {
+func (mo *ManageSellOffer) Validate() error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
 

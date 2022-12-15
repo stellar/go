@@ -20,22 +20,22 @@ type Query struct {
 
 // Path is the result returned by a path finder and is tied to the DestinationAmount used in the input query
 type Path struct {
-	Path              []xdr.Asset
-	Source            xdr.Asset
+	Path              []string
+	Source            string
 	SourceAmount      xdr.Int64
-	Destination       xdr.Asset
+	Destination       string
 	DestinationAmount xdr.Int64
 }
 
 // Finder finds paths.
 type Finder interface {
-	// Return a list of payment paths and the most recent ledger
+	// Find returns a list of payment paths and the most recent ledger
 	// for a Query of a maximum length `maxLength`. The payment paths
 	// are accurate and consistent with the returned ledger sequence number
 	Find(ctx context.Context, q Query, maxLength uint) ([]Path, uint32, error)
 	// FindFixedPaths return a list of payment paths the most recent ledger
 	// Each of the payment paths start by spending `amountToSpend` of `sourceAsset` and end
-	// with delivering a postive amount of `destinationAsset`.
+	// with delivering a positive amount of `destinationAsset`.
 	// The payment paths are accurate and consistent with the returned ledger sequence number
 	FindFixedPaths(
 		ctx context.Context,

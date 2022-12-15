@@ -10,12 +10,11 @@ services:
       - "5641:5641"
     command: ["-p", "5641"]
   core:
-    # TODO replace with official SDF image when ready. Note that this:
-    # https://github.com/stellar/stellar-core/commit/31597b760f8e325fc84da0937adc373a78878ca9
-    # breaks the tests. I reverted it before building temp docker image.
-    # Command used to build custom image:
-    # docker build -t bartekno/stellar-core:17.4.0-p18 --build-arg STELLAR_CORE_VERSION=17.3.1-679.c5f6349.focal~protocol18~buildtests --build-arg DISTRO=focal .
-    image: ${CORE_IMAGE:-bartekno/stellar-core:18.0.3}
+    platform: linux/amd64
+    # Note: Please keep the image pinned to an immutable tag matching the Captive Core version.
+    #       This avoid implicit updates which break compatibility between
+    #       the Core container and captive core.
+    image: ${CORE_IMAGE:-stellar/stellar-core:19.5.0-1108.ca2fb0605.focal}
     depends_on:
       - core-postgres
     restart: on-failure
@@ -26,6 +25,7 @@ services:
       - "11626:11626"
       # add extra port for history archive server
       - "1570:1570"
+    entrypoint: /usr/bin/env
     command: /start standalone
     volumes:
       - ./stellar-core-integration-tests.cfg:/stellar-core.cfg

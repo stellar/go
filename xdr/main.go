@@ -25,11 +25,6 @@ var _ = LedgerKey{}
 
 var OperationTypeToStringMap = operationTypeMap
 
-func Uint32Ptr(val uint32) *Uint32 {
-	pval := Uint32(val)
-	return &pval
-}
-
 func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)
@@ -83,6 +78,32 @@ func SafeUnmarshal(data []byte, dest interface{}) error {
 	return nil
 }
 
+type DecoderFrom interface {
+	decoderFrom
+}
+
+// BytesDecoder efficiently manages a byte reader and an
+// xdr decoder so that they don't need to be allocated in
+// every decoding call.
+type BytesDecoder struct {
+	decoder *xdr.Decoder
+	reader  *bytes.Reader
+}
+
+func NewBytesDecoder() *BytesDecoder {
+	reader := bytes.NewReader(nil)
+	decoder := xdr.NewDecoder(reader)
+	return &BytesDecoder{
+		decoder: decoder,
+		reader:  reader,
+	}
+}
+
+func (d *BytesDecoder) DecodeBytes(v DecoderFrom, b []byte) (int, error) {
+	d.reader.Reset(b)
+	return v.DecodeFrom(d.decoder)
+}
+
 func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
 	var raw bytes.Buffer
 
@@ -104,11 +125,12 @@ func MarshalHex(v interface{}) (string, error) {
 }
 
 // EncodingBuffer reuses internal buffers between invocations to minimize allocations.
+// For that reason, it is not thread-safe.
 // It intentionally only allows EncodeTo method arguments, to guarantee high performance encoding.
 type EncodingBuffer struct {
-	encoder          *xdr.Encoder
-	xdrEncoderBuf    bytes.Buffer
-	otherEncodersBuf []byte
+	encoder       *xdr.Encoder
+	xdrEncoderBuf bytes.Buffer
+	scratchBuf    []byte
 }
 
 func growSlice(old []byte, newSize int) []byte {
@@ -121,7 +143,7 @@ func growSlice(old []byte, newSize int) []byte {
 	return make([]byte, newSize, 2*newSize)
 }
 
-type XDREncodable interface {
+type EncoderTo interface {
 	EncodeTo(e *xdr.Encoder) error
 }
 
@@ -135,7 +157,7 @@ func NewEncodingBuffer() *EncodingBuffer {
 // a slice pointing to the internal buffer. Handled with care this improveds
 // performance since copying is not required.
 // Subsequent calls to marshalling methods will overwrite the returned buffer.
-func (e *EncodingBuffer) UnsafeMarshalBinary(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalBinary(encodable EncoderTo) ([]byte, error) {
 	e.xdrEncoderBuf.Reset()
 	if err := encodable.EncodeTo(e.encoder); err != nil {
 		return nil, err
@@ -144,30 +166,61 @@ func (e *EncodingBuffer) UnsafeMarshalBinary(encodable XDREncodable) ([]byte, er
 }
 
 // UnsafeMarshalBase64 is the base64 version of UnsafeMarshalBinary
-func (e *EncodingBuffer) UnsafeMarshalBase64(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalBase64(encodable EncoderTo) ([]byte, error) {
 	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
 	}
 	neededLen := base64.StdEncoding.EncodedLen(len(xdrEncoded))
-	e.otherEncodersBuf = growSlice(e.otherEncodersBuf, neededLen)
-	base64.StdEncoding.Encode(e.otherEncodersBuf, xdrEncoded)
-	return e.otherEncodersBuf, nil
+	e.scratchBuf = growSlice(e.scratchBuf, neededLen)
+	base64.StdEncoding.Encode(e.scratchBuf, xdrEncoded)
+	return e.scratchBuf, nil
 }
 
 // UnsafeMarshalHex is the hex version of UnsafeMarshalBinary
-func (e *EncodingBuffer) UnsafeMarshalHex(encodable XDREncodable) ([]byte, error) {
+func (e *EncodingBuffer) UnsafeMarshalHex(encodable EncoderTo) ([]byte, error) {
 	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
 	if err != nil {
 		return nil, err
 	}
 	neededLen := hex.EncodedLen(len(xdrEncoded))
-	e.otherEncodersBuf = growSlice(e.otherEncodersBuf, neededLen)
-	hex.Encode(e.otherEncodersBuf, xdrEncoded)
-	return e.otherEncodersBuf, nil
+	e.scratchBuf = growSlice(e.scratchBuf, neededLen)
+	hex.Encode(e.scratchBuf, xdrEncoded)
+	return e.scratchBuf, nil
 }
 
-func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
+func (e *EncodingBuffer) MarshalBinary(encodable EncoderTo) ([]byte, error) {
+	xdrEncoded, err := e.UnsafeMarshalBinary(encodable)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]byte, len(xdrEncoded))
+	copy(ret, xdrEncoded)
+	return ret, nil
+}
+
+// LedgerKeyUnsafeMarshalBinaryCompress marshals LedgerKey to []byte but unlike
+// MarshalBinary() it removes all unnecessary bytes, exploting the fact
+// that XDR is padding data to 4 bytes in union discriminants etc.
+// It's primary use is in ingest/io.StateReader that keep LedgerKeys in
+// memory so this function decrease memory requirements.
+//
+// Warning, do not use UnmarshalBinary() on data encoded using this method!
+//
+// Optimizations:
+// - Writes a single byte for union discriminants vs 4 bytes.
+// - Removes type and code padding for Asset.
+// - Removes padding for AccountIds
+func (e *EncodingBuffer) LedgerKeyUnsafeMarshalBinaryCompress(key LedgerKey) ([]byte, error) {
+	e.xdrEncoderBuf.Reset()
+	err := e.ledgerKeyCompressEncodeTo(key)
+	if err != nil {
+		return nil, err
+	}
+	return e.xdrEncoderBuf.Bytes(), nil
+}
+
+func (e *EncodingBuffer) MarshalBase64(encodable EncoderTo) (string, error) {
 	b, err := e.UnsafeMarshalBase64(encodable)
 	if err != nil {
 		return "", err
@@ -175,7 +228,7 @@ func (e *EncodingBuffer) MarshalBase64(encodable XDREncodable) (string, error) {
 	return string(b), nil
 }
 
-func (e *EncodingBuffer) MarshalHex(encodable XDREncodable) (string, error) {
+func (e *EncodingBuffer) MarshalHex(encodable EncoderTo) (string, error) {
 	b, err := e.UnsafeMarshalHex(encodable)
 	if err != nil {
 		return "", err
@@ -207,9 +260,8 @@ func MarshalFramed(w io.Writer, v interface{}) error {
 }
 
 // ReadFrameLength returns a length of a framed XDR object.
-func ReadFrameLength(r io.Reader) (uint32, error) {
-	var frameLen uint32
-	n, e := Unmarshal(r, &frameLen)
+func ReadFrameLength(d *xdr.Decoder) (uint32, error) {
+	frameLen, n, e := d.DecodeUint()
 	if e != nil {
 		return 0, errors.Wrap(e, "unmarshalling XDR frame header")
 	}
@@ -221,24 +273,6 @@ func ReadFrameLength(r io.Reader) (uint32, error) {
 	}
 	frameLen &= 0x7fffffff
 	return frameLen, nil
-}
-
-// XDR and RPC define a (minimal) framing format which our metadata arrives in: a 4-byte
-// big-endian length header that has the high bit set, followed by that length worth of
-// XDR data. Decoding this involves just a little more work than xdr.Unmarshal.
-func UnmarshalFramed(r io.Reader, v interface{}) (int, error) {
-	frameLen, err := ReadFrameLength(r)
-	if err != nil {
-		return 0, errors.Wrap(err, "unmarshalling XDR frame header")
-	}
-	m, err := xdr.Unmarshal(r, v)
-	if err != nil {
-		return 0, errors.Wrap(err, "unmarshalling framed XDR")
-	}
-	if int64(m) != int64(frameLen) {
-		return 0, errors.New("bad length of XDR frame body")
-	}
-	return m + 4 /* frame size: uint32 */, nil
 }
 
 type countWriter struct {

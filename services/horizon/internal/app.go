@@ -51,15 +51,9 @@ type App struct {
 	ledgerState     *ledger.State
 
 	// metrics
-	prometheusRegistry                *prometheus.Registry
-	buildInfoGauge                    *prometheus.GaugeVec
-	ingestingGauge                    prometheus.Gauge
-	historyLatestLedgerCounter        prometheus.CounterFunc
-	historyLatestLedgerClosedAgoGauge prometheus.GaugeFunc
-	historyElderLedgerCounter         prometheus.CounterFunc
-	coreLatestLedgerCounter           prometheus.CounterFunc
-	coreSynced                        prometheus.GaugeFunc
-	coreSupportedProtocolVersion      prometheus.GaugeFunc
+	prometheusRegistry *prometheus.Registry
+	buildInfoGauge     *prometheus.GaugeVec
+	ingestingGauge     prometheus.Gauge
 }
 
 func (a *App) GetCoreState() corestate.State {
@@ -96,7 +90,9 @@ func (a *App) Serve() error {
 	}
 
 	go a.run()
-	go a.orderBookStream.Run(a.ctx)
+	if !a.config.DisablePathFinding {
+		go a.orderBookStream.Run(a.ctx)
+	}
 
 	// WaitGroup for all go routines. Makes sure that DB is closed when
 	// all services gracefully shutdown.
@@ -153,6 +149,7 @@ func (a *App) Serve() error {
 		wg.Done()
 	}()
 
+	log.Infof("Starting to serve requests")
 	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {
 		return err
@@ -200,11 +197,6 @@ func (a *App) HistoryQ() *history.Q {
 	return a.historyQ
 }
 
-// Ingestion returns the ingestion system associated with this Horizon instance
-func (a *App) Ingestion() ingest.System {
-	return a.ingester
-}
-
 // HorizonSession returns a new session that loads data from the horizon
 // database.
 func (a *App) HorizonSession() db.SessionInterface {
@@ -213,6 +205,11 @@ func (a *App) HorizonSession() db.SessionInterface {
 
 func (a *App) Config() Config {
 	return a.config
+}
+
+// Paths returns the paths.Finder instance used by horizon
+func (a *App) Paths() paths.Finder {
+	return a.paths
 }
 
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
@@ -230,7 +227,7 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 		URL:  a.config.StellarCoreURL,
 	}
 
-	coreInfo, err := coreClient.Info(a.ctx)
+	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
 		logErr(err, "failed to load the stellar-core info")
 		return
@@ -540,6 +537,7 @@ func (a *App) init() error {
 			},
 			cache: newHealthCache(healthCacheTTL),
 		},
+		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
 	}
 
 	if a.primaryHistoryQ != nil {

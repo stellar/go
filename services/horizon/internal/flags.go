@@ -25,6 +25,8 @@ import (
 const (
 	// DatabaseURLFlagName is the command line flag for configuring the Horizon postgres URL
 	DatabaseURLFlagName = "db-url"
+	// IngestFlagName is the command line flag for enabling ingestion on the Horizon instance
+	IngestFlagName = "ingest"
 	// StellarCoreDBURLFlagName is the command line flag for configuring the postgres Stellar Core URL
 	StellarCoreDBURLFlagName = "stellar-core-db-url"
 	// StellarCoreURLFlagName is the command line flag for configuring the URL fore Stellar Core HTTP endpoint
@@ -36,6 +38,8 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
+	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	CaptiveCoreConfigUseDB = "captive-core-use-db"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
@@ -171,12 +175,39 @@ func Flags() (*Config, support.ConfigOptions) {
 			},
 		},
 		&support.ConfigOption{
+			Name:        CaptiveCoreConfigUseDB,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage: `when enabled, Horizon ingestion will instruct the captive
+			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
+						  Will result in several GB of space shifting out of RAM and to the external db persistence.\n
+						  The external db url is determined by the presence of DATABASE parameter in the captive-core-config-path or\n
+						  or if absent, the db will default to sqlite and the db file will be stored at location derived from captive-core-storage-path parameter.`,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetBool(opt.Name); val {
+					config.CaptiveCoreConfigUseDB = val
+					config.CaptiveCoreTomlParams.UseDB = val
+				}
+				return nil
+			},
+			ConfigKey: &config.CaptiveCoreConfigUseDB,
+		},
+		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
 			OptType:     types.Bool,
 			FlagDefault: true,
 			Required:    false,
 			Usage:       "causes Horizon to ingest from a Captive Stellar Core process instead of a persistent Stellar Core database",
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
+		},
+		&support.ConfigOption{
+			Name:        "exp-enable-ingestion-filtering",
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
+			ConfigKey:   &config.EnableIngestionFiltering,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-http-port",
@@ -361,7 +392,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.MaxAssetsPerPathRequest,
 			OptType:     types.Int,
 			FlagDefault: int(15),
-			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-recieve' endpoints",
+			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-receive' endpoints",
 		},
 		&support.ConfigOption{
 			Name:        "disable-pool-path-finding",
@@ -370,6 +401,23 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
+		},
+		&support.ConfigOption{
+			Name:        "disable-path-finding",
+			ConfigKey:   &config.DisablePathFinding,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "disables the path finding endpoints",
+		},
+		&support.ConfigOption{
+			Name:        "max-path-finding-requests",
+			ConfigKey:   &config.MaxPathFindingRequests,
+			OptType:     types.Uint,
+			FlagDefault: uint(0),
+			Required:    false,
+			Usage: "The maximum number of path finding requests per second horizon will allow." +
+				" A value of zero (the default) disables the limit.",
 		},
 		&support.ConfigOption{
 			Name:      "network-passphrase",
@@ -410,7 +458,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "TLS private key file to use for securing connections to horizon",
 		},
 		&support.ConfigOption{
-			Name:        "ingest",
+			Name:        IngestFlagName,
 			ConfigKey:   &config.Ingest,
 			OptType:     types.Bool,
 			FlagDefault: true,
@@ -491,6 +539,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
 		},
+		&support.ConfigOption{
+			Name:        "rounding-slippage-filter",
+			ConfigKey:   &config.RoundingSlippageFilter,
+			OptType:     types.Int,
+			FlagDefault: 1000,
+			Required:    false,
+			Usage:       "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
+		},
 	}
 
 	return config, flags
@@ -509,6 +565,8 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) (*App, error) 
 	if config.Ingest && !config.EnableCaptiveCoreIngestion && config.StellarCoreDatabaseURL == "" {
 		return nil, fmt.Errorf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
 	}
+
+	log.Infof("Initializing horizon...")
 	app, err := NewApp(*config)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize app: %s", err)
@@ -545,21 +603,25 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		// only on ingesting instances which are required to have write-access
 		// to the DB.
 		if config.ApplyMigrations {
+			stdLog.Println("Applying DB migrations...")
 			if err := applyMigrations(*config); err != nil {
 				return err
 			}
 		}
+		stdLog.Println("Checking DB migrations...")
 		if err := checkMigrations(*config); err != nil {
 			return err
 		}
 
 		// config.HistoryArchiveURLs contains a single empty value when empty so using
 		// viper.GetString is easier.
-		if len(config.HistoryArchiveURLs) == 0 {
+		if len(config.HistoryArchiveURLs) == 1 && config.HistoryArchiveURLs[0] == "" {
 			return fmt.Errorf("--history-archive-urls must be set when --ingest is set")
 		}
 
 		if config.EnableCaptiveCoreIngestion {
+			stdLog.Println("Preparing captive core...")
+
 			binaryPath := viper.GetString(StellarCoreBinaryPathName)
 
 			// If the user didn't specify a Stellar Core binary, we can check the
@@ -654,6 +716,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		}
 		if config.StellarCoreDatabaseURL != "" {
 			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+		}
+		if config.CaptiveCoreConfigUseDB {
+			return fmt.Errorf("Invalid config: --%s has been set, but --ingest not set. ", CaptiveCoreConfigUseDB)
 		}
 	}
 

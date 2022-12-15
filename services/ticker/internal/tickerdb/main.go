@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/support/db"
 )
 
-//go:generate go-bindata -nometadata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
+//go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -ignore .+\.go$ -pkg bdata -o migrations/bindata.go ./...
 
 // TickerSession provides helper methods for making queries against `DB`.
 type TickerSession struct {
@@ -67,7 +67,7 @@ type Issuer struct {
 
 // Trade represents an entry on the trades table
 type Trade struct {
-	ID              int32     `db:"id"`
+	ID              int64     `db:"id"`
 	HorizonID       string    `db:"horizon_id"`
 	LedgerCloseTime time.Time `db:"ledger_close_time"`
 	OfferID         string    `db:"offer_id"`

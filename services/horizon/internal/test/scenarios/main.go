@@ -6,7 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-//go:generate go-bindata -nometadata -ignore (go|rb)$ -pkg scenarios .
+//go:generate go run github.com/kevinburke/go-bindata/go-bindata@v3.18.0+incompatible -nometadata -ignore (go|rb)$ -pkg scenarios .
 
 // Load executes the sql script at `path` on postgres database at `url`
 func Load(url string, path string) {
@@ -33,4 +33,9 @@ func Load(url string, path string) {
 	if err != nil {
 		log.Fatalf("could not exec scenario %v: %v\n", path, err)
 	}
+
+	// facilitates 'user_ro' db connecction for read only usage in tests
+	db.Exec("GRANT USAGE ON SCHEMA public TO PUBLIC;")
+	db.Exec("GRANT SELECT ON ALL TABLES IN SCHEMA public TO PUBLIC;")
+	db.Exec("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO PUBLIC;")
 }

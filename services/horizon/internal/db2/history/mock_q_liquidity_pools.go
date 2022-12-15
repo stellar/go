@@ -31,9 +31,9 @@ func (m *MockQLiquidityPools) FindLiquidityPoolByID(ctx context.Context, liquidi
 	return a.Get(0).(LiquidityPool), a.Error(1)
 }
 
-func (m *MockQLiquidityPools) GetAllLiquidityPools(ctx context.Context) ([]LiquidityPool, error) {
-	a := m.Called(ctx)
-	return a.Get(0).([]LiquidityPool), a.Error(1)
+func (m *MockQLiquidityPools) StreamAllLiquidityPools(ctx context.Context, callback func(LiquidityPool) error) error {
+	a := m.Called(ctx, callback)
+	return a.Error(0)
 }
 
 func (m *MockQLiquidityPools) GetUpdatedLiquidityPools(ctx context.Context, sequence uint32) ([]LiquidityPool, error) {

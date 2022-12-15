@@ -18,20 +18,16 @@ import (
 )
 
 func (s *Stream) SentCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sent
+	return s.eventsSent
 }
 
 // IsDone is safe to call concurrently and is exported.
 func (s *Stream) IsDone() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.limit == 0 {
 		return s.done
 	}
 
-	return s.done || s.sent >= s.limit
+	return s.done || s.eventsSent >= s.limit
 }
 
 type StreamTestSuite struct {
@@ -43,7 +39,7 @@ type StreamTestSuite struct {
 
 // Helper method to check that the preamble has been sent and all HTTP response headers are correctly set.
 func (suite *StreamTestSuite) checkHeadersAndPreamble() {
-	if suite.stream.SentCount() == 0 {
+	if !suite.stream.initialized {
 		assert.Equal(suite.T(), "application/problem+json; charset=utf-8", suite.w.Header().Get("Content-Type"))
 		assert.Equal(suite.T(), 500, suite.w.Code)
 		return
@@ -86,7 +82,8 @@ func (suite *StreamTestSuite) TestStream_Err() {
 	// Reset the stream to test the scenario where an event has been sent.
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
-	suite.stream.sent++
+	suite.stream.initialized = false
+	suite.stream.Send(Event{})
 	suite.stream.Err(err)
 	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: Unexpected stream error\n\n")
@@ -100,7 +97,8 @@ func (suite *StreamTestSuite) TestStream_ErrRegisterError() {
 
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
-	suite.stream.sent++
+	suite.stream.initialized = false
+	suite.stream.Send(Event{})
 	suite.stream.Err(context.DeadlineExceeded)
 	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: problem: timeout\n\n")
@@ -114,7 +112,8 @@ func (suite *StreamTestSuite) TestStream_ErrNoRows() {
 
 	suite.w = httptest.NewRecorder()
 	suite.stream = NewStream(suite.ctx, suite.w)
-	suite.stream.sent++
+	suite.stream.initialized = false
+	suite.stream.Send(Event{})
 	suite.stream.Err(sql.ErrNoRows)
 	suite.checkHeadersAndPreamble()
 	assert.Contains(suite.T(), suite.w.Body.String(), "event: error\ndata: problem: not_found\n\n")

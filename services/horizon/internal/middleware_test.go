@@ -22,6 +22,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
+	tdb "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -52,7 +53,7 @@ func (suite *RateLimitMiddlewareTestSuite) SetupSuite() {
 }
 
 func (suite *RateLimitMiddlewareTestSuite) SetupTest() {
-	suite.c = NewTestConfig()
+	suite.c = NewTestConfig(tdb.HorizonURL())
 	suite.c.RateQuota = &throttled.RateQuota{
 		MaxRate:  throttled.PerHour(10),
 		MaxBurst: 9,
@@ -82,16 +83,25 @@ func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_LimitHeaders() {
 
 // Sets X-RateLimit-Remaining headers correctly.
 func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_RemainingHeaders() {
+	// test that SSE requests are ignored
+	for i := 0; i < 10; i++ {
+		w := suite.rh.Get("/", test.RequestHelperStreaming)
+		assert.Equal(suite.T(), "", w.Header().Get("X-RateLimit-Remaining"))
+		assert.NotEqual(suite.T(), http.StatusTooManyRequests, w.Code)
+	}
+
 	for i := 0; i < 10; i++ {
 		w := suite.rh.Get("/")
 		expected := 10 - (i + 1)
 		assert.Equal(suite.T(), strconv.Itoa(expected), w.Header().Get("X-RateLimit-Remaining"))
+		assert.NotEqual(suite.T(), http.StatusTooManyRequests, w.Code)
 	}
 
 	// confirm remaining stays at 0
 	for i := 0; i < 10; i++ {
 		w := suite.rh.Get("/")
 		assert.Equal(suite.T(), "0", w.Header().Get("X-RateLimit-Remaining"))
+		assert.Equal(suite.T(), http.StatusTooManyRequests, w.Code)
 	}
 }
 
@@ -304,6 +314,36 @@ func TestStateMiddleware(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientDisconnect(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	request, err := http.NewRequest("GET", "http://localhost/", nil)
+	tt.Assert.NoError(err)
+
+	endpoint := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	stateMiddleware := &httpx.StateMiddleware{
+		HorizonSession:      tt.HorizonSession(),
+		NoStateVerification: true,
+	}
+	handler := chi.NewRouter()
+	handler.With(stateMiddleware.Wrap).MethodFunc("GET", "/", endpoint)
+	w := httptest.NewRecorder()
+
+	ctx, cancel := context.WithCancel(request.Context())
+	defer cancel()
+	request = request.WithContext(ctx)
+	// cancel invocation simulates client disconnect in the context
+	cancel()
+
+	handler.ServeHTTP(w, request)
+	tt.Assert.Equal(499, w.Code)
 }
 
 func TestCheckHistoryStaleMiddleware(t *testing.T) {

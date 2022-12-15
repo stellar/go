@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newUint(v uint) *uint {
@@ -187,6 +188,15 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			expectedError:     "could not unmarshal captive core toml: these fields are not supported by captive core: [\"CATCHUP_RECENT\"]",
 		},
 		{
+			name:              "database field was invalid for captive core",
+			networkPassphrase: "Public Global Stellar Network ; September 2015",
+			appendPath:        filepath.Join("testdata", "invalid-captive-core-database-field.cfg"),
+			httpPort:          nil,
+			peerPort:          nil,
+			logPath:           nil,
+			expectedError:     `invalid captive core toml: invalid DATABASE parameter: postgres://mydb, for captive core config, must be valid sqlite3 db url`,
+		},
+		{
 			name:          "unexpected BUCKET_DIR_PATH",
 			appendPath:    filepath.Join("testdata", "appendix-with-bucket-dir-path.cfg"),
 			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances",
@@ -216,6 +226,7 @@ func TestGenerateConfig(t *testing.T) {
 		httpPort     *uint
 		peerPort     *uint
 		logPath      *string
+		useDB        bool
 	}{
 		{
 			name:         "offline config with no appendix",
@@ -225,6 +236,7 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
+			useDB:        true,
 		},
 		{
 			name:         "offline config with no peer port",
@@ -300,6 +312,7 @@ func TestGenerateConfig(t *testing.T) {
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
 				Strict:             false,
+				UseDB:              testCase.useDB,
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
@@ -317,4 +330,88 @@ func TestGenerateConfig(t *testing.T) {
 			assert.Equal(t, string(configBytes), string(expectedByte))
 		})
 	}
+}
+
+func TestExternalStorageConfigUsesDatabaseToml(t *testing.T) {
+	var err error
+	var captiveCoreToml *CaptiveCoreToml
+	httpPort := uint(8000)
+	peerPort := uint(8000)
+	logPath := "logPath"
+
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		HTTPPort:           &httpPort,
+		PeerPort:           &peerPort,
+		LogPath:            &logPath,
+		Strict:             false,
+	}
+
+	captiveCoreToml, err = NewCaptiveCoreToml(params)
+	assert.NoError(t, err)
+	captiveCoreToml.Database = "sqlite3:///etc/defaults/stellar.db"
+
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
+
+	assert.NoError(t, err)
+	toml := CaptiveCoreToml{}
+	require.NoError(t, toml.unmarshal(configBytes, true))
+	assert.Equal(t, toml.Database, "sqlite3:///etc/defaults/stellar.db")
+}
+
+func TestDBConfigDefaultsToSqlite(t *testing.T) {
+	var err error
+	var captiveCoreToml *CaptiveCoreToml
+	httpPort := uint(8000)
+	peerPort := uint(8000)
+	logPath := "logPath"
+
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		HTTPPort:           &httpPort,
+		PeerPort:           &peerPort,
+		LogPath:            &logPath,
+		Strict:             false,
+		UseDB:              true,
+	}
+
+	captiveCoreToml, err = NewCaptiveCoreToml(params)
+	assert.NoError(t, err)
+
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
+
+	assert.NoError(t, err)
+	toml := CaptiveCoreToml{}
+	require.NoError(t, toml.unmarshal(configBytes, true))
+	assert.Equal(t, toml.Database, "sqlite3://stellar.db")
+}
+
+func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
+	var err error
+	var captiveCoreToml *CaptiveCoreToml
+	httpPort := uint(8000)
+	peerPort := uint(8000)
+	logPath := "logPath"
+
+	// UseDB not set, which means it's false
+	params := CaptiveCoreTomlParams{
+		NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
+		HistoryArchiveURLs: []string{"http://localhost:1170"},
+		HTTPPort:           &httpPort,
+		PeerPort:           &peerPort,
+		LogPath:            &logPath,
+		Strict:             false,
+	}
+
+	captiveCoreToml, err = NewCaptiveCoreToml(params)
+	assert.NoError(t, err)
+
+	configBytes, err := generateConfig(captiveCoreToml, stellarCoreRunnerModeOffline)
+
+	assert.NoError(t, err)
+	toml := CaptiveCoreToml{}
+	require.NoError(t, toml.unmarshal(configBytes, true))
+	assert.Equal(t, toml.Database, "")
 }

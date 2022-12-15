@@ -11,16 +11,14 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStateVerifier(t *testing.T) {
-	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: ingest.MaxSupportedProtocolVersion,
-	})
+	itest := integration.NewTest(t, integration.Config{})
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{
@@ -66,7 +64,7 @@ func TestStateVerifier(t *testing.T) {
 			Selling:       txnbuild.NativeAsset{},
 			Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
 			Amount:        "3",
-			Price:         "1",
+			Price:         xdr.Price{1, 1},
 		},
 		&txnbuild.ManageData{
 			SourceAccount: sponsoredSource.AccountID,
@@ -122,7 +120,7 @@ func TestStateVerifier(t *testing.T) {
 	}
 
 	// Trigger state rebuild to check if ingesting from history archive works
-	session := itest.Horizon().HistoryQ().Clone()
+	session := itest.HorizonIngest().HistoryQ().Clone()
 	q := &history.Q{session}
 	err = q.Begin()
 	assert.NoError(t, err)

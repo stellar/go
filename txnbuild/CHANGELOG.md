@@ -7,6 +7,40 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 
+## [10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-04-18
+
+* Adds support for Protocol 19 transaction preconditions ([CAP-21](https://stellar.org/protocol/cap-21)).
+
+### Breaking changes
+
+* There are many new ways for a transaction to be (in)valid (see the new `Preconditions` structure), and the corresponding breaking change is in how transactions are built:
+
+```diff
+ tx, err := NewTransaction(TransactionParams{
+     SourceAccount: someAccount,
+     // ... other parameters ...
+-    Timebounds:    NewTimeout(5),
++    Preconditions: Preconditions{TimeBounds: NewTimeout(5)},
+ })
+```
+
+* `Timebounds` has been renamed to `TimeBounds`, though a type alias remains.
+
+* A `*TimeBounds` structure is no longer considered valid (via `Validate()`) if it's `nil`. This further reinforces the fact that transactions need timebounds.
+
+
+## [9.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-01-10
+
+* Enable Muxed Accounts ([SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)) by default ([#4169](https://github.com/stellar/go/pull/4169)):
+  * Remove `TransactionParams.EnableMuxedAccounts`
+  * Remove `TransactionFromXDROptionEnableMuxedAccounts`
+  * Remove `FeeBumpTransactionParams.EnableMuxedAccounts`
+  * Remove parameter `withMuxedAccounts bool` from all methods/functions.
+  * Remove `options ...TransactionFromXDROption` parameter from `TransactionFromXDR()`
+  * Rename `SetOpSourceMuxedAccount()` to (pre-existing) `SetOpSourceAccount()` which now accepts
+    both `G` and `M` (muxed) account strkeys.
+* Use xdr.Price to represent prices in txnbuild instead of strings ([#4167](https://github.com/stellar/go/pull/4167)).
+  
 ## [8.0.0-beta.0](https://github.com/stellar/go/releases/tag/horizonclient-v8.0.0-beta.0) - 2021-10-04
 
 **This release adds support for Protocol 18.**

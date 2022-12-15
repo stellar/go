@@ -11,7 +11,7 @@ import (
 )
 
 type ScraperConfig struct {
-	Client *horizonclient.Client
+	Client horizonclient.ClientInterface
 	Logger *hlog.Entry
 	Ctx    *context.Context
 }
@@ -110,20 +110,20 @@ type OrderbookStats struct {
 	SpreadMidPoint     float64
 }
 
-// FetchAllAssets fetches assets from the Horizon public net. If limit = 0, will fetch all assets.
-func (c *ScraperConfig) FetchAllAssets(limit int, parallelism int) (assets []FinalAsset, err error) {
+// ProcessAllAssets fetches assets from the Horizon public net. If limit = 0, will fetch all assets.
+func (c *ScraperConfig) ProcessAllAssets(limit int, parallelism int, assetQueue chan<- FinalAsset) (numNonTrash int, numTrash int) {
 	dirtyAssets, err := c.retrieveAssets(limit)
 	if err != nil {
 		return
 	}
 
-	assets, numTrash := c.parallelProcessAssets(dirtyAssets, parallelism)
+	numNonTrash, numTrash = c.parallelProcessAssets(dirtyAssets, parallelism, assetQueue)
 
 	c.Logger.Infof(
 		"Scanned %d entries. Trash: %d. Non-trash: %d\n",
 		len(dirtyAssets),
 		numTrash,
-		len(assets),
+		numNonTrash,
 	)
 	return
 }
@@ -135,7 +135,9 @@ func (c *ScraperConfig) FetchAllTrades(since time.Time, limit int) (trades []hPr
 
 	trades, err = c.retrieveTrades(since, limit)
 
-	c.Logger.Info("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
+	if len(trades) > 0 {
+		c.Logger.Info("Last close time ingested:", trades[len(trades)-1].LedgerCloseTime)
+	}
 	c.Logger.Infof("Fetched: %d trades\n", len(trades))
 	return
 }

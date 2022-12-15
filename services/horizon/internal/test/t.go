@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
+	tdb "github.com/stellar/go/services/horizon/internal/test/db"
 	"github.com/stellar/go/services/horizon/internal/test/scenarios"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/render/hal"
@@ -26,7 +28,7 @@ func (t *T) CoreSession() *db.Session {
 // Finish finishes the test, logging any accumulated horizon logs to the logs
 // output
 func (t *T) Finish() {
-	logEntries := RestoreLogger()
+	logEntries := t.testLogs()
 	operationfeestats.ResetState()
 
 	for _, entry := range logEntries {
@@ -50,11 +52,11 @@ func (t *T) HorizonSession() *db.Session {
 func (t *T) loadScenario(scenarioName string, includeHorizon bool) {
 	stellarCorePath := scenarioName + "-core.sql"
 
-	scenarios.Load(StellarCoreDatabaseURL(), stellarCorePath)
+	scenarios.Load(tdb.StellarCoreURL(), stellarCorePath)
 
 	if includeHorizon {
 		horizonPath := scenarioName + "-horizon.sql"
-		scenarios.Load(DatabaseURL(), horizonPath)
+		scenarios.Load(tdb.HorizonURL(), horizonPath)
 	}
 }
 
@@ -163,4 +165,13 @@ func (t *T) LoadLedgerStatus() ledger.Status {
 	}
 
 	return next
+}
+
+// retrieves entries from test logger instance
+func (t *T) testLogs() []logrus.Entry {
+	if t.EndLogTest == nil {
+		return []logrus.Entry{}
+	}
+
+	return t.EndLogTest()
 }

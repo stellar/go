@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -83,7 +84,7 @@ func TestNewSystem(t *testing.T) {
 		CoreSession:              &db.Session{DB: &sqlx.DB{}},
 		HistorySession:           &db.Session{DB: &sqlx.DB{}},
 		DisableStateVerification: true,
-		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
+		HistoryArchiveURLs:       []string{"https://history.stellar.org/prd/core-live/core_live_001"},
 		CheckpointFrequency:      64,
 	}
 
@@ -161,7 +162,7 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 	assert.EqualError(t, err, "invalid range: [0, 0]")
 }
 
-func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
+func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
 		historyQ:          historyQ,
@@ -179,13 +180,21 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	defer func() { log = oldLogger }()
 
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, db.ErrCancelled).Once()
-	system.maybeVerifyState(0)
+	system.maybeVerifyState(63)
+	system.wg.Wait()
 
 	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, context.Canceled).Once()
-	system.maybeVerifyState(0)
+	system.maybeVerifyState(63)
+	system.wg.Wait()
 
 	logged := done()
 	assert.Len(t, logged, 0)
+
+	// Ensure state verifier does not start also for any other error
+	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, errors.New("my error")).Once()
+	system.maybeVerifyState(63)
+	system.wg.Wait()
+
 	historyQ.AssertExpectations(t)
 }
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
@@ -229,6 +238,7 @@ type mockDBQ struct {
 	mock.Mock
 
 	history.MockQAccounts
+	history.MockQFilter
 	history.MockQClaimableBalances
 	history.MockQHistoryClaimableBalances
 	history.MockQLiquidityPools
@@ -260,6 +270,11 @@ func (m *mockDBQ) CloneIngestionQ() history.IngestionQ {
 }
 
 func (m *mockDBQ) Commit() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *mockDBQ) Close() error {
 	args := m.Called()
 	return args.Error(0)
 }
@@ -322,9 +337,9 @@ func (m *mockDBQ) GetExpStateInvalid(ctx context.Context) (bool, error) {
 	return args.Get(0).(bool), args.Error(1)
 }
 
-func (m *mockDBQ) GetAllOffers(ctx context.Context) ([]history.Offer, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]history.Offer), args.Error(1)
+func (m *mockDBQ) StreamAllOffers(ctx context.Context, callback func(history.Offer) error) error {
+	a := m.Called(ctx, callback)
+	return a.Error(0)
 }
 
 func (m *mockDBQ) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {
@@ -359,19 +374,36 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder(maxBatchSize int) history.TradeBatc
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
-func (m *mockDBQ) RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis) error {
-	args := m.Called(ctx, from, to)
+func (m *mockDBQ) ReapLookupTables(ctx context.Context, offsets map[string]int64) (map[string]int64, map[string]int64, error) {
+	args := m.Called(ctx, offsets)
+	var r1, r2 map[string]int64
+	if args.Get(0) != nil {
+		r1 = args.Get(0).(map[string]int64)
+	}
+	if args.Get(1) != nil {
+		r1 = args.Get(1).(map[string]int64)
+	}
+	return r1, r2, args.Error(2)
+}
+
+func (m *mockDBQ) RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis, roundingSlippageFilter int) error {
+	args := m.Called(ctx, from, to, roundingSlippageFilter)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error {
-	args := m.Called(ctx, fromLedger, toLedger)
+func (m *mockDBQ) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32, roundingSlippageFilter int) error {
+	args := m.Called(ctx, fromLedger, toLedger, roundingSlippageFilter)
 	return args.Error(0)
 }
 
 func (m *mockDBQ) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]history.Asset, error) {
 	args := m.Called(ctx, assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
+}
+
+func (m *mockDBQ) DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
+	args := m.Called(ctx, howOldInSeconds)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 type mockLedgerBackend struct {
@@ -426,37 +458,34 @@ func (m *mockProcessorsRunner) RunGenesisStateIngestion() (ingest.StatsChangePro
 
 func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
 	checkpointLedger uint32,
+	skipChecks bool,
 	ledgerProtocolVersion uint32,
 	bucketListHash xdr.Hash,
 ) (ingest.StatsChangeProcessorResults, error) {
-	args := m.Called(checkpointLedger, ledgerProtocolVersion, bucketListHash)
+	args := m.Called(checkpointLedger, skipChecks, ledgerProtocolVersion, bucketListHash)
 	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
-	ingest.StatsChangeProcessorResults,
-	processorsRunDurations,
-	processors.StatsLedgerTransactionProcessorResults,
-	processorsRunDurations,
+	ledgerStats,
 	error,
 ) {
 	args := m.Called(ledger)
-	return args.Get(0).(ingest.StatsChangeProcessorResults),
-		args.Get(1).(processorsRunDurations),
-		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
-		args.Get(3).(processorsRunDurations),
-		args.Error(4)
+	return args.Get(0).(ledgerStats),
+		args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
+	processors.TradeStats,
 	error,
 ) {
 	args := m.Called(ledger)
 	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(1).(processorsRunDurations),
-		args.Error(2)
+		args.Get(2).(processors.TradeStats),
+		args.Error(3)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)
@@ -485,6 +514,10 @@ func (m *mockSystem) Metrics() Metrics {
 	return args.Get(0).(Metrics)
 }
 
+func (m *mockSystem) RegisterMetrics(registry *prometheus.Registry) {
+	m.Called(registry)
+}
+
 func (m *mockSystem) StressTest(numTransactions, changesPerTransaction int) error {
 	args := m.Called(numTransactions, changesPerTransaction)
 	return args.Error(0)
@@ -492,6 +525,11 @@ func (m *mockSystem) StressTest(numTransactions, changesPerTransaction int) erro
 
 func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
 	args := m.Called(fromLedger, toLedger, verifyState)
+	return args.Error(0)
+}
+
+func (m *mockSystem) BuildState(sequence uint32, skipChecks bool) error {
+	args := m.Called(sequence, skipChecks)
 	return args.Error(0)
 }
 

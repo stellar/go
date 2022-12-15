@@ -46,7 +46,7 @@ func TestClaimPredicateJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.JSONEq(
 		t,
-		`{"and":[{"or":[{"rel_before":"12"},{"abs_before":"2020-08-26T11:15:39Z"}]},{"not":{"unconditional":true}}]}`,
+		`{"and":[{"or":[{"rel_before":"12"},{"abs_before":"2020-08-26T11:15:39Z","abs_before_epoch":"1598440539"}]},{"not":{"unconditional":true}}]}`,
 		string(serialized),
 	)
 
@@ -99,28 +99,28 @@ func TestAbsBeforeTimestamps(t *testing.T) {
 	}{
 		{
 			0,
-			`{"abs_before":"1970-01-01T00:00:00Z"}`,
+			`{"abs_before":"1970-01-01T00:00:00Z","abs_before_epoch":"0"}`,
 		},
 		{
 			900 * year,
-			`{"abs_before":"2869-05-27T00:00:00Z"}`,
+			`{"abs_before":"2869-05-27T00:00:00Z","abs_before_epoch":"28382400000"}`,
 		},
 		{
 			math.MaxInt64,
-			`{"abs_before":"+292277026596-12-04T15:30:07Z"}`,
+			`{"abs_before":"+292277026596-12-04T15:30:07Z","abs_before_epoch":"9223372036854775807"}`,
 		},
 		{
 			-10,
-			`{"abs_before":"1969-12-31T23:59:50Z"}`,
+			`{"abs_before":"1969-12-31T23:59:50Z","abs_before_epoch":"-10"}`,
 		},
 		{
 			-9000 * year,
-			`{"abs_before":"-7025-12-23T00:00:00Z"}`,
+			`{"abs_before":"-7025-12-23T00:00:00Z","abs_before_epoch":"-283824000000"}`,
 		},
 		{
 			math.MinInt64,
 			// this serialization doesn't make sense but at least it doesn't crash the marshaller
-			`{"abs_before":"+292277026596-12-04T15:30:08Z"}`,
+			`{"abs_before":"+292277026596-12-04T15:30:08Z","abs_before_epoch":"-9223372036854775808"}`,
 		},
 	} {
 		xdrSec := Int64(testCase.unix)

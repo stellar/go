@@ -16,8 +16,9 @@ import (
 
 type HorizonDB interface {
 	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
+	PreFilteredTransactionByHash(ctx context.Context, dest interface{}, hash string) error
 	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
-	TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
+	AllTransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
 	BeginTx(*sql.TxOptions) error
 	Rollback() error
@@ -77,6 +78,18 @@ type System struct {
 	}
 }
 
+// RegisterMetrics registers the prometheus metrics
+func (sys *System) RegisterMetrics(registry *prometheus.Registry) {
+	registry.MustRegister(sys.Metrics.SubmissionDuration)
+	registry.MustRegister(sys.Metrics.BufferedSubmissionsGauge)
+	registry.MustRegister(sys.Metrics.OpenSubmissionsGauge)
+	registry.MustRegister(sys.Metrics.FailedSubmissionsCounter)
+	registry.MustRegister(sys.Metrics.SuccessfulSubmissionsCounter)
+	registry.MustRegister(sys.Metrics.V0TransactionsCounter)
+	registry.MustRegister(sys.Metrics.V1TransactionsCounter)
+	registry.MustRegister(sys.Metrics.FeeBumpTransactionsCounter)
+}
+
 // Submit submits the provided base64 encoded transaction envelope to the
 // network using this submission system.
 func (sys *System) Submit(
@@ -84,10 +97,10 @@ func (sys *System) Submit(
 	rawTx string,
 	envelope xdr.TransactionEnvelope,
 	hash string,
-) (result <-chan Result) {
+) (resultReadCh <-chan Result) {
 	sys.Init()
-	response := make(chan Result, 1)
-	result = response
+	resultCh := make(chan Result, 1)
+	resultReadCh = resultCh
 
 	db := sys.DB(ctx)
 	// The database doesn't (yet) store muxed accounts, so we query
@@ -101,88 +114,93 @@ func (sys *System) Submit(
 		"tx":      rawTx,
 	}).Info("Processing transaction")
 
-	if envelope.SeqNum() < 0 {
-		sys.finish(ctx, hash, response, Result{Err: ErrBadSequence})
+	seqNum := envelope.SeqNum()
+	minSeqNum := envelope.MinSeqNum()
+	// Ensure sequence numbers make sense
+	if seqNum < 0 || (minSeqNum != nil && (*minSeqNum < 0 || *minSeqNum >= seqNum)) {
+		sys.finish(ctx, hash, resultCh, Result{Err: ErrBadSequence})
 		return
 	}
 
 	tx, sequenceNumber, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
-		sys.finish(ctx, hash, response, Result{Transaction: tx})
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 		return
 	}
 	if err != ErrNoResults {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Error getting submission result from a DB")
-		sys.finish(ctx, hash, response, Result{Transaction: tx, Err: err})
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx, Err: err})
 		return
 	}
 
 	// queue the submission and get the channel that will emit when
 	// submission is valid
-	seq := sys.SubmissionQueue.Push(sourceAddress, uint64(envelope.SeqNum()))
+	var pMinSeqNum *uint64
+	if minSeqNum != nil {
+		uMinSeqNum := uint64(*minSeqNum)
+		pMinSeqNum = &uMinSeqNum
+	}
+	submissionWait := sys.SubmissionQueue.Push(sourceAddress, uint64(seqNum), pMinSeqNum)
 
 	// update the submission queue with the source accounts current sequence value
 	// which will cause the channel returned by Push() to emit if possible.
-	sys.SubmissionQueue.Update(map[string]uint64{
+	sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
 		sourceAddress: sequenceNumber,
 	})
 
 	select {
-	case err := <-seq:
+	case err := <-submissionWait:
 		if err == sequence.ErrBadSequence {
 			// convert the internal only ErrBadSequence into the FailedTransactionError
 			err = ErrBadSequence
 		}
 
 		if err != nil {
-			sys.finish(ctx, hash, response, Result{Err: err})
+			sys.finish(ctx, hash, resultCh, Result{Err: err})
 			return
 		}
 
 		sr := sys.submitOnce(ctx, rawTx)
 		sys.updateTransactionTypeMetrics(envelope)
 
-		// if submission succeeded
-		if sr.Err == nil {
-			// add transactions to open list
-			sys.Pending.Add(ctx, hash, response)
-			// update the submission queue, allowing the next submission to proceed
-			sys.SubmissionQueue.Update(map[string]uint64{
-				sourceAddress: uint64(envelope.SeqNum()),
-			})
+		if sr.Err != nil {
+			// any error other than "txBAD_SEQ" is a failure
+			isBad, err := sr.IsBadSeq()
+			if err != nil {
+				sys.finish(ctx, hash, resultCh, Result{Err: err})
+				return
+			}
+			if !isBad {
+				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
+				return
+			}
+
+			if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
+				sys.finish(ctx, hash, resultCh, Result{Err: err})
+				return
+			}
+
+			// If error is txBAD_SEQ, check for the result again
+			tx, err = txResultByHash(ctx, db, hash)
+			if err != nil {
+				// finally, return the bad_seq error if no result was found on 2nd attempt
+				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
+				return
+			}
+			// If we found the result, use it as the result
+			sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 			return
 		}
 
-		// any error other than "txBAD_SEQ" is a failure
-		isBad, err := sr.IsBadSeq()
-		if err != nil {
-			sys.finish(ctx, hash, response, Result{Err: err})
-			return
-		}
-
-		if !isBad {
-			sys.finish(ctx, hash, response, Result{Err: sr.Err})
-			return
-		}
-
-		if sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())) {
-			sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
-			return
-		}
-
-		// If error is txBAD_SEQ, check for the result again
-		tx, err = txResultByHash(ctx, db, hash)
-		if err == nil {
-			// If the found use it as the result
-			sys.finish(ctx, hash, response, Result{Transaction: tx})
-		} else {
-			// finally, return the bad_seq error if no result was found on 2nd attempt
-			sys.finish(ctx, hash, response, Result{Err: sr.Err})
-		}
-
+		// add transactions to open list
+		sys.Pending.Add(ctx, hash, resultCh)
+		// update the submission queue, allowing the next submission to proceed
+		sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
+			sourceAddress: uint64(envelope.SeqNum()),
+		})
 	case <-ctx.Done():
-		sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
+		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
 	}
 
 	return
@@ -190,7 +208,7 @@ func (sys *System) Submit(
 
 // waitUntilAccountSequence blocks until either the context times out or the sequence number of the
 // given source account is greater than or equal to `seq`
-func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) bool {
+func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) error {
 	timer := time.NewTimer(sys.accountSeqPollInterval)
 	defer timer.Stop()
 
@@ -210,17 +228,24 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 					Warn("missing sequence number for account")
 			}
 			if num >= seq {
-				return false
+				return nil
 			}
 		}
 
 		select {
 		case <-ctx.Done():
-			return true
+			return sys.deriveTxSubError(ctx)
 		case <-timer.C:
 			timer.Reset(sys.accountSeqPollInterval)
 		}
 	}
+}
+
+func (sys *System) deriveTxSubError(ctx context.Context) error {
+	if ctx.Err() == context.Canceled {
+		return ErrCanceled
+	}
+	return ErrTimeout
 }
 
 // Submit submits the provided base64 encoded transaction envelope to the
@@ -308,7 +333,7 @@ func (sys *System) Tick(ctx context.Context) {
 			logger.WithStack(err).Error(err)
 			return
 		} else {
-			sys.SubmissionQueue.Update(curSeq)
+			sys.SubmissionQueue.NotifyLastAccountSequences(curSeq)
 		}
 	}
 
@@ -323,12 +348,12 @@ func (sys *System) Tick(ctx context.Context) {
 
 		// In Tick we only check txs in a queue so those which did not have results before Tick
 		// so we check for them in the last 5 mins of ledgers: 60.
-		var sinceLedgerSeq int32 = int32(latestLedger) - 60
+		sinceLedgerSeq := int32(latestLedger) - 60
 		if sinceLedgerSeq < 0 {
 			sinceLedgerSeq = 0
 		}
 
-		txs, err := db.TransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
+		txs, err := db.AllTransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
 		if err != nil && !db.NoRows(err) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return

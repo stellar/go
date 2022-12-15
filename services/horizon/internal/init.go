@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/http"
 	"runtime"
-	"time"
+
+	"github.com/stellar/go/services/horizon/internal/paths"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,8 +19,9 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry) db.SessionInterface {
-	session, err := db.Open("postgres", databaseURL)
+func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry, clientConfigs ...db.ClientConfig) db.SessionInterface {
+	log.Infof("Establishing database session for %v", subservice)
+	session, err := db.Open("postgres", databaseURL, clientConfigs...)
 	if err != nil {
 		log.Fatalf("cannot open %v DB: %v", subservice, err)
 	}
@@ -30,6 +32,8 @@ func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, max
 }
 
 func mustInitHorizonDB(app *App) {
+	log.Infof("Initializing database...")
+
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
 	if app.config.Ingest {
@@ -44,21 +48,36 @@ func mustInitHorizonDB(app *App) {
 	}
 
 	if app.config.RoDatabaseURL == "" {
+		var clientConfigs []db.ClientConfig
+		if !app.config.Ingest {
+			// if we are not ingesting then we don't expect to have long db queries / transactions
+			clientConfigs = append(
+				clientConfigs,
+				db.StatementTimeout(app.config.ConnectionTimeout),
+				db.IdleTransactionTimeout(app.config.ConnectionTimeout),
+			)
+		}
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.DatabaseURL,
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
+			clientConfigs...,
 		)}
 	} else {
 		// If RO set, use it for all DB queries
+		roClientConfigs := []db.ClientConfig{
+			db.StatementTimeout(app.config.ConnectionTimeout),
+			db.IdleTransactionTimeout(app.config.ConnectionTimeout),
+		}
 		app.historyQ = &history.Q{mustNewDBSession(
 			db.HistorySubservice,
 			app.config.RoDatabaseURL,
 			maxIdle,
 			maxOpen,
 			app.prometheusRegistry,
+			roClientConfigs...,
 		)}
 
 		app.primaryHistoryQ = &history.Q{mustNewDBSession(
@@ -83,21 +102,22 @@ func initIngester(app *App) {
 		HistorySession: mustNewDBSession(
 			db.IngestSubservice, app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry,
 		),
-		NetworkPassphrase: app.config.NetworkPassphrase,
-		// TODO:
-		// Use the first archive for now. We don't have a mechanism to
-		// use multiple archives at the same time currently.
-		HistoryArchiveURL:            app.config.HistoryArchiveURLs[0],
+		NetworkPassphrase:            app.config.NetworkPassphrase,
+		HistoryArchiveURLs:           app.config.HistoryArchiveURLs,
 		CheckpointFrequency:          app.config.CheckpointFrequency,
 		StellarCoreURL:               app.config.StellarCoreURL,
 		StellarCoreCursor:            app.config.CursorName,
 		CaptiveCoreBinaryPath:        app.config.CaptiveCoreBinaryPath,
 		CaptiveCoreStoragePath:       app.config.CaptiveCoreStoragePath,
+		CaptiveCoreConfigUseDB:       app.config.CaptiveCoreConfigUseDB,
 		CaptiveCoreToml:              app.config.CaptiveCoreToml,
 		RemoteCaptiveCoreURL:         app.config.RemoteCaptiveCoreURL,
 		EnableCaptiveCore:            app.config.EnableCaptiveCoreIngestion,
 		DisableStateVerification:     app.config.IngestDisableStateVerification,
+		EnableReapLookupTables:       app.config.HistoryRetentionCount > 0,
 		EnableExtendedLogLedgerStats: app.config.IngestEnableExtendedLogLedgerStats,
+		RoundingSlippageFilter:       app.config.RoundingSlippageFilter,
+		EnableIngestionFiltering:     app.config.EnableIngestionFiltering,
 	})
 
 	if err != nil {
@@ -106,13 +126,20 @@ func initIngester(app *App) {
 }
 
 func initPathFinder(app *App) {
+	if app.config.DisablePathFinding {
+		return
+	}
 	orderBookGraph := orderbook.NewOrderBookGraph()
 	app.orderBookStream = ingest.NewOrderBookStream(
 		&history.Q{app.HorizonSession()},
 		orderBookGraph,
 	)
 
-	app.paths = simplepath.NewInMemoryFinder(orderBookGraph, !app.config.DisablePoolPathFinding)
+	var finder paths.Finder = simplepath.NewInMemoryFinder(orderBookGraph, !app.config.DisablePoolPathFinding)
+	if app.config.MaxPathFindingRequests != 0 {
+		finder = paths.NewRateLimitedFinder(finder, app.config.MaxPathFindingRequests)
+	}
+	app.paths = finder
 }
 
 // initSentry initialized the default sentry client with the configured DSN
@@ -164,72 +191,13 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.ingestingGauge)
 
-	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return float64(ls.HistoryLatest)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.historyLatestLedgerCounter)
+	app.ledgerState.RegisterMetrics(app.prometheusRegistry)
 
-	app.historyLatestLedgerClosedAgoGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "history", Name: "latest_ledger_closed_ago_seconds",
-			Help: "seconds since the close of the last ingested ledger",
-		},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return time.Since(ls.HistoryLatestClosedAt).Seconds()
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.historyLatestLedgerClosedAgoGauge)
+	app.coreState.RegisterMetrics(app.prometheusRegistry)
 
-	app.historyElderLedgerCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return float64(ls.HistoryElder)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.historyElderLedgerCounter)
-
-	app.coreLatestLedgerCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger"},
-		func() float64 {
-			ls := app.ledgerState.CurrentStatus()
-			return float64(ls.CoreLatest)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.coreLatestLedgerCounter)
-
-	app.coreSynced = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "stellar_core", Name: "synced",
-			Help: "determines if Stellar-Core defined by --stellar-core-url is synced with the network",
-		},
-		func() float64 {
-			if app.coreState.Get().Synced {
-				return 1
-			} else {
-				return 0
-			}
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.coreSynced)
-
-	app.coreSupportedProtocolVersion = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "stellar_core", Name: "supported_protocol_version",
-			Help: "determines the supported version of the protocol by Stellar-Core defined by --stellar-core-url",
-		},
-		func() float64 {
-			return float64(app.coreState.Get().CoreSupportedProtocolVersion)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.coreSupportedProtocolVersion)
-
-	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
+	if !app.config.DisablePathFinding {
+		app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
+	}
 }
 
 // initGoMetrics registers the Go collector provided by prometheus package which
@@ -255,36 +223,16 @@ func initIngestMetrics(app *App) {
 	}
 
 	app.ingestingGauge.Inc()
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().MaxSupportedProtocolVersion)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LocalLatestLedger)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionTradeAggregationDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateInvalidGauge)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerStatsCounter)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDuration)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDurationSummary)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveStellarCoreSynced)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveCoreSupportedProtocolVersion)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerFetchDurationSummary)
-	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyLedgerEntriesCount)
+	app.ingester.RegisterMetrics(app.prometheusRegistry)
 }
 
 func initTxSubMetrics(app *App) {
 	app.submitter.Init()
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.SubmissionDuration)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.BufferedSubmissionsGauge)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.OpenSubmissionsGauge)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.FailedSubmissionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.SuccessfulSubmissionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.V0TransactionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.V1TransactionsCounter)
-	app.prometheusRegistry.MustRegister(app.submitter.Metrics.FeeBumpTransactionsCounter)
+	app.submitter.RegisterMetrics(app.prometheusRegistry)
 }
 
 func initWebMetrics(app *App) {
-	app.prometheusRegistry.MustRegister(app.webServer.Metrics.RequestDurationSummary)
-	app.prometheusRegistry.MustRegister(app.webServer.Metrics.ReplicaLagErrorsCounter)
+	app.webServer.RegisterMetrics(app.prometheusRegistry)
 }
 
 func initSubmissionSystem(app *App) {

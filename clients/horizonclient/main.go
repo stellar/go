@@ -149,9 +149,27 @@ type Client struct {
 	clock *clock.Clock
 }
 
+type AdminClient struct {
+	// fully qualified url for the admin web service
+	baseURL string
+
+	// HTTP client to make requests with
+	http HTTP
+
+	// max client wait time for response
+	horizonTimeout time.Duration
+}
+
 // SubmitTxOpts represents the submit transaction options
 type SubmitTxOpts struct {
 	SkipMemoRequiredCheck bool
+}
+
+type AdminClientInterface interface {
+	GetIngestionAccountFilter() (hProtocol.AccountFilterConfig, error)
+	GetIngestionAssetFilter() (hProtocol.AssetFilterConfig, error)
+	SetIngestionAccountFilter(hProtocol.AccountFilterConfig) error
+	SetIngestionAssetFilter(hProtocol.AssetFilterConfig) error
 }
 
 // ClientInterface contains methods implemented by the horizon client
@@ -434,6 +452,8 @@ type ClaimableBalanceRequest struct {
 	Asset    string
 	Sponsor  string
 	Claimant string
+	Cursor   string
+	Limit    uint
 }
 
 // ServerTimeRecord contains data for the current unix time of a horizon server instance, and the local time when it was recorded.

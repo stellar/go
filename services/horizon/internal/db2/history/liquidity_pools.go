@@ -9,6 +9,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -85,7 +86,7 @@ func (lpar *LiquidityPoolAssetReserve) UnmarshalJSON(data []byte) error {
 type QLiquidityPools interface {
 	UpsertLiquidityPools(ctx context.Context, lps []LiquidityPool) error
 	GetLiquidityPoolsByID(ctx context.Context, poolIDs []string) ([]LiquidityPool, error)
-	GetAllLiquidityPools(ctx context.Context) ([]LiquidityPool, error)
+	StreamAllLiquidityPools(ctx context.Context, callback func(LiquidityPool) error) error
 	CountLiquidityPools(ctx context.Context) (int, error)
 	FindLiquidityPoolByID(ctx context.Context, liquidityPoolID string) (LiquidityPool, error)
 	GetUpdatedLiquidityPools(ctx context.Context, newerThanSequence uint32) ([]LiquidityPool, error)
@@ -186,13 +187,27 @@ func (q *Q) GetLiquidityPools(ctx context.Context, query LiquidityPoolsQuery) ([
 	return results, nil
 }
 
-func (q *Q) GetAllLiquidityPools(ctx context.Context) ([]LiquidityPool, error) {
-	var results []LiquidityPool
-	if err := q.Select(ctx, &results, selectLiquidityPools.Where("deleted = ?", false)); err != nil {
-		return nil, errors.Wrap(err, "could not run select query")
+func (q *Q) StreamAllLiquidityPools(ctx context.Context, callback func(LiquidityPool) error) error {
+	var rows *sqlx.Rows
+	var err error
+
+	if rows, err = q.Query(ctx, selectLiquidityPools.Where("deleted = ?", false)); err != nil {
+		return errors.Wrap(err, "could not run all liquidity pools select query")
 	}
 
-	return results, nil
+	defer rows.Close()
+
+	for rows.Next() {
+		liquidityPool := LiquidityPool{}
+		if err = rows.StructScan(&liquidityPool); err != nil {
+			return errors.Wrap(err, "could not scan row into liquidity pool struct")
+		}
+		if err = callback(liquidityPool); err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
 }
 
 // GetUpdatedLiquidityPools returns all liquidity pools created, updated, or deleted after the given ledger sequence.
@@ -231,9 +246,23 @@ var liquidityPoolsSelectStatement = "lp.id, " +
 
 var selectLiquidityPools = sq.Select(liquidityPoolsSelectStatement).From("liquidity_pools lp")
 
+func cloneAsset(a xdr.Asset) xdr.Asset {
+	b64, err := xdr.MarshalBase64(a)
+	if err != nil {
+		panic(err)
+	}
+	var b xdr.Asset
+	if err = xdr.SafeUnmarshalBase64(b64, &b); err != nil {
+		panic(err)
+	}
+	return b
+}
+
 // MakeTestPool is a helper to make liquidity pools for testing purposes. It's
 // public because it's used in other test suites.
 func MakeTestPool(A xdr.Asset, a uint64, B xdr.Asset, b uint64) LiquidityPool {
+	A = cloneAsset(A)
+	B = cloneAsset(B)
 	if !A.LessThan(B) {
 		B, A = A, B
 		b, a = a, b

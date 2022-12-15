@@ -61,6 +61,7 @@ type QuorumSet struct {
 }
 
 type captiveCoreTomlValues struct {
+	Database string `toml:"DATABASE,omitempty"`
 	// we cannot omitempty because the empty string is a valid configuration for LOG_FILE_PATH
 	// and the default is stellar-core.log
 	LogFilePath   string `toml:"LOG_FILE_PATH"`
@@ -139,8 +140,10 @@ type CaptiveCoreToml struct {
 // path with a placeholder. For example:
 //
 // text := `[QUORUM_SET.a.b.c]
-//         THRESHOLD_PERCENT=67
-//         VALIDATORS=["a","b"]`
+//
+//	THRESHOLD_PERCENT=67
+//	VALIDATORS=["a","b"]`
+//
 // flattenTables(text, []string{"QUORUM_SET"}) ->
 //
 // `[__placeholder_label_0__]
@@ -312,6 +315,8 @@ type CaptiveCoreTomlParams struct {
 	LogPath *string
 	// Strict is a flag which, if enabled, rejects Stellar Core toml fields which are not supported by captive core.
 	Strict bool
+	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
+	UseDB bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -405,6 +410,11 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 }
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
+
+	if params.UseDB && !c.tree.Has("DATABASE") {
+		c.Database = "sqlite3://stellar.db"
+	}
+
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
 		c.NetworkPassphrase = params.NetworkPassphrase
 	}
@@ -547,6 +557,10 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 		}
 
 		names[v.Name] = true
+	}
+
+	if len(c.Database) > 0 && !strings.HasPrefix(c.Database, "sqlite3://") {
+		return fmt.Errorf("invalid DATABASE parameter: %s, for captive core config, must be valid sqlite3 db url", c.Database)
 	}
 
 	return nil

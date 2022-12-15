@@ -11,8 +11,8 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
 
@@ -603,7 +603,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 func addLiquidityPoolAssetDetails(result map[string]interface{}, lpp xdr.LiquidityPoolParameters) error {
 	result["asset_type"] = "liquidity_pool_shares"
 	if lpp.Type != xdr.LiquidityPoolTypeLiquidityPoolConstantProduct {
-		return fmt.Errorf("unkown liquidity pool type %d", lpp.Type)
+		return fmt.Errorf("unknown liquidity pool type %d", lpp.Type)
 	}
 	cp := lpp.ConstantProduct
 	poolID, err := xdr.NewPoolId(cp.AssetA, cp.AssetB, cp.Fee)

@@ -132,26 +132,25 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 
 		defer o.graph.Discard()
 
-		offers, err := o.historyQ.GetAllOffers(ctx)
-		if err != nil {
-			return true, errors.Wrap(err, "Error from GetAllOffers")
-		}
-
-		liquidityPools, err := o.historyQ.GetAllLiquidityPools(ctx)
-		if err != nil {
-			return true, errors.Wrap(err, "Error from GetAllLiquidityPools")
-		}
-
-		for _, offer := range offers {
+		err := o.historyQ.StreamAllOffers(ctx, func(offer history.Offer) error {
 			o.graph.AddOffers(offerToXDR(offer))
+			return nil
+		})
+		if err != nil {
+			return true, errors.Wrap(err, "Error loading offers into orderbook")
 		}
 
-		for _, liquidityPool := range liquidityPools {
-			liquidityPoolXDR, err := liquidityPoolToXDR(liquidityPool)
-			if err != nil {
-				return true, errors.Wrap(err, "Invalid liquidity pool row")
+		err = o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool history.LiquidityPool) error {
+			if liquidityPoolXDR, liquidityPoolErr := liquidityPoolToXDR(liquidityPool); liquidityPoolErr != nil {
+				return errors.Wrapf(liquidityPoolErr, "Invalid liquidity pool row %v, unable to marshal to xdr", liquidityPool)
+			} else {
+				o.graph.AddLiquidityPools(liquidityPoolXDR)
+				return nil
 			}
-			o.graph.AddLiquidityPools(liquidityPoolXDR)
+		})
+
+		if err != nil {
+			return true, errors.Wrap(err, "Error loading liquidity pools into orderbook")
 		}
 
 		if err := o.graph.Apply(status.LastIngestedLedger); err != nil {
@@ -208,11 +207,15 @@ func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (b
 	return false, nil
 }
 
-func (o *OrderBookStream) verifyAllOffers(ctx context.Context) (bool, error) {
-	offers := o.graph.Offers()
-	ingestionOffers, err := o.historyQ.GetAllOffers(ctx)
+func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.OfferEntry) (bool, error) {
+	var ingestionOffers []history.Offer
+	err := o.historyQ.StreamAllOffers(ctx, func(offer history.Offer) error {
+		ingestionOffers = append(ingestionOffers, offer)
+		return nil
+	})
+
 	if err != nil {
-		return false, errors.Wrap(err, "Error from GetAllOffers")
+		return false, errors.Wrap(err, "Error loading all offers for orderbook verification")
 	}
 
 	mismatch := len(offers) != len(ingestionOffers)
@@ -253,15 +256,21 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context) (bool, error) {
-	liquidityPools := o.graph.LiquidityPools()
-	ingestionLiquidityPools, err := o.historyQ.GetAllLiquidityPools(ctx)
+func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidityPools []xdr.LiquidityPoolEntry) (bool, error) {
+	var ingestionLiquidityPools []history.LiquidityPool
+
+	err := o.historyQ.StreamAllLiquidityPools(ctx, func(liquidityPool history.LiquidityPool) error {
+		ingestionLiquidityPools = append(ingestionLiquidityPools, liquidityPool)
+		return nil
+	})
+
 	if err != nil {
-		return false, errors.Wrap(err, "Error from GetAllLiquidityPools")
+		return false, errors.Wrap(err, "Error loading all liquidity pools for orderbook verification")
 	}
 
 	mismatch := len(liquidityPools) != len(ingestionLiquidityPools)
 
+	var liquidityPoolEntryBase64, liquidityPoolRowBase64 string
 	if !mismatch {
 		sort.Slice(liquidityPools, func(i, j int) bool {
 			return processors.PoolIDToString(liquidityPools[i].LiquidityPoolId) <
@@ -272,16 +281,18 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context) (bool, er
 		})
 
 		for i, liquidityPoolRow := range ingestionLiquidityPools {
+			var liquidityPoolRowXDR xdr.LiquidityPoolEntry
+			var err error
 			liquidityPoolEntry := liquidityPools[i]
-			liquidityPoolRowXDR, err := liquidityPoolToXDR(liquidityPoolRow)
+			liquidityPoolRowXDR, err = liquidityPoolToXDR(liquidityPoolRow)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from converting liquidity pool row to xdr")
 			}
-			liquidityPoolEntryBase64, err := o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
+			liquidityPoolEntryBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling liquidityPoolEntry")
 			}
-			liquidityPoolRowBase64, err := o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
+			liquidityPoolRowBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
 			if err != nil {
 				return false, errors.Wrap(err, "Error from marshalling liquidityPoolRowXDR")
 			}
@@ -293,9 +304,9 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context) (bool, er
 	}
 
 	if mismatch {
-		log.WithField("stream_liquidity_pools", liquidityPools).
-			WithField("ingestion_liquidity_pools", ingestionLiquidityPools).
-			Error("liquidity pools derived from order book stream does not match liquidity pool from ingestion")
+		log.WithField("stream_liquidity_pool", liquidityPoolEntryBase64).
+			WithField("ingestion_liquidity_pool", liquidityPoolRowBase64).
+			Error("one or more liquidity pools derived from order book stream does not match liquidity pool from ingestion")
 		return false, nil
 	}
 	log.Info("liquidity pool stream verification succeeded")
@@ -324,20 +335,31 @@ func (o *OrderBookStream) Update(ctx context.Context) error {
 	}
 
 	// add 15 minute jitter so that not all horizon nodes are calling
-	// historyQ.GetAllOffers at the same time
+	// historyQ.StreamAllOffers at the same time
 	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
 	requiresVerification := o.lastLedger > 0 &&
 		time.Since(o.lastVerification) >= verificationFrequency+jitter
 
 	if requiresVerification {
-		offersOk, err := o.verifyAllOffers(ctx)
+		offers, pools, err := o.graph.Verify()
+		if err != nil {
+			log.WithError(err).
+				Error("Orderbook graph is not internally consistent")
+			o.lastVerification = time.Now()
+			// set last ledger to 0 so that we reset on next update
+			o.lastLedger = 0
+			return nil
+		}
+
+		offersOk, err := o.verifyAllOffers(ctx, offers)
 		if err != nil {
 			if !isCancelledError(err) {
 				log.WithError(err).Info("Could not verify offers")
 				return nil
 			}
 		}
-		liquidityPoolsOK, err := o.verifyAllLiquidityPools(ctx)
+
+		liquidityPoolsOK, err := o.verifyAllLiquidityPools(ctx, pools)
 		if err != nil {
 			if !isCancelledError(err) {
 				log.WithError(err).Info("Could not verify liquidity pools")

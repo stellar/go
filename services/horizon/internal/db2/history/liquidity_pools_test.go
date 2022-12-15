@@ -1,6 +1,7 @@
 package history
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -90,6 +91,33 @@ func TestRemoveLiquidityPool(t *testing.T) {
 	tt.Assert.Equal(lp, lpObtained)
 }
 
+func TestStreamAllLiquidity(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	lp := MakeTestPool(usdAsset, 450, xlmAsset, 450)
+	otherLP := MakeTestPool(usdAsset, 10, eurAsset, 20)
+	expected := []LiquidityPool{lp, otherLP}
+	sort.Slice(expected, func(i, j int) bool {
+		return expected[i].PoolID < expected[j].PoolID
+	})
+
+	err := q.UpsertLiquidityPools(tt.Ctx, expected)
+	tt.Assert.NoError(err)
+
+	var pools []LiquidityPool
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(pool LiquidityPool) error {
+		pools = append(pools, pool)
+		return nil
+	})
+	sort.Slice(pools, func(i, j int) bool {
+		return pools[i].PoolID < pools[j].PoolID
+	})
+	tt.Assert.Equal(expected, pools)
+}
+
 func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -111,7 +139,11 @@ func TestFindLiquidityPoolsByAssets(t *testing.T) {
 	tt.Assert.Len(lps, 1)
 
 	pool := lps[0]
-	lps, err = q.GetAllLiquidityPools(tt.Ctx)
+	lps = nil
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool LiquidityPool) error {
+		lps = append(lps, liqudityPool)
+		return nil
+	})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 1)
 	tt.Assert.Equal(pool, lps[0])
@@ -205,7 +237,12 @@ func TestLiquidityPoolCompaction(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 0)
 
-	lps, err = q.GetAllLiquidityPools(tt.Ctx)
+	lps = nil
+	err = q.StreamAllLiquidityPools(tt.Ctx, func(liqudityPool LiquidityPool) error {
+		lps = append(lps, liqudityPool)
+		return nil
+	})
+
 	tt.Assert.NoError(err)
 	tt.Assert.Len(lps, 0)
 

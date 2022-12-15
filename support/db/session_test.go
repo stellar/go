@@ -3,11 +3,49 @@ package db
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestServerTimeout(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	var cancel context.CancelFunc
+	ctx := context.Background()
+	ctx, cancel = context.WithTimeout(ctx, time.Duration(1))
+	assert := assert.New(t)
+
+	sess := &Session{DB: db.Open()}
+	defer sess.DB.Close()
+	defer cancel()
+
+	var count int
+	err := sess.GetRaw(ctx, &count, "SELECT pg_sleep(2), COUNT(*) FROM people")
+	assert.ErrorIs(err, ErrTimeout, "long running db server operation past context timeout, should return timeout")
+}
+
+func TestUserCancel(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	var cancel context.CancelFunc
+	ctx := context.Background()
+	ctx, cancel = context.WithCancel(ctx)
+	assert := assert.New(t)
+
+	sess := &Session{DB: db.Open()}
+	defer sess.DB.Close()
+	defer cancel()
+
+	var count int
+	cancel()
+	err := sess.GetRaw(ctx, &count, "SELECT pg_sleep(2), COUNT(*) FROM people")
+	assert.ErrorIs(err, ErrCancelled, "any ongoing db server operation should return error immediately after user cancel")
+}
 
 func TestSession(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
@@ -90,4 +128,35 @@ func TestSession(t *testing.T) {
 	if assert.NoError(err) {
 		assert.Equal("$1 = $2 = $3 = ?", out)
 	}
+}
+
+func TestStatementTimeout(t *testing.T) {
+	assert := assert.New(t)
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	sess, err := Open(db.Dialect, db.DSN, StatementTimeout(50*time.Millisecond))
+	assert.NoError(err)
+	defer sess.Close()
+
+	var count int
+	err = sess.GetRaw(context.Background(), &count, "SELECT pg_sleep(2), COUNT(*) FROM people")
+	assert.ErrorIs(err, ErrStatementTimeout)
+}
+
+func TestIdleTransactionTimeout(t *testing.T) {
+	assert := assert.New(t)
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	sess, err := Open(db.Dialect, db.DSN, IdleTransactionTimeout(50*time.Millisecond))
+	assert.NoError(err)
+	defer sess.Close()
+
+	assert.NoError(sess.Begin())
+	<-time.After(100 * time.Millisecond)
+
+	var count int
+	err = sess.GetRaw(context.Background(), &count, "SELECT COUNT(*) FROM people")
+	assert.ErrorIs(err, ErrBadConnection)
 }

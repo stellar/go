@@ -45,6 +45,7 @@ Flags:
   -r, --recent            act on ledger-range difference between achives
       --s3region string   S3 region to connect to (default "us-east-1")
       --s3endpoint string S3 endpoint (default to AWS endpoint for selected region)
+      --skip-optional     skip optional (SCP) checkpoint files
       --thorough          decode and re-encode all buckets
       --verify            verify file contents
 

@@ -38,18 +38,32 @@ func (fte *FailedTransactionError) Result() (result xdr.TransactionResult, err e
 	return
 }
 
-func (fte *FailedTransactionError) TransactionResultCode(transactionHash string) (result string, err error) {
+// ResultCodes represents the result codes from a request attempting to submit a fee bump transaction.
+type ResultCodes struct {
+	Code      string
+	InnerCode string
+}
+
+func (fte *FailedTransactionError) TransactionResultCodes(transactionHash string) (result ResultCodes, err error) {
 	r, err := fte.Result()
 	if err != nil {
 		return
 	}
 
-	innerResult, ok := r.Result.GetInnerResultPair()
-	if ok && transactionHash == hex.EncodeToString(innerResult.TransactionHash[:]) {
-		result, err = codes.String(innerResult.Result.Result.Code)
-		return
+	if innerResultPair, ok := r.Result.GetInnerResultPair(); ok {
+		// This handles the case of a transaction which was fee bumped by another request.
+		// The request submitting the inner transaction should have a view of the inner result,
+		// instead of the fee bump transaction.
+		if transactionHash == hex.EncodeToString(innerResultPair.TransactionHash[:]) {
+			result.Code, err = codes.String(innerResultPair.Result.Result.Code)
+			return
+		}
+		result.InnerCode, err = codes.String(innerResultPair.Result.Result.Code)
+		if err != nil {
+			return
+		}
 	}
-	result, err = codes.String(r.Result.Code)
+	result.Code, err = codes.String(r.Result.Code)
 	return
 }
 

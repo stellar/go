@@ -115,4 +115,8 @@ func initRouter(fb *internal.Bot) *chi.Mux {
 
 func registerProblems() {
 	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
+
+	accountExistsProblem := problem.BadRequest
+	accountExistsProblem.Detail = internal.ErrAccountExists.Error()
+	problem.RegisterError(internal.ErrAccountExists, accountExistsProblem)
 }
