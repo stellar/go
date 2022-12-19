@@ -135,6 +135,22 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 	return nil
 }
 
+// SetContractData mutates `key` such that it represents the identity of a
+// contract data entry.
+func (key *LedgerKey) SetContractData(contractID Hash, keyVal ScVal) error {
+	data := LedgerKeyContractData{
+		ContractId: contractID,
+		Key:        keyVal,
+	}
+	nkey, err := NewLedgerKey(LedgerEntryTypeContractData, data)
+	if err != nil {
+		return err
+	}
+
+	*key = nkey
+	return nil
+}
+
 func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 	if err := e.xdrEncoderBuf.WriteByte(byte(key.Type)); err != nil {
 		return err
