@@ -3,17 +3,22 @@ package integration
 import (
 	"context"
 	"crypto/sha256"
+	"testing"
+
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
-func TestCreateSAC(t *testing.T) {
+func TestMintToAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -23,55 +28,138 @@ func TestCreateSAC(t *testing.T) {
 	})
 
 	issuer := itest.Master().Address()
-	asset := xdr.MustNewCreditAsset("USD", issuer)
-
-	// establish which account will be contract owner, and load it's current seq
-	sourceAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: issuer,
-	})
-	require.NoError(t, err)
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
 
 	// Create the contract
-	createContractOp := assembleCreateSACOp(issuer, asset)
-	opXDR, err := createContractOp.BuildXDR()
-	require.NoError(t, err)
+	createContractOp := addFootprint(itest, createSAC(issuer, asset))
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createContractOp)
 
-	invokeHostFunctionOp := opXDR.Body.MustInvokeHostFunctionOp()
+	recipientKp, recipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
 
-	// clear footprint so we can verify preflight response
-	response, err := itest.CoreClient().Preflight(
-		context.Background(),
-		createContractOp.SourceAccount,
-		invokeHostFunctionOp,
-	)
-	require.NoError(t, err)
-	err = xdr.SafeUnmarshalBase64(response.Footprint, &createContractOp.Footprint)
-	require.NoError(t, err)
-	require.Equal(t, stellarcore.PreflightStatusOk, response.Status)
-	require.Greater(t, response.CPUInstructions, uint64(0))
-	require.Greater(t, response.MemoryBytes, uint64(0))
-	require.Empty(t, response.Detail)
+	createMintOp := addFootprint(itest, mint(itest, issuer, asset, "20", recipient.GetAccountID()))
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createMintOp)
 
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
-	require.NoError(t, err)
-
-	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
-	require.NoError(t, err)
-
-	assert.Equal(t, tx.Hash, clientTx.Hash)
-	var txResult xdr.TransactionResult
-	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
-	require.NoError(t, err)
-
-	opResults, ok := txResult.OperationResults()
-	assert.True(t, ok)
-	assert.Equal(t, len(opResults), 1)
-	invokeHostFunctionResult, ok := opResults[0].MustTr().GetInvokeHostFunctionResult()
-	assert.True(t, ok)
-	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
+	recipientAccountDetails := itest.MustGetAccount(recipientKp)
+	assertContainsBalance(t, recipientAccountDetails.Balances, issuer, code, amount.MustParse("20"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("20"))
 }
 
-func assembleCreateSACOp(sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunction {
+func assertContainsBalance(t *testing.T, balances []horizon.Balance, issuer, code string, amt xdr.Int64) {
+	for _, b := range balances {
+		if b.Issuer == issuer && b.Code == code && amount.MustParse(b.Balance) == amt {
+			return
+		}
+	}
+	t.Fatalf("could not find balance for aset %s:%s", code, issuer)
+}
+
+func assertAssetStats(itest *integration.Test, issuer, code string, numAccounts int32, amt xdr.Int64) {
+	assets, err := itest.Client().Assets(horizonclient.AssetRequest{
+		ForAssetCode:   code,
+		ForAssetIssuer: issuer,
+		Limit:          1,
+	})
+	assert.NoError(itest.CurrentTest(), err)
+	for _, asset := range assets.Embedded.Records {
+		if asset.Issuer != issuer || asset.Code != code {
+			continue
+		}
+		assert.Equal(itest.CurrentTest(), numAccounts, asset.NumAccounts)
+		assert.Equal(itest.CurrentTest(), numAccounts, asset.Accounts.Authorized)
+		assert.Equal(itest.CurrentTest(), amt, amount.MustParse(asset.Amount))
+		return
+	}
+	itest.CurrentTest().Fatalf("could not find balance for aset %s:%s", code, issuer)
+}
+
+func invokerSignatureParam() xdr.ScVal {
+	invokerSym := xdr.ScSymbol("Invoker")
+	obj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoVec,
+		Vec: &xdr.ScVec{
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &invokerSym,
+			},
+		},
+	}
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvObject,
+		Obj:  &obj,
+	}
+}
+
+func functionNameParam(name string) xdr.ScVal {
+	contractFnParameterSym := xdr.ScSymbol(name)
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvSymbol,
+		Sym:  &contractFnParameterSym,
+	}
+}
+
+func contractIDParam(contractID xdr.Hash) xdr.ScVal {
+	contractIdBytes := contractID[:]
+	contractIdParameterObj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoBytes,
+		Bin:  &contractIdBytes,
+	}
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvObject,
+		Obj:  &contractIdParameterObj,
+	}
+}
+
+func accountIDParam(accountID string) xdr.ScVal {
+	//	return xdr.ScVal.scvObject(
+	//		xdr.ScObject.scoVec([
+	//			xdr.ScVal.scvSymbol('Account'),
+	//	xdr.ScVal.scvObject(
+	//		xdr.ScObject.scoAccountId(xdr.PublicKey.publicKeyTypeEd25519(account))
+	//	),
+	//])
+	//)
+
+	accountObj := &xdr.ScObject{
+		Type:      xdr.ScObjectTypeScoAccountId,
+		AccountId: xdr.MustAddressPtr(accountID),
+	}
+	accountSym := xdr.ScSymbol("Account")
+	accountEnum := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoVec,
+		Vec: &xdr.ScVec{
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &accountSym,
+			},
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvObject,
+				Obj:  &accountObj,
+			},
+		},
+	}
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvObject,
+		Obj:  &accountEnum,
+	}
+}
+
+func i128Param(hi, lo uint64) xdr.ScVal {
+	i128Obj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoI128,
+		I128: &xdr.Int128Parts{
+			Hi: xdr.Uint64(hi),
+			Lo: xdr.Uint64(lo),
+		},
+	}
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvObject,
+		Obj:  &i128Obj,
+	}
+}
+
+func createSAC(sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunction {
 	return &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
@@ -87,6 +175,63 @@ func assembleCreateSACOp(sourceAccount string, asset xdr.Asset) *txnbuild.Invoke
 		},
 		SourceAccount: sourceAccount,
 	}
+}
+
+func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient string) *txnbuild.InvokeHostFunction {
+	return &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				functionNameParam("mint"),
+				invokerSignatureParam(),
+				i128Param(0, 0),
+				accountIDParam(recipient),
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	}
+}
+
+func addFootprint(itest *integration.Test, invokeHostFn *txnbuild.InvokeHostFunction) *txnbuild.InvokeHostFunction {
+	opXDR, err := invokeHostFn.BuildXDR()
+	require.NoError(itest.CurrentTest(), err)
+
+	invokeHostFunctionOp := opXDR.Body.MustInvokeHostFunctionOp()
+
+	// clear footprint so we can verify preflight response
+	response, err := itest.CoreClient().Preflight(
+		context.Background(),
+		invokeHostFn.SourceAccount,
+		invokeHostFunctionOp,
+	)
+	require.NoError(itest.CurrentTest(), err)
+	err = xdr.SafeUnmarshalBase64(response.Footprint, &invokeHostFn.Footprint)
+	require.NoError(itest.CurrentTest(), err)
+	require.Equal(itest.CurrentTest(), stellarcore.PreflightStatusOk, response.Status)
+	return invokeHostFn
+}
+
+func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, op *txnbuild.InvokeHostFunction) {
+	acc := itest.MustGetAccount(signer)
+	tx, err := itest.SubmitOperations(&acc, signer, op)
+	require.NoError(itest.CurrentTest(), err)
+
+	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
+	require.NoError(itest.CurrentTest(), err)
+
+	assert.Equal(itest.CurrentTest(), tx.Hash, clientTx.Hash)
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
+	require.NoError(itest.CurrentTest(), err)
+
+	opResults, ok := txResult.OperationResults()
+	assert.True(itest.CurrentTest(), ok)
+	assert.Equal(itest.CurrentTest(), len(opResults), 1)
+	invokeHostFunctionResult, ok := opResults[0].MustTr().GetInvokeHostFunctionResult()
+	assert.True(itest.CurrentTest(), ok)
+	assert.Equal(itest.CurrentTest(), invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 }
 
 func stellarAssetContractID(t *testing.T, passPhrase string, asset xdr.Asset) xdr.Hash {
