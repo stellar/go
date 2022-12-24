@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
@@ -32,27 +31,41 @@ func TestMintToAccount(t *testing.T) {
 	asset := xdr.MustNewCreditAsset(code, issuer)
 
 	// Create the contract
-	createContractOp := addFootprint(itest, createSAC(issuer, asset))
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createContractOp)
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
 
-	createMintOp := addFootprint(itest, mint(itest, issuer, asset, "20", recipient.GetAccountID()))
-	assertInvokeHostFnSucceeds(itest, itest.Master(), createMintOp)
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		mint(itest, issuer, asset, "20", recipient.GetAccountID()),
+	)
 
-	recipientAccountDetails := itest.MustGetAccount(recipientKp)
-	assertContainsBalance(t, recipientAccountDetails.Balances, issuer, code, amount.MustParse("20"))
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("20"))
+
+	otherRecipientKp, otherRecipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(otherRecipientKp, otherRecipient, txnbuild.MustAssetFromXDR(asset))
+
+	// calling xfer from the issuer account will also mint the asset
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		xfer(itest, issuer, asset, "30", otherRecipient.GetAccountID()),
+	)
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
+	assertContainsBalance(itest, otherRecipientKp, issuer, code, amount.MustParse("30"))
+	assertAssetStats(itest, issuer, code, 2, amount.MustParse("50"))
 }
 
-func assertContainsBalance(t *testing.T, balances []horizon.Balance, issuer, code string, amt xdr.Int64) {
-	for _, b := range balances {
+func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
+	for _, b := range itest.MustGetAccount(acct).Balances {
 		if b.Issuer == issuer && b.Code == code && amount.MustParse(b.Balance) == amt {
 			return
 		}
 	}
-	t.Fatalf("could not find balance for aset %s:%s", code, issuer)
+	itest.CurrentTest().Fatalf("could not find balance for aset %s:%s", code, issuer)
 }
 
 func assertAssetStats(itest *integration.Test, issuer, code string, numAccounts int32, amt xdr.Int64) {
@@ -112,15 +125,6 @@ func contractIDParam(contractID xdr.Hash) xdr.ScVal {
 }
 
 func accountIDParam(accountID string) xdr.ScVal {
-	//	return xdr.ScVal.scvObject(
-	//		xdr.ScObject.scoVec([
-	//			xdr.ScVal.scvSymbol('Account'),
-	//	xdr.ScVal.scvObject(
-	//		xdr.ScObject.scoAccountId(xdr.PublicKey.publicKeyTypeEd25519(account))
-	//	),
-	//])
-	//)
-
 	accountObj := &xdr.ScObject{
 		Type:      xdr.ScObjectTypeScoAccountId,
 		AccountId: xdr.MustAddressPtr(accountID),
@@ -159,8 +163,8 @@ func i128Param(hi, lo uint64) xdr.ScVal {
 	}
 }
 
-func createSAC(sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunction {
-	return &txnbuild.InvokeHostFunction{
+func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
 			CreateContractArgs: &xdr.CreateContractArgs{
@@ -174,11 +178,11 @@ func createSAC(sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFuncti
 			},
 		},
 		SourceAccount: sourceAccount,
-	}
+	})
 }
 
 func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient string) *txnbuild.InvokeHostFunction {
-	return &txnbuild.InvokeHostFunction{
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
 			InvokeArgs: &xdr.ScVec{
@@ -191,7 +195,24 @@ func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 			},
 		},
 		SourceAccount: sourceAccount,
-	}
+	})
+}
+
+func xfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient string) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				functionNameParam("xfer"),
+				invokerSignatureParam(),
+				i128Param(0, 0),
+				accountIDParam(recipient),
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
 }
 
 func addFootprint(itest *integration.Test, invokeHostFn *txnbuild.InvokeHostFunction) *txnbuild.InvokeHostFunction {
