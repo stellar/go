@@ -92,7 +92,7 @@ func TestMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvObject, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.ScObjectTypeScoI128, (*balanceAmount.Obj).Type)
 
-	// TODO: I am not sure this is correct
+	// The quantities are correct, (they are multiplied by 10^7 because we converted the amounts to stroops)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(200000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 
@@ -109,7 +109,6 @@ func TestMintToContract(t *testing.T) {
 		balance(itest, issuer, asset, contractIDEnumParam(recipientContractID)),
 	)
 
-	// TODO: I am not sure this is correct
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(500000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 }
