@@ -109,6 +109,52 @@ func TestTransferBetweenAccounts(t *testing.T) {
 	assertAssetStats(itest, issuer, code, 2, amount.MustParse("1000"))
 }
 
+func TestBurnFromAccount(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: 20,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	// Create the contract
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
+
+	recipientKp, recipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
+
+	itest.MustSubmitOperations(
+		itest.MasterAccount(),
+		itest.Master(),
+		&txnbuild.Payment{
+			SourceAccount: issuer,
+			Destination:   recipient.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   code,
+				Issuer: issuer,
+			},
+			Amount: "1000",
+		},
+	)
+
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1000"))
+
+	assertInvokeHostFnSucceeds(
+		itest,
+		recipientKp,
+		burn(itest, recipientKp.Address(), asset, "500"),
+	)
+
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("500"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("500"))
+}
+
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
 	for _, b := range itest.MustGetAccount(acct).Balances {
 		if b.Issuer == issuer && b.Code == code && amount.MustParse(b.Balance) == amt {
@@ -258,6 +304,22 @@ func xfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 				invokerSignatureParam(),
 				i128Param(0, 0),
 				accountIDParam(recipient),
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
+}
+
+func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				functionNameParam("burn"),
+				invokerSignatureParam(),
+				i128Param(0, 0),
 				i128Param(0, uint64(amount.MustParse(assetAmount))),
 			},
 		},
