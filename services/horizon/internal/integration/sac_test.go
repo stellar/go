@@ -242,6 +242,13 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(itest.CurrentTest(), err)
 
+	effects, err := itest.Client().Effects(horizonclient.EffectRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(itest.CurrentTest(), err)
+	// Horizon currently does not support effects for smart contract invocations
+	require.Empty(itest.CurrentTest(), effects.Embedded.Records)
+
 	assert.Equal(itest.CurrentTest(), tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
