@@ -59,6 +59,56 @@ func TestMintToAccount(t *testing.T) {
 	assertAssetStats(itest, issuer, code, 2, amount.MustParse("50"))
 }
 
+func TestTransferBetweenAccounts(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: 20,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	// Create the contract
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
+
+	recipientKp, recipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
+
+	itest.MustSubmitOperations(
+		itest.MasterAccount(),
+		itest.Master(),
+		&txnbuild.Payment{
+			SourceAccount: issuer,
+			Destination:   recipient.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   code,
+				Issuer: issuer,
+			},
+			Amount: "1000",
+		},
+	)
+
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1000"))
+
+	otherRecipientKp, otherRecipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(otherRecipientKp, otherRecipient, txnbuild.MustAssetFromXDR(asset))
+
+	assertInvokeHostFnSucceeds(
+		itest,
+		recipientKp,
+		xfer(itest, recipientKp.Address(), asset, "30", otherRecipient.GetAccountID()),
+	)
+
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
+	assertContainsBalance(itest, otherRecipientKp, issuer, code, amount.MustParse("30"))
+	assertAssetStats(itest, issuer, code, 2, amount.MustParse("1000"))
+}
+
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
 	for _, b := range itest.MustGetAccount(acct).Balances {
 		if b.Issuer == issuer && b.Code == code && amount.MustParse(b.Balance) == amt {
