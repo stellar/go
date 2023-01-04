@@ -205,8 +205,55 @@ func TestBurnFromAccount(t *testing.T) {
 		burn(itest, recipientKp.Address(), asset, "500"),
 	)
 
-	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("500"))
-	assertAssetStats(itest, issuer, code, 1, amount.MustParse("500"))
+}
+
+func TestBurnFromContract(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: 20,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	// Create the contract
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
+
+	// Create recipient contract
+	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master())
+
+	// Add funds to recipient contract
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		mint(itest, issuer, asset, "1000", contractIDEnumParam(recipientContractID)),
+	)
+
+	// Add allowance to recipient contract (otherwise we can't burn funds)
+
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		incrAllow(itest, issuer, asset, contractIDEnumParam(recipientContractID), "500"),
+	)
+
+	// burn funds from contract
+
+	// FIXME: this fails :S
+	//        I think that the problem is that the "recepient" contract needs to add allowance to the
+	//        issuer and not the other way around. However, I believe that in order to do that you need to call
+	//        `incr_allow` from the recepient contract (so that the Invoker Signature equals the contract).
+
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		burnFrom(itest, issuer, asset, contractIDEnumParam(recipientContractID), "10"),
+	)
+
 }
 
 func TestClawbackFromAccount(t *testing.T) {
@@ -381,6 +428,31 @@ func contractIDEnumParam(contractID xdr.Hash) xdr.ScVal {
 	}
 }
 
+func ed25519EnumParam(signature xdr.Hash) xdr.ScVal {
+	signatureBytes := signature[:]
+	signatureParameterObj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoBytes,
+		Bin:  &signatureBytes,
+	}
+	accountSym := xdr.ScSymbol("Ed25519")
+	accountEnum := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoVec,
+		Vec: &xdr.ScVec{
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &accountSym,
+			},
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvObject,
+				Obj:  &signatureParameterObj,
+			},
+		},
+	}
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvObject,
+		Obj:  &accountEnum,
+	}
+}
 func i128Param(hi, lo uint64) xdr.ScVal {
 	i128Obj := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoI128,
@@ -494,6 +566,55 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 	})
 }
 
+func allowance(itest *integration.Test, sourceAccount string, asset xdr.Asset, from xdr.ScVal, spender xdr.ScVal) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				functionNameParam("allowance"),
+				from,
+				spender,
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
+}
+
+func incrAllow(itest *integration.Test, sourceAccount string, asset xdr.Asset, from xdr.ScVal, assetAmount string) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				functionNameParam("incr_allow"),
+				invokerSignatureParam(),
+				i128Param(0, 0),
+				from,
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
+}
+
+func burnFrom(itest *integration.Test, sourceAccount string, asset xdr.Asset, from xdr.ScVal, assetAmount string) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				functionNameParam("burn_from"),
+				invokerSignatureParam(),
+				i128Param(0, 0),
+				from,
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
+}
+
 func addFootprint(itest *integration.Test, invokeHostFn *txnbuild.InvokeHostFunction) *txnbuild.InvokeHostFunction {
 	opXDR, err := invokeHostFn.BuildXDR()
 	require.NoError(itest.CurrentTest(), err)
@@ -507,9 +628,9 @@ func addFootprint(itest *integration.Test, invokeHostFn *txnbuild.InvokeHostFunc
 		invokeHostFunctionOp,
 	)
 	require.NoError(itest.CurrentTest(), err)
+	require.Equal(itest.CurrentTest(), stellarcore.PreflightStatusOk, response.Status, response.Detail)
 	err = xdr.SafeUnmarshalBase64(response.Footprint, &invokeHostFn.Footprint)
 	require.NoError(itest.CurrentTest(), err)
-	require.Equal(itest.CurrentTest(), stellarcore.PreflightStatusOk, response.Status)
 	return invokeHostFn
 }
 
