@@ -111,6 +111,7 @@ func TestMintToContract(t *testing.T) {
 
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(500000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
+	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"))
 }
 
 func TestTransferBetweenAccounts(t *testing.T) {
@@ -248,7 +249,7 @@ func TestBurnFromContract(t *testing.T) {
 
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
-
+	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"))
 }
 
 func TestClawbackFromAccount(t *testing.T) {
@@ -332,7 +333,9 @@ func assertAssetStats(itest *integration.Test, issuer, code string, numAccounts 
 		assert.Equal(itest.CurrentTest(), amt, amount.MustParse(asset.Amount))
 		return
 	}
-	itest.CurrentTest().Fatalf("could not find balance for aset %s:%s", code, issuer)
+	if numAccounts != 0 || amt != 0 {
+		itest.CurrentTest().Fatalf("could not find balance for aset %s:%s", code, issuer)
+	}
 }
 
 func invokerSignatureParam() xdr.ScVal {
