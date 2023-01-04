@@ -76,7 +76,7 @@ func TestMintToContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master())
+	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "test_add_u64.wasm")
 
 	assertInvokeHostFnSucceeds(
 		itest,
@@ -224,7 +224,7 @@ func TestBurnFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master())
+	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "soroban_sac_test.wasm")
 
 	// Add funds to recipient contract
 	assertInvokeHostFnSucceeds(
@@ -233,26 +233,21 @@ func TestBurnFromContract(t *testing.T) {
 		mint(itest, issuer, asset, "1000", contractIDEnumParam(recipientContractID)),
 	)
 
-	// Add allowance to recipient contract (otherwise we can't burn funds)
-
+	// Burn funds
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		incrAllow(itest, issuer, asset, contractIDEnumParam(recipientContractID), "500"),
+		burnSelf(itest, issuer, recipientContractID, asset, "10"),
 	)
 
-	// burn funds from contract
-
-	// FIXME: this fails :S
-	//        I think that the problem is that the "recepient" contract needs to add allowance to the
-	//        issuer and not the other way around. However, I believe that in order to do that you need to call
-	//        `incr_allow` from the recepient contract (so that the Invoker Signature equals the contract).
-
-	assertInvokeHostFnSucceeds(
+	balanceAmount := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		burnFrom(itest, issuer, asset, contractIDEnumParam(recipientContractID), "10"),
+		balance(itest, issuer, asset, contractIDEnumParam(recipientContractID)),
 	)
+
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 
 }
 
@@ -428,31 +423,6 @@ func contractIDEnumParam(contractID xdr.Hash) xdr.ScVal {
 	}
 }
 
-func ed25519EnumParam(signature xdr.Hash) xdr.ScVal {
-	signatureBytes := signature[:]
-	signatureParameterObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &signatureBytes,
-	}
-	accountSym := xdr.ScSymbol("Ed25519")
-	accountEnum := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoVec,
-		Vec: &xdr.ScVec{
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &accountSym,
-			},
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvObject,
-				Obj:  &signatureParameterObj,
-			},
-		},
-	}
-	return xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &accountEnum,
-	}
-}
 func i128Param(hi, lo uint64) xdr.ScVal {
 	i128Obj := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoI128,
@@ -550,6 +520,24 @@ func xfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 	})
 }
 
+// Invokes burn_self from the sac_test contract (which just burns assets from itself)
+// TODO: the SAC test contract lives at https://github.com/2opremio/soroban-examples/tree/sac_test, we should probably find a better place
+func burnSelf(itest *integration.Test, sourceAccount string, sacTestcontractID xdr.Hash, asset xdr.Asset, assetAmount string) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(sacTestcontractID),
+				functionNameParam("burn_self"),
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				i128Param(0, 0),
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
+}
+
 func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string) *txnbuild.InvokeHostFunction {
 	return addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
@@ -559,55 +547,6 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 				functionNameParam("burn"),
 				invokerSignatureParam(),
 				i128Param(0, 0),
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
-			},
-		},
-		SourceAccount: sourceAccount,
-	})
-}
-
-func allowance(itest *integration.Test, sourceAccount string, asset xdr.Asset, from xdr.ScVal, spender xdr.ScVal) *txnbuild.InvokeHostFunction {
-	return addFootprint(itest, &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeArgs: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
-				functionNameParam("allowance"),
-				from,
-				spender,
-			},
-		},
-		SourceAccount: sourceAccount,
-	})
-}
-
-func incrAllow(itest *integration.Test, sourceAccount string, asset xdr.Asset, from xdr.ScVal, assetAmount string) *txnbuild.InvokeHostFunction {
-	return addFootprint(itest, &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeArgs: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
-				functionNameParam("incr_allow"),
-				invokerSignatureParam(),
-				i128Param(0, 0),
-				from,
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
-			},
-		},
-		SourceAccount: sourceAccount,
-	})
-}
-
-func burnFrom(itest *integration.Test, sourceAccount string, asset xdr.Asset, from xdr.ScVal, assetAmount string) *txnbuild.InvokeHostFunction {
-	return addFootprint(itest, &txnbuild.InvokeHostFunction{
-		Function: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeArgs: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
-				functionNameParam("burn_from"),
-				invokerSignatureParam(),
-				i128Param(0, 0),
-				from,
 				i128Param(0, uint64(amount.MustParse(assetAmount))),
 			},
 		},
@@ -677,10 +616,10 @@ func stellarAssetContractID(t *testing.T, passPhrase string, asset xdr.Asset) xd
 	return sha256.Sum256(xdrPreImageBytes)
 }
 
-func mustCreateAndInstallSampleContract(itest *integration.Test, signer *keypair.Full) xdr.Hash {
-	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), "test_add_u64.wasm")
+func mustCreateAndInstallSampleContract(itest *integration.Test, signer *keypair.Full, wasmFileName string) xdr.Hash {
+	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName)
 	assertInvokeHostFnSucceeds(itest, signer, installContractOp)
-	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), "test_add_u64.wasm", "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, "a1", itest.GetPassPhrase())
 	assertInvokeHostFnSucceeds(itest, signer, createContractOp)
 	return createContractOp.Footprint.ReadWrite[0].MustContractData().ContractId
 }
