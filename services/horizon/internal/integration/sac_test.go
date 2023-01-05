@@ -164,6 +164,78 @@ func TestTransferBetweenAccounts(t *testing.T) {
 	assertAssetStats(itest, issuer, code, 2, amount.MustParse("1000"))
 }
 
+func TestTransferBetweenAccountAndContract(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: 20,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	// Create the contract
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
+
+	recipientKp, recipient := itest.CreateAccount("100")
+	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
+
+	itest.MustSubmitOperations(
+		itest.MasterAccount(),
+		itest.Master(),
+		&txnbuild.Payment{
+			SourceAccount: issuer,
+			Destination:   recipient.GetAccountID(),
+			Asset: txnbuild.CreditAsset{
+				Code:   code,
+				Issuer: issuer,
+			},
+			Amount: "1000",
+		},
+	)
+
+	// Create recipient contract
+	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "soroban_sac_test.wasm")
+
+	// Add funds to recipient contract
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		mint(itest, issuer, asset, "1000", contractIDEnumParam(recipientContractID)),
+	)
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1000"))
+
+	// transfer from account to contract
+	assertInvokeHostFnSucceeds(
+		itest,
+		recipientKp,
+		xfer(itest, recipientKp.Address(), asset, "30", contractIDEnumParam(recipientContractID)),
+	)
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("970"))
+
+	// transfer from contract to account
+	assertInvokeHostFnSucceeds(
+		itest,
+		recipientKp,
+		xferFromContract(itest, recipientKp.Address(), recipientContractID, asset, "500", accountIDEnumParam(recipient.GetAccountID())),
+	)
+	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
+	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1470"))
+
+	balanceAmount := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		balance(itest, issuer, asset, contractIDEnumParam(recipientContractID)),
+	)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(5300000000), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
+}
+
 func TestBurnFromAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -588,6 +660,22 @@ func burnSelf(itest *integration.Test, sourceAccount string, sacTestcontractID x
 				functionNameParam("burn_self"),
 				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
 				i128Param(0, 0),
+				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			},
+		},
+		SourceAccount: sourceAccount,
+	})
+}
+
+func xferFromContract(itest *integration.Test, sourceAccount string, sacTestcontractID xdr.Hash, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
+	return addFootprint(itest, &txnbuild.InvokeHostFunction{
+		Function: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeArgs: &xdr.ScVec{
+				contractIDParam(sacTestcontractID),
+				functionNameParam("xfer"),
+				contractIDParam(stellarAssetContractID(itest.CurrentTest(), itest.GetPassPhrase(), asset)),
+				recipient,
 				i128Param(0, uint64(amount.MustParse(assetAmount))),
 			},
 		},
