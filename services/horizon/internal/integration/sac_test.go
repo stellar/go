@@ -301,11 +301,65 @@ func TestClawbackFromAccount(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		clawback(itest, issuer, asset, "1000", recipientKp.Address()),
+		clawback(itest, issuer, asset, "1000", accountIDEnumParam(recipientKp.Address())),
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("0"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("0"))
+}
+
+func TestClawbackFromContract(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: 20,
+	})
+
+	// Give the master account the revocable flag (needed to set the clawback flag)
+	// and the clawback flag
+	setRevocableFlag := txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthRevocable,
+			txnbuild.AuthClawbackEnabled,
+		},
+	}
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &setRevocableFlag)
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	// Create the contract
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
+
+	// Create recipient contract
+	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "soroban_sac_test.wasm")
+
+	// Add funds to recipient contract
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		mint(itest, issuer, asset, "1000", contractIDEnumParam(recipientContractID)),
+	)
+
+	// Clawback funds
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		clawback(itest, issuer, asset, "10", contractIDEnumParam(recipientContractID)),
+	)
+
+	balanceAmount := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		balance(itest, issuer, asset, contractIDEnumParam(recipientContractID)),
+	)
+
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
+	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"))
 }
 
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
@@ -475,7 +529,7 @@ func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 	})
 }
 
-func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient string) *txnbuild.InvokeHostFunction {
+func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
 	return addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -484,7 +538,7 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 				functionNameParam("clawback"),
 				invokerSignatureParam(),
 				i128Param(0, 0),
-				accountIDEnumParam(recipient),
+				recipient,
 				i128Param(0, uint64(amount.MustParse(assetAmount))),
 			},
 		},
