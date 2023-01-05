@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/stellar/go/support/errors"
@@ -83,6 +85,9 @@ type captiveCoreTomlValues struct {
 	Validators                           []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                       map[string]History   `toml:"-"`
 	QuorumSetEntries                     map[string]QuorumSet `toml:"-"`
+	UseBucketListDB                      bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
+	BucketListDBPageSizeExp              *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
+	BucketListDBCutoff                   *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -317,6 +322,8 @@ type CaptiveCoreTomlParams struct {
 	Strict bool
 	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
 	UseDB bool
+	// the path to the core binary, used to introspect core at runtie, determine some toml capabilities
+	CoreBinaryPath string
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -409,10 +416,48 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
-func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
+func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) bool {
+	if coreBinaryPath == "" {
+		return false
+	}
 
+	versionRaw, err := exec.Command(coreBinaryPath, "version").Output()
+	if err != nil {
+		return false
+	}
+
+	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
+	versionStr := re.FindStringSubmatch(string(versionRaw))
+	if err != nil || len(versionStr) != 3 {
+		return false
+	}
+
+	var version [2]int
+	for i := 1; i < len(versionStr); i++ {
+		val, err := strconv.Atoi((versionStr[i]))
+		if err != nil {
+			return false
+		}
+
+		version[i-1] = val
+	}
+
+	// Supports version 19.6 and above
+	return version[0] > 19 || (version[0] == 19 && version[1] >= 6)
+}
+
+func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
+	}
+
+	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB && c.checkCoreVersion(params.CoreBinaryPath) {
+		c.UseBucketListDB = true
+	}
+
+	if c.UseBucketListDB && !c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
+		n := uint(12)
+		c.BucketListDBPageSizeExp = &n // Set default page size to 4KB
 	}
 
 	if !c.tree.Has("NETWORK_PASSPHRASE") {
@@ -479,6 +524,12 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 			"LOG_FILE_PATH in captive core config file: %s does not match Horizon captive-core-log-path flag: %s",
 			c.LogFilePath,
 			*params.LogPath,
+		)
+	}
+
+	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); def && !params.UseDB {
+		return fmt.Errorf(
+			"BucketListDB enabled in captive core config file, requires Horizon flag --captive-core-use-db",
 		)
 	}
 
