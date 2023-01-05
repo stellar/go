@@ -76,7 +76,7 @@ func TestMintToContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "test_add_u64.wasm")
+	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", "test_add_u64.wasm")
 
 	assertInvokeHostFnSucceeds(
 		itest,
@@ -198,7 +198,7 @@ func TestTransferBetweenAccountAndContract(t *testing.T) {
 	)
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "soroban_sac_test.wasm")
+	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", "soroban_sac_test.wasm")
 
 	// Add funds to recipient contract
 	assertInvokeHostFnSucceeds(
@@ -234,6 +234,65 @@ func TestTransferBetweenAccountAndContract(t *testing.T) {
 	)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(5300000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
+}
+
+func TestTransferBetweenContracts(t *testing.T) {
+	if integration.GetCoreMaxSupportedProtocol() < 20 {
+		t.Skip("This test run does not support less than Protocol 20")
+	}
+
+	itest := integration.NewTest(t, integration.Config{
+		ProtocolVersion: 20,
+	})
+
+	issuer := itest.Master().Address()
+	code := "USD"
+	asset := xdr.MustNewCreditAsset(code, issuer)
+
+	// Create the token contract
+	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
+
+	// Create recipient contract
+	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", "test_add_u64.wasm")
+
+	// Create emitter contract
+	emitterContractID := mustCreateAndInstallContract(itest, itest.Master(), "a2", "soroban_sac_test.wasm")
+
+	// Add funds to emitter contract
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		mint(itest, issuer, asset, "1000", contractIDEnumParam(emitterContractID)),
+	)
+
+	// Transfer funds from emitter to recipient
+	assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		xferFromContract(itest, issuer, emitterContractID, asset, "10", contractIDEnumParam(recipientContractID)),
+	)
+
+	// Check balances of emitter and recipient
+	emitterBalanceAmount := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		balance(itest, issuer, asset, contractIDEnumParam(emitterContractID)),
+	)
+
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*emitterBalanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*emitterBalanceAmount.Obj).I128.Hi)
+
+	recipientBalanceAmount := assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		balance(itest, issuer, asset, contractIDEnumParam(recipientContractID)),
+	)
+
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(100000000), (*recipientBalanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*recipientBalanceAmount.Obj).I128.Hi)
+
+	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"))
+
 }
 
 func TestBurnFromAccount(t *testing.T) {
@@ -297,7 +356,7 @@ func TestBurnFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "soroban_sac_test.wasm")
+	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", "soroban_sac_test.wasm")
 
 	// Add funds to recipient contract
 	assertInvokeHostFnSucceeds(
@@ -407,7 +466,7 @@ func TestClawbackFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallSampleContract(itest, itest.Master(), "soroban_sac_test.wasm")
+	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a2", "soroban_sac_test.wasm")
 
 	// Add funds to recipient contract
 	assertInvokeHostFnSucceeds(
@@ -761,10 +820,10 @@ func stellarAssetContractID(t *testing.T, passPhrase string, asset xdr.Asset) xd
 	return sha256.Sum256(xdrPreImageBytes)
 }
 
-func mustCreateAndInstallSampleContract(itest *integration.Test, signer *keypair.Full, wasmFileName string) xdr.Hash {
+func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) xdr.Hash {
 	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName)
 	assertInvokeHostFnSucceeds(itest, signer, installContractOp)
-	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, contractSalt, itest.GetPassPhrase())
 	assertInvokeHostFnSucceeds(itest, signer, createContractOp)
 	return createContractOp.Footprint.ReadWrite[0].MustContractData().ContractId
 }
