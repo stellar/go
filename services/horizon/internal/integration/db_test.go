@@ -396,33 +396,37 @@ func submitAccountOps(itest *integration.Test, tt *assert.Assertions) (submitted
 	return allOps, txResp.Ledger
 }
 
-func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reachedLedger int32) {
-	itest = integration.NewTest(t, integration.Config{})
+func initializeDBIntegrationTest(t *testing.T) (*integration.Test, int32) {
+	itest := integration.NewTest(t, integration.Config{})
 	tt := assert.New(t)
-
-	// submit all possible operations
-	ops, _ := submitAccountOps(itest, tt)
-	submittedOps := ops
-	ops, _ = submitPaymentOps(itest, tt)
-	submittedOps = append(submittedOps, ops...)
-	ops, _ = submitOfferAndTrustlineOps(itest, tt)
-	submittedOps = append(submittedOps, ops...)
-	ops, _ = submitSponsorshipOps(itest, tt)
-	submittedOps = append(submittedOps, ops...)
-	ops, _ = submitClaimableBalanceOps(itest, tt)
-	submittedOps = append(submittedOps, ops...)
-	ops, _ = submitClawbackOps(itest, tt)
-	submittedOps = append(submittedOps, ops...)
-	ops, reachedLedger = submitLiquidityPoolOps(itest, tt)
-	submittedOps = append(submittedOps, ops...)
 
 	// Make sure all possible operations are covered by reingestion
 	allOpTypes := set.Set[xdr.OperationType]{}
 	for typ := range xdr.OperationTypeToStringMap {
 		allOpTypes.Add(xdr.OperationType(typ))
 	}
+
+	submitters := []func(*integration.Test, *assert.Assertions) ([]txnbuild.Operation, int32){
+		submitAccountOps,
+		submitPaymentOps,
+		submitOfferAndTrustlineOps,
+		submitSponsorshipOps,
+		submitClaimableBalanceOps,
+		submitClawbackOps,
+		submitLiquidityPoolOps,
+	}
 	// Inflation is not supported
 	delete(allOpTypes, xdr.OperationTypeInflation)
+
+	var submittedOps []txnbuild.Operation
+	var ledgerOfLastSubmittedTx int32
+	// submit all possible operations
+	for i, f := range submitters {
+		var ops []txnbuild.Operation
+		ops, ledgerOfLastSubmittedTx = f(itest, tt)
+		t.Logf("%v ledgerOfLastSubmittedTx %v", i, ledgerOfLastSubmittedTx)
+		submittedOps = append(submittedOps, ops...)
+	}
 
 	for _, op := range submittedOps {
 		opXDR, err := op.BuildXDR()
@@ -431,11 +435,14 @@ func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reached
 	}
 	tt.Empty(allOpTypes)
 
-	root, err := itest.Client().Root()
-	tt.NoError(err)
-	tt.LessOrEqual(reachedLedger, root.HorizonSequence)
+	reachedLedger := func() bool {
+		root, err := itest.Client().Root()
+		tt.NoError(err)
+		return root.HorizonSequence >= ledgerOfLastSubmittedTx
+	}
+	tt.Eventually(reachedLedger, 15*time.Second, 5*time.Second)
 
-	return
+	return itest, ledgerOfLastSubmittedTx
 }
 
 func TestReingestDB(t *testing.T) {
@@ -456,6 +463,7 @@ func TestReingestDB(t *testing.T) {
 		assert.EqualError(t, horizoncmd.RootCmd.Execute(), "Invalid range: {10 2} from > to")
 	})
 
+	t.Logf("reached ledger is %v", reachedLedger)
 	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
 	// recent checkpoint ledger when using captive core
 	toLedger := uint32(reachedLedger)
@@ -469,7 +477,10 @@ func TestReingestDB(t *testing.T) {
 	var latestCheckpoint uint32
 	publishedFirstCheckpoint := func() bool {
 		has, requestErr := archive.GetRootHAS()
-		tt.NoError(requestErr)
+		if requestErr != nil {
+			t.Logf("request to fetch checkpoint failed: %v", requestErr)
+			return false
+		}
 		latestCheckpoint = has.CurrentLedger
 		return latestCheckpoint > 1
 	}
