@@ -162,18 +162,10 @@ func submitPaymentOps(itest *integration.Test, tt *assert.Assertions) (submitted
 }
 
 func submitInvokeHostFunction(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
-	ops := []txnbuild.Operation{
-		&txnbuild.InvokeHostFunction{
-			Function: xdr.HostFunction{
-				Type:       xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-				InvokeArgs: &xdr.ScVec{},
-			},
-			Footprint: xdr.LedgerFootprint{},
-		},
-	}
-	txResp, _ := itest.SubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
+	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), "test_add_u64.wasm")
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
 
-	return ops, txResp.Ledger
+	return []txnbuild.Operation{installContractOp}, txResp.Ledger
 }
 
 func submitSponsorshipOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
