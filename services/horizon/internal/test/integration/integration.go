@@ -69,9 +69,10 @@ type Config struct {
 }
 
 type CaptiveConfig struct {
-	binaryPath string
-	configPath string
-	useDB      bool
+	binaryPath  string
+	configPath  string
+	storagePath string
+	useDB       bool
 }
 
 type Test struct {
@@ -169,6 +170,7 @@ func (i *Test) configureCaptiveCore() {
 		composePath := findDockerComposePath()
 		i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+		i.coreConfig.storagePath = i.CurrentTest().TempDir()
 		if RunWithCaptiveCoreUseDB {
 			i.coreConfig.useDB = true
 		}
@@ -332,6 +334,7 @@ func (i *Test) StartHorizon() error {
 	coreBinaryPath := i.coreConfig.binaryPath
 	captiveCoreConfigPath := i.coreConfig.configPath
 	captiveCoreUseDB := strconv.FormatBool(i.coreConfig.useDB)
+	captiveCoreStoragePath := i.coreConfig.storagePath
 
 	defaultArgs := map[string]string{
 		"ingest":                        "false",
@@ -366,7 +369,7 @@ func (i *Test) StartHorizon() error {
 			"captive-core-config-path":  captiveCoreConfigPath,
 			"captive-core-http-port":    "21626",
 			"captive-core-use-db":       captiveCoreUseDB,
-			"captive-core-storage-path": os.TempDir(),
+			"captive-core-storage-path": captiveCoreStoragePath,
 			"ingest":                    "true"},
 		i.config.HorizonIngestParameters)
 	ingestArgs := mapToFlags(mergedIngest)

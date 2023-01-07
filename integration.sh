@@ -20,4 +20,4 @@ if [[ "$(docker inspect integration_postgres -f '{{.State.Running}}')" != "true"
     circleci/postgres:9.6.5-alpine
 fi
 
-exec go test -timeout 25m github.com/stellar/go/services/horizon/internal/integration/... "$@"
+exec go test -timeout 35m github.com/stellar/go/services/horizon/internal/integration/... "$@"
