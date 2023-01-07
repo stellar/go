@@ -663,6 +663,12 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 	return pairs, accounts
 }
 
+// CreateAccount creates a new account via the master account.
+func (i *Test) CreateAccount(initialBalance string) (*keypair.Full, txnbuild.Account) {
+	kps, accts := i.CreateAccounts(1, initialBalance)
+	return kps[0], accts[0]
+}
+
 // Panics on any error establishing a trustline.
 func (i *Test) MustEstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
