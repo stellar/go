@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -451,7 +450,7 @@ func TestReingestDB(t *testing.T) {
 
 	horizonConfig := itest.GetHorizonIngestConfig()
 	t.Run("validate parallel range", func(t *testing.T) {
-		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
+		horizoncmd.RootCmd.SetArgs(command(t, horizonConfig,
 			"db",
 			"reingest",
 			"range",
@@ -500,7 +499,7 @@ func TestReingestDB(t *testing.T) {
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
 
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db",
+	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db",
 		"reingest",
 		"range",
 		"--parallel-workers=1",
@@ -512,7 +511,7 @@ func TestReingestDB(t *testing.T) {
 	tt.NoError(horizoncmd.RootCmd.Execute(), "Repeat the same reingest range against db, should not have errors.")
 }
 
-func command(horizonConfig horizon.Config, args ...string) []string {
+func command(t *testing.T, horizonConfig horizon.Config, args ...string) []string {
 	return append([]string{
 		"--stellar-core-url",
 		horizonConfig.StellarCoreURL,
@@ -536,7 +535,7 @@ func command(horizonConfig horizon.Config, args ...string) []string {
 		"8",
 		// Create the storage directory outside of the source repo,
 		// otherwise it will break Golang test caching.
-		"--captive-core-storage-path=" + os.TempDir(),
+		"--captive-core-storage-path=" + t.TempDir(),
 	}, args...)
 }
 
@@ -613,7 +612,7 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(err)
 
 	t.Run("validate parallel range", func(t *testing.T) {
-		horizoncmd.RootCmd.SetArgs(command(horizonConfig,
+		horizoncmd.RootCmd.SetArgs(command(t, horizonConfig,
 			"db",
 			"fill-gaps",
 			"--parallel-workers=2",
@@ -652,20 +651,20 @@ func TestFillGaps(t *testing.T) {
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps", "--parallel-workers=1"))
+	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "--parallel-workers=1"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
 
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.Equal(int64(0), latestLedger)
 
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps", "3", "4"))
+	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "3", "4"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
 	tt.Equal(int64(3), oldestLedger)
 	tt.Equal(int64(4), latestLedger)
 
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps", "6", "7"))
+	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "6", "7"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
@@ -676,7 +675,7 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(err)
 	tt.Equal([]history.LedgerRange{{StartSequence: 5, EndSequence: 5}}, gaps)
 
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps"))
+	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
@@ -686,7 +685,7 @@ func TestFillGaps(t *testing.T) {
 	tt.NoError(err)
 	tt.Empty(gaps)
 
-	horizoncmd.RootCmd.SetArgs(command(horizonConfig, "db", "fill-gaps", "2", "8"))
+	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "2", "8"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
 	tt.NoError(historyQ.LatestLedger(context.Background(), &latestLedger))
 	tt.NoError(historyQ.ElderLedger(context.Background(), &oldestLedger))
