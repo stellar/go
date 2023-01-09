@@ -199,7 +199,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 		{
 			name:          "unexpected BUCKET_DIR_PATH",
 			appendPath:    filepath.Join("testdata", "appendix-with-bucket-dir-path.cfg"),
-			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances",
+			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
