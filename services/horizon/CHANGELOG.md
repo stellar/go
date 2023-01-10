@@ -6,6 +6,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Fixes
+
+* Update error when setting `BUCKET_DIR_PATH` and using Captive Core ([4736](https://github.com/stellar/go/pull/4736)).
+
 ## 2.23.1
 
 ### Changes

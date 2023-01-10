@@ -334,7 +334,7 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 	// disallow setting BUCKET_DIR_PATH through a file since it can cause multiple
 	// running captive-core instances to clash
 	if params.Strict && captiveCoreToml.BucketDirPath != "" {
-		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances")
+		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
 	}
 
 	if err = captiveCoreToml.validate(params); err != nil {
