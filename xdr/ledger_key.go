@@ -181,8 +181,10 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		_, err := e.xdrEncoderBuf.Write(key.LiquidityPool.LiquidityPoolId[:])
 		return err
 	case LedgerEntryTypeContractData:
-		_, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:])
-		return err
+		if _, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:]); err != nil {
+			return err
+		}
+		return key.ContractData.Key.EncodeTo(e.encoder)
 	case LedgerEntryTypeContractCode:
 		_, err := e.xdrEncoderBuf.Write(key.ContractCode.Hash[:])
 		return err
