@@ -151,6 +151,21 @@ func (key *LedgerKey) SetContractData(contractID Hash, keyVal ScVal) error {
 	return nil
 }
 
+// SetContractCode mutates `key` such that it represents the identity of a
+// contract code entry.
+func (key *LedgerKey) SetContractCode(contractID Hash) error {
+	data := LedgerKeyContractCode{
+		Hash: contractID,
+	}
+	nkey, err := NewLedgerKey(LedgerEntryTypeContractCode, data)
+	if err != nil {
+		return err
+	}
+
+	*key = nkey
+	return nil
+}
+
 func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 	if err := e.xdrEncoderBuf.WriteByte(byte(key.Type)); err != nil {
 		return err
