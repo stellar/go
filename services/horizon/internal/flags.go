@@ -642,6 +642,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 					StellarCoreBinaryPathName, captiveCoreMigrationHint)
 			}
 
+			config.CaptiveCoreTomlParams.CoreBinaryPath = binaryPath
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
 				if options.RequireCaptiveCoreConfig {
 					var err error
