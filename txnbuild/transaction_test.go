@@ -2483,6 +2483,70 @@ func TestReadChallengeTx_allowsMuxedAccounts(t *testing.T) {
 	assert.Equal(t, tx.envelope.Operations()[0].SourceAccount, &muxedAccount)
 }
 
+func TestReadChallengeTransaction_forbidsMemoWithMuxedClientAccount(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	homeDomain := "testanchor.stellar.org"
+	webAuthDomain := "testwebauth.stellar.org"
+
+	serverAccount := SimpleAccount{
+		AccountID: kp0.Address(),
+		Sequence:  0,
+	}
+	aid := xdr.MustAddress(kp1.Address())
+	muxedAccount := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *aid.Ed25519,
+		},
+	}
+	randomNonce, _ := generateRandomNonce(48)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(300)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &serverAccount,
+			IncrementSequenceNum: false,
+			Operations: []Operation{
+				&ManageData{
+					SourceAccount: muxedAccount.Address(),
+					Name:          homeDomain + " auth",
+					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverAccount.GetAccountID(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
+			},
+			BaseFee: MinBaseFee,
+			Memo:    MemoID(1),
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	_, _, _, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+		webAuthDomain,
+		[]string{homeDomain},
+	)
+	assert.EqualError(t, err, "memos are not valid for challenge transactions with a muxed client account")
+}
+
 func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
