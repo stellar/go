@@ -1113,7 +1113,7 @@ func generateRandomNonce(n int) ([]byte, error) {
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo MemoID, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo Memo, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
 		return tx, clientAccountID, matchedHomeDomain, memo, errors.Wrap(err, "could not parse challenge")
@@ -1176,10 +1176,16 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 	}
 
 	clientAccountID = op.SourceAccount
+	memo = tx.Memo()
 	rawOperations := tx.envelope.Operations()
-	if len(rawOperations) > 0 && rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 && tx.Memo() != nil {
+	if rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 && memo != nil {
 		err = errors.New("memos are not valid for challenge transactions with a muxed client account")
 		return tx, clientAccountID, matchedHomeDomain, memo, err
+	} else if rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeEd25519 && memo != nil {
+		if rawMemo, err := memo.ToXDR(); err != nil || rawMemo.Type != xdr.MemoTypeMemoId {
+			err = errors.New("invalid memo, only ID memos are permitted")
+			return tx, clientAccountID, matchedHomeDomain, memo, err
+		}
 	}
 
 	// verify manage data value
@@ -1297,7 +1303,7 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDo
 //     server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
-	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
+	tx, _, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
 	if err != nil {
 		return nil, err
 	}

@@ -46,6 +46,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -146,6 +147,7 @@ func TestToken_formInputSuccess_jwtHeaderAndPayloadAreDeterministic(t *testing.T
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -255,6 +257,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -412,6 +415,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 				homeDomain,
 				network.TestNetworkPassphrase,
 				time.Minute,
+				nil,
 			)
 			require.NoError(t, err)
 
@@ -497,6 +501,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -605,6 +610,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -691,6 +697,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -777,6 +784,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -881,6 +889,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -963,6 +972,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -1047,6 +1057,7 @@ func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -1248,6 +1259,7 @@ func TestToken_jsonInputInvalidWebAuthDomainFail(t *testing.T) {
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
+		nil,
 	)
 	require.NoError(t, err)
 

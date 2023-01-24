@@ -2,6 +2,7 @@ package serve
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,6 +58,16 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		homeDomain = h.HomeDomains[0]
 	}
 
+	var memo txnbuild.MemoID
+	if queryValues.Get("memo") != "" {
+		memoInt, err := strconv.ParseUint(queryValues.Get("memo"), 10, 64)
+		if err != nil {
+			badRequest.Render(w)
+			return
+		}
+		memo = txnbuild.MemoID(memoInt)
+	}
+
 	tx, err := txnbuild.BuildChallengeTx(
 		h.SigningKey.Seed(),
 		account,
@@ -64,6 +75,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		homeDomain,
 		h.NetworkPassphrase,
 		h.ChallengeExpiresIn,
+		memo,
 	)
 	if err != nil {
 		h.Logger.Ctx(ctx).WithStack(err).Error(err)

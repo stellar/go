@@ -11,6 +11,7 @@ import (
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
@@ -52,9 +53,10 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		clientAccountID string
 		signingAddress  *keypair.FromAddress
 		homeDomain      string
+		memo            txnbuild.Memo
 	)
 	for _, s := range h.SigningAddresses {
-		tx, clientAccountID, homeDomain, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, h.Domain, h.HomeDomains)
+		tx, clientAccountID, homeDomain, memo, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, h.Domain, h.HomeDomains)
 		if err == nil {
 			signingAddress = s
 			break
@@ -80,9 +82,15 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WithField("tx", hash).
 		WithField("account", clientAccountID).
 		WithField("serversigner", signingAddress.Address()).
-		WithField("homedomain", homeDomain)
+		WithField("homedomain", homeDomain).
+		WithField("memo", memo)
 
 	l.Info("Start verifying challenge transaction.")
+
+	var muxedAccount xdr.MuxedAccount
+	if muxedAccount, err = xdr.AddressToMuxedAccount(clientAccountID); err == nil {
+		clientAccountID = muxedAccount.ToAccountId().Address()
+	}
 
 	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
@@ -143,7 +151,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	issuedAt := time.Unix(tx.Timebounds().MinTime, 0)
 	claims := jwt.Claims{
 		Issuer:   h.JWTIssuer,
-		Subject:  clientAccountID,
+		Subject:  muxedAccount.Address(),
 		IssuedAt: jwt.NewNumericDate(issuedAt),
 		Expiry:   jwt.NewNumericDate(issuedAt.Add(h.JWTExpiresIn)),
 	}
