@@ -2,6 +2,7 @@ package serve
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -148,10 +149,21 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var sub string
+	if muxedAccount == (xdr.MuxedAccount{}) {
+		sub = clientAccountID
+		if memo != nil {
+			xdrMemo, _ := memo.ToXDR()
+			sub += ":" + strconv.FormatUint(uint64(xdrMemo.MustId()), 10)
+		}
+	} else {
+		sub = muxedAccount.Address()
+	}
+
 	issuedAt := time.Unix(tx.Timebounds().MinTime, 0)
 	claims := jwt.Claims{
 		Issuer:   h.JWTIssuer,
-		Subject:  muxedAccount.Address(),
+		Subject:  sub,
 		IssuedAt: jwt.NewNumericDate(issuedAt),
 		Expiry:   jwt.NewNumericDate(issuedAt.Add(h.JWTExpiresIn)),
 	}
