@@ -1027,7 +1027,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 			return nil, errors.New("memos are not valid for challenge transactions with a muxed client account")
 		}
 	} else if memo != nil {
-		if _, err := memo.ToXDR(); err != nil {
+		if xdrMemo, err := memo.ToXDR(); err != nil || xdrMemo.Type != xdr.MemoTypeMemoId {
 			return nil, errors.New("memo must be of type MemoID")
 		}
 	}
