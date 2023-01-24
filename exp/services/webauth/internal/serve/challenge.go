@@ -34,7 +34,9 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	queryValues := r.URL.Query()
 
 	account := queryValues.Get("account")
-	if !strkey.IsValidEd25519PublicKey(account) {
+	isStellarAccount := strkey.IsValidEd25519PublicKey(account)
+	isMuxedAccount := strkey.IsValidMuxedAccountEd25519PublicKey(account)
+	if !isStellarAccount && !isMuxedAccount {
 		badRequest.Render(w)
 		return
 	}
@@ -60,6 +62,10 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var memo txnbuild.MemoID
 	if queryValues.Get("memo") != "" {
+		if isMuxedAccount {
+			badRequest.Render(w)
+			return
+		}
 		memoInt, err := strconv.ParseUint(queryValues.Get("memo"), 10, 64)
 		if err != nil {
 			badRequest.Render(w)
