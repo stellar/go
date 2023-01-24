@@ -1027,7 +1027,8 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 			return nil, errors.New("memos are not valid for challenge transactions with a muxed client account")
 		}
 	} else if memo != nil {
-		if xdrMemo, err := memo.ToXDR(); err != nil || xdrMemo.Type != xdr.MemoTypeMemoId {
+		var xdrMemo xdr.Memo
+		if xdrMemo, err = memo.ToXDR(); err != nil || xdrMemo.Type != xdr.MemoTypeMemoId {
 			return nil, errors.New("memo must be of type MemoID")
 		}
 	}
@@ -1182,7 +1183,8 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 		err = errors.New("memos are not valid for challenge transactions with a muxed client account")
 		return tx, clientAccountID, matchedHomeDomain, memo, err
 	} else if rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeEd25519 && memo != nil {
-		if rawMemo, err := memo.ToXDR(); err != nil || rawMemo.Type != xdr.MemoTypeMemoId {
+		var rawMemo xdr.Memo
+		if rawMemo, err = memo.ToXDR(); err != nil || rawMemo.Type != xdr.MemoTypeMemoId {
 			err = errors.New("invalid memo, only ID memos are permitted")
 			return tx, clientAccountID, matchedHomeDomain, memo, err
 		}

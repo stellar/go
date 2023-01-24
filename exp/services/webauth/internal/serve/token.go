@@ -88,8 +88,8 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Start verifying challenge transaction.")
 
-	var muxedAccount xdr.MuxedAccount
-	if muxedAccount, err = xdr.AddressToMuxedAccount(clientAccountID); err == nil {
+	muxedAccount, err := xdr.AddressToMuxedAccount(clientAccountID)
+	if err == nil {
 		clientAccountID = muxedAccount.ToAccountId().Address()
 	}
 
