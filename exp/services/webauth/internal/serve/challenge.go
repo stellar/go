@@ -63,10 +63,6 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var memo *txnbuild.MemoID
 	memoParam := queryValues.Get("memo")
 	if memoParam != "" {
-		if isMuxedAccount {
-			badRequest.Render(w)
-			return
-		}
 		memoInt, err := strconv.ParseUint(memoParam, 10, 64)
 		if err != nil {
 			badRequest.Render(w)
@@ -87,7 +83,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		h.Logger.Ctx(ctx).WithStack(err).Error(err)
-		serverError.Render(w)
+		badRequest.Render(w)
 		return
 	}
 
