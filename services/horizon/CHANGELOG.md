@@ -9,6 +9,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Update XDR definitions for soroban usage ([4576](https://github.com/stellar/go/pull/4576))
 - Include InvokeHostFunction Details on Operation API resources ([4608](https://github.com/stellar/go/pull/4608))
+- Add support for BucketListDB params in captive core cfg/.toml file and enable BucketListDB by default when `--captive-core-use-db` set and `stellar-core` version >= 19.6. If `--captive-core-use-db` set but `stellar-core` version < 19.6, on-disk sqlite db used. This update will not automatically trigger a state rebuild. However, if EXPERIMENTAL_BUCKETLIST_DB is set to false in the captive-core toml, a state rebuild will be triggered ([4733](https://github.com/stellar/go/pull/4733)).
+
+### Fixes
+
+* Update error when setting `BUCKET_DIR_PATH` and using Captive Core ([4736](https://github.com/stellar/go/pull/4736)).
 
 ## 2.23.1
 

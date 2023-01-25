@@ -127,6 +127,7 @@ func main() {
 			captiveCoreTomlParams.HistoryArchiveURLs = historyArchiveURLs
 			captiveCoreTomlParams.NetworkPassphrase = networkPassphrase
 			captiveCoreTomlParams.Strict = true
+			captiveCoreTomlParams.CoreBinaryPath = binaryPath
 			captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(configPath, captiveCoreTomlParams)
 			if err != nil {
 				logger.WithError(err).Fatal("Invalid captive core toml")
