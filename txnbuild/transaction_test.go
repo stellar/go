@@ -1120,6 +1120,33 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Equal(t, "testwebauth.stellar.org", string(*webAuthOp.Body.ManageDataOp.DataValue), "DataValue should be 'testwebauth.stellar.org'")
 	}
 
+	// transaction with memo
+	{
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, MemoID(1))
+		assert.NoError(t, err)
+		assert.Equal(t, tx.Memo(), MemoID(1))
+	}
+
+	// transaction with bad memo
+	{
+		_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, MemoText("test"))
+		assert.EqualError(t, err, "memo must be of type MemoID")
+	}
+
+	// transaction with muxed account
+	{
+		muxedAccount := "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK"
+		tx, err := BuildChallengeTx(kp0.Seed(), muxedAccount, "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, tx.operations[0].GetSourceAccount(), muxedAccount)
+	}
+
+	// transaction with memo and muxed account
+	{
+		_, err := BuildChallengeTx(kp0.Seed(), "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, MemoID(1))
+		assert.EqualError(t, err, "memos are not valid for challenge transactions with a muxed client account")
+	}
+
 	//transaction with infinite timebound
 	_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "webauthdomain", "sdf", network.TestNetworkPassphrase, 0, nil)
 	if assert.Error(t, err) {
@@ -2545,6 +2572,62 @@ func TestReadChallengeTransaction_forbidsMemoWithMuxedClientAccount(t *testing.T
 		[]string{homeDomain},
 	)
 	assert.EqualError(t, err, "memos are not valid for challenge transactions with a muxed client account")
+}
+
+func TestReadChallengeTransaction_forbidsNonIdMemo(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	homeDomain := "testanchor.stellar.org"
+	webAuthDomain := "testwebauth.stellar.org"
+
+	serverAccount := SimpleAccount{
+		AccountID: kp0.Address(),
+		Sequence:  0,
+	}
+	randomNonce, _ := generateRandomNonce(48)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(300)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &serverAccount,
+			IncrementSequenceNum: false,
+			Operations: []Operation{
+				&ManageData{
+					SourceAccount: kp1.Address(),
+					Name:          homeDomain + " auth",
+					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverAccount.GetAccountID(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
+			},
+			BaseFee: MinBaseFee,
+			Memo:    MemoText("test"),
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	_, _, _, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+		webAuthDomain,
+		[]string{homeDomain},
+	)
+	assert.EqualError(t, err, "invalid memo, only ID memos are permitted")
 }
 
 func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
