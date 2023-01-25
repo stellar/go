@@ -1116,7 +1116,7 @@ func generateRandomNonce(n int) ([]byte, error) {
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
 //
-// The returned clientAccountID may be a Stellar account or Muxed account address. If
+// The returned clientAccountID may be a Stellar account (G...) or Muxed account (M...) address. If
 // the address is muxed, or if the memo returned is non-nil, the challenge transaction
 // is being used to authenticate a user of a shared Stellar account.
 func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo Memo, err error) {
