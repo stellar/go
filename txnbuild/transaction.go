@@ -998,6 +998,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
+// Muxed accounts or ID memos can be provided to identity a user of a shared Stellar account.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDomain, network string, timebound time.Duration, memo Memo) (*Transaction, error) {
 	if timebound < time.Second {
@@ -1114,6 +1115,10 @@ func generateRandomNonce(n int) ([]byte, error) {
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
+//
+// The returned clientAccountID may be a Stellar account or Muxed account address. If
+// the address is muxed, or if the memo returned is non-nil, the challenge transaction
+// is being used to authenticate a user of a shared Stellar account.
 func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo Memo, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
