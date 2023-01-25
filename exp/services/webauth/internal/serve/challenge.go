@@ -60,7 +60,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		homeDomain = h.HomeDomains[0]
 	}
 
-	var memo txnbuild.MemoID
+	var memo txnbuild.Memo
 	if queryValues.Get("memo") != "" {
 		if isMuxedAccount {
 			badRequest.Render(w)
