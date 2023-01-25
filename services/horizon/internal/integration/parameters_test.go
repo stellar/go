@@ -2,14 +2,15 @@
 package integration
 
 import (
-	"github.com/stellar/go/services/horizon/internal/paths"
-	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"testing"
+
+	"github.com/stellar/go/services/horizon/internal/paths"
+	"github.com/stellar/go/services/horizon/internal/simplepath"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
