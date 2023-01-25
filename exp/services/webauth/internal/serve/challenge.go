@@ -60,7 +60,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		homeDomain = h.HomeDomains[0]
 	}
 
-	var memo txnbuild.MemoID
+	var memo *txnbuild.MemoID
 	memoParam := queryValues.Get("memo")
 	if memoParam != "" {
 		if isMuxedAccount {
@@ -72,7 +72,8 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			badRequest.Render(w)
 			return
 		}
-		memo = txnbuild.MemoID(memoInt)
+		memoId := txnbuild.MemoID(memoInt)
+		memo = &memoId
 	}
 
 	tx, err := txnbuild.BuildChallengeTx(
@@ -82,7 +83,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		homeDomain,
 		h.NetworkPassphrase,
 		h.ChallengeExpiresIn,
-		&memo,
+		memo,
 	)
 	if err != nil {
 		h.Logger.Ctx(ctx).WithStack(err).Error(err)
