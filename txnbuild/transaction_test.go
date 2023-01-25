@@ -1122,15 +1122,10 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	// transaction with memo
 	{
-		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, MemoID(1))
+		var memo MemoID = MemoID(1)
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, &memo)
 		assert.NoError(t, err)
-		assert.Equal(t, tx.Memo(), MemoID(1))
-	}
-
-	// transaction with bad memo
-	{
-		_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, MemoText("test"))
-		assert.EqualError(t, err, "memo must be of type MemoID")
+		assert.Equal(t, tx.Memo(), &memo)
 	}
 
 	// transaction with muxed account
@@ -1143,7 +1138,8 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	// transaction with memo and muxed account
 	{
-		_, err := BuildChallengeTx(kp0.Seed(), "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, MemoID(1))
+		var memo MemoID = MemoID(1)
+		_, err := BuildChallengeTx(kp0.Seed(), "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, &memo)
 		assert.EqualError(t, err, "memos are not valid for challenge transactions with a muxed client account")
 	}
 

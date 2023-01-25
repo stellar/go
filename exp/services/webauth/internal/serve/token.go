@@ -54,7 +54,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		clientAccountID string
 		signingAddress  *keypair.FromAddress
 		homeDomain      string
-		memo            txnbuild.Memo
+		memo            *txnbuild.MemoID
 	)
 	for _, s := range h.SigningAddresses {
 		tx, clientAccountID, homeDomain, memo, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, h.Domain, h.HomeDomains)
@@ -153,8 +153,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if muxedAccount == (xdr.MuxedAccount{}) {
 		sub = clientAccountID
 		if memo != nil {
-			xdrMemo, _ := memo.ToXDR()
-			sub += ":" + strconv.FormatUint(uint64(xdrMemo.MustId()), 10)
+			sub += ":" + strconv.FormatUint(uint64(*memo), 10)
 		}
 	} else {
 		sub = muxedAccount.Address()

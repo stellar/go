@@ -1000,7 +1000,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // Muxed accounts or ID memos can be provided to identity a user of a shared Stellar account.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDomain, network string, timebound time.Duration, memo Memo) (*Transaction, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDomain, network string, timebound time.Duration, memo *MemoID) (*Transaction, error) {
 	if timebound < time.Second {
 		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -1027,11 +1027,6 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 		} else if memo != nil {
 			return nil, errors.New("memos are not valid for challenge transactions with a muxed client account")
 		}
-	} else if memo != nil {
-		var xdrMemo xdr.Memo
-		if xdrMemo, err = memo.ToXDR(); err != nil || xdrMemo.Type != xdr.MemoTypeMemoId {
-			return nil, errors.New("memo must be of type MemoID")
-		}
 	}
 
 	// represent server signing account as SimpleAccount
@@ -1045,29 +1040,32 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 
 	// Create a SEP 10 compatible response. See
 	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
-	tx, err := NewTransaction(
-		TransactionParams{
-			SourceAccount:        &sa,
-			IncrementSequenceNum: false,
-			Operations: []Operation{
-				&ManageData{
-					SourceAccount: clientAccountID,
-					Name:          homeDomain + " auth",
-					Value:         []byte(randomNonceToString),
-				},
-				&ManageData{
-					SourceAccount: serverKP.Address(),
-					Name:          "web_auth_domain",
-					Value:         []byte(webAuthDomain),
-				},
+	txParams := TransactionParams{
+		SourceAccount:        &sa,
+		IncrementSequenceNum: false,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: clientAccountID,
+				Name:          homeDomain + " auth",
+				Value:         []byte(randomNonceToString),
 			},
-			BaseFee: MinBaseFee,
-			Memo:    memo,
-			Preconditions: Preconditions{
-				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			&ManageData{
+				SourceAccount: serverKP.Address(),
+				Name:          "web_auth_domain",
+				Value:         []byte(webAuthDomain),
 			},
 		},
-	)
+		BaseFee: MinBaseFee,
+		Preconditions: Preconditions{
+			TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+		},
+	}
+	// Do not replace this if-then-assign block by assigning `memo` within the `TransactionParams`
+	// struct above. Doing so will cause errors as described here: https://go.dev/doc/faq#nil_error
+	if memo != nil {
+		txParams.Memo = memo
+	}
+	tx, err := NewTransaction(txParams)
 	if err != nil {
 		return nil, err
 	}
@@ -1119,7 +1117,7 @@ func generateRandomNonce(n int) ([]byte, error) {
 // The returned clientAccountID may be a Stellar account (G...) or Muxed account (M...) address. If
 // the address is muxed, or if the memo returned is non-nil, the challenge transaction
 // is being used to authenticate a user of a shared Stellar account.
-func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo Memo, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo *MemoID, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
 		return tx, clientAccountID, matchedHomeDomain, memo, errors.Wrap(err, "could not parse challenge")
@@ -1182,17 +1180,22 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 	}
 
 	clientAccountID = op.SourceAccount
-	memo = tx.Memo()
-	rawOperations := tx.envelope.Operations()
-	if rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 && memo != nil {
-		err = errors.New("memos are not valid for challenge transactions with a muxed client account")
+	firstOpSourceAccountType := tx.envelope.Operations()[0].SourceAccount.Type
+	if firstOpSourceAccountType != xdr.CryptoKeyTypeKeyTypeMuxedEd25519 && firstOpSourceAccountType != xdr.CryptoKeyTypeKeyTypeEd25519 {
+		err = errors.New("invalid source account for first operation: only valid Ed25519 or muxed accounts are valid")
 		return tx, clientAccountID, matchedHomeDomain, memo, err
-	} else if rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeEd25519 && memo != nil {
-		var rawMemo xdr.Memo
-		if rawMemo, err = memo.ToXDR(); err != nil || rawMemo.Type != xdr.MemoTypeMemoId {
+	}
+	if tx.Memo() != nil {
+		if firstOpSourceAccountType == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+			err = errors.New("memos are not valid for challenge transactions with a muxed client account")
+			return tx, clientAccountID, matchedHomeDomain, memo, err
+		}
+		var txMemo MemoID
+		if txMemo, ok = (tx.Memo()).(MemoID); !ok {
 			err = errors.New("invalid memo, only ID memos are permitted")
 			return tx, clientAccountID, matchedHomeDomain, memo, err
 		}
+		memo = &txMemo
 	}
 
 	// verify manage data value
