@@ -75,9 +75,12 @@ func ExampleVerifyChallengeTxThreshold() {
 
 	// Server verifies signed challenge transaction
 	{
-		_, txClientAccountID, _, _, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "webauthdomain.stellar.org", []string{"test"})
+		_, txClientAccountID, _, memo, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "webauthdomain.stellar.org", []string{"test"})
 		if err != nil {
 			fmt.Println("Error:", err)
+			return
+		} else if memo != nil {
+			fmt.Println("Expected memo to be nil, got: ", memo)
 			return
 		}
 
