@@ -149,3 +149,17 @@ func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 		operationMeta.Changes,
 	)
 }
+
+// GetOperationEvents returns all contract events emitted by a given operation.
+func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.ContractEvent, error) {
+	switch t.UnsafeMeta.V {
+	case 1:
+		return nil, nil
+	case 2:
+		return nil, nil
+	case 3:
+		return t.UnsafeMeta.MustV3().Events[operationIndex].Events, nil
+	default:
+		return nil, errors.New("Unsupported TransactionMeta version")
+	}
+}
