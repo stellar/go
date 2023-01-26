@@ -225,6 +225,32 @@ func TestChallengeWithMemo(t *testing.T) {
 	require.Equal(t, tx.Memo(), memo)
 }
 
+func TestChallengeWithBadMemo(t *testing.T) {
+	serverKey := keypair.MustRandom()
+	account := keypair.MustRandom()
+
+	h := challengeHandler{
+		Logger:             supportlog.DefaultLogger,
+		NetworkPassphrase:  network.TestNetworkPassphrase,
+		SigningKey:         serverKey,
+		ChallengeExpiresIn: time.Minute,
+		Domain:             "webauthdomain",
+		HomeDomains:        []string{"testdomain"},
+	}
+
+	r := httptest.NewRequest("GET", "/?account="+account.Address()+"&memo=test", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"error":"The request was invalid in some way."}`, string(body))
+}
+
 func TestChallengeWithMuxedAccount(t *testing.T) {
 	serverKey := keypair.MustRandom()
 	account := keypair.MustRandom()
