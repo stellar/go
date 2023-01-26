@@ -1120,6 +1120,12 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Equal(t, "testwebauth.stellar.org", string(*webAuthOp.Body.ManageDataOp.DataValue), "DataValue should be 'testwebauth.stellar.org'")
 	}
 
+	// transaction with invalid clientAccountID
+	{
+		_, err := BuildChallengeTx(kp0.Seed(), "test", "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, nil)
+		require.EqualError(t, err, "test is not a valid account id or muxed account: invalid address length")
+	}
+
 	// transaction with memo
 	{
 		var memo MemoID = MemoID(1)
@@ -2470,7 +2476,7 @@ func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
 	assert.EqualError(t, err, "challenge cannot be a fee bump transaction")
 }
 
-func TestReadChallengeTx_allowsMuxedAccounts(t *testing.T) {
+func TestReadChallengeTx_allowsMuxedAccountsForClientAccountId(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	aid := xdr.MustAddress(kp1.Address())
@@ -2504,6 +2510,70 @@ func TestReadChallengeTx_allowsMuxedAccounts(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, tx.envelope.Operations()[0].SourceAccount, &muxedAccount)
+}
+
+func TestReadChallengeTransaction_forbidsMuxedTxSourceAccount(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	homeDomain := "testanchor.stellar.org"
+	webAuthDomain := "testwebauth.stellar.org"
+
+	aid := xdr.MustAddress(kp0.Address())
+	muxedAccount := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *aid.Ed25519,
+		},
+	}
+	serverAccount := SimpleAccount{
+		AccountID: muxedAccount.Address(),
+		Sequence:  0,
+	}
+	randomNonce, _ := generateRandomNonce(48)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(300)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &serverAccount,
+			IncrementSequenceNum: false,
+			Operations: []Operation{
+				&ManageData{
+					SourceAccount: kp1.Address(),
+					Name:          homeDomain + " auth",
+					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverAccount.GetAccountID(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
+			},
+			BaseFee: MinBaseFee,
+			Memo:    MemoID(1),
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	_, _, _, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+		webAuthDomain,
+		[]string{homeDomain},
+	)
+	assert.EqualError(t, err, "invalid source account: only valid Ed25519 accounts are allowed in challenge transactions")
 }
 
 func TestReadChallengeTransaction_forbidsMemoWithMuxedClientAccount(t *testing.T) {
