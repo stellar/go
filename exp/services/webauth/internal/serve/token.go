@@ -89,7 +89,11 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.Info("Start verifying challenge transaction.")
 
 	muxedAccount, err := xdr.AddressToMuxedAccount(clientAccountID)
-	if err == nil {
+	if err != nil {
+		serverError.Render(w)
+		return
+	}
+	if muxedAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		clientAccountID = muxedAccount.ToAccountId().Address()
 	}
 
@@ -150,7 +154,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sub string
-	if muxedAccount == (xdr.MuxedAccount{}) {
+	if muxedAccount.Type == xdr.CryptoKeyTypeKeyTypeEd25519 {
 		sub = clientAccountID
 		if memo != nil {
 			sub += ":" + strconv.FormatUint(uint64(*memo), 10)
