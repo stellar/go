@@ -30,7 +30,7 @@ func NewLedgerTransactionReader(ctx context.Context, backend ledgerbackend.Ledge
 	return NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledgerCloseMeta)
 }
 
-// NewLedgerTransactionReaderFromXdr creates a new TransactionReader instance from xdr.LedgerCloseMeta.
+// NewLedgerTransactionReaderFromLedgerCloseMeta creates a new TransactionReader instance from xdr.LedgerCloseMeta.
 // Note that TransactionReader is not thread safe and should not be shared by multiple goroutines.
 func NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (*LedgerTransactionReader, error) {
 	reader := &LedgerTransactionReader{ledgerCloseMeta: ledgerCloseMeta}
