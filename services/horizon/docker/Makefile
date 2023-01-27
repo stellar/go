@@ -17,7 +17,7 @@ ifndef STELLAR_CORE_VERSION
 else
 	$(SUDO) docker build --pull $(DOCKER_OPTS) \
 	--label org.opencontainers.image.created="$(BUILD_DATE)" \
-	--build-arg VERSION=$(VERSION) STELLAR_CORE_VERSION=$(STELLAR_CORE_VERSION) \
+	--build-arg VERSION=$(VERSION) --build-arg STELLAR_CORE_VERSION=$(STELLAR_CORE_VERSION) \
 	-t $(TAG) .
 endif
 
