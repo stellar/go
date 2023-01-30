@@ -17,7 +17,7 @@ type Channel struct {
 }
 
 // ReloadState loads the current state of the channel account using given horizon client
-func (ch *Channel) ReloadState(client horizonclient.ClientInterface) (accountID string, sequenceNumber uint64, err error) {
+func (ch *Channel) LoadState(client horizonclient.ClientInterface) (accountID string, sequenceNumber uint64, err error) {
 	ch.mutex.Lock()
 	defer ch.mutex.Unlock()
 

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"sync"
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -14,19 +13,13 @@ import (
 
 // TransactionSubmitter is responsible for sending transactions to Stellar network
 type TransactionSubmitter struct {
-	Horizon       horizonclient.ClientInterface
-	MasterAccount string
-	Channels      []*Channel
-	Store         PostgresStore
-	log           *log.Entry
-
-	// This counter is used to get the next channel (transactionCounter % len(channels))
-	transactionCounterMutex sync.Mutex
-	transactionCounter      uint64
+	Horizon             horizonclient.ClientInterface
+	MasterAccount       string
+	Channels            []*Channel
+	Store               PostgresStore
+	log                 *log.Entry
+	pendingTransactions chan *Transaction
 }
-
-// TransactionPerSecond indicates how many transaction should be sent every second.
-const TransactionPerSecond int = 20
 
 // init initialized struct fields that couldn't be injected
 func (ts *TransactionSubmitter) init() (err error) {
@@ -35,12 +28,10 @@ func (ts *TransactionSubmitter) init() (err error) {
 		"service": "TransactionSubmitter",
 	})
 
-	ts.transactionCounter = 0
-
 	// Load channels
 	for i, channel := range ts.Channels {
 		ts.log.WithField("i", i).Info("Initializing channel")
-		accountID, sequenceNumber, err := channel.ReloadState(ts.Horizon)
+		accountID, sequenceNumber, err := channel.LoadState(ts.Horizon)
 		if err != nil {
 			return err
 		}
@@ -51,55 +42,66 @@ func (ts *TransactionSubmitter) init() (err error) {
 		}).Info("Channel initialized")
 	}
 
+	// pendingTransactions channel
+	ts.pendingTransactions = make(chan *Transaction, len(ts.Channels))
+
 	return
 }
 
 // Start starts the service. This service works in the following way.
 //
-//  1. First, it initializes channels by loading their sequence numbers.
+//  1. It initializes channels by loading their sequence numbers.
 //
-//  2. Then, it starts a new database transaction in which:
+//  2. It starts a go routine to listen on the pendningTransactions buffered channel
 //
-//     - it loads `TransactionPerSecond` transactions every second with state equal `pending`,
-//     - updates state of loaded transactions to `sending`.
+//  3. Every second, it:
 //
-//  3. For each transaction, it calculates the hash and saves it. This allows
-//     checking if transaction was successfully submitter or not if the app or server
-//     crashes at this point.
+//     - checks if the buffered channel is full
+//     - if the channel is not full, it loads transactions with state equal `pending`
+//     - updates state of loaded transactions to `sending`
+//     - queues them in the buffered channel
 //
-//  4. Transaction is submitted and the state is changed to `sent` or `error`.
-//
-// TODO Processing transactions in `sending` state that were not sent?
+// See listenForPendingTransactions() for information on how transactions are processed.
 func (ts *TransactionSubmitter) Start(ctx context.Context) {
 	err := ts.init()
 	if err != nil {
 		ts.log.WithError(err).Fatal("Could not initialize TransactionSubmitter")
 	}
 
+	for _, channel := range ts.Channels {
+		go ts.listenForPendingTransactions(ctx, channel)
+	}
+
 	for {
 		time.Sleep(time.Second)
-
-		transactions, err := ts.Store.LoadPendingTransactionsAndMarkSending(ctx, TransactionPerSecond)
+		if len(ts.Channels) == len(ts.pendingTransactions) {
+			continue
+		}
+		newPendingTransactions, err := ts.Store.LoadPendingTransactionsAndMarkSending(ctx, len(ts.Channels)-len(ts.pendingTransactions))
 		if err != nil {
 			ts.log.WithError(err).Error("Error loading queued transactions")
-		} else {
-			for _, transaction := range transactions {
-				go ts.processTransaction(ctx, transaction)
-			}
+			continue
+		}
+		for _, transaction := range newPendingTransactions {
+			ts.pendingTransactions <- transaction
 		}
 	}
 }
 
-// processTransaction builds transaction using free channel and submits it to horizon.
+// listenForPendingTransactions
 // If bad_seq error is returned it will call Channel.ReloadState()
-func (ts *TransactionSubmitter) processTransaction(ctx context.Context, transaction *Transaction) {
-	channel, channelID := ts.getChannel()
+func (ts *TransactionSubmitter) listenForPendingTransactions(ctx context.Context, channel *Channel) {
+	for transaction := range ts.pendingTransactions {
+		ts.processTransaction(ctx, transaction, channel)
+	}
+}
 
+// processTrannsaction manages the database state for a transaction being submitted by a channel
+func (ts *TransactionSubmitter) processTransaction(ctx context.Context, transaction *Transaction, channel *Channel) {
 	log := ts.log.WithFields(log.F{
 		"transaction_id": transaction.ID,
 		"destination":    transaction.Destination,
 		"amount":         transaction.Amount,
-		"channel_id":     channelID,
 		"channel":        channel.GetAccountID(),
 	})
 
@@ -150,51 +152,24 @@ func (ts *TransactionSubmitter) processTransaction(ctx context.Context, transact
 		return
 	}
 
-	_, err = ts.Horizon.SubmitTransaction(tx)
+	err = ts.Submit(tx)
 	if err != nil {
-		horizonError, ok := err.(*horizonclient.Error)
-		if ok {
-			log.WithError(err).Error("error submitting transaction")
-
-			// Check for bad_seq errors
-			if horizonError.Problem.Extras["result_codes"] != nil {
-				resultCodes, ok := horizonError.Problem.Extras["result_codes"].(map[string]interface{})
-				if ok {
-					if resultCodes["transaction"] == "tx_bad_seq" {
-						log.Warn("bad sequence error - reloading channel sequence number")
-						_, _, err := channel.ReloadState(ts.Horizon)
-						if err != nil {
-							log.WithError(err).Error("Error reloading channel sequence number")
-						}
-					}
-				}
-			}
-		} else {
-			log.WithError(err).Error("error submitting transaction")
-		}
-
+		log.Info("Success submitting transaction")
+		err = ts.Store.UpdateTransactionSuccess(ctx, transaction)
+	} else {
+		log.WithError(err).Error("Error submitting transaction")
 		err = ts.Store.UpdateTransactionError(ctx, transaction)
-		if err != nil {
-			log.WithError(err).Error("Error saving transaction error state")
-		}
-
-		return
 	}
 
-	err = ts.Store.UpdateTransactionSuccess(ctx, transaction)
 	if err != nil {
 		log.WithError(err).Error("Error saving transaction sent state")
 		return
 	}
-
-	log.Info("Success submitting transaction")
 }
 
-// getChannel returns the current channel
-func (ts *TransactionSubmitter) getChannel() (*Channel, uint64) {
-	ts.transactionCounterMutex.Lock()
-	channelID := ts.transactionCounter
-	ts.transactionCounter++
-	ts.transactionCounterMutex.Unlock()
-	return ts.Channels[channelID], channelID
+// Submits the transaction and handles any recoverable errors until it gets included in a ledger.
+// Returns any error that is not recoverable.
+func (ts *TransactionSubmitter) Submit(t *txnbuild.Transaction) (err error) {
+	_, err = ts.Horizon.SubmitTransaction(t)
+	return err
 }

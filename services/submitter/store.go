@@ -32,7 +32,7 @@ func (s TransactionState) Value() (driver.Value, error) {
 const (
 	// TransactionStatePending indicates that a transaction is ready to be sent.
 	TransactionStatePending TransactionState = "pending"
-	// TransactionStateSending indicates that a transaction is submitted to Horizon and awaiting response.
+	// TransactionStateSending indicates that a transaction is being processed.
 	TransactionStateSending TransactionState = "sending"
 	// TransactionStateSent indicates that a transaction was successfully sent and is in the ledger.
 	TransactionStateSent TransactionState = "sent"
