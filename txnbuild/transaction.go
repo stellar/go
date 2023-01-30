@@ -998,8 +998,9 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
+// Muxed accounts or ID memos can be provided to identity a user of a shared Stellar account.
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDomain, network string, timebound time.Duration) (*Transaction, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDomain, network string, timebound time.Duration, memo *MemoID) (*Transaction, error) {
 	if timebound < time.Second {
 		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -1021,7 +1022,11 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 	}
 
 	if _, err = xdr.AddressToAccountId(clientAccountID); err != nil {
-		return nil, errors.Wrapf(err, "%s is not a valid account id", clientAccountID)
+		if _, err = xdr.AddressToMuxedAccount(clientAccountID); err != nil {
+			return nil, errors.Wrapf(err, "%s is not a valid account id or muxed account", clientAccountID)
+		} else if memo != nil {
+			return nil, errors.New("memos are not valid for challenge transactions with a muxed client account")
+		}
 	}
 
 	// represent server signing account as SimpleAccount
@@ -1035,29 +1040,32 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 
 	// Create a SEP 10 compatible response. See
 	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
-	tx, err := NewTransaction(
-		TransactionParams{
-			SourceAccount:        &sa,
-			IncrementSequenceNum: false,
-			Operations: []Operation{
-				&ManageData{
-					SourceAccount: clientAccountID,
-					Name:          homeDomain + " auth",
-					Value:         []byte(randomNonceToString),
-				},
-				&ManageData{
-					SourceAccount: serverKP.Address(),
-					Name:          "web_auth_domain",
-					Value:         []byte(webAuthDomain),
-				},
+	txParams := TransactionParams{
+		SourceAccount:        &sa,
+		IncrementSequenceNum: false,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: clientAccountID,
+				Name:          homeDomain + " auth",
+				Value:         []byte(randomNonceToString),
 			},
-			BaseFee: MinBaseFee,
-			Memo:    nil,
-			Preconditions: Preconditions{
-				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			&ManageData{
+				SourceAccount: serverKP.Address(),
+				Name:          "web_auth_domain",
+				Value:         []byte(webAuthDomain),
 			},
 		},
-	)
+		BaseFee: MinBaseFee,
+		Preconditions: Preconditions{
+			TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+		},
+	}
+	// Do not replace this if-then-assign block by assigning `memo` within the `TransactionParams`
+	// struct above. Doing so will cause errors as described here: https://go.dev/doc/faq#nil_error
+	if memo != nil {
+		txParams.Memo = memo
+	}
+	tx, err := NewTransaction(txParams)
 	if err != nil {
 		return nil, err
 	}
@@ -1105,57 +1113,61 @@ func generateRandomNonce(n int) ([]byte, error) {
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, err error) {
+//
+// The returned clientAccountID may be a Stellar account (G...) or Muxed account (M...) address. If
+// the address is muxed, or if the memo returned is non-nil, the challenge transaction
+// is being used to authenticate a user of a shared Stellar account.
+func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, memo *MemoID, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
-		return tx, clientAccountID, matchedHomeDomain, errors.Wrap(err, "could not parse challenge")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.Wrap(err, "could not parse challenge")
 	}
 
 	var isSimple bool
 	tx, isSimple = parsed.Transaction()
 	if !isSimple {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("challenge cannot be a fee bump transaction")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("challenge cannot be a fee bump transaction")
 	}
 
 	// Enforce no muxed accounts (at least until we understand their impact)
 	if tx.envelope.SourceAccount().Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		err = errors.New("invalid source account: only valid Ed25519 accounts are allowed in challenge transactions")
-		return tx, clientAccountID, matchedHomeDomain, err
+		return tx, clientAccountID, matchedHomeDomain, memo, err
 	}
 
 	// verify transaction source
 	if tx.SourceAccount().AccountID != serverAccountID {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction source account is not equal to server's account")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("transaction source account is not equal to server's account")
 	}
 
 	// verify sequence number
 	if tx.SourceAccount().Sequence != 0 {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction sequence number must be 0")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("transaction sequence number must be 0")
 	}
 
 	// verify timebounds
 	if tx.Timebounds().MaxTime == TimeoutInfinite {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction requires non-infinite timebounds")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("transaction requires non-infinite timebounds")
 	}
 	// Apply a grace period to the challenge MinTime to account for clock drift between the server and client
 	var gracePeriod int64 = 5 * 60 // seconds
 	currentTime := time.Now().UTC().Unix()
 	if currentTime+gracePeriod < tx.Timebounds().MinTime || currentTime > tx.Timebounds().MaxTime {
-		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
 			currentTime, tx.Timebounds().MinTime, tx.Timebounds().MaxTime)
 	}
 
 	// verify operation
 	operations := tx.Operations()
 	if len(operations) < 1 {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction requires at least one manage_data operation")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("transaction requires at least one manage_data operation")
 	}
 	op, ok := operations[0].(*ManageData)
 	if !ok {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("operation type should be manage_data")
 	}
 	if op.SourceAccount == "" {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("operation should have a source account")
 	}
 	for _, homeDomain := range homeDomains {
 		if op.Name == homeDomain+" auth" {
@@ -1164,60 +1176,72 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 		}
 	}
 	if matchedHomeDomain == "" {
-		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("operation key does not match any homeDomains passed (key=%q, homeDomains=%v)", op.Name, homeDomains)
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.Errorf("operation key does not match any homeDomains passed (key=%q, homeDomains=%v)", op.Name, homeDomains)
 	}
 
 	clientAccountID = op.SourceAccount
-	rawOperations := tx.envelope.Operations()
-	if len(rawOperations) > 0 && rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-		err = errors.New("invalid operation source account: only valid Ed25519 accounts are allowed in challenge transactions")
-		return tx, clientAccountID, matchedHomeDomain, err
+	firstOpSourceAccountType := tx.envelope.Operations()[0].SourceAccount.Type
+	if firstOpSourceAccountType != xdr.CryptoKeyTypeKeyTypeMuxedEd25519 && firstOpSourceAccountType != xdr.CryptoKeyTypeKeyTypeEd25519 {
+		err = errors.New("invalid source account for first operation: only valid Ed25519 or muxed accounts are valid")
+		return tx, clientAccountID, matchedHomeDomain, memo, err
+	}
+	if tx.Memo() != nil {
+		if firstOpSourceAccountType == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+			err = errors.New("memos are not valid for challenge transactions with a muxed client account")
+			return tx, clientAccountID, matchedHomeDomain, memo, err
+		}
+		var txMemo MemoID
+		if txMemo, ok = (tx.Memo()).(MemoID); !ok {
+			err = errors.New("invalid memo, only ID memos are permitted")
+			return tx, clientAccountID, matchedHomeDomain, memo, err
+		}
+		memo = &txMemo
 	}
 
 	// verify manage data value
 	nonceB64 := string(op.Value)
 	if len(nonceB64) != 64 {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("random nonce encoded as base64 should be 64 bytes long")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("random nonce encoded as base64 should be 64 bytes long")
 	}
 	nonceBytes, err := base64.StdEncoding.DecodeString(nonceB64)
 	if err != nil {
-		return tx, clientAccountID, matchedHomeDomain, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
 	}
 	if len(nonceBytes) != 48 {
-		return tx, clientAccountID, matchedHomeDomain, errors.New("random nonce before encoding as base64 should be 48 bytes long")
+		return tx, clientAccountID, matchedHomeDomain, memo, errors.New("random nonce before encoding as base64 should be 48 bytes long")
 	}
 
 	// verify subsequent operations are manage data ops and known, or unknown with source account set to server account
 	for _, op := range operations[1:] {
 		op, ok := op.(*ManageData)
 		if !ok {
-			return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
+			return tx, clientAccountID, matchedHomeDomain, memo, errors.New("operation type should be manage_data")
 		}
 		if op.SourceAccount == "" {
-			return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
+			return tx, clientAccountID, matchedHomeDomain, memo, errors.New("operation should have a source account")
 		}
 		switch op.Name {
 		case "web_auth_domain":
 			if op.SourceAccount != serverAccountID {
-				return tx, clientAccountID, matchedHomeDomain, errors.New("web auth domain operation must have server source account")
+				return tx, clientAccountID, matchedHomeDomain, memo, errors.New("web auth domain operation must have server source account")
 			}
 			if !bytes.Equal(op.Value, []byte(webAuthDomain)) {
-				return tx, clientAccountID, matchedHomeDomain, errors.Errorf("web auth domain operation value is %q but expect %q", string(op.Value), webAuthDomain)
+				return tx, clientAccountID, matchedHomeDomain, memo, errors.Errorf("web auth domain operation value is %q but expect %q", string(op.Value), webAuthDomain)
 			}
 		default:
 			// verify unknown subsequent operations are manage data ops with source account set to server account
 			if op.SourceAccount != serverAccountID {
-				return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
+				return tx, clientAccountID, matchedHomeDomain, memo, errors.New("subsequent operations are unrecognized")
 			}
 		}
 	}
 
 	err = verifyTxSignature(tx, network, serverAccountID)
 	if err != nil {
-		return tx, clientAccountID, matchedHomeDomain, err
+		return tx, clientAccountID, matchedHomeDomain, memo, err
 	}
 
-	return tx, clientAccountID, matchedHomeDomain, nil
+	return tx, clientAccountID, matchedHomeDomain, memo, nil
 }
 
 // VerifyChallengeTxThreshold verifies that for a SEP 10 challenge transaction
@@ -1289,7 +1313,7 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDo
 //     server account or one of the signers provided in the arguments.
 func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
-	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
+	tx, _, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
 	if err != nil {
 		return nil, err
 	}
