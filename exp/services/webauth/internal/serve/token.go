@@ -90,7 +90,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	muxedAccount, err := xdr.AddressToMuxedAccount(clientAccountID)
 	if err != nil {
-		serverError.Render(w)
+		badRequest.Render(w)
 		return
 	}
 	if muxedAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
