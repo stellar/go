@@ -6,17 +6,20 @@ import (
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 )
 
 // TransactionSubmitter is responsible for sending transactions to Stellar network
 type TransactionSubmitter struct {
-	Horizon             horizonclient.ClientInterface
-	MasterAccount       string
-	Channels            []*Channel
-	Store               PostgresStore
+	Horizon         horizonclient.ClientInterface
+	RootAccountSeed string
+	Channels        []*Channel
+	Store           PostgresStore
+
 	log                 *log.Entry
 	pendingTransactions chan *Transaction
 }
@@ -112,47 +115,28 @@ func (ts *TransactionSubmitter) processTransaction(ctx context.Context, transact
 		return
 	}
 
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount: &txnbuild.SimpleAccount{
-				AccountID: channel.GetAccountID(),
-				Sequence:  channel.GetSequenceNumber(),
-			},
-			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{
-					SourceAccount: ts.MasterAccount,
-					Amount:        transaction.Amount,
-					Destination:   transaction.Destination,
-					Asset:         txnbuild.NativeAsset{},
-				},
-			},
-			BaseFee: txnbuild.MinBaseFee,
-			Preconditions: txnbuild.Preconditions{
-				TimeBounds: txnbuild.NewInfiniteTimeout(),
-			},
-		},
-	)
+	feeBumpTx, err := ts.buildTransaction(transaction, channel)
 	if err != nil {
 		log.WithError(err).Error("error building transaction")
 		return
 	}
 
-	txHash, err := tx.Hash(network.PublicNetworkPassphrase)
+	feeBumpTxHash, err := feeBumpTx.Hash(network.PublicNetworkPassphrase)
 	if err != nil {
-		log.WithError(err).Error("error building transaction")
+		log.WithError(err).Error("error hashing transaction")
 		return
 	}
 
 	// Important: We need to save tx hash before submitting a transaction.
 	// If the script/server crashes after transaction is submitted but before the response
 	// is processed, we can easily determine whether tx was sent or not later using tx hash.
-	err = ts.Store.UpdateTransactionHash(ctx, transaction, hex.EncodeToString(txHash[:]))
+	err = ts.Store.UpdateTransactionHash(ctx, transaction, hex.EncodeToString(feeBumpTxHash[:]))
 	if err != nil {
 		log.WithError(err).Error("error saving transaction hash")
 		return
 	}
 
-	err = ts.Submit(tx)
+	err = ts.submit(feeBumpTx)
 	if err != nil {
 		log.Info("Success submitting transaction")
 		err = ts.Store.UpdateTransactionSuccess(ctx, transaction)
@@ -167,9 +151,68 @@ func (ts *TransactionSubmitter) processTransaction(ctx context.Context, transact
 	}
 }
 
+func (ts *TransactionSubmitter) buildTransaction(t *Transaction, channel *Channel) (feeBumpTx *txnbuild.FeeBumpTransaction, err error) {
+	rootAccountKp, err := keypair.ParseFull(ts.RootAccountSeed)
+	if err != nil {
+		return feeBumpTx, errors.Wrap(err, "unable to parse RootAccountSeed")
+	}
+
+	channelAccountKp, err := keypair.ParseFull(channel.Seed)
+	if err != nil {
+		return feeBumpTx, errors.Wrap(err, "unable to parse Channel.Seed")
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: channel.GetAccountID(),
+				Sequence:  channel.GetSequenceNumber(),
+			},
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: rootAccountKp.Address(),
+					Amount:        t.Amount,
+					Destination:   t.Destination,
+					Asset:         txnbuild.NativeAsset{},
+				},
+			},
+			BaseFee: txnbuild.MinBaseFee,
+			Preconditions: txnbuild.Preconditions{
+				TimeBounds: txnbuild.NewInfiniteTimeout(),
+			},
+		},
+	)
+	if err != nil {
+		return feeBumpTx, errors.Wrap(err, "error building transaction")
+	}
+
+	tx, err = tx.Sign(network.PublicNetworkPassphrase, rootAccountKp, channelAccountKp)
+	if err != nil {
+		return feeBumpTx, errors.Wrap(err, "error signing transaction")
+	}
+
+	feeBumpTx, err = txnbuild.NewFeeBumpTransaction(
+		txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: rootAccountKp.Address(),
+			BaseFee:    txnbuild.MinBaseFee,
+		},
+	)
+	if err != nil {
+		return feeBumpTx, errors.Wrap(err, "error building fee-bump transaction")
+	}
+
+	feeBumpTx, err = feeBumpTx.Sign(network.PublicNetworkPassphrase, rootAccountKp)
+	if err != nil {
+		return feeBumpTx, errors.Wrap(err, "error signing fee-bump transaction")
+	}
+
+	return feeBumpTx, nil
+}
+
 // Submits the transaction and handles any recoverable errors until it gets included in a ledger.
 // Returns any error that is not recoverable.
-func (ts *TransactionSubmitter) Submit(t *txnbuild.Transaction) (err error) {
-	_, err = ts.Horizon.SubmitTransaction(t)
+func (ts *TransactionSubmitter) submit(t *txnbuild.FeeBumpTransaction) (err error) {
+	_, err = ts.Horizon.SubmitFeeBumpTransactionWithOptions(t, horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true})
 	return err
 }
