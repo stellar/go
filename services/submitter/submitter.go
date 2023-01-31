@@ -91,8 +91,6 @@ func (ts *TransactionSubmitter) Start(ctx context.Context) {
 	}
 }
 
-// listenForPendingTransactions
-// If bad_seq error is returned it will call Channel.ReloadState()
 func (ts *TransactionSubmitter) listenForPendingTransactions(ctx context.Context, channel *Channel) {
 	for transaction := range ts.pendingTransactions {
 		ts.processTransaction(ctx, transaction, channel)
