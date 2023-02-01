@@ -562,16 +562,19 @@ func contractIDParam(contractID xdr.Hash) xdr.ScVal {
 
 func accountIDEnumParam(accountID string) xdr.ScVal {
 	accountObj := &xdr.ScObject{
-		Type:      xdr.ScObjectTypeScoAccountId,
-		AccountId: xdr.MustAddressPtr(accountID),
+		Type: xdr.ScObjectTypeScoAddress,
+		Address: &xdr.ScAddress{
+			Type:      xdr.ScAddressTypeScAddressTypeAccount,
+			AccountId: xdr.MustAddressPtr(accountID),
+		},
 	}
-	accountSym := xdr.ScSymbol("Account")
-	accountEnum := &xdr.ScObject{
+	addressSym := xdr.ScSymbol("Address")
+	addressEnum := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoVec,
 		Vec: &xdr.ScVec{
 			xdr.ScVal{
 				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &accountSym,
+				Sym:  &addressSym,
 			},
 			xdr.ScVal{
 				Type: xdr.ScValTypeScvObject,
@@ -581,7 +584,7 @@ func accountIDEnumParam(accountID string) xdr.ScVal {
 	}
 	return xdr.ScVal{
 		Type: xdr.ScValTypeScvObject,
-		Obj:  &accountEnum,
+		Obj:  &addressEnum,
 	}
 }
 
