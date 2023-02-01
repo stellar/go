@@ -34,10 +34,10 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.5.0-1108.ca2fb0605.focal
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.5.0-1108.ca2fb0605.focal
-      PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 19.5.0-1108.ca2fb0605.focal
-      PROTOCOL_18_CORE_DOCKER_IMG: stellar/stellar-core:19.5.0-1108.ca2fb0605.focal
+      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.7.0-1175.7249363c6.focal
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.7.0-1175.7249363c6.focal
+      PROTOCOL_18_CORE_DEBIAN_PKG_VERSION: 19.7.0-1175.7249363c6.focal
+      PROTOCOL_18_CORE_DOCKER_IMG: stellar/stellar-core:19.7.0-1175.7249363c6.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
