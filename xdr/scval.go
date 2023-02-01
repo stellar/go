@@ -33,9 +33,6 @@ func (s *ScObject) Equals(o *ScObject) bool {
 		return s.MustI64() == o.MustI64()
 	case ScObjectTypeScoContractCode:
 		return s.MustContractCode().Equals(o.MustContractCode())
-	case ScObjectTypeScoAccountId:
-		aid := s.MustAccountId()
-		return aid.Equals(o.MustAccountId())
 	case ScObjectTypeScoU128:
 		return s.MustU128().Equals(o.MustU128())
 	case ScObjectTypeScoI128:
