@@ -66,6 +66,16 @@ func (s *ScObject) Equals(o *ScObject) bool {
 			}
 		}
 		return true
+	case ScObjectTypeScoAddress:
+		myAddr := s.MustAddress()
+		otherAddr := o.MustAddress()
+		return *(myAddr.ContractId) == *(otherAddr.ContractId) &&
+			myAddr.AccountId.Equals(*otherAddr.AccountId)
+	case ScObjectTypeScoNonceKey:
+		myAddr := s.MustNonceAddress()
+		otherAddr := o.MustNonceAddress()
+		return *(myAddr.ContractId) == *(otherAddr.ContractId) &&
+			myAddr.AccountId.Equals(*otherAddr.AccountId)
 	default:
 		panic("unknown ScObject type: " + s.Type.String())
 	}
