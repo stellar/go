@@ -12,8 +12,8 @@ xdr/Stellar-contract-spec.x \
 xdr/Stellar-contract.x \
 xdr/Stellar-internal.x
 
-XDRGEN_COMMIT=2864dda63ad8a5d3b0e33430fcd6093633ce8fac
-XDRNEXT_COMMIT=026c9cd074bdb28ddde8ee52f2a4502d9e518a09
+XDRGEN_COMMIT=57beb46bd3d1c77529218430bd6ed87cd69ac394
+XDRNEXT_COMMIT=24d5d5f196d2840f57384383c4c10546d9fe5d48
 
 .PHONY: xdr xdr-clean xdr-update
 
@@ -47,7 +47,7 @@ xdr/xdr_commit_generated.txt:
 
 xdr/xdr_generated.go: $(XDRS)
 	docker run -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
-		gem install specific_install -v 0.3.7 && \
+		gem install specific_install -v 0.3.8 && \
 		gem specific_install https://github.com/stellar/xdrgen.git -b $(XDRGEN_COMMIT) && \
 		xdrgen \
 			--language go \
