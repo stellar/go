@@ -27,6 +27,9 @@ func (s *ScObject) Equals(o *ScObject) bool {
 	if s == nil {
 		return true
 	}
+	if s.Type != o.Type {
+		return false
+	}
 
 	switch s.Type {
 	case ScObjectTypeScoI64:
@@ -69,13 +72,11 @@ func (s *ScObject) Equals(o *ScObject) bool {
 	case ScObjectTypeScoAddress:
 		myAddr := s.MustAddress()
 		otherAddr := o.MustAddress()
-		return *(myAddr.ContractId) == *(otherAddr.ContractId) &&
-			myAddr.AccountId.Equals(*otherAddr.AccountId)
+		return myAddr.Equals(otherAddr)
 	case ScObjectTypeScoNonceKey:
 		myAddr := s.MustNonceAddress()
 		otherAddr := o.MustNonceAddress()
-		return *(myAddr.ContractId) == *(otherAddr.ContractId) &&
-			myAddr.AccountId.Equals(*otherAddr.AccountId)
+		return myAddr.Equals(otherAddr)
 	default:
 		panic("unknown ScObject type: " + s.Type.String())
 	}
@@ -134,5 +135,20 @@ func (s ScVal) Equals(o ScVal) bool {
 		return s.MustU63() == o.MustU63()
 	default:
 		panic("unknown ScVal type: " + s.Type.String())
+	}
+}
+
+func (s ScAddress) Equals(o ScAddress) bool {
+	if s.Type != o.Type {
+		return false
+	}
+
+	switch s.Type {
+	case ScAddressTypeScAddressTypeAccount:
+		return s.AccountId.Equals(*o.AccountId)
+	case ScAddressTypeScAddressTypeContract:
+		return *(s.ContractId) == *(o.ContractId)
+	default:
+		panic("unknown ScAddress type: " + s.Type.String())
 	}
 }
