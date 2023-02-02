@@ -145,9 +145,10 @@ func (s ScAddress) Equals(o ScAddress) bool {
 
 	switch s.Type {
 	case ScAddressTypeScAddressTypeAccount:
-		return s.AccountId.Equals(*o.AccountId)
+		sAccountID := s.MustAccountId()
+		return sAccountID.Equals(o.MustAccountId())
 	case ScAddressTypeScAddressTypeContract:
-		return *(s.ContractId) == *(o.ContractId)
+		return s.MustContractId() == o.MustContractId()
 	default:
 		panic("unknown ScAddress type: " + s.Type.String())
 	}
