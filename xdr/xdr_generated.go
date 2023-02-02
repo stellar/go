@@ -30,13 +30,13 @@ import (
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":               "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
 	"xdr/Stellar-contract-env-meta.x": "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
-	"xdr/Stellar-contract-spec.x":     "1c4304a077e12a94a793efa90e18099011f11b385a8aa2272c65e334cee989df",
-	"xdr/Stellar-contract.x":          "69e8f476cb30ceda3a0981b7f9367a4e4f1a29393336a78ae4cc1e9e7f5e750c",
+	"xdr/Stellar-contract-spec.x":     "f1b4562b21a38708e15b2e7f371d9171802ef7756bf5af2cb49b517149228e9c",
+	"xdr/Stellar-contract.x":          "5c254a97c31d08f0d1c5bd50867d71edad11338dd5653d87d3714475221e68d7",
 	"xdr/Stellar-internal.x":          "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
-	"xdr/Stellar-ledger-entries.x":    "bc3ef59ed74e6f990ce14dd051a000a6dd793fc6a5deb4a83c7fef1035ff1bc6",
+	"xdr/Stellar-ledger-entries.x":    "dae8eead47f2ce6b74b87fc196080cde2b432eedba9e58893f1d5ad315155e4e",
 	"xdr/Stellar-ledger.x":            "b19c10a07c9775594723ad12927259dd4bbd9ed9dfd0e70078662ec2e90e130d",
-	"xdr/Stellar-overlay.x":           "3093b425866f34b32702d80d5298f9f2dc00736b0fdaac7efa653490a39fb231",
-	"xdr/Stellar-transaction.x":       "bdac432e08265df6a13dc4c6135090ca6dcaa8eeedd61a0533ba52b4c9baf201",
+	"xdr/Stellar-overlay.x":           "972f38a9d4a064273f3362cbfa7d3c563293fd5396d5f0774ce6cc690e27645d",
+	"xdr/Stellar-transaction.x":       "69d33701fac38c2e0ba861f8ff6c96ae126364a9606a8f21e36b823dceb6a004",
 	"xdr/Stellar-types.x":             "7b3e5470c4bcf7c19f9cc8f8bf81a494b540fc2157476329cf19863afab2343b",
 }
 
@@ -10371,7 +10371,8 @@ var _ xdrType = (*LedgerKey)(nil)
 //	     ENVELOPE_TYPE_CONTRACT_ID_FROM_CONTRACT = 9,
 //	     ENVELOPE_TYPE_CONTRACT_ID_FROM_ASSET = 10,
 //	     ENVELOPE_TYPE_CONTRACT_ID_FROM_SOURCE_ACCOUNT = 11,
-//	     ENVELOPE_TYPE_CREATE_CONTRACT_ARGS = 12
+//	     ENVELOPE_TYPE_CREATE_CONTRACT_ARGS = 12,
+//	     ENVELOPE_TYPE_CONTRACT_AUTH = 13
 //	 };
 type EnvelopeType int32
 
@@ -10389,6 +10390,7 @@ const (
 	EnvelopeTypeEnvelopeTypeContractIdFromAsset         EnvelopeType = 10
 	EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount EnvelopeType = 11
 	EnvelopeTypeEnvelopeTypeCreateContractArgs          EnvelopeType = 12
+	EnvelopeTypeEnvelopeTypeContractAuth                EnvelopeType = 13
 )
 
 var envelopeTypeMap = map[int32]string{
@@ -10405,6 +10407,7 @@ var envelopeTypeMap = map[int32]string{
 	10: "EnvelopeTypeEnvelopeTypeContractIdFromAsset",
 	11: "EnvelopeTypeEnvelopeTypeContractIdFromSourceAccount",
 	12: "EnvelopeTypeEnvelopeTypeCreateContractArgs",
+	13: "EnvelopeTypeEnvelopeTypeContractAuth",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -18587,6 +18590,89 @@ func (s SurveyMessageCommandType) xdrType() {}
 
 var _ xdrType = (*SurveyMessageCommandType)(nil)
 
+// SurveyMessageResponseType is an XDR Enum defines as:
+//
+//	enum SurveyMessageResponseType
+//	 {
+//	     SURVEY_TOPOLOGY_RESPONSE_V0 = 0,
+//	     SURVEY_TOPOLOGY_RESPONSE_V1 = 1
+//	 };
+type SurveyMessageResponseType int32
+
+const (
+	SurveyMessageResponseTypeSurveyTopologyResponseV0 SurveyMessageResponseType = 0
+	SurveyMessageResponseTypeSurveyTopologyResponseV1 SurveyMessageResponseType = 1
+)
+
+var surveyMessageResponseTypeMap = map[int32]string{
+	0: "SurveyMessageResponseTypeSurveyTopologyResponseV0",
+	1: "SurveyMessageResponseTypeSurveyTopologyResponseV1",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for SurveyMessageResponseType
+func (e SurveyMessageResponseType) ValidEnum(v int32) bool {
+	_, ok := surveyMessageResponseTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e SurveyMessageResponseType) String() string {
+	name, _ := surveyMessageResponseTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e SurveyMessageResponseType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := surveyMessageResponseTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid SurveyMessageResponseType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*SurveyMessageResponseType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *SurveyMessageResponseType) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding SurveyMessageResponseType: %s", err)
+	}
+	if _, ok := surveyMessageResponseTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid SurveyMessageResponseType enum value", v)
+	}
+	*e = SurveyMessageResponseType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SurveyMessageResponseType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SurveyMessageResponseType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SurveyMessageResponseType)(nil)
+	_ encoding.BinaryUnmarshaler = (*SurveyMessageResponseType)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s SurveyMessageResponseType) xdrType() {}
+
+var _ xdrType = (*SurveyMessageResponseType)(nil)
+
 // SurveyRequestMessage is an XDR Struct defines as:
 //
 //	struct SurveyRequestMessage
@@ -19269,9 +19355,9 @@ func (s PeerStatList) xdrType() {}
 
 var _ xdrType = (*PeerStatList)(nil)
 
-// TopologyResponseBody is an XDR Struct defines as:
+// TopologyResponseBodyV0 is an XDR Struct defines as:
 //
-//	struct TopologyResponseBody
+//	struct TopologyResponseBodyV0
 //	 {
 //	     PeerStatList inboundPeers;
 //	     PeerStatList outboundPeers;
@@ -19279,7 +19365,7 @@ var _ xdrType = (*PeerStatList)(nil)
 //	     uint32 totalInboundPeerCount;
 //	     uint32 totalOutboundPeerCount;
 //	 };
-type TopologyResponseBody struct {
+type TopologyResponseBodyV0 struct {
 	InboundPeers           PeerStatList
 	OutboundPeers          PeerStatList
 	TotalInboundPeerCount  Uint32
@@ -19287,7 +19373,7 @@ type TopologyResponseBody struct {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s *TopologyResponseBody) EncodeTo(e *xdr.Encoder) error {
+func (s *TopologyResponseBodyV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	if err = s.InboundPeers.EncodeTo(e); err != nil {
 		return err
@@ -19304,10 +19390,10 @@ func (s *TopologyResponseBody) EncodeTo(e *xdr.Encoder) error {
 	return nil
 }
 
-var _ decoderFrom = (*TopologyResponseBody)(nil)
+var _ decoderFrom = (*TopologyResponseBodyV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *TopologyResponseBody) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *TopologyResponseBodyV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
 	nTmp, err = s.InboundPeers.DecodeFrom(d)
@@ -19334,7 +19420,7 @@ func (s *TopologyResponseBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s TopologyResponseBody) MarshalBinary() ([]byte, error) {
+func (s TopologyResponseBodyV0) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -19342,7 +19428,7 @@ func (s TopologyResponseBody) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *TopologyResponseBody) UnmarshalBinary(inp []byte) error {
+func (s *TopologyResponseBodyV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -19350,26 +19436,141 @@ func (s *TopologyResponseBody) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*TopologyResponseBody)(nil)
-	_ encoding.BinaryUnmarshaler = (*TopologyResponseBody)(nil)
+	_ encoding.BinaryMarshaler   = (*TopologyResponseBodyV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*TopologyResponseBodyV0)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s TopologyResponseBody) xdrType() {}
+func (s TopologyResponseBodyV0) xdrType() {}
 
-var _ xdrType = (*TopologyResponseBody)(nil)
+var _ xdrType = (*TopologyResponseBodyV0)(nil)
+
+// TopologyResponseBodyV1 is an XDR Struct defines as:
+//
+//	struct TopologyResponseBodyV1
+//	 {
+//	     PeerStatList inboundPeers;
+//	     PeerStatList outboundPeers;
+//
+//	     uint32 totalInboundPeerCount;
+//	     uint32 totalOutboundPeerCount;
+//
+//	     uint32 maxInboundPeerCount;
+//	     uint32 maxOutboundPeerCount;
+//	 };
+type TopologyResponseBodyV1 struct {
+	InboundPeers           PeerStatList
+	OutboundPeers          PeerStatList
+	TotalInboundPeerCount  Uint32
+	TotalOutboundPeerCount Uint32
+	MaxInboundPeerCount    Uint32
+	MaxOutboundPeerCount   Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *TopologyResponseBodyV1) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.InboundPeers.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.OutboundPeers.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TotalInboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TotalOutboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.MaxInboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.MaxOutboundPeerCount.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TopologyResponseBodyV1)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TopologyResponseBodyV1) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.InboundPeers.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding PeerStatList: %s", err)
+	}
+	nTmp, err = s.OutboundPeers.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding PeerStatList: %s", err)
+	}
+	nTmp, err = s.TotalInboundPeerCount.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.TotalOutboundPeerCount.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.MaxInboundPeerCount.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.MaxOutboundPeerCount.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TopologyResponseBodyV1) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TopologyResponseBodyV1) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TopologyResponseBodyV1)(nil)
+	_ encoding.BinaryUnmarshaler = (*TopologyResponseBodyV1)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TopologyResponseBodyV1) xdrType() {}
+
+var _ xdrType = (*TopologyResponseBodyV1)(nil)
 
 // SurveyResponseBody is an XDR Union defines as:
 //
-//	union SurveyResponseBody switch (SurveyMessageCommandType type)
+//	union SurveyResponseBody switch (SurveyMessageResponseType type)
 //	 {
-//	 case SURVEY_TOPOLOGY:
-//	     TopologyResponseBody topologyResponseBody;
+//	 case SURVEY_TOPOLOGY_RESPONSE_V0:
+//	     TopologyResponseBodyV0 topologyResponseBodyV0;
+//	 case SURVEY_TOPOLOGY_RESPONSE_V1:
+//	     TopologyResponseBodyV1 topologyResponseBodyV1;
 //	 };
 type SurveyResponseBody struct {
-	Type                 SurveyMessageCommandType
-	TopologyResponseBody *TopologyResponseBody
+	Type                   SurveyMessageResponseType
+	TopologyResponseBodyV0 *TopologyResponseBodyV0
+	TopologyResponseBodyV1 *TopologyResponseBodyV1
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -19381,47 +19582,81 @@ func (u SurveyResponseBody) SwitchFieldName() string {
 // ArmForSwitch returns which field name should be used for storing
 // the value for an instance of SurveyResponseBody
 func (u SurveyResponseBody) ArmForSwitch(sw int32) (string, bool) {
-	switch SurveyMessageCommandType(sw) {
-	case SurveyMessageCommandTypeSurveyTopology:
-		return "TopologyResponseBody", true
+	switch SurveyMessageResponseType(sw) {
+	case SurveyMessageResponseTypeSurveyTopologyResponseV0:
+		return "TopologyResponseBodyV0", true
+	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
+		return "TopologyResponseBodyV1", true
 	}
 	return "-", false
 }
 
 // NewSurveyResponseBody creates a new  SurveyResponseBody.
-func NewSurveyResponseBody(aType SurveyMessageCommandType, value interface{}) (result SurveyResponseBody, err error) {
+func NewSurveyResponseBody(aType SurveyMessageResponseType, value interface{}) (result SurveyResponseBody, err error) {
 	result.Type = aType
-	switch SurveyMessageCommandType(aType) {
-	case SurveyMessageCommandTypeSurveyTopology:
-		tv, ok := value.(TopologyResponseBody)
+	switch SurveyMessageResponseType(aType) {
+	case SurveyMessageResponseTypeSurveyTopologyResponseV0:
+		tv, ok := value.(TopologyResponseBodyV0)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be TopologyResponseBody")
+			err = fmt.Errorf("invalid value, must be TopologyResponseBodyV0")
 			return
 		}
-		result.TopologyResponseBody = &tv
+		result.TopologyResponseBodyV0 = &tv
+	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
+		tv, ok := value.(TopologyResponseBodyV1)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TopologyResponseBodyV1")
+			return
+		}
+		result.TopologyResponseBodyV1 = &tv
 	}
 	return
 }
 
-// MustTopologyResponseBody retrieves the TopologyResponseBody value from the union,
+// MustTopologyResponseBodyV0 retrieves the TopologyResponseBodyV0 value from the union,
 // panicing if the value is not set.
-func (u SurveyResponseBody) MustTopologyResponseBody() TopologyResponseBody {
-	val, ok := u.GetTopologyResponseBody()
+func (u SurveyResponseBody) MustTopologyResponseBodyV0() TopologyResponseBodyV0 {
+	val, ok := u.GetTopologyResponseBodyV0()
 
 	if !ok {
-		panic("arm TopologyResponseBody is not set")
+		panic("arm TopologyResponseBodyV0 is not set")
 	}
 
 	return val
 }
 
-// GetTopologyResponseBody retrieves the TopologyResponseBody value from the union,
+// GetTopologyResponseBodyV0 retrieves the TopologyResponseBodyV0 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u SurveyResponseBody) GetTopologyResponseBody() (result TopologyResponseBody, ok bool) {
+func (u SurveyResponseBody) GetTopologyResponseBodyV0() (result TopologyResponseBodyV0, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "TopologyResponseBody" {
-		result = *u.TopologyResponseBody
+	if armName == "TopologyResponseBodyV0" {
+		result = *u.TopologyResponseBodyV0
+		ok = true
+	}
+
+	return
+}
+
+// MustTopologyResponseBodyV1 retrieves the TopologyResponseBodyV1 value from the union,
+// panicing if the value is not set.
+func (u SurveyResponseBody) MustTopologyResponseBodyV1() TopologyResponseBodyV1 {
+	val, ok := u.GetTopologyResponseBodyV1()
+
+	if !ok {
+		panic("arm TopologyResponseBodyV1 is not set")
+	}
+
+	return val
+}
+
+// GetTopologyResponseBodyV1 retrieves the TopologyResponseBodyV1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SurveyResponseBody) GetTopologyResponseBodyV1() (result TopologyResponseBodyV1, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "TopologyResponseBodyV1" {
+		result = *u.TopologyResponseBodyV1
 		ok = true
 	}
 
@@ -19434,14 +19669,19 @@ func (u SurveyResponseBody) EncodeTo(e *xdr.Encoder) error {
 	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch SurveyMessageCommandType(u.Type) {
-	case SurveyMessageCommandTypeSurveyTopology:
-		if err = (*u.TopologyResponseBody).EncodeTo(e); err != nil {
+	switch SurveyMessageResponseType(u.Type) {
+	case SurveyMessageResponseTypeSurveyTopologyResponseV0:
+		if err = (*u.TopologyResponseBodyV0).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
+		if err = (*u.TopologyResponseBodyV1).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
 	}
-	return fmt.Errorf("Type (SurveyMessageCommandType) switch value '%d' is not valid for union SurveyResponseBody", u.Type)
+	return fmt.Errorf("Type (SurveyMessageResponseType) switch value '%d' is not valid for union SurveyResponseBody", u.Type)
 }
 
 var _ decoderFrom = (*SurveyResponseBody)(nil)
@@ -19453,19 +19693,27 @@ func (u *SurveyResponseBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	nTmp, err = u.Type.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding SurveyMessageCommandType: %s", err)
+		return n, fmt.Errorf("decoding SurveyMessageResponseType: %s", err)
 	}
-	switch SurveyMessageCommandType(u.Type) {
-	case SurveyMessageCommandTypeSurveyTopology:
-		u.TopologyResponseBody = new(TopologyResponseBody)
-		nTmp, err = (*u.TopologyResponseBody).DecodeFrom(d)
+	switch SurveyMessageResponseType(u.Type) {
+	case SurveyMessageResponseTypeSurveyTopologyResponseV0:
+		u.TopologyResponseBodyV0 = new(TopologyResponseBodyV0)
+		nTmp, err = (*u.TopologyResponseBodyV0).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding TopologyResponseBody: %s", err)
+			return n, fmt.Errorf("decoding TopologyResponseBodyV0: %s", err)
+		}
+		return n, nil
+	case SurveyMessageResponseTypeSurveyTopologyResponseV1:
+		u.TopologyResponseBodyV1 = new(TopologyResponseBodyV1)
+		nTmp, err = (*u.TopologyResponseBodyV1).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TopologyResponseBodyV1: %s", err)
 		}
 		return n, nil
 	}
-	return n, fmt.Errorf("union SurveyResponseBody has invalid Type (SurveyMessageCommandType) switch value '%d'", u.Type)
+	return n, fmt.Errorf("union SurveyResponseBody has invalid Type (SurveyMessageResponseType) switch value '%d'", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -25215,6 +25463,278 @@ func (s HostFunction) xdrType() {}
 
 var _ xdrType = (*HostFunction)(nil)
 
+// AuthorizedInvocation is an XDR Struct defines as:
+//
+//	struct AuthorizedInvocation
+//	 {
+//	     Hash contractID;
+//	     SCSymbol functionName;
+//	     SCVec args;
+//	     AuthorizedInvocation subInvocations<>;
+//	 };
+type AuthorizedInvocation struct {
+	ContractId     Hash
+	FunctionName   ScSymbol
+	Args           ScVec
+	SubInvocations []AuthorizedInvocation
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *AuthorizedInvocation) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.ContractId.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FunctionName.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Args.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.SubInvocations))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.SubInvocations); i++ {
+		if err = s.SubInvocations[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*AuthorizedInvocation)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *AuthorizedInvocation) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.ContractId.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %s", err)
+	}
+	nTmp, err = s.FunctionName.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScSymbol: %s", err)
+	}
+	nTmp, err = s.Args.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScVec: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding AuthorizedInvocation: %s", err)
+	}
+	s.SubInvocations = nil
+	if l > 0 {
+		s.SubInvocations = make([]AuthorizedInvocation, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.SubInvocations[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding AuthorizedInvocation: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s AuthorizedInvocation) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *AuthorizedInvocation) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*AuthorizedInvocation)(nil)
+	_ encoding.BinaryUnmarshaler = (*AuthorizedInvocation)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s AuthorizedInvocation) xdrType() {}
+
+var _ xdrType = (*AuthorizedInvocation)(nil)
+
+// AddressWithNonce is an XDR Struct defines as:
+//
+//	struct AddressWithNonce
+//	 {
+//	     SCAddress address;
+//	     uint64 nonce;
+//	 };
+type AddressWithNonce struct {
+	Address ScAddress
+	Nonce   Uint64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *AddressWithNonce) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Address.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*AddressWithNonce)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *AddressWithNonce) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Address.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScAddress: %s", err)
+	}
+	nTmp, err = s.Nonce.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s AddressWithNonce) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *AddressWithNonce) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*AddressWithNonce)(nil)
+	_ encoding.BinaryUnmarshaler = (*AddressWithNonce)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s AddressWithNonce) xdrType() {}
+
+var _ xdrType = (*AddressWithNonce)(nil)
+
+// ContractAuth is an XDR Struct defines as:
+//
+//	struct ContractAuth
+//	 {
+//	     AddressWithNonce* addressWithNonce; // not present for invoker
+//	     AuthorizedInvocation rootInvocation;
+//	     SCVec signatureArgs;
+//	 };
+type ContractAuth struct {
+	AddressWithNonce *AddressWithNonce
+	RootInvocation   AuthorizedInvocation
+	SignatureArgs    ScVec
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ContractAuth) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeBool(s.AddressWithNonce != nil); err != nil {
+		return err
+	}
+	if s.AddressWithNonce != nil {
+		if err = (*s.AddressWithNonce).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if err = s.RootInvocation.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SignatureArgs.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ContractAuth)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ContractAuth) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var b bool
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding AddressWithNonce: %s", err)
+	}
+	s.AddressWithNonce = nil
+	if b {
+		s.AddressWithNonce = new(AddressWithNonce)
+		nTmp, err = s.AddressWithNonce.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding AddressWithNonce: %s", err)
+		}
+	}
+	nTmp, err = s.RootInvocation.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding AuthorizedInvocation: %s", err)
+	}
+	nTmp, err = s.SignatureArgs.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScVec: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ContractAuth) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ContractAuth) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ContractAuth)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractAuth)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ContractAuth) xdrType() {}
+
+var _ xdrType = (*ContractAuth)(nil)
+
 // InvokeHostFunctionOp is an XDR Struct defines as:
 //
 //	struct InvokeHostFunctionOp
@@ -25223,10 +25743,14 @@ var _ xdrType = (*HostFunction)(nil)
 //	     HostFunction function;
 //	     // The footprint for this invocation
 //	     LedgerFootprint footprint;
+//	     // Per-address authorizations for this host fn
+//	     // Currently only supported for INVOKE_CONTRACT function
+//	     ContractAuth auth<>;
 //	 };
 type InvokeHostFunctionOp struct {
 	Function  HostFunction
 	Footprint LedgerFootprint
+	Auth      []ContractAuth
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -25237,6 +25761,14 @@ func (s *InvokeHostFunctionOp) EncodeTo(e *xdr.Encoder) error {
 	}
 	if err = s.Footprint.EncodeTo(e); err != nil {
 		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Auth))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Auth); i++ {
+		if err = s.Auth[i].EncodeTo(e); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -25256,6 +25788,23 @@ func (s *InvokeHostFunctionOp) DecodeFrom(d *xdr.Decoder) (int, error) {
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerFootprint: %s", err)
+	}
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractAuth: %s", err)
+	}
+	s.Auth = nil
+	if l > 0 {
+		s.Auth = make([]ContractAuth, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Auth[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ContractAuth: %s", err)
+			}
+		}
 	}
 	return n, nil
 }
@@ -27258,6 +27807,76 @@ func (s HashIdPreimageCreateContractArgs) xdrType() {}
 
 var _ xdrType = (*HashIdPreimageCreateContractArgs)(nil)
 
+// HashIdPreimageContractAuth is an XDR NestedStruct defines as:
+//
+//	struct
+//	     {
+//	         Hash networkID;
+//	         AuthorizedInvocation invocation;
+//	     }
+type HashIdPreimageContractAuth struct {
+	NetworkId  Hash
+	Invocation AuthorizedInvocation
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *HashIdPreimageContractAuth) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.NetworkId.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Invocation.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*HashIdPreimageContractAuth)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *HashIdPreimageContractAuth) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.NetworkId.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Hash: %s", err)
+	}
+	nTmp, err = s.Invocation.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding AuthorizedInvocation: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s HashIdPreimageContractAuth) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *HashIdPreimageContractAuth) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*HashIdPreimageContractAuth)(nil)
+	_ encoding.BinaryUnmarshaler = (*HashIdPreimageContractAuth)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s HashIdPreimageContractAuth) xdrType() {}
+
+var _ xdrType = (*HashIdPreimageContractAuth)(nil)
+
 // HashIdPreimage is an XDR Union defines as:
 //
 //	union HashIDPreimage switch (EnvelopeType type)
@@ -27312,6 +27931,12 @@ var _ xdrType = (*HashIdPreimageCreateContractArgs)(nil)
 //	         SCContractCode source;
 //	         uint256 salt;
 //	     } createContractArgs;
+//	 case ENVELOPE_TYPE_CONTRACT_AUTH:
+//	     struct
+//	     {
+//	         Hash networkID;
+//	         AuthorizedInvocation invocation;
+//	     } contractAuth;
 //	 };
 type HashIdPreimage struct {
 	Type                    EnvelopeType
@@ -27322,6 +27947,7 @@ type HashIdPreimage struct {
 	FromAsset               *HashIdPreimageFromAsset
 	SourceAccountContractId *HashIdPreimageSourceAccountContractId
 	CreateContractArgs      *HashIdPreimageCreateContractArgs
+	ContractAuth            *HashIdPreimageContractAuth
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -27348,6 +27974,8 @@ func (u HashIdPreimage) ArmForSwitch(sw int32) (string, bool) {
 		return "SourceAccountContractId", true
 	case EnvelopeTypeEnvelopeTypeCreateContractArgs:
 		return "CreateContractArgs", true
+	case EnvelopeTypeEnvelopeTypeContractAuth:
+		return "ContractAuth", true
 	}
 	return "-", false
 }
@@ -27405,6 +28033,13 @@ func NewHashIdPreimage(aType EnvelopeType, value interface{}) (result HashIdPrei
 			return
 		}
 		result.CreateContractArgs = &tv
+	case EnvelopeTypeEnvelopeTypeContractAuth:
+		tv, ok := value.(HashIdPreimageContractAuth)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be HashIdPreimageContractAuth")
+			return
+		}
+		result.ContractAuth = &tv
 	}
 	return
 }
@@ -27584,6 +28219,31 @@ func (u HashIdPreimage) GetCreateContractArgs() (result HashIdPreimageCreateCont
 	return
 }
 
+// MustContractAuth retrieves the ContractAuth value from the union,
+// panicing if the value is not set.
+func (u HashIdPreimage) MustContractAuth() HashIdPreimageContractAuth {
+	val, ok := u.GetContractAuth()
+
+	if !ok {
+		panic("arm ContractAuth is not set")
+	}
+
+	return val
+}
+
+// GetContractAuth retrieves the ContractAuth value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u HashIdPreimage) GetContractAuth() (result HashIdPreimageContractAuth, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ContractAuth" {
+		result = *u.ContractAuth
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -27623,6 +28283,11 @@ func (u HashIdPreimage) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case EnvelopeTypeEnvelopeTypeCreateContractArgs:
 		if err = (*u.CreateContractArgs).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case EnvelopeTypeEnvelopeTypeContractAuth:
+		if err = (*u.ContractAuth).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -27696,6 +28361,14 @@ func (u *HashIdPreimage) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding HashIdPreimageCreateContractArgs: %s", err)
+		}
+		return n, nil
+	case EnvelopeTypeEnvelopeTypeContractAuth:
+		u.ContractAuth = new(HashIdPreimageContractAuth)
+		nTmp, err = (*u.ContractAuth).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding HashIdPreimageContractAuth: %s", err)
 		}
 		return n, nil
 	}
@@ -43543,7 +44216,7 @@ var _ xdrType = (*ScEnvMetaEntry)(nil)
 //	     SC_SPEC_TYPE_STATUS = 10,
 //	     SC_SPEC_TYPE_BYTES = 11,
 //	     SC_SPEC_TYPE_INVOKER = 12,
-//	     SC_SPEC_TYPE_ACCOUNT_ID = 13,
+//	     SC_SPEC_TYPE_ADDRESS = 13,
 //
 //	     // Types with parameters.
 //	     SC_SPEC_TYPE_OPTION = 1000,
@@ -43560,28 +44233,28 @@ var _ xdrType = (*ScEnvMetaEntry)(nil)
 type ScSpecType int32
 
 const (
-	ScSpecTypeScSpecTypeVal       ScSpecType = 0
-	ScSpecTypeScSpecTypeU32       ScSpecType = 1
-	ScSpecTypeScSpecTypeI32       ScSpecType = 2
-	ScSpecTypeScSpecTypeU64       ScSpecType = 3
-	ScSpecTypeScSpecTypeI64       ScSpecType = 4
-	ScSpecTypeScSpecTypeU128      ScSpecType = 5
-	ScSpecTypeScSpecTypeI128      ScSpecType = 6
-	ScSpecTypeScSpecTypeBool      ScSpecType = 7
-	ScSpecTypeScSpecTypeSymbol    ScSpecType = 8
-	ScSpecTypeScSpecTypeBitset    ScSpecType = 9
-	ScSpecTypeScSpecTypeStatus    ScSpecType = 10
-	ScSpecTypeScSpecTypeBytes     ScSpecType = 11
-	ScSpecTypeScSpecTypeInvoker   ScSpecType = 12
-	ScSpecTypeScSpecTypeAccountId ScSpecType = 13
-	ScSpecTypeScSpecTypeOption    ScSpecType = 1000
-	ScSpecTypeScSpecTypeResult    ScSpecType = 1001
-	ScSpecTypeScSpecTypeVec       ScSpecType = 1002
-	ScSpecTypeScSpecTypeSet       ScSpecType = 1003
-	ScSpecTypeScSpecTypeMap       ScSpecType = 1004
-	ScSpecTypeScSpecTypeTuple     ScSpecType = 1005
-	ScSpecTypeScSpecTypeBytesN    ScSpecType = 1006
-	ScSpecTypeScSpecTypeUdt       ScSpecType = 2000
+	ScSpecTypeScSpecTypeVal     ScSpecType = 0
+	ScSpecTypeScSpecTypeU32     ScSpecType = 1
+	ScSpecTypeScSpecTypeI32     ScSpecType = 2
+	ScSpecTypeScSpecTypeU64     ScSpecType = 3
+	ScSpecTypeScSpecTypeI64     ScSpecType = 4
+	ScSpecTypeScSpecTypeU128    ScSpecType = 5
+	ScSpecTypeScSpecTypeI128    ScSpecType = 6
+	ScSpecTypeScSpecTypeBool    ScSpecType = 7
+	ScSpecTypeScSpecTypeSymbol  ScSpecType = 8
+	ScSpecTypeScSpecTypeBitset  ScSpecType = 9
+	ScSpecTypeScSpecTypeStatus  ScSpecType = 10
+	ScSpecTypeScSpecTypeBytes   ScSpecType = 11
+	ScSpecTypeScSpecTypeInvoker ScSpecType = 12
+	ScSpecTypeScSpecTypeAddress ScSpecType = 13
+	ScSpecTypeScSpecTypeOption  ScSpecType = 1000
+	ScSpecTypeScSpecTypeResult  ScSpecType = 1001
+	ScSpecTypeScSpecTypeVec     ScSpecType = 1002
+	ScSpecTypeScSpecTypeSet     ScSpecType = 1003
+	ScSpecTypeScSpecTypeMap     ScSpecType = 1004
+	ScSpecTypeScSpecTypeTuple   ScSpecType = 1005
+	ScSpecTypeScSpecTypeBytesN  ScSpecType = 1006
+	ScSpecTypeScSpecTypeUdt     ScSpecType = 2000
 )
 
 var scSpecTypeMap = map[int32]string{
@@ -43598,7 +44271,7 @@ var scSpecTypeMap = map[int32]string{
 	10:   "ScSpecTypeScSpecTypeStatus",
 	11:   "ScSpecTypeScSpecTypeBytes",
 	12:   "ScSpecTypeScSpecTypeInvoker",
-	13:   "ScSpecTypeScSpecTypeAccountId",
+	13:   "ScSpecTypeScSpecTypeAddress",
 	1000: "ScSpecTypeScSpecTypeOption",
 	1001: "ScSpecTypeScSpecTypeResult",
 	1002: "ScSpecTypeScSpecTypeVec",
@@ -44209,8 +44882,7 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 //	 case SC_SPEC_TYPE_BITSET:
 //	 case SC_SPEC_TYPE_STATUS:
 //	 case SC_SPEC_TYPE_BYTES:
-//	 case SC_SPEC_TYPE_INVOKER:
-//	 case SC_SPEC_TYPE_ACCOUNT_ID:
+//	 case SC_SPEC_TYPE_ADDRESS:
 //	     void;
 //	 case SC_SPEC_TYPE_OPTION:
 //	     SCSpecTypeOption option;
@@ -44275,9 +44947,7 @@ func (u ScSpecTypeDef) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case ScSpecTypeScSpecTypeBytes:
 		return "", true
-	case ScSpecTypeScSpecTypeInvoker:
-		return "", true
-	case ScSpecTypeScSpecTypeAccountId:
+	case ScSpecTypeScSpecTypeAddress:
 		return "", true
 	case ScSpecTypeScSpecTypeOption:
 		return "Option", true
@@ -44327,9 +44997,7 @@ func NewScSpecTypeDef(aType ScSpecType, value interface{}) (result ScSpecTypeDef
 		// void
 	case ScSpecTypeScSpecTypeBytes:
 		// void
-	case ScSpecTypeScSpecTypeInvoker:
-		// void
-	case ScSpecTypeScSpecTypeAccountId:
+	case ScSpecTypeScSpecTypeAddress:
 		// void
 	case ScSpecTypeScSpecTypeOption:
 		tv, ok := value.(ScSpecTypeOption)
@@ -44634,10 +45302,7 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 	case ScSpecTypeScSpecTypeBytes:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeInvoker:
-		// Void
-		return nil
-	case ScSpecTypeScSpecTypeAccountId:
+	case ScSpecTypeScSpecTypeAddress:
 		// Void
 		return nil
 	case ScSpecTypeScSpecTypeOption:
@@ -44732,10 +45397,7 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ScSpecTypeScSpecTypeBytes:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeInvoker:
-		// Void
-		return n, nil
-	case ScSpecTypeScSpecTypeAccountId:
+	case ScSpecTypeScSpecTypeAddress:
 		// Void
 		return n, nil
 	case ScSpecTypeScSpecTypeOption:
@@ -48210,7 +48872,8 @@ var _ xdrType = (*ScVal)(nil)
 //	     SCO_I128 = 5,
 //	     SCO_BYTES = 6,
 //	     SCO_CONTRACT_CODE = 7,
-//	     SCO_ACCOUNT_ID = 8
+//	     SCO_ADDRESS = 8,
+//	     SCO_NONCE_KEY = 9
 //
 //	     // TODO: add more
 //	 };
@@ -48225,7 +48888,8 @@ const (
 	ScObjectTypeScoI128         ScObjectType = 5
 	ScObjectTypeScoBytes        ScObjectType = 6
 	ScObjectTypeScoContractCode ScObjectType = 7
-	ScObjectTypeScoAccountId    ScObjectType = 8
+	ScObjectTypeScoAddress      ScObjectType = 8
+	ScObjectTypeScoNonceKey     ScObjectType = 9
 )
 
 var scObjectTypeMap = map[int32]string{
@@ -48237,7 +48901,8 @@ var scObjectTypeMap = map[int32]string{
 	5: "ScObjectTypeScoI128",
 	6: "ScObjectTypeScoBytes",
 	7: "ScObjectTypeScoContractCode",
-	8: "ScObjectTypeScoAccountId",
+	8: "ScObjectTypeScoAddress",
+	9: "ScObjectTypeScoNonceKey",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -48841,6 +49506,274 @@ func (s Int128Parts) xdrType() {}
 
 var _ xdrType = (*Int128Parts)(nil)
 
+// ScAddressType is an XDR Enum defines as:
+//
+//	enum SCAddressType
+//	 {
+//	     SC_ADDRESS_TYPE_ACCOUNT = 0,
+//	     SC_ADDRESS_TYPE_CONTRACT = 1
+//	 };
+type ScAddressType int32
+
+const (
+	ScAddressTypeScAddressTypeAccount  ScAddressType = 0
+	ScAddressTypeScAddressTypeContract ScAddressType = 1
+)
+
+var scAddressTypeMap = map[int32]string{
+	0: "ScAddressTypeScAddressTypeAccount",
+	1: "ScAddressTypeScAddressTypeContract",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ScAddressType
+func (e ScAddressType) ValidEnum(v int32) bool {
+	_, ok := scAddressTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ScAddressType) String() string {
+	name, _ := scAddressTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ScAddressType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := scAddressTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ScAddressType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ScAddressType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ScAddressType) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ScAddressType: %s", err)
+	}
+	if _, ok := scAddressTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ScAddressType enum value", v)
+	}
+	*e = ScAddressType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScAddressType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScAddressType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScAddressType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScAddressType)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScAddressType) xdrType() {}
+
+var _ xdrType = (*ScAddressType)(nil)
+
+// ScAddress is an XDR Union defines as:
+//
+//	union SCAddress switch (SCAddressType type)
+//	 {
+//	 case SC_ADDRESS_TYPE_ACCOUNT:
+//	     AccountID accountId;
+//	 case SC_ADDRESS_TYPE_CONTRACT:
+//	     Hash contractId;
+//	 };
+type ScAddress struct {
+	Type       ScAddressType
+	AccountId  *AccountId
+	ContractId *Hash
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ScAddress) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ScAddress
+func (u ScAddress) ArmForSwitch(sw int32) (string, bool) {
+	switch ScAddressType(sw) {
+	case ScAddressTypeScAddressTypeAccount:
+		return "AccountId", true
+	case ScAddressTypeScAddressTypeContract:
+		return "ContractId", true
+	}
+	return "-", false
+}
+
+// NewScAddress creates a new  ScAddress.
+func NewScAddress(aType ScAddressType, value interface{}) (result ScAddress, err error) {
+	result.Type = aType
+	switch ScAddressType(aType) {
+	case ScAddressTypeScAddressTypeAccount:
+		tv, ok := value.(AccountId)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AccountId")
+			return
+		}
+		result.AccountId = &tv
+	case ScAddressTypeScAddressTypeContract:
+		tv, ok := value.(Hash)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Hash")
+			return
+		}
+		result.ContractId = &tv
+	}
+	return
+}
+
+// MustAccountId retrieves the AccountId value from the union,
+// panicing if the value is not set.
+func (u ScAddress) MustAccountId() AccountId {
+	val, ok := u.GetAccountId()
+
+	if !ok {
+		panic("arm AccountId is not set")
+	}
+
+	return val
+}
+
+// GetAccountId retrieves the AccountId value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScAddress) GetAccountId() (result AccountId, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "AccountId" {
+		result = *u.AccountId
+		ok = true
+	}
+
+	return
+}
+
+// MustContractId retrieves the ContractId value from the union,
+// panicing if the value is not set.
+func (u ScAddress) MustContractId() Hash {
+	val, ok := u.GetContractId()
+
+	if !ok {
+		panic("arm ContractId is not set")
+	}
+
+	return val
+}
+
+// GetContractId retrieves the ContractId value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScAddress) GetContractId() (result Hash, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "ContractId" {
+		result = *u.ContractId
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ScAddress) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch ScAddressType(u.Type) {
+	case ScAddressTypeScAddressTypeAccount:
+		if err = (*u.AccountId).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScAddressTypeScAddressTypeContract:
+		if err = (*u.ContractId).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Type (ScAddressType) switch value '%d' is not valid for union ScAddress", u.Type)
+}
+
+var _ decoderFrom = (*ScAddress)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ScAddress) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScAddressType: %s", err)
+	}
+	switch ScAddressType(u.Type) {
+	case ScAddressTypeScAddressTypeAccount:
+		u.AccountId = new(AccountId)
+		nTmp, err = (*u.AccountId).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding AccountId: %s", err)
+		}
+		return n, nil
+	case ScAddressTypeScAddressTypeContract:
+		u.ContractId = new(Hash)
+		nTmp, err = (*u.ContractId).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Hash: %s", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union ScAddress has invalid Type (ScAddressType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScAddress) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScAddress) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScAddress)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScAddress)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScAddress) xdrType() {}
+
+var _ xdrType = (*ScAddress)(nil)
+
 // ScObject is an XDR Union defines as:
 //
 //	union SCObject switch (SCObjectType type)
@@ -48861,8 +49794,10 @@ var _ xdrType = (*Int128Parts)(nil)
 //	     opaque bin<SCVAL_LIMIT>;
 //	 case SCO_CONTRACT_CODE:
 //	     SCContractCode contractCode;
-//	 case SCO_ACCOUNT_ID:
-//	     AccountID accountID;
+//	 case SCO_ADDRESS:
+//	     SCAddress address;
+//	 case SCO_NONCE_KEY:
+//	     SCAddress nonceAddress;
 //	 };
 type ScObject struct {
 	Type         ScObjectType
@@ -48874,7 +49809,8 @@ type ScObject struct {
 	I128         *Int128Parts
 	Bin          *[]byte `xdrmaxsize:"256000"`
 	ContractCode *ScContractCode
-	AccountId    *AccountId
+	Address      *ScAddress
+	NonceAddress *ScAddress
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -48903,8 +49839,10 @@ func (u ScObject) ArmForSwitch(sw int32) (string, bool) {
 		return "Bin", true
 	case ScObjectTypeScoContractCode:
 		return "ContractCode", true
-	case ScObjectTypeScoAccountId:
-		return "AccountId", true
+	case ScObjectTypeScoAddress:
+		return "Address", true
+	case ScObjectTypeScoNonceKey:
+		return "NonceAddress", true
 	}
 	return "-", false
 }
@@ -48969,13 +49907,20 @@ func NewScObject(aType ScObjectType, value interface{}) (result ScObject, err er
 			return
 		}
 		result.ContractCode = &tv
-	case ScObjectTypeScoAccountId:
-		tv, ok := value.(AccountId)
+	case ScObjectTypeScoAddress:
+		tv, ok := value.(ScAddress)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be AccountId")
+			err = fmt.Errorf("invalid value, must be ScAddress")
 			return
 		}
-		result.AccountId = &tv
+		result.Address = &tv
+	case ScObjectTypeScoNonceKey:
+		tv, ok := value.(ScAddress)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScAddress")
+			return
+		}
+		result.NonceAddress = &tv
 	}
 	return
 }
@@ -49180,25 +50125,50 @@ func (u ScObject) GetContractCode() (result ScContractCode, ok bool) {
 	return
 }
 
-// MustAccountId retrieves the AccountId value from the union,
+// MustAddress retrieves the Address value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustAccountId() AccountId {
-	val, ok := u.GetAccountId()
+func (u ScObject) MustAddress() ScAddress {
+	val, ok := u.GetAddress()
 
 	if !ok {
-		panic("arm AccountId is not set")
+		panic("arm Address is not set")
 	}
 
 	return val
 }
 
-// GetAccountId retrieves the AccountId value from the union,
+// GetAddress retrieves the Address value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetAccountId() (result AccountId, ok bool) {
+func (u ScObject) GetAddress() (result ScAddress, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "AccountId" {
-		result = *u.AccountId
+	if armName == "Address" {
+		result = *u.Address
+		ok = true
+	}
+
+	return
+}
+
+// MustNonceAddress retrieves the NonceAddress value from the union,
+// panicing if the value is not set.
+func (u ScObject) MustNonceAddress() ScAddress {
+	val, ok := u.GetNonceAddress()
+
+	if !ok {
+		panic("arm NonceAddress is not set")
+	}
+
+	return val
+}
+
+// GetNonceAddress retrieves the NonceAddress value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScObject) GetNonceAddress() (result ScAddress, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "NonceAddress" {
+		result = *u.NonceAddress
 		ok = true
 	}
 
@@ -49252,8 +50222,13 @@ func (u ScObject) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoAccountId:
-		if err = (*u.AccountId).EncodeTo(e); err != nil {
+	case ScObjectTypeScoAddress:
+		if err = (*u.Address).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScObjectTypeScoNonceKey:
+		if err = (*u.NonceAddress).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -49337,12 +50312,20 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ScContractCode: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoAccountId:
-		u.AccountId = new(AccountId)
-		nTmp, err = (*u.AccountId).DecodeFrom(d)
+	case ScObjectTypeScoAddress:
+		u.Address = new(ScAddress)
+		nTmp, err = (*u.Address).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding AccountId: %s", err)
+			return n, fmt.Errorf("decoding ScAddress: %s", err)
+		}
+		return n, nil
+	case ScObjectTypeScoNonceKey:
+		u.NonceAddress = new(ScAddress)
+		nTmp, err = (*u.NonceAddress).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScAddress: %s", err)
 		}
 		return n, nil
 	}
