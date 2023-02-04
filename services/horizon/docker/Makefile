@@ -5,7 +5,7 @@ BUILD_DATE := $(shell date -u +%FT%TZ)
 
 TAG ?= stellar/stellar-horizon:$(VERSION)
 ifeq ($(ALLOW_CORE_UNSTABLE),yes)
-	TAG += -UNSTABLE
+	TAG +=-UNSTABLE
 endif
 
 docker-build:
