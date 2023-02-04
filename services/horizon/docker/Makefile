@@ -4,14 +4,16 @@ SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
 BUILD_DATE := $(shell date -u +%FT%TZ)
 
 ifeq ($(ALLOW_CORE_UNSTABLE),yes)
-	@echo Tagging UNSTABLE
 	TAG ?= stellar/stellar-horizon:$(VERSION)-UNSTABLE
 else
-	@echo Tagging normal
 	TAG ?= stellar/stellar-horizon:$(VERSION)
 endif
 
 docker-build:
+ifeq ($(ALLOW_CORE_UNSTABLE),yes)
+	@echo UNSTABLE specified
+endif
+
 ifndef VERSION
 	$(error VERSION environment variable must be set. For example VERSION=2.4.1-101 )
 endif
