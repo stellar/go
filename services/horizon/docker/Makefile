@@ -3,17 +3,13 @@ SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
 BUILD_DATE := $(shell date -u +%FT%TZ)
 
+TAG ?= stellar/stellar-horizon:$(VERSION)
 ifeq ($(ALLOW_CORE_UNSTABLE),yes)
-	TAG ?= stellar/stellar-horizon:$(VERSION)-UNSTABLE
-else
-	TAG ?= stellar/stellar-horizon:$(VERSION)
+	TAG += -UNSTABLE
 endif
 
 docker-build:
-ifeq ($(ALLOW_CORE_UNSTABLE),yes)
-	@echo UNSTABLE specified
-endif
-
+@echo Tag is $(TAG)
 ifndef VERSION
 	$(error VERSION environment variable must be set. For example VERSION=2.4.1-101 )
 endif
