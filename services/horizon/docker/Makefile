@@ -7,9 +7,9 @@ TAG ?= stellar/stellar-horizon:$(VERSION)
 ifeq ($(ALLOW_CORE_UNSTABLE),yes)
 	TAG += -UNSTABLE
 endif
+TAG := $(strip $(TAG))
 
 docker-build:
-@echo Tag is $(TAG)
 ifndef VERSION
 	$(error VERSION environment variable must be set. For example VERSION=2.4.1-101 )
 endif
@@ -27,7 +27,6 @@ else
 endif
 
 docker-push:
-@echo Tag is $(TAG)
 ifndef TAG
 	$(error Must set VERSION or TAG environment variable. For example VERSION=2.4.1-101 )
 endif
