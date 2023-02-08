@@ -8,6 +8,7 @@ import (
 type InvokeHostFunction struct {
 	Function      xdr.HostFunction
 	Footprint     xdr.LedgerFootprint
+	Auth          []xdr.ContractAuth
 	SourceAccount string
 }
 
@@ -17,6 +18,7 @@ func (f *InvokeHostFunction) BuildXDR() (xdr.Operation, error) {
 	xdrOp := xdr.InvokeHostFunctionOp{
 		Function:  f.Function,
 		Footprint: f.Footprint,
+		Auth:      f.Auth,
 	}
 
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -37,6 +39,7 @@ func (f *InvokeHostFunction) FromXDR(xdrOp xdr.Operation) error {
 	}
 
 	f.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	f.Auth = result.Auth
 	f.Footprint = result.Footprint
 	f.Function = result.Function
 

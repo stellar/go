@@ -52,6 +52,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 		Type: xdr.ScObjectTypeScoI64,
 		I64:  &i64,
 	}
+	accountId := xdr.MustAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	invokeHostFunctionOp := &InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -60,6 +61,24 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 					Type: xdr.ScValTypeScvI32,
 					I32:  &val,
 				},
+			},
+		},
+		Auth: []xdr.ContractAuth{
+			{
+				AddressWithNonce: &xdr.AddressWithNonce{
+					Address: xdr.ScAddress{
+						Type:      xdr.ScAddressTypeScAddressTypeAccount,
+						AccountId: &accountId,
+					},
+					Nonce: 0,
+				},
+				RootInvocation: xdr.AuthorizedInvocation{
+					ContractId:     xdr.Hash{0xaa, 0xbb},
+					FunctionName:   "foo",
+					Args:           nil,
+					SubInvocations: nil,
+				},
+				SignatureArgs: nil,
 			},
 		},
 		Footprint: xdr.LedgerFootprint{
