@@ -76,6 +76,8 @@ type CaptiveStellarCore struct {
 	// spawn new instances of Stellar Core.
 	cancel context.CancelFunc
 
+	logger *log.Entry
+
 	stellarCoreRunner stellarCoreRunnerInterface
 	// stellarCoreLock protects access to stellarCoreRunner. When the read lock
 	// is acquired stellarCoreRunner can be accessed. When the write lock is acquired
@@ -172,6 +174,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		archive:           &archivePool,
 		ledgerHashStore:   config.LedgerHashStore,
 		cancel:            cancel,
+		logger:            config.Log,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
@@ -279,8 +282,7 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		err := errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-		return 0, "", err
+		c.logger.Warn("CaptiveCore is unable to start from ledger 1, starting from ledger 2")
 	}
 
 	if from <= 63 {
