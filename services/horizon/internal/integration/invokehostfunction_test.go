@@ -18,9 +18,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tests refer to precompiled wasm bin files:
+const add_u64_contract = "soroban_add_u64.wasm"
+const increment_contract = "soroban_increment_contract.wasm"
+
+// Tests use precompiled wasm bin files that are added to the testdata directory.
+// Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
+// contract code if needed to new wasm.
 //
-// `test_add_u64.wasm` has interface of one func called 'add':
+// `test_add_u64.wasm` is compiled from ./serivces/horizon/internal/integration/contracts/add_u64
+// and has interface of one func called 'add':
+//
 /*
 	{
 		"type": "function",
@@ -47,10 +54,9 @@ import (
 	}
 
 */
-// compiled from the contract's rust source code:
-// https://github.com/stellar/rs-soroban-sdk/blob/main/tests/add_u64/src/lib.rs
 
-// `soroban_increment_contract.wasm` has interface of one func called 'increment':
+// `soroban_increment_contract.wasm` is compiled from ./serivces/horizon/internal/integration/contracts/increment
+// and has interface of one func called 'increment':
 /*
 	{
 		"type": "function",
@@ -63,10 +69,8 @@ import (
 		]
 	}
 */
-// compiled from the contract's rust source code:
-// https://github.com/stellar/soroban-examples/blob/main/increment/src/lib.rs
 
-func TestInvokeHostFunctionInstallContract(t *testing.T) {
+func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -80,7 +84,7 @@ func TestInvokeHostFunctionInstallContract(t *testing.T) {
 		AccountID: itest.Master().Address(),
 	})
 
-	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), "test_add_u64.wasm")
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), installContractOp)
 	require.NoError(t, err)
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -100,7 +104,7 @@ func TestInvokeHostFunctionInstallContract(t *testing.T) {
 
 }
 
-func TestInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
+func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -116,13 +120,13 @@ func TestInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 
 	// Install the contract
 
-	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), "test_add_u64.wasm")
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
 
 	// Create the contract
 
 	require.NoError(t, err)
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "test_add_u64.wasm", "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
 	opXDR, err := createContractOp.BuildXDR()
 	require.NoError(t, err)
 
@@ -165,7 +169,7 @@ func TestInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 }
 
-func TestInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
+func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -183,12 +187,12 @@ func TestInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 
 	// Install the contract
 
-	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), "test_add_u64.wasm")
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
 
 	// Create the contract
 
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "test_add_u64.wasm", "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
 	require.NoError(t, err)
 
@@ -284,7 +288,7 @@ func TestInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	assert.Equal(t, xdr.Uint64(9), scval.MustObj().MustU64())
 }
 
-func TestInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
+func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -301,12 +305,12 @@ func TestInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 
 	// Install the contract
 
-	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), "soroban_increment_contract.wasm")
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), increment_contract)
 	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
 
 	// Create the contract
 
-	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), "soroban_increment_contract.wasm", "a1", itest.GetPassPhrase())
+	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1", itest.GetPassPhrase())
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
 	require.NoError(t, err)
 

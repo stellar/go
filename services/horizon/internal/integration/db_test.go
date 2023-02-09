@@ -162,7 +162,7 @@ func submitPaymentOps(itest *integration.Test, tt *assert.Assertions) (submitted
 }
 
 func submitInvokeHostFunction(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
-	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), "test_add_u64.wasm")
+	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), add_u64_contract)
 	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
 
 	return []txnbuild.Operation{installContractOp}, txResp.Ledger
