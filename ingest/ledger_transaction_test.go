@@ -82,13 +82,17 @@ func TestGetOperationEvents(t *testing.T) {
 	assert.Equal(t, *events[0].Body.V0.Data.U32, values[1])
 	assert.Equal(t, *events[1].Body.V0.Data.U32, values[2])
 
+	events, err = tx.GetOperationEvents(3)
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+
 	tx.UnsafeMeta.V = 0
 	_, err = tx.GetOperationEvents(0)
-	assert.EqualError(t, err, "Unsupported TransactionMeta version")
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 0")
 
 	tx.UnsafeMeta.V = 4
 	_, err = tx.GetOperationEvents(0)
-	assert.EqualError(t, err, "Unsupported TransactionMeta version")
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 4")
 
 	tx.UnsafeMeta.V = 1
 	events, err = tx.GetOperationEvents(0)

@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"fmt"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -152,14 +154,23 @@ func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 
 // GetOperationEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.ContractEvent, error) {
+	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
+	if t.txInternalError() {
+		return nil, nil
+	}
+
 	switch t.UnsafeMeta.V {
 	case 1:
 		return nil, nil
 	case 2:
 		return nil, nil
 	case 3:
-		return t.UnsafeMeta.MustV3().Events[operationIndex].Events, nil
+		eventsByOperation := t.UnsafeMeta.MustV3().Events
+		if int(operationIndex) >= len(eventsByOperation) {
+			return nil, nil
+		}
+		return eventsByOperation[operationIndex].Events, nil
 	default:
-		return nil, errors.New("Unsupported TransactionMeta version")
+		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}
 }
