@@ -30,13 +30,13 @@ import (
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":               "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
 	"xdr/Stellar-contract-env-meta.x": "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
-	"xdr/Stellar-contract-spec.x":     "f1b4562b21a38708e15b2e7f371d9171802ef7756bf5af2cb49b517149228e9c",
-	"xdr/Stellar-contract.x":          "5c254a97c31d08f0d1c5bd50867d71edad11338dd5653d87d3714475221e68d7",
+	"xdr/Stellar-contract-spec.x":     "83f5adc57ccaea49a67063352b869641049c4caf198a3070c4825c5f6e82802a",
+	"xdr/Stellar-contract.x":          "99696979513d389fabe843874b84dd75a7fec8f8f329ca9ae833c600850dee2d",
 	"xdr/Stellar-internal.x":          "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
 	"xdr/Stellar-ledger-entries.x":    "dae8eead47f2ce6b74b87fc196080cde2b432eedba9e58893f1d5ad315155e4e",
 	"xdr/Stellar-ledger.x":            "b19c10a07c9775594723ad12927259dd4bbd9ed9dfd0e70078662ec2e90e130d",
 	"xdr/Stellar-overlay.x":           "972f38a9d4a064273f3362cbfa7d3c563293fd5396d5f0774ce6cc690e27645d",
-	"xdr/Stellar-transaction.x":       "69d33701fac38c2e0ba861f8ff6c96ae126364a9606a8f21e36b823dceb6a004",
+	"xdr/Stellar-transaction.x":       "0ab9890a6ffbe3a7f0b4496f7f531606812c1207b862a0a7bc03b70e83dbdf72",
 	"xdr/Stellar-types.x":             "7b3e5470c4bcf7c19f9cc8f8bf81a494b540fc2157476329cf19863afab2343b",
 }
 
@@ -27812,10 +27812,12 @@ var _ xdrType = (*HashIdPreimageCreateContractArgs)(nil)
 //	struct
 //	     {
 //	         Hash networkID;
+//	         uint64 nonce;
 //	         AuthorizedInvocation invocation;
 //	     }
 type HashIdPreimageContractAuth struct {
 	NetworkId  Hash
+	Nonce      Uint64
 	Invocation AuthorizedInvocation
 }
 
@@ -27823,6 +27825,9 @@ type HashIdPreimageContractAuth struct {
 func (s *HashIdPreimageContractAuth) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	if err = s.NetworkId.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Nonce.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.Invocation.EncodeTo(e); err != nil {
@@ -27841,6 +27846,11 @@ func (s *HashIdPreimageContractAuth) DecodeFrom(d *xdr.Decoder) (int, error) {
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
+	}
+	nTmp, err = s.Nonce.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
 	nTmp, err = s.Invocation.DecodeFrom(d)
 	n += nTmp
@@ -27935,6 +27945,7 @@ var _ xdrType = (*HashIdPreimageContractAuth)(nil)
 //	     struct
 //	     {
 //	         Hash networkID;
+//	         uint64 nonce;
 //	         AuthorizedInvocation invocation;
 //	     } contractAuth;
 //	 };
@@ -44197,6 +44208,11 @@ func (s ScEnvMetaEntry) xdrType() {}
 
 var _ xdrType = (*ScEnvMetaEntry)(nil)
 
+// ScSpecDocLimit is an XDR Const defines as:
+//
+//	const SC_SPEC_DOC_LIMIT = 1024;
+const ScSpecDocLimit = 1024
+
 // ScSpecType is an XDR Enum defines as:
 //
 //	enum SCSpecType
@@ -45499,10 +45515,12 @@ var _ xdrType = (*ScSpecTypeDef)(nil)
 //
 //	struct SCSpecUDTStructFieldV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string name<30>;
 //	     SCSpecTypeDef type;
 //	 };
 type ScSpecUdtStructFieldV0 struct {
+	Doc  string `xdrmaxsize:"1024"`
 	Name string `xdrmaxsize:"30"`
 	Type ScSpecTypeDef
 }
@@ -45510,6 +45528,9 @@ type ScSpecUdtStructFieldV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtStructFieldV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Name)); err != nil {
 		return err
 	}
@@ -45525,6 +45546,11 @@ var _ decoderFrom = (*ScSpecUdtStructFieldV0)(nil)
 func (s *ScSpecUdtStructFieldV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Name, nTmp, err = d.DecodeString(30)
 	n += nTmp
 	if err != nil {
@@ -45569,11 +45595,13 @@ var _ xdrType = (*ScSpecUdtStructFieldV0)(nil)
 //
 //	struct SCSpecUDTStructV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string lib<80>;
 //	     string name<60>;
 //	     SCSpecUDTStructFieldV0 fields<40>;
 //	 };
 type ScSpecUdtStructV0 struct {
+	Doc    string                   `xdrmaxsize:"1024"`
 	Lib    string                   `xdrmaxsize:"80"`
 	Name   string                   `xdrmaxsize:"60"`
 	Fields []ScSpecUdtStructFieldV0 `xdrmaxsize:"40"`
@@ -45582,6 +45610,9 @@ type ScSpecUdtStructV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtStructV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Lib)); err != nil {
 		return err
 	}
@@ -45605,6 +45636,11 @@ var _ decoderFrom = (*ScSpecUdtStructV0)(nil)
 func (s *ScSpecUdtStructV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Lib, nTmp, err = d.DecodeString(80)
 	n += nTmp
 	if err != nil {
@@ -45665,62 +45701,415 @@ func (s ScSpecUdtStructV0) xdrType() {}
 
 var _ xdrType = (*ScSpecUdtStructV0)(nil)
 
-// ScSpecUdtUnionCaseV0 is an XDR Struct defines as:
+// ScSpecUdtUnionCaseVoidV0 is an XDR Struct defines as:
 //
-//	struct SCSpecUDTUnionCaseV0
+//	struct SCSpecUDTUnionCaseVoidV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string name<60>;
-//	     SCSpecTypeDef *type;
 //	 };
-type ScSpecUdtUnionCaseV0 struct {
+type ScSpecUdtUnionCaseVoidV0 struct {
+	Doc  string `xdrmaxsize:"1024"`
 	Name string `xdrmaxsize:"60"`
-	Type *ScSpecTypeDef
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s *ScSpecUdtUnionCaseV0) EncodeTo(e *xdr.Encoder) error {
+func (s *ScSpecUdtUnionCaseVoidV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Name)); err != nil {
 		return err
 	}
-	if _, err = e.EncodeBool(s.Type != nil); err != nil {
+	return nil
+}
+
+var _ decoderFrom = (*ScSpecUdtUnionCaseVoidV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSpecUdtUnionCaseVoidV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
+	s.Name, nTmp, err = d.DecodeString(60)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Name: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtUnionCaseVoidV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtUnionCaseVoidV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtUnionCaseVoidV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseVoidV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtUnionCaseVoidV0) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtUnionCaseVoidV0)(nil)
+
+// ScSpecUdtUnionCaseTupleV0 is an XDR Struct defines as:
+//
+//	struct SCSpecUDTUnionCaseTupleV0
+//	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
+//	     string name<60>;
+//	     SCSpecTypeDef type<12>;
+//	 };
+type ScSpecUdtUnionCaseTupleV0 struct {
+	Doc  string          `xdrmaxsize:"1024"`
+	Name string          `xdrmaxsize:"60"`
+	Type []ScSpecTypeDef `xdrmaxsize:"12"`
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScSpecUdtUnionCaseTupleV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
 		return err
 	}
-	if s.Type != nil {
-		if err = (*s.Type).EncodeTo(e); err != nil {
+	if _, err = e.EncodeString(string(s.Name)); err != nil {
+		return err
+	}
+	if _, err = e.EncodeUint(uint32(len(s.Type))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Type); i++ {
+		if err = s.Type[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-var _ decoderFrom = (*ScSpecUdtUnionCaseV0)(nil)
+var _ decoderFrom = (*ScSpecUdtUnionCaseTupleV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecUdtUnionCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ScSpecUdtUnionCaseTupleV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Name, nTmp, err = d.DecodeString(60)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Name: %s", err)
 	}
-	var b bool
-	b, nTmp, err = d.DecodeBool()
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
 	}
+	if l > 12 {
+		return n, fmt.Errorf("decoding ScSpecTypeDef: data size (%d) exceeds size limit (12)", l)
+	}
 	s.Type = nil
-	if b {
-		s.Type = new(ScSpecTypeDef)
-		nTmp, err = s.Type.DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
+	if l > 0 {
+		s.Type = make([]ScSpecTypeDef, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Type[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
+			}
 		}
 	}
 	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtUnionCaseTupleV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtUnionCaseTupleV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtUnionCaseTupleV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseTupleV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtUnionCaseTupleV0) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtUnionCaseTupleV0)(nil)
+
+// ScSpecUdtUnionCaseV0Kind is an XDR Enum defines as:
+//
+//	enum SCSpecUDTUnionCaseV0Kind
+//	 {
+//	     SC_SPEC_UDT_UNION_CASE_VOID_V0 = 0,
+//	     SC_SPEC_UDT_UNION_CASE_TUPLE_V0 = 1
+//	 };
+type ScSpecUdtUnionCaseV0Kind int32
+
+const (
+	ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0  ScSpecUdtUnionCaseV0Kind = 0
+	ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0 ScSpecUdtUnionCaseV0Kind = 1
+)
+
+var scSpecUdtUnionCaseV0KindMap = map[int32]string{
+	0: "ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0",
+	1: "ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ScSpecUdtUnionCaseV0Kind
+func (e ScSpecUdtUnionCaseV0Kind) ValidEnum(v int32) bool {
+	_, ok := scSpecUdtUnionCaseV0KindMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ScSpecUdtUnionCaseV0Kind) String() string {
+	name, _ := scSpecUdtUnionCaseV0KindMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ScSpecUdtUnionCaseV0Kind) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := scSpecUdtUnionCaseV0KindMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ScSpecUdtUnionCaseV0Kind enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ScSpecUdtUnionCaseV0Kind)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ScSpecUdtUnionCaseV0Kind) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0Kind: %s", err)
+	}
+	if _, ok := scSpecUdtUnionCaseV0KindMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ScSpecUdtUnionCaseV0Kind enum value", v)
+	}
+	*e = ScSpecUdtUnionCaseV0Kind(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSpecUdtUnionCaseV0Kind) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSpecUdtUnionCaseV0Kind) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSpecUdtUnionCaseV0Kind)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSpecUdtUnionCaseV0Kind)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSpecUdtUnionCaseV0Kind) xdrType() {}
+
+var _ xdrType = (*ScSpecUdtUnionCaseV0Kind)(nil)
+
+// ScSpecUdtUnionCaseV0 is an XDR Union defines as:
+//
+//	union SCSpecUDTUnionCaseV0 switch (SCSpecUDTUnionCaseV0Kind kind)
+//	 {
+//	 case SC_SPEC_UDT_UNION_CASE_VOID_V0:
+//	     SCSpecUDTUnionCaseVoidV0 voidCase;
+//	 case SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+//	     SCSpecUDTUnionCaseTupleV0 tupleCase;
+//	 };
+type ScSpecUdtUnionCaseV0 struct {
+	Kind      ScSpecUdtUnionCaseV0Kind
+	VoidCase  *ScSpecUdtUnionCaseVoidV0
+	TupleCase *ScSpecUdtUnionCaseTupleV0
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ScSpecUdtUnionCaseV0) SwitchFieldName() string {
+	return "Kind"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ScSpecUdtUnionCaseV0
+func (u ScSpecUdtUnionCaseV0) ArmForSwitch(sw int32) (string, bool) {
+	switch ScSpecUdtUnionCaseV0Kind(sw) {
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0:
+		return "VoidCase", true
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0:
+		return "TupleCase", true
+	}
+	return "-", false
+}
+
+// NewScSpecUdtUnionCaseV0 creates a new  ScSpecUdtUnionCaseV0.
+func NewScSpecUdtUnionCaseV0(kind ScSpecUdtUnionCaseV0Kind, value interface{}) (result ScSpecUdtUnionCaseV0, err error) {
+	result.Kind = kind
+	switch ScSpecUdtUnionCaseV0Kind(kind) {
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0:
+		tv, ok := value.(ScSpecUdtUnionCaseVoidV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScSpecUdtUnionCaseVoidV0")
+			return
+		}
+		result.VoidCase = &tv
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0:
+		tv, ok := value.(ScSpecUdtUnionCaseTupleV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScSpecUdtUnionCaseTupleV0")
+			return
+		}
+		result.TupleCase = &tv
+	}
+	return
+}
+
+// MustVoidCase retrieves the VoidCase value from the union,
+// panicing if the value is not set.
+func (u ScSpecUdtUnionCaseV0) MustVoidCase() ScSpecUdtUnionCaseVoidV0 {
+	val, ok := u.GetVoidCase()
+
+	if !ok {
+		panic("arm VoidCase is not set")
+	}
+
+	return val
+}
+
+// GetVoidCase retrieves the VoidCase value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScSpecUdtUnionCaseV0) GetVoidCase() (result ScSpecUdtUnionCaseVoidV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Kind))
+
+	if armName == "VoidCase" {
+		result = *u.VoidCase
+		ok = true
+	}
+
+	return
+}
+
+// MustTupleCase retrieves the TupleCase value from the union,
+// panicing if the value is not set.
+func (u ScSpecUdtUnionCaseV0) MustTupleCase() ScSpecUdtUnionCaseTupleV0 {
+	val, ok := u.GetTupleCase()
+
+	if !ok {
+		panic("arm TupleCase is not set")
+	}
+
+	return val
+}
+
+// GetTupleCase retrieves the TupleCase value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScSpecUdtUnionCaseV0) GetTupleCase() (result ScSpecUdtUnionCaseTupleV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Kind))
+
+	if armName == "TupleCase" {
+		result = *u.TupleCase
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ScSpecUdtUnionCaseV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Kind.EncodeTo(e); err != nil {
+		return err
+	}
+	switch ScSpecUdtUnionCaseV0Kind(u.Kind) {
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0:
+		if err = (*u.VoidCase).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0:
+		if err = (*u.TupleCase).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("Kind (ScSpecUdtUnionCaseV0Kind) switch value '%d' is not valid for union ScSpecUdtUnionCaseV0", u.Kind)
+}
+
+var _ decoderFrom = (*ScSpecUdtUnionCaseV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ScSpecUdtUnionCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Kind.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScSpecUdtUnionCaseV0Kind: %s", err)
+	}
+	switch ScSpecUdtUnionCaseV0Kind(u.Kind) {
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseVoidV0:
+		u.VoidCase = new(ScSpecUdtUnionCaseVoidV0)
+		nTmp, err = (*u.VoidCase).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSpecUdtUnionCaseVoidV0: %s", err)
+		}
+		return n, nil
+	case ScSpecUdtUnionCaseV0KindScSpecUdtUnionCaseTupleV0:
+		u.TupleCase = new(ScSpecUdtUnionCaseTupleV0)
+		nTmp, err = (*u.TupleCase).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSpecUdtUnionCaseTupleV0: %s", err)
+		}
+		return n, nil
+	}
+	return n, fmt.Errorf("union ScSpecUdtUnionCaseV0 has invalid Kind (ScSpecUdtUnionCaseV0Kind) switch value '%d'", u.Kind)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -45754,11 +46143,13 @@ var _ xdrType = (*ScSpecUdtUnionCaseV0)(nil)
 //
 //	struct SCSpecUDTUnionV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string lib<80>;
 //	     string name<60>;
 //	     SCSpecUDTUnionCaseV0 cases<50>;
 //	 };
 type ScSpecUdtUnionV0 struct {
+	Doc   string                 `xdrmaxsize:"1024"`
 	Lib   string                 `xdrmaxsize:"80"`
 	Name  string                 `xdrmaxsize:"60"`
 	Cases []ScSpecUdtUnionCaseV0 `xdrmaxsize:"50"`
@@ -45767,6 +46158,9 @@ type ScSpecUdtUnionV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtUnionV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Lib)); err != nil {
 		return err
 	}
@@ -45790,6 +46184,11 @@ var _ decoderFrom = (*ScSpecUdtUnionV0)(nil)
 func (s *ScSpecUdtUnionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Lib, nTmp, err = d.DecodeString(80)
 	n += nTmp
 	if err != nil {
@@ -45854,10 +46253,12 @@ var _ xdrType = (*ScSpecUdtUnionV0)(nil)
 //
 //	struct SCSpecUDTEnumCaseV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string name<60>;
 //	     uint32 value;
 //	 };
 type ScSpecUdtEnumCaseV0 struct {
+	Doc   string `xdrmaxsize:"1024"`
 	Name  string `xdrmaxsize:"60"`
 	Value Uint32
 }
@@ -45865,6 +46266,9 @@ type ScSpecUdtEnumCaseV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtEnumCaseV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Name)); err != nil {
 		return err
 	}
@@ -45880,6 +46284,11 @@ var _ decoderFrom = (*ScSpecUdtEnumCaseV0)(nil)
 func (s *ScSpecUdtEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Name, nTmp, err = d.DecodeString(60)
 	n += nTmp
 	if err != nil {
@@ -45924,11 +46333,13 @@ var _ xdrType = (*ScSpecUdtEnumCaseV0)(nil)
 //
 //	struct SCSpecUDTEnumV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string lib<80>;
 //	     string name<60>;
 //	     SCSpecUDTEnumCaseV0 cases<50>;
 //	 };
 type ScSpecUdtEnumV0 struct {
+	Doc   string                `xdrmaxsize:"1024"`
 	Lib   string                `xdrmaxsize:"80"`
 	Name  string                `xdrmaxsize:"60"`
 	Cases []ScSpecUdtEnumCaseV0 `xdrmaxsize:"50"`
@@ -45937,6 +46348,9 @@ type ScSpecUdtEnumV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtEnumV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Lib)); err != nil {
 		return err
 	}
@@ -45960,6 +46374,11 @@ var _ decoderFrom = (*ScSpecUdtEnumV0)(nil)
 func (s *ScSpecUdtEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Lib, nTmp, err = d.DecodeString(80)
 	n += nTmp
 	if err != nil {
@@ -46024,10 +46443,12 @@ var _ xdrType = (*ScSpecUdtEnumV0)(nil)
 //
 //	struct SCSpecUDTErrorEnumCaseV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string name<60>;
 //	     uint32 value;
 //	 };
 type ScSpecUdtErrorEnumCaseV0 struct {
+	Doc   string `xdrmaxsize:"1024"`
 	Name  string `xdrmaxsize:"60"`
 	Value Uint32
 }
@@ -46035,6 +46456,9 @@ type ScSpecUdtErrorEnumCaseV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtErrorEnumCaseV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Name)); err != nil {
 		return err
 	}
@@ -46050,6 +46474,11 @@ var _ decoderFrom = (*ScSpecUdtErrorEnumCaseV0)(nil)
 func (s *ScSpecUdtErrorEnumCaseV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Name, nTmp, err = d.DecodeString(60)
 	n += nTmp
 	if err != nil {
@@ -46094,11 +46523,13 @@ var _ xdrType = (*ScSpecUdtErrorEnumCaseV0)(nil)
 //
 //	struct SCSpecUDTErrorEnumV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string lib<80>;
 //	     string name<60>;
 //	     SCSpecUDTErrorEnumCaseV0 cases<50>;
 //	 };
 type ScSpecUdtErrorEnumV0 struct {
+	Doc   string                     `xdrmaxsize:"1024"`
 	Lib   string                     `xdrmaxsize:"80"`
 	Name  string                     `xdrmaxsize:"60"`
 	Cases []ScSpecUdtErrorEnumCaseV0 `xdrmaxsize:"50"`
@@ -46107,6 +46538,9 @@ type ScSpecUdtErrorEnumV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecUdtErrorEnumV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Lib)); err != nil {
 		return err
 	}
@@ -46130,6 +46564,11 @@ var _ decoderFrom = (*ScSpecUdtErrorEnumV0)(nil)
 func (s *ScSpecUdtErrorEnumV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Lib, nTmp, err = d.DecodeString(80)
 	n += nTmp
 	if err != nil {
@@ -46194,10 +46633,12 @@ var _ xdrType = (*ScSpecUdtErrorEnumV0)(nil)
 //
 //	struct SCSpecFunctionInputV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     string name<30>;
 //	     SCSpecTypeDef type;
 //	 };
 type ScSpecFunctionInputV0 struct {
+	Doc  string `xdrmaxsize:"1024"`
 	Name string `xdrmaxsize:"30"`
 	Type ScSpecTypeDef
 }
@@ -46205,6 +46646,9 @@ type ScSpecFunctionInputV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecFunctionInputV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if _, err = e.EncodeString(string(s.Name)); err != nil {
 		return err
 	}
@@ -46220,6 +46664,11 @@ var _ decoderFrom = (*ScSpecFunctionInputV0)(nil)
 func (s *ScSpecFunctionInputV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	s.Name, nTmp, err = d.DecodeString(30)
 	n += nTmp
 	if err != nil {
@@ -46264,11 +46713,13 @@ var _ xdrType = (*ScSpecFunctionInputV0)(nil)
 //
 //	struct SCSpecFunctionV0
 //	 {
+//	     string doc<SC_SPEC_DOC_LIMIT>;
 //	     SCSymbol name;
 //	     SCSpecFunctionInputV0 inputs<10>;
 //	     SCSpecTypeDef outputs<1>;
 //	 };
 type ScSpecFunctionV0 struct {
+	Doc     string `xdrmaxsize:"1024"`
 	Name    ScSymbol
 	Inputs  []ScSpecFunctionInputV0 `xdrmaxsize:"10"`
 	Outputs []ScSpecTypeDef         `xdrmaxsize:"1"`
@@ -46277,6 +46728,9 @@ type ScSpecFunctionV0 struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ScSpecFunctionV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
+	if _, err = e.EncodeString(string(s.Doc)); err != nil {
+		return err
+	}
 	if err = s.Name.EncodeTo(e); err != nil {
 		return err
 	}
@@ -46305,6 +46759,11 @@ var _ decoderFrom = (*ScSpecFunctionV0)(nil)
 func (s *ScSpecFunctionV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
+	s.Doc, nTmp, err = d.DecodeString(1024)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Doc: %s", err)
+	}
 	nTmp, err = s.Name.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
@@ -47070,7 +47529,8 @@ var _ xdrType = (*ScStatic)(nil)
 //	     SST_HOST_STORAGE_ERROR = 5,
 //	     SST_HOST_CONTEXT_ERROR = 6,
 //	     SST_VM_ERROR = 7,
-//	     SST_CONTRACT_ERROR = 8
+//	     SST_CONTRACT_ERROR = 8,
+//	     SST_HOST_AUTH_ERROR = 9
 //	     // TODO: add more
 //	 };
 type ScStatusType int32
@@ -47085,6 +47545,7 @@ const (
 	ScStatusTypeSstHostContextError  ScStatusType = 6
 	ScStatusTypeSstVmError           ScStatusType = 7
 	ScStatusTypeSstContractError     ScStatusType = 8
+	ScStatusTypeSstHostAuthError     ScStatusType = 9
 )
 
 var scStatusTypeMap = map[int32]string{
@@ -47097,6 +47558,7 @@ var scStatusTypeMap = map[int32]string{
 	6: "ScStatusTypeSstHostContextError",
 	7: "ScStatusTypeSstVmError",
 	8: "ScStatusTypeSstContractError",
+	9: "ScStatusTypeSstHostAuthError",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -47561,6 +48023,95 @@ func (s ScHostStorageErrorCode) xdrType() {}
 
 var _ xdrType = (*ScHostStorageErrorCode)(nil)
 
+// ScHostAuthErrorCode is an XDR Enum defines as:
+//
+//	enum SCHostAuthErrorCode
+//	 {
+//	     HOST_AUTH_UNKNOWN_ERROR = 0,
+//	     HOST_AUTH_NONCE_ERROR = 1,
+//	     HOST_AUTH_DUPLICATE_AUTHORIZATION = 2,
+//	     HOST_AUTH_NOT_AUTHORIZED = 3
+//	 };
+type ScHostAuthErrorCode int32
+
+const (
+	ScHostAuthErrorCodeHostAuthUnknownError           ScHostAuthErrorCode = 0
+	ScHostAuthErrorCodeHostAuthNonceError             ScHostAuthErrorCode = 1
+	ScHostAuthErrorCodeHostAuthDuplicateAuthorization ScHostAuthErrorCode = 2
+	ScHostAuthErrorCodeHostAuthNotAuthorized          ScHostAuthErrorCode = 3
+)
+
+var scHostAuthErrorCodeMap = map[int32]string{
+	0: "ScHostAuthErrorCodeHostAuthUnknownError",
+	1: "ScHostAuthErrorCodeHostAuthNonceError",
+	2: "ScHostAuthErrorCodeHostAuthDuplicateAuthorization",
+	3: "ScHostAuthErrorCodeHostAuthNotAuthorized",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ScHostAuthErrorCode
+func (e ScHostAuthErrorCode) ValidEnum(v int32) bool {
+	_, ok := scHostAuthErrorCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ScHostAuthErrorCode) String() string {
+	name, _ := scHostAuthErrorCodeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ScHostAuthErrorCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := scHostAuthErrorCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ScHostAuthErrorCode enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ScHostAuthErrorCode)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ScHostAuthErrorCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ScHostAuthErrorCode: %s", err)
+	}
+	if _, ok := scHostAuthErrorCodeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ScHostAuthErrorCode enum value", v)
+	}
+	*e = ScHostAuthErrorCode(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScHostAuthErrorCode) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScHostAuthErrorCode) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScHostAuthErrorCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScHostAuthErrorCode)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScHostAuthErrorCode) xdrType() {}
+
+var _ xdrType = (*ScHostAuthErrorCode)(nil)
+
 // ScHostContextErrorCode is an XDR Enum defines as:
 //
 //	enum SCHostContextErrorCode
@@ -47882,6 +48433,8 @@ var _ xdrType = (*ScUnknownErrorCode)(nil)
 //	     SCVmErrorCode vmCode;
 //	 case SST_CONTRACT_ERROR:
 //	     uint32 contractCode;
+//	 case SST_HOST_AUTH_ERROR:
+//	     SCHostAuthErrorCode authCode;
 //	 };
 type ScStatus struct {
 	Type         ScStatusType
@@ -47893,6 +48446,7 @@ type ScStatus struct {
 	ContextCode  *ScHostContextErrorCode
 	VmCode       *ScVmErrorCode
 	ContractCode *Uint32
+	AuthCode     *ScHostAuthErrorCode
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -47923,6 +48477,8 @@ func (u ScStatus) ArmForSwitch(sw int32) (string, bool) {
 		return "VmCode", true
 	case ScStatusTypeSstContractError:
 		return "ContractCode", true
+	case ScStatusTypeSstHostAuthError:
+		return "AuthCode", true
 	}
 	return "-", false
 }
@@ -47989,6 +48545,13 @@ func NewScStatus(aType ScStatusType, value interface{}) (result ScStatus, err er
 			return
 		}
 		result.ContractCode = &tv
+	case ScStatusTypeSstHostAuthError:
+		tv, ok := value.(ScHostAuthErrorCode)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScHostAuthErrorCode")
+			return
+		}
+		result.AuthCode = &tv
 	}
 	return
 }
@@ -48193,6 +48756,31 @@ func (u ScStatus) GetContractCode() (result Uint32, ok bool) {
 	return
 }
 
+// MustAuthCode retrieves the AuthCode value from the union,
+// panicing if the value is not set.
+func (u ScStatus) MustAuthCode() ScHostAuthErrorCode {
+	val, ok := u.GetAuthCode()
+
+	if !ok {
+		panic("arm AuthCode is not set")
+	}
+
+	return val
+}
+
+// GetAuthCode retrieves the AuthCode value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScStatus) GetAuthCode() (result ScHostAuthErrorCode, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "AuthCode" {
+		result = *u.AuthCode
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u ScStatus) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -48240,6 +48828,11 @@ func (u ScStatus) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ScStatusTypeSstContractError:
 		if err = (*u.ContractCode).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScStatusTypeSstHostAuthError:
+		if err = (*u.AuthCode).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -48324,6 +48917,14 @@ func (u *ScStatus) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Uint32: %s", err)
+		}
+		return n, nil
+	case ScStatusTypeSstHostAuthError:
+		u.AuthCode = new(ScHostAuthErrorCode)
+		nTmp, err = (*u.AuthCode).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScHostAuthErrorCode: %s", err)
 		}
 		return n, nil
 	}

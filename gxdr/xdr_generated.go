@@ -2289,6 +2289,7 @@ type XdrAnon_HashIDPreimage_CreateContractArgs struct {
 }
 type XdrAnon_HashIDPreimage_ContractAuth struct {
 	NetworkID  Hash
+	Nonce      Uint64
 	Invocation AuthorizedInvocation
 }
 
@@ -3588,6 +3589,8 @@ type SCEnvMetaEntry struct {
 	_u   interface{}
 }
 
+const SC_SPEC_DOC_LIMIT = 1024
+
 type SCSpecType int32
 
 const (
@@ -3677,55 +3680,87 @@ type SCSpecTypeDef struct {
 }
 
 type SCSpecUDTStructFieldV0 struct {
+	Doc  string // bound SC_SPEC_DOC_LIMIT
 	Name string // bound 30
 	Type SCSpecTypeDef
 }
 
 type SCSpecUDTStructV0 struct {
+	Doc    string                   // bound SC_SPEC_DOC_LIMIT
 	Lib    string                   // bound 80
 	Name   string                   // bound 60
 	Fields []SCSpecUDTStructFieldV0 // bound 40
 }
 
-type SCSpecUDTUnionCaseV0 struct {
+type SCSpecUDTUnionCaseVoidV0 struct {
+	Doc  string // bound SC_SPEC_DOC_LIMIT
 	Name string // bound 60
-	Type *SCSpecTypeDef
+}
+
+type SCSpecUDTUnionCaseTupleV0 struct {
+	Doc  string          // bound SC_SPEC_DOC_LIMIT
+	Name string          // bound 60
+	Type []SCSpecTypeDef // bound 12
+}
+
+type SCSpecUDTUnionCaseV0Kind int32
+
+const (
+	SC_SPEC_UDT_UNION_CASE_VOID_V0  SCSpecUDTUnionCaseV0Kind = 0
+	SC_SPEC_UDT_UNION_CASE_TUPLE_V0 SCSpecUDTUnionCaseV0Kind = 1
+)
+
+type SCSpecUDTUnionCaseV0 struct {
+	// The union discriminant Kind selects among the following arms:
+	//   SC_SPEC_UDT_UNION_CASE_VOID_V0:
+	//      VoidCase() *SCSpecUDTUnionCaseVoidV0
+	//   SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+	//      TupleCase() *SCSpecUDTUnionCaseTupleV0
+	Kind SCSpecUDTUnionCaseV0Kind
+	_u   interface{}
 }
 
 type SCSpecUDTUnionV0 struct {
+	Doc   string                 // bound SC_SPEC_DOC_LIMIT
 	Lib   string                 // bound 80
 	Name  string                 // bound 60
 	Cases []SCSpecUDTUnionCaseV0 // bound 50
 }
 
 type SCSpecUDTEnumCaseV0 struct {
+	Doc   string // bound SC_SPEC_DOC_LIMIT
 	Name  string // bound 60
 	Value Uint32
 }
 
 type SCSpecUDTEnumV0 struct {
+	Doc   string                // bound SC_SPEC_DOC_LIMIT
 	Lib   string                // bound 80
 	Name  string                // bound 60
 	Cases []SCSpecUDTEnumCaseV0 // bound 50
 }
 
 type SCSpecUDTErrorEnumCaseV0 struct {
+	Doc   string // bound SC_SPEC_DOC_LIMIT
 	Name  string // bound 60
 	Value Uint32
 }
 
 type SCSpecUDTErrorEnumV0 struct {
+	Doc   string                     // bound SC_SPEC_DOC_LIMIT
 	Lib   string                     // bound 80
 	Name  string                     // bound 60
 	Cases []SCSpecUDTErrorEnumCaseV0 // bound 50
 }
 
 type SCSpecFunctionInputV0 struct {
+	Doc  string // bound SC_SPEC_DOC_LIMIT
 	Name string // bound 30
 	Type SCSpecTypeDef
 }
 
 type SCSpecFunctionV0 struct {
+	Doc     string // bound SC_SPEC_DOC_LIMIT
 	Name    SCSymbol
 	Inputs  []SCSpecFunctionInputV0 // bound 10
 	Outputs []SCSpecTypeDef         // bound 1
@@ -3797,6 +3832,7 @@ const (
 	SST_HOST_CONTEXT_ERROR  SCStatusType = 6
 	SST_VM_ERROR            SCStatusType = 7
 	SST_CONTRACT_ERROR      SCStatusType = 8
+	SST_HOST_AUTH_ERROR     SCStatusType = 9
 )
 
 type SCHostValErrorCode int32
@@ -3847,6 +3883,15 @@ const (
 	HOST_STORAGE_ACCESS_TO_UNKNOWN_ENTRY            SCHostStorageErrorCode = 3
 	HOST_STORAGE_MISSING_KEY_IN_GET                 SCHostStorageErrorCode = 4
 	HOST_STORAGE_GET_ON_DELETED_KEY                 SCHostStorageErrorCode = 5
+)
+
+type SCHostAuthErrorCode int32
+
+const (
+	HOST_AUTH_UNKNOWN_ERROR           SCHostAuthErrorCode = 0
+	HOST_AUTH_NONCE_ERROR             SCHostAuthErrorCode = 1
+	HOST_AUTH_DUPLICATE_AUTHORIZATION SCHostAuthErrorCode = 2
+	HOST_AUTH_NOT_AUTHORIZED          SCHostAuthErrorCode = 3
 )
 
 type SCHostContextErrorCode int32
@@ -3907,6 +3952,8 @@ type SCStatus struct {
 	//      VmCode() *SCVmErrorCode
 	//   SST_CONTRACT_ERROR:
 	//      ContractCode() *Uint32
+	//   SST_HOST_AUTH_ERROR:
+	//      AuthCode() *SCHostAuthErrorCode
 	Type SCStatusType
 	_u   interface{}
 }
@@ -16644,6 +16691,7 @@ func (v *XdrAnon_HashIDPreimage_ContractAuth) XdrRecurse(x XDR, name string) {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
+	x.Marshal(x.Sprintf("%snonce", name), XDR_Uint64(&v.Nonce))
 	x.Marshal(x.Sprintf("%sinvocation", name), XDR_AuthorizedInvocation(&v.Invocation))
 }
 func XDR_XdrAnon_HashIDPreimage_ContractAuth(v *XdrAnon_HashIDPreimage_ContractAuth) *XdrAnon_HashIDPreimage_ContractAuth {
@@ -24830,6 +24878,7 @@ func (v *SCSpecUDTStructFieldV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 30})
 	x.Marshal(x.Sprintf("%stype", name), XDR_SCSpecTypeDef(&v.Type))
 }
@@ -24906,84 +24955,158 @@ func (v *SCSpecUDTStructV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%slib", name), XdrString{&v.Lib, 80})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 	x.Marshal(x.Sprintf("%sfields", name), (*_XdrVec_40_SCSpecUDTStructFieldV0)(&v.Fields))
 }
 func XDR_SCSpecUDTStructV0(v *SCSpecUDTStructV0) *SCSpecUDTStructV0 { return v }
 
-type _XdrPtr_SCSpecTypeDef struct {
-	p **SCSpecTypeDef
-}
-type _ptrflag_SCSpecTypeDef _XdrPtr_SCSpecTypeDef
+type XdrType_SCSpecUDTUnionCaseVoidV0 = *SCSpecUDTUnionCaseVoidV0
 
-func (v _ptrflag_SCSpecTypeDef) String() string {
-	if *v.p == nil {
-		return "nil"
+func (v *SCSpecUDTUnionCaseVoidV0) XdrPointer() interface{}       { return v }
+func (SCSpecUDTUnionCaseVoidV0) XdrTypeName() string              { return "SCSpecUDTUnionCaseVoidV0" }
+func (v SCSpecUDTUnionCaseVoidV0) XdrValue() interface{}          { return v }
+func (v *SCSpecUDTUnionCaseVoidV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SCSpecUDTUnionCaseVoidV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
 	}
-	return "non-nil"
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
+	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 }
-func (v _ptrflag_SCSpecTypeDef) Scan(ss fmt.ScanState, r rune) error {
-	tok, err := ss.Token(true, func(c rune) bool {
-		return c == '-' || (c >= 'a' && c <= 'z')
-	})
-	if err != nil {
-		return err
+func XDR_SCSpecUDTUnionCaseVoidV0(v *SCSpecUDTUnionCaseVoidV0) *SCSpecUDTUnionCaseVoidV0 { return v }
+
+type XdrType_SCSpecUDTUnionCaseTupleV0 = *SCSpecUDTUnionCaseTupleV0
+
+func (v *SCSpecUDTUnionCaseTupleV0) XdrPointer() interface{}       { return v }
+func (SCSpecUDTUnionCaseTupleV0) XdrTypeName() string              { return "SCSpecUDTUnionCaseTupleV0" }
+func (v SCSpecUDTUnionCaseTupleV0) XdrValue() interface{}          { return v }
+func (v *SCSpecUDTUnionCaseTupleV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SCSpecUDTUnionCaseTupleV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
 	}
-	switch string(tok) {
-	case "nil":
-		v.SetU32(0)
-	case "non-nil":
-		v.SetU32(1)
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
+	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
+	x.Marshal(x.Sprintf("%stype", name), (*_XdrVec_12_SCSpecTypeDef)(&v.Type))
+}
+func XDR_SCSpecUDTUnionCaseTupleV0(v *SCSpecUDTUnionCaseTupleV0) *SCSpecUDTUnionCaseTupleV0 { return v }
+
+var _XdrNames_SCSpecUDTUnionCaseV0Kind = map[int32]string{
+	int32(SC_SPEC_UDT_UNION_CASE_VOID_V0):  "SC_SPEC_UDT_UNION_CASE_VOID_V0",
+	int32(SC_SPEC_UDT_UNION_CASE_TUPLE_V0): "SC_SPEC_UDT_UNION_CASE_TUPLE_V0",
+}
+var _XdrValues_SCSpecUDTUnionCaseV0Kind = map[string]int32{
+	"SC_SPEC_UDT_UNION_CASE_VOID_V0":  int32(SC_SPEC_UDT_UNION_CASE_VOID_V0),
+	"SC_SPEC_UDT_UNION_CASE_TUPLE_V0": int32(SC_SPEC_UDT_UNION_CASE_TUPLE_V0),
+}
+
+func (SCSpecUDTUnionCaseV0Kind) XdrEnumNames() map[int32]string {
+	return _XdrNames_SCSpecUDTUnionCaseV0Kind
+}
+func (v SCSpecUDTUnionCaseV0Kind) String() string {
+	if s, ok := _XdrNames_SCSpecUDTUnionCaseV0Kind[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("SCSpecUDTUnionCaseV0Kind#%d", v)
+}
+func (v *SCSpecUDTUnionCaseV0Kind) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_SCSpecUDTUnionCaseV0Kind[stok]; ok {
+			*v = SCSpecUDTUnionCaseV0Kind(val)
+			return nil
+		} else if stok == "SCSpecUDTUnionCaseV0Kind" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid SCSpecUDTUnionCaseV0Kind.", stok))
+	}
+}
+func (v SCSpecUDTUnionCaseV0Kind) GetU32() uint32                 { return uint32(v) }
+func (v *SCSpecUDTUnionCaseV0Kind) SetU32(n uint32)               { *v = SCSpecUDTUnionCaseV0Kind(n) }
+func (v *SCSpecUDTUnionCaseV0Kind) XdrPointer() interface{}       { return v }
+func (SCSpecUDTUnionCaseV0Kind) XdrTypeName() string              { return "SCSpecUDTUnionCaseV0Kind" }
+func (v SCSpecUDTUnionCaseV0Kind) XdrValue() interface{}          { return v }
+func (v *SCSpecUDTUnionCaseV0Kind) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_SCSpecUDTUnionCaseV0Kind = *SCSpecUDTUnionCaseV0Kind
+
+func XDR_SCSpecUDTUnionCaseV0Kind(v *SCSpecUDTUnionCaseV0Kind) *SCSpecUDTUnionCaseV0Kind { return v }
+
+var _XdrTags_SCSpecUDTUnionCaseV0 = map[int32]bool{
+	XdrToI32(SC_SPEC_UDT_UNION_CASE_VOID_V0):  true,
+	XdrToI32(SC_SPEC_UDT_UNION_CASE_TUPLE_V0): true,
+}
+
+func (_ SCSpecUDTUnionCaseV0) XdrValidTags() map[int32]bool {
+	return _XdrTags_SCSpecUDTUnionCaseV0
+}
+func (u *SCSpecUDTUnionCaseV0) VoidCase() *SCSpecUDTUnionCaseVoidV0 {
+	switch u.Kind {
+	case SC_SPEC_UDT_UNION_CASE_VOID_V0:
+		if v, ok := u._u.(*SCSpecUDTUnionCaseVoidV0); ok {
+			return v
+		} else {
+			var zero SCSpecUDTUnionCaseVoidV0
+			u._u = &zero
+			return &zero
+		}
 	default:
-		return XdrError("SCSpecTypeDef flag should be \"nil\" or \"non-nil\"")
+		XdrPanic("SCSpecUDTUnionCaseV0.VoidCase accessed when Kind == %v", u.Kind)
+		return nil
+	}
+}
+func (u *SCSpecUDTUnionCaseV0) TupleCase() *SCSpecUDTUnionCaseTupleV0 {
+	switch u.Kind {
+	case SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+		if v, ok := u._u.(*SCSpecUDTUnionCaseTupleV0); ok {
+			return v
+		} else {
+			var zero SCSpecUDTUnionCaseTupleV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCSpecUDTUnionCaseV0.TupleCase accessed when Kind == %v", u.Kind)
+		return nil
+	}
+}
+func (u SCSpecUDTUnionCaseV0) XdrValid() bool {
+	switch u.Kind {
+	case SC_SPEC_UDT_UNION_CASE_VOID_V0, SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+		return true
+	}
+	return false
+}
+func (u *SCSpecUDTUnionCaseV0) XdrUnionTag() XdrNum32 {
+	return XDR_SCSpecUDTUnionCaseV0Kind(&u.Kind)
+}
+func (u *SCSpecUDTUnionCaseV0) XdrUnionTagName() string {
+	return "Kind"
+}
+func (u *SCSpecUDTUnionCaseV0) XdrUnionBody() XdrType {
+	switch u.Kind {
+	case SC_SPEC_UDT_UNION_CASE_VOID_V0:
+		return XDR_SCSpecUDTUnionCaseVoidV0(u.VoidCase())
+	case SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+		return XDR_SCSpecUDTUnionCaseTupleV0(u.TupleCase())
 	}
 	return nil
 }
-func (v _ptrflag_SCSpecTypeDef) GetU32() uint32 {
-	if *v.p == nil {
-		return 0
+func (u *SCSpecUDTUnionCaseV0) XdrUnionBodyName() string {
+	switch u.Kind {
+	case SC_SPEC_UDT_UNION_CASE_VOID_V0:
+		return "VoidCase"
+	case SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+		return "TupleCase"
 	}
-	return 1
+	return ""
 }
-func (v _ptrflag_SCSpecTypeDef) SetU32(nv uint32) {
-	switch nv {
-	case 0:
-		*v.p = nil
-	case 1:
-		if *v.p == nil {
-			*v.p = new(SCSpecTypeDef)
-		}
-	default:
-		XdrPanic("*SCSpecTypeDef present flag value %d should be 0 or 1", nv)
-	}
-}
-func (_ptrflag_SCSpecTypeDef) XdrTypeName() string             { return "SCSpecTypeDef?" }
-func (v _ptrflag_SCSpecTypeDef) XdrPointer() interface{}       { return nil }
-func (v _ptrflag_SCSpecTypeDef) XdrValue() interface{}         { return v.GetU32() != 0 }
-func (v _ptrflag_SCSpecTypeDef) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v _ptrflag_SCSpecTypeDef) XdrBound() uint32              { return 1 }
-func (v _XdrPtr_SCSpecTypeDef) GetPresent() bool               { return *v.p != nil }
-func (v _XdrPtr_SCSpecTypeDef) SetPresent(present bool) {
-	if !present {
-		*v.p = nil
-	} else if *v.p == nil {
-		*v.p = new(SCSpecTypeDef)
-	}
-}
-func (v _XdrPtr_SCSpecTypeDef) XdrMarshalValue(x XDR, name string) {
-	if *v.p != nil {
-		XDR_SCSpecTypeDef(*v.p).XdrMarshal(x, name)
-	}
-}
-func (v _XdrPtr_SCSpecTypeDef) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v _XdrPtr_SCSpecTypeDef) XdrRecurse(x XDR, name string) {
-	x.Marshal(name, _ptrflag_SCSpecTypeDef(v))
-	v.XdrMarshalValue(x, name)
-}
-func (_XdrPtr_SCSpecTypeDef) XdrTypeName() string       { return "SCSpecTypeDef*" }
-func (v _XdrPtr_SCSpecTypeDef) XdrPointer() interface{} { return v.p }
-func (v _XdrPtr_SCSpecTypeDef) XdrValue() interface{}   { return *v.p }
 
 type XdrType_SCSpecUDTUnionCaseV0 = *SCSpecUDTUnionCaseV0
 
@@ -24991,12 +25114,20 @@ func (v *SCSpecUDTUnionCaseV0) XdrPointer() interface{}       { return v }
 func (SCSpecUDTUnionCaseV0) XdrTypeName() string              { return "SCSpecUDTUnionCaseV0" }
 func (v SCSpecUDTUnionCaseV0) XdrValue() interface{}          { return v }
 func (v *SCSpecUDTUnionCaseV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *SCSpecUDTUnionCaseV0) XdrRecurse(x XDR, name string) {
+func (u *SCSpecUDTUnionCaseV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
-	x.Marshal(x.Sprintf("%stype", name), _XdrPtr_SCSpecTypeDef{&v.Type})
+	XDR_SCSpecUDTUnionCaseV0Kind(&u.Kind).XdrMarshal(x, x.Sprintf("%skind", name))
+	switch u.Kind {
+	case SC_SPEC_UDT_UNION_CASE_VOID_V0:
+		x.Marshal(x.Sprintf("%svoidCase", name), XDR_SCSpecUDTUnionCaseVoidV0(u.VoidCase()))
+		return
+	case SC_SPEC_UDT_UNION_CASE_TUPLE_V0:
+		x.Marshal(x.Sprintf("%stupleCase", name), XDR_SCSpecUDTUnionCaseTupleV0(u.TupleCase()))
+		return
+	}
+	XdrPanic("invalid Kind (%v) in SCSpecUDTUnionCaseV0", u.Kind)
 }
 func XDR_SCSpecUDTUnionCaseV0(v *SCSpecUDTUnionCaseV0) *SCSpecUDTUnionCaseV0 { return v }
 
@@ -25069,6 +25200,7 @@ func (v *SCSpecUDTUnionV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%slib", name), XdrString{&v.Lib, 80})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 	x.Marshal(x.Sprintf("%scases", name), (*_XdrVec_50_SCSpecUDTUnionCaseV0)(&v.Cases))
@@ -25085,6 +25217,7 @@ func (v *SCSpecUDTEnumCaseV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 	x.Marshal(x.Sprintf("%svalue", name), XDR_Uint32(&v.Value))
 }
@@ -25157,6 +25290,7 @@ func (v *SCSpecUDTEnumV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%slib", name), XdrString{&v.Lib, 80})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 	x.Marshal(x.Sprintf("%scases", name), (*_XdrVec_50_SCSpecUDTEnumCaseV0)(&v.Cases))
@@ -25173,6 +25307,7 @@ func (v *SCSpecUDTErrorEnumCaseV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 	x.Marshal(x.Sprintf("%svalue", name), XDR_Uint32(&v.Value))
 }
@@ -25249,6 +25384,7 @@ func (v *SCSpecUDTErrorEnumV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%slib", name), XdrString{&v.Lib, 80})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 60})
 	x.Marshal(x.Sprintf("%scases", name), (*_XdrVec_50_SCSpecUDTErrorEnumCaseV0)(&v.Cases))
@@ -25265,6 +25401,7 @@ func (v *SCSpecFunctionInputV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%sname", name), XdrString{&v.Name, 30})
 	x.Marshal(x.Sprintf("%stype", name), XDR_SCSpecTypeDef(&v.Type))
 }
@@ -25396,6 +25533,7 @@ func (v *SCSpecFunctionV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sdoc", name), XdrString{&v.Doc, SC_SPEC_DOC_LIMIT})
 	x.Marshal(x.Sprintf("%sname", name), XDR_SCSymbol(&v.Name))
 	x.Marshal(x.Sprintf("%sinputs", name), (*_XdrVec_10_SCSpecFunctionInputV0)(&v.Inputs))
 	x.Marshal(x.Sprintf("%soutputs", name), (*_XdrVec_1_SCSpecTypeDef)(&v.Outputs))
@@ -25741,6 +25879,7 @@ var _XdrNames_SCStatusType = map[int32]string{
 	int32(SST_HOST_CONTEXT_ERROR):  "SST_HOST_CONTEXT_ERROR",
 	int32(SST_VM_ERROR):            "SST_VM_ERROR",
 	int32(SST_CONTRACT_ERROR):      "SST_CONTRACT_ERROR",
+	int32(SST_HOST_AUTH_ERROR):     "SST_HOST_AUTH_ERROR",
 }
 var _XdrValues_SCStatusType = map[string]int32{
 	"SST_OK":                  int32(SST_OK),
@@ -25752,6 +25891,7 @@ var _XdrValues_SCStatusType = map[string]int32{
 	"SST_HOST_CONTEXT_ERROR":  int32(SST_HOST_CONTEXT_ERROR),
 	"SST_VM_ERROR":            int32(SST_VM_ERROR),
 	"SST_CONTRACT_ERROR":      int32(SST_CONTRACT_ERROR),
+	"SST_HOST_AUTH_ERROR":     int32(SST_HOST_AUTH_ERROR),
 }
 
 func (SCStatusType) XdrEnumNames() map[int32]string {
@@ -26014,6 +26154,55 @@ type XdrType_SCHostStorageErrorCode = *SCHostStorageErrorCode
 
 func XDR_SCHostStorageErrorCode(v *SCHostStorageErrorCode) *SCHostStorageErrorCode { return v }
 
+var _XdrNames_SCHostAuthErrorCode = map[int32]string{
+	int32(HOST_AUTH_UNKNOWN_ERROR):           "HOST_AUTH_UNKNOWN_ERROR",
+	int32(HOST_AUTH_NONCE_ERROR):             "HOST_AUTH_NONCE_ERROR",
+	int32(HOST_AUTH_DUPLICATE_AUTHORIZATION): "HOST_AUTH_DUPLICATE_AUTHORIZATION",
+	int32(HOST_AUTH_NOT_AUTHORIZED):          "HOST_AUTH_NOT_AUTHORIZED",
+}
+var _XdrValues_SCHostAuthErrorCode = map[string]int32{
+	"HOST_AUTH_UNKNOWN_ERROR":           int32(HOST_AUTH_UNKNOWN_ERROR),
+	"HOST_AUTH_NONCE_ERROR":             int32(HOST_AUTH_NONCE_ERROR),
+	"HOST_AUTH_DUPLICATE_AUTHORIZATION": int32(HOST_AUTH_DUPLICATE_AUTHORIZATION),
+	"HOST_AUTH_NOT_AUTHORIZED":          int32(HOST_AUTH_NOT_AUTHORIZED),
+}
+
+func (SCHostAuthErrorCode) XdrEnumNames() map[int32]string {
+	return _XdrNames_SCHostAuthErrorCode
+}
+func (v SCHostAuthErrorCode) String() string {
+	if s, ok := _XdrNames_SCHostAuthErrorCode[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("SCHostAuthErrorCode#%d", v)
+}
+func (v *SCHostAuthErrorCode) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_SCHostAuthErrorCode[stok]; ok {
+			*v = SCHostAuthErrorCode(val)
+			return nil
+		} else if stok == "SCHostAuthErrorCode" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid SCHostAuthErrorCode.", stok))
+	}
+}
+func (v SCHostAuthErrorCode) GetU32() uint32                 { return uint32(v) }
+func (v *SCHostAuthErrorCode) SetU32(n uint32)               { *v = SCHostAuthErrorCode(n) }
+func (v *SCHostAuthErrorCode) XdrPointer() interface{}       { return v }
+func (SCHostAuthErrorCode) XdrTypeName() string              { return "SCHostAuthErrorCode" }
+func (v SCHostAuthErrorCode) XdrValue() interface{}          { return v }
+func (v *SCHostAuthErrorCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_SCHostAuthErrorCode = *SCHostAuthErrorCode
+
+func XDR_SCHostAuthErrorCode(v *SCHostAuthErrorCode) *SCHostAuthErrorCode { return v }
+
 var _XdrNames_SCHostContextErrorCode = map[int32]string{
 	int32(HOST_CONTEXT_UNKNOWN_ERROR):       "HOST_CONTEXT_UNKNOWN_ERROR",
 	int32(HOST_CONTEXT_NO_CONTRACT_RUNNING): "HOST_CONTEXT_NO_CONTRACT_RUNNING",
@@ -26193,6 +26382,7 @@ var _XdrTags_SCStatus = map[int32]bool{
 	XdrToI32(SST_HOST_CONTEXT_ERROR):  true,
 	XdrToI32(SST_VM_ERROR):            true,
 	XdrToI32(SST_CONTRACT_ERROR):      true,
+	XdrToI32(SST_HOST_AUTH_ERROR):     true,
 }
 
 func (_ SCStatus) XdrValidTags() map[int32]bool {
@@ -26318,9 +26508,24 @@ func (u *SCStatus) ContractCode() *Uint32 {
 		return nil
 	}
 }
+func (u *SCStatus) AuthCode() *SCHostAuthErrorCode {
+	switch u.Type {
+	case SST_HOST_AUTH_ERROR:
+		if v, ok := u._u.(*SCHostAuthErrorCode); ok {
+			return v
+		} else {
+			var zero SCHostAuthErrorCode
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCStatus.AuthCode accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u SCStatus) XdrValid() bool {
 	switch u.Type {
-	case SST_OK, SST_UNKNOWN_ERROR, SST_HOST_VALUE_ERROR, SST_HOST_OBJECT_ERROR, SST_HOST_FUNCTION_ERROR, SST_HOST_STORAGE_ERROR, SST_HOST_CONTEXT_ERROR, SST_VM_ERROR, SST_CONTRACT_ERROR:
+	case SST_OK, SST_UNKNOWN_ERROR, SST_HOST_VALUE_ERROR, SST_HOST_OBJECT_ERROR, SST_HOST_FUNCTION_ERROR, SST_HOST_STORAGE_ERROR, SST_HOST_CONTEXT_ERROR, SST_VM_ERROR, SST_CONTRACT_ERROR, SST_HOST_AUTH_ERROR:
 		return true
 	}
 	return false
@@ -26351,6 +26556,8 @@ func (u *SCStatus) XdrUnionBody() XdrType {
 		return XDR_SCVmErrorCode(u.VmCode())
 	case SST_CONTRACT_ERROR:
 		return XDR_Uint32(u.ContractCode())
+	case SST_HOST_AUTH_ERROR:
+		return XDR_SCHostAuthErrorCode(u.AuthCode())
 	}
 	return nil
 }
@@ -26374,6 +26581,8 @@ func (u *SCStatus) XdrUnionBodyName() string {
 		return "VmCode"
 	case SST_CONTRACT_ERROR:
 		return "ContractCode"
+	case SST_HOST_AUTH_ERROR:
+		return "AuthCode"
 	}
 	return ""
 }
@@ -26415,6 +26624,9 @@ func (u *SCStatus) XdrRecurse(x XDR, name string) {
 		return
 	case SST_CONTRACT_ERROR:
 		x.Marshal(x.Sprintf("%scontractCode", name), XDR_Uint32(u.ContractCode()))
+		return
+	case SST_HOST_AUTH_ERROR:
+		x.Marshal(x.Sprintf("%sauthCode", name), XDR_SCHostAuthErrorCode(u.AuthCode()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in SCStatus", u.Type)

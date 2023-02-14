@@ -106,6 +106,8 @@ func (s ScStatus) Equals(o ScStatus) bool {
 		return s.MustVmCode() == o.MustVmCode()
 	case ScStatusTypeSstUnknownError:
 		return s.MustUnknownCode() == o.MustUnknownCode()
+	case ScStatusTypeSstHostAuthError:
+		return s.MustAuthCode() == o.MustAuthCode()
 	default:
 		panic("unknown ScStatus type: " + s.Type.String())
 	}
