@@ -6,6 +6,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## 2.24.1
+
+### Changes
+
+- Bump Go to the latest version (1.20.1), including crypto/tls, mime/multipart, net/http, and path/filepath security fixes.
 
 ## 2.24.0
 
