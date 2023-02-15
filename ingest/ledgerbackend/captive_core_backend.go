@@ -235,17 +235,12 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 		return errors.Wrap(err, "error getting latest checkpoint sequence")
 	}
 
-	// We don't allow starting the online mode starting with more than two
-	// checkpoints from now. Such requests are likely buggy.
-	// We should allow only one checkpoint here but sometimes there are up to a
-	// minute delays when updating root HAS by stellar-core.
-	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
-	maxLedger := latestCheckpointSequence + twoCheckPointsLength
-	if from > maxLedger {
-		return errors.Errorf(
-			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
-			latestCheckpointSequence,
-		)
+	// We don't allow starting the online mode starting with a sequence greater
+	// than the latest checkpoint. Such requests are likely buggy.
+	// Instead we start preparing the range from the latest checkpoint and then
+	// we seek ahead to the desired checkpoint in PrepareRange().
+	if from > latestCheckpointSequence {
+		from = latestCheckpointSequence
 	}
 
 	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
@@ -375,9 +370,13 @@ func (c *CaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange Range
 		return nil
 	}
 
-	_, err := c.GetLedger(ctx, ledgerRange.from)
-	if err != nil {
-		return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
+	// the prepared range might be below ledgerRange.from so we
+	// need to seek ahead until we reach ledgerRange.from
+	for seq := c.prepared.from; seq <= ledgerRange.from; seq++ {
+		_, err := c.GetLedger(ctx, seq)
+		if err != nil {
+			return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
+		}
 	}
 
 	return nil
