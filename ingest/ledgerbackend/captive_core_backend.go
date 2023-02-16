@@ -232,39 +232,9 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 }
 
 func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, from uint32) error {
-	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
-	if err != nil {
-		return errors.Wrap(err, "error getting latest checkpoint sequence")
-	}
-
-	// We don't allow starting the online mode starting with more than two
-	// checkpoints from now. Such requests are likely buggy.
-	// We should allow only one checkpoint here but sometimes there are up to a
-	// minute delays when updating root HAS by stellar-core.
-	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
-	maxLedger := latestCheckpointSequence + twoCheckPointsLength
-	if from > maxLedger {
-		return errors.Errorf(
-			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
-			latestCheckpointSequence,
-		)
-	}
-
 	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
 	if err != nil {
-		// If from is ahead of the latest checkpoint and we need to obtain
-		// the ledgerHash from the history archives we will not be able to do
-		// so because the history archives only contains ledgers up to the latest
-		// checkpoint. In this case, we'll try to start from the latest checkpoint
-		// ledger so that we're able to obtain the ledgerHash successfully.
-		// Then we will seek ahead to the desired ledger in PrepareRange().
-		if from > latestCheckpointSequence {
-			from = latestCheckpointSequence
-			runFrom, ledgerHash, err = c.runFromParams(ctx, from)
-		}
-		if err != nil {
-			return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
-		}
+		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
 	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
@@ -287,6 +257,23 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
+	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
+	if err != nil {
+		return 0, "", errors.Wrap(err, "error getting latest checkpoint sequence")
+	}
+
+	// We don't allow starting the online mode starting with more than two
+	// checkpoints from now. Such requests are likely buggy.
+	// We should allow only one checkpoint here but sometimes there are up to a
+	// minute delays when updating root HAS by stellar-core.
+	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
+	maxLedger := latestCheckpointSequence + twoCheckPointsLength
+	if from > maxLedger {
+		return 0, "", errors.Errorf(
+			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
+			latestCheckpointSequence,
+		)
+	}
 
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
@@ -297,7 +284,7 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		return 0, "", err
 	}
 
-	if from <= 63 {
+	if from <= c.checkpointManager.GetCheckpoint(0) {
 		// The line below is to support a special case for streaming ledger 2
 		// that works for all other ledgers <= 63 (fast-forward).
 		// We can't set from=2 because Stellar-Core will not allow starting from 1.
@@ -322,6 +309,17 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		if exists {
 			return runFrom, ledgerHash, nil
 		}
+	}
+
+	// If from is ahead of the latest checkpoint and we need to obtain
+	// the ledgerHash from the history archives we will not be able to do
+	// so because the history archives only contains ledgers up to the latest
+	// checkpoint. In this case, we'll try to start from the latest checkpoint
+	// ledger so that we're able to obtain the ledgerHash successfully.
+	// Then we will seek ahead to the desired ledger in PrepareRange().
+	if latestCheckpointSequence > 0 && from > latestCheckpointSequence {
+		from = latestCheckpointSequence
+		runFrom = from - 1
 	}
 
 	ledgerHeader, err := c.archive.GetLedgerHeader(from)
