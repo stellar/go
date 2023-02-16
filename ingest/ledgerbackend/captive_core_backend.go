@@ -235,20 +235,37 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 		return errors.Wrap(err, "error getting latest checkpoint sequence")
 	}
 
-	// We don't allow starting the online mode starting with a sequence greater
-	// than the latest checkpoint. Such requests are likely buggy.
-	// Instead we start preparing the range from the latest checkpoint and then
-	// we seek ahead to the desired checkpoint in PrepareRange().
-	if from > latestCheckpointSequence {
-		from = latestCheckpointSequence
+	// We don't allow starting the online mode starting with more than two
+	// checkpoints from now. Such requests are likely buggy.
+	// We should allow only one checkpoint here but sometimes there are up to a
+	// minute delays when updating root HAS by stellar-core.
+	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
+	maxLedger := latestCheckpointSequence + twoCheckPointsLength
+	if from > maxLedger {
+		return errors.Errorf(
+			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
+			latestCheckpointSequence,
+		)
+	}
+
+	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
+	if err != nil {
+		// If from is ahead of the latest checkpoint and we need to obtain
+		// the ledgerHash from the history archives we will not be able to do
+		// so because the history archives only contains ledgers up to the latest
+		// checkpoint. In this case, we'll try to start from the latest checkpoint
+		// ledger so that we're able to obtain the ledgerHash successfully.
+		// Then we will seek ahead to the desired ledger in PrepareRange().
+		if from > latestCheckpointSequence {
+			from = latestCheckpointSequence
+			runFrom, ledgerHash, err = c.runFromParams(ctx, from)
+		}
+		if err != nil {
+			return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
+		}
 	}
 
 	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
-	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
-	if err != nil {
-		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
-	}
-
 	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
