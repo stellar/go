@@ -17,6 +17,9 @@ import (
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 
+// ErrCannotStartFromGenesis is returned when attempting to prepare a range from ledger 1
+var ErrCannotStartFromGenesis = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+
 func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	r := c.checkpointManager.GetCheckpointRange(ledger)
 	if r.Low <= 1 {
@@ -257,6 +260,23 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
+	if from == 1 {
+		// Trying to start-from 1 results in an error from Stellar-Core:
+		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
+		// TODO maybe we can fix it by generating 1st ledger meta
+		// like GenesisLedgerStateReader?
+		return 0, "", ErrCannotStartFromGenesis
+	}
+
+	if from <= c.checkpointManager.GetCheckpoint(0) {
+		// The line below is to support a special case for streaming ledger 2
+		// that works for all other ledgers <= 63 (fast-forward).
+		// We can't set from=2 because Stellar-Core will not allow starting from 1.
+		// To solve this we start from 3 and exploit the fast that Stellar-Core
+		// will stream data from 2 for the first checkpoint.
+		from = 3
+	}
+
 	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
 	if err != nil {
 		return 0, "", errors.Wrap(err, "error getting latest checkpoint sequence")
@@ -273,23 +293,6 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
 			latestCheckpointSequence,
 		)
-	}
-
-	if from == 1 {
-		// Trying to start-from 1 results in an error from Stellar-Core:
-		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
-		// TODO maybe we can fix it by generating 1st ledger meta
-		// like GenesisLedgerStateReader?
-		return 0, "", errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-	}
-
-	if from <= c.checkpointManager.GetCheckpoint(0) {
-		// The line below is to support a special case for streaming ledger 2
-		// that works for all other ledgers <= 63 (fast-forward).
-		// We can't set from=2 because Stellar-Core will not allow starting from 1.
-		// To solve this we start from 3 and exploit the fast that Stellar-Core
-		// will stream data from 2 for the first checkpoint.
-		from = 3
 	}
 
 	runFrom := from - 1
