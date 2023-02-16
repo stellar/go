@@ -280,8 +280,7 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		err := errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-		return 0, "", err
+		return 0, "", errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
 	}
 
 	if from <= c.checkpointManager.GetCheckpoint(0) {
@@ -300,7 +299,6 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 	}
 
 	if c.ledgerHashStore != nil {
-		var exists bool
 		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
 		if err != nil {
 			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
