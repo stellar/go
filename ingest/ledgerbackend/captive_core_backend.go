@@ -299,7 +299,9 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 	}
 
 	if c.ledgerHashStore != nil {
-		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
+		var ledgerHash string
+		var exists bool
+		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
 		if err != nil {
 			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
 			return 0, "", err
