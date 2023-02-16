@@ -413,6 +413,47 @@ func TestCaptivePrepareRange_FromIsAheadOfRootHAS(t *testing.T) {
 	mockRunner.AssertExpectations(t)
 }
 
+func TestCaptivePrepareRangeWithDB_FromIsAheadOfRootHAS(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := &stellarCoreRunnerMock{}
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(64),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		useDB:   true,
+		stellarCoreRunnerFactory: func() stellarCoreRunnerInterface {
+			return mockRunner
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+	}
+
+	err := captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
+	assert.EqualError(t, err, "error starting prepare range: opening subprocess: from sequence: 100 is greater than max available in history archives: 64")
+
+	err = captiveBackend.PrepareRange(ctx, UnboundedRange(193))
+	assert.EqualError(t, err, "error starting prepare range: opening subprocess: trying to start online mode too far (latest checkpoint=64), only two checkpoints in the future allowed")
+
+	metaChan := make(chan metaResult, 100)
+	meta := buildLedgerCloseMeta(testLedgerHeader{sequence: 100})
+	metaChan <- metaResult{
+		LedgerCloseMeta: &meta,
+	}
+	mockRunner.On("runFrom", uint32(99), "").Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+
+	assert.NoError(t, captiveBackend.PrepareRange(ctx, UnboundedRange(100)))
+
+	mockArchive.AssertExpectations(t)
+	mockRunner.AssertExpectations(t)
+}
+
 func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockArchive := &historyarchive.MockArchive{}

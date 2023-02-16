@@ -70,6 +70,7 @@ type CaptiveStellarCore struct {
 	archive           historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
 	ledgerHashStore   TrustedLedgerHashStore
+	useDB             bool
 
 	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
 	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
@@ -171,6 +172,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	c := &CaptiveStellarCore{
 		archive:           &archivePool,
 		ledgerHashStore:   config.LedgerHashStore,
+		useDB:             config.UseDB,
 		cancel:            cancel,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -305,6 +307,11 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 	}
 
 	runFrom := from - 1
+	if c.useDB {
+		// when running captive core with a db the ledger hash is not required
+		return runFrom, "", nil
+	}
+
 	if c.ledgerHashStore != nil {
 		var exists bool
 		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
