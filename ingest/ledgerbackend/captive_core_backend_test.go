@@ -355,7 +355,7 @@ func TestCaptivePrepareRange_ErrGettingRootHAS(t *testing.T) {
 	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error getting latest checkpoint sequence: error getting root HAS: transient error")
 
 	err = captiveBackend.PrepareRange(ctx, UnboundedRange(100))
-	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error getting latest checkpoint sequence: error getting root HAS: transient error")
+	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error calculating ledger and hash for stellar-core run: error getting latest checkpoint sequence: error getting root HAS: transient error")
 
 	mockArchive.AssertExpectations(t)
 }
@@ -370,20 +370,24 @@ func TestCaptivePrepareRange_FromIsAheadOfRootHAS(t *testing.T) {
 		Return(historyarchive.HistoryArchiveState{
 			CurrentLedger: uint32(64),
 		}, nil)
-	mockArchive.
-		On("GetLedgerHeader", uint32(64)).
-		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
 		stellarCoreRunnerFactory: func() stellarCoreRunnerInterface {
 			return mockRunner
 		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
 	assert.EqualError(t, err, "error starting prepare range: opening subprocess: from sequence: 100 is greater than max available in history archives: 64")
 
+	err = captiveBackend.PrepareRange(ctx, UnboundedRange(193))
+	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error calculating ledger and hash for stellar-core run: trying to start online mode too far (latest checkpoint=64), only two checkpoints in the future allowed")
+
+	mockArchive.
+		On("GetLedgerHeader", uint32(64)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 	metaChan := make(chan metaResult, 100)
 	// Core will actually start with the last checkpoint before the from ledger
 	// and then rewind to the `from` ledger.
@@ -395,6 +399,47 @@ func TestCaptivePrepareRange_FromIsAheadOfRootHAS(t *testing.T) {
 	}
 
 	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+
+	assert.NoError(t, captiveBackend.PrepareRange(ctx, UnboundedRange(100)))
+
+	mockArchive.AssertExpectations(t)
+	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptivePrepareRangeWithDB_FromIsAheadOfRootHAS(t *testing.T) {
+	ctx := context.Background()
+	mockRunner := &stellarCoreRunnerMock{}
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(64),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		useDB:   true,
+		stellarCoreRunnerFactory: func() stellarCoreRunnerInterface {
+			return mockRunner
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+	}
+
+	err := captiveBackend.PrepareRange(ctx, BoundedRange(100, 200))
+	assert.EqualError(t, err, "error starting prepare range: opening subprocess: from sequence: 100 is greater than max available in history archives: 64")
+
+	err = captiveBackend.PrepareRange(ctx, UnboundedRange(193))
+	assert.EqualError(t, err, "error starting prepare range: opening subprocess: error calculating ledger and hash for stellar-core run: trying to start online mode too far (latest checkpoint=64), only two checkpoints in the future allowed")
+
+	metaChan := make(chan metaResult, 100)
+	meta := buildLedgerCloseMeta(testLedgerHeader{sequence: 100})
+	metaChan <- metaResult{
+		LedgerCloseMeta: &meta,
+	}
+	mockRunner.On("runFrom", uint32(99), "").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -1216,6 +1261,12 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 			},
 		}, nil)
 
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(4095),
+		}, nil)
+
 	mockLedgerHashStore := &MockLedgerHashStore{}
 	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(1049)).
 		Return("", false, fmt.Errorf("transient error")).Once()
@@ -1305,6 +1356,11 @@ func TestCaptiveRunFromParams(t *testing.T) {
 					Header: xdr.LedgerHeader{
 						PreviousLedgerHash: xdr.Hash{1, 1, 1, 1},
 					},
+				}, nil)
+			mockArchive.
+				On("GetRootHAS").
+				Return(historyarchive.HistoryArchiveState{
+					CurrentLedger: uint32(255),
 				}, nil)
 
 			captiveBackend := CaptiveStellarCore{
@@ -1461,7 +1517,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 		}, nil).Once()
 
 	mockLedgerHashStore := &MockLedgerHashStore{}
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(254)).
+	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(299)).
 		Return("", false, nil).Once()
 
 	captiveBackend := CaptiveStellarCore{

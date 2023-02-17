@@ -17,6 +17,9 @@ import (
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 
+// ErrCannotStartFromGenesis is returned when attempting to prepare a range from ledger 1
+var ErrCannotStartFromGenesis = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+
 func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	r := c.checkpointManager.GetCheckpointRange(ledger)
 	if r.Low <= 1 {
@@ -70,6 +73,7 @@ type CaptiveStellarCore struct {
 	archive           historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
 	ledgerHashStore   TrustedLedgerHashStore
+	useDB             bool
 
 	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
 	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
@@ -171,6 +175,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	c := &CaptiveStellarCore{
 		archive:           &archivePool,
 		ledgerHashStore:   config.LedgerHashStore,
+		useDB:             config.UseDB,
 		cancel:            cancel,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -230,25 +235,12 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 }
 
 func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, from uint32) error {
-	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
-	if err != nil {
-		return errors.Wrap(err, "error getting latest checkpoint sequence")
-	}
-
-	// We don't allow starting the online mode starting with a sequence greater
-	// than the latest checkpoint. Such requests are likely buggy.
-	// Instead we start preparing the range from the latest checkpoint and then
-	// we seek ahead to the desired checkpoint in PrepareRange().
-	if from > latestCheckpointSequence {
-		from = latestCheckpointSequence
-	}
-
-	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
 	runFrom, ledgerHash, err := c.runFromParams(ctx, from)
 	if err != nil {
 		return errors.Wrap(err, "error calculating ledger and hash for stellar-core run")
 	}
 
+	c.stellarCoreRunner = c.stellarCoreRunnerFactory()
 	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
@@ -268,17 +260,15 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (uint32, string, error) {
-
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
-		err := errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
-		return 0, "", err
+		return 0, "", ErrCannotStartFromGenesis
 	}
 
-	if from <= 63 {
+	if from <= c.checkpointManager.GetCheckpoint(0) {
 		// The line below is to support a special case for streaming ledger 2
 		// that works for all other ledgers <= 63 (fast-forward).
 		// We can't set from=2 because Stellar-Core will not allow starting from 1.
@@ -287,10 +277,34 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		from = 3
 	}
 
+	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
+	if err != nil {
+		return 0, "", errors.Wrap(err, "error getting latest checkpoint sequence")
+	}
+
+	// We don't allow starting the online mode starting with more than two
+	// checkpoints from now. Such requests are likely buggy.
+	// We should allow only one checkpoint here but sometimes there are up to a
+	// minute delays when updating root HAS by stellar-core.
+	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
+	maxLedger := latestCheckpointSequence + twoCheckPointsLength
+	if from > maxLedger {
+		return 0, "", errors.Errorf(
+			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
+			latestCheckpointSequence,
+		)
+	}
+
 	runFrom := from - 1
+	if c.useDB {
+		// when running captive core with a db the ledger hash is not required
+		return runFrom, "", nil
+	}
+
 	if c.ledgerHashStore != nil {
+		var ledgerHash string
 		var exists bool
-		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
+		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(ctx, runFrom)
 		if err != nil {
 			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
 			return 0, "", err
@@ -298,6 +312,17 @@ func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (ui
 		if exists {
 			return runFrom, ledgerHash, nil
 		}
+	}
+
+	// If from is ahead of the latest checkpoint and we need to obtain
+	// the ledgerHash from the history archives we will not be able to do
+	// so because the history archives only contains ledgers up to the latest
+	// checkpoint. In this case, we'll try to start from the latest checkpoint
+	// ledger so that we're able to obtain the ledgerHash successfully.
+	// Then we will seek ahead to the desired ledger in PrepareRange().
+	if latestCheckpointSequence > 0 && from > latestCheckpointSequence {
+		from = latestCheckpointSequence
+		runFrom = from - 1
 	}
 
 	ledgerHeader, err := c.archive.GetLedgerHeader(from)
