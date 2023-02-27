@@ -10,7 +10,6 @@ require (
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.39.5
-	github.com/creachadair/jrpc2 v0.41.1
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
 	github.com/go-chi/chi v4.0.3+incompatible
@@ -52,10 +51,7 @@ require (
 	gopkg.in/tylerb/graceful.v1 v1.2.13
 )
 
-require (
-	github.com/andybalholm/brotli v1.0.4 // indirect
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-)
+require github.com/andybalholm/brotli v1.0.4 // indirect
 
 require (
 	cloud.google.com/go v0.84.0 // indirect
