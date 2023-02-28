@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"github.com/stellar/go/amount"
+	"github.com/stellar/go/keypair"
 	"math"
 	"sort"
 	"testing"
@@ -27,13 +29,183 @@ func TestEmptyAssetStatSet(t *testing.T) {
 func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
 	all, m := set.All()
 	assert.Empty(t, m)
+	assertAssetStatsAreEqual(t, all, expected)
+}
+
+func assertAssetStatsAreEqual(t *testing.T, all []history.ExpAssetStat, expected []history.ExpAssetStat) {
 	assert.Len(t, all, len(expected))
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].AssetCode < all[j].AssetCode
 	})
 	for i, got := range all {
-		assert.Equal(t, expected[i], got)
+		assert.True(t, expected[i].Equals(got))
 	}
+}
+
+func assertAllFromSnapshotEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
+	all, err := set.AllFromSnapshot()
+	assert.NoError(t, err)
+	assertAssetStatsAreEqual(t, all, expected)
+}
+
+func TestAddContractData(t *testing.T) {
+	xlmID, xlmAsset, err := contractIDForAsset(true, "", "", "passphrase")
+	assert.NoError(t, err)
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcID, usdcAsset, err := contractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
+	assert.NoError(t, err)
+	etherIssuer := keypair.MustRandom().Address()
+	etherID, etherAsset, err := contractIDForAsset(false, "ETHER", etherIssuer, "passphrase")
+	assert.NoError(t, err)
+
+	set := NewAssetStatSet("passphrase")
+
+	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: xlmContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: usdcContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	etherContractData, err := AssetToContractData(false, "ETHER", etherIssuer, etherID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: etherContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(
+		t,
+		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("ETHER", etherIssuer).ToTrustLineAsset(),
+			Balance:   1,
+			Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+		})),
+	)
+
+	all, m := set.All()
+	assert.Len(t, all, 1)
+	etherAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
+		AssetCode:   "ETHER",
+		AssetIssuer: etherIssuer,
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+		},
+		Amount:      "1",
+		NumAccounts: 1,
+	}
+	assert.True(t, all[0].Equals(etherAssetStat))
+
+	assert.Len(t, m, 3)
+	assert.True(t, m[xlmID].Equals(xlmAsset))
+	assert.True(t, m[usdcID].Equals(usdcAsset))
+	assert.True(t, m[etherID].Equals(etherAsset))
+
+	xlmAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeNative,
+		AssetCode:   "",
+		AssetIssuer: "",
+		Accounts:    history.ExpAssetStatAccounts{},
+		Balances:    newAssetStatBalance().ConvertToHistoryObject(),
+		Amount:      amount.String(0),
+		NumAccounts: 0,
+		ContractID:  nil,
+	}
+	usdcAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   "USDC",
+		AssetIssuer: usdcIssuer,
+		Accounts:    history.ExpAssetStatAccounts{},
+		Balances:    newAssetStatBalance().ConvertToHistoryObject(),
+		Amount:      amount.String(0),
+		NumAccounts: 0,
+		ContractID:  nil,
+	}
+
+	xlmAssetStat.SetContractID(xlmID)
+	etherAssetStat.SetContractID(etherID)
+	usdcAssetStat.SetContractID(usdcID)
+
+	assertAllFromSnapshotEquals(t, set, []history.ExpAssetStat{
+		xlmAssetStat,
+		etherAssetStat,
+		usdcAssetStat,
+	})
+}
+
+func TestRemoveContractData(t *testing.T) {
+	xlmID, _, err := contractIDForAsset(true, "", "", "passphrase")
+	assert.NoError(t, err)
+	set := NewAssetStatSet("passphrase")
+
+	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: xlmContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Len(t, m, 1)
+	asset, ok := m[xlmID]
+	assert.True(t, ok)
+	assert.Nil(t, asset)
+}
+
+func TestChangeContractData(t *testing.T) {
+	xlmID, _, err := contractIDForAsset(true, "", "", "passphrase")
+	assert.NoError(t, err)
+
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcID, _, err := contractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
+	assert.NoError(t, err)
+
+	set := NewAssetStatSet("passphrase")
+
+	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	assert.NoError(t, err)
+	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: xlmContractData,
+		},
+		Post: &xdr.LedgerEntry{
+			Data: usdcContractData,
+		},
+	})
+	assert.EqualError(t, err, "asset contract changed asset")
 }
 
 func TestAddNativeClaimableBalance(t *testing.T) {

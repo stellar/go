@@ -360,7 +360,7 @@ func (s AssetStatSet) AddContractData(change ingest.Change) error {
 		}
 		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
 		if postAsset == nil || !(*postAsset).Equals(*asset) {
-			return fmt.Errorf("asset contract changed asset")
+			return ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
 		}
 	} else if change.Post != nil {
 		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
