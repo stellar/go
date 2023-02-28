@@ -88,7 +88,8 @@ func TestAssetStatContracts(t *testing.T) {
 
 	contractID[0] = 0
 	for i := 0; i < 2; i++ {
-		assetStat, err := q.GetAssetStatByContract(tt.Ctx, contractID)
+		var assetStat ExpAssetStat
+		assetStat, err = q.GetAssetStatByContract(tt.Ctx, contractID)
 		tt.Assert.NoError(err)
 		tt.Assert.True(assetStat.Equals(assetStats[i]))
 		contractID[0]++
@@ -120,7 +121,8 @@ func TestAssetStatContracts(t *testing.T) {
 	assetStats[2] = usd
 	contractID = [32]byte{}
 	for i := 0; i < 3; i++ {
-		assetStat, err := q.GetAssetStatByContract(tt.Ctx, contractID)
+		var assetStat ExpAssetStat
+		assetStat, err = q.GetAssetStatByContract(tt.Ctx, contractID)
 		tt.Assert.NoError(err)
 		tt.Assert.True(assetStat.Equals(assetStats[i]))
 		contractID[0]++
