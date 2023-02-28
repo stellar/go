@@ -541,6 +541,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	// TODO: add accounts data, trustlines and asset stats
 	clonedQ.MockQData.On("CountAccountsData", s.ctx).Return(0, nil).Once()
 	clonedQ.MockQAssetStats.On("CountTrustLines", s.ctx).Return(0, nil).Once()
+	clonedQ.MockQAssetStats.On("CountContractIDs", s.ctx).Return(0, nil).Once()
 	clonedQ.MockQAssetStats.On("GetAssetStats", s.ctx, "", "", db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
@@ -602,7 +603,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
-	set := processors.AssetStatSet{}
+	set := processors.NewAssetStatSet(s.system.config.NetworkPassphrase)
 
 	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 	set.AddTrustline(

@@ -13,23 +13,20 @@ import (
 )
 
 func TestEmptyAssetStatSet(t *testing.T) {
-	set := AssetStatSet{}
-	if all := set.All(); len(all) != 0 {
-		t.Fatalf("expected empty list but got %v", all)
+	set := NewAssetStatSet("")
+	if all, m := set.All(); len(all) != 0 || len(m) != 0 {
+		t.Fatalf("expected empty list but got %v %v", all, m)
 	}
-
-	_, ok := set.Remove(
-		xdr.AssetTypeAssetTypeCreditAlphanum4,
-		"USD",
-		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
-	)
-	if ok {
-		t.Fatal("expected remove to return false")
+	if all, err := set.AllFromSnapshot(); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	} else if len(all) != 0 {
+		t.Fatalf("expected empty list but got %v", all)
 	}
 }
 
 func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
-	all := set.All()
+	all, m := set.All()
+	assert.Empty(t, m)
 	assert.Len(t, all, len(expected))
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].AssetCode < all[j].AssetCode
@@ -40,7 +37,7 @@ func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAsset
 }
 
 func TestAddNativeClaimableBalance(t *testing.T) {
-	set := AssetStatSet{}
+	set := NewAssetStatSet("")
 	claimableBalance := xdr.ClaimableBalanceEntry{
 		BalanceId: xdr.ClaimableBalanceId{},
 		Claimants: nil,
@@ -56,7 +53,9 @@ func TestAddNativeClaimableBalance(t *testing.T) {
 			},
 		},
 	))
-	assert.Empty(t, set.All())
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
 }
 
 func trustlineChange(pre, post *xdr.TrustLineEntry) ingest.Change {
@@ -79,7 +78,7 @@ func trustlineChange(pre, post *xdr.TrustLineEntry) ingest.Change {
 }
 
 func TestAddPoolShareTrustline(t *testing.T) {
-	set := AssetStatSet{}
+	set := NewAssetStatSet("")
 	assert.NoError(
 		t,
 		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
@@ -93,11 +92,13 @@ func TestAddPoolShareTrustline(t *testing.T) {
 		},
 		)),
 	)
-	assert.Empty(t, set.All())
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
 }
 
-func TestAddAndRemoveAssetStats(t *testing.T) {
-	set := AssetStatSet{}
+func TestAddAssetStats(t *testing.T) {
+	set := NewAssetStatSet("")
 	eur := "EUR"
 	eurAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -241,22 +242,10 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		},
 	}
 	assertAllEquals(t, set, expected)
-
-	for i, assetStat := range expected {
-		removed, ok := set.Remove(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
-		if !ok {
-			t.Fatal("expected remove to return true")
-		}
-		if removed != assetStat {
-			t.Fatalf("expected removed asset stat to be %v but got %v", assetStat, removed)
-		}
-
-		assertAllEquals(t, set, expected[i+1:])
-	}
 }
 
 func TestOverflowAssetStatSet(t *testing.T) {
-	set := AssetStatSet{}
+	set := NewAssetStatSet("")
 	eur := "EUR"
 	err := set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
@@ -267,9 +256,12 @@ func TestOverflowAssetStatSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	all := set.All()
+	all, m := set.All()
 	if len(all) != 1 {
 		t.Fatalf("expected list of 1 asset stat but got %v", all)
+	}
+	if len(m) != 0 {
+		t.Fatalf("expected contract id map to be empty but got  %v", m)
 	}
 
 	eurAssetStat := history.ExpAssetStat{
@@ -302,9 +294,12 @@ func TestOverflowAssetStatSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	all = set.All()
+	all, m = set.All()
 	if len(all) != 1 {
 		t.Fatalf("expected list of 1 asset stat but got %v", all)
+	}
+	if len(m) != 0 {
+		t.Fatalf("expected contract id map to be empty but got  %v", m)
 	}
 
 	eurAssetStat = history.ExpAssetStat{

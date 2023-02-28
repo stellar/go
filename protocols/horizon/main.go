@@ -166,7 +166,8 @@ type AssetStat struct {
 	} `json:"_links"`
 
 	base.Asset
-	PT string `json:"paging_token"`
+	PT         string `json:"paging_token"`
+	ContractID string `json:"contract_id,omitempty"`
 	// Action needed in release: horizon-v3.0.0: deprecated field
 	NumAccounts          int32 `json:"num_accounts"`
 	NumClaimableBalances int32 `json:"num_claimable_balances"`

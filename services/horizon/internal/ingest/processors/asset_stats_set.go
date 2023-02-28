@@ -1,6 +1,9 @@
 package processors
 
 import (
+	"encoding/hex"
+	"fmt"
+	"github.com/stellar/go/amount"
 	"math/big"
 
 	"github.com/stellar/go/ingest"
@@ -28,6 +31,16 @@ type assetStatBalances struct {
 	ClaimableBalances               *big.Int
 	LiquidityPools                  *big.Int
 	Unauthorized                    *big.Int
+}
+
+func newAssetStatBalance() assetStatBalances {
+	return assetStatBalances{
+		Authorized:                      big.NewInt(0),
+		AuthorizedToMaintainLiabilities: big.NewInt(0),
+		ClaimableBalances:               big.NewInt(0),
+		LiquidityPools:                  big.NewInt(0),
+		Unauthorized:                    big.NewInt(0),
+	}
 }
 
 func (a *assetStatBalances) Parse(b *history.ExpAssetStatBalances) error {
@@ -106,7 +119,20 @@ func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
 }
 
 // AssetStatSet represents a collection of asset stats
-type AssetStatSet map[assetStatKey]*assetStatValue
+type AssetStatSet struct {
+	classicAssetStats map[assetStatKey]*assetStatValue
+	contractToAsset   map[[32]byte]*xdr.Asset
+	networkPassphrase string
+}
+
+// NewAssetStatSet constructs a new AssetStatSet instance
+func NewAssetStatSet(networkPassphrase string) AssetStatSet {
+	return AssetStatSet{
+		classicAssetStats: map[assetStatKey]*assetStatValue{},
+		contractToAsset:   map[[32]byte]*xdr.Asset{},
+		networkPassphrase: networkPassphrase,
+	}
+}
 
 type delta struct {
 	Authorized                      int64
@@ -142,16 +168,10 @@ func (s AssetStatSet) addDelta(asset xdr.Asset, deltaBalances, deltaAccounts del
 		return errors.Wrap(err, "could not extract asset info from trustline")
 	}
 
-	current, ok := s[key]
+	current, ok := s.classicAssetStats[key]
 	if !ok {
-		current = &assetStatValue{assetStatKey: key, balances: assetStatBalances{
-			Authorized:                      big.NewInt(0),
-			AuthorizedToMaintainLiabilities: big.NewInt(0),
-			ClaimableBalances:               big.NewInt(0),
-			LiquidityPools:                  big.NewInt(0),
-			Unauthorized:                    big.NewInt(0),
-		}}
-		s[key] = current
+		current = &assetStatValue{assetStatKey: key, balances: newAssetStatBalance()}
+		s.classicAssetStats[key] = current
 	}
 
 	current.accounts.Authorized += int32(deltaAccounts.Authorized)
@@ -171,7 +191,7 @@ func (s AssetStatSet) addDelta(asset xdr.Asset, deltaBalances, deltaAccounts del
 	//  OR
 	// numAccounts == 0 && amount != 0 (ex. issuer issued an asset)
 	if current.balances.IsZero() && current.accounts.IsZero() {
-		delete(s, key)
+		delete(s.classicAssetStats, key)
 	}
 
 	return nil
@@ -325,24 +345,97 @@ func (s AssetStatSet) AddClaimableBalance(change ingest.Change) error {
 	return nil
 }
 
-// Remove deletes an asset stat from the set
-func (s AssetStatSet) Remove(assetType xdr.AssetType, assetCode string, assetIssuer string) (history.ExpAssetStat, bool) {
-	key := assetStatKey{assetType: assetType, assetIssuer: assetIssuer, assetCode: assetCode}
-	value, ok := s[key]
-	if !ok {
-		return history.ExpAssetStat{}, false
+// AddContractData updates the set to account for how a given contract data entry has changed.
+// change must be a xdr.LedgerEntryTypeContractData type.
+func (s AssetStatSet) AddContractData(change ingest.Change) error {
+	if change.Pre != nil {
+		asset := AssetFromContractData(*change.Pre, s.networkPassphrase)
+		if asset == nil {
+			return nil
+		}
+		contractID := change.Pre.Data.MustContractData().ContractId
+		if change.Post == nil {
+			s.contractToAsset[contractID] = nil
+			return nil
+		}
+		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
+		if postAsset == nil || !(*postAsset).Equals(*asset) {
+			return fmt.Errorf("asset contract changed asset")
+		}
+	} else if change.Post != nil {
+		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
+		if asset == nil {
+			return nil
+		}
+		contractID := change.Post.Data.MustContractData().ContractId
+		s.contractToAsset[contractID] = asset
 	}
-
-	delete(s, key)
-
-	return value.ConvertToHistoryObject(), true
+	return nil
 }
 
 // All returns a list of all `history.ExpAssetStat` contained within the set
-func (s AssetStatSet) All() []history.ExpAssetStat {
-	assetStats := make([]history.ExpAssetStat, 0, len(s))
-	for _, value := range s {
+// along with all contract id attribution changes in the set.
+func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset) {
+	assetStats := make([]history.ExpAssetStat, 0, len(s.classicAssetStats))
+	for _, value := range s.classicAssetStats {
 		assetStats = append(assetStats, value.ConvertToHistoryObject())
 	}
-	return assetStats
+	contractToAsset := make(map[[32]byte]*xdr.Asset, len(s.contractToAsset))
+	for key, val := range s.contractToAsset {
+		contractToAsset[key] = val
+	}
+	return assetStats, contractToAsset
+}
+
+// AllFromSnapshot returns a list of all `history.ExpAssetStat` contained within the set.
+// AllFromSnapshot should only be invoked when the AssetStatSet has been derived from ledger
+// entry changes consisting of only inserts (no updates) reflecting the current state of
+// the ledger without any missing entries (e.g. history archives).
+func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
+	assetStatsDeltas, contractToAsset := s.All()
+
+	for i, assetStatDelta := range assetStatsDeltas {
+		contractID, _, err := contractIDForAsset(
+			assetStatDelta.AssetType == xdr.AssetTypeAssetTypeNative,
+			assetStatDelta.AssetCode,
+			assetStatDelta.AssetIssuer,
+			s.networkPassphrase,
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot compute contract id for asset")
+		}
+		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
+			return nil, ingest.NewStateError(fmt.Errorf(
+				"unexpected contract data removal in history archives: %s",
+				hex.EncodeToString(contractID[:]),
+			))
+		} else if ok {
+			assetStatDelta.SetContractID(contractID)
+			assetStatsDeltas[i] = assetStatDelta
+			delete(contractToAsset, contractID)
+		}
+	}
+	for contractID, asset := range contractToAsset {
+		if asset == nil {
+			return nil, ingest.NewStateError(fmt.Errorf(
+				"unexpected contract data removal in history archives: %s",
+				hex.EncodeToString(contractID[:]),
+			))
+		}
+		var assetType xdr.AssetType
+		var assetCode, assetIssuer string
+		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
+		row := history.ExpAssetStat{
+			AssetType:   assetType,
+			AssetCode:   assetCode,
+			AssetIssuer: assetIssuer,
+			Accounts:    history.ExpAssetStatAccounts{},
+			Balances:    newAssetStatBalance().ConvertToHistoryObject(),
+			Amount:      amount.String(0),
+			NumAccounts: 0,
+		}
+		row.SetContractID(contractID)
+		assetStatsDeltas = append(assetStatsDeltas, row)
+	}
+	return assetStatsDeltas, nil
 }

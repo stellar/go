@@ -2,6 +2,7 @@ package resourceadapter
 
 import (
 	"context"
+	"encoding/hex"
 	"strings"
 
 	"github.com/stellar/go/amount"
@@ -20,6 +21,10 @@ func PopulateAssetStat(
 	row history.ExpAssetStat,
 	issuer history.AccountEntry,
 ) (err error) {
+	if row.ContractID != nil {
+		// TODO encode with strkey once it has support for contract ids
+		res.ContractID = hex.EncodeToString(*row.ContractID)
+	}
 	res.Asset.Type = xdr.AssetTypeToString[row.AssetType]
 	res.Asset.Code = row.AssetCode
 	res.Asset.Issuer = row.AssetIssuer

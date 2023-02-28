@@ -27,7 +27,7 @@ type AssetStatsProcessorTestSuiteState struct {
 func (s *AssetStatsProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
-	s.processor = NewAssetStatsProcessor(s.mockQ, false)
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false)
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TearDownTest() {
@@ -195,7 +195,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
 
-	s.processor = NewAssetStatsProcessor(s.mockQ, true)
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", true)
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TearDownTest() {

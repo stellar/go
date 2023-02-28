@@ -3,7 +3,8 @@ package processors
 import (
 	"context"
 	"database/sql"
-
+	"encoding/hex"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -11,11 +12,11 @@ import (
 )
 
 type AssetStatsProcessor struct {
-	assetStatsQ history.QAssetStats
-
+	assetStatsQ         history.QAssetStats
 	cache               *ingest.ChangeCompactor
 	assetStatSet        AssetStatSet
 	useLedgerEntryCache bool
+	networkPassphrase   string
 }
 
 // NewAssetStatsProcessor constructs a new AssetStatsProcessor instance.
@@ -25,11 +26,13 @@ type AssetStatsProcessor struct {
 // (batch inserting).
 func NewAssetStatsProcessor(
 	assetStatsQ history.QAssetStats,
+	networkPassphrase string,
 	useLedgerEntryCache bool,
 ) *AssetStatsProcessor {
 	p := &AssetStatsProcessor{
 		assetStatsQ:         assetStatsQ,
 		useLedgerEntryCache: useLedgerEntryCache,
+		networkPassphrase:   networkPassphrase,
 	}
 	p.reset()
 	return p
@@ -37,13 +40,14 @@ func NewAssetStatsProcessor(
 
 func (p *AssetStatsProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
-	p.assetStatSet = AssetStatSet{}
+	p.assetStatSet = NewAssetStatSet(p.networkPassphrase)
 }
 
 func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeLiquidityPool &&
 		change.Type != xdr.LedgerEntryTypeClaimableBalance &&
-		change.Type != xdr.LedgerEntryTypeTrustline {
+		change.Type != xdr.LedgerEntryTypeTrustline &&
+		change.Type != xdr.LedgerEntryTypeContractData {
 		return nil
 	}
 	if p.useLedgerEntryCache {
@@ -60,6 +64,8 @@ func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.C
 		return p.assetStatSet.AddClaimableBalance(change)
 	case xdr.LedgerEntryTypeTrustline:
 		return p.assetStatSet.AddTrustline(change)
+	case xdr.LedgerEntryTypeContractData:
+		return p.assetStatSet.AddContractData(change)
 	default:
 		return nil
 	}
@@ -83,10 +89,14 @@ func (p *AssetStatsProcessor) addToCache(ctx context.Context, change ingest.Chan
 
 func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 	if !p.useLedgerEntryCache {
-		assetStatsDeltas := p.assetStatSet.All()
+		assetStatsDeltas, err := p.assetStatSet.AllFromSnapshot()
+		if err != nil {
+			return err
+		}
 		if len(assetStatsDeltas) == 0 {
 			return nil
 		}
+
 		return p.assetStatsQ.InsertAssetStats(ctx, assetStatsDeltas, maxBatchSize)
 	}
 
@@ -100,6 +110,8 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 			err = p.assetStatSet.AddClaimableBalance(change)
 		case xdr.LedgerEntryTypeTrustline:
 			err = p.assetStatSet.AddTrustline(change)
+		case xdr.LedgerEntryTypeContractData:
+			err = p.assetStatSet.AddContractData(change)
 		default:
 			return errors.Errorf("Change type %v is unexpected", change.Type)
 		}
@@ -109,7 +121,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
-	assetStatsDeltas := p.assetStatSet.All()
+	assetStatsDeltas, contractToAsset := p.assetStatSet.All()
 	for _, delta := range assetStatsDeltas {
 		var rowsAffected int64
 		var stat history.ExpAssetStat
@@ -124,6 +136,25 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		if !assetStatNotFound && err != nil {
 			return errors.Wrap(err, "could not fetch asset stat from db")
 		}
+		if !assetStatNotFound {
+			delta.ContractID = stat.ContractID
+		}
+
+		contractID, _, err := contractIDForAsset(
+			stat.AssetType == xdr.AssetTypeAssetTypeNative,
+			stat.AssetCode,
+			stat.AssetIssuer,
+			p.networkPassphrase,
+		)
+		if err != nil {
+			return errors.Wrap(err, "cannot compute contract id for asset")
+		}
+		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
+			delta.ContractID = nil
+		} else if ok {
+			delta.SetContractID(contractID)
+		}
+		delete(contractToAsset, contractID)
 
 		if assetStatNotFound {
 			// Safety checks
@@ -184,7 +215,9 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 			statBalances = statBalances.Add(deltaBalances)
 			statAccounts := stat.Accounts.Add(delta.Accounts)
 
-			if statAccounts.IsZero() {
+			// only remove asset stat if the Metadata contract data ledger entry for the token contract
+			// has also been removed.
+			if statAccounts.IsZero() && delta.ContractID == nil {
 				// Remove stats
 				if !statBalances.IsZero() {
 					return ingest.NewStateError(errors.Errorf(
@@ -212,6 +245,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 					Balances:    statBalances.ConvertToHistoryObject(),
 					Amount:      statBalances.Authorized.String(),
 					NumAccounts: statAccounts.Authorized,
+					ContractID:  delta.ContractID,
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not update asset stat")
@@ -230,5 +264,100 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
+	return p.updateContractIDs(ctx, contractToAsset)
+}
+
+func (p *AssetStatsProcessor) updateContractIDs(ctx context.Context, contractToAsset map[[32]byte]*xdr.Asset) error {
+	for contractID, asset := range contractToAsset {
+		if err := p.updateContractID(ctx, contractID, asset); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [32]byte, asset *xdr.Asset) error {
+	var rowsAffected int64
+	if asset == nil {
+		stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
+		if err == sql.ErrNoRows {
+			return ingest.NewStateError(errors.Errorf(
+				"row for asset is missing: %s",
+				asset.String(),
+			))
+		}
+		if err != nil {
+			return errors.Wrap(err, "could not find asset stat by contract id")
+		}
+		if stat.ContractID == nil {
+			return ingest.NewStateError(errors.Errorf(
+				"row has no contract id to remove %s: %s %s %s",
+				hex.EncodeToString(contractID[:]),
+				stat.AssetType,
+				stat.AssetCode,
+				stat.AssetIssuer,
+			))
+		}
+		if stat.Accounts.IsZero() {
+			rowsAffected, err = p.assetStatsQ.RemoveAssetStat(ctx,
+				stat.AssetType,
+				stat.AssetCode,
+				stat.AssetIssuer,
+			)
+			if err != nil {
+				return errors.Wrap(err, "could not remove asset stat")
+			}
+		} else {
+			stat.ContractID = nil
+			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
+			if err != nil {
+				return errors.Wrap(err, "could not update asset stat")
+			}
+		}
+	} else {
+		var assetType xdr.AssetType
+		var assetCode, assetIssuer string
+		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
+		stat, err := p.assetStatsQ.GetAssetStat(ctx, assetType, assetCode, assetIssuer)
+		if err == sql.ErrNoRows {
+			row := history.ExpAssetStat{
+				AssetType:   assetType,
+				AssetCode:   assetCode,
+				AssetIssuer: assetIssuer,
+				Accounts:    history.ExpAssetStatAccounts{},
+				Balances:    newAssetStatBalance().ConvertToHistoryObject(),
+				Amount:      amount.String(0),
+				NumAccounts: 0,
+			}
+			row.SetContractID(contractID)
+			rowsAffected, err = p.assetStatsQ.InsertAssetStat(ctx, row)
+			if err != nil {
+				return errors.Wrap(err, "could not insert asset stat")
+			}
+		} else if err != nil {
+			return errors.Wrap(err, "could not find asset stat by contract id")
+		} else if dbContractID, ok := stat.GetContractID(); ok {
+			return ingest.NewStateError(errors.Errorf(
+				"attempting to set contract id %s but row %s already has contract id set: %s",
+				hex.EncodeToString(contractID[:]),
+				asset.String(),
+				hex.EncodeToString(dbContractID[:]),
+			))
+		} else {
+			stat.SetContractID(contractID)
+			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
+			if err != nil {
+				return errors.Wrap(err, "could not update asset stat")
+			}
+		}
+	}
+
+	if rowsAffected != 1 {
+		return ingest.NewStateError(errors.Errorf(
+			"%d rows affected when adjusting asset stat for asset: %s",
+			rowsAffected,
+			asset.String(),
+		))
+	}
 	return nil
 }
