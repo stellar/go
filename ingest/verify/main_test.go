@@ -46,15 +46,16 @@ func (s *StateVerifierTestSuite) TearDownTest() {
 func (s *StateVerifierTestSuite) TestNoEntries() {
 	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
-	keys, err := s.verifier.GetLedgerKeys(10)
+	keys, entries, err := s.verifier.GetLedgerKeys(10)
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 0)
+	s.Assert().Len(entries, 0)
 }
 
 func (s *StateVerifierTestSuite) TestReturnErrorOnStateReaderError() {
 	s.mockStateReader.On("Read").Return(ingest.Change{}, errors.New("Read error")).Once()
 
-	_, err := s.verifier.GetLedgerKeys(10)
+	_, _, err := s.verifier.GetLedgerKeys(10)
 	s.Assert().EqualError(err, "Read error")
 }
 
@@ -71,7 +72,7 @@ func (s *StateVerifierTestSuite) TestCurrentEntriesNotEmpty() {
 		ledgerKeyBase64: entry,
 	}
 
-	_, err = s.verifier.GetLedgerKeys(10)
+	_, _, err = s.verifier.GetLedgerKeys(10)
 	s.Assert().Error(err)
 	assertStateError(s.T(), err, true)
 	s.Assert().EqualError(err, "Entries (1) not found locally, example: "+entryBase64)
@@ -121,7 +122,7 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 			}
 		}
 
-	_, err := s.verifier.GetLedgerKeys(10)
+	_, _, err := s.verifier.GetLedgerKeys(10)
 	s.Assert().NoError(err)
 
 	// Check currentEntries
@@ -145,9 +146,10 @@ func (s *StateVerifierTestSuite) TestOnlyRequestedNumberOfKeysReturned() {
 	// We don't mock Read() -> (io.Change{}, stdio.EOF) call here
 	// because this would execute `stdio.EOF` code path.
 
-	keys, err := s.verifier.GetLedgerKeys(1)
+	keys, entries, err := s.verifier.GetLedgerKeys(1)
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 1)
+	s.Assert().Len(entries, 1)
 
 	// In such case Verify() should notice that not all entries read from buckets
 	err = s.verifier.Write(accountEntry)
@@ -193,9 +195,10 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 			return false, xdr.LedgerEntry{}
 		}
 
-	keys, err := s.verifier.GetLedgerKeys(1)
+	keys, entries, err := s.verifier.GetLedgerKeys(1)
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 1)
+	s.Assert().Len(entries, 1)
 
 	// Check the behavior of transformFunction to code path to test.
 	s.verifier.transformFunction =
@@ -222,9 +225,10 @@ func (s *StateVerifierTestSuite) TestActualExpectedEntryNotEqualWrite() {
 			Post: &expectedEntry,
 		}, nil).Once()
 
-	keys, err := s.verifier.GetLedgerKeys(1)
+	keys, entries, err := s.verifier.GetLedgerKeys(1)
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 1)
+	s.Assert().Len(entries, 1)
 
 	actualEntry := makeAccountLedgerEntry()
 	actualEntry.Data.Account.Thresholds = [4]byte{1, 1, 1, 0}
@@ -258,9 +262,10 @@ func (s *StateVerifierTestSuite) TestVerifyCountersMatch() {
 
 	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
-	keys, err := s.verifier.GetLedgerKeys(2)
+	keys, entries, err := s.verifier.GetLedgerKeys(2)
 	s.Assert().NoError(err)
 	s.Assert().Len(keys, 1)
+	s.Assert().Len(entries, 1)
 
 	err = s.verifier.Write(accountEntry)
 	s.Assert().NoError(err)
