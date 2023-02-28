@@ -1,7 +1,6 @@
 package processors
 
 import (
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/keypair"
 	"math"
 	"sort"
@@ -132,7 +131,7 @@ func TestAddContractData(t *testing.T) {
 		AssetIssuer: "",
 		Accounts:    history.ExpAssetStatAccounts{},
 		Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-		Amount:      amount.String(0),
+		Amount:      "0",
 		NumAccounts: 0,
 		ContractID:  nil,
 	}
@@ -142,7 +141,7 @@ func TestAddContractData(t *testing.T) {
 		AssetIssuer: usdcIssuer,
 		Accounts:    history.ExpAssetStatAccounts{},
 		Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-		Amount:      amount.String(0),
+		Amount:      "0",
 		NumAccounts: 0,
 		ContractID:  nil,
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"github.com/stellar/go/amount"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -127,6 +127,16 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		var stat history.ExpAssetStat
 		var err error
 
+		contractID, _, err := contractIDForAsset(
+			delta.AssetType == xdr.AssetTypeAssetTypeNative,
+			delta.AssetCode,
+			delta.AssetIssuer,
+			p.networkPassphrase,
+		)
+		if err != nil {
+			return errors.Wrap(err, "cannot compute contract id for asset")
+		}
+
 		stat, err = p.assetStatsQ.GetAssetStat(ctx,
 			delta.AssetType,
 			delta.AssetCode,
@@ -140,18 +150,26 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 			delta.ContractID = stat.ContractID
 		}
 
-		contractID, _, err := contractIDForAsset(
-			stat.AssetType == xdr.AssetTypeAssetTypeNative,
-			stat.AssetCode,
-			stat.AssetIssuer,
-			p.networkPassphrase,
-		)
-		if err != nil {
-			return errors.Wrap(err, "cannot compute contract id for asset")
-		}
 		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
+			if !assetStatNotFound && stat.ContractID == nil {
+				return ingest.NewStateError(errors.Errorf(
+					"row has no contract id to remove %s: %s %s %s",
+					hex.EncodeToString(contractID[:]),
+					stat.AssetType,
+					stat.AssetCode,
+					stat.AssetIssuer,
+				))
+			}
 			delta.ContractID = nil
 		} else if ok {
+			if !assetStatNotFound && stat.ContractID != nil {
+				return ingest.NewStateError(errors.Errorf(
+					"attempting to set contract id %s but row %s already has contract id set: %s",
+					hex.EncodeToString(contractID[:]),
+					asset.String(),
+					hex.EncodeToString((*stat.ContractID)[:]),
+				))
+			}
 			delta.SetContractID(contractID)
 		}
 		delete(contractToAsset, contractID)
@@ -282,22 +300,14 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 		stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
 		if err == sql.ErrNoRows {
 			return ingest.NewStateError(errors.Errorf(
-				"row for asset is missing: %s",
-				asset.String(),
+				"row for asset with contract %s is missing",
+				hex.EncodeToString(contractID[:]),
 			))
 		}
 		if err != nil {
 			return errors.Wrap(err, "could not find asset stat by contract id")
 		}
-		if stat.ContractID == nil {
-			return ingest.NewStateError(errors.Errorf(
-				"row has no contract id to remove %s: %s %s %s",
-				hex.EncodeToString(contractID[:]),
-				stat.AssetType,
-				stat.AssetCode,
-				stat.AssetIssuer,
-			))
-		}
+
 		if stat.Accounts.IsZero() {
 			rowsAffected, err = p.assetStatsQ.RemoveAssetStat(ctx,
 				stat.AssetType,
@@ -326,7 +336,7 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 				AssetIssuer: assetIssuer,
 				Accounts:    history.ExpAssetStatAccounts{},
 				Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-				Amount:      amount.String(0),
+				Amount:      "0",
 				NumAccounts: 0,
 			}
 			row.SetContractID(contractID)

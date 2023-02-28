@@ -3,7 +3,6 @@ package processors
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/stellar/go/amount"
 	"math/big"
 
 	"github.com/stellar/go/ingest"
@@ -431,7 +430,7 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 			AssetIssuer: assetIssuer,
 			Accounts:    history.ExpAssetStatAccounts{},
 			Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-			Amount:      amount.String(0),
+			Amount:      "0",
 			NumAccounts: 0,
 		}
 		row.SetContractID(contractID)
