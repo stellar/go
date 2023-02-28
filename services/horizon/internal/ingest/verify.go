@@ -217,7 +217,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				// contract data is a special case.
 				// we don't store contract data entries in the db,
 				// however, we ingest contract data entries for asset stats.
-				err := assetStats.AddContractData(ingest.Change{
+				err = assetStats.AddContractData(ingest.Change{
 					Type: xdr.LedgerEntryTypeContractData,
 					Post: &entries[i],
 				})
