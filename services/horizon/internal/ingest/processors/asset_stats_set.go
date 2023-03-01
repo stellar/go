@@ -349,7 +349,8 @@ func (s AssetStatSet) AddClaimableBalance(change ingest.Change) error {
 func (s AssetStatSet) AddContractData(change ingest.Change) error {
 	if change.Pre != nil {
 		asset := AssetFromContractData(*change.Pre, s.networkPassphrase)
-		if asset == nil {
+		// we don't support asset stats for lumens
+		if asset == nil || asset.Type == xdr.AssetTypeAssetTypeNative {
 			return nil
 		}
 		contractID := change.Pre.Data.MustContractData().ContractId
@@ -363,7 +364,8 @@ func (s AssetStatSet) AddContractData(change ingest.Change) error {
 		}
 	} else if change.Post != nil {
 		asset := AssetFromContractData(*change.Post, s.networkPassphrase)
-		if asset == nil {
+		// we don't support asset stats for lumens
+		if asset == nil || asset.Type == xdr.AssetTypeAssetTypeNative {
 			return nil
 		}
 		contractID := change.Post.Data.MustContractData().ContractId

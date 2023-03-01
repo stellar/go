@@ -48,7 +48,7 @@ func assertAllFromSnapshotEquals(t *testing.T, set AssetStatSet, expected []hist
 }
 
 func TestAddContractData(t *testing.T) {
-	xlmID, xlmAsset, err := ContractIDForAsset(true, "", "", "passphrase")
+	xlmID, _, err := ContractIDForAsset(true, "", "", "passphrase")
 	assert.NoError(t, err)
 	usdcIssuer := keypair.MustRandom().Address()
 	usdcID, usdcAsset, err := ContractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
@@ -120,21 +120,10 @@ func TestAddContractData(t *testing.T) {
 	}
 	assert.True(t, all[0].Equals(etherAssetStat))
 
-	assert.Len(t, m, 3)
-	assert.True(t, m[xlmID].Equals(xlmAsset))
+	assert.Len(t, m, 2)
 	assert.True(t, m[usdcID].Equals(usdcAsset))
 	assert.True(t, m[etherID].Equals(etherAsset))
 
-	xlmAssetStat := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeNative,
-		AssetCode:   "",
-		AssetIssuer: "",
-		Accounts:    history.ExpAssetStatAccounts{},
-		Balances:    newAssetStatBalance().ConvertToHistoryObject(),
-		Amount:      "0",
-		NumAccounts: 0,
-		ContractID:  nil,
-	}
 	usdcAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   "USDC",
@@ -146,28 +135,26 @@ func TestAddContractData(t *testing.T) {
 		ContractID:  nil,
 	}
 
-	xlmAssetStat.SetContractID(xlmID)
 	etherAssetStat.SetContractID(etherID)
 	usdcAssetStat.SetContractID(usdcID)
 
 	assertAllFromSnapshotEquals(t, set, []history.ExpAssetStat{
-		xlmAssetStat,
 		etherAssetStat,
 		usdcAssetStat,
 	})
 }
 
 func TestRemoveContractData(t *testing.T) {
-	xlmID, _, err := ContractIDForAsset(true, "", "", "passphrase")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "passphrase")
 	assert.NoError(t, err)
 	set := NewAssetStatSet("passphrase")
 
-	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	assert.NoError(t, err)
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: xlmContractData,
+			Data: eurContractData,
 		},
 	})
 	assert.NoError(t, err)
@@ -175,13 +162,13 @@ func TestRemoveContractData(t *testing.T) {
 	all, m := set.All()
 	assert.Empty(t, all)
 	assert.Len(t, m, 1)
-	asset, ok := m[xlmID]
+	asset, ok := m[eurID]
 	assert.True(t, ok)
 	assert.Nil(t, asset)
 }
 
 func TestChangeContractData(t *testing.T) {
-	xlmID, _, err := ContractIDForAsset(true, "", "", "passphrase")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "passphrase")
 	assert.NoError(t, err)
 
 	usdcIssuer := keypair.MustRandom().Address()
@@ -190,7 +177,7 @@ func TestChangeContractData(t *testing.T) {
 
 	set := NewAssetStatSet("passphrase")
 
-	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	assert.NoError(t, err)
 	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
 	assert.NoError(t, err)
@@ -198,7 +185,7 @@ func TestChangeContractData(t *testing.T) {
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: xlmContractData,
+			Data: eurContractData,
 		},
 		Post: &xdr.LedgerEntry{
 			Data: usdcContractData,
