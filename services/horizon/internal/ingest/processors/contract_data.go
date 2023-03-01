@@ -23,7 +23,7 @@ var (
 	}
 )
 
-func contractIDForAsset(isNative bool, code, issuer, passphrase string) ([32]byte, xdr.Asset, error) {
+func ContractIDForAsset(isNative bool, code, issuer, passphrase string) ([32]byte, xdr.Asset, error) {
 	var asset xdr.Asset
 	if isNative {
 		asset = xdr.MustNewNativeAsset()
@@ -74,7 +74,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	}
 	switch vec[0].MustSym() {
 	case "Native":
-		nativeAssetContractID, asset, err := contractIDForAsset(true, "", "", passphrase)
+		nativeAssetContractID, asset, err := ContractIDForAsset(true, "", "", passphrase)
 		if err != nil {
 			return nil
 		}
@@ -138,7 +138,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 
-	expectedID, asset, err := contractIDForAsset(false, assetCode, assetIssuer, passphrase)
+	expectedID, asset, err := ContractIDForAsset(false, assetCode, assetIssuer, passphrase)
 	if err != nil {
 		return nil
 	}

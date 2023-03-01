@@ -394,7 +394,7 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 	assetStatsDeltas, contractToAsset := s.All()
 
 	for i, assetStatDelta := range assetStatsDeltas {
-		contractID, _, err := contractIDForAsset(
+		contractID, _, err := ContractIDForAsset(
 			assetStatDelta.AssetType == xdr.AssetTypeAssetTypeNative,
 			assetStatDelta.AssetCode,
 			assetStatDelta.AssetIssuer,

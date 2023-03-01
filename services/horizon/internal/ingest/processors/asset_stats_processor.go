@@ -127,7 +127,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		var stat history.ExpAssetStat
 		var err error
 
-		contractID, _, err := contractIDForAsset(
+		contractID, _, err := ContractIDForAsset(
 			delta.AssetType == xdr.AssetTypeAssetTypeNative,
 			delta.AssetCode,
 			delta.AssetIssuer,

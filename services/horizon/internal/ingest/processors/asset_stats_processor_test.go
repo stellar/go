@@ -511,12 +511,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractID() {
 		Balance:   0,
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
 
-	usdID, _, err := contractIDForAsset(false, "USD", trustLineIssuer.Address(), "")
+	usdID, _, err := ContractIDForAsset(false, "USD", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	usdContractData, err := AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
 	s.Assert().NoError(err)
@@ -716,7 +716,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -776,9 +776,9 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDError() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	usdID, _, err := contractIDForAsset(false, "USD", trustLineIssuer.Address(), "")
+	usdID, _, err := ContractIDForAsset(false, "USD", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -823,9 +823,9 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDError() {
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDError() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	usdID, _, err := contractIDForAsset(false, "USD", trustLineIssuer.Address(), "")
+	usdID, _, err := ContractIDForAsset(false, "USD", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -902,7 +902,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDErr
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -928,7 +928,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContractIDError() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -1501,7 +1501,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -1545,7 +1545,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContractID() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -1638,7 +1638,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)
@@ -1683,7 +1683,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndRow() {
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	eurID, _, err := contractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
+	eurID, _, err := ContractIDForAsset(false, "EUR", trustLineIssuer.Address(), "")
 	s.Assert().NoError(err)
 	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
 	s.Assert().NoError(err)

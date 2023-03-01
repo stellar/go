@@ -48,13 +48,13 @@ func assertAllFromSnapshotEquals(t *testing.T, set AssetStatSet, expected []hist
 }
 
 func TestAddContractData(t *testing.T) {
-	xlmID, xlmAsset, err := contractIDForAsset(true, "", "", "passphrase")
+	xlmID, xlmAsset, err := ContractIDForAsset(true, "", "", "passphrase")
 	assert.NoError(t, err)
 	usdcIssuer := keypair.MustRandom().Address()
-	usdcID, usdcAsset, err := contractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
+	usdcID, usdcAsset, err := ContractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
 	assert.NoError(t, err)
 	etherIssuer := keypair.MustRandom().Address()
-	etherID, etherAsset, err := contractIDForAsset(false, "ETHER", etherIssuer, "passphrase")
+	etherID, etherAsset, err := ContractIDForAsset(false, "ETHER", etherIssuer, "passphrase")
 	assert.NoError(t, err)
 
 	set := NewAssetStatSet("passphrase")
@@ -158,7 +158,7 @@ func TestAddContractData(t *testing.T) {
 }
 
 func TestRemoveContractData(t *testing.T) {
-	xlmID, _, err := contractIDForAsset(true, "", "", "passphrase")
+	xlmID, _, err := ContractIDForAsset(true, "", "", "passphrase")
 	assert.NoError(t, err)
 	set := NewAssetStatSet("passphrase")
 
@@ -181,11 +181,11 @@ func TestRemoveContractData(t *testing.T) {
 }
 
 func TestChangeContractData(t *testing.T) {
-	xlmID, _, err := contractIDForAsset(true, "", "", "passphrase")
+	xlmID, _, err := ContractIDForAsset(true, "", "", "passphrase")
 	assert.NoError(t, err)
 
 	usdcIssuer := keypair.MustRandom().Address()
-	usdcID, _, err := contractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
+	usdcID, _, err := ContractIDForAsset(false, "USDC", usdcIssuer, "passphrase")
 	assert.NoError(t, err)
 
 	set := NewAssetStatSet("passphrase")
