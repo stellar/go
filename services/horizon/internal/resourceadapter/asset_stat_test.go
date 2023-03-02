@@ -58,7 +58,13 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	assert.Equal(t, int32(429), res.NumAccounts)
 	assert.Equal(t, horizon.AccountFlags{}, res.Flags)
 	assert.Equal(t, "https://xim.com/.well-known/stellar.toml", res.Links.Toml.Href)
+	assert.Equal(t, "", res.ContractID)
 	assert.Equal(t, row.PagingToken(), res.PagingToken())
+
+	contractID := [32]byte{}
+	row.SetContractID(contractID)
+	assert.NoError(t, PopulateAssetStat(context.Background(), &res, row, issuer))
+	assert.Equal(t, "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4", res.ContractID)
 
 	issuer.HomeDomain = ""
 	issuer.Flags = uint32(xdr.AccountFlagsAuthRequiredFlag) |

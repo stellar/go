@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 
@@ -552,7 +552,7 @@ func assertAssetStats(itest *integration.Test, issuer, code string, numAccounts 
 		assert.Equal(itest.CurrentTest(), numAccounts, asset.NumAccounts)
 		assert.Equal(itest.CurrentTest(), numAccounts, asset.Accounts.Authorized)
 		assert.Equal(itest.CurrentTest(), amt, amount.MustParse(asset.Amount))
-		assert.Equal(itest.CurrentTest(), hex.EncodeToString(contractID[:]), asset.ContractID)
+		assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, contractID[:]), asset.ContractID)
 		return
 	}
 	if numAccounts != 0 || amt != 0 {
