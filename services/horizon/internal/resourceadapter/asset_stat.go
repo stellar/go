@@ -22,7 +22,6 @@ func PopulateAssetStat(
 	issuer history.AccountEntry,
 ) (err error) {
 	if row.ContractID != nil {
-		// TODO encode with strkey once it has support for contract ids
 		res.ContractID, err = strkey.Encode(strkey.VersionByteContract, *row.ContractID)
 		if err != nil {
 			return
