@@ -40,7 +40,7 @@ const (
 	VersionByteSignedPayload = 15 << 3 // Base-32 encodes to 'P'
 
 	//VersionByteContract is the version byte used for encoded stellar contracts
-	VersionByteContract = 2 << 3
+	VersionByteContract = 2 << 3 // Base-32 encodes to 'C'
 )
 
 // maxPayloadSize is the maximum length of the payload for all versions. The
