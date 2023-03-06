@@ -117,7 +117,9 @@ func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
 	}
 }
 
-// AssetStatSet represents a collection of asset stats
+// AssetStatSet represents a collection of asset stats and a mapping
+// of Soroban contract IDs to classic assets (which is unique to each
+// network).
 type AssetStatSet struct {
 	classicAssetStats map[assetStatKey]*assetStatValue
 	contractToAsset   map[[32]byte]*xdr.Asset
@@ -358,6 +360,9 @@ func (s AssetStatSet) AddContractData(change ingest.Change) error {
 			s.contractToAsset[contractID] = nil
 			return nil
 		}
+		// The contract id for a stellar asset should never change and
+		// therefore we return a fatal ingestion error if we encounter
+		// a stellar asset changing contract ids.
 		postAsset := AssetFromContractData(*change.Post, s.networkPassphrase)
 		if postAsset == nil || !(*postAsset).Equals(*asset) {
 			return ingest.NewStateError(fmt.Errorf("asset contract changed asset"))
@@ -393,8 +398,11 @@ func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset) {
 // entry changes consisting of only inserts (no updates) reflecting the current state of
 // the ledger without any missing entries (e.g. history archives).
 func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
+	// merge assetStatsDeltas and contractToAsset into one list of history.ExpAssetStat.
 	assetStatsDeltas, contractToAsset := s.All()
 
+	// modify the asset stat row to update the contract_id column whenever we encounter a
+	// contract data ledger entry with the Stellar asset metadata.
 	for i, assetStatDelta := range assetStatsDeltas {
 		contractID, _, err := ContractIDForAsset(
 			assetStatDelta.AssetType == xdr.AssetTypeAssetTypeNative,
@@ -416,6 +424,11 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 			delete(contractToAsset, contractID)
 		}
 	}
+
+	// There is also a corner case where a Stellar Asset contract is initialized before there exists any
+	// trustlines / claimable balances for the Stellar Asset. In this case, when ingesting contract data
+	// ledger entries, there will be no existing asset stat row. We handle this case by inserting a row
+	// with zero stats just so we can populate the contract id.
 	for contractID, asset := range contractToAsset {
 		if asset == nil {
 			return nil, ingest.NewStateError(fmt.Errorf(

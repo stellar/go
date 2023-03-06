@@ -16,6 +16,11 @@ func TestAssetStatContracts(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	// asset stats is empty so count should be 0
+	count, err := q.CountContractIDs(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(0, count)
+
 	assetStats := []ExpAssetStat{
 		{
 			AssetType: xdr.AssetTypeAssetTypeNative,
@@ -82,7 +87,7 @@ func TestAssetStatContracts(t *testing.T) {
 	}
 	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats, 1))
 
-	count, err := q.CountContractIDs(tt.Ctx)
+	count, err = q.CountContractIDs(tt.Ctx)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(2, count)
 

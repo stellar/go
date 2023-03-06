@@ -15,14 +15,13 @@ import (
 
 func TestEmptyAssetStatSet(t *testing.T) {
 	set := NewAssetStatSet("")
-	if all, m := set.All(); len(all) != 0 || len(m) != 0 {
-		t.Fatalf("expected empty list but got %v %v", all, m)
-	}
-	if all, err := set.AllFromSnapshot(); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	} else if len(all) != 0 {
-		t.Fatalf("expected empty list but got %v", all)
-	}
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
+
+	all, err := set.AllFromSnapshot()
+	assert.Empty(t, all)
+	assert.NoError(t, err)
 }
 
 func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {

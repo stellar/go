@@ -146,12 +146,13 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		if !assetStatNotFound && err != nil {
 			return errors.Wrap(err, "could not fetch asset stat from db")
 		}
-		if !assetStatNotFound {
+		assetStatFound := !assetStatNotFound
+		if assetStatFound {
 			delta.ContractID = stat.ContractID
 		}
 
 		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
-			if !assetStatNotFound && stat.ContractID == nil {
+			if assetStatFound && stat.ContractID == nil {
 				return ingest.NewStateError(errors.Errorf(
 					"row has no contract id to remove %s: %s %s %s",
 					hex.EncodeToString(contractID[:]),
@@ -162,7 +163,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 			}
 			delta.ContractID = nil
 		} else if ok {
-			if !assetStatNotFound && stat.ContractID != nil {
+			if assetStatFound && stat.ContractID != nil {
 				return ingest.NewStateError(errors.Errorf(
 					"attempting to set contract id %s but row %s already has contract id set: %s",
 					hex.EncodeToString(contractID[:]),
@@ -273,7 +274,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 
 		if rowsAffected != 1 {
 			return ingest.NewStateError(errors.Errorf(
-				"%d rows affected when adjusting asset stat for asset: %s %s %s",
+				"%d rows affected (expected exactly 1) when adjusting asset stat for asset: %s %s %s",
 				rowsAffected,
 				delta.AssetType,
 				delta.AssetCode,
@@ -364,7 +365,7 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 
 	if rowsAffected != 1 {
 		return ingest.NewStateError(errors.Errorf(
-			"%d rows affected when adjusting asset stat for asset: %s",
+			"%d rows affected (expected exactly 1) when adjusting asset stat for asset: %s",
 			rowsAffected,
 			asset.String(),
 		))

@@ -23,6 +23,8 @@ var (
 	}
 )
 
+// ContractIDForAsset returns the expected Stellar Asset Contract id for the given
+// asset and network.
 func ContractIDForAsset(isNative bool, code, issuer, passphrase string) ([32]byte, xdr.Asset, error) {
 	var asset xdr.Asset
 	if isNative {
@@ -49,6 +51,17 @@ func ContractIDForAsset(isNative bool, code, issuer, passphrase string) ([32]byt
 	return sha256.Sum256(xdrPreImageBytes), asset, nil
 }
 
+// AssetFromContractData takes a ledger entry and verifies if the ledger entry corresponds
+// to the asset metadata written to contract storage by the Stellar Asset Contract upon
+// initialization. See:
+// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/public_types.rs#L21
+// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/metadata.rs#L8
+// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L108
+// Note that AssetFromContractData will ignore forged asset metadata entries by deriving
+// the Stellar Asset Contract id from the asset metadata and comparing it to the contract
+// id found in the ledger entry.
+// If the given ledger entry is a verified asset metadata entry AssetFromContractData will
+// return the corresponding Stellar asset. Otherwise, AssetFromContractData will return nil.
 func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.Asset {
 	if ledgerEntry.Data.Type != xdr.LedgerEntryTypeContractData {
 		return nil
@@ -237,6 +250,8 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, er
 	return metadataObj, nil
 }
 
+// AssetToContractData is the inverse of AssetFromContractData. It creates a ledger entry
+// containing the asset metadata written to contract storage by the Stellar Asset Contract.
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
 	obj, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {

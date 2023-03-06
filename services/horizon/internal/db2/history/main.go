@@ -354,6 +354,7 @@ type ExpAssetStat struct {
 	Amount      string               `db:"amount"`
 	NumAccounts int32                `db:"num_accounts"`
 	ContractID  *[]byte              `db:"contract_id"`
+	// make sure to update Equals() when adding new fields to ExpAssetStat
 }
 
 // PagingToken returns a cursor for this asset stat
@@ -388,17 +389,24 @@ func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
 	return json.Unmarshal(source, &e)
 }
 
-func (e ExpAssetStat) Equals(o ExpAssetStat) bool {
+func (e *ExpAssetStat) Equals(o ExpAssetStat) bool {
 	if (e.ContractID == nil) != (o.ContractID == nil) {
 		return false
 	}
 	if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
 		return false
 	}
-	e.ContractID = o.ContractID
-	return e == o
+
+	return e.AssetType == o.AssetType &&
+		e.AssetCode == o.AssetCode &&
+		e.AssetIssuer == o.AssetIssuer &&
+		e.Accounts == o.Accounts &&
+		e.Balances == o.Balances &&
+		e.Amount == o.Amount &&
+		e.NumAccounts == o.NumAccounts
 }
-func (e ExpAssetStat) GetContractID() ([32]byte, bool) {
+
+func (e *ExpAssetStat) GetContractID() ([32]byte, bool) {
 	var val [32]byte
 	if e.ContractID == nil {
 		return val, false
@@ -480,7 +488,7 @@ type QAssetStats interface {
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error)
-	GetAssetStatByContracts(ctx context.Context, contractID [][32]byte) ([]ExpAssetStat, error)
+	GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
