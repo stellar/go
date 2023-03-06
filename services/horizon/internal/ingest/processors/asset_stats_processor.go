@@ -295,8 +295,10 @@ func (p *AssetStatsProcessor) updateContractIDs(ctx context.Context, contractToA
 	return nil
 }
 
+// updateContractID will update the asset stat row for the corresponding asset to either add or remove the given contract id
 func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [32]byte, asset *xdr.Asset) error {
 	var rowsAffected int64
+	// asset is nil so we need to set the contract_id column to NULL
 	if asset == nil {
 		stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
 		if err == sql.ErrNoRows {
@@ -310,6 +312,7 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 		}
 
 		if stat.Accounts.IsZero() {
+			// the asset stat is empty so we can remove the row entirely
 			rowsAffected, err = p.assetStatsQ.RemoveAssetStat(ctx,
 				stat.AssetType,
 				stat.AssetCode,
@@ -319,18 +322,20 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 				return errors.Wrap(err, "could not remove asset stat")
 			}
 		} else {
+			// update the row to set the contract_id column to NULL
 			stat.ContractID = nil
 			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
 			if err != nil {
 				return errors.Wrap(err, "could not update asset stat")
 			}
 		}
-	} else {
+	} else { // asset is non nil, so we need to populate the contract_id column
 		var assetType xdr.AssetType
 		var assetCode, assetIssuer string
 		asset.MustExtract(&assetType, &assetCode, &assetIssuer)
 		stat, err := p.assetStatsQ.GetAssetStat(ctx, assetType, assetCode, assetIssuer)
 		if err == sql.ErrNoRows {
+			// there is no asset stat for the given asset so we need to create a new row
 			row := history.ExpAssetStat{
 				AssetType:   assetType,
 				AssetCode:   assetCode,
@@ -348,6 +353,7 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 		} else if err != nil {
 			return errors.Wrap(err, "could not find asset stat by contract id")
 		} else if dbContractID, ok := stat.GetContractID(); ok {
+			// the asset stat already has a column_id set which is unexpected (the column should be NULL)
 			return ingest.NewStateError(errors.Errorf(
 				"attempting to set contract id %s but row %s already has contract id set: %s",
 				hex.EncodeToString(contractID[:]),
@@ -355,6 +361,7 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 				hex.EncodeToString(dbContractID[:]),
 			))
 		} else {
+			// update the column_id column
 			stat.SetContractID(contractID)
 			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
 			if err != nil {
@@ -364,6 +371,7 @@ func (p *AssetStatsProcessor) updateContractID(ctx context.Context, contractID [
 	}
 
 	if rowsAffected != 1 {
+		// assert that we have updated exactly one row
 		return ingest.NewStateError(errors.Errorf(
 			"%d rows affected (expected exactly 1) when adjusting asset stat for asset: %s",
 			rowsAffected,
