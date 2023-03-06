@@ -1,7 +1,6 @@
 package processors
 
 import (
-	"crypto/sha256"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
@@ -22,34 +21,6 @@ var (
 		Obj:  &assetMetadataObj,
 	}
 )
-
-// ContractIDForAsset returns the expected Stellar Asset Contract id for the given
-// asset and network.
-func ContractIDForAsset(isNative bool, code, issuer, passphrase string) ([32]byte, xdr.Asset, error) {
-	var asset xdr.Asset
-	if isNative {
-		asset = xdr.MustNewNativeAsset()
-	} else {
-		var err error
-		asset, err = xdr.NewCreditAsset(code, issuer)
-		if err != nil {
-			return [32]byte{}, asset, err
-		}
-	}
-	networkId := xdr.Hash(sha256.Sum256([]byte(passphrase)))
-	preImage := xdr.HashIdPreimage{
-		Type: xdr.EnvelopeTypeEnvelopeTypeContractIdFromAsset,
-		FromAsset: &xdr.HashIdPreimageFromAsset{
-			NetworkId: networkId,
-			Asset:     asset,
-		},
-	}
-	xdrPreImageBytes, err := preImage.MarshalBinary()
-	if err != nil {
-		return [32]byte{}, asset, err
-	}
-	return sha256.Sum256(xdrPreImageBytes), asset, nil
-}
 
 // AssetFromContractData takes a ledger entry and verifies if the ledger entry corresponds
 // to the asset metadata written to contract storage by the Stellar Asset Contract upon
@@ -87,7 +58,8 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	}
 	switch vec[0].MustSym() {
 	case "Native":
-		nativeAssetContractID, asset, err := ContractIDForAsset(true, "", "", passphrase)
+		asset := xdr.MustNewNativeAsset()
+		nativeAssetContractID, err := asset.ContractID(passphrase)
 		if err != nil {
 			return nil
 		}
@@ -151,7 +123,12 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 
-	expectedID, asset, err := ContractIDForAsset(false, assetCode, assetIssuer, passphrase)
+	asset, err := xdr.NewCreditAsset(assetCode, assetIssuer)
+	if err != nil {
+		return nil
+	}
+
+	expectedID, err := asset.ContractID(passphrase)
 	if err != nil {
 		return nil
 	}
@@ -170,21 +147,22 @@ func padTrailingZeros(buf []byte, length int) []byte {
 }
 
 func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, error) {
-	symbol := xdr.ScSymbol("Native")
-	metadataObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoVec,
-		Vec: &xdr.ScVec{
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &symbol,
-			},
-		},
-	}
 	if isNative {
+		symbol := xdr.ScSymbol("Native")
+		metadataObj := &xdr.ScObject{
+			Type: xdr.ScObjectTypeScoVec,
+			Vec: &xdr.ScVec{
+				xdr.ScVal{
+					Type: xdr.ScValTypeScvSymbol,
+					Sym:  &symbol,
+				},
+			},
+		}
 		return metadataObj, nil
 	}
 
 	var assetCodeLength int
+	var symbol xdr.ScSymbol
 	if len(code) <= 4 {
 		symbol = "AlphaNum4"
 		assetCodeLength = 4
@@ -234,7 +212,7 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, er
 			},
 		},
 	}
-	metadataObj = &xdr.ScObject{
+	metadataObj := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoVec,
 		Vec: &xdr.ScVec{
 			xdr.ScVal{

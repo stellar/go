@@ -227,7 +227,7 @@ func (s AssetStatSet) AddTrustline(change ingest.Change) error {
 		deltaAccounts.addByFlags(post.Flags, 1)
 		deltaBalances.addByFlags(post.Flags, int64(post.Balance))
 	}
-	if asset.Type == xdr.AssetTypeAssetTypePoolShare {
+	if asset.Type == xdr.AssetTypeAssetTypePoolShare || asset.Type == xdr.AssetTypeAssetTypeNative {
 		return nil
 	}
 
@@ -404,12 +404,8 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 	// modify the asset stat row to update the contract_id column whenever we encounter a
 	// contract data ledger entry with the Stellar asset metadata.
 	for i, assetStatDelta := range assetStatsDeltas {
-		contractID, _, err := ContractIDForAsset(
-			assetStatDelta.AssetType == xdr.AssetTypeAssetTypeNative,
-			assetStatDelta.AssetCode,
-			assetStatDelta.AssetIssuer,
-			s.networkPassphrase,
-		)
+		asset := xdr.MustNewCreditAsset(assetStatDelta.AssetCode, assetStatDelta.AssetIssuer)
+		contractID, err := asset.ContractID(s.networkPassphrase)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot compute contract id for asset")
 		}

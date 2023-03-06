@@ -219,13 +219,13 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 }
 
 func assetContractMetadataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	contractID, err := trustline.Created.Data.MustTrustLine().Asset.ToAsset().ContractID("")
+	tt.Assert.NoError(err)
 	var assetType xdr.AssetType
 	var code, issuer string
 	tt.Assert.NoError(
 		trustline.Created.Data.MustTrustLine().Asset.Extract(&assetType, &code, &issuer),
 	)
-	contractID, _, err := processors.ContractIDForAsset(assetType == xdr.AssetTypeAssetTypeNative, code, issuer, "")
-	tt.Assert.NoError(err)
 	ledgerData, err := processors.AssetToContractData(assetType == xdr.AssetTypeAssetTypeNative, code, issuer, contractID)
 	tt.Assert.NoError(err)
 	assetContractMetadata := xdr.LedgerEntryChange{

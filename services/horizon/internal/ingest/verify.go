@@ -337,6 +337,8 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 	}
 	all := map[string]history.ExpAssetStat{}
 	for _, assetStat := range assetStats {
+		// no need to handle the native asset because asset stats only
+		// include non-native assets.
 		all[assetStat.AssetCode+":"+assetStat.AssetIssuer] = assetStat
 	}
 

@@ -127,12 +127,8 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		var stat history.ExpAssetStat
 		var err error
 
-		contractID, _, err := ContractIDForAsset(
-			delta.AssetType == xdr.AssetTypeAssetTypeNative,
-			delta.AssetCode,
-			delta.AssetIssuer,
-			p.networkPassphrase,
-		)
+		asset := xdr.MustNewCreditAsset(delta.AssetCode, delta.AssetIssuer)
+		contractID, err := asset.ContractID(p.networkPassphrase)
 		if err != nil {
 			return errors.Wrap(err, "cannot compute contract id for asset")
 		}
