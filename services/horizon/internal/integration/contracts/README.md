@@ -1,24 +1,32 @@
 ### Contract test fixture source code
-#### anytime contract code changes, follow these steps to rebuild the test wasm fixtures:
 
-1. compile from source
-First install latest rust toolchain:
-https://www.rust-lang.org/tools/install 
+The existing integeration tests refer to .wasm files from the `testdata/` directory location.
 
-and update the ./services/horizon/internal/integration/contracts/Cargo.toml to have latest git refs for
-soroban-sdk and soroban-auth packages.
+#### Any time contract code changes, follow these steps to rebuild the test WASM fixtures:
 
-then compile the contract source code to wasm and copy to testdata
+1. First install latest rust toolchain:
+https://www.rust-lang.org/tools/install
+
+2. Update [`Cargo.toml file`](./Cargo.toml`) to have latest git refs to
+[`rs-soroban-sdk`](https://github.com/stellar/rs-soroban-sdk) for the `soroban-sdk` and `soroban-auth` dependencies.
+
+3. Recompile the soroban_token_spec.wasm by compiling the `rs-soroban-sdk` source code from the same git ref to WASM and copy it to the `contracts/` folder:
+
+```bash
+git clone git@github.com:stellar/rs-soroban-sdk.git
+cd rs-soroban-sdk/soroban-token-spec
+git checkout <insert ref here>
+cargo build --target wasm32-unknown-unknown --release
+cp ../target/wasm32-unknown-unknown/release/soroban_token_spec.wasm \
+   $MONOREPO/services/horizon/internal/integration/contracts
 ```
-services/horizon/internal/integration/contracts $ cargo build --target wasm32-unknown-unknown --release
-services/horizon/internal/integration/contracts $ cp target/wasm32-unknown-unknown/release/*.wasm ../testdata/
-```
 
-recompile the soroban_token_spec.wasm by compiling the rs-soroban-sdk source code from the sae git ref to wasm and copy it to contracts folder
-```
-rs-soroban-sdk $ cargo build --target wasm32-unknown-unknown --release
-rs-soroban-sdk $ cp target/wasm32-unknown-unknown/release/soroban_token_spec.wasm go/services/horizon/internal/integration/contracts
-```
+(where $MONOREPO is where you have `stellar/go` checked out)
 
-2. existing integeration tests refer to .wasm files from that `testdata` directory location.
+4. Compile the contract source code to WASM and copy it to `testdata/`:
 
+```bash
+cd ./services/horizon/internal/integration/contracts
+cargo build --target wasm32-unknown-unknown --release
+cp target/wasm32-unknown-unknown/release/*.wasm ../testdata/
+```
