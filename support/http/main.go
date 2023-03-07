@@ -33,6 +33,8 @@ const defaultShutdownGracePeriod = 10 * time.Second
 
 const defaultReadTimeout = 5 * time.Second
 
+const defaultWriteTimeout = 30 * time.Second
+
 // SimpleHTTPClientInterface helps mocking http.Client in tests
 type SimpleHTTPClientInterface interface {
 	PostForm(url string, data url.Values) (*stdhttp.Response, error)
@@ -103,6 +105,10 @@ func setup(conf Config) *graceful.Server {
 
 	if conf.ReadTimeout == time.Duration(0) {
 		conf.ReadTimeout = defaultReadTimeout
+	}
+
+	if conf.WriteTimeout == time.Duration(0) {
+		conf.WriteTimeout = defaultWriteTimeout
 	}
 
 	return &graceful.Server{
