@@ -90,7 +90,7 @@ func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 		ledgerKey := entry.LedgerKey()
 		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
 		if err != nil {
-			return entries, errors.Wrap(err, "Error marshaling ledgerKey")
+			return entries, errors.Wrap(err, "Error marshalling ledgerKey")
 		}
 
 		entry.Normalize()
