@@ -65,7 +65,6 @@ func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 		return nil, err
 	}
 
-	keys := make([]xdr.LedgerKey, 0, count)
 	entries := make([]xdr.LedgerEntry, 0, count)
 	v.currentEntries = make(map[string]xdr.LedgerEntry)
 
@@ -95,7 +94,6 @@ func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 		}
 
 		entry.Normalize()
-		keys = append(keys, ledgerKey)
 		entries = append(entries, entry)
 		v.currentEntries[string(key)] = entry
 
