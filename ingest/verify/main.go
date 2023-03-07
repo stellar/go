@@ -57,15 +57,15 @@ func NewStateVerifier(stateReader ingest.ChangeReader, tf TransformLedgerEntryFu
 	}
 }
 
-// GetLedgerKeys returns up to `count` ledger keys from history buckets
-// storing actual entries in cache to compare in Write.
-func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
+// GetLedgerEntries returns up to `count` ledger entries from history buckets
+// and stores the entries in cache to compare in Write.
+func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 	err := v.checkUnreadEntries()
 	if err != nil {
 		return nil, err
 	}
 
-	keys := make([]xdr.LedgerKey, 0, count)
+	entries := make([]xdr.LedgerEntry, 0, count)
 	v.currentEntries = make(map[string]xdr.LedgerEntry)
 
 	for count > 0 {
@@ -73,9 +73,9 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 		if err != nil {
 			if err == io.EOF {
 				v.readingDone = true
-				return keys, nil
+				return entries, nil
 			}
-			return keys, err
+			return entries, err
 		}
 
 		entry := *entryChange.Post
@@ -90,24 +90,18 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 		ledgerKey := entry.LedgerKey()
 		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
 		if err != nil {
-			return keys, errors.Wrap(err, "Error marshaling ledgerKey")
+			return entries, errors.Wrap(err, "Error marshalling ledgerKey")
 		}
 
-		keys = append(keys, ledgerKey)
 		entry.Normalize()
-		entryType := entry.Data.Type
-		// Won't be persisting protocol 20 ContractData ledger entries to history db, therefore must not allow it
-		// to be counted in history state-verifier accumulators.
-		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractCode || entryType == xdr.LedgerEntryTypeContractData {
-			continue
-		}
+		entries = append(entries, entry)
 		v.currentEntries[string(key)] = entry
 
 		count--
 		v.readEntries++
 	}
 
-	return keys, nil
+	return entries, nil
 }
 
 // Write compares the entry with entries in the latest batch of entries fetched
@@ -125,10 +119,10 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	// safe, since we convert to string right away (causing a copy)
 	key, err := v.encodingBuffer.UnsafeMarshalBinary(actualEntry.LedgerKey())
 	if err != nil {
-		return errors.Wrap(err, "Error marshaling ledgerKey")
+		return errors.Wrap(err, "Error marshalling ledgerKey")
 	}
-
-	expectedEntry, exist := v.currentEntries[string(key)]
+	keyString := string(key)
+	expectedEntry, exist := v.currentEntries[keyString]
 	if !exist {
 		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
@@ -136,7 +130,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 			base64.StdEncoding.EncodeToString(key),
 		))
 	}
-	delete(v.currentEntries, string(key))
+	delete(v.currentEntries, keyString)
 
 	preTransformExpectedEntry := expectedEntry
 	preTransformExpectedEntryMarshaled, err := v.encodingBuffer.MarshalBinary(&preTransformExpectedEntry)

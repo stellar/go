@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"github.com/stellar/go/keypair"
 	"math"
 	"sort"
 	"testing"
@@ -13,34 +14,189 @@ import (
 )
 
 func TestEmptyAssetStatSet(t *testing.T) {
-	set := AssetStatSet{}
-	if all := set.All(); len(all) != 0 {
-		t.Fatalf("expected empty list but got %v", all)
-	}
+	set := NewAssetStatSet("")
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
 
-	_, ok := set.Remove(
-		xdr.AssetTypeAssetTypeCreditAlphanum4,
-		"USD",
-		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
-	)
-	if ok {
-		t.Fatal("expected remove to return false")
-	}
+	all, err := set.AllFromSnapshot()
+	assert.Empty(t, all)
+	assert.NoError(t, err)
 }
 
 func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
-	all := set.All()
+	all, m := set.All()
+	assert.Empty(t, m)
+	assertAssetStatsAreEqual(t, all, expected)
+}
+
+func assertAssetStatsAreEqual(t *testing.T, all []history.ExpAssetStat, expected []history.ExpAssetStat) {
 	assert.Len(t, all, len(expected))
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].AssetCode < all[j].AssetCode
 	})
 	for i, got := range all {
-		assert.Equal(t, expected[i], got)
+		assert.True(t, expected[i].Equals(got))
 	}
 }
 
+func assertAllFromSnapshotEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
+	all, err := set.AllFromSnapshot()
+	assert.NoError(t, err)
+	assertAssetStatsAreEqual(t, all, expected)
+}
+
+func TestAddContractData(t *testing.T) {
+	xlmID, err := xdr.MustNewNativeAsset().ContractID("passphrase")
+	assert.NoError(t, err)
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcAsset := xdr.MustNewCreditAsset("USDC", usdcIssuer)
+	usdcID, err := usdcAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+	etherIssuer := keypair.MustRandom().Address()
+	etherAsset := xdr.MustNewCreditAsset("ETHER", etherIssuer)
+	etherID, err := etherAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+
+	set := NewAssetStatSet("passphrase")
+
+	xlmContractData, err := AssetToContractData(true, "", "", xlmID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: xlmContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: usdcContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	etherContractData, err := AssetToContractData(false, "ETHER", etherIssuer, etherID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: etherContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	assert.NoError(
+		t,
+		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
+			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+			Asset:     xdr.MustNewCreditAsset("ETHER", etherIssuer).ToTrustLineAsset(),
+			Balance:   1,
+			Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+		})),
+	)
+
+	all, m := set.All()
+	assert.Len(t, all, 1)
+	etherAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
+		AssetCode:   "ETHER",
+		AssetIssuer: etherIssuer,
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+		},
+		Amount:      "1",
+		NumAccounts: 1,
+	}
+	assert.True(t, all[0].Equals(etherAssetStat))
+
+	assert.Len(t, m, 2)
+	assert.True(t, m[usdcID].Equals(usdcAsset))
+	assert.True(t, m[etherID].Equals(etherAsset))
+
+	usdcAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   "USDC",
+		AssetIssuer: usdcIssuer,
+		Accounts:    history.ExpAssetStatAccounts{},
+		Balances:    newAssetStatBalance().ConvertToHistoryObject(),
+		Amount:      "0",
+		NumAccounts: 0,
+		ContractID:  nil,
+	}
+
+	etherAssetStat.SetContractID(etherID)
+	usdcAssetStat.SetContractID(usdcID)
+
+	assertAllFromSnapshotEquals(t, set, []history.ExpAssetStat{
+		etherAssetStat,
+		usdcAssetStat,
+	})
+}
+
+func TestRemoveContractData(t *testing.T) {
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("passphrase")
+	assert.NoError(t, err)
+	set := NewAssetStatSet("passphrase")
+
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	assert.NoError(t, err)
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: eurContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Len(t, m, 1)
+	asset, ok := m[eurID]
+	assert.True(t, ok)
+	assert.Nil(t, asset)
+}
+
+func TestChangeContractData(t *testing.T) {
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("passphrase")
+	assert.NoError(t, err)
+
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcID, err := xdr.MustNewCreditAsset("USDC", usdcIssuer).ContractID("passphrase")
+	assert.NoError(t, err)
+
+	set := NewAssetStatSet("passphrase")
+
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	assert.NoError(t, err)
+	usdcContractData, err := AssetToContractData(false, "USDC", usdcIssuer, usdcID)
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: eurContractData,
+		},
+		Post: &xdr.LedgerEntry{
+			Data: usdcContractData,
+		},
+	})
+	assert.EqualError(t, err, "asset contract changed asset")
+}
+
 func TestAddNativeClaimableBalance(t *testing.T) {
-	set := AssetStatSet{}
+	set := NewAssetStatSet("")
 	claimableBalance := xdr.ClaimableBalanceEntry{
 		BalanceId: xdr.ClaimableBalanceId{},
 		Claimants: nil,
@@ -56,7 +212,9 @@ func TestAddNativeClaimableBalance(t *testing.T) {
 			},
 		},
 	))
-	assert.Empty(t, set.All())
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
 }
 
 func trustlineChange(pre, post *xdr.TrustLineEntry) ingest.Change {
@@ -79,7 +237,7 @@ func trustlineChange(pre, post *xdr.TrustLineEntry) ingest.Change {
 }
 
 func TestAddPoolShareTrustline(t *testing.T) {
-	set := AssetStatSet{}
+	set := NewAssetStatSet("")
 	assert.NoError(
 		t,
 		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
@@ -93,11 +251,13 @@ func TestAddPoolShareTrustline(t *testing.T) {
 		},
 		)),
 	)
-	assert.Empty(t, set.All())
+	all, m := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
 }
 
-func TestAddAndRemoveAssetStats(t *testing.T) {
-	set := AssetStatSet{}
+func TestAddAssetStats(t *testing.T) {
+	set := NewAssetStatSet("")
 	eur := "EUR"
 	eurAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -241,22 +401,10 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		},
 	}
 	assertAllEquals(t, set, expected)
-
-	for i, assetStat := range expected {
-		removed, ok := set.Remove(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
-		if !ok {
-			t.Fatal("expected remove to return true")
-		}
-		if removed != assetStat {
-			t.Fatalf("expected removed asset stat to be %v but got %v", assetStat, removed)
-		}
-
-		assertAllEquals(t, set, expected[i+1:])
-	}
 }
 
 func TestOverflowAssetStatSet(t *testing.T) {
-	set := AssetStatSet{}
+	set := NewAssetStatSet("")
 	eur := "EUR"
 	err := set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
@@ -267,9 +415,12 @@ func TestOverflowAssetStatSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	all := set.All()
+	all, m := set.All()
 	if len(all) != 1 {
 		t.Fatalf("expected list of 1 asset stat but got %v", all)
+	}
+	if len(m) != 0 {
+		t.Fatalf("expected contract id map to be empty but got  %v", m)
 	}
 
 	eurAssetStat := history.ExpAssetStat{
@@ -302,9 +453,12 @@ func TestOverflowAssetStatSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	all = set.All()
+	all, m = set.All()
 	if len(all) != 1 {
 		t.Fatalf("expected list of 1 asset stat but got %v", all)
+	}
+	if len(m) != 0 {
+		t.Fatalf("expected contract id map to be empty but got  %v", m)
 	}
 
 	eurAssetStat = history.ExpAssetStat{

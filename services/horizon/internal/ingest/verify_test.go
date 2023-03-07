@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
@@ -108,24 +109,23 @@ func genLiquidityPool(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	return change
 }
 
-func genTrustLine(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+func genTrustLine(tt *test.T, gen randxdr.Generator, extra ...randxdr.Preset) xdr.LedgerEntryChange {
 	change := xdr.LedgerEntryChange{}
 	shape := &gxdr.LedgerEntryChange{}
-	gen.Next(
-		shape,
-		[]randxdr.Preset{
-			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
-			{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
-			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.TRUSTLINE.GetU32())},
-			{randxdr.FieldEquals("created.data.trustLine.flags"), randxdr.SetPositiveNum32},
-			{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum4.assetCode"), randxdr.SetAssetCode},
-			{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum12.assetCode"), randxdr.SetAssetCode},
-			{randxdr.FieldEquals("created.data.trustLine.balance"), randxdr.SetPositiveNum64},
-			{randxdr.FieldEquals("created.data.trustLine.limit"), randxdr.SetPositiveNum64},
-			{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.selling"), randxdr.SetPositiveNum64},
-			{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.buying"), randxdr.SetPositiveNum64},
-		},
-	)
+	presets := []randxdr.Preset{
+		{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+		{randxdr.FieldEquals("created.lastModifiedLedgerSeq"), randxdr.SetPositiveNum32},
+		{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.TRUSTLINE.GetU32())},
+		{randxdr.FieldEquals("created.data.trustLine.flags"), randxdr.SetPositiveNum32},
+		{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum4.assetCode"), randxdr.SetAssetCode},
+		{randxdr.FieldEquals("created.data.trustLine.asset.alphaNum12.assetCode"), randxdr.SetAssetCode},
+		{randxdr.FieldEquals("created.data.trustLine.balance"), randxdr.SetPositiveNum64},
+		{randxdr.FieldEquals("created.data.trustLine.limit"), randxdr.SetPositiveNum64},
+		{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.selling"), randxdr.SetPositiveNum64},
+		{randxdr.FieldEquals("created.data.trustLine.ext.v1.liabilities.buying"), randxdr.SetPositiveNum64},
+	}
+	presets = append(presets, extra...)
+	gen.Next(shape, presets)
 	tt.Assert.NoError(gxdr.Convert(shape, &change))
 	return change
 }
@@ -198,6 +198,46 @@ func genConfigSetting(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	return change
 }
 
+func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEntryChange {
+	assetPreset := randxdr.Preset{
+		randxdr.FieldEquals("created.data.trustLine.asset.type"),
+		randxdr.SetU32(
+			gxdr.ASSET_TYPE_CREDIT_ALPHANUM4.GetU32(),
+			gxdr.ASSET_TYPE_CREDIT_ALPHANUM12.GetU32(),
+		),
+	}
+	trustline := genTrustLine(tt, gen, assetPreset)
+	assetContractMetadata := assetContractMetadataFromTrustline(tt, trustline)
+
+	otherTrustline := genTrustLine(tt, gen, assetPreset)
+	otherAssetContractMetadata := assetContractMetadataFromTrustline(tt, otherTrustline)
+	return []xdr.LedgerEntryChange{
+		assetContractMetadata,
+		trustline,
+		otherAssetContractMetadata,
+	}
+}
+
+func assetContractMetadataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	contractID, err := trustline.Created.Data.MustTrustLine().Asset.ToAsset().ContractID("")
+	tt.Assert.NoError(err)
+	var assetType xdr.AssetType
+	var code, issuer string
+	tt.Assert.NoError(
+		trustline.Created.Data.MustTrustLine().Asset.Extract(&assetType, &code, &issuer),
+	)
+	ledgerData, err := processors.AssetToContractData(assetType == xdr.AssetTypeAssetTypeNative, code, issuer, contractID)
+	tt.Assert.NoError(err)
+	assetContractMetadata := xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Created: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: trustline.Created.LastModifiedLedgerSeq,
+			Data:                  ledgerData,
+		},
+	}
+	return assetContractMetadata
+}
+
 func TestStateVerifier(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -205,7 +245,7 @@ func TestStateVerifier(t *testing.T) {
 	q := &history.Q{&db.Session{DB: tt.HorizonDB}}
 
 	checkpointLedger := uint32(63)
-	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger)
+	changeProcessor := buildChangeProcessor(q, &ingest.StatsChangeProcessor{}, ledgerSource, checkpointLedger, "")
 	mockChangeReader := &ingest.MockChangeReader{}
 
 	gen := randxdr.NewGenerator()
@@ -222,6 +262,7 @@ func TestStateVerifier(t *testing.T) {
 			genContractCode(tt, gen),
 			genConfigSetting(tt, gen),
 		)
+		changes = append(changes, genAssetContractMetadata(tt, gen)...)
 	}
 
 	coverage := map[xdr.LedgerEntryType]int{}

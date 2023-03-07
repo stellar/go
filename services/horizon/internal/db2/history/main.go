@@ -3,6 +3,7 @@
 package history
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -352,6 +353,8 @@ type ExpAssetStat struct {
 	Balances    ExpAssetStatBalances `db:"balances"`
 	Amount      string               `db:"amount"`
 	NumAccounts int32                `db:"num_accounts"`
+	ContractID  *[]byte              `db:"contract_id"`
+	// make sure to update Equals() when adding new fields to ExpAssetStat
 }
 
 // PagingToken returns a cursor for this asset stat
@@ -384,6 +387,39 @@ func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
 	}
 
 	return json.Unmarshal(source, &e)
+}
+
+func (e *ExpAssetStat) Equals(o ExpAssetStat) bool {
+	if (e.ContractID == nil) != (o.ContractID == nil) {
+		return false
+	}
+	if e.ContractID != nil && !bytes.Equal(*e.ContractID, *o.ContractID) {
+		return false
+	}
+
+	return e.AssetType == o.AssetType &&
+		e.AssetCode == o.AssetCode &&
+		e.AssetIssuer == o.AssetIssuer &&
+		e.Accounts == o.Accounts &&
+		e.Balances == o.Balances &&
+		e.Amount == o.Amount &&
+		e.NumAccounts == o.NumAccounts
+}
+
+func (e *ExpAssetStat) GetContractID() ([32]byte, bool) {
+	var val [32]byte
+	if e.ContractID == nil {
+		return val, false
+	}
+	if size := copy(val[:], (*e.ContractID)[:]); size != 32 {
+		panic("contract id is not 32 bytes")
+	}
+	return val, true
+}
+
+func (e *ExpAssetStat) SetContractID(contractID [32]byte) {
+	contractIDBytes := contractID[:]
+	e.ContractID = &contractIDBytes
 }
 
 func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
@@ -451,9 +487,12 @@ type QAssetStats interface {
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+	GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error)
+	GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
+	CountContractIDs(ctx context.Context) (int, error)
 }
 
 type QCreateAccountsHistory interface {

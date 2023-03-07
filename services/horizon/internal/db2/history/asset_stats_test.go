@@ -2,12 +2,149 @@ package history
 
 import (
 	"database/sql"
+	"sort"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
+
+func TestAssetStatContracts(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	// asset stats is empty so count should be 0
+	count, err := q.CountContractIDs(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(0, count)
+
+	assetStats := []ExpAssetStat{
+		{
+			AssetType: xdr.AssetTypeAssetTypeNative,
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      0,
+				AuthorizedToMaintainLiabilities: 0,
+				ClaimableBalances:               0,
+				LiquidityPools:                  0,
+				Unauthorized:                    0,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "0",
+				AuthorizedToMaintainLiabilities: "0",
+				ClaimableBalances:               "0",
+				LiquidityPools:                  "0",
+				Unauthorized:                    "0",
+			},
+			Amount:      "0",
+			NumAccounts: 0,
+		},
+		{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
+			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			AssetCode:   "ETHER",
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      1,
+				AuthorizedToMaintainLiabilities: 3,
+				Unauthorized:                    4,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "23",
+				AuthorizedToMaintainLiabilities: "2",
+				Unauthorized:                    "3",
+				ClaimableBalances:               "4",
+				LiquidityPools:                  "5",
+			},
+			Amount:      "23",
+			NumAccounts: 1,
+		},
+		{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			AssetCode:   "USD",
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      2,
+				AuthorizedToMaintainLiabilities: 3,
+				Unauthorized:                    4,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "1",
+				AuthorizedToMaintainLiabilities: "2",
+				Unauthorized:                    "3",
+				ClaimableBalances:               "4",
+				LiquidityPools:                  "5",
+			},
+			Amount:      "1",
+			NumAccounts: 2,
+		},
+	}
+	var contractID [32]byte
+	for i := 0; i < 2; i++ {
+		assetStats[i].SetContractID(contractID)
+		contractID[0]++
+	}
+	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats, 1))
+
+	count, err = q.CountContractIDs(tt.Ctx)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(2, count)
+
+	contractID[0] = 0
+	for i := 0; i < 2; i++ {
+		var assetStat ExpAssetStat
+		assetStat, err = q.GetAssetStatByContract(tt.Ctx, contractID)
+		tt.Assert.NoError(err)
+		tt.Assert.True(assetStat.Equals(assetStats[i]))
+		contractID[0]++
+	}
+
+	contractIDs := make([][32]byte, 2)
+	contractIDs[1][0]++
+	rows, err := q.GetAssetStatByContracts(tt.Ctx, contractIDs)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(rows, 2)
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].AssetCode < rows[j].AssetCode
+	})
+
+	for i, row := range rows {
+		tt.Assert.True(row.Equals(assetStats[i]))
+	}
+
+	usd := assetStats[2]
+	usd.SetContractID([32]byte{})
+	_, err = q.UpdateAssetStat(tt.Ctx, usd)
+	tt.Assert.EqualError(err, "exec failed: pq: duplicate key value violates unique constraint \"exp_asset_stats_contract_id_key\"")
+
+	usd.SetContractID([32]byte{2})
+	rowsUpdated, err := q.UpdateAssetStat(tt.Ctx, usd)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(1), rowsUpdated)
+
+	assetStats[2] = usd
+	contractID = [32]byte{}
+	for i := 0; i < 3; i++ {
+		var assetStat ExpAssetStat
+		assetStat, err = q.GetAssetStatByContract(tt.Ctx, contractID)
+		tt.Assert.NoError(err)
+		tt.Assert.True(assetStat.Equals(assetStats[i]))
+		contractID[0]++
+	}
+
+	contractIDs = [][32]byte{{}, {1}, {2}}
+	rows, err = q.GetAssetStatByContracts(tt.Ctx, contractIDs)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(rows, 3)
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].AssetCode < rows[j].AssetCode
+	})
+
+	for i, row := range rows {
+		tt.Assert.True(row.Equals(assetStats[i]))
+	}
+}
 
 func TestInsertAssetStats(t *testing.T) {
 	tt := test.Start(t)

@@ -1,6 +1,7 @@
 package xdr
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"regexp"
@@ -432,4 +433,22 @@ func (a *Asset) LessThan(b Asset) bool {
 	}
 
 	return a.GetIssuer() < b.GetIssuer()
+}
+
+// ContractID returns the expected Stellar Asset Contract id for the given
+// asset and network.
+func (a Asset) ContractID(passphrase string) ([32]byte, error) {
+	networkId := Hash(sha256.Sum256([]byte(passphrase)))
+	preImage := HashIdPreimage{
+		Type: EnvelopeTypeEnvelopeTypeContractIdFromAsset,
+		FromAsset: &HashIdPreimageFromAsset{
+			NetworkId: networkId,
+			Asset:     a,
+		},
+	}
+	xdrPreImageBytes, err := preImage.MarshalBinary()
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return sha256.Sum256(xdrPreImageBytes), nil
 }

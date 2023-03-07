@@ -111,6 +111,7 @@ func buildChangeProcessor(
 	changeStats *ingest.StatsChangeProcessor,
 	source ingestionSource,
 	ledgerSequence uint32,
+	networkPassphrase string,
 ) *groupChangeProcessors {
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
@@ -122,7 +123,7 @@ func buildChangeProcessor(
 		processors.NewAccountDataProcessor(historyQ),
 		processors.NewAccountsProcessor(historyQ),
 		processors.NewOffersProcessor(historyQ, ledgerSequence),
-		processors.NewAssetStatsProcessor(historyQ, useLedgerCache),
+		processors.NewAssetStatsProcessor(historyQ, networkPassphrase, useLedgerCache),
 		processors.NewSignersProcessor(historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(historyQ),
 		processors.NewClaimableBalancesChangeProcessor(historyQ),
@@ -223,7 +224,13 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	bucketListHash xdr.Hash,
 ) (ingest.StatsChangeProcessorResults, error) {
 	changeStats := ingest.StatsChangeProcessor{}
-	changeProcessor := buildChangeProcessor(s.historyQ, &changeStats, historyArchiveSource, checkpointLedger)
+	changeProcessor := buildChangeProcessor(
+		s.historyQ,
+		&changeStats,
+		historyArchiveSource,
+		checkpointLedger,
+		s.config.NetworkPassphrase,
+	)
 
 	if checkpointLedger == 1 {
 		if err := changeProcessor.ProcessChange(s.ctx, ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
@@ -377,7 +384,13 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		return
 	}
 
-	groupChangeProcessors := buildChangeProcessor(s.historyQ, &changeStatsProcessor, ledgerSource, ledger.LedgerSequence())
+	groupChangeProcessors := buildChangeProcessor(
+		s.historyQ,
+		&changeStatsProcessor,
+		ledgerSource,
+		ledger.LedgerSequence(),
+		s.config.NetworkPassphrase,
+	)
 	err = s.runChangeProcessorOnLedger(groupChangeProcessors, ledger)
 	if err != nil {
 		return

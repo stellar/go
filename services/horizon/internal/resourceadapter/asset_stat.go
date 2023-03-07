@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/amount"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
@@ -20,6 +21,12 @@ func PopulateAssetStat(
 	row history.ExpAssetStat,
 	issuer history.AccountEntry,
 ) (err error) {
+	if row.ContractID != nil {
+		res.ContractID, err = strkey.Encode(strkey.VersionByteContract, *row.ContractID)
+		if err != nil {
+			return
+		}
+	}
 	res.Asset.Type = xdr.AssetTypeToString[row.AssetType]
 	res.Asset.Code = row.AssetCode
 	res.Asset.Issuer = row.AssetIssuer

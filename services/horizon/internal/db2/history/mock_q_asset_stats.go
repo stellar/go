@@ -34,6 +34,11 @@ func (m *MockQAssetStats) GetAssetStat(ctx context.Context, assetType xdr.AssetT
 	return a.Get(0).(ExpAssetStat), a.Error(1)
 }
 
+func (m *MockQAssetStats) GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error) {
+	a := m.Called(ctx, contractID)
+	return a.Get(0).(ExpAssetStat), a.Error(1)
+}
+
 func (m *MockQAssetStats) RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error) {
 	a := m.Called(ctx, assetType, assetCode, assetIssuer)
 	return a.Get(0).(int64), a.Error(1)
@@ -44,7 +49,17 @@ func (m *MockQAssetStats) GetAssetStats(ctx context.Context, assetCode, assetIss
 	return a.Get(0).([]ExpAssetStat), a.Error(1)
 }
 
+func (m *MockQAssetStats) GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error) {
+	a := m.Called(ctx, contractIDs)
+	return a.Get(0).([]ExpAssetStat), a.Error(1)
+}
+
 func (m *MockQAssetStats) CountTrustLines(ctx context.Context) (int, error) {
+	a := m.Called(ctx)
+	return a.Get(0).(int), a.Error(1)
+}
+
+func (m *MockQAssetStats) CountContractIDs(ctx context.Context) (int, error) {
 	a := m.Called(ctx)
 	return a.Get(0).(int), a.Error(1)
 }

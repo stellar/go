@@ -57,7 +57,9 @@ const (
 	// - 15: Fixed bug in asset stat ingestion where clawback is enabled (#3846).
 	// - 16: Extract claimants to a separate table for better performance of
 	//       claimable balances for claimant queries.
-	CurrentVersion = 16
+	// - 17: Add contract_id column to exp_asset_stats table which is derived by ingesting
+	//       contract data ledger entries.
+	CurrentVersion = 17
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
