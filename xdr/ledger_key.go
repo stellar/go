@@ -182,6 +182,8 @@ func (key *LedgerKey) SetConfigSetting(configSettingID ConfigSettingId) error {
 }
 
 // GetLedgerKeyFromData obtains a ledger key from LedgerEntryData
+//
+//lint:ignore gocyclo
 func GetLedgerKeyFromData(data LedgerEntryData) (LedgerKey, error) {
 	var key LedgerKey
 	switch data.Type {
