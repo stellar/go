@@ -7,10 +7,10 @@ The existing integeration tests refer to .wasm files from the `testdata/` direct
 1. First install latest rust toolchain:
 https://www.rust-lang.org/tools/install
 
-2. Update [`Cargo.toml file`](./Cargo.toml`) to have latest git refs to
+2. Update the [`Cargo.toml file`](./Cargo.toml) to have latest git refs to
 [`rs-soroban-sdk`](https://github.com/stellar/rs-soroban-sdk) for the `soroban-sdk` and `soroban-auth` dependencies.
 
-3. Recompile the soroban_token_spec.wasm by compiling the `rs-soroban-sdk` source code from the same git ref to WASM and copy it to the `contracts/` folder:
+3. Recompile the `soroban_token_spec.wasm` by compiling the `rs-soroban-sdk` source code from the same git ref to WASM and copy it to the `contracts/` folder:
 
 ```bash
 git clone git@github.com:stellar/rs-soroban-sdk.git
@@ -21,7 +21,7 @@ cp ../target/wasm32-unknown-unknown/release/soroban_token_spec.wasm \
    $MONOREPO/services/horizon/internal/integration/contracts
 ```
 
-(where $MONOREPO is where you have `stellar/go` checked out)
+(where `$MONOREPO` is where you have `stellar/go` checked out)
 
 4. Compile the contract source code to WASM and copy it to `testdata/`:
 
