@@ -57,12 +57,12 @@ func NewStateVerifier(stateReader ingest.ChangeReader, tf TransformLedgerEntryFu
 	}
 }
 
-// GetLedgerKeys returns up to `count` ledger keys from history buckets
-// storing actual entries in cache to compare in Write.
-func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, []xdr.LedgerEntry, error) {
+// GetLedgerEntries returns up to `count` ledger entries from history buckets
+// and stores the entries in cache to compare in Write.
+func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 	err := v.checkUnreadEntries()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	keys := make([]xdr.LedgerKey, 0, count)
@@ -74,9 +74,9 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, []xdr.LedgerE
 		if err != nil {
 			if err == io.EOF {
 				v.readingDone = true
-				return keys, entries, nil
+				return entries, nil
 			}
-			return keys, entries, err
+			return entries, err
 		}
 
 		entry := *entryChange.Post
@@ -91,7 +91,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, []xdr.LedgerE
 		ledgerKey := entry.LedgerKey()
 		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
 		if err != nil {
-			return keys, entries, errors.Wrap(err, "Error marshaling ledgerKey")
+			return entries, errors.Wrap(err, "Error marshaling ledgerKey")
 		}
 
 		entry.Normalize()
@@ -103,7 +103,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, []xdr.LedgerE
 		v.readEntries++
 	}
 
-	return keys, entries, nil
+	return entries, nil
 }
 
 // Write compares the entry with entries in the latest batch of entries fetched

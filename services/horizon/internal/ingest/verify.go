@@ -175,14 +175,13 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	assetStats := processors.NewAssetStatSet(s.config.NetworkPassphrase)
 	total := int64(0)
 	for {
-		var keys []xdr.LedgerKey
 		var entries []xdr.LedgerEntry
-		keys, entries, err = verifier.GetLedgerKeys(verifyBatchSize)
+		entries, err = verifier.GetLedgerEntries(verifyBatchSize)
 		if err != nil {
-			return errors.Wrap(err, "verifier.GetLedgerKeys")
+			return errors.Wrap(err, "verifier.GetLedgerEntries")
 		}
 
-		if len(keys) == 0 {
+		if len(entries) == 0 {
 			break
 		}
 
@@ -193,25 +192,25 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
 		lPools := make([]xdr.PoolId, 0, verifyBatchSize)
 		contractIDs := make([][32]byte, 0, verifyBatchSize)
-		for i, key := range keys {
-			switch key.Type {
+		for i, entry := range entries {
+			switch entry.Data.Type {
 			case xdr.LedgerEntryTypeAccount:
-				accounts = append(accounts, key.Account.AccountId.Address())
+				accounts = append(accounts, entry.Data.MustAccount().AccountId.Address())
 				totalByType["accounts"]++
 			case xdr.LedgerEntryTypeData:
-				data = append(data, *key.Data)
+				data = append(data, *entry.LedgerKey().Data)
 				totalByType["data"]++
 			case xdr.LedgerEntryTypeOffer:
-				offers = append(offers, int64(key.Offer.OfferId))
+				offers = append(offers, int64(entry.Data.MustOffer().OfferId))
 				totalByType["offers"]++
 			case xdr.LedgerEntryTypeTrustline:
-				trustLines = append(trustLines, *key.TrustLine)
+				trustLines = append(trustLines, entry.LedgerKey().MustTrustLine())
 				totalByType["trust_lines"]++
 			case xdr.LedgerEntryTypeClaimableBalance:
-				cBalances = append(cBalances, key.ClaimableBalance.BalanceId)
+				cBalances = append(cBalances, entry.Data.MustClaimableBalance().BalanceId)
 				totalByType["claimable_balances"]++
 			case xdr.LedgerEntryTypeLiquidityPool:
-				lPools = append(lPools, key.LiquidityPool.LiquidityPoolId)
+				lPools = append(lPools, entry.Data.MustLiquidityPool().LiquidityPoolId)
 				totalByType["liquidity_pools"]++
 			case xdr.LedgerEntryTypeContractData:
 				// contract data is a special case.
@@ -227,7 +226,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				contractIDs = append(contractIDs, entries[i].Data.MustContractData().ContractId)
 				totalByType["contract_data"]++
 			default:
-				return errors.New("GetLedgerKeys return unexpected type")
+				return errors.New("GetLedgerEntries return unexpected type")
 			}
 		}
 
@@ -266,7 +265,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			return errors.Wrap(err, "addContractIDsToStateVerifier failed")
 		}
 
-		total += int64(len(keys))
+		total += int64(len(entries))
 		localLog.WithField("total", total).Info("Batch added to StateVerifier")
 	}
 

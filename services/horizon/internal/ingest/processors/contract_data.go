@@ -139,13 +139,6 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	return &asset
 }
 
-func padTrailingZeros(buf []byte, length int) []byte {
-	for i := len(buf); i < length; i++ {
-		buf = append(buf, 0)
-	}
-	return buf
-}
-
 func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, error) {
 	if isNative {
 		symbol := xdr.ScSymbol("Native")
@@ -170,7 +163,8 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, er
 		symbol = "AlphaNum12"
 		assetCodeLength = 12
 	}
-	assetCodeBytes := padTrailingZeros([]byte(code), assetCodeLength)
+	assetCodeBytes := make([]byte, assetCodeLength)
+	copy(assetCodeBytes, code)
 	assetCodeSymbol := xdr.ScSymbol("asset_code")
 	issuerSymbol := xdr.ScSymbol("issuer")
 

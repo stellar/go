@@ -404,6 +404,7 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 	// modify the asset stat row to update the contract_id column whenever we encounter a
 	// contract data ledger entry with the Stellar asset metadata.
 	for i, assetStatDelta := range assetStatsDeltas {
+		// asset stats only supports non-native assets
 		asset := xdr.MustNewCreditAsset(assetStatDelta.AssetCode, assetStatDelta.AssetIssuer)
 		contractID, err := asset.ContractID(s.networkPassphrase)
 		if err != nil {

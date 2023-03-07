@@ -126,7 +126,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		var rowsAffected int64
 		var stat history.ExpAssetStat
 		var err error
-
+		// asset stats only supports non-native assets
 		asset := xdr.MustNewCreditAsset(delta.AssetCode, delta.AssetIssuer)
 		contractID, err := asset.ContractID(p.networkPassphrase)
 		if err != nil {
