@@ -119,7 +119,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	// safe, since we convert to string right away (causing a copy)
 	key, err := v.encodingBuffer.UnsafeMarshalBinary(actualEntry.LedgerKey())
 	if err != nil {
-		return errors.Wrap(err, "Error marshaling ledgerKey")
+		return errors.Wrap(err, "Error marshalling ledgerKey")
 	}
 	keyString := string(key)
 	expectedEntry, exist := v.currentEntries[keyString]
