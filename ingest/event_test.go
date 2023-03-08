@@ -54,8 +54,14 @@ func TestSACTransferEvent(t *testing.T) {
 	_, err = NewStellarAssetContractEvent(&baseXdrEvent, "different")
 	require.Error(t, err)
 
-	// Ensure that invalid asset binaries are rejected
+	// Ensure that it works for the native asset
 	oldAsset := *(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin
+	*(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = []byte("native")
+	sacEvent, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	require.NoError(t, err)
+	require.Equal(t, xdr.AssetTypeAssetTypeNative, sacEvent.Asset.Type)
+
+	// Ensure that invalid asset binaries are rejected
 	bsAsset := make([]byte, len(oldAsset))
 	rand.Read(bsAsset)
 	(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = &bsAsset
