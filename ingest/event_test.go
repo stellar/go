@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stellar/go/keypair"
@@ -11,7 +12,7 @@ import (
 
 const passphrase = "passphrase"
 
-func TestStellarAssetContractEventParsing(t *testing.T) {
+func TestSACTransferEvent(t *testing.T) {
 	randomIssuer := keypair.MustRandom()
 	randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
 
@@ -34,6 +35,7 @@ func TestStellarAssetContractEventParsing(t *testing.T) {
 		Data:   makeAmount(10000),
 	}
 
+	// Ensure the happy path for transfer events works
 	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
@@ -47,6 +49,25 @@ func TestStellarAssetContractEventParsing(t *testing.T) {
 	require.Equal(t, randomIssuer.Address(), sacEvent.To.AccountId.Address())
 	require.EqualValues(t, 10000, sacEvent.Amount.Lo)
 	require.EqualValues(t, 0, sacEvent.Amount.Hi)
+
+	// Ensure that changing the passphrase invalidates the event
+	_, err = NewStellarAssetContractEvent(&baseXdrEvent, "different")
+	require.Error(t, err)
+
+	// Ensure that invalid asset binaries are rejected
+	oldAsset := *(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin
+	bsAsset := make([]byte, len(oldAsset))
+	rand.Read(bsAsset)
+	(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = &bsAsset
+	_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	require.Error(t, err)
+	(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = &oldAsset
+
+	// Ensure that system events are invalid
+	baseXdrEvent.Type = xdr.ContractEventTypeSystem
+	_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	require.Error(t, err)
+	baseXdrEvent.Type = xdr.ContractEventTypeContract
 }
 
 func makeTransferTopic(asset xdr.Asset) xdr.ScVec {

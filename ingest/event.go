@@ -139,9 +139,9 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 }
 
 // parseTransferEvent tries to parse the given topics and value as a SAC
-// "transfer" event. It assumes that the `topics` EXCLUDES the function name,
-// i.e. that its been validated previously. It will return a best-effort parsing
-// even in error cases.
+// "transfer" event. It assumes that the `topics` array has already validated
+// both the function name AND the asset <--> contract ID relationship. It will
+// return a best-effort parsing even in error cases.
 func (event *StellarAssetContractEvent) parseTransferEvent(topics xdr.ScVec, value xdr.ScVal) error {
 	//
 	// The transfer event format is:
@@ -157,7 +157,6 @@ func (event *StellarAssetContractEvent) parseTransferEvent(topics xdr.ScVec, val
 		return ErrNotTransferEvent
 	}
 
-	fmt.Println("xfer here")
 	from, to := topics[1], topics[2]
 	if from.Type != xdr.ScValTypeScvObject || to.Type != xdr.ScValTypeScvObject {
 		return ErrNotTransferEvent
