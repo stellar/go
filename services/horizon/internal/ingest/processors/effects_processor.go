@@ -1408,6 +1408,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []ingest.Event) err
 		}
 
 		switch sacEvent.Type {
+		// A transfer event generates an account_debited effect for the `to`
+		// (recipient) and an account_credited effect for the `from`
+		// (sender).
 		case ingest.EventTypeTransfer:
 			details := map[string]interface{}{"amount": amount.String128(*sacEvent.Amount)}
 			addAssetDetails(details, sacEvent.Asset, "")
@@ -1422,11 +1425,32 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []ingest.Event) err
 				details,
 			)
 
+		// A mint event implies a non-native asset, and it results in a debit to
+		// the `to` recipient.
 		case ingest.EventTypeMint:
+			details := map[string]interface{}{"amount": amount.String128(*sacEvent.Amount)}
+			addAssetDetails(details, sacEvent.Asset, "")
+			e.addUnmuxed(
+				xdr.MustAddressPtr(sacEvent.To),
+				history.EffectAccountDebited,
+				details,
+			)
+
+		// A clawback event results in a credit to the `from` address, but acts
+		// like a burn to the recipient, so these are functionally equivalent
 		case ingest.EventTypeClawback:
+			fallthrough
 		case ingest.EventTypeBurn:
+			details := map[string]interface{}{"amount": amount.String128(*sacEvent.Amount)}
+			addAssetDetails(details, sacEvent.Asset, "")
+			e.addUnmuxed(
+				xdr.MustAddressPtr(sacEvent.From),
+				history.EffectAccountCredited,
+				details,
+			)
+
+		// Other events are irrelevant to debit/credit effects
 		default:
-			// other events are irrelevant to debit/credit effects
 			continue
 		}
 	}
