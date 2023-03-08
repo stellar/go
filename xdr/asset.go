@@ -45,7 +45,7 @@ func MustNewCreditAsset(code string, issuer string) Asset {
 	return a
 }
 
-// NewAssetCodeFromString returns a new allow trust asset, panicking if it can't.
+// NewAssetCodeFromString returns a new credit asset, erroring if it can't.
 func NewAssetCodeFromString(code string) (AssetCode, error) {
 	a := AssetCode{}
 	length := len(code)
