@@ -210,8 +210,11 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addCreateClaimableBalanceEffects(changes)
 	case xdr.OperationTypeClaimClaimableBalance:
 		err = wrapper.addClaimClaimableBalanceEffects(changes)
-	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
-	// The effects of these operations are obtained  indirectly from the ledger entries
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		xdr.OperationTypeRevokeSponsorship:
+		// The effects of these operations are obtained indirectly from the
+		// ledger entries
 	case xdr.OperationTypeClawback:
 		err = wrapper.addClawbackEffects()
 	case xdr.OperationTypeClawbackClaimableBalance:
@@ -223,8 +226,15 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		err = wrapper.addLiquidityPoolWithdrawEffect()
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO: https://github.com/stellar/go/issues/4585
-		return nil, nil
+		// If there's an invokeHostFunction operation, there's definitely V3
+		// meta in the transaction, which means this error is real.
+		events, err := operation.transaction.GetOperationEvents(operation.index)
+		if err != nil {
+			return nil, err
+		}
+
+		// For now, the only effects are related to the events themselves.
+		err = wrapper.addInvokeHostFunctionEffects(events)
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -1384,5 +1394,42 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 		"shares_redeemed": amount.String(-delta.TotalPoolShares),
 	}
 	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolWithdrew, details)
+	return nil
+}
+
+// addInvokeHostFunctionEffects iterates through the events and generates
+// account_credited and account_debited effects when it sees events related to
+// the Stellar Asset Contract corresponding to those effects.
+func (e *effectsWrapper) addInvokeHostFunctionEffects(events []ingest.Event) error {
+	for _, event := range events {
+		sacEvent, err := ingest.NewStellarAssetContractEvent(&event, "TODO: Add network passphrase")
+		if err != nil {
+			continue // irrelevant or unsupported event
+		}
+
+		switch sacEvent.Type {
+		case ingest.EventTypeTransfer:
+			details := map[string]interface{}{"amount": amount.String128(*sacEvent.Amount)}
+			addAssetDetails(details, sacEvent.Asset, "")
+			e.addUnmuxed(
+				xdr.MustAddressPtr(sacEvent.From),
+				history.EffectAccountCredited,
+				details,
+			)
+			e.addUnmuxed(
+				xdr.MustAddressPtr(sacEvent.To),
+				history.EffectAccountDebited,
+				details,
+			)
+
+		case ingest.EventTypeMint:
+		case ingest.EventTypeClawback:
+		case ingest.EventTypeBurn:
+		default:
+			// other events are irrelevant to debit/credit effects
+			continue
+		}
+	}
+
 	return nil
 }

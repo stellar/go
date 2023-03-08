@@ -45,8 +45,8 @@ func TestSACTransferEvent(t *testing.T) {
 	require.NotNil(t, sacEvent.To)
 	require.NotNil(t, sacEvent.Amount)
 
-	require.Equal(t, randomIssuer.Address(), sacEvent.From.AccountId.Address())
-	require.Equal(t, randomIssuer.Address(), sacEvent.To.AccountId.Address())
+	require.Equal(t, randomIssuer.Address(), sacEvent.From)
+	require.Equal(t, randomIssuer.Address(), sacEvent.To)
 	require.EqualValues(t, 10000, sacEvent.Amount.Lo)
 	require.EqualValues(t, 0, sacEvent.Amount.Hi)
 

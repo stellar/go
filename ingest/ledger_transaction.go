@@ -75,7 +75,9 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 			afterChanges = v3Meta.TxChangesAfter
 			operationMeta = v3Meta.Operations
 		default:
-			panic("Invalid meta version, expected 2 or 3")
+			panic(fmt.Errorf(
+				"invalid meta version %d, expected 2 or 3",
+				t.UnsafeMeta.V))
 		}
 
 		txChangesBefore := GetChangesFromLedgerEntryChanges(beforeChanges)

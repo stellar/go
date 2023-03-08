@@ -3,6 +3,7 @@ package ingest
 import (
 	"fmt"
 
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -12,7 +13,7 @@ type Event = xdr.ContractEvent
 type EventType = int
 
 // Note that there is no distinction between xfer() and xfer_from() in events,
-// and this is true for the other *_from variants, as well.
+// nor the other *_from variants. This is intentional from the host environment.
 
 const (
 	// Implemented
@@ -45,10 +46,10 @@ type StellarAssetContractEvent struct {
 	Type  int
 	Asset xdr.Asset
 
-	From   *xdr.ScAddress   // transfer, clawback, burn
-	To     *xdr.ScAddress   // transfer, mint
+	From   string           // transfer, clawback, burn; encoded as strkey
+	To     string           // transfer, mint; encoded as strkey
 	Amount *xdr.Int128Parts // transfer, mint, clawback, burn
-	Admin  *xdr.ScAddress   // mint, clawback
+	Admin  string           // mint, clawback; encoded as strkey
 }
 
 func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*StellarAssetContractEvent, error) {
@@ -97,7 +98,6 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 	}
 
 	assetBytes, ok := assetContainer.GetBin()
-	fmt.Println("here", len(assetBytes), assetBytes)
 	if !ok || assetBytes == nil {
 		return evt, ErrNotStellarAssetContract
 	}
@@ -111,6 +111,7 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 	if err != nil {
 		return evt, ErrNotStellarAssetContract
 	}
+	evt.Asset = xdrAsset
 
 	expectedId, err := xdrAsset.ContractID(networkPassphrase)
 	if err != nil {
@@ -172,8 +173,9 @@ func (event *StellarAssetContractEvent) parseTransferEvent(topics xdr.ScVec, val
 		return ErrNotTransferEvent
 	}
 
-	event.From = fromObj.Address
-	event.To = toObj.Address
+	event.From = ScAddressToString(fromObj.Address)
+	event.To = ScAddressToString(toObj.Address)
+	event.Asset = xdr.Asset{} // TODO
 
 	valueObj, ok := value.GetObj()
 	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
@@ -182,4 +184,35 @@ func (event *StellarAssetContractEvent) parseTransferEvent(topics xdr.ScVec, val
 
 	event.Amount = valueObj.I128
 	return nil
+}
+
+// ScAddressToString converts the low-level `xdr.ScAddress` union into the
+// appropriate strkey (contract C... or account ID G...).
+//
+// TODO: Should this return errors or just panic? Maybe just slap the "Must"
+// prefix on the helper name?
+func ScAddressToString(address *xdr.ScAddress) string {
+	if address == nil {
+		return ""
+	}
+
+	var result string
+	var err error
+
+	switch address.Type {
+	case xdr.ScAddressTypeScAddressTypeAccount:
+		pubkey := address.MustAccountId().Ed25519
+		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
+	case xdr.ScAddressTypeScAddressTypeContract:
+		contractId := *address.ContractId
+		result, err = strkey.Encode(strkey.VersionByteContract, contractId[:])
+	default:
+		panic(fmt.Errorf("unfamiliar address type: %v", address.Type))
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return result
 }
