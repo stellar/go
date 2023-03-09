@@ -104,16 +104,20 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 
 	asset, err := txnbuild.ParseAssetString(string(assetBytes))
 	if err != nil {
-		return evt, ErrNotStellarAssetContract
+		return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
 	}
 
-	xdrAsset, err := xdr.NewCreditAsset(asset.GetCode(), asset.GetIssuer())
+	switch asset.IsNative() {
+	case true:
+		evt.Asset = xdr.MustNewNativeAsset()
+	case false:
+		evt.Asset, err = xdr.NewCreditAsset(asset.GetCode(), asset.GetIssuer())
+	}
 	if err != nil {
-		return evt, ErrNotStellarAssetContract
+		return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
 	}
-	evt.Asset = xdrAsset
 
-	expectedId, err := xdrAsset.ContractID(networkPassphrase)
+	expectedId, err := evt.Asset.ContractID(networkPassphrase)
 	if err != nil {
 		return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
 	}
@@ -121,6 +125,8 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 	// This is the DEFINITIVE integrity check for whether or not this is a
 	// SAC event. At this point, we can parse the event and treat it as
 	// truth, mapping it to effects where appropriate.
+	fmt.Println(asset.IsNative(), "here?")
+
 	if expectedId != *event.ContractId { // nil check was earlier
 		return evt, ErrNotStellarAssetContract
 	}
@@ -202,6 +208,8 @@ func ScAddressToString(address *xdr.ScAddress) string {
 	switch address.Type {
 	case xdr.ScAddressTypeScAddressTypeAccount:
 		pubkey := address.MustAccountId().Ed25519
+		fmt.Println("pubkey:", address.MustAccountId())
+
 		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
 	case xdr.ScAddressTypeScAddressTypeContract:
 		contractId := *address.ContractId
