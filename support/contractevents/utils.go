@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -46,4 +47,35 @@ func parseAddress(val *xdr.ScVal) *xdr.ScAddress {
 	}
 
 	return address.Address
+}
+
+// parseBalanceChangeEvent is a generalization of a subset of the Stellar Asset
+// Contract events. Transfer, mint, clawback, and burn events all have two
+// addresses and an amount involved. The addresses represent different things in
+// different event types (e.g. "from" or "admin"), but the parsing is identical.
+// This helper extracts all three parts or returns a generic error if it can't.
+var ErrNotBalanceChangeEvent = errors.New("")
+
+func parseBalanceChangeEvent(topics xdr.ScVec, value xdr.ScVal) (string, string, xdr.Int128Parts, error) {
+	first, second, amount := "", "", xdr.Int128Parts{}
+
+	if len(topics) != 4 {
+		return first, second, amount, ErrNotBalanceChangeEvent
+	}
+
+	rawFirst, rawSecond := topics[1], topics[2]
+	firstSc, secondSc := parseAddress(&rawFirst), parseAddress(&rawSecond)
+	if firstSc == nil || secondSc == nil {
+		return first, second, amount, ErrNotBalanceChangeEvent
+	}
+
+	first, second = MustScAddressToString(firstSc), MustScAddressToString(secondSc)
+
+	valueObj, ok := value.GetObj()
+	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
+		return first, second, amount, ErrNotBalanceChangeEvent
+	}
+
+	amount = *valueObj.I128
+	return first, second, amount, nil
 }

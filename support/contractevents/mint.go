@@ -15,10 +15,12 @@ type MintEvent struct {
 	Amount xdr.Int128Parts
 }
 
-// parseTransferEvent tries to parse the given topics and value as a SAC
-// "transfer" event. It assumes that the `topics` array has already validated
-// both the function name AND the asset <--> contract ID relationship. It will
-// return a best-effort parsing even in error cases.
+// parseMintEvent tries to parse the given topics and value as a SAC "mint"
+// event.
+//
+// Internally, it assumes that the `topics` array has already validated both the
+// function name AND the asset <--> contract ID relationship. It will return a
+// best-effort parsing even in error cases.
 func (event *MintEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 	//
 	// The mint event format is:
@@ -30,24 +32,10 @@ func (event *MintEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 	//
 	// 	<amount> 	i128
 	//
-	if len(topics) != 4 {
-		return ErrNotTransferEvent
-	}
-
-	rawAdmin, rawTo := topics[1], topics[2]
-	admin, to := parseAddress(&rawAdmin), parseAddress(&rawTo)
-	if admin == nil || to == nil {
+	var err error
+	event.Admin, event.To, event.Amount, err = parseBalanceChangeEvent(topics, value)
+	if err != nil {
 		return ErrNotMintEvent
 	}
-
-	event.Admin = MustScAddressToString(admin)
-	event.To = MustScAddressToString(to)
-
-	valueObj, ok := value.GetObj()
-	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
-		return ErrNotMintEvent
-	}
-
-	event.Amount = *valueObj.I128
 	return nil
 }

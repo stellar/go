@@ -124,6 +124,26 @@ func TestSACMintEvent(t *testing.T) {
 	require.EqualValues(t, 0, mintEvent.Amount.Hi)
 }
 
+func TestSACClawbackEvent(t *testing.T) {
+	baseXdrEvent := makeEvent()
+	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
+		Topics: makeClawbackTopic(randomAsset),
+		Data:   makeAmount(10000),
+	}
+
+	// Ensure the happy path for mint events works
+	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	require.NoError(t, err)
+	require.NotNil(t, sacEvent)
+	require.Equal(t, EventTypeClawback, sacEvent.GetType())
+
+	clawEvent := sacEvent.(*ClawbackEvent)
+	require.Equal(t, randomAccount, clawEvent.Admin)
+	require.Equal(t, zeroContract, clawEvent.From)
+	require.EqualValues(t, 10000, clawEvent.Amount.Lo)
+	require.EqualValues(t, 0, clawEvent.Amount.Hi)
+}
+
 func TestFuzzingSACEventParser(t *testing.T) {
 	gen := randxdr.NewGenerator()
 	for i := 0; i < 100_000; i++ {
@@ -139,6 +159,10 @@ func TestFuzzingSACEventParser(t *testing.T) {
 		NewStellarAssetContractEvent(&event, "passphrase")
 	}
 }
+
+//
+// Test suite helpers below
+//
 
 func makeEvent() xdr.ContractEvent {
 	rawContractId, err := randomAsset.ContractID(passphrase)
@@ -215,6 +239,14 @@ func makeTransferTopic(asset xdr.Asset) xdr.ScVec {
 func makeMintTopic(asset xdr.Asset) xdr.ScVec {
 	// mint is just transfer but with an admin instead of a from... nice
 	fnName := xdr.ScSymbol("mint")
+	topics := makeTransferTopic(asset)
+	topics[0].Sym = &fnName
+	return topics
+}
+
+func makeClawbackTopic(asset xdr.Asset) xdr.ScVec {
+	// clawback is just mint but with an from instead of to
+	fnName := xdr.ScSymbol("clawback")
 	topics := makeTransferTopic(asset)
 	topics[0].Sym = &fnName
 	return topics

@@ -5,37 +5,37 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var ErrNotTransferEvent = errors.New("event is not a valid 'transfer' event")
+var ErrNotClawbackEvent = errors.New("event is not a valid 'clawback' event")
 
-type TransferEvent struct {
+type ClawbackEvent struct {
 	sacEvent
 
+	Admin  string
 	From   string
-	To     string
 	Amount xdr.Int128Parts
 }
 
-// parseTransferEvent tries to parse the given topics and value as a SAC
-// "transfer" event.
+// parseClawbackEvent tries to parse the given topics and value as a SAC
+// "clawback" event.
 //
 // Internally, it assumes that the `topics` array has already validated both the
 // function name AND the asset <--> contract ID relationship. It will return a
 // best-effort parsing even in error cases.
-func (event *TransferEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
+func (event *ClawbackEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 	//
-	// The transfer event format is:
+	// The clawback event format is:
 	//
-	// 	"transfer"  Symbol
+	// 	"clawback" 	Symbol
+	//  <admin>		Address
 	//  <from> 		Address
-	//  <to> 		Address
 	// 	<asset>		Bytes
 	//
 	// 	<amount> 	i128
 	//
 	var err error
-	event.From, event.To, event.Amount, err = parseBalanceChangeEvent(topics, value)
+	event.Admin, event.From, event.Amount, err = parseBalanceChangeEvent(topics, value)
 	if err != nil {
-		return ErrNotTransferEvent
+		return ErrNotClawbackEvent
 	}
 	return nil
 }

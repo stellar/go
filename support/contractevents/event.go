@@ -144,9 +144,8 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 		return &mintEvent, mintEvent.parse(topics, value)
 
 	case EventTypeClawback:
-		fallthrough
-		// cbEvent := ClawbackEvent{}
-		// return &cbEvent, cbEvent.parse(topics, value)
+		cbEvent := ClawbackEvent{}
+		return &cbEvent, cbEvent.parse(topics, value)
 
 	case EventTypeBurn:
 		fallthrough
