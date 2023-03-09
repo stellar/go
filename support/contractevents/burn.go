@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var ErrNotBurnEvent = errors.New("event is not a valid 'mint' event")
+var ErrNotBurnEvent = errors.New("event is not a valid 'burn' event")
 
 type BurnEvent struct {
 	sacEvent
@@ -44,11 +44,11 @@ func (event *BurnEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 
 	event.From = MustScAddressToString(from)
 
-	valueObj, ok := value.GetObj()
-	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
+	amount := parseAmount(&value)
+	if amount == nil {
 		return ErrNotBurnEvent
 	}
 
-	event.Amount = *valueObj.I128
+	event.Amount = *amount
 	return nil
 }

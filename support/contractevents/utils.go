@@ -51,6 +51,15 @@ func parseAddress(val *xdr.ScVal) *xdr.ScAddress {
 	return address.Address
 }
 
+func parseAmount(val *xdr.ScVal) *xdr.Int128Parts {
+	valueObj, ok := val.GetObj()
+	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
+		return nil
+	}
+
+	return valueObj.I128
+}
+
 // parseBalanceChangeEvent is a generalization of a subset of the Stellar Asset
 // Contract events. Transfer, mint, clawback, and burn events all have two
 // addresses and an amount involved. The addresses represent different things in
@@ -71,11 +80,11 @@ func parseBalanceChangeEvent(topics xdr.ScVec, value xdr.ScVal) (string, string,
 
 	first, second = MustScAddressToString(firstSc), MustScAddressToString(secondSc)
 
-	valueObj, ok := value.GetObj()
-	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
+	amountPtr := parseAmount(&value)
+	if amountPtr == nil {
 		return first, second, amount, ErrNotBalanceChangeEvent
 	}
 
-	amount = *valueObj.I128
+	amount = *amountPtr
 	return first, second, amount, nil
 }
