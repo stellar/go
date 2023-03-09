@@ -45,16 +45,13 @@ func TestSACTransferEvent(t *testing.T) {
 	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
-	require.Equal(t, EventTypeTransfer, sacEvent.Type)
+	require.Equal(t, EventTypeTransfer, sacEvent.GetType())
 
-	require.NotNil(t, sacEvent.From)
-	require.NotNil(t, sacEvent.To)
-	require.NotNil(t, sacEvent.Amount)
-
-	require.Equal(t, randomAccount, sacEvent.From)
-	require.Equal(t, randomAccount, sacEvent.To)
-	require.EqualValues(t, 10000, sacEvent.Amount.Lo)
-	require.EqualValues(t, 0, sacEvent.Amount.Hi)
+	xferEvent := sacEvent.(*TransferEvent)
+	require.Equal(t, randomAccount, xferEvent.From)
+	require.Equal(t, randomAccount, xferEvent.To)
+	require.EqualValues(t, 10000, xferEvent.Amount.Lo)
+	require.EqualValues(t, 0, xferEvent.Amount.Hi)
 
 	// Ensure that changing the passphrase invalidates the event
 	_, err = NewStellarAssetContractEvent(&baseXdrEvent, "different")
@@ -65,7 +62,7 @@ func TestSACTransferEvent(t *testing.T) {
 	baseXdrEvent.Body.V0.Topics = makeTransferTopic(xdr.MustNewNativeAsset(), randomAccount)
 	sacEvent, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
 	require.NoError(t, err)
-	require.Equal(t, xdr.AssetTypeAssetTypeNative, sacEvent.Asset.Type)
+	require.Equal(t, xdr.AssetTypeAssetTypeNative, sacEvent.GetAsset().Type)
 
 	// Ensure that invalid asset binaries are rejected
 	bsAsset := make([]byte, 42)

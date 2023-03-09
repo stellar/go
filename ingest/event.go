@@ -42,18 +42,34 @@ var (
 	ErrNotTransferEvent        = errors.New("event is an invalid 'transfer' event")
 )
 
-type StellarAssetContractEvent struct {
-	Type  int
-	Asset xdr.Asset
-
-	From   string           // transfer, clawback, burn; encoded as strkey
-	To     string           // transfer, mint; encoded as strkey
-	Amount *xdr.Int128Parts // transfer, mint, clawback, burn
-	Admin  string           // mint, clawback; encoded as strkey
+type StellarAssetContractEvent interface {
+	GetType() int
+	GetAsset() xdr.Asset
 }
 
-func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*StellarAssetContractEvent, error) {
-	evt := &StellarAssetContractEvent{}
+type sacEvent struct {
+	Type  int
+	Asset xdr.Asset
+}
+
+func (e *sacEvent) GetAsset() xdr.Asset {
+	return e.Asset
+}
+
+func (e *sacEvent) GetType() int {
+	return e.Type
+}
+
+type TransferEvent struct {
+	sacEvent
+
+	From   string
+	To     string
+	Amount *xdr.Int128Parts
+}
+
+func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (StellarAssetContractEvent, error) {
+	evt := &sacEvent{}
 
 	if event.Type != xdr.ContractEventTypeContract || event.ContractId == nil || event.Body.V != 0 {
 		return evt, ErrNotStellarAssetContract
@@ -131,9 +147,11 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 		return evt, ErrNotStellarAssetContract
 	}
 
-	switch evt.Type {
+	switch evt.GetType() {
 	case EventTypeTransfer:
-		return evt, evt.parseTransferEvent(topics, value)
+		xferEvent := TransferEvent{}
+		return &xferEvent, xferEvent.parse(topics, value)
+
 	case EventTypeMint:
 	case EventTypeClawback:
 	case EventTypeBurn:
@@ -149,7 +167,7 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (*Stel
 // "transfer" event. It assumes that the `topics` array has already validated
 // both the function name AND the asset <--> contract ID relationship. It will
 // return a best-effort parsing even in error cases.
-func (event *StellarAssetContractEvent) parseTransferEvent(topics xdr.ScVec, value xdr.ScVal) error {
+func (event *TransferEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 	//
 	// The transfer event format is:
 	//
