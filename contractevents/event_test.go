@@ -4,10 +4,13 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/randxdr"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,6 +122,22 @@ func TestSACMintEvent(t *testing.T) {
 	require.Equal(t, zeroContract, mintEvent.To)
 	require.EqualValues(t, 10000, mintEvent.Amount.Lo)
 	require.EqualValues(t, 0, mintEvent.Amount.Hi)
+}
+
+func TestFuzzingSACEventParser(t *testing.T) {
+	gen := randxdr.NewGenerator()
+	for i := 0; i < 100_000; i++ {
+		event, shape := xdr.ContractEvent{}, &gxdr.ContractEvent{}
+
+		gen.Next(
+			shape,
+			[]randxdr.Preset{},
+		)
+		assert.NoError(t, gxdr.Convert(shape, &event))
+
+		// return values are ignored, but this should never panic
+		NewStellarAssetContractEvent(&event, "passphrase")
+	}
 }
 
 func makeEvent() xdr.ContractEvent {
