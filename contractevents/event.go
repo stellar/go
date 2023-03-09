@@ -1,9 +1,6 @@
-package ingest
+package contractevents
 
 import (
-	"fmt"
-
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -18,12 +15,13 @@ type EventType = int
 const (
 	// Implemented
 	EventTypeTransfer = iota
+	EventTypeMint     = iota
+
 	// TODO: Not implemented
 	EventTypeIncrAllow = iota
 	EventTypeDecrAllow = iota
 	EventTypeSetAuth   = iota
 	EventTypeSetAdmin  = iota
-	EventTypeMint      = iota
 	EventTypeClawback  = iota
 	EventTypeBurn      = iota
 )
@@ -39,7 +37,6 @@ var (
 	// TODO: Better parsing errors
 	ErrNotStellarAssetContract = errors.New("event was not from a Stellar Asset Contract")
 	ErrEventUnsupported        = errors.New("this type of Stellar Asset Contract event is unsupported")
-	ErrNotTransferEvent        = errors.New("event is an invalid 'transfer' event")
 )
 
 type StellarAssetContractEvent interface {
@@ -58,14 +55,6 @@ func (e *sacEvent) GetAsset() xdr.Asset {
 
 func (e *sacEvent) GetType() int {
 	return e.Type
-}
-
-type TransferEvent struct {
-	sacEvent
-
-	From   string
-	To     string
-	Amount *xdr.Int128Parts
 }
 
 func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (StellarAssetContractEvent, error) {
@@ -141,8 +130,6 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	// This is the DEFINITIVE integrity check for whether or not this is a
 	// SAC event. At this point, we can parse the event and treat it as
 	// truth, mapping it to effects where appropriate.
-	fmt.Println(asset.IsNative(), "here?")
-
 	if expectedId != *event.ContractId { // nil check was earlier
 		return evt, ErrNotStellarAssetContract
 	}
@@ -153,92 +140,21 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 		return &xferEvent, xferEvent.parse(topics, value)
 
 	case EventTypeMint:
+		mintEvent := MintEvent{}
+		return &mintEvent, mintEvent.parse(topics, value)
+
 	case EventTypeClawback:
+		fallthrough
+		// cbEvent := ClawbackEvent{}
+		// return &cbEvent, cbEvent.parse(topics, value)
+
 	case EventTypeBurn:
+		fallthrough
+		// burnEvent := BurnEvent{}
+		// return &burnEvent, burnEvent.parse(topics, value)
+
 	default:
 		return evt, errors.Wrapf(ErrEventUnsupported,
 			"event type %d ('%s') unsupported", evt.Type, fn.MustSym())
 	}
-
-	return evt, nil
-}
-
-// parseTransferEvent tries to parse the given topics and value as a SAC
-// "transfer" event. It assumes that the `topics` array has already validated
-// both the function name AND the asset <--> contract ID relationship. It will
-// return a best-effort parsing even in error cases.
-func (event *TransferEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
-	//
-	// The transfer event format is:
-	//
-	// 	"transfer"  Symbol
-	//  <from> 		Address
-	//  <to> 		Address
-	// 	<asset>		Bytes
-	//
-	// 	<amount> 	i128
-	//
-	if len(topics) != 4 {
-		return ErrNotTransferEvent
-	}
-
-	from, to := topics[1], topics[2]
-	if from.Type != xdr.ScValTypeScvObject || to.Type != xdr.ScValTypeScvObject {
-		return ErrNotTransferEvent
-	}
-
-	fromObj, ok := from.GetObj()
-	if !ok || fromObj == nil || fromObj.Type != xdr.ScObjectTypeScoAddress {
-		return ErrNotTransferEvent
-	}
-
-	toObj, ok := from.GetObj()
-	if !ok || toObj == nil || toObj.Type != xdr.ScObjectTypeScoAddress {
-		return ErrNotTransferEvent
-	}
-
-	event.From = ScAddressToString(fromObj.Address)
-	event.To = ScAddressToString(toObj.Address)
-	event.Asset = xdr.Asset{} // TODO
-
-	valueObj, ok := value.GetObj()
-	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
-		return ErrNotTransferEvent
-	}
-
-	event.Amount = valueObj.I128
-	return nil
-}
-
-// ScAddressToString converts the low-level `xdr.ScAddress` union into the
-// appropriate strkey (contract C... or account ID G...).
-//
-// TODO: Should this return errors or just panic? Maybe just slap the "Must"
-// prefix on the helper name?
-func ScAddressToString(address *xdr.ScAddress) string {
-	if address == nil {
-		return ""
-	}
-
-	var result string
-	var err error
-
-	switch address.Type {
-	case xdr.ScAddressTypeScAddressTypeAccount:
-		pubkey := address.MustAccountId().Ed25519
-		fmt.Println("pubkey:", address.MustAccountId())
-
-		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
-	case xdr.ScAddressTypeScAddressTypeContract:
-		contractId := *address.ContractId
-		result, err = strkey.Encode(strkey.VersionByteContract, contractId[:])
-	default:
-		panic(fmt.Errorf("unfamiliar address type: %v", address.Type))
-	}
-
-	if err != nil {
-		panic(err)
-	}
-
-	return result
 }

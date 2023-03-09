@@ -1,0 +1,39 @@
+package contractevents
+
+import (
+	"fmt"
+
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/xdr"
+)
+
+// ScAddressToString converts the low-level `xdr.ScAddress` union into the
+// appropriate strkey (contract C... or account ID G...).
+//
+// TODO: Should this return errors or just panic? Maybe just slap the "Must"
+// prefix on the helper name?
+func ScAddressToString(address *xdr.ScAddress) string {
+	if address == nil {
+		return ""
+	}
+
+	var result string
+	var err error
+
+	switch address.Type {
+	case xdr.ScAddressTypeScAddressTypeAccount:
+		pubkey := address.MustAccountId().Ed25519
+		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
+	case xdr.ScAddressTypeScAddressTypeContract:
+		contractId := *address.ContractId
+		result, err = strkey.Encode(strkey.VersionByteContract, contractId[:])
+	default:
+		panic(fmt.Errorf("unfamiliar address type: %v", address.Type))
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return result
+}

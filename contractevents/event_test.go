@@ -1,4 +1,4 @@
-package ingest
+package contractevents
 
 import (
 	"crypto/rand"
