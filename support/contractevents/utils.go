@@ -7,12 +7,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// ScAddressToString converts the low-level `xdr.ScAddress` union into the
+// MustScAddressToString converts the low-level `xdr.ScAddress` union into the
 // appropriate strkey (contract C... or account ID G...).
-//
-// TODO: Should this return errors or just panic? Maybe just slap the "Must"
-// prefix on the helper name?
-func ScAddressToString(address *xdr.ScAddress) string {
+func MustScAddressToString(address *xdr.ScAddress) string {
 	if address == nil {
 		return ""
 	}

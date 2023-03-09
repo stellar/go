@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var ErrNotMintEvent = errors.New("event is an invalid 'mint' event")
+var ErrNotMintEvent = errors.New("event is not a valid 'mint' event")
 
 type MintEvent struct {
 	sacEvent
@@ -40,9 +40,8 @@ func (event *MintEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 		return ErrNotMintEvent
 	}
 
-	event.Admin = ScAddressToString(admin)
-	event.To = ScAddressToString(to)
-	event.Asset = xdr.Asset{} // TODO
+	event.Admin = MustScAddressToString(admin)
+	event.To = MustScAddressToString(to)
 
 	valueObj, ok := value.GetObj()
 	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {

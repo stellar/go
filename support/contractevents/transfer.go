@@ -5,7 +5,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var ErrNotTransferEvent = errors.New("event is an invalid 'transfer' event")
+var ErrNotTransferEvent = errors.New("event is not a valid 'transfer' event")
 
 type TransferEvent struct {
 	sacEvent
@@ -40,9 +40,8 @@ func (event *TransferEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 		return ErrNotTransferEvent
 	}
 
-	event.From = ScAddressToString(from)
-	event.To = ScAddressToString(to)
-	event.Asset = xdr.Asset{} // TODO
+	event.From = MustScAddressToString(from)
+	event.To = MustScAddressToString(to)
 
 	valueObj, ok := value.GetObj()
 	if !ok || valueObj == nil || valueObj.Type != xdr.ScObjectTypeScoI128 {
