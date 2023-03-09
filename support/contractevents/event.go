@@ -112,14 +112,13 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 		return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
 	}
 
-	switch asset.IsNative() {
-	case true:
-		evt.Asset = xdr.MustNewNativeAsset()
-	case false:
+	if !asset.IsNative() {
 		evt.Asset, err = xdr.NewCreditAsset(asset.GetCode(), asset.GetIssuer())
-	}
-	if err != nil {
-		return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
+		if err != nil {
+			return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
+		}
+	} else {
+		evt.Asset = xdr.MustNewNativeAsset()
 	}
 
 	expectedId, err := evt.Asset.ContractID(networkPassphrase)
