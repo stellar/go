@@ -34,23 +34,14 @@ func (event *MintEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 		return ErrNotTransferEvent
 	}
 
-	admin, to := topics[1], topics[2]
-	if admin.Type != xdr.ScValTypeScvObject || to.Type != xdr.ScValTypeScvObject {
+	rawAdmin, rawTo := topics[1], topics[2]
+	admin, to := parseAddress(&rawAdmin), parseAddress(&rawTo)
+	if admin == nil || to == nil {
 		return ErrNotMintEvent
 	}
 
-	adminObj, ok := admin.GetObj()
-	if !ok || adminObj == nil || adminObj.Type != xdr.ScObjectTypeScoAddress {
-		return ErrNotMintEvent
-	}
-
-	toObj, ok := to.GetObj()
-	if !ok || toObj == nil || toObj.Type != xdr.ScObjectTypeScoAddress {
-		return ErrNotMintEvent
-	}
-
-	event.Admin = ScAddressToString(adminObj.Address)
-	event.To = ScAddressToString(toObj.Address)
+	event.Admin = ScAddressToString(admin)
+	event.To = ScAddressToString(to)
 	event.Asset = xdr.Asset{} // TODO
 
 	valueObj, ok := value.GetObj()

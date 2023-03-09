@@ -37,3 +37,16 @@ func ScAddressToString(address *xdr.ScAddress) string {
 
 	return result
 }
+
+func parseAddress(val *xdr.ScVal) *xdr.ScAddress {
+	if val == nil {
+		return nil
+	}
+
+	address, ok := val.GetObj()
+	if !ok || address == nil || address.Type != xdr.ScObjectTypeScoAddress {
+		return nil
+	}
+
+	return address.Address
+}
