@@ -8,6 +8,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+var ErrNotBalanceChangeEvent = errors.New("event doesn't represent a balance change")
+
 // MustScAddressToString converts the low-level `xdr.ScAddress` union into the
 // appropriate strkey (contract C... or account ID G...).
 func MustScAddressToString(address *xdr.ScAddress) string {
@@ -54,8 +56,6 @@ func parseAddress(val *xdr.ScVal) *xdr.ScAddress {
 // addresses and an amount involved. The addresses represent different things in
 // different event types (e.g. "from" or "admin"), but the parsing is identical.
 // This helper extracts all three parts or returns a generic error if it can't.
-var ErrNotBalanceChangeEvent = errors.New("event doesn't represent a balance change")
-
 func parseBalanceChangeEvent(topics xdr.ScVec, value xdr.ScVal) (string, string, xdr.Int128Parts, error) {
 	first, second, amount := "", "", xdr.Int128Parts{}
 
