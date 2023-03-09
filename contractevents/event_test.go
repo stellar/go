@@ -2,10 +2,10 @@ package contractevents
 
 import (
 	"crypto/rand"
-	"fmt"
 	"testing"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 
 	"github.com/stretchr/testify/require"
@@ -13,33 +13,29 @@ import (
 
 const passphrase = "passphrase"
 
-func TestSACTransferEvent(t *testing.T) {
-	randomIssuer := keypair.MustRandom()
-	randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
-	randomAccount := keypair.MustRandom().Address()
+var (
+	randomIssuer     = keypair.MustRandom()
+	randomAsset      = xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
+	randomAccount    = keypair.MustRandom().Address()
+	zeroContractHash = xdr.Hash([32]byte{})
+	zeroContract     = strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
+)
 
+func TestSACTransferEvent(t *testing.T) {
 	rawNativeContractId, err := xdr.MustNewNativeAsset().ContractID(passphrase)
 	require.NoError(t, err)
-	rawContractId, err := randomAsset.ContractID(passphrase)
-	require.NoError(t, err)
-
 	nativeContractId := xdr.Hash(rawNativeContractId)
-	contractId := xdr.Hash(rawContractId)
 
-	baseXdrEvent := xdr.ContractEvent{
-		Ext:        xdr.ExtensionPoint{V: 0},
-		ContractId: &contractId,
-		Type:       xdr.ContractEventTypeContract,
-		Body: xdr.ContractEventBody{
-			V:  0,
-			V0: nil,
-		},
-	}
+	var baseXdrEvent xdr.ContractEvent
+	resetEvent := func() {
+		baseXdrEvent = makeEvent()
+		baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
+			Topics: makeTransferTopic(randomAsset),
+			Data:   makeAmount(10000),
+		}
 
-	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
-		Topics: makeTransferTopic(randomAsset, randomAccount),
-		Data:   makeAmount(10000),
 	}
+	resetEvent()
 
 	// Ensure the happy path for transfer events works
 	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
@@ -49,50 +45,104 @@ func TestSACTransferEvent(t *testing.T) {
 
 	xferEvent := sacEvent.(*TransferEvent)
 	require.Equal(t, randomAccount, xferEvent.From)
-	require.Equal(t, randomAccount, xferEvent.To)
+	require.Equal(t, zeroContract, xferEvent.To)
 	require.EqualValues(t, 10000, xferEvent.Amount.Lo)
 	require.EqualValues(t, 0, xferEvent.Amount.Hi)
 
 	// Ensure that changing the passphrase invalidates the event
-	_, err = NewStellarAssetContractEvent(&baseXdrEvent, "different")
-	require.Error(t, err)
+	t.Run("wrong passphrase", func(t *testing.T) {
+		_, err = NewStellarAssetContractEvent(&baseXdrEvent, "different")
+		require.Error(t, err)
+	})
 
-	// Ensure that it works for the native asset
-	baseXdrEvent.ContractId = &nativeContractId
-	baseXdrEvent.Body.V0.Topics = makeTransferTopic(xdr.MustNewNativeAsset(), randomAccount)
-	sacEvent, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
-	require.NoError(t, err)
-	require.Equal(t, xdr.AssetTypeAssetTypeNative, sacEvent.GetAsset().Type)
+	// Ensure that the native asset still works
+	t.Run("native transfer", func(t *testing.T) {
+		resetEvent()
+		baseXdrEvent.ContractId = &nativeContractId
+		baseXdrEvent.Body.V0.Topics = makeTransferTopic(xdr.MustNewNativeAsset())
+		sacEvent, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		require.NoError(t, err)
+		require.Equal(t, xdr.AssetTypeAssetTypeNative, sacEvent.GetAsset().Type)
+	})
 
 	// Ensure that invalid asset binaries are rejected
-	bsAsset := make([]byte, 42)
-	rand.Read(bsAsset)
-	(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = &bsAsset
-	_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
-	require.Error(t, err)
+	t.Run("bad asset binary", func(t *testing.T) {
+		resetEvent()
+		bsAsset := make([]byte, 42)
+		rand.Read(bsAsset)
+		(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = &bsAsset
+		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		require.Error(t, err)
+	})
 
 	// Ensure that valid asset binaries that mismatch the contract are rejected
-	baseXdrEvent.ContractId = &nativeContractId
-	baseXdrEvent.Body.V0.Topics = makeTransferTopic(randomAsset, randomAccount)
-	_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
-	require.Error(t, err)
-	baseXdrEvent.ContractId = &contractId
-	_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
-	require.NoError(t, err)
+	t.Run("mismatching ID", func(t *testing.T) {
+		resetEvent()
+		// change the ID but keep the asset
+		baseXdrEvent.ContractId = &nativeContractId
+		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		require.Error(t, err)
 
-	// Ensure that system events are invalid
-	baseXdrEvent.Type = xdr.ContractEventTypeSystem
-	_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
-	require.Error(t, err)
-	baseXdrEvent.Type = xdr.ContractEventTypeContract
+		// now change the asset but keep the ID
+		resetEvent()
+		diffRandomAsset := xdr.MustNewCreditAsset("TESTING", keypair.MustRandom().Address())
+		baseXdrEvent.Body.V0.Topics = makeTransferTopic(diffRandomAsset)
+		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		require.Error(t, err)
+	})
+
+	// Ensure that system events are rejected
+	t.Run("system events", func(t *testing.T) {
+		resetEvent()
+		baseXdrEvent.Type = xdr.ContractEventTypeSystem
+		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		require.Error(t, err)
+		baseXdrEvent.Type = xdr.ContractEventTypeContract
+	})
 }
 
-func makeTransferTopic(asset xdr.Asset, participant string) xdr.ScVec {
-	accountId, err := xdr.AddressToAccountId(participant)
-	if err != nil {
-		panic(fmt.Errorf("participant (%s) isn't an account ID: %v",
-			participant, err))
+func TestSACMintEvent(t *testing.T) {
+	baseXdrEvent := makeEvent()
+	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
+		Topics: makeMintTopic(randomAsset),
+		Data:   makeAmount(10000),
 	}
+
+	// Ensure the happy path for mint events works
+	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	require.NoError(t, err)
+	require.NotNil(t, sacEvent)
+	require.Equal(t, EventTypeMint, sacEvent.GetType())
+
+	mintEvent := sacEvent.(*MintEvent)
+	require.Equal(t, randomAccount, mintEvent.Admin)
+	require.Equal(t, zeroContract, mintEvent.To)
+	require.EqualValues(t, 10000, mintEvent.Amount.Lo)
+	require.EqualValues(t, 0, mintEvent.Amount.Hi)
+}
+
+func makeEvent() xdr.ContractEvent {
+	rawContractId, err := randomAsset.ContractID(passphrase)
+	if err != nil {
+		panic(err)
+	}
+	contractId := xdr.Hash(rawContractId)
+
+	baseXdrEvent := xdr.ContractEvent{
+		Ext:        xdr.ExtensionPoint{V: 0},
+		ContractId: &contractId,
+		Type:       xdr.ContractEventTypeContract,
+		Body: xdr.ContractEventBody{
+			V:  0,
+			V0: &xdr.ContractEventV0{},
+		},
+	}
+
+	return baseXdrEvent
+}
+
+func makeTransferTopic(asset xdr.Asset) xdr.ScVec {
+	accountId := xdr.MustAddress(randomAccount)
 
 	fnName := xdr.ScSymbol("transfer")
 	account := &xdr.ScObject{
@@ -100,6 +150,13 @@ func makeTransferTopic(asset xdr.Asset, participant string) xdr.ScVec {
 		Address: &xdr.ScAddress{
 			Type:      xdr.ScAddressTypeScAddressTypeAccount,
 			AccountId: &accountId,
+		},
+	}
+	contract := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoAddress,
+		Address: &xdr.ScAddress{
+			Type:       xdr.ScAddressTypeScAddressTypeContract,
+			ContractId: &zeroContractHash,
 		},
 	}
 
@@ -126,7 +183,7 @@ func makeTransferTopic(asset xdr.Asset, participant string) xdr.ScVec {
 		// to
 		{
 			Type: xdr.ScValTypeScvObject,
-			Obj:  &account,
+			Obj:  &contract,
 		},
 		// asset details
 		{
@@ -134,6 +191,14 @@ func makeTransferTopic(asset xdr.Asset, participant string) xdr.ScVec {
 			Obj:  &assetDetails,
 		},
 	})
+}
+
+func makeMintTopic(asset xdr.Asset) xdr.ScVec {
+	// mint is just transfer but with an admin instead of a from... nice
+	fnName := xdr.ScSymbol("mint")
+	topics := makeTransferTopic(asset)
+	topics[0].Sym = &fnName
+	return topics
 }
 
 func makeAmount(amount int) xdr.ScVal {

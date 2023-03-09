@@ -27,8 +27,8 @@ const (
 
 var (
 	STELLAR_ASSET_CONTRACT_TOPICS = map[xdr.ScSymbol]EventType{
-		xdr.ScSymbol("mint"):     EventTypeMint,
 		xdr.ScSymbol("transfer"): EventTypeTransfer,
+		xdr.ScSymbol("mint"):     EventTypeMint,
 		xdr.ScSymbol("clawback"): EventTypeClawback,
 		xdr.ScSymbol("burn"):     EventTypeBurn,
 	}
@@ -136,11 +136,11 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 
 	switch evt.GetType() {
 	case EventTypeTransfer:
-		xferEvent := TransferEvent{}
+		xferEvent := TransferEvent{sacEvent: *evt}
 		return &xferEvent, xferEvent.parse(topics, value)
 
 	case EventTypeMint:
-		mintEvent := MintEvent{}
+		mintEvent := MintEvent{sacEvent: *evt}
 		return &mintEvent, mintEvent.parse(topics, value)
 
 	case EventTypeClawback:
