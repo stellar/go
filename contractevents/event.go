@@ -7,23 +7,22 @@ import (
 )
 
 type Event = xdr.ContractEvent
-type EventType = int
+type EventType int
 
 // Note that there is no distinction between xfer() and xfer_from() in events,
 // nor the other *_from variants. This is intentional from the host environment.
 
 const (
 	// Implemented
-	EventTypeTransfer = iota
-	EventTypeMint     = iota
-
+	EventTypeTransfer EventType = iota
+	EventTypeMint
 	// TODO: Not implemented
-	EventTypeIncrAllow = iota
-	EventTypeDecrAllow = iota
-	EventTypeSetAuth   = iota
-	EventTypeSetAdmin  = iota
-	EventTypeClawback  = iota
-	EventTypeBurn      = iota
+	EventTypeIncrAllow
+	EventTypeDecrAllow
+	EventTypeSetAuth
+	EventTypeSetAdmin
+	EventTypeClawback
+	EventTypeBurn
 )
 
 var (
@@ -40,12 +39,12 @@ var (
 )
 
 type StellarAssetContractEvent interface {
-	GetType() int
+	GetType() EventType
 	GetAsset() xdr.Asset
 }
 
 type sacEvent struct {
-	Type  int
+	Type  EventType
 	Asset xdr.Asset
 }
 
@@ -53,7 +52,7 @@ func (e *sacEvent) GetAsset() xdr.Asset {
 	return e.Asset
 }
 
-func (e *sacEvent) GetType() int {
+func (e *sacEvent) GetType() EventType {
 	return e.Type
 }
 
@@ -81,7 +80,8 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	if fn.Type != xdr.ScValTypeScvSymbol {
 		return evt, ErrNotStellarAssetContract
 	}
-	if eventType, ok := STELLAR_ASSET_CONTRACT_TOPICS[fn.MustSym()]; !ok {
+
+	if eventType, ok := STELLAR_ASSET_CONTRACT_TOPICS[*fn.Sym]; !ok {
 		return evt, ErrNotStellarAssetContract
 	} else {
 		evt.Type = eventType
