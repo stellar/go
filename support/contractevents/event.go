@@ -16,13 +16,13 @@ const (
 	// Implemented
 	EventTypeTransfer EventType = iota
 	EventTypeMint
+	EventTypeClawback
+	EventTypeBurn
 	// TODO: Not implemented
 	EventTypeIncrAllow
 	EventTypeDecrAllow
 	EventTypeSetAuth
 	EventTypeSetAdmin
-	EventTypeClawback
-	EventTypeBurn
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 		xdr.ScSymbol("burn"):     EventTypeBurn,
 	}
 
-	// TODO: Better parsing errors
+	// TODO: Finer-grained parsing errors
 	ErrNotStellarAssetContract = errors.New("event was not from a Stellar Asset Contract")
 	ErrEventUnsupported        = errors.New("this type of Stellar Asset Contract event is unsupported")
 )
@@ -144,13 +144,12 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 		return &mintEvent, mintEvent.parse(topics, value)
 
 	case EventTypeClawback:
-		cbEvent := ClawbackEvent{}
+		cbEvent := ClawbackEvent{sacEvent: *evt}
 		return &cbEvent, cbEvent.parse(topics, value)
 
 	case EventTypeBurn:
-		fallthrough
-		// burnEvent := BurnEvent{}
-		// return &burnEvent, burnEvent.parse(topics, value)
+		burnEvent := BurnEvent{sacEvent: *evt}
+		return &burnEvent, burnEvent.parse(topics, value)
 
 	default:
 		return evt, errors.Wrapf(ErrEventUnsupported,

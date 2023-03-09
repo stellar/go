@@ -131,7 +131,7 @@ func TestSACClawbackEvent(t *testing.T) {
 		Data:   makeAmount(10000),
 	}
 
-	// Ensure the happy path for mint events works
+	// Ensure the happy path for clawback events works
 	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
@@ -142,6 +142,25 @@ func TestSACClawbackEvent(t *testing.T) {
 	require.Equal(t, zeroContract, clawEvent.From)
 	require.EqualValues(t, 10000, clawEvent.Amount.Lo)
 	require.EqualValues(t, 0, clawEvent.Amount.Hi)
+}
+
+func TestSACBurnEvent(t *testing.T) {
+	baseXdrEvent := makeEvent()
+	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
+		Topics: makeBurnTopic(randomAsset),
+		Data:   makeAmount(10000),
+	}
+
+	// Ensure the happy path for burn events works
+	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	require.NoError(t, err)
+	require.NotNil(t, sacEvent)
+	require.Equal(t, EventTypeBurn, sacEvent.GetType())
+
+	burnEvent := sacEvent.(*BurnEvent)
+	require.Equal(t, randomAccount, burnEvent.From)
+	require.EqualValues(t, 10000, burnEvent.Amount.Lo)
+	require.EqualValues(t, 0, burnEvent.Amount.Hi)
 }
 
 func TestFuzzingSACEventParser(t *testing.T) {
@@ -245,10 +264,19 @@ func makeMintTopic(asset xdr.Asset) xdr.ScVec {
 }
 
 func makeClawbackTopic(asset xdr.Asset) xdr.ScVec {
-	// clawback is just mint but with an from instead of to
+	// clawback is just mint but with a from instead of a to
 	fnName := xdr.ScSymbol("clawback")
 	topics := makeTransferTopic(asset)
 	topics[0].Sym = &fnName
+	return topics
+}
+
+func makeBurnTopic(asset xdr.Asset) xdr.ScVec {
+	// burn is like clawback but without a "to", so we drop that topic
+	fnName := xdr.ScSymbol("burn")
+	topics := makeTransferTopic(asset)
+	topics[0].Sym = &fnName
+	topics = append(topics[:2], topics[3:]...)
 	return topics
 }
 
