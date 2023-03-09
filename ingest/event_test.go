@@ -103,10 +103,8 @@ func makeTransferTopic(asset xdr.Asset, participant string) xdr.ScVec {
 		},
 	}
 
-	var slice []byte
-	if asset.Type == xdr.AssetTypeAssetTypeNative {
-		slice = []byte("native")
-	} else {
+	slice := []byte("native")
+	if asset.Type != xdr.AssetTypeAssetTypeNative {
 		slice = []byte(asset.StringCanonical())
 	}
 	assetDetails := &xdr.ScObject{
