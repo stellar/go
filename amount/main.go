@@ -10,6 +10,8 @@
 package amount
 
 import (
+	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -117,8 +119,16 @@ func String(v xdr.Int64) string {
 	return StringFromInt64(int64(v))
 }
 
-// TODO: Make this actually work.
+// String128 converts a *Classic-compatible* 128-bit integer into a string. This
+// means that it's 128 bits in name only, and this will panic if its underlying
+// value exceeds an int64. A panic is okay here because it indicates a violation
+// of invariants that are key to the Stellar Asset Contract.
 func String128(v xdr.Int128Parts) string {
+	if v.Hi != 0 || v.Lo > math.MaxInt64 {
+		panic(fmt.Errorf("expected int64, got hi=%d, lo=%d",
+			v.Hi, v.Lo))
+	}
+
 	return StringFromInt64(int64(v.Lo))
 }
 
