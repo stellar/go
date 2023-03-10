@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -210,8 +211,11 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addCreateClaimableBalanceEffects(changes)
 	case xdr.OperationTypeClaimClaimableBalance:
 		err = wrapper.addClaimClaimableBalanceEffects(changes)
-	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
-	// The effects of these operations are obtained  indirectly from the ledger entries
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		xdr.OperationTypeRevokeSponsorship:
+		// The effects of these operations are obtained indirectly from the
+		// ledger entries
 	case xdr.OperationTypeClawback:
 		err = wrapper.addClawbackEffects()
 	case xdr.OperationTypeClawbackClaimableBalance:
@@ -223,10 +227,19 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		err = wrapper.addLiquidityPoolWithdrawEffect()
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO: https://github.com/stellar/go/issues/4585
-		return nil, nil
+		// If there's an invokeHostFunction operation, there's definitely V3
+		// meta in the transaction, which means this error is real.
+		events, innerErr := operation.transaction.GetOperationEvents(operation.index)
+		if innerErr != nil {
+			return nil, innerErr
+		}
+
+		// For now, the only effects are related to the events themselves.
+		// Possible add'l work: https://github.com/stellar/go/issues/4585
+		wrapper.addInvokeHostFunctionEffects(events)
+
 	default:
-		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}
 	if err != nil {
 		return nil, err
@@ -246,7 +259,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 
 	// Liquidity pools
 	for _, change := range changes {
-		// Effects caused by ChangeTrust (creation), AllowTrust and SetTrustlineFlags (removal through revocation)
+		// Effects caused by ChangeTrust (creation), AllowTrust and
+		// SetTrustlineFlags (removal through revocation)
 		wrapper.addLedgerEntryLiquidityPoolEffects(change)
 	}
 
@@ -1385,4 +1399,73 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 	}
 	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolWithdrew, details)
 	return nil
+}
+
+// addInvokeHostFunctionEffects iterates through the events and generates
+// account_credited and account_debited effects when it sees events related to
+// the Stellar Asset Contract corresponding to those effects.
+func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Event) {
+	for _, event := range events {
+		evt, err := contractevents.NewStellarAssetContractEvent(&event, "TODO: Add network passphrase")
+		if err != nil {
+			continue // irrelevant or unsupported event
+		}
+
+		details := make(map[string]interface{}, 4)
+		addAssetDetails(details, evt.GetAsset(), "")
+
+		switch evt.GetType() {
+		// A transfer event generates an account_debited effect for the `to`
+		// (recipient) and an account_credited effect for the `from`
+		// (sender).
+		case contractevents.EventTypeTransfer:
+			xferEvent := evt.(*contractevents.TransferEvent)
+			details["amount"] = amount.String128(xferEvent.Amount)
+			e.addUnmuxed(
+				xdr.MustAddressPtr(xferEvent.From),
+				history.EffectAccountCredited,
+				details,
+			)
+			e.addUnmuxed(
+				xdr.MustAddressPtr(xferEvent.To),
+				history.EffectAccountDebited,
+				details,
+			)
+
+		// A mint event implies a non-native asset, and it results in a debit to
+		// the `to` recipient.
+		case contractevents.EventTypeMint:
+			mintEvent := evt.(*contractevents.MintEvent)
+			details["amount"] = amount.String128(mintEvent.Amount)
+			e.addUnmuxed(
+				xdr.MustAddressPtr(mintEvent.To),
+				history.EffectAccountDebited,
+				details,
+			)
+
+		// A clawback event results in a credit to the `from` address, but acts
+		// like a burn to the recipient, so these are functionally equivalent
+		case contractevents.EventTypeClawback:
+			cbEvent := evt.(*contractevents.ClawbackEvent)
+			details["amount"] = amount.String128(cbEvent.Amount)
+			e.addUnmuxed(
+				xdr.MustAddressPtr(cbEvent.From),
+				history.EffectAccountCredited,
+				details,
+			)
+
+		case contractevents.EventTypeBurn:
+			burnEvent := evt.(*contractevents.BurnEvent)
+			details["amount"] = amount.String128(burnEvent.Amount)
+			e.addUnmuxed(
+				xdr.MustAddressPtr(burnEvent.From),
+				history.EffectAccountCredited,
+				details,
+			)
+
+		// Other events are irrelevant to debit/credit effects
+		default:
+			continue
+		}
+	}
 }

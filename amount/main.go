@@ -117,6 +117,11 @@ func String(v xdr.Int64) string {
 	return StringFromInt64(int64(v))
 }
 
+// TODO: Make this actually work.
+func String128(v xdr.Int128Parts) string {
+	return StringFromInt64(int64(v.Lo))
+}
+
 // StringFromInt64 returns an "amount string" from the provided raw int64 value `v`.
 func StringFromInt64(v int64) string {
 	r := big.NewRat(v, 1)

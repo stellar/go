@@ -461,7 +461,7 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 			defer func() {
 				err2 := recover()
 				if err != nil {
-					assert.NotContains(t, err.Error(), "Unknown operation type")
+					assert.NotContains(t, err.Error(), "unknown operation type")
 				}
 				assert.True(t, err2 != nil || err == nil, s)
 			}()
@@ -488,7 +488,7 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 	}
 	// calling effects should error due to the unknown operation
 	_, err := operation.effects()
-	assert.Contains(t, err.Error(), "Unknown operation type")
+	assert.Contains(t, err.Error(), "unknown operation type")
 }
 
 func TestOperationEffects(t *testing.T) {
