@@ -1,13 +1,16 @@
 package processors
 
 import (
+	"math/big"
+
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
 )
 
 var (
-	assetMetadataSym = xdr.ScSymbol("Metadata")
-	assetMetadataObj = &xdr.ScObject{
+	balanceMetadataSym = xdr.ScSymbol("Balance")
+	assetMetadataSym   = xdr.ScSymbol("Metadata")
+	assetMetadataObj   = &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoVec,
 		Vec: &xdr.ScVec{
 			xdr.ScVal{
@@ -37,7 +40,14 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if ledgerEntry.Data.Type != xdr.LedgerEntryTypeContractData {
 		return nil
 	}
+
 	contractData := ledgerEntry.Data.MustContractData()
+	// we don't support asset stats for lumens
+	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
+	if err != nil || contractData.ContractId == nativeAssetContractID {
+		return nil
+	}
+
 	if !contractData.Key.Equals(assetMetadataKey) {
 		return nil
 	}
@@ -45,6 +55,9 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 	obj := contractData.Val.MustObj()
+	if obj == nil {
+		return nil
+	}
 	if obj.Type != xdr.ScObjectTypeScoVec {
 		return nil
 	}
@@ -57,16 +70,6 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 	switch vec[0].MustSym() {
-	case "Native":
-		asset := xdr.MustNewNativeAsset()
-		nativeAssetContractID, err := asset.ContractID(passphrase)
-		if err != nil {
-			return nil
-		}
-		if contractData.ContractId == nativeAssetContractID {
-			return &asset
-		}
-		return nil
 	case "AlphaNum4":
 	case "AlphaNum12":
 	default:
@@ -81,6 +84,9 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 	obj = vec[1].MustObj()
+	if obj == nil {
+		return nil
+	}
 	if obj.Type != xdr.ScObjectTypeScoMap {
 		return nil
 	}
@@ -99,6 +105,9 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 	obj = assetCodeEntry.Val.MustObj()
+	if obj == nil {
+		return nil
+	}
 	if obj.Type != xdr.ScObjectTypeScoBytes {
 		return nil
 	}
@@ -114,10 +123,12 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 	obj = assetIssuerEntry.Val.MustObj()
+	if obj == nil {
+		return nil
+	}
 	if obj.Type != xdr.ScObjectTypeScoBytes {
 		return nil
 	}
-	var err error
 	assetIssuer, err = strkey.Encode(strkey.VersionByteAccountID, obj.MustBin())
 	if err != nil {
 		return nil
@@ -137,6 +148,103 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	}
 
 	return &asset
+}
+
+func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) ([32]byte, *big.Int, bool) {
+	if ledgerEntry.Data.Type != xdr.LedgerEntryTypeContractData {
+		return [32]byte{}, nil, false
+	}
+
+	contractData := ledgerEntry.Data.MustContractData()
+	// we don't support asset stats for lumens
+	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
+	if err != nil || contractData.ContractId == nativeAssetContractID {
+		return [32]byte{}, nil, false
+	}
+
+	if contractData.Key.Type != xdr.ScValTypeScvObject {
+		return [32]byte{}, nil, false
+	}
+	keyObj := contractData.Key.MustObj()
+	if keyObj == nil {
+		return [32]byte{}, nil, false
+	}
+	if keyObj.Type != xdr.ScObjectTypeScoVec {
+		return [32]byte{}, nil, false
+	}
+	keyEnumVec := keyObj.MustVec()
+	if len(keyEnumVec) != 2 || !keyEnumVec[0].Equals(xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym}) {
+		return [32]byte{}, nil, false
+	}
+	if keyEnumVec[1].Type != xdr.ScValTypeScvObject {
+		return [32]byte{}, nil, false
+	}
+	addressObj := keyEnumVec[1].MustObj()
+	if addressObj == nil {
+		return [32]byte{}, nil, false
+	}
+	if addressObj.Type != xdr.ScObjectTypeScoAddress {
+		return [32]byte{}, nil, false
+	}
+	scAddress := addressObj.MustAddress()
+	if scAddress.Type != xdr.ScAddressTypeScAddressTypeContract {
+		return [32]byte{}, nil, false
+	}
+	holder := scAddress.MustContractId()
+
+	if contractData.Val.Type != xdr.ScValTypeScvObject {
+		return [32]byte{}, nil, false
+	}
+	obj := contractData.Val.MustObj()
+	if obj == nil {
+		return [32]byte{}, nil, false
+	}
+	if obj.Type != xdr.ScObjectTypeScoMap {
+		return [32]byte{}, nil, false
+	}
+	balanceMap := obj.MustMap()
+	if len(balanceMap) != 3 {
+		return [32]byte{}, nil, false
+	}
+
+	if balanceMap[0].Key.Type != xdr.ScValTypeScvSymbol ||
+		balanceMap[0].Key.MustSym() != "amount" ||
+		balanceMap[0].Val.Type != xdr.ScValTypeScvObject {
+		return [32]byte{}, nil, false
+	}
+	if balanceMap[1].Key.Type != xdr.ScValTypeScvSymbol ||
+		balanceMap[1].Key.MustSym() != "authorized" ||
+		!isBool(balanceMap[1].Val) {
+		return [32]byte{}, nil, false
+	}
+	if balanceMap[2].Key.Type != xdr.ScValTypeScvSymbol ||
+		balanceMap[2].Key.MustSym() != "clawback" ||
+		!isBool(balanceMap[1].Val) {
+		return [32]byte{}, nil, false
+	}
+	amountObj := balanceMap[0].Val.MustObj()
+	if amountObj == nil {
+		return [32]byte{}, nil, false
+	}
+	if amountObj.Type != xdr.ScObjectTypeScoI128 {
+		return [32]byte{}, nil, false
+	}
+	amount := amountObj.MustI128()
+	// check if negative
+	if ((amount.Hi >> 56) & 0x80) > 0 {
+		return [32]byte{}, nil, false
+	}
+	amt := new(big.Int).Lsh(big.NewInt(int64(amount.Hi)), 56)
+	amt = new(big.Int).Add(amt, big.NewInt(int64(amount.Lo)))
+	return holder, amt, true
+}
+
+func isBool(v xdr.ScVal) bool {
+	if v.Type != xdr.ScValTypeScvStatic {
+		return false
+	}
+	ic := v.MustIc()
+	return ic == xdr.ScStaticScsTrue || ic == xdr.ScStaticScsFalse
 }
 
 func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, error) {
@@ -240,4 +348,89 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 			},
 		},
 	}, nil
+}
+
+// BalanceToContractData is the inverse of ContractBalanceFromContractData. It creates a ledger entry
+// containing the asset balance of a contract holder written to contract storage by the Stellar Asset Contract.
+func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
+	holder := xdr.Hash(holderID)
+	addressObj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoAddress,
+		Address: &xdr.ScAddress{
+			Type:       xdr.ScAddressTypeScAddressTypeContract,
+			ContractId: &holder,
+		},
+	}
+	keyObj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoVec,
+		Vec: &xdr.ScVec{
+			xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym},
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvObject,
+				Obj:  &addressObj,
+			},
+		},
+	}
+
+	amountObj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoI128,
+		I128: &xdr.Int128Parts{
+			Lo: xdr.Uint64(amt),
+			Hi: 0,
+		},
+	}
+	amountSym := xdr.ScSymbol("amount")
+	authorizedSym := xdr.ScSymbol("authorized")
+	clawbackSym := xdr.ScSymbol("clawback")
+	trueIc := xdr.ScStaticScsTrue
+	dataObj := &xdr.ScObject{
+		Type: xdr.ScObjectTypeScoMap,
+		Map: &xdr.ScMap{
+			xdr.ScMapEntry{
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvSymbol,
+					Sym:  &amountSym,
+				},
+				Val: xdr.ScVal{
+					Type: xdr.ScValTypeScvObject,
+					Obj:  &amountObj,
+				},
+			},
+			xdr.ScMapEntry{
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvSymbol,
+					Sym:  &authorizedSym,
+				},
+				Val: xdr.ScVal{
+					Type: xdr.ScValTypeScvStatic,
+					Ic:   &trueIc,
+				},
+			},
+			xdr.ScMapEntry{
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvSymbol,
+					Sym:  &clawbackSym,
+				},
+				Val: xdr.ScVal{
+					Type: xdr.ScValTypeScvStatic,
+					Ic:   &trueIc,
+				},
+			},
+		},
+	}
+
+	return xdr.LedgerEntryData{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.ContractDataEntry{
+			ContractId: assetContractId,
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvObject,
+				Obj:  &keyObj,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvObject,
+				Obj:  &dataObj,
+			},
+		},
+	}
 }
