@@ -418,13 +418,19 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		}
 
 		if change.Post == nil {
+			// the balance was removed so we need to deduct from
+			// contract holders and contract balance amount
 			stats.balance = new(big.Int).Sub(stats.balance, amt)
+			// only decrement holders if the removed balance
+			// contained a positive amount of the asset.
 			if amt.Cmp(big.NewInt(0)) > 0 {
 				stats.numHolders--
 			}
 			s.maybeAddContractAssetStat(contractID, stats)
 			return
 		}
+		// if the updated ledger entry is not in the expected format then this
+		// cannot be emitted by the stellar asset contract, so ignore it
 		postHolder, postAmt, postOk := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 		if !postOk || postHolder != holder {
 			return
@@ -433,14 +439,18 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		delta := new(big.Int).Sub(postAmt, amt)
 		stats.balance = new(big.Int).Add(stats.balance, delta)
 		if postAmt.Cmp(big.NewInt(0)) == 0 && amt.Cmp(big.NewInt(0)) > 0 {
+			// if the pre amount is equal to the post amount it means the balance was wiped out so
+			// we can decrement the number of contract holders
 			stats.numHolders--
 		} else if amt.Cmp(big.NewInt(0)) == 0 && postAmt.Cmp(big.NewInt(0)) > 0 {
+			// if the pre amount was zero and the post amount is positive the number of
+			// contract holders increased
 			stats.numHolders++
 		}
 		s.maybeAddContractAssetStat(contractID, stats)
 		return
 	}
-
+	// in this case there was no balance before the change
 	contractID := change.Post.Data.MustContractData().ContractId
 	_, amt, ok := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 	if !ok {
@@ -452,6 +462,8 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		return
 	}
 
+	// increase the number of contract holders because previously
+	// there was no balance
 	stats, ok := s.contractAssetStats[contractID]
 	if !ok {
 		stats = contractAssetStatValue{

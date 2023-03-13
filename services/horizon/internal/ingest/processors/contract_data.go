@@ -150,6 +150,9 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	return &asset
 }
 
+// ContractBalanceFromContractData takes a ledger entry and verifies if the ledger entry corresponds
+// to the balance entry written to contract storage by the Stellar Asset Contract. See:
+// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/storage_types.rs#L11-L24
 func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) ([32]byte, *big.Int, bool) {
 	if ledgerEntry.Data.Type != xdr.LedgerEntryTypeContractData {
 		return [32]byte{}, nil, false
