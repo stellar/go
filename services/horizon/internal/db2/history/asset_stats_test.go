@@ -46,7 +46,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Authorized:                      1,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
-				Contracts:                       0,
+				Contracts:                       7,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "23",
@@ -54,7 +54,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
-				Contracts:                       "0",
+				Contracts:                       "60",
 			},
 			Amount:      "23",
 			NumAccounts: 1,
@@ -67,7 +67,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Authorized:                      2,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
-				Contracts:                       0,
+				Contracts:                       8,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "1",
@@ -75,7 +75,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
-				Contracts:                       "0",
+				Contracts:                       "90",
 			},
 			Amount:      "1",
 			NumAccounts: 2,
@@ -388,7 +388,10 @@ func TestUpdateStat(t *testing.T) {
 	tt.Assert.Equal(got, assetStat)
 
 	assetStat.NumAccounts = 50
+	assetStat.Accounts.Contracts = 4
 	assetStat.Amount = "23"
+	assetStat.Balances.Contracts = "56"
+	assetStat.SetContractID([32]byte{23})
 
 	numChanged, err = q.UpdateAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Nil(err)
@@ -396,7 +399,7 @@ func TestUpdateStat(t *testing.T) {
 
 	got, err = q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(got, assetStat)
+	tt.Assert.True(got.Equals(assetStat))
 }
 
 func TestGetAssetStatDoesNotExist(t *testing.T) {
