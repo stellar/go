@@ -3488,22 +3488,24 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 			eventType: contractevents.EventTypeTransfer,
 			expected: []effect{
 				{
-					order:      1,
-					address:    from,
-					effectType: history.EffectAccountCredited,
+					order:       1,
+					address:     from,
+					effectType:  history.EffectAccountCredited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
-						"amount":       amount.String(),
+						"amount":       "0.0012345",
 						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
 						"asset_issuer": asset.GetIssuer(),
 						"asset_type":   "credit_alphanum12",
 					},
 				},
 				{
-					order:      2,
-					address:    to,
-					effectType: history.EffectAccountDebited,
+					order:       2,
+					address:     to,
+					effectType:  history.EffectAccountDebited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
-						"amount":       amount.String(),
+						"amount":       "0.0012345",
 						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
 						"asset_issuer": asset.GetIssuer(),
 						"asset_type":   "credit_alphanum12",

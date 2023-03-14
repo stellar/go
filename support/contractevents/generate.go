@@ -112,6 +112,7 @@ func makeAmount(amount int) xdr.ScVal {
 }
 
 func makeBigAmount(amount *big.Int) xdr.ScVal {
+	// TODO: Better check, as MaxUint128 shouldn't be allowed
 	if amount.BitLen() > 128 {
 		panic(fmt.Errorf(
 			"amount is too large: %d bits (max 128)",
@@ -124,15 +125,10 @@ func makeBigAmount(amount *big.Int) xdr.ScVal {
 	//  - take the upper 64 by shifting 64 right
 	//  - take the lower 64 by zeroing the top 64
 	//
-
-	// This is a janky way to make all 64 lower bits set because the constructor
-	// doesn't take an unsigned value, so we need to shift/or once more to set
-	// the uppermost bits.
-	zeroTop := big.NewInt(math.MaxInt64)
-	zeroTop.Lsh(zeroTop, 1).Or(zeroTop, big.NewInt(0xf))
+	keepLower := big.NewInt(0).SetUint64(math.MaxUint64)
 
 	hi := new(big.Int).Rsh(amount, 64)
-	lo := amount.And(amount, zeroTop)
+	lo := amount.And(amount, keepLower)
 
 	amountObj := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoI128,
