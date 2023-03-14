@@ -25,12 +25,14 @@ type EffectProcessor struct {
 	effects  []effect
 	effectsQ history.QEffects
 	sequence uint32
+	network  string
 }
 
-func NewEffectProcessor(effectsQ history.QEffects, sequence uint32) *EffectProcessor {
+func NewEffectProcessor(effectsQ history.QEffects, sequence uint32, networkPassphrase string) *EffectProcessor {
 	return &EffectProcessor{
 		effectsQ: effectsQ,
 		sequence: sequence,
+		network:  networkPassphrase,
 	}
 }
 
@@ -57,7 +59,10 @@ func (p *EffectProcessor) loadAccountIDs(ctx context.Context, accountSet map[str
 	return nil
 }
 
-func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([]effect, error) {
+func operationsEffects(
+	transaction ingest.LedgerTransaction,
+	sequence uint32,
+	networkPassphrase string) ([]effect, error) {
 	effects := []effect{}
 
 	for opi, op := range transaction.Envelope.Operations() {
@@ -66,6 +71,7 @@ func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([
 			transaction:    transaction,
 			operation:      op,
 			ledgerSequence: sequence,
+			network:        networkPassphrase,
 		}
 
 		p, err := operation.effects()
@@ -120,7 +126,7 @@ func (p *EffectProcessor) ProcessTransaction(ctx context.Context, transaction in
 	}
 
 	var effectsForTx []effect
-	effectsForTx, err = operationsEffects(transaction, p.sequence)
+	effectsForTx, err = operationsEffects(transaction, p.sequence, p.network)
 	if err != nil {
 		return err
 	}
@@ -174,8 +180,9 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	}
 
 	wrapper := &effectsWrapper{
-		effects:   []effect{},
-		operation: operation,
+		effects:    []effect{},
+		operation:  operation,
+		passphrase: operation.network,
 	}
 
 	switch operation.OperationType() {
@@ -236,7 +243,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 
 		// For now, the only effects are related to the events themselves.
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
-		wrapper.addInvokeHostFunctionEffects(events)
+		err = wrapper.addInvokeHostFunctionEffects(events)
 
 	default:
 		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
@@ -268,8 +275,9 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 }
 
 type effectsWrapper struct {
-	effects   []effect
-	operation *transactionOperationWrapper
+	effects    []effect
+	operation  *transactionOperationWrapper
+	passphrase string
 }
 
 func (e *effectsWrapper) add(address string, addressMuxed null.String, effectType history.EffectType, details map[string]interface{}) {
@@ -1404,10 +1412,15 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 // addInvokeHostFunctionEffects iterates through the events and generates
 // account_credited and account_debited effects when it sees events related to
 // the Stellar Asset Contract corresponding to those effects.
-func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Event) {
+func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Event) error {
+	if e.operation.network == "" {
+		return errors.New("invokeHostFunction effects cannot be determined unless network passphrase is set")
+	}
+
 	for _, event := range events {
-		evt, err := contractevents.NewStellarAssetContractEvent(&event, "TODO: Add network passphrase")
+		evt, err := contractevents.NewStellarAssetContractEvent(&event, e.operation.network)
 		if err != nil {
+			fmt.Printf("[WARN] Event parsing error: %v\n%+v", err, event)
 			continue // irrelevant or unsupported event
 		}
 
@@ -1468,4 +1481,6 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			continue
 		}
 	}
+
+	return nil
 }

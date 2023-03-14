@@ -143,7 +143,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	sequence := uint32(ledger.Header.LedgerSeq)
 	return newGroupTransactionProcessors([]horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
-		processors.NewEffectProcessor(s.historyQ, sequence),
+		processors.NewEffectProcessor(s.historyQ, sequence, s.config.NetworkPassphrase),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.historyQ, sequence),
 		tradeProcessor,

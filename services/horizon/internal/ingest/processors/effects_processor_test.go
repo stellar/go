@@ -5,9 +5,12 @@ package processors
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,9 +19,14 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
+	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
+)
+
+const (
+	networkPassphrase = "Arbitrary Testing Passphrase"
 )
 
 type EffectsProcessorTestSuiteLedger struct {
@@ -121,6 +129,7 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 	s.processor = NewEffectProcessor(
 		s.mockQ,
 		20,
+		networkPassphrase,
 	)
 
 	s.txs = []ingest.LedgerTransaction{
@@ -3453,5 +3462,144 @@ func TestLiquidityPoolEffects(t *testing.T) {
 			assert.Equal(t, tc.expected, effects)
 		})
 	}
+}
 
+func TestInvokeHostFunctionEffects(t *testing.T) {
+	randAddr := func() string {
+		return keypair.MustRandom().Address()
+	}
+
+	admin := randAddr()
+	asset := xdr.MustNewCreditAsset("TESTER", admin)
+	// nativeAsset := xdr.MustNewNativeAsset()
+	from, to := randAddr(), randAddr()
+
+	amount := big.NewInt(12345)
+	// bigAmount := big.NewInt(math.MaxInt64)
+	// bigAmount = bigAmount.Lsh(bigAmount, 4) // exceed uint64
+
+	testCases := []struct {
+		desc      string
+		eventType contractevents.EventType
+		expected  []effect
+	}{
+		{
+			desc:      "transfer small",
+			eventType: contractevents.EventTypeTransfer,
+			expected: []effect{
+				{
+					order:      1,
+					address:    from,
+					effectType: history.EffectAccountCredited,
+					details: map[string]interface{}{
+						"amount":       amount.String(),
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+				{
+					order:      2,
+					address:    to,
+					effectType: history.EffectAccountDebited,
+					details: map[string]interface{}{
+						"amount":       amount.String(),
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.desc, func(t *testing.T) {
+			tx := makeInvocationTransaction(
+				from, to, admin,
+				asset, amount,
+				testCase.eventType,
+			)
+			assert.True(t, tx.Result.Successful()) // sanity check
+
+			operation := transactionOperationWrapper{
+				index:          0,
+				transaction:    tx,
+				operation:      tx.Envelope.Operations()[0],
+				ledgerSequence: 1,
+				network:        networkPassphrase,
+			}
+
+			effects, err := operation.effects()
+			assert.NoErrorf(t, err, "event type %v", testCase.eventType)
+			assert.Lenf(t, effects, len(testCase.expected), "event type %v", testCase.eventType)
+			assert.Equalf(t, testCase.expected, effects, "event type %v", testCase.eventType)
+		})
+	}
+}
+
+// makeInvocationTransaction returns a single transaction containing a single
+// invokeHostFunction operation that generates the specified Stellar Asset
+// Contract events in its txmeta.
+func makeInvocationTransaction(
+	from, to, admin string,
+	asset xdr.Asset,
+	amount *big.Int,
+	types ...contractevents.EventType,
+) ingest.LedgerTransaction {
+	meta := xdr.TransactionMetaV3{
+		// irrelevant for contract invocations: only events are inspected
+		Operations: []xdr.OperationMeta{},
+		Events: []xdr.OperationEvents{{
+			Events: make([]xdr.ContractEvent, len(types)),
+		}},
+	}
+
+	for idx, type_ := range types {
+		event := contractevents.GenerateEvent(
+			type_,
+			from, to, admin,
+			asset,
+			amount,
+			networkPassphrase,
+		)
+		meta.Events[0].Events[idx] = event
+	}
+
+	envelope := xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			// the rest doesn't matter for effect ingestion
+			Operations: []xdr.Operation{
+				{
+					SourceAccount: xdr.MustMuxedAddressPtr(admin),
+					Body: xdr.OperationBody{
+						Type: xdr.OperationTypeInvokeHostFunction,
+						// contents of the op are irrelevant as they aren't
+						// parsed by anyone yet, e.g. effects are generated
+						// purely from events
+						InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{},
+					},
+				},
+			},
+		},
+	}
+
+	return ingest.LedgerTransaction{
+		Index: 0,
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1:   &envelope,
+		},
+		// the result just needs enough to look successful
+		Result: xdr.TransactionResultPair{
+			TransactionHash: xdr.Hash([32]byte{}),
+			Result: xdr.TransactionResult{
+				FeeCharged: 1234,
+				Result: xdr.TransactionResultResult{
+					Code: xdr.TransactionResultCodeTxSuccess,
+				},
+			},
+		},
+		UnsafeMeta: xdr.TransactionMeta{V: 3, V3: &meta},
+	}
 }

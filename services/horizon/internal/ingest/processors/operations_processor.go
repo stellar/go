@@ -83,6 +83,7 @@ type transactionOperationWrapper struct {
 	transaction    ingest.LedgerTransaction
 	operation      xdr.Operation
 	ledgerSequence uint32
+	network        string
 }
 
 // ID returns the ID for the operation.
