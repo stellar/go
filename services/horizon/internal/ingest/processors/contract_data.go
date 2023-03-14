@@ -175,14 +175,15 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 
-	if keySym, ok := balanceMap[0].Key.GetSym(); !ok || keySym != "amount" {
+	var keySym xdr.ScSymbol
+	if keySym, ok = balanceMap[0].Key.GetSym(); !ok || keySym != "amount" {
 		return [32]byte{}, nil, false
 	}
-	if keySym, ok := balanceMap[1].Key.GetSym(); !ok || keySym != "authorized" ||
+	if keySym, ok = balanceMap[1].Key.GetSym(); !ok || keySym != "authorized" ||
 		!balanceMap[1].Val.IsBool() {
 		return [32]byte{}, nil, false
 	}
-	if keySym, ok := balanceMap[2].Key.GetSym(); !ok || keySym != "clawback" ||
+	if keySym, ok = balanceMap[2].Key.GetSym(); !ok || keySym != "clawback" ||
 		!balanceMap[2].Val.IsBool() {
 		return [32]byte{}, nil, false
 	}
