@@ -1420,7 +1420,6 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 	for _, event := range events {
 		evt, err := contractevents.NewStellarAssetContractEvent(&event, e.operation.network)
 		if err != nil {
-			fmt.Printf("[WARN] Event parsing error: %v\n%+v", err, event)
 			continue // irrelevant or unsupported event
 		}
 

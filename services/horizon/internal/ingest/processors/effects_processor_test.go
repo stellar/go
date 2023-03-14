@@ -3484,7 +3484,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 		expected  []effect
 	}{
 		{
-			desc:      "transfer small",
+			desc:      "transfer",
 			eventType: contractevents.EventTypeTransfer,
 			expected: []effect{
 				{
@@ -3503,6 +3503,60 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 					order:       2,
 					address:     to,
 					effectType:  history.EffectAccountDebited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":       "0.0012345",
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+			},
+		},
+		{
+			desc:      "mint",
+			eventType: contractevents.EventTypeMint,
+			expected: []effect{
+				{
+					order:       1,
+					address:     to,
+					effectType:  history.EffectAccountDebited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":       "0.0012345",
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+			},
+		},
+		{
+			desc:      "burn",
+			eventType: contractevents.EventTypeBurn,
+			expected: []effect{
+				{
+					order:       1,
+					address:     from,
+					effectType:  history.EffectAccountCredited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":       "0.0012345",
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+			},
+		},
+		{
+			desc:      "clawback",
+			eventType: contractevents.EventTypeClawback,
+			expected: []effect{
+				{
+					order:       1,
+					address:     from,
+					effectType:  history.EffectAccountCredited,
 					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
 						"amount":       "0.0012345",
