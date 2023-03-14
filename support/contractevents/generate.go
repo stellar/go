@@ -1,6 +1,7 @@
 package contractevents
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -172,11 +173,50 @@ func makeAddress(address string) xdr.ScVal {
 }
 
 func makeAsset(asset xdr.Asset) xdr.ScVal {
-	slice := []byte("native")
-	if asset.Type != xdr.AssetTypeAssetTypeNative {
-		slice = []byte(asset.StringCanonical())
+	buffer := new(bytes.Buffer)
+
+	switch asset.Type {
+	case xdr.AssetTypeAssetTypeNative:
+		_, err := buffer.WriteString("native")
+		if err != nil {
+			panic(err)
+		}
+
+	case xdr.AssetTypeAssetTypeCreditAlphanum4:
+		_, err := xdr.Marshal(buffer, asset.AlphaNum4.AssetCode)
+		if err != nil {
+			panic(err)
+		}
+		pubkey, ok := asset.AlphaNum4.Issuer.GetEd25519()
+		if !ok {
+			panic("issuer not a public key")
+		}
+		buffer.WriteString(":")
+		_, err = xdr.Marshal(buffer, pubkey)
+		if err != nil {
+			panic(err)
+		}
+
+	case xdr.AssetTypeAssetTypeCreditAlphanum12:
+		_, err := xdr.Marshal(buffer, asset.AlphaNum12.AssetCode)
+		if err != nil {
+			panic(err)
+		}
+		pubkey, ok := asset.AlphaNum12.Issuer.GetEd25519()
+		if !ok {
+			panic("issuer not a public key")
+		}
+		buffer.WriteString(":")
+		_, err = xdr.Marshal(buffer, pubkey)
+		if err != nil {
+			panic(err)
+		}
+
+	default:
+		panic("unexpected asset type")
 	}
 
+	slice := buffer.Bytes()
 	scObject := &xdr.ScObject{
 		Type: xdr.ScObjectTypeScoBytes,
 		Bin:  &slice,

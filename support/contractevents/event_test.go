@@ -2,6 +2,7 @@ package contractevents
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"math"
 	"math/big"
 	"testing"
@@ -76,6 +77,15 @@ func TestEventGenerator(t *testing.T) {
 		parsedEvent, err := NewStellarAssetContractEvent(&event, passphrase)
 		require.NoErrorf(t, err, "generating an event of type %v failed", type_)
 		require.Equal(t, type_, parsedEvent.GetType())
+		require.Equal(t, xdr.AssetTypeAssetTypeCreditAlphanum12, parsedEvent.GetAsset().Type)
+
+		event = GenerateEvent(type_, from, to, admin,
+			xdr.MustNewCreditAsset("TESTER", issuer),
+			big.NewInt(12345), passphrase)
+		parsedEvent, err = NewStellarAssetContractEvent(&event, passphrase)
+		require.NoErrorf(t, err, "generating an event of type %v failed", type_)
+		require.Equal(t, type_, parsedEvent.GetType())
+		require.Equal(t, xdr.AssetTypeAssetTypeCreditAlphanum12, parsedEvent.GetAsset().Type)
 	}
 }
 
@@ -232,6 +242,20 @@ func TestFuzzingSACEventParser(t *testing.T) {
 		// return values are ignored, but this should never panic
 		NewStellarAssetContractEvent(&event, "passphrase")
 	}
+}
+
+func TestRealXdr(t *testing.T) {
+	base64xdr := "AAAAAAAAAAGP097PJPXCcbtgOhu8wDc/ELPABxTdosN//YtrzxEJyAAAAAEAAAAAAAAABAAAAAUAAAAIdHJhbnNmZXIAAAAEAAAAAQAAAAgAAAAAAAAAAHN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAABAAAAAEAAAAIAAAAAAAAAAB4Ijl70f/hhiVmJftmpmXIoHZyUoyEiPSrpZAd5RfalwAAAAQAAAABAAAABgAAACVVU0QAOnN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAAAAAABAAAAAEAAAAFAAAAABHhowAAAAAAAAAAAA=="
+
+	rawXdr, err := base64.StdEncoding.DecodeString(base64xdr)
+	require.NoError(t, err)
+
+	event := xdr.ContractEvent{}
+	require.NoError(t, event.UnmarshalBinary(rawXdr))
+
+	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
+	assert.NoError(t, err)
+	assert.Equal(t, EventTypeTransfer, parsed.GetType())
 }
 
 //
