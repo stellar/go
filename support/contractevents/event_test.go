@@ -77,7 +77,7 @@ func TestEventGenerator(t *testing.T) {
 		parsedEvent, err := NewStellarAssetContractEvent(&event, passphrase)
 		require.NoErrorf(t, err, "generating an event of type %v failed", type_)
 		require.Equal(t, type_, parsedEvent.GetType())
-		require.Equal(t, xdr.AssetTypeAssetTypeCreditAlphanum12, parsedEvent.GetAsset().Type)
+		require.Equal(t, xdr.AssetTypeAssetTypeNative, parsedEvent.GetAsset().Type)
 
 		event = GenerateEvent(type_, from, to, admin,
 			xdr.MustNewCreditAsset("TESTER", issuer),

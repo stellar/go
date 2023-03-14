@@ -38,6 +38,7 @@ var (
 	// TODO: Finer-grained parsing errors
 	ErrNotStellarAssetContract = errors.New("event was not from a Stellar Asset Contract")
 	ErrEventUnsupported        = errors.New("this type of Stellar Asset Contract event is unsupported")
+	ErrEventIntegrity          = errors.New("contract ID doesn't match asset + passphrase")
 )
 
 type StellarAssetContractEvent interface {
@@ -69,21 +70,21 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	//
 	// For specific event forms, see here:
 	// https://github.com/stellar/rs-soroban-env/blob/main/soroban-env-host/src/native_contract/token/event.rs#L44-L49
-	topics := event.Body.MustV0().Topics
-	value := event.Body.MustV0().Data
+	topics := event.Body.V0.Topics
+	value := event.Body.V0.Data
 
 	// No relevant SAC events have <= 2 topics
 	if len(topics) <= 2 {
 		return evt, ErrNotStellarAssetContract
 	}
-	fn := topics[0]
 
 	// Filter out events for function calls we don't care about
-	if fn.Type != xdr.ScValTypeScvSymbol {
+	fn, ok := topics[0].GetSym()
+	if !ok {
 		return evt, ErrNotStellarAssetContract
 	}
 
-	if eventType, ok := STELLAR_ASSET_CONTRACT_TOPICS[*fn.Sym]; !ok {
+	if eventType, ok := STELLAR_ASSET_CONTRACT_TOPICS[fn]; !ok {
 		return evt, ErrNotStellarAssetContract
 	} else {
 		evt.Type = eventType
@@ -94,12 +95,6 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	// To check that, ensure that the contract ID of the event matches the
 	// contract ID that *would* represent the asset the event is claiming to
 	// be.
-
-	// The asset is SORT OF in canonical SEP-11 form:
-	//  https://stellar.org/protocol/sep-11#alphanum4-alphanum12
-	// namely, its split into code and issuer by a colon, but the issuer is a
-	// raw public key rather than strkey ascii bytes, and the code is padded to
-	// exactly 4 or 12 bytes.
 	//
 	// For all parsing errors, we just continue, since it's not a real error,
 	// just an event non-complaint with SAC events.
@@ -129,7 +124,7 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	// SAC event. At this point, we can parse the event and treat it as
 	// truth, mapping it to effects where appropriate.
 	if expectedId != *event.ContractId { // nil check was earlier
-		return evt, ErrNotStellarAssetContract
+		return evt, ErrEventIntegrity
 	}
 
 	switch evt.GetType() {
@@ -151,11 +146,16 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 
 	default:
 		return evt, errors.Wrapf(ErrEventUnsupported,
-			"event type %d ('%s') unsupported", evt.Type, fn.MustSym())
+			"event type %d ('%s') unsupported", evt.Type, fn)
 	}
 }
 
 func parseAssetBytes(b []byte) (*xdr.Asset, error) {
+	// The asset is SORT OF in canonical SEP-11 form:
+	//  https://stellar.org/protocol/sep-11#alphanum4-alphanum12
+	// namely, its split into code and issuer by a colon, but the issuer is a
+	// raw public key rather than strkey ascii bytes, and the code is padded to
+	// exactly 4 or 12 bytes.
 	asset := xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeNative,
 	}
@@ -182,6 +182,8 @@ func parseAssetBytes(b []byte) (*xdr.Asset, error) {
 	if len(rawCode) == 4 {
 		code := [4]byte{}
 		copy(code[:], rawCode[:])
+
+		asset.Type = xdr.AssetTypeAssetTypeCreditAlphanum4
 		asset.AlphaNum4 = &xdr.AlphaNum4{
 			AssetCode: xdr.AssetCode4(code),
 			Issuer:    accountId,
@@ -189,6 +191,8 @@ func parseAssetBytes(b []byte) (*xdr.Asset, error) {
 	} else if len(rawCode) == 12 {
 		code := [12]byte{}
 		copy(code[:], rawCode[:])
+
+		asset.Type = xdr.AssetTypeAssetTypeCreditAlphanum12
 		asset.AlphaNum12 = &xdr.AlphaNum12{
 			AssetCode: xdr.AssetCode12(code),
 			Issuer:    accountId,
