@@ -11,10 +11,19 @@ import (
 var ErrNotBalanceChangeEvent = errors.New("event doesn't represent a balance change")
 
 // MustScAddressToString converts the low-level `xdr.ScAddress` union into the
-// appropriate strkey (contract C... or account ID G...).
+// appropriate strkey (contract C... or account ID G...), panicking on any
+// error. If the address is a nil pointer, this returns the empty string.
 func MustScAddressToString(address *xdr.ScAddress) string {
+	str, err := ScAddressToString(address)
+	if err != nil {
+		panic(err)
+	}
+	return str
+}
+
+func ScAddressToString(address *xdr.ScAddress) (string, error) {
 	if address == nil {
-		return ""
+		return "", nil
 	}
 
 	var result string
@@ -28,14 +37,14 @@ func MustScAddressToString(address *xdr.ScAddress) string {
 		contractId := *address.ContractId
 		result, err = strkey.Encode(strkey.VersionByteContract, contractId[:])
 	default:
-		panic(fmt.Errorf("unfamiliar address type: %v", address.Type))
+		return "", fmt.Errorf("unfamiliar address type: %v", address.Type)
 	}
 
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return result
+	return result, nil
 }
 
 func parseAddress(val *xdr.ScVal) *xdr.ScAddress {
