@@ -323,11 +323,11 @@ func (p *AssetStatsProcessor) updateContractID(
 			))
 		}
 		if err != nil {
-			return errors.Wrap(err, "could not find asset stat by contract id")
+			return errors.Wrap(err, "error querying asset by contract id")
 		}
 
 		if err = p.maybeAddContractAssetStat(contractAssetStats, contractID, &stat); err != nil {
-			return errors.Wrap(err, "could not update asset stat with contract delta")
+			return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
 		}
 
 		if stat.Accounts.IsZero() {
@@ -377,7 +377,7 @@ func (p *AssetStatsProcessor) updateContractID(
 			}
 			row.SetContractID(contractID)
 			if err = p.maybeAddContractAssetStat(contractAssetStats, contractID, &row); err != nil {
-				return errors.Wrap(err, "could not update asset stat with contract delta")
+				return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
 			}
 
 			rowsAffected, err = p.assetStatsQ.InsertAssetStat(ctx, row)
@@ -385,7 +385,7 @@ func (p *AssetStatsProcessor) updateContractID(
 				return errors.Wrap(err, "could not insert asset stat")
 			}
 		} else if err != nil {
-			return errors.Wrap(err, "could not find asset stat by contract id")
+			return errors.Wrap(err, "error querying asset by asset code and issuer")
 		} else if dbContractID, ok := stat.GetContractID(); ok {
 			// the asset stat already has a column_id set which is unexpected (the column should be NULL)
 			return ingest.NewStateError(errors.Errorf(
@@ -398,7 +398,7 @@ func (p *AssetStatsProcessor) updateContractID(
 			// update the column_id column
 			stat.SetContractID(contractID)
 			if err = p.maybeAddContractAssetStat(contractAssetStats, contractID, &stat); err != nil {
-				return errors.Wrap(err, "could not update asset stat with contract delta")
+				return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
 			}
 
 			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
@@ -462,10 +462,10 @@ func (p *AssetStatsProcessor) updateContractAssetStat(
 	if err == sql.ErrNoRows {
 		return nil
 	} else if err != nil {
-		return errors.Wrap(err, "could not find asset stat by contract id")
+		return errors.Wrap(err, "error querying asset by contract id")
 	}
 	if err = p.addContractAssetStat(contractAssetStat, &stat); err != nil {
-		return errors.Wrap(err, "could not update asset stat with contract delta")
+		return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
 	}
 
 	var rowsAffected int64

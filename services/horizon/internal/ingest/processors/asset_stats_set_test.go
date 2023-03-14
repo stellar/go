@@ -128,6 +128,15 @@ func TestAddContractData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	// negative balances will be ignored
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+		},
+	})
+	assert.NoError(t, err)
+
 	btcAsset := xdr.MustNewCreditAsset("BTC", etherIssuer)
 	btcID, err := btcAsset.ContractID("passphrase")
 	assert.NoError(t, err)
@@ -260,6 +269,30 @@ func TestUpdateContractBalance(t *testing.T) {
 		},
 		Post: &xdr.LedgerEntry{
 			Data: BalanceToContractData(etherID, [32]byte{}, 50),
+		},
+	})
+	assert.NoError(t, err)
+
+	// negative balances will be ignored
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+		},
+	})
+	assert.NoError(t, err)
+
+	// negative balances will be ignored
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 200),
 		},
 	})
 	assert.NoError(t, err)

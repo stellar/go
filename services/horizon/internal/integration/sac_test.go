@@ -2,6 +2,9 @@ package integration
 
 import (
 	"context"
+	"math"
+	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/stellar/go/amount"
@@ -58,7 +61,7 @@ func TestContractMintToAccount(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("20"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -79,7 +82,7 @@ func TestContractMintToAccount(t *testing.T) {
 		numAccounts:      2,
 		balanceAccounts:  amount.MustParse("50"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -106,7 +109,7 @@ func TestContractMintToContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "20", contractAddressParam(recipientContractID)),
+		mintWithAmt(itest, issuer, asset, i128Param(math.MaxInt64, 0), contractAddressParam(recipientContractID)),
 	)
 
 	balanceAmount := assertInvokeHostFnSucceeds(
@@ -117,9 +120,8 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvObject, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.ScObjectTypeScoI128, (*balanceAmount.Obj).Type)
 
-	// The quantities are correct, (they are multiplied by 10^7 because we converted the amounts to stroops)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(200000000), (*balanceAmount.Obj).I128.Lo)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.Obj).I128.Hi)
 
 	// calling xfer from the issuer account will also mint the asset
 	assertInvokeHostFnSucceeds(
@@ -134,15 +136,17 @@ func TestContractMintToContract(t *testing.T) {
 		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
 	)
 
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(500000000), (*balanceAmount.Obj).I128.Lo)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(300000000), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.Obj).I128.Hi)
+	balanceContracts, ok := new(big.Int).SetString("170141183460469231713240559642474554112", 10)
+	assert.True(t, ok)
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
 		numAccounts:      0,
 		balanceAccounts:  0,
 		numContracts:     1,
-		balanceContracts: amount.MustParse("50"),
+		balanceContracts: balanceContracts,
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -187,7 +191,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("1000"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -208,7 +212,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 		numAccounts:      2,
 		balanceAccounts:  amount.MustParse("1000"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -269,7 +273,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("1000"),
 		numContracts:     1,
-		balanceContracts: amount.MustParse("1000"),
+		balanceContracts: big.NewInt(int64(amount.MustParse("1000"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -286,7 +290,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("970"),
 		numContracts:     1,
-		balanceContracts: amount.MustParse("1030"),
+		balanceContracts: big.NewInt(int64(amount.MustParse("1030"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -303,7 +307,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("1470"),
 		numContracts:     1,
-		balanceContracts: amount.MustParse("530"),
+		balanceContracts: big.NewInt(int64(amount.MustParse("530"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -384,7 +388,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 		numAccounts:      0,
 		balanceAccounts:  0,
 		numContracts:     2,
-		balanceContracts: amount.MustParse("1000"),
+		balanceContracts: big.NewInt(int64(amount.MustParse("1000"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -429,7 +433,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("1000"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -445,7 +449,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("500"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -504,7 +508,7 @@ func TestContractBurnFromContract(t *testing.T) {
 		numAccounts:      0,
 		balanceAccounts:  0,
 		numContracts:     1,
-		balanceContracts: amount.MustParse("990"),
+		balanceContracts: big.NewInt(int64(amount.MustParse("990"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -559,7 +563,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  amount.MustParse("1000"),
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 
@@ -576,7 +580,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 		numAccounts:      1,
 		balanceAccounts:  0,
 		numContracts:     0,
-		balanceContracts: 0,
+		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -638,7 +642,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 		numAccounts:      0,
 		balanceAccounts:  0,
 		numContracts:     1,
-		balanceContracts: amount.MustParse("990"),
+		balanceContracts: big.NewInt(int64(amount.MustParse("990"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
 }
@@ -661,7 +665,7 @@ type assetStats struct {
 	numAccounts      int32
 	balanceAccounts  xdr.Int64
 	numContracts     int32
-	balanceContracts xdr.Int64
+	balanceContracts *big.Int
 	contractID       [32]byte
 }
 
@@ -672,21 +676,27 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 		Limit:          1,
 	})
 	assert.NoError(itest.CurrentTest(), err)
-	for _, asset := range assets.Embedded.Records {
-		assert.Equal(itest.CurrentTest(), expected.code, asset.Code)
-		assert.Equal(itest.CurrentTest(), expected.issuer, asset.Issuer)
-		assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.NumAccounts)
-		assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.Accounts.Authorized)
-		assert.Equal(itest.CurrentTest(), expected.balanceAccounts, amount.MustParse(asset.Amount))
-		assert.Equal(itest.CurrentTest(), expected.numContracts, asset.NumContracts)
-		assert.Equal(itest.CurrentTest(), expected.balanceContracts, amount.MustParse(asset.ContractsAmount))
-		assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, expected.contractID[:]), asset.ContractID)
+
+	if expected.numContracts == 0 && expected.numAccounts == 0 &&
+		expected.balanceContracts.Cmp(big.NewInt(0)) == 0 && expected.balanceAccounts == 0 {
+		assert.Empty(itest.CurrentTest(), assets)
 		return
 	}
-	if expected.numAccounts != 0 || expected.balanceAccounts != 0 ||
-		expected.numContracts != 0 || expected.balanceContracts != 0 {
-		itest.CurrentTest().Fatalf("could not find balance for aset %s:%s", expected.code, expected.issuer)
-	}
+
+	assert.Len(itest.CurrentTest(), assets.Embedded.Records, 1)
+	asset := assets.Embedded.Records[0]
+	assert.Equal(itest.CurrentTest(), expected.code, asset.Code)
+	assert.Equal(itest.CurrentTest(), expected.issuer, asset.Issuer)
+	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.NumAccounts)
+	assert.Equal(itest.CurrentTest(), expected.numAccounts, asset.Accounts.Authorized)
+	assert.Equal(itest.CurrentTest(), expected.balanceAccounts, amount.MustParse(asset.Amount))
+	assert.Equal(itest.CurrentTest(), expected.numContracts, asset.NumContracts)
+	parts := strings.Split(asset.ContractsAmount, ".")
+	assert.Len(itest.CurrentTest(), parts, 2)
+	contractsAmount, ok := new(big.Int).SetString(parts[0]+parts[1], 10)
+	assert.True(itest.CurrentTest(), ok)
+	assert.Equal(itest.CurrentTest(), expected.balanceContracts.String(), contractsAmount.String())
+	assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, expected.contractID[:]), asset.ContractID)
 }
 
 func masterAccountIDEnumParam(itest *integration.Test) xdr.ScVal {
@@ -775,6 +785,10 @@ func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *
 }
 
 func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
+	return mintWithAmt(itest, sourceAccount, asset, i128Param(0, uint64(amount.MustParse(assetAmount))), recipient)
+}
+
+func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
 	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -783,7 +797,7 @@ func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 				functionNameParam("mint"),
 				accountAddressParam(sourceAccount),
 				recipient,
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
+				assetAmount,
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -795,7 +809,7 @@ func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 		xdr.ScVec{
 			accountAddressParam(sourceAccount),
 			recipient,
-			i128Param(0, uint64(amount.MustParse(assetAmount))),
+			assetAmount,
 		})
 
 	return invokeHostFn

@@ -155,3 +155,9 @@ func (s ScAddress) Equals(o ScAddress) bool {
 		panic("unknown ScAddress type: " + s.Type.String())
 	}
 }
+
+// IsBool returns true if the given ScVal is a boolean
+func (s ScVal) IsBool() bool {
+	ic, ok := s.GetIc()
+	return ok && (ic == ScStaticScsTrue || ic == ScStaticScsFalse)
+}
