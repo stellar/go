@@ -1437,9 +1437,6 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeTransfer:
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
-
-			fmt.Printf("XFER: %+v\n", xferEvent)
-
 			if xferEvent.From[0] != 'C' {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(xferEvent.From),
