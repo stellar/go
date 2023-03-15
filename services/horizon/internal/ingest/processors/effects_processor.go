@@ -1427,42 +1427,42 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		addAssetDetails(details, evt.GetAsset(), "")
 
 		switch evt.GetType() {
-		// A transfer event generates an account_debited effect for the `to`
-		// (recipient) and an account_credited effect for the `from`
-		// (sender).
+		// Transfer events generate an `account_debited` effect for the `from`
+		// (sender) and an `account_credited` effect for the `to` (recipient).
 		case contractevents.EventTypeTransfer:
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
+
 			e.addUnmuxed(
 				xdr.MustAddressPtr(xferEvent.From),
-				history.EffectAccountCredited,
+				history.EffectAccountDebited,
 				details,
 			)
 			e.addUnmuxed(
 				xdr.MustAddressPtr(xferEvent.To),
-				history.EffectAccountDebited,
+				history.EffectAccountCredited,
 				details,
 			)
 
-		// A mint event implies a non-native asset, and it results in a debit to
+		// Mint events imply a non-native asset, and it results in a credit to
 		// the `to` recipient.
 		case contractevents.EventTypeMint:
 			mintEvent := evt.(*contractevents.MintEvent)
 			details["amount"] = amount.String128(mintEvent.Amount)
 			e.addUnmuxed(
 				xdr.MustAddressPtr(mintEvent.To),
-				history.EffectAccountDebited,
+				history.EffectAccountCredited,
 				details,
 			)
 
-		// A clawback event results in a credit to the `from` address, but acts
+		// Clawback events result in a debit to the `from` address, but acts
 		// like a burn to the recipient, so these are functionally equivalent
 		case contractevents.EventTypeClawback:
 			cbEvent := evt.(*contractevents.ClawbackEvent)
 			details["amount"] = amount.String128(cbEvent.Amount)
 			e.addUnmuxed(
 				xdr.MustAddressPtr(cbEvent.From),
-				history.EffectAccountCredited,
+				history.EffectAccountDebited,
 				details,
 			)
 
@@ -1471,7 +1471,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			details["amount"] = amount.String128(burnEvent.Amount)
 			e.addUnmuxed(
 				xdr.MustAddressPtr(burnEvent.From),
-				history.EffectAccountCredited,
+				history.EffectAccountDebited,
 				details,
 			)
 
