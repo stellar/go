@@ -84,7 +84,7 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 		return evt, ErrNotStellarAssetContract
 	}
 
-	if eventType, ok := STELLAR_ASSET_CONTRACT_TOPICS[fn]; !ok {
+	if eventType, found := STELLAR_ASSET_CONTRACT_TOPICS[fn]; !found {
 		return evt, ErrNotStellarAssetContract
 	} else {
 		evt.Type = eventType
