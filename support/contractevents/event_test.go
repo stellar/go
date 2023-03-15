@@ -318,3 +318,7 @@ func makeBurnTopic(asset xdr.Asset) xdr.ScVec {
 	topics = append(topics[:2], topics[3:]...)
 	return topics
 }
+
+func makeAmount(amount int64) xdr.ScVal {
+	return makeBigAmount(big.NewInt(amount))
+}
