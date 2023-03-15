@@ -2,6 +2,9 @@ package contractevents
 
 import (
 	"crypto/rand"
+	"encoding/base64"
+	"math"
+	"math/big"
 	"testing"
 
 	"github.com/stellar/go/gxdr"
@@ -23,6 +26,68 @@ var (
 	zeroContractHash = xdr.Hash([32]byte{})
 	zeroContract     = strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 )
+
+func TestScValCreators(t *testing.T) {
+	val := makeSymbol("hello")
+	assert.Equal(t, val.Type, xdr.ScValTypeScvSymbol)
+	assert.NotNil(t, val.Sym)
+	assert.EqualValues(t, *val.Sym, "hello")
+
+	val = makeAmount(1234)
+	obj, ok := val.GetObj()
+	assert.True(t, ok)
+	assert.NotNil(t, obj)
+
+	amt, ok := obj.GetI128()
+	assert.True(t, ok)
+	assert.EqualValues(t, 0, amt.Hi)
+	assert.EqualValues(t, 1234, amt.Lo)
+
+	// make an amount which is 2^65 + 1234 to check both hi and lo parts
+	amount := big.NewInt(math.MaxInt64)
+	amount. // this is 2^63-1
+		Add(amount, big.NewInt(1)).            // 2^63
+		Or(amount, big.NewInt(math.MaxInt64)). // 2^64-1 (max uint64)
+		Lsh(amount, 2).                        // now it's (2^64 - 1) * 4 = 2^66 - 4
+		Add(amount, big.NewInt(1234+4))        // now it's 2^66 + 1234
+
+	val = makeBigAmount(amount)
+	obj, ok = val.GetObj()
+	assert.True(t, ok)
+	assert.NotNil(t, obj)
+
+	amt, ok = obj.GetI128()
+	assert.True(t, ok)
+	assert.EqualValues(t, 4, amt.Hi)
+	assert.EqualValues(t, 1234, amt.Lo)
+}
+
+func TestEventGenerator(t *testing.T) {
+	passphrase := "This is a passphrase."
+	issuer := keypair.MustRandom().Address()
+	from, to, admin := issuer, issuer, issuer
+
+	for _, type_ := range []EventType{
+		EventTypeTransfer,
+		EventTypeMint,
+		EventTypeClawback,
+		EventTypeBurn,
+	} {
+		event := GenerateEvent(type_, from, to, admin, xdr.MustNewNativeAsset(), big.NewInt(12345), passphrase)
+		parsedEvent, err := NewStellarAssetContractEvent(&event, passphrase)
+		require.NoErrorf(t, err, "generating an event of type %v failed", type_)
+		require.Equal(t, type_, parsedEvent.GetType())
+		require.Equal(t, xdr.AssetTypeAssetTypeNative, parsedEvent.GetAsset().Type)
+
+		event = GenerateEvent(type_, from, to, admin,
+			xdr.MustNewCreditAsset("TESTER", issuer),
+			big.NewInt(12345), passphrase)
+		parsedEvent, err = NewStellarAssetContractEvent(&event, passphrase)
+		require.NoErrorf(t, err, "generating an event of type %v failed", type_)
+		require.Equal(t, type_, parsedEvent.GetType())
+		require.Equal(t, xdr.AssetTypeAssetTypeCreditAlphanum12, parsedEvent.GetAsset().Type)
+	}
+}
 
 func TestSACTransferEvent(t *testing.T) {
 	rawNativeContractId, err := xdr.MustNewNativeAsset().ContractID(passphrase)
@@ -179,6 +244,20 @@ func TestFuzzingSACEventParser(t *testing.T) {
 	}
 }
 
+func TestRealXdr(t *testing.T) {
+	base64xdr := "AAAAAAAAAAGP097PJPXCcbtgOhu8wDc/ELPABxTdosN//YtrzxEJyAAAAAEAAAAAAAAABAAAAAUAAAAIdHJhbnNmZXIAAAAEAAAAAQAAAAgAAAAAAAAAAHN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAABAAAAAEAAAAIAAAAAAAAAAB4Ijl70f/hhiVmJftmpmXIoHZyUoyEiPSrpZAd5RfalwAAAAQAAAABAAAABgAAACVVU0QAOnN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAAAAAABAAAAAEAAAAFAAAAABHhowAAAAAAAAAAAA=="
+
+	rawXdr, err := base64.StdEncoding.DecodeString(base64xdr)
+	require.NoError(t, err)
+
+	event := xdr.ContractEvent{}
+	require.NoError(t, event.UnmarshalBinary(rawXdr))
+
+	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
+	assert.NoError(t, err)
+	assert.Equal(t, EventTypeTransfer, parsed.GetType())
+}
+
 //
 // Test suite helpers below
 //
@@ -204,93 +283,42 @@ func makeEvent() xdr.ContractEvent {
 }
 
 func makeTransferTopic(asset xdr.Asset) xdr.ScVec {
-	accountId := xdr.MustAddress(randomAccount)
-
-	fnName := xdr.ScSymbol("transfer")
-	account := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoAddress,
-		Address: &xdr.ScAddress{
-			Type:      xdr.ScAddressTypeScAddressTypeAccount,
-			AccountId: &accountId,
-		},
-	}
-	contract := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoAddress,
-		Address: &xdr.ScAddress{
-			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: &zeroContractHash,
-		},
-	}
-
-	slice := []byte("native")
-	if asset.Type != xdr.AssetTypeAssetTypeNative {
-		slice = []byte(asset.StringCanonical())
-	}
-	assetDetails := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &slice,
-	}
+	contractStr := strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 
 	return xdr.ScVec([]xdr.ScVal{
 		// event name
-		{
-			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &fnName,
-		},
+		makeSymbol("transfer"),
 		// from
-		{
-			Type: xdr.ScValTypeScvObject,
-			Obj:  &account,
-		},
+		makeAddress(randomAccount),
 		// to
-		{
-			Type: xdr.ScValTypeScvObject,
-			Obj:  &contract,
-		},
+		makeAddress(contractStr),
 		// asset details
-		{
-			Type: xdr.ScValTypeScvObject,
-			Obj:  &assetDetails,
-		},
+		makeAsset(asset),
 	})
 }
 
 func makeMintTopic(asset xdr.Asset) xdr.ScVec {
 	// mint is just transfer but with an admin instead of a from... nice
-	fnName := xdr.ScSymbol("mint")
 	topics := makeTransferTopic(asset)
-	topics[0].Sym = &fnName
+	topics[0] = makeSymbol("mint")
 	return topics
 }
 
 func makeClawbackTopic(asset xdr.Asset) xdr.ScVec {
 	// clawback is just mint but with a from instead of a to
-	fnName := xdr.ScSymbol("clawback")
 	topics := makeTransferTopic(asset)
-	topics[0].Sym = &fnName
+	topics[0] = makeSymbol("clawback")
 	return topics
 }
 
 func makeBurnTopic(asset xdr.Asset) xdr.ScVec {
 	// burn is like clawback but without a "to", so we drop that topic
-	fnName := xdr.ScSymbol("burn")
 	topics := makeTransferTopic(asset)
-	topics[0].Sym = &fnName
+	topics[0] = makeSymbol("burn")
 	topics = append(topics[:2], topics[3:]...)
 	return topics
 }
 
-func makeAmount(amount int) xdr.ScVal {
-	amountObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoI128,
-		I128: &xdr.Int128Parts{
-			Lo: xdr.Uint64(amount),
-			Hi: 0,
-		},
-	}
-
-	return xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &amountObj,
-	}
+func makeAmount(amount int64) xdr.ScVal {
+	return makeBigAmount(big.NewInt(amount))
 }
