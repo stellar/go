@@ -437,7 +437,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		}
 
 		delta := new(big.Int).Sub(postAmt, amt)
-		stats.balance = new(big.Int).Add(stats.balance, delta)
+		stats.balance.Add(stats.balance, delta)
 		if postAmt.Cmp(big.NewInt(0)) == 0 && amt.Cmp(big.NewInt(0)) > 0 {
 			// if the pre amount is equal to the post amount it means the balance was wiped out so
 			// we can decrement the number of contract holders

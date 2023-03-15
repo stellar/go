@@ -201,7 +201,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 	amt := new(big.Int).Lsh(big.NewInt(int64(amount.Hi)), 64)
-	amt = new(big.Int).Add(amt, big.NewInt(int64(amount.Lo)))
+	amt.Add(amt, big.NewInt(int64(amount.Lo)))
 	return holder, amt, true
 }
 
