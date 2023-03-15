@@ -109,7 +109,7 @@ func TestContractMintToContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mintWithAmt(itest, issuer, asset, i128Param(math.MaxInt64, 0), contractAddressParam(recipientContractID)),
+		mintWithAmt(itest, issuer, asset, i128Param(math.MaxInt64, math.MaxUint64-3), contractAddressParam(recipientContractID)),
 	)
 
 	balanceAmount := assertInvokeHostFnSucceeds(
@@ -120,14 +120,14 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvObject, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.ScObjectTypeScoI128, (*balanceAmount.Obj).Type)
 
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.Obj).I128.Hi)
 
 	// calling xfer from the issuer account will also mint the asset
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		xfer(itest, issuer, asset, "30", contractAddressParam(recipientContractID)),
+		xferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID)),
 	)
 
 	balanceAmount = assertInvokeHostFnSucceeds(
@@ -136,10 +136,11 @@ func TestContractMintToContract(t *testing.T) {
 		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
 	)
 
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(300000000), (*balanceAmount.Obj).I128.Lo)
+	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.Obj).I128.Hi)
-	balanceContracts, ok := new(big.Int).SetString("170141183460469231713240559642474554112", 10)
-	assert.True(t, ok)
+	// balanceContracts = 2^127 - 1
+	balanceContracts := new(big.Int).Lsh(big.NewInt(1), 127)
+	balanceContracts.Sub(balanceContracts, big.NewInt(1))
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -298,7 +299,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		xferFromContract(itest, recipientKp.Address(), recipientContractID, asset, "500", accountAddressParam(recipient.GetAccountID())),
+		xferFromContract(itest, recipientKp.Address(), recipientContractID, "500", accountAddressParam(recipient.GetAccountID())),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
 	assertAssetStats(itest, assetStats{
@@ -360,7 +361,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		xferFromContract(itest, issuer, emitterContractID, asset, "10", contractAddressParam(recipientContractID)),
+		xferFromContract(itest, issuer, emitterContractID, "10", contractAddressParam(recipientContractID)),
 	)
 
 	// Check balances of emitter and recipient
@@ -699,11 +700,6 @@ func assertAssetStats(itest *integration.Test, expected assetStats) {
 	assert.Equal(itest.CurrentTest(), strkey.MustEncode(strkey.VersionByteContract, expected.contractID[:]), asset.ContractID)
 }
 
-func masterAccountIDEnumParam(itest *integration.Test) xdr.ScVal {
-	root := keypair.Root(itest.GetPassPhrase())
-	return accountAddressParam(root.Address())
-}
-
 func functionNameParam(name string) xdr.ScVal {
 	contractFnParameterSym := xdr.ScSymbol(name)
 	return xdr.ScVal{
@@ -880,6 +876,16 @@ func balance(itest *integration.Test, sourceAccount string, asset xdr.Asset, hol
 }
 
 func xfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
+	return xferWithAmount(
+		itest,
+		sourceAccount,
+		asset,
+		i128Param(0, uint64(amount.MustParse(assetAmount))),
+		recipient,
+	)
+}
+
+func xferWithAmount(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
 	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -888,7 +894,7 @@ func xfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 				functionNameParam("xfer"),
 				accountAddressParam(sourceAccount),
 				recipient,
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
+				assetAmount,
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -900,7 +906,7 @@ func xfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 		xdr.ScVec{
 			accountAddressParam(sourceAccount),
 			recipient,
-			i128Param(0, uint64(amount.MustParse(assetAmount))),
+			assetAmount,
 		})
 
 	return invokeHostFn
@@ -930,7 +936,7 @@ func burnSelf(itest *integration.Test, sourceAccount string, sacTestcontractID x
 	return invokeHostFn
 }
 
-func xferFromContract(itest *integration.Test, sourceAccount string, sacTestcontractID xdr.Hash, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
+func xferFromContract(itest *integration.Test, sourceAccount string, sacTestcontractID xdr.Hash, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunction {
 	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,

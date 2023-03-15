@@ -197,11 +197,11 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 	}
 	// amount cannot be negative
 	// https://github.com/stellar/rs-soroban-env/blob/a66f0815ba06a2f5328ac420950690fd1642f887/soroban-env-host/src/native_contract/token/balance.rs#L92-L93
-	if (amount.Hi & (1 << 63)) > 0 {
+	if int64(amount.Hi) < 0 {
 		return [32]byte{}, nil, false
 	}
-	amt := new(big.Int).Lsh(big.NewInt(int64(amount.Hi)), 64)
-	amt.Add(amt, big.NewInt(int64(amount.Lo)))
+	amt := new(big.Int).Lsh(new(big.Int).SetUint64(uint64(amount.Hi)), 64)
+	amt.Add(amt, new(big.Int).SetUint64(uint64(amount.Lo)))
 	return holder, amt, true
 }
 
