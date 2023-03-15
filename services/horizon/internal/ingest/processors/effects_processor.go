@@ -1426,6 +1426,11 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		details := make(map[string]interface{}, 4)
 		addAssetDetails(details, evt.GetAsset(), "")
 
+		//
+		// Note: We ignore effects that involve contracts (until the day we have
+		// contract_debited/credited effects, may it never come :pray:)
+		//
+
 		switch evt.GetType() {
 		// Transfer events generate an `account_debited` effect for the `from`
 		// (sender) and an `account_credited` effect for the `to` (recipient).
@@ -1433,47 +1438,59 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
 
-			e.addUnmuxed(
-				xdr.MustAddressPtr(xferEvent.From),
-				history.EffectAccountDebited,
-				details,
-			)
-			e.addUnmuxed(
-				xdr.MustAddressPtr(xferEvent.To),
-				history.EffectAccountCredited,
-				details,
-			)
+			fmt.Printf("XFER: %+v\n", xferEvent)
+
+			if xferEvent.From[0] != 'C' {
+				e.addUnmuxed(
+					xdr.MustAddressPtr(xferEvent.From),
+					history.EffectAccountDebited,
+					details,
+				)
+			}
+			if xferEvent.To[0] != 'C' {
+				e.addUnmuxed(
+					xdr.MustAddressPtr(xferEvent.To),
+					history.EffectAccountCredited,
+					details,
+				)
+			}
 
 		// Mint events imply a non-native asset, and it results in a credit to
 		// the `to` recipient.
 		case contractevents.EventTypeMint:
 			mintEvent := evt.(*contractevents.MintEvent)
 			details["amount"] = amount.String128(mintEvent.Amount)
-			e.addUnmuxed(
-				xdr.MustAddressPtr(mintEvent.To),
-				history.EffectAccountCredited,
-				details,
-			)
+			if mintEvent.To[0] != 'C' {
+				e.addUnmuxed(
+					xdr.MustAddressPtr(mintEvent.To),
+					history.EffectAccountCredited,
+					details,
+				)
+			}
 
 		// Clawback events result in a debit to the `from` address, but acts
 		// like a burn to the recipient, so these are functionally equivalent
 		case contractevents.EventTypeClawback:
 			cbEvent := evt.(*contractevents.ClawbackEvent)
 			details["amount"] = amount.String128(cbEvent.Amount)
-			e.addUnmuxed(
-				xdr.MustAddressPtr(cbEvent.From),
-				history.EffectAccountDebited,
-				details,
-			)
+			if cbEvent.From[0] != 'C' {
+				e.addUnmuxed(
+					xdr.MustAddressPtr(cbEvent.From),
+					history.EffectAccountDebited,
+					details,
+				)
+			}
 
 		case contractevents.EventTypeBurn:
 			burnEvent := evt.(*contractevents.BurnEvent)
 			details["amount"] = amount.String128(burnEvent.Amount)
-			e.addUnmuxed(
-				xdr.MustAddressPtr(burnEvent.From),
-				history.EffectAccountDebited,
-				details,
-			)
+			if burnEvent.From[0] != 'C' {
+				e.addUnmuxed(
+					xdr.MustAddressPtr(burnEvent.From),
+					history.EffectAccountDebited,
+					details,
+				)
+			}
 
 		// Other events are irrelevant to debit/credit effects
 		default:

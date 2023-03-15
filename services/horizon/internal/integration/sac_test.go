@@ -59,7 +59,7 @@ func TestContractMintToAccount(t *testing.T) {
 
 	fx := getTxEffects(itest, mintTx, asset)
 	assert.Len(t, fx, 1)
-	debitEffect := assertContainsEffect(t, fx, effects.EffectAccountDebited)[0].(effects.AccountDebited)
+	debitEffect := assertContainsEffect(t, fx, effects.EffectAccountCredited)[0].(effects.AccountCredited)
 	assert.Equal(t, recipientKp.Address(), debitEffect.Account)
 	assert.Equal(t, issuer, debitEffect.Asset.Issuer)
 	assert.Equal(t, code, debitEffect.Asset.Code)
@@ -381,7 +381,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 	fx := getTxEffects(itest, burnTx, asset)
 	assert.Len(t, fx, 1)
 	burnEffect := assertContainsEffect(t, fx,
-		effects.EffectAccountCredited)[0].(effects.AccountCredited)
+		effects.EffectAccountDebited)[0].(effects.AccountDebited)
 
 	assert.Equal(t, issuer, burnEffect.Asset.Issuer)
 	assert.Equal(t, code, burnEffect.Asset.Code)
@@ -439,16 +439,10 @@ func TestContractBurnFromContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"), stellarAssetContractID(itest, asset))
 
+	// Burn transactions across contracts generate burn events, but these
+	// shouldn't be included as account-related effects.
 	fx := getTxEffects(itest, burnTx, asset)
-	assert.Len(t, fx, 1)
-	burnEffect := assertContainsEffect(t, fx,
-		effects.EffectAccountCredited)[0].(effects.AccountCredited)
-
-	contractStrkey := strkey.MustEncode(strkey.VersionByteContract, recipientContractID[:])
-	assert.Equal(t, issuer, burnEffect.Asset.Issuer)
-	assert.Equal(t, code, burnEffect.Asset.Code)
-	assert.Equal(t, "20.0000000", burnEffect.Amount)
-	assert.Equal(t, contractStrkey, burnEffect.Account)
+	assert.Empty(t, fx)
 }
 
 func TestContractClawbackFromAccount(t *testing.T) {
@@ -497,7 +491,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1000"), stellarAssetContractID(itest, asset))
 
-	assertInvokeHostFnSucceeds(
+	_, clawTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		clawback(itest, issuer, asset, "1000", accountAddressParam(recipientKp.Address())),
@@ -505,6 +499,9 @@ func TestContractClawbackFromAccount(t *testing.T) {
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("0"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("0"), stellarAssetContractID(itest, asset))
+
+	fx := getTxEffects(itest, clawTx, asset)
+	assertContainsEffect(t, fx, effects.EffectAccountDebited)
 }
 
 func TestContractClawbackFromContract(t *testing.T) {
@@ -544,7 +541,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	)
 
 	// Clawback funds
-	assertInvokeHostFnSucceeds(
+	_, clawTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		clawback(itest, issuer, asset, "10", contractAddressParam(recipientContractID)),
@@ -559,6 +556,10 @@ func TestContractClawbackFromContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"), stellarAssetContractID(itest, asset))
+
+	// clawbacks between contracts generate events but not effects
+	fx := getTxEffects(itest, clawTx, asset)
+	assert.Empty(t, fx)
 }
 
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
