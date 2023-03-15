@@ -108,10 +108,6 @@ func makeSymbol(sym string) xdr.ScVal {
 	}
 }
 
-func makeAmount(amount int) xdr.ScVal {
-	return makeBigAmount(big.NewInt(int64(amount)))
-}
-
 func makeBigAmount(amount *big.Int) xdr.ScVal {
 	// TODO: Better check, as MaxUint128 shouldn't be allowed
 	if amount.BitLen() > 128 {
