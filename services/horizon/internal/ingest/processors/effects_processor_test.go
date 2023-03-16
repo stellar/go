@@ -3490,7 +3490,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 				{
 					order:       1,
 					address:     from,
-					effectType:  history.EffectAccountCredited,
+					effectType:  history.EffectAccountDebited,
 					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
 						"amount":       "0.0012345",
@@ -3502,7 +3502,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 				{
 					order:       2,
 					address:     to,
-					effectType:  history.EffectAccountDebited,
+					effectType:  history.EffectAccountCredited,
 					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
 						"amount":       "0.0012345",
@@ -3520,7 +3520,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 				{
 					order:       1,
 					address:     to,
-					effectType:  history.EffectAccountDebited,
+					effectType:  history.EffectAccountCredited,
 					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
 						"amount":       "0.0012345",
@@ -3538,7 +3538,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 				{
 					order:       1,
 					address:     from,
-					effectType:  history.EffectAccountCredited,
+					effectType:  history.EffectAccountDebited,
 					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
 						"amount":       "0.0012345",
@@ -3556,7 +3556,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 				{
 					order:       1,
 					address:     from,
-					effectType:  history.EffectAccountCredited,
+					effectType:  history.EffectAccountDebited,
 					operationID: toid.New(1, 0, 1).ToInt64(),
 					details: map[string]interface{}{
 						"amount":       "0.0012345",
