@@ -453,18 +453,19 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 			},
 		}
 		operation := transactionOperationWrapper{
-			index: 0,
+			index:          0,
+			ledgerSequence: 1,
 			transaction: ingest.LedgerTransaction{
 				UnsafeMeta: xdr.TransactionMeta{
 					V:  2,
 					V2: &xdr.TransactionMetaV2{},
 				},
 			},
-			operation:      op,
-			ledgerSequence: 1,
+			operation: op,
+			network:   "test passphrase",
 		}
-		// calling effects should either panic (because the operation field is set to nil)
-		// or not error
+		// calling effects should either panic (because the operation field is
+		// set to nil) or not error
 		func() {
 			var err error
 			defer func() {
