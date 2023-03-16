@@ -123,9 +123,9 @@ func String128(v xdr.Int128Parts) string {
 	// the upper half of the i128 always indicates its sign regardless of its
 	// value, just like a native signed type
 	val := big.NewInt(int64(v.Hi))
-	val.Lsh(val, 64).Add(val, big.NewInt(0).SetUint64(uint64(v.Lo)))
+	val.Lsh(val, 64).Add(val, new(big.Int).SetUint64(uint64(v.Lo)))
 
-	rat := big.NewRat(0, 1).SetInt(val)
+	rat := new(big.Rat).SetInt(val)
 	rat.Quo(rat, bigOne)
 	return rat.FloatString(7)
 }
