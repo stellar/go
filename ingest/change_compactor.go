@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"encoding/base64"
-	"sync"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -50,7 +49,6 @@ import (
 type ChangeCompactor struct {
 	// ledger key => Change
 	cache          map[string]Change
-	mutex          sync.Mutex
 	encodingBuffer *xdr.EncodingBuffer
 }
 
@@ -70,9 +68,6 @@ func NewChangeCompactor() *ChangeCompactor {
 // cache takes too much memory, you apply changes returned by GetChanges and
 // create a new ChangeCompactor object to continue ingestion.
 func (c *ChangeCompactor) AddChange(change Change) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	switch {
 	case change.Pre == nil && change.Post != nil:
 		return c.addCreatedChange(change)
@@ -215,9 +210,6 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 // GetChanges returns a slice of Changes in the cache. The order of changes is
 // random but each change is connected to a separate entry.
 func (c *ChangeCompactor) GetChanges() []Change {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	changes := make([]Change, 0, len(c.cache))
 
 	for _, entryChange := range c.cache {
@@ -229,7 +221,5 @@ func (c *ChangeCompactor) GetChanges() []Change {
 
 // Size returns number of ledger entries in the cache.
 func (c *ChangeCompactor) Size() int {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 	return len(c.cache)
 }
