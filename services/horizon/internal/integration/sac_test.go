@@ -140,7 +140,12 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(500000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"), stellarAssetContractID(itest, asset))
-	assert.Empty(t, getTxEffects(itest, xferTx, asset))
+
+	// while contract-to-contract shouldn't have effects (i.e. the mintTx), the
+	// xfer comes from the issuer account, so it *should* generate effects
+	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
+		effects.EffectAccountCredited,
+		effects.EffectAccountDebited)
 }
 
 func TestContractTransferBetweenAccounts(t *testing.T) {
@@ -242,25 +247,29 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 
 	// Add funds to recipient contract
-	assertInvokeHostFnSucceeds(
+	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1000"), stellarAssetContractID(itest, asset))
+	assert.Empty(t, getTxEffects(itest, mintTx, asset)) // no effects: the only actor is a contract
 
 	// transfer from account to contract
-	assertInvokeHostFnSucceeds(
+	_, xferTx := assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
 		xfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("970"), stellarAssetContractID(itest, asset))
+	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
+		effects.EffectAccountDebited,
+		effects.EffectAccountCredited) // effects: account is involved
 
 	// transfer from contract to account
-	_, xferTx := assertInvokeHostFnSucceeds(
+	_, xferTx = assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
 		xferFromContract(itest,
@@ -270,6 +279,9 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("1470"), stellarAssetContractID(itest, asset))
+	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
+		effects.EffectAccountDebited,
+		effects.EffectAccountCredited) // effects: account is involved
 
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
@@ -278,10 +290,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(5300000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
-
-	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountDebited,
-		effects.EffectAccountCredited)
 }
 
 func TestContractTransferBetweenContracts(t *testing.T) {
