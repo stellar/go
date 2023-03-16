@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -1437,14 +1438,14 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeTransfer:
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
-			if xferEvent.From[0] != 'C' {
+			if strkey.IsValidContract(xferEvent.From) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(xferEvent.From),
 					history.EffectAccountDebited,
 					details,
 				)
 			}
-			if xferEvent.To[0] != 'C' {
+			if strkey.IsValidContract(xferEvent.To) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(xferEvent.To),
 					history.EffectAccountCredited,
@@ -1457,7 +1458,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeMint:
 			mintEvent := evt.(*contractevents.MintEvent)
 			details["amount"] = amount.String128(mintEvent.Amount)
-			if mintEvent.To[0] != 'C' {
+			if strkey.IsValidContract(mintEvent.To) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(mintEvent.To),
 					history.EffectAccountCredited,
@@ -1470,7 +1471,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeClawback:
 			cbEvent := evt.(*contractevents.ClawbackEvent)
 			details["amount"] = amount.String128(cbEvent.Amount)
-			if cbEvent.From[0] != 'C' {
+			if strkey.IsValidContract(cbEvent.From) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(cbEvent.From),
 					history.EffectAccountDebited,
@@ -1481,7 +1482,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeBurn:
 			burnEvent := evt.(*contractevents.BurnEvent)
 			details["amount"] = amount.String128(burnEvent.Amount)
-			if burnEvent.From[0] != 'C' {
+			if strkey.IsValidContract(burnEvent.From) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(burnEvent.From),
 					history.EffectAccountDebited,

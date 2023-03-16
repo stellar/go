@@ -285,3 +285,16 @@ func IsValidEd25519SecretSeed(i interface{}) bool {
 
 	return err == nil
 }
+
+// IsValidContract validates an encoded Stellar contract ID (C...)
+func IsValidContract(i interface{}) bool {
+	enc, ok := i.(string)
+
+	if !ok {
+		return false
+	}
+
+	_, err := Decode(VersionByteContract, enc)
+
+	return err == nil
+}
