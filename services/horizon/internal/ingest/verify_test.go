@@ -211,10 +211,14 @@ func genAssetContractMetadata(tt *test.T, gen randxdr.Generator) []xdr.LedgerEnt
 
 	otherTrustline := genTrustLine(tt, gen, assetPreset)
 	otherAssetContractMetadata := assetContractMetadataFromTrustline(tt, otherTrustline)
+
 	return []xdr.LedgerEntryChange{
 		assetContractMetadata,
 		trustline,
+		balanceContractDataFromTrustline(tt, trustline),
 		otherAssetContractMetadata,
+		balanceContractDataFromTrustline(tt, otherTrustline),
+		balanceContractDataFromTrustline(tt, genTrustLine(tt, gen, assetPreset)),
 	}
 }
 
@@ -233,6 +237,25 @@ func assetContractMetadataFromTrustline(tt *test.T, trustline xdr.LedgerEntryCha
 		Created: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: trustline.Created.LastModifiedLedgerSeq,
 			Data:                  ledgerData,
+		},
+	}
+	return assetContractMetadata
+}
+
+func balanceContractDataFromTrustline(tt *test.T, trustline xdr.LedgerEntryChange) xdr.LedgerEntryChange {
+	contractID, err := trustline.Created.Data.MustTrustLine().Asset.ToAsset().ContractID("")
+	tt.Assert.NoError(err)
+	var assetType xdr.AssetType
+	var code, issuer string
+	trustlineData := trustline.Created.Data.MustTrustLine()
+	tt.Assert.NoError(
+		trustlineData.Asset.Extract(&assetType, &code, &issuer),
+	)
+	assetContractMetadata := xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Created: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: trustline.Created.LastModifiedLedgerSeq,
+			Data:                  processors.BalanceToContractData(contractID, *trustlineData.AccountId.Ed25519, uint64(trustlineData.Balance)),
 		},
 	}
 	return assetContractMetadata

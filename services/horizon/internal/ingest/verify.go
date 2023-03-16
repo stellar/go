@@ -160,14 +160,6 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractCode {
 			return true, entry
 		}
-		if entryType == xdr.LedgerEntryTypeContractData {
-			asset := processors.AssetFromContractData(entry, s.config.NetworkPassphrase)
-			if asset == nil {
-				return true, entry
-			}
-			// we don't keep track of last modified ledgers for contract data
-			entry.LastModifiedLedgerSeq = 0
-		}
 
 		return false, entry
 	})
@@ -191,8 +183,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
 		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
 		lPools := make([]xdr.PoolId, 0, verifyBatchSize)
-		contractIDs := make([][32]byte, 0, verifyBatchSize)
-		for i, entry := range entries {
+		for _, entry := range entries {
 			switch entry.Data.Type {
 			case xdr.LedgerEntryTypeAccount:
 				accounts = append(accounts, entry.Data.MustAccount().AccountId.Address())
@@ -216,14 +207,17 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				// contract data is a special case.
 				// we don't store contract data entries in the db,
 				// however, we ingest contract data entries for asset stats.
+
+				if err = verifier.Write(entry); err != nil {
+					return err
+				}
 				err = assetStats.AddContractData(ingest.Change{
 					Type: xdr.LedgerEntryTypeContractData,
-					Post: &entries[i],
+					Post: &entry,
 				})
 				if err != nil {
 					return errors.Wrap(err, "Error running assetStats.AddContractData")
 				}
-				contractIDs = append(contractIDs, entries[i].Data.MustContractData().ContractId)
 				totalByType["contract_data"]++
 			default:
 				return errors.New("GetLedgerEntries return unexpected type")
@@ -258,11 +252,6 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		err = addLiquidityPoolsToStateVerifier(s.ctx, verifier, assetStats, historyQ, lPools)
 		if err != nil {
 			return errors.Wrap(err, "addLiquidityPoolsToStateVerifier failed")
-		}
-
-		err = addContractIDsToStateVerifier(s.ctx, verifier, historyQ, contractIDs)
-		if err != nil {
-			return errors.Wrap(err, "addContractIDsToStateVerifier failed")
 		}
 
 		total += int64(len(entries))
@@ -301,14 +290,9 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running historyQ.CountLiquidityPools")
 	}
 
-	countContractIDs, err := historyQ.CountContractIDs(s.ctx)
-	if err != nil {
-		return errors.Wrap(err, "Error running historyQ.CountContractIDs")
-	}
-
 	err = verifier.Verify(
 		countAccounts + countData + countOffers + countTrustLines + countClaimableBalances +
-			countLiquidityPools + countContractIDs,
+			countLiquidityPools + int(totalByType["contract_data"]),
 	)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
@@ -601,48 +585,6 @@ func offerToXDR(row history.Offer) xdr.OfferEntry {
 		},
 		Flags: xdr.Uint32(row.Flags),
 	}
-}
-
-func addContractIDsToStateVerifier(
-	ctx context.Context,
-	verifier *verify.StateVerifier,
-	q history.IngestionQ,
-	contractIDs [][32]byte,
-) error {
-	if len(contractIDs) == 0 {
-		return nil
-	}
-
-	assets, err := q.GetAssetStatByContracts(ctx, contractIDs)
-	if err != nil {
-		return errors.Wrap(err, "Error running q.GetAssetStatByContracts")
-	}
-
-	for _, asset := range assets {
-		contractID, ok := asset.GetContractID()
-		if !ok {
-			return ingest.NewStateError(
-				fmt.Errorf("asset %s:%s is missing contract id", asset.AssetCode, asset.AssetIssuer),
-			)
-		}
-
-		data, err := processors.AssetToContractData(
-			asset.AssetType == xdr.AssetTypeAssetTypeNative,
-			asset.AssetCode,
-			asset.AssetIssuer,
-			contractID,
-		)
-		if err != nil {
-			return err
-		}
-		err = verifier.Write(xdr.LedgerEntry{
-			Data: data,
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func addTrustLinesToStateVerifier(

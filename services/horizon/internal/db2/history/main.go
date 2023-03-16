@@ -373,6 +373,7 @@ type ExpAssetStatAccounts struct {
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               int32 `json:"claimable_balances"`
 	LiquidityPools                  int32 `json:"liquidity_pools"`
+	Contracts                       int32 `json:"contracts"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -429,6 +430,7 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
 		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
+		Contracts:                       a.Contracts + b.Contracts,
 	}
 }
 
@@ -443,7 +445,19 @@ type ExpAssetStatBalances struct {
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               string `json:"claimable_balances"`
 	LiquidityPools                  string `json:"liquidity_pools"`
+	Contracts                       string `json:"contracts"`
 	Unauthorized                    string `json:"unauthorized"`
+}
+
+func (e ExpAssetStatBalances) IsZero() bool {
+	return e == ExpAssetStatBalances{
+		Authorized:                      "0",
+		AuthorizedToMaintainLiabilities: "0",
+		ClaimableBalances:               "0",
+		LiquidityPools:                  "0",
+		Contracts:                       "0",
+		Unauthorized:                    "0",
+	}
 }
 
 func (e ExpAssetStatBalances) Value() (driver.Value, error) {
@@ -477,6 +491,9 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 	if e.Unauthorized == "" {
 		e.Unauthorized = "0"
 	}
+	if e.Contracts == "" {
+		e.Contracts = "0"
+	}
 
 	return nil
 }
@@ -492,7 +509,6 @@ type QAssetStats interface {
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
 	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
-	CountContractIDs(ctx context.Context) (int, error)
 }
 
 type QCreateAccountsHistory interface {

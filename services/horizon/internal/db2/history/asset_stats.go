@@ -126,20 +126,6 @@ func (q *Q) GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte)
 	return assetStats, err
 }
 
-// CountContractIDs counts all rows in the asset stats table which have a contract id set.
-// CountContractIDs is used by the state verification routine.
-func (q *Q) CountContractIDs(ctx context.Context) (int, error) {
-	sql := sq.Select("count(*)").From("exp_asset_stats").
-		Where("contract_id IS NOT NULL")
-
-	var count int
-	if err := q.Get(ctx, &count, sql); err != nil {
-		return 0, errors.Wrap(err, "could not run select query")
-	}
-
-	return count, nil
-}
-
 func parseAssetStatsCursor(cursor string) (string, string, error) {
 	parts := strings.SplitN(cursor, "_", 3)
 	if len(parts) != 3 {

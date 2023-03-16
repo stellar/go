@@ -172,11 +172,13 @@ type AssetStat struct {
 	NumAccounts          int32 `json:"num_accounts"`
 	NumClaimableBalances int32 `json:"num_claimable_balances"`
 	NumLiquidityPools    int32 `json:"num_liquidity_pools"`
+	NumContracts         int32 `json:"num_contracts"`
 	// Action needed in release: horizon-v3.0.0: deprecated field
 	Amount                  string            `json:"amount"`
 	Accounts                AssetStatAccounts `json:"accounts"`
 	ClaimableBalancesAmount string            `json:"claimable_balances_amount"`
 	LiquidityPoolsAmount    string            `json:"liquidity_pools_amount"`
+	ContractsAmount         string            `json:"contracts_amount"`
 	Balances                AssetStatBalances `json:"balances"`
 	Flags                   AccountFlags      `json:"flags"`
 }
