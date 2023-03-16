@@ -16,11 +16,6 @@ func TestAssetStatContracts(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	// asset stats is empty so count should be 0
-	count, err := q.CountContractIDs(tt.Ctx)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(0, count)
-
 	assetStats := []ExpAssetStat{
 		{
 			AssetType: xdr.AssetTypeAssetTypeNative,
@@ -30,6 +25,7 @@ func TestAssetStatContracts(t *testing.T) {
 				ClaimableBalances:               0,
 				LiquidityPools:                  0,
 				Unauthorized:                    0,
+				Contracts:                       0,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "0",
@@ -37,6 +33,7 @@ func TestAssetStatContracts(t *testing.T) {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
 				Unauthorized:                    "0",
+				Contracts:                       "0",
 			},
 			Amount:      "0",
 			NumAccounts: 0,
@@ -49,6 +46,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Authorized:                      1,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
+				Contracts:                       7,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "23",
@@ -56,6 +54,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
+				Contracts:                       "60",
 			},
 			Amount:      "23",
 			NumAccounts: 1,
@@ -68,6 +67,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Authorized:                      2,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
+				Contracts:                       8,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "1",
@@ -75,6 +75,7 @@ func TestAssetStatContracts(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
+				Contracts:                       "90",
 			},
 			Amount:      "1",
 			NumAccounts: 2,
@@ -87,14 +88,10 @@ func TestAssetStatContracts(t *testing.T) {
 	}
 	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats, 1))
 
-	count, err = q.CountContractIDs(tt.Ctx)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(2, count)
-
 	contractID[0] = 0
 	for i := 0; i < 2; i++ {
 		var assetStat ExpAssetStat
-		assetStat, err = q.GetAssetStatByContract(tt.Ctx, contractID)
+		assetStat, err := q.GetAssetStatByContract(tt.Ctx, contractID)
 		tt.Assert.NoError(err)
 		tt.Assert.True(assetStat.Equals(assetStats[i]))
 		contractID[0]++
@@ -162,6 +159,7 @@ func TestInsertAssetStats(t *testing.T) {
 				Authorized:                      2,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
+				Contracts:                       0,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "1",
@@ -169,6 +167,7 @@ func TestInsertAssetStats(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
+				Contracts:                       "0",
 			},
 			Amount:      "1",
 			NumAccounts: 2,
@@ -181,6 +180,7 @@ func TestInsertAssetStats(t *testing.T) {
 				Authorized:                      1,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
+				Contracts:                       0,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "23",
@@ -188,6 +188,7 @@ func TestInsertAssetStats(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
+				Contracts:                       "0",
 			},
 			Amount:      "23",
 			NumAccounts: 1,
@@ -217,6 +218,7 @@ func TestInsertAssetStat(t *testing.T) {
 				Authorized:                      2,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
+				Contracts:                       0,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "1",
@@ -224,6 +226,7 @@ func TestInsertAssetStat(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
+				Contracts:                       "0",
 			},
 			Amount:      "1",
 			NumAccounts: 2,
@@ -236,6 +239,7 @@ func TestInsertAssetStat(t *testing.T) {
 				Authorized:                      1,
 				AuthorizedToMaintainLiabilities: 3,
 				Unauthorized:                    4,
+				Contracts:                       0,
 			},
 			Balances: ExpAssetStatBalances{
 				Authorized:                      "23",
@@ -243,6 +247,7 @@ func TestInsertAssetStat(t *testing.T) {
 				Unauthorized:                    "3",
 				ClaimableBalances:               "4",
 				LiquidityPools:                  "5",
+				Contracts:                       "0",
 			},
 			Amount:      "23",
 			NumAccounts: 1,
@@ -274,6 +279,7 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -281,6 +287,7 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -321,6 +328,7 @@ func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -328,6 +336,7 @@ func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -356,6 +365,7 @@ func TestUpdateStat(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -363,6 +373,7 @@ func TestUpdateStat(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -377,7 +388,10 @@ func TestUpdateStat(t *testing.T) {
 	tt.Assert.Equal(got, assetStat)
 
 	assetStat.NumAccounts = 50
+	assetStat.Accounts.Contracts = 4
 	assetStat.Amount = "23"
+	assetStat.Balances.Contracts = "56"
+	assetStat.SetContractID([32]byte{23})
 
 	numChanged, err = q.UpdateAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Nil(err)
@@ -385,7 +399,7 @@ func TestUpdateStat(t *testing.T) {
 
 	got, err = q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(got, assetStat)
+	tt.Assert.True(got.Equals(assetStat))
 }
 
 func TestGetAssetStatDoesNotExist(t *testing.T) {
@@ -402,6 +416,7 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -409,6 +424,7 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -433,6 +449,7 @@ func TestRemoveAssetStat(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -440,6 +457,7 @@ func TestRemoveAssetStat(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "4",
 			LiquidityPools:                  "5",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -569,6 +587,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -576,6 +595,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -588,6 +608,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Authorized:                      1,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "23",
@@ -595,6 +616,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "23",
 		NumAccounts: 1,
@@ -607,6 +629,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Authorized:                      2,
 			AuthorizedToMaintainLiabilities: 3,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "1",
@@ -614,6 +637,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 2,
@@ -626,6 +650,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Authorized:                      3,
 			AuthorizedToMaintainLiabilities: 2,
 			Unauthorized:                    4,
+			Contracts:                       0,
 		},
 		Balances: ExpAssetStatBalances{
 			Authorized:                      "111",
@@ -633,6 +658,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 			Unauthorized:                    "3",
 			ClaimableBalances:               "1",
 			LiquidityPools:                  "2",
+			Contracts:                       "0",
 		},
 		Amount:      "111",
 		NumAccounts: 3,

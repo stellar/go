@@ -3,6 +3,7 @@ package processors
 import (
 	"github.com/stellar/go/keypair"
 	"math"
+	"math/big"
 	"sort"
 	"testing"
 
@@ -15,8 +16,9 @@ import (
 
 func TestEmptyAssetStatSet(t *testing.T) {
 	set := NewAssetStatSet("")
-	all, m := set.All()
+	all, m, cs := set.All()
 	assert.Empty(t, all)
+	assert.Empty(t, cs)
 	assert.Empty(t, m)
 
 	all, err := set.AllFromSnapshot()
@@ -25,8 +27,9 @@ func TestEmptyAssetStatSet(t *testing.T) {
 }
 
 func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
-	all, m := set.All()
+	all, m, cs := set.All()
 	assert.Empty(t, m)
+	assert.Empty(t, cs)
 	assertAssetStatsAreEqual(t, all, expected)
 }
 
@@ -57,6 +60,9 @@ func TestAddContractData(t *testing.T) {
 	etherAsset := xdr.MustNewCreditAsset("ETHER", etherIssuer)
 	etherID, err := etherAsset.ContractID("passphrase")
 	assert.NoError(t, err)
+	uniAsset := xdr.MustNewCreditAsset("UNI", etherIssuer)
+	uniID, err := uniAsset.ContractID("passphrase")
+	assert.NoError(t, err)
 
 	set := NewAssetStatSet("passphrase")
 
@@ -66,6 +72,22 @@ func TestAddContractData(t *testing.T) {
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
 			Data: xlmContractData,
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(xlmID, [32]byte{}, 100),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(uniID, [32]byte{}, 0),
 		},
 	})
 	assert.NoError(t, err)
@@ -90,6 +112,43 @@ func TestAddContractData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 50),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{1}, 150),
+		},
+	})
+	assert.NoError(t, err)
+
+	// negative balances will be ignored
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+		},
+	})
+	assert.NoError(t, err)
+
+	btcAsset := xdr.MustNewCreditAsset("BTC", etherIssuer)
+	btcID, err := btcAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 300),
+		},
+	})
+	assert.NoError(t, err)
+
 	assert.NoError(
 		t,
 		set.AddTrustline(trustlineChange(nil, &xdr.TrustLineEntry{
@@ -100,7 +159,7 @@ func TestAddContractData(t *testing.T) {
 		})),
 	)
 
-	all, m := set.All()
+	all, m, cs := set.All()
 	assert.Len(t, all, 1)
 	etherAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
@@ -115,15 +174,20 @@ func TestAddContractData(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 1,
 	}
 	assert.True(t, all[0].Equals(etherAssetStat))
-
 	assert.Len(t, m, 2)
 	assert.True(t, m[usdcID].Equals(usdcAsset))
 	assert.True(t, m[etherID].Equals(etherAsset))
+	assert.Len(t, cs, 2)
+	assert.Equal(t, cs[etherID].numHolders, int32(2))
+	assert.Zero(t, cs[etherID].balance.Cmp(big.NewInt(200)))
+	assert.Equal(t, cs[btcID].numHolders, int32(1))
+	assert.Zero(t, cs[btcID].balance.Cmp(big.NewInt(300)))
 
 	usdcAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -137,12 +201,185 @@ func TestAddContractData(t *testing.T) {
 	}
 
 	etherAssetStat.SetContractID(etherID)
+	etherAssetStat.Balances.Contracts = "200"
+	etherAssetStat.Accounts.Contracts = 2
 	usdcAssetStat.SetContractID(usdcID)
 
 	assertAllFromSnapshotEquals(t, set, []history.ExpAssetStat{
 		etherAssetStat,
 		usdcAssetStat,
 	})
+}
+
+func TestUpdateContractBalance(t *testing.T) {
+	usdcIssuer := keypair.MustRandom().Address()
+	usdcAsset := xdr.MustNewCreditAsset("USDC", usdcIssuer)
+	usdcID, err := usdcAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+	etherIssuer := keypair.MustRandom().Address()
+	etherAsset := xdr.MustNewCreditAsset("ETHER", etherIssuer)
+	etherID, err := etherAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+	btcAsset := xdr.MustNewCreditAsset("BTC", etherIssuer)
+	btcID, err := btcAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+	uniAsset := xdr.MustNewCreditAsset("UNI", etherIssuer)
+	uniID, err := uniAsset.ContractID("passphrase")
+	assert.NoError(t, err)
+
+	set := NewAssetStatSet("passphrase")
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(usdcID, [32]byte{}, 50),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(usdcID, [32]byte{}, 100),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(usdcID, [32]byte{2}, 30),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(usdcID, [32]byte{2}, 100),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(usdcID, [32]byte{4}, 0),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(usdcID, [32]byte{4}, 100),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 50),
+		},
+	})
+	assert.NoError(t, err)
+
+	// negative balances will be ignored
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+		},
+	})
+	assert.NoError(t, err)
+
+	// negative balances will be ignored
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(etherID, [32]byte{}, 200),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 300),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 300),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 0),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 0),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 0),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(btcID, [32]byte{2}, 0),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(uniID, [32]byte{2}, 300),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(uniID, [32]byte{3}, 100),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(uniID, [32]byte{3}, 0),
+		},
+	})
+	assert.NoError(t, err)
+
+	err = set.AddContractData(ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			Data: BalanceToContractData(uniID, [32]byte{4}, 100),
+		},
+		Post: &xdr.LedgerEntry{
+			Data: BalanceToContractData(uniID, [32]byte{4}, 50),
+		},
+	})
+	assert.NoError(t, err)
+
+	all, m, cs := set.All()
+	assert.Empty(t, all)
+	assert.Empty(t, m)
+
+	assert.Len(t, cs, 3)
+	assert.Equal(t, cs[usdcID].numHolders, int32(1))
+	assert.Zero(t, cs[usdcID].balance.Cmp(big.NewInt(220)))
+	assert.Equal(t, cs[etherID].numHolders, int32(0))
+	assert.Zero(t, cs[etherID].balance.Cmp(big.NewInt(-150)))
+	assert.Equal(t, cs[uniID].numHolders, int32(-2))
+	assert.Zero(t, cs[uniID].balance.Cmp(big.NewInt(-450)))
+
+	all, err = set.AllFromSnapshot()
+	assert.NoError(t, err)
+	assert.Empty(t, all)
 }
 
 func TestRemoveContractData(t *testing.T) {
@@ -160,8 +397,9 @@ func TestRemoveContractData(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	all, m := set.All()
+	all, m, cs := set.All()
 	assert.Empty(t, all)
+	assert.Empty(t, cs)
 	assert.Len(t, m, 1)
 	asset, ok := m[eurID]
 	assert.True(t, ok)
@@ -212,9 +450,10 @@ func TestAddNativeClaimableBalance(t *testing.T) {
 			},
 		},
 	))
-	all, m := set.All()
+	all, m, cs := set.All()
 	assert.Empty(t, all)
 	assert.Empty(t, m)
+	assert.Empty(t, cs)
 }
 
 func trustlineChange(pre, post *xdr.TrustLineEntry) ingest.Change {
@@ -251,9 +490,10 @@ func TestAddPoolShareTrustline(t *testing.T) {
 		},
 		)),
 	)
-	all, m := set.All()
+	all, m, cs := set.All()
 	assert.Empty(t, all)
 	assert.Empty(t, m)
+	assert.Empty(t, cs)
 }
 
 func TestAddAssetStats(t *testing.T) {
@@ -272,6 +512,7 @@ func TestAddAssetStats(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 1,
@@ -377,6 +618,7 @@ func TestAddAssetStats(t *testing.T) {
 				Unauthorized:                    "5",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
+				Contracts:                       "0",
 			},
 			Amount:      "3",
 			NumAccounts: 1,
@@ -395,6 +637,7 @@ func TestAddAssetStats(t *testing.T) {
 				Unauthorized:                    "0",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
+				Contracts:                       "0",
 			},
 			Amount:      "10",
 			NumAccounts: 1,
@@ -415,13 +658,12 @@ func TestOverflowAssetStatSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	all, m := set.All()
+	all, m, cs := set.All()
 	if len(all) != 1 {
 		t.Fatalf("expected list of 1 asset stat but got %v", all)
 	}
-	if len(m) != 0 {
-		t.Fatalf("expected contract id map to be empty but got  %v", m)
-	}
+	assert.Empty(t, m)
+	assert.Empty(t, cs)
 
 	eurAssetStat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -436,6 +678,7 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "9223372036854775807",
 		NumAccounts: 1,
@@ -453,13 +696,12 @@ func TestOverflowAssetStatSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	all, m = set.All()
+	all, m, cs = set.All()
 	if len(all) != 1 {
 		t.Fatalf("expected list of 1 asset stat but got %v", all)
 	}
-	if len(m) != 0 {
-		t.Fatalf("expected contract id map to be empty but got  %v", m)
-	}
+	assert.Empty(t, m)
+	assert.Empty(t, cs)
 
 	eurAssetStat = history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
@@ -474,6 +716,7 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "18446744073709551614",
 		NumAccounts: 2,

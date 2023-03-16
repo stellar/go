@@ -560,6 +560,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "450",
 				Unauthorized:                    "0",
+				Contracts:                       "0",
 			},
 			Amount: "0",
 		}}, nil).Once()
