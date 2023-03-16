@@ -1440,13 +1440,15 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			details["amount"] = amount.String128(xferEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(xferEvent.From) ||
 				strkey.IsValidEd25519PublicKey(xferEvent.To) {
-				e.addUnmuxed(
-					xdr.MustAddressPtr(xferEvent.From),
+				e.add(
+					xferEvent.From,
+					null.String{},
 					history.EffectAccountDebited,
 					details,
 				)
-				e.addUnmuxed(
-					xdr.MustAddressPtr(xferEvent.To),
+				e.add(
+					xferEvent.To,
+					null.String{},
 					history.EffectAccountCredited,
 					details,
 				)
@@ -1458,8 +1460,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			mintEvent := evt.(*contractevents.MintEvent)
 			details["amount"] = amount.String128(mintEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(mintEvent.To) {
-				e.addUnmuxed(
-					xdr.MustAddressPtr(mintEvent.To),
+				e.add(
+					mintEvent.To,
+					null.String{},
 					history.EffectAccountCredited,
 					details,
 				)
@@ -1471,8 +1474,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			cbEvent := evt.(*contractevents.ClawbackEvent)
 			details["amount"] = amount.String128(cbEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(cbEvent.From) {
-				e.addUnmuxed(
-					xdr.MustAddressPtr(cbEvent.From),
+				e.add(
+					cbEvent.From,
+					null.String{},
 					history.EffectAccountDebited,
 					details,
 				)
@@ -1482,8 +1486,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 			burnEvent := evt.(*contractevents.BurnEvent)
 			details["amount"] = amount.String128(burnEvent.Amount)
 			if strkey.IsValidEd25519PublicKey(burnEvent.From) {
-				e.addUnmuxed(
-					xdr.MustAddressPtr(burnEvent.From),
+				e.add(
+					burnEvent.From,
+					null.String{},
 					history.EffectAccountDebited,
 					details,
 				)

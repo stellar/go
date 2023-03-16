@@ -125,7 +125,7 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 
 	// calling xfer from the issuer account will also mint the asset
-	assertInvokeHostFnSucceeds(
+	_, xferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		xfer(itest, issuer, asset, "30", contractAddressParam(recipientContractID)),
@@ -140,6 +140,7 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(500000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 	assertAssetStats(itest, issuer, code, 0, amount.MustParse("0"), stellarAssetContractID(itest, asset))
+	assert.Empty(t, getTxEffects(itest, xferTx, asset))
 }
 
 func TestContractTransferBetweenAccounts(t *testing.T) {
