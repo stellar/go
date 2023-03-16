@@ -119,6 +119,9 @@ func String(v xdr.Int64) string {
 
 // String128 converts a signed 128-bit integer into a string, boldly assuming
 // 7-decimal precision.
+//
+// TODO: This should be adapted to variable precision when appopriate, but 7
+// decimals is the correct default for Stellar Classic amounts.
 func String128(v xdr.Int128Parts) string {
 	// the upper half of the i128 always indicates its sign regardless of its
 	// value, just like a native signed type
