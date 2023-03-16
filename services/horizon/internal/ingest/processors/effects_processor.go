@@ -1438,14 +1438,13 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeTransfer:
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
-			if strkey.IsValidContract(xferEvent.From) {
+			if strkey.IsValidEd25519PublicKey(xferEvent.From) ||
+				strkey.IsValidEd25519PublicKey(xferEvent.To) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(xferEvent.From),
 					history.EffectAccountDebited,
 					details,
 				)
-			}
-			if strkey.IsValidContract(xferEvent.To) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(xferEvent.To),
 					history.EffectAccountCredited,
@@ -1458,7 +1457,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeMint:
 			mintEvent := evt.(*contractevents.MintEvent)
 			details["amount"] = amount.String128(mintEvent.Amount)
-			if strkey.IsValidContract(mintEvent.To) {
+			if strkey.IsValidEd25519PublicKey(mintEvent.To) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(mintEvent.To),
 					history.EffectAccountCredited,
@@ -1471,7 +1470,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeClawback:
 			cbEvent := evt.(*contractevents.ClawbackEvent)
 			details["amount"] = amount.String128(cbEvent.Amount)
-			if strkey.IsValidContract(cbEvent.From) {
+			if strkey.IsValidEd25519PublicKey(cbEvent.From) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(cbEvent.From),
 					history.EffectAccountDebited,
@@ -1482,7 +1481,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeBurn:
 			burnEvent := evt.(*contractevents.BurnEvent)
 			details["amount"] = amount.String128(burnEvent.Amount)
-			if strkey.IsValidContract(burnEvent.From) {
+			if strkey.IsValidEd25519PublicKey(burnEvent.From) {
 				e.addUnmuxed(
 					xdr.MustAddressPtr(burnEvent.From),
 					history.EffectAccountDebited,

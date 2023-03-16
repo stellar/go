@@ -58,12 +58,13 @@ func TestContractMintToAccount(t *testing.T) {
 	assertAssetStats(itest, issuer, code, 1, amount.MustParse("20"), stellarAssetContractID(itest, asset))
 
 	fx := getTxEffects(itest, mintTx, asset)
-	assert.Len(t, fx, 1)
-	debitEffect := assertContainsEffect(t, fx, effects.EffectAccountCredited)[0].(effects.AccountCredited)
-	assert.Equal(t, recipientKp.Address(), debitEffect.Account)
-	assert.Equal(t, issuer, debitEffect.Asset.Issuer)
-	assert.Equal(t, code, debitEffect.Asset.Code)
-	assert.Equal(t, "20.0000000", debitEffect.Amount)
+	require.Len(t, fx, 1)
+	creditEffect := assertContainsEffect(t, fx,
+		effects.EffectAccountCredited)[0].(effects.AccountCredited)
+	assert.Equal(t, recipientKp.Address(), creditEffect.Account)
+	assert.Equal(t, issuer, creditEffect.Asset.Issuer)
+	assert.Equal(t, code, creditEffect.Asset.Code)
+	assert.Equal(t, "20.0000000", creditEffect.Amount)
 
 	otherRecipientKp, otherRecipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(otherRecipientKp, otherRecipient, txnbuild.MustAssetFromXDR(asset))
@@ -277,7 +278,9 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(5300000000), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.Obj).I128.Hi)
 
-	assert.Empty(t, getTxEffects(itest, xferTx, asset))
+	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
+		effects.EffectAccountDebited,
+		effects.EffectAccountCredited)
 }
 
 func TestContractTransferBetweenContracts(t *testing.T) {
