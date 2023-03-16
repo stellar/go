@@ -88,6 +88,7 @@ type captiveCoreTomlValues struct {
 	UseBucketListDB                      bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
 	BucketListDBPageSizeExp              *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                   *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	EnableSorobanDiagnosticEvents        bool                 `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
@@ -324,6 +325,8 @@ type CaptiveCoreTomlParams struct {
 	UseDB bool
 	// the path to the core binary, used to introspect core at runtie, determine some toml capabilities
 	CoreBinaryPath string
+	// Make core emit Soroban diagnostic events
+	EnableSorobanDiagnosticEvents bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
