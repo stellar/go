@@ -407,7 +407,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 
 	assert.Equal(t, issuer, burnEffect.Asset.Issuer)
 	assert.Equal(t, code, burnEffect.Asset.Code)
-	assert.Equal(t, "20.0000000", burnEffect.Amount)
+	assert.Equal(t, "500.0000000", burnEffect.Amount)
 	assert.Equal(t, recipientKp.Address(), burnEffect.Account)
 }
 
