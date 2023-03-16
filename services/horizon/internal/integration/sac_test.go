@@ -317,7 +317,6 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		xfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
-<<<<<<< HEAD
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
 		effects.EffectAccountDebited,
 		effects.EffectAccountCredited) // effects: account is involved
@@ -336,8 +335,9 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		itest,
 		recipientKp,
 		xferFromContract(itest,
-			recipientKp.Address(), recipientContractID,
-			asset, "500",
+			recipientKp.Address(),
+			recipientContractID,
+			"500",
 			accountAddressParam(recipient.GetAccountID())),
 	)
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
