@@ -125,7 +125,11 @@ func TestContractMintToContract(t *testing.T) {
 	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mintWithAmt(itest, issuer, asset, i128Param(math.MaxInt64, math.MaxUint64-3), contractAddressParam(recipientContractID)),
+		mintWithAmt(
+			itest,
+			issuer, asset,
+			i128Param(math.MaxInt64, math.MaxUint64-3),
+			contractAddressParam(recipientContractID)),
 	)
 	assert.Empty(t, getTxEffects(itest, mintTx, asset))
 
@@ -147,17 +151,17 @@ func TestContractMintToContract(t *testing.T) {
 		xferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID)),
 	)
 
-	balanceAmount, _ = assertInvokeHostFnSucceeds(
-		itest,
-		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
-	)
-
 	// while contract-to-contract shouldn't have effects (i.e. the mintTx), the
 	// xfer comes from the issuer account, so it *should* generate effects
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
 		effects.EffectAccountCredited,
 		effects.EffectAccountDebited)
+
+	balanceAmount, _ = assertInvokeHostFnSucceeds(
+		itest,
+		itest.Master(),
+		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+	)
 
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.Obj).I128.Hi)
