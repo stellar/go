@@ -300,7 +300,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	)
 
 	// Add funds to emitter contract
-	emitterBalanceAmount, _ := assertInvokeHostFnSucceeds(
+	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		mint(itest, issuer, asset, "1000", contractAddressParam(emitterContractID)),
@@ -314,7 +314,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	)
 
 	// Check balances of emitter and recipient
-	assertInvokeHostFnSucceeds(
+	emitterBalanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		balance(itest, issuer, asset, contractAddressParam(emitterContractID)),
