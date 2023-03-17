@@ -40,8 +40,6 @@ const (
 	CaptiveCoreConfigPathName = "captive-core-config-path"
 	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
 	CaptiveCoreConfigUseDB = "captive-core-use-db"
-	// captive-core-enable-soroban-diagnostic-events is the command line flag for enabling soroban diagnostic events in captive core
-	CaptiveCoreConfigEnableSorobanDiagnosticEvents = "captive-core-enable-soroban-diagnostic-events"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
@@ -194,22 +192,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 			ConfigKey: &config.CaptiveCoreConfigUseDB,
-		},
-		&support.ConfigOption{
-			Name:        CaptiveCoreConfigEnableSorobanDiagnosticEvents,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage: `when enabled, Horizon ingestion will instruct the captive
-			              core invocation to emit Soroban diagnostic events.`,
-			CustomSetValue: func(opt *support.ConfigOption) error {
-				if val := viper.GetBool(opt.Name); val {
-					config.CaptiveCoreConfigEnableSorobanDiagnosticEvents = val
-					config.CaptiveCoreTomlParams.EnableSorobanDiagnosticEvents = val
-				}
-				return nil
-			},
-			ConfigKey: &config.CaptiveCoreConfigEnableSorobanDiagnosticEvents,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
