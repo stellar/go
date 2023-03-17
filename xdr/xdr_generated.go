@@ -51046,7 +51046,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScValType(u.Type) {
 	case ScValTypeScvBool:
 		u.B = new(bool)
-		nTmp, err = d.Decode((*u.B))
+		nTmp, err = d.Decode(u.B)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Bool: %s", err)
