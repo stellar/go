@@ -23,6 +23,6 @@ func TestScValEqualsCoverage(t *testing.T) {
 
 		clonedScVal := ScVal{}
 		assert.NoError(t, gxdr.Convert(shape, &clonedScVal))
-		assert.True(t, scVal.Equals(clonedScVal))
+		assert.True(t, scVal.Equals(clonedScVal), "scVal: %#v, clonedScVal: %#v", scVal, clonedScVal)
 	}
 }
