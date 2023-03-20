@@ -181,9 +181,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	}
 
 	wrapper := &effectsWrapper{
-		effects:    []effect{},
-		operation:  operation,
-		passphrase: operation.network,
+		effects:   []effect{},
+		operation: operation,
 	}
 
 	switch operation.OperationType() {
@@ -276,9 +275,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 }
 
 type effectsWrapper struct {
-	effects    []effect
-	operation  *transactionOperationWrapper
-	passphrase string
+	effects   []effect
+	operation *transactionOperationWrapper
 }
 
 func (e *effectsWrapper) add(address string, addressMuxed null.String, effectType history.EffectType, details map[string]interface{}) {
@@ -1494,10 +1492,6 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 					details,
 				)
 			}
-
-		// Other events are irrelevant to debit/credit effects
-		default:
-			continue
 		}
 	}
 
