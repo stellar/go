@@ -785,16 +785,12 @@ func getTxEffects(itest *integration.Test, txHash string, asset xdr.Asset) []eff
 	effects, err := itest.Client().Effects(horizonclient.EffectRequest{
 		ForTransaction: txHash,
 		Order:          horizonclient.OrderDesc,
-		Limit:          2, // no tx should have more than 2 effects
 	})
 	assert.NoError(t, err)
+	result := effects.Embedded.Records
 
-	return effects.Embedded.Records
-}
-
-func masterAccountIDEnumParam(itest *integration.Test) xdr.ScVal {
-	root := keypair.Root(itest.GetPassPhrase())
-	return accountAddressParam(root.Address())
+	assert.LessOrEqualf(t, len(result), 2, "txhash: %s", txHash)
+	return result
 }
 
 func functionNameParam(name string) xdr.ScVal {
