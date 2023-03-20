@@ -152,9 +152,8 @@ func TestContractMintToContract(t *testing.T) {
 	)
 
 	// while contract-to-contract shouldn't have effects (i.e. the mintTx), the
-	// xfer comes from the issuer account, so it *should* generate effects
+	// xfer comes from the issuer account, so it *should* generate a debit
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountCredited,
 		effects.EffectAccountDebited)
 
 	balanceAmount, _ = assertInvokeHostFnSucceeds(
@@ -318,8 +317,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountDebited,
-		effects.EffectAccountCredited) // effects: account is involved
+		effects.EffectAccountDebited) // effects: account is involved, contract ignored
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -341,8 +339,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 			accountAddressParam(recipient.GetAccountID())),
 	)
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountDebited,
-		effects.EffectAccountCredited) // effects: account is involved
+		effects.EffectAccountCredited) // effects: account is involved, contract ignored
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
 	assertAssetStats(itest, assetStats{
 		code:             code,
