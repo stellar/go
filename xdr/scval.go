@@ -1,5 +1,9 @@
 package xdr
 
+import (
+	"bytes"
+)
+
 func (s ScContractExecutable) Equals(o ScContractExecutable) bool {
 	if s.Type != o.Type {
 		return false
@@ -101,15 +105,7 @@ func (s ScVal) Equals(o ScVal) bool {
 }
 
 func (s ScBytes) Equals(o ScBytes) bool {
-	if len(s) != len(o) {
-		return false
-	}
-	for i := range s {
-		if s[i] != o[i] {
-			return false
-		}
-	}
-	return true
+	return bytes.Equal([]byte(s), []byte(o))
 }
 
 func (s ScAddress) Equals(o ScAddress) bool {
