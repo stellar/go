@@ -70,11 +70,10 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	archive                       historyarchive.ArchiveInterface
-	checkpointManager             historyarchive.CheckpointManager
-	ledgerHashStore               TrustedLedgerHashStore
-	useDB                         bool
-	enableSorobanDiagnosticEvents bool
+	archive           historyarchive.ArchiveInterface
+	checkpointManager historyarchive.CheckpointManager
+	ledgerHashStore   TrustedLedgerHashStore
+	useDB             bool
 
 	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
 	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
@@ -137,9 +136,6 @@ type CaptiveCoreConfig struct {
 	// of DATABASE parameter in the captive-core-config-path or if absent, the db will default to sqlite
 	// and the db file will be stored at location derived from StoragePath parameter.
 	UseDB bool
-
-	// Enable Soroban diagnostic events in core
-	EnableSorobanDiagnosticEvents bool
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -177,12 +173,11 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	}
 
 	c := &CaptiveStellarCore{
-		archive:                       &archivePool,
-		ledgerHashStore:               config.LedgerHashStore,
-		useDB:                         config.UseDB,
-		enableSorobanDiagnosticEvents: config.EnableSorobanDiagnosticEvents,
-		cancel:                        cancel,
-		checkpointManager:             historyarchive.NewCheckpointManager(config.CheckpointFrequency),
+		archive:           &archivePool,
+		ledgerHashStore:   config.LedgerHashStore,
+		useDB:             config.UseDB,
+		cancel:            cancel,
+		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
 	c.stellarCoreRunnerFactory = func() stellarCoreRunnerInterface {
