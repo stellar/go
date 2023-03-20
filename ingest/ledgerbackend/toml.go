@@ -325,8 +325,6 @@ type CaptiveCoreTomlParams struct {
 	UseDB bool
 	// the path to the core binary, used to introspect core at runtie, determine some toml capabilities
 	CoreBinaryPath string
-	// Make core emit Soroban diagnostic events
-	EnableSorobanDiagnosticEvents bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
