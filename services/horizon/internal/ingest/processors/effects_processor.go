@@ -1438,14 +1438,15 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeTransfer:
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
-			if strkey.IsValidEd25519PublicKey(xferEvent.From) ||
-				strkey.IsValidEd25519PublicKey(xferEvent.To) {
+			if strkey.IsValidEd25519PublicKey(xferEvent.From) {
 				e.add(
 					xferEvent.From,
 					null.String{},
 					history.EffectAccountDebited,
 					details,
 				)
+			}
+			if strkey.IsValidEd25519PublicKey(xferEvent.To) {
 				e.add(
 					xferEvent.To,
 					null.String{},
