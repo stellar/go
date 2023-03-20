@@ -4,6 +4,7 @@ package processors
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"math/big"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
+	"github.com/stellar/go/strkey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -3472,20 +3474,24 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 
 	admin := randAddr()
 	asset := xdr.MustNewCreditAsset("TESTER", admin)
-	// nativeAsset := xdr.MustNewNativeAsset()
+	nativeAsset := xdr.MustNewNativeAsset()
 	from, to := randAddr(), randAddr()
-
 	amount := big.NewInt(12345)
-	// bigAmount := big.NewInt(math.MaxInt64)
-	// bigAmount = bigAmount.Lsh(bigAmount, 4) // exceed uint64
+
+	rawContractId := [64]byte{}
+	rand.Read(rawContractId[:])
+	contractName := strkey.MustEncode(strkey.VersionByteContract, rawContractId[:])
 
 	testCases := []struct {
 		desc      string
+		asset     xdr.Asset
+		from, to  string
 		eventType contractevents.EventType
 		expected  []effect
 	}{
 		{
 			desc:      "transfer",
+			asset:     asset,
 			eventType: contractevents.EventTypeTransfer,
 			expected: []effect{
 				{
@@ -3499,8 +3505,7 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 						"asset_issuer": asset.GetIssuer(),
 						"asset_type":   "credit_alphanum12",
 					},
-				},
-				{
+				}, {
 					order:       2,
 					address:     to,
 					effectType:  history.EffectAccountCredited,
@@ -3513,9 +3518,9 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 					},
 				},
 			},
-		},
-		{
+		}, {
 			desc:      "mint",
+			asset:     asset,
 			eventType: contractevents.EventTypeMint,
 			expected: []effect{
 				{
@@ -3531,9 +3536,9 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 					},
 				},
 			},
-		},
-		{
+		}, {
 			desc:      "burn",
+			asset:     asset,
 			eventType: contractevents.EventTypeBurn,
 			expected: []effect{
 				{
@@ -3549,9 +3554,9 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 					},
 				},
 			},
-		},
-		{
+		}, {
 			desc:      "clawback",
+			asset:     asset,
 			eventType: contractevents.EventTypeClawback,
 			expected: []effect{
 				{
@@ -3567,14 +3572,98 @@ func TestInvokeHostFunctionEffects(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			desc:      "transfer native",
+			asset:     nativeAsset,
+			eventType: contractevents.EventTypeTransfer,
+			expected: []effect{
+				{
+					order:       1,
+					address:     from,
+					effectType:  history.EffectAccountDebited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":     "0.0012345",
+						"asset_type": "native",
+					},
+				}, {
+					order:       2,
+					address:     to,
+					effectType:  history.EffectAccountCredited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":     "0.0012345",
+						"asset_type": "native",
+					},
+				},
+			},
+		}, {
+			desc:      "transfer into contract",
+			asset:     asset,
+			to:        contractName,
+			eventType: contractevents.EventTypeTransfer,
+			expected: []effect{
+				{
+					order:       1,
+					address:     from,
+					effectType:  history.EffectAccountDebited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":       "0.0012345",
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+			},
+		}, {
+			desc:      "transfer out of contract",
+			asset:     asset,
+			from:      contractName,
+			eventType: contractevents.EventTypeTransfer,
+			expected: []effect{
+				{
+					order:       1,
+					address:     to,
+					effectType:  history.EffectAccountCredited,
+					operationID: toid.New(1, 0, 1).ToInt64(),
+					details: map[string]interface{}{
+						"amount":       "0.0012345",
+						"asset_code":   strings.Trim(asset.GetCode(), "\x00"),
+						"asset_issuer": asset.GetIssuer(),
+						"asset_type":   "credit_alphanum12",
+					},
+				},
+			},
+		}, {
+			desc:      "transfer between contracts",
+			asset:     asset,
+			from:      contractName,
+			to:        contractName,
+			eventType: contractevents.EventTypeTransfer,
+			expected:  []effect{},
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.desc, func(t *testing.T) {
-			tx := makeInvocationTransaction(
-				from, to, admin,
-				asset, amount,
+			var tx ingest.LedgerTransaction
+
+			fromAddr := from
+			if testCase.from != "" {
+				fromAddr = testCase.from
+			}
+
+			toAddr := to
+			if testCase.to != "" {
+				toAddr = testCase.to
+			}
+
+			tx = makeInvocationTransaction(
+				fromAddr, toAddr,
+				admin,
+				testCase.asset,
+				amount,
 				testCase.eventType,
 			)
 			assert.True(t, tx.Result.Successful()) // sanity check
