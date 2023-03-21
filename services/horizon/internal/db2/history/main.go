@@ -36,11 +36,20 @@ const (
 	// EffectAccountRemoved effects occur when one account is merged into another
 	EffectAccountRemoved EffectType = 1 // from merge_account
 
-	// EffectAccountCredited effects occur when an account receives some currency
-	EffectAccountCredited EffectType = 2 // from create_account, payment, path_payment, merge_account
+	// EffectAccountCredited effects occur when an account receives some
+	// currency
+	//
+	// from create_account, payment, path_payment, merge_account, and SAC events
+	// involving transfers, mints, and burns.
+	EffectAccountCredited EffectType = 2
 
 	// EffectAccountDebited effects occur when an account sends some currency
-	EffectAccountDebited EffectType = 3 // from create_account, payment, path_payment, create_account
+	//
+	// from create_account, payment, path_payment, create_account, and SAC
+	// involving transfers, mints, and burns.
+	//
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectAccountDebited EffectType = 3
 
 	// EffectAccountThresholdsUpdated effects occur when an account changes its
 	// multisig thresholds.
