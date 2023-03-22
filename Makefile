@@ -12,7 +12,7 @@ xdr/Stellar-contract-spec.x \
 xdr/Stellar-contract.x \
 xdr/Stellar-internal.x
 
-XDRGEN_COMMIT=9cbdfbe94ced89d9728f8706225ac86fc45705bc
+XDRGEN_COMMIT=80e38ef2a96489f6b501d4db3a350406e5aa3bab
 XDRNEXT_COMMIT=7356dc237ee0db5626561c129fb3fa4beaabbac6
 
 .PHONY: xdr xdr-clean xdr-update
