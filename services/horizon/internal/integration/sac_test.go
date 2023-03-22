@@ -5,12 +5,14 @@ import (
 	"math"
 	"math/big"
 	"strings"
+
 	"testing"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/effects"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/strkey"
@@ -26,10 +28,6 @@ const sac_contract = "soroban_sac_test.wasm"
 // Tests use precompiled wasm bin files that are added to the testdata directory.
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
-//
-// `test_add_u64.wasm` is compiled from ./serivces/horizon/internal/integration/contracts/sac_test
-//
-
 func TestContractMintToAccount(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -74,6 +72,7 @@ func TestContractMintToAccount(t *testing.T) {
 	assert.Equal(t, issuer, creditEffect.Asset.Issuer)
 	assert.Equal(t, code, creditEffect.Asset.Code)
 	assert.Equal(t, "20.0000000", creditEffect.Amount)
+	assertEventPayments(itest, mintTx, asset, issuer, recipient.GetAccountID(), "mint", "20.0000000")
 
 	otherRecipientKp, otherRecipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(otherRecipientKp, otherRecipient, txnbuild.MustAssetFromXDR(asset))
@@ -121,14 +120,17 @@ func TestContractMintToContract(t *testing.T) {
 
 	// Create recipient contract
 	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", add_u64_contract)
+	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
+	assert.NoError(t, err)
 
+	mintAmount := xdr.Int128Parts{Lo: math.MaxUint64 - 3, Hi: math.MaxInt64}
 	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		mintWithAmt(
 			itest,
 			issuer, asset,
-			i128Param(math.MaxInt64, math.MaxUint64-3),
+			i128Param(uint64(mintAmount.Hi), uint64(mintAmount.Lo)),
 			contractAddressParam(recipientContractID)),
 	)
 	assert.Empty(t, getTxEffects(itest, mintTx, asset))
@@ -143,6 +145,7 @@ func TestContractMintToContract(t *testing.T) {
 
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.Obj).I128.Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.Obj).I128.Hi)
+	assertEventPayments(itest, mintTx, asset, issuer, strkeyRecipientContractID, "mint", amount.String128(mintAmount))
 
 	// calling xfer from the issuer account will also mint the asset
 	_, xferTx := assertInvokeHostFnSucceeds(
@@ -246,6 +249,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, xferTx, asset, recipientKp.Address(), otherRecipient.GetAccountID(), "transfer", "30.0000000")
 }
 
 func TestContractTransferBetweenAccountAndContract(t *testing.T) {
@@ -283,6 +287,8 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 
 	// Create recipient contract
 	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
+	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
+	assert.NoError(t, err)
 
 	// init recipient contract with the asset contract id
 	assertInvokeHostFnSucceeds(
@@ -327,6 +333,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		balanceContracts: big.NewInt(int64(amount.MustParse("1030"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, xferTx, asset, recipientKp.Address(), strkeyRecipientContractID, "transfer", "30.0000000")
 
 	// transfer from contract to account
 	_, xferTx = assertInvokeHostFnSucceeds(
@@ -350,6 +357,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		balanceContracts: big.NewInt(int64(amount.MustParse("530"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, xferTx, asset, strkeyRecipientContractID, recipientKp.Address(), "transfer", "500.0000000")
 
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
@@ -378,9 +386,13 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 
 	// Create recipient contract
 	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
+	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
+	assert.NoError(t, err)
 
 	// Create emitter contract
 	emitterContractID := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
+	strkeyEmitterContractID, err := strkey.Encode(strkey.VersionByteContract, emitterContractID[:])
+	assert.NoError(t, err)
 
 	// init emitter contract with the asset contract id
 	assertInvokeHostFnSucceeds(
@@ -432,6 +444,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 		balanceContracts: big.NewInt(int64(amount.MustParse("1000"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, xferTx, asset, strkeyEmitterContractID, strkeyRecipientContractID, "transfer", "10.0000000")
 }
 
 func TestContractBurnFromAccount(t *testing.T) {
@@ -502,6 +515,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, burnTx, asset, recipientKp.Address(), "", "burn", "500.0000000")
 }
 
 func TestContractBurnFromContract(t *testing.T) {
@@ -522,7 +536,8 @@ func TestContractBurnFromContract(t *testing.T) {
 
 	// Create recipient contract
 	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
-
+	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
+	assert.NoError(t, err)
 	// init contract with asset contract id
 	assertInvokeHostFnSucceeds(
 		itest,
@@ -538,13 +553,13 @@ func TestContractBurnFromContract(t *testing.T) {
 	)
 
 	// Burn funds
-	assertInvokeHostFnSucceeds(
+	_, burnTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		burnSelf(itest, issuer, recipientContractID, "10"),
 	)
 
-	balanceAmount, burnTx := assertInvokeHostFnSucceeds(
+	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
 		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
@@ -565,6 +580,7 @@ func TestContractBurnFromContract(t *testing.T) {
 		balanceContracts: big.NewInt(int64(amount.MustParse("990"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, burnTx, asset, strkeyRecipientContractID, "", "burn", "10.0000000")
 }
 
 func TestContractClawbackFromAccount(t *testing.T) {
@@ -638,6 +654,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, clawTx, asset, recipientKp.Address(), issuer, "clawback", "1000.0000000")
 }
 
 func TestContractClawbackFromContract(t *testing.T) {
@@ -668,6 +685,8 @@ func TestContractClawbackFromContract(t *testing.T) {
 
 	// Create recipient contract
 	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
+	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
+	assert.NoError(itest.CurrentTest(), err)
 
 	// Add funds to recipient contract
 	assertInvokeHostFnSucceeds(
@@ -703,6 +722,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 		balanceContracts: big.NewInt(int64(amount.MustParse("990"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
+	assertEventPayments(itest, clawTx, asset, strkeyRecipientContractID, issuer, "clawback", "10.0000000")
 }
 
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {
@@ -791,6 +811,26 @@ func getTxEffects(itest *integration.Test, txHash string, asset xdr.Asset) []eff
 
 	assert.LessOrEqualf(t, len(result), 2, "txhash: %s", txHash)
 	return result
+}
+
+func assertEventPayments(itest *integration.Test, txHash string, asset xdr.Asset, from string, to string, evtType string, amount string) {
+	ops, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: txHash,
+		Limit:          1,
+	})
+	assert.NoError(itest.CurrentTest(), err)
+	assert.Equal(itest.CurrentTest(), 1, len(ops.Embedded.Records))
+	assert.Equal(itest.CurrentTest(), ops.Embedded.Records[0].GetType(), operations.TypeNames[xdr.OperationTypeInvokeHostFunction])
+
+	invokeHostFn := ops.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.Equal(itest.CurrentTest(), 1, len(invokeHostFn.AssetBalanceChanges))
+	assetBalanceChange := invokeHostFn.AssetBalanceChanges[0]
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, amount)
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.From, from)
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.To, to)
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Type, evtType)
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Code, strings.TrimRight(asset.GetCode(), "\x00"))
+	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Issuer, asset.GetIssuer())
 }
 
 func functionNameParam(name string) xdr.ScVal {

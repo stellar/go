@@ -51,11 +51,11 @@ type sacEvent struct {
 	Asset xdr.Asset
 }
 
-func (e *sacEvent) GetAsset() xdr.Asset {
+func (e sacEvent) GetAsset() xdr.Asset {
 	return e.Asset
 }
 
-func (e *sacEvent) GetType() EventType {
+func (e sacEvent) GetType() EventType {
 	return e.Type
 }
 

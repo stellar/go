@@ -145,7 +145,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence, s.config.NetworkPassphrase),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
-		processors.NewOperationProcessor(s.historyQ, sequence),
+		processors.NewOperationProcessor(s.historyQ, sequence, s.config.NetworkPassphrase),
 		tradeProcessor,
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.historyQ, sequence),
