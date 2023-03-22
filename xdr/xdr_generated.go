@@ -15873,7 +15873,7 @@ type DiagnosticEvent struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *DiagnosticEvent) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if _, err = e.Encode(s.InSuccessfulContractCall); err != nil {
+	if _, err = e.EncodeBool(bool(s.InSuccessfulContractCall)); err != nil {
 		return err
 	}
 	if err = s.Event.EncodeTo(e); err != nil {
@@ -15888,7 +15888,7 @@ var _ decoderFrom = (*DiagnosticEvent)(nil)
 func (s *DiagnosticEvent) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = d.Decode(s.InSuccessfulContractCall)
+	s.InSuccessfulContractCall, nTmp, err = d.DecodeBool()
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Bool: %s", err)
@@ -50913,7 +50913,7 @@ func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 	}
 	switch ScValType(u.Type) {
 	case ScValTypeScvBool:
-		if _, err = e.Encode((*u.B)); err != nil {
+		if _, err = e.EncodeBool(bool((*u.B))); err != nil {
 			return err
 		}
 		return nil
@@ -51046,7 +51046,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 	switch ScValType(u.Type) {
 	case ScValTypeScvBool:
 		u.B = new(bool)
-		nTmp, err = d.Decode(u.B)
+		(*u.B), nTmp, err = d.DecodeBool()
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Bool: %s", err)
