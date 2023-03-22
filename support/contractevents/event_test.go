@@ -123,7 +123,7 @@ func TestSACEventCreation(t *testing.T) {
 		rawBsAsset := make([]byte, 42)
 		rand.Read(rawBsAsset)
 		xdrEvent.Body.V0.Topics[3].Bytes = (*xdr.ScBytes)(&rawBsAsset)
-		_, err = NewStellarAssetContractEvent(&xdrEvent, passphrase)
+		_, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
 	})
 
