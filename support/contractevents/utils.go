@@ -1,47 +1,11 @@
 package contractevents
 
 import (
-	"fmt"
-
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 var ErrNotBalanceChangeEvent = errors.New("event doesn't represent a balance change")
-
-// MustScAddressToString converts the low-level `xdr.ScAddress` union into the
-// appropriate strkey (contract C... or account ID G...), panicking on any
-// error. If the address is a nil pointer, this returns the empty string.
-func MustScAddressToString(address xdr.ScAddress) string {
-	str, err := ScAddressToString(address)
-	if err != nil {
-		panic(err)
-	}
-	return str
-}
-
-func ScAddressToString(address xdr.ScAddress) (string, error) {
-	var result string
-	var err error
-
-	switch address.Type {
-	case xdr.ScAddressTypeScAddressTypeAccount:
-		pubkey := address.MustAccountId().Ed25519
-		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
-	case xdr.ScAddressTypeScAddressTypeContract:
-		contractId := *address.ContractId
-		result, err = strkey.Encode(strkey.VersionByteContract, contractId[:])
-	default:
-		return "", fmt.Errorf("unfamiliar address type: %v", address.Type)
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	return result, nil
-}
 
 // parseBalanceChangeEvent is a generalization of a subset of the Stellar Asset
 // Contract events. Transfer, mint, clawback, and burn events all have two
@@ -63,13 +27,21 @@ func parseBalanceChangeEvent(topics xdr.ScVec, value xdr.ScVal) (
 	if !ok {
 		return
 	}
-	first = MustScAddressToString(firstSc)
+	first, err = firstSc.String()
+	if err != nil {
+		err = errors.Wrap(err, ErrNotBalanceChangeEvent.Error())
+		return
+	}
 
 	secondSc, ok := topics[2].GetAddress()
 	if !ok {
 		return
 	}
-	second = MustScAddressToString(secondSc)
+	second, err = secondSc.String()
+	if err != nil {
+		err = errors.Wrap(err, ErrNotBalanceChangeEvent.Error())
+		return
+	}
 
 	amount, ok = value.GetI128()
 	if !ok {

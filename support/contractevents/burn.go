@@ -40,7 +40,12 @@ func (event *BurnEvent) parse(topics xdr.ScVec, value xdr.ScVal) error {
 	if !ok {
 		return ErrNotBurnEvent
 	}
-	event.From = MustScAddressToString(from)
+
+	var err error
+	event.From, err = from.String()
+	if err != nil {
+		return errors.Wrap(err, ErrNotBurnEvent.Error())
+	}
 
 	amount, ok := value.GetI128()
 	if !ok {

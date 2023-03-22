@@ -15,6 +15,8 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -24,12 +26,14 @@ type EffectProcessor struct {
 	effects  []effect
 	effectsQ history.QEffects
 	sequence uint32
+	network  string
 }
 
-func NewEffectProcessor(effectsQ history.QEffects, sequence uint32) *EffectProcessor {
+func NewEffectProcessor(effectsQ history.QEffects, sequence uint32, networkPassphrase string) *EffectProcessor {
 	return &EffectProcessor{
 		effectsQ: effectsQ,
 		sequence: sequence,
+		network:  networkPassphrase,
 	}
 }
 
@@ -56,7 +60,10 @@ func (p *EffectProcessor) loadAccountIDs(ctx context.Context, accountSet map[str
 	return nil
 }
 
-func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([]effect, error) {
+func operationsEffects(
+	transaction ingest.LedgerTransaction,
+	sequence uint32,
+	networkPassphrase string) ([]effect, error) {
 	effects := []effect{}
 
 	for opi, op := range transaction.Envelope.Operations() {
@@ -65,6 +72,7 @@ func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([
 			transaction:    transaction,
 			operation:      op,
 			ledgerSequence: sequence,
+			network:        networkPassphrase,
 		}
 
 		p, err := operation.effects()
@@ -119,7 +127,7 @@ func (p *EffectProcessor) ProcessTransaction(ctx context.Context, transaction in
 	}
 
 	var effectsForTx []effect
-	effectsForTx, err = operationsEffects(transaction, p.sequence)
+	effectsForTx, err = operationsEffects(transaction, p.sequence, p.network)
 	if err != nil {
 		return err
 	}
@@ -210,8 +218,11 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addCreateClaimableBalanceEffects(changes)
 	case xdr.OperationTypeClaimClaimableBalance:
 		err = wrapper.addClaimClaimableBalanceEffects(changes)
-	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
-	// The effects of these operations are obtained  indirectly from the ledger entries
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		xdr.OperationTypeRevokeSponsorship:
+		// The effects of these operations are obtained indirectly from the
+		// ledger entries
 	case xdr.OperationTypeClawback:
 		err = wrapper.addClawbackEffects()
 	case xdr.OperationTypeClawbackClaimableBalance:
@@ -223,10 +234,19 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		err = wrapper.addLiquidityPoolWithdrawEffect()
 	case xdr.OperationTypeInvokeHostFunction:
-		// TODO: https://github.com/stellar/go/issues/4585
-		return nil, nil
+		// If there's an invokeHostFunction operation, there's definitely V3
+		// meta in the transaction, which means this error is real.
+		events, innerErr := operation.transaction.GetOperationEvents(operation.index)
+		if innerErr != nil {
+			return nil, innerErr
+		}
+
+		// For now, the only effects are related to the events themselves.
+		// Possible add'l work: https://github.com/stellar/go/issues/4585
+		err = wrapper.addInvokeHostFunctionEffects(events)
+
 	default:
-		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}
 	if err != nil {
 		return nil, err
@@ -246,7 +266,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 
 	// Liquidity pools
 	for _, change := range changes {
-		// Effects caused by ChangeTrust (creation), AllowTrust and SetTrustlineFlags (removal through revocation)
+		// Effects caused by ChangeTrust (creation), AllowTrust and
+		// SetTrustlineFlags (removal through revocation)
 		wrapper.addLedgerEntryLiquidityPoolEffects(change)
 	}
 
@@ -1384,5 +1405,95 @@ func (e *effectsWrapper) addLiquidityPoolWithdrawEffect() error {
 		"shares_redeemed": amount.String(-delta.TotalPoolShares),
 	}
 	e.addMuxed(e.operation.SourceAccount(), history.EffectLiquidityPoolWithdrew, details)
+	return nil
+}
+
+// addInvokeHostFunctionEffects iterates through the events and generates
+// account_credited and account_debited effects when it sees events related to
+// the Stellar Asset Contract corresponding to those effects.
+func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Event) error {
+	if e.operation.network == "" {
+		return errors.New("invokeHostFunction effects cannot be determined unless network passphrase is set")
+	}
+
+	for _, event := range events {
+		evt, err := contractevents.NewStellarAssetContractEvent(&event, e.operation.network)
+		if err != nil {
+			continue // irrelevant or unsupported event
+		}
+
+		details := make(map[string]interface{}, 4)
+		addAssetDetails(details, evt.GetAsset(), "")
+
+		//
+		// Note: We ignore effects that involve contracts (until the day we have
+		// contract_debited/credited effects, may it never come :pray:)
+		//
+
+		switch evt.GetType() {
+		// Transfer events generate an `account_debited` effect for the `from`
+		// (sender) and an `account_credited` effect for the `to` (recipient).
+		case contractevents.EventTypeTransfer:
+			xferEvent := evt.(*contractevents.TransferEvent)
+			details["amount"] = amount.String128(xferEvent.Amount)
+			if strkey.IsValidEd25519PublicKey(xferEvent.From) {
+				e.add(
+					xferEvent.From,
+					null.String{},
+					history.EffectAccountDebited,
+					details,
+				)
+			}
+			if strkey.IsValidEd25519PublicKey(xferEvent.To) {
+				e.add(
+					xferEvent.To,
+					null.String{},
+					history.EffectAccountCredited,
+					details,
+				)
+			}
+
+		// Mint events imply a non-native asset, and it results in a credit to
+		// the `to` recipient.
+		case contractevents.EventTypeMint:
+			mintEvent := evt.(*contractevents.MintEvent)
+			details["amount"] = amount.String128(mintEvent.Amount)
+			if strkey.IsValidEd25519PublicKey(mintEvent.To) {
+				e.add(
+					mintEvent.To,
+					null.String{},
+					history.EffectAccountCredited,
+					details,
+				)
+			}
+
+		// Clawback events result in a debit to the `from` address, but acts
+		// like a burn to the recipient, so these are functionally equivalent
+		case contractevents.EventTypeClawback:
+			cbEvent := evt.(*contractevents.ClawbackEvent)
+			details["amount"] = amount.String128(cbEvent.Amount)
+			if strkey.IsValidEd25519PublicKey(cbEvent.From) {
+				e.add(
+					cbEvent.From,
+					null.String{},
+					history.EffectAccountDebited,
+					details,
+				)
+			}
+
+		case contractevents.EventTypeBurn:
+			burnEvent := evt.(*contractevents.BurnEvent)
+			details["amount"] = amount.String128(burnEvent.Amount)
+			if strkey.IsValidEd25519PublicKey(burnEvent.From) {
+				e.add(
+					burnEvent.From,
+					null.String{},
+					history.EffectAccountDebited,
+					details,
+				)
+			}
+		}
+	}
+
 	return nil
 }

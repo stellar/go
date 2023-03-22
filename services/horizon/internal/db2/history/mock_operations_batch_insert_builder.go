@@ -22,6 +22,7 @@ func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 	details []byte,
 	sourceAccount string,
 	sourceAccountMuxed null.String,
+	isPayment bool,
 ) error {
 	a := m.Called(ctx,
 		id,
@@ -31,6 +32,7 @@ func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 		details,
 		sourceAccount,
 		sourceAccountMuxed,
+		isPayment,
 	)
 	return a.Error(0)
 }
