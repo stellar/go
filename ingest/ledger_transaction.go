@@ -165,6 +165,15 @@ func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.Con
 	case 2:
 		return nil, nil
 	case 3:
+		diagnosticEventsByOperation := t.UnsafeMeta.MustV3().DiagnosticEvents
+		if int(operationIndex) < len(diagnosticEventsByOperation) {
+			diagnosticEvents := diagnosticEventsByOperation[operationIndex].Events
+			events := make([]xdr.ContractEvent, len(diagnosticEvents))
+			for i, d := range diagnosticEvents {
+				events[i] = d.Event
+			}
+			return events, nil
+		}
 		eventsByOperation := t.UnsafeMeta.MustV3().Events
 		if int(operationIndex) >= len(eventsByOperation) {
 			return nil, nil
