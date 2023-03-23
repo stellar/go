@@ -16,8 +16,8 @@ func (address ScAddress) String() (string, error) {
 		pubkey := address.MustAccountId().Ed25519
 		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
 	case ScAddressTypeScAddressTypeContract:
-		contractId := *address.ContractId
-		result, err = strkey.Encode(strkey.VersionByteContract, contractId[:])
+		contractID := *address.ContractId
+		result, err = strkey.Encode(strkey.VersionByteContract, contractID[:])
 	default:
 		return "", fmt.Errorf("unfamiliar address type: %v", address.Type)
 	}
