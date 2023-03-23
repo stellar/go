@@ -2,6 +2,7 @@ package contractevents
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"math"
 	"math/big"
 	"testing"
@@ -218,20 +219,19 @@ func TestFuzzingSACEventParser(t *testing.T) {
 	}
 }
 
-// FIXME: This needs to be updated with real XDR once that's possible.
-// func TestRealXdr(t *testing.T) {
-// 	base64xdr := "AAAAAAAAAAGP097PJPXCcbtgOhu8wDc/ELPABxTdosN//YtrzxEJyAAAAAEAAAAAAAAABAAAAAUAAAAIdHJhbnNmZXIAAAAEAAAAAQAAAAgAAAAAAAAAAHN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAABAAAAAEAAAAIAAAAAAAAAAB4Ijl70f/hhiVmJftmpmXIoHZyUoyEiPSrpZAd5RfalwAAAAQAAAABAAAABgAAACVVU0QAOnN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAAAAAABAAAAAEAAAAFAAAAABHhowAAAAAAAAAAAA=="
+func TestRealXdr(t *testing.T) {
+	base64xdr := "AAAAAAAAAAGP097PJPXCcbtgOhu8wDc/ELPABxTdosN//YtrzxEJyAAAAAEAAAAAAAAABAAAAA8AAAAIdHJhbnNmZXIAAAATAAAAAAAAAAD7tmDHhGP74UZL6Qz4Y4Yh412wLss+xD5JHimjgQM1ywAAABMAAAAAAAAAACAng4qv6F6c1VitSJrCDlwFqlIXtz4vZ6mStrvV4o15AAAADQAAACVVU0QAOnN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAAAAAACgAAAAAR4aMAAAAAAAAAAAA="
 
-// 	rawXdr, err := base64.StdEncoding.DecodeString(base64xdr)
-// 	require.NoError(t, err)
+	rawXdr, err := base64.StdEncoding.DecodeString(base64xdr)
+	require.NoError(t, err)
 
-// 	event := xdr.ContractEvent{}
-// 	require.NoError(t, event.UnmarshalBinary(rawXdr))
+	event := xdr.ContractEvent{}
+	require.NoError(t, event.UnmarshalBinary(rawXdr))
 
-// 	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
-// 	assert.NoError(t, err)
-// 	assert.Equal(t, EventTypeTransfer, parsed.GetType())
-// }
+	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
+	assert.NoError(t, err)
+	assert.Equal(t, EventTypeTransfer, parsed.GetType())
+}
 
 //
 // Test suite helpers below
