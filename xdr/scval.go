@@ -2,7 +2,32 @@ package xdr
 
 import (
 	"bytes"
+	"fmt"
+
+	"github.com/stellar/go/strkey"
 )
+
+func (address ScAddress) String() (string, error) {
+	var result string
+	var err error
+
+	switch address.Type {
+	case ScAddressTypeScAddressTypeAccount:
+		pubkey := address.MustAccountId().Ed25519
+		result, err = strkey.Encode(strkey.VersionByteAccountID, pubkey[:])
+	case ScAddressTypeScAddressTypeContract:
+		contractID := *address.ContractId
+		result, err = strkey.Encode(strkey.VersionByteContract, contractID[:])
+	default:
+		return "", fmt.Errorf("unfamiliar address type: %v", address.Type)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
 
 func (s ScContractExecutable) Equals(o ScContractExecutable) bool {
 	if s.Type != o.Type {

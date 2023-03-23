@@ -2,6 +2,7 @@ package contractevents
 
 import (
 	"crypto/rand"
+	_ "embed"
 	"encoding/base64"
 	"math"
 	"math/big"
@@ -27,6 +28,9 @@ var (
 	zeroContract     = strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 )
 
+//go:embed fixtures/transfer_event_xdr.bin
+var xferEventXdr []byte
+
 func TestScValCreators(t *testing.T) {
 	val := makeSymbol("hello")
 	assert.Equal(t, val.Type, xdr.ScValTypeScvSymbol)
@@ -34,11 +38,7 @@ func TestScValCreators(t *testing.T) {
 	assert.EqualValues(t, *val.Sym, "hello")
 
 	val = makeAmount(1234)
-	obj, ok := val.GetObj()
-	assert.True(t, ok)
-	assert.NotNil(t, obj)
-
-	amt, ok := obj.GetI128()
+	amt, ok := val.GetI128()
 	assert.True(t, ok)
 	assert.EqualValues(t, 0, amt.Hi)
 	assert.EqualValues(t, 1234, amt.Lo)
@@ -52,11 +52,7 @@ func TestScValCreators(t *testing.T) {
 		Add(amount, big.NewInt(1234+4))        // now it's 2^66 + 1234
 
 	val = makeBigAmount(amount)
-	obj, ok = val.GetObj()
-	assert.True(t, ok)
-	assert.NotNil(t, obj)
-
-	amt, ok = obj.GetI128()
+	amt, ok = val.GetI128()
 	assert.True(t, ok)
 	assert.EqualValues(t, 4, amt.Hi)
 	assert.EqualValues(t, 1234, amt.Lo)
@@ -90,23 +86,10 @@ func TestEventGenerator(t *testing.T) {
 }
 
 func TestSACTransferEvent(t *testing.T) {
-	rawNativeContractId, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	require.NoError(t, err)
-	nativeContractId := xdr.Hash(rawNativeContractId)
-
-	var baseXdrEvent xdr.ContractEvent
-	resetEvent := func() {
-		baseXdrEvent = makeEvent()
-		baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
-			Topics: makeTransferTopic(randomAsset),
-			Data:   makeAmount(10000),
-		}
-
-	}
-	resetEvent()
+	xdrEvent := GenerateEvent(EventTypeTransfer, randomAccount, zeroContract, "", randomAsset, big.NewInt(10000), passphrase)
 
 	// Ensure the happy path for transfer events works
-	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	sacEvent, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
 	require.Equal(t, EventTypeTransfer, sacEvent.GetType())
@@ -116,68 +99,72 @@ func TestSACTransferEvent(t *testing.T) {
 	require.Equal(t, zeroContract, xferEvent.To)
 	require.EqualValues(t, 10000, xferEvent.Amount.Lo)
 	require.EqualValues(t, 0, xferEvent.Amount.Hi)
+}
+
+func TestSACEventCreation(t *testing.T) {
+	var xdrEvent xdr.ContractEvent
+	resetEvent := func(from string, to string, asset xdr.Asset) {
+		xdrEvent = GenerateEvent(EventTypeTransfer, from, to, "", asset, big.NewInt(10000), passphrase)
+	}
 
 	// Ensure that changing the passphrase invalidates the event
 	t.Run("wrong passphrase", func(t *testing.T) {
-		_, err = NewStellarAssetContractEvent(&baseXdrEvent, "different")
+		resetEvent(randomAccount, zeroContract, randomAsset)
+		_, err := NewStellarAssetContractEvent(&xdrEvent, "different")
 		require.Error(t, err)
 	})
 
 	// Ensure that the native asset still works
 	t.Run("native transfer", func(t *testing.T) {
-		resetEvent()
-		baseXdrEvent.ContractId = &nativeContractId
-		baseXdrEvent.Body.V0.Topics = makeTransferTopic(xdr.MustNewNativeAsset())
-		sacEvent, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		resetEvent(randomAccount, zeroContract, xdr.MustNewNativeAsset())
+		sacEvent, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.NoError(t, err)
 		require.Equal(t, xdr.AssetTypeAssetTypeNative, sacEvent.GetAsset().Type)
 	})
 
 	// Ensure that invalid asset binaries are rejected
 	t.Run("bad asset binary", func(t *testing.T) {
-		resetEvent()
-		bsAsset := make([]byte, 42)
-		rand.Read(bsAsset)
-		(*baseXdrEvent.Body.V0.Topics[3].Obj).Bin = &bsAsset
-		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		resetEvent(randomAccount, zeroContract, randomAsset)
+		rawBsAsset := make([]byte, 42)
+		rand.Read(rawBsAsset)
+		xdrEvent.Body.V0.Topics[3].Bytes = (*xdr.ScBytes)(&rawBsAsset)
+		_, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
 	})
 
 	// Ensure that valid asset binaries that mismatch the contract are rejected
 	t.Run("mismatching ID", func(t *testing.T) {
-		resetEvent()
+		resetEvent(randomAccount, zeroContract, randomAsset)
 		// change the ID but keep the asset
-		baseXdrEvent.ContractId = &nativeContractId
-		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		rawNativeContractId, err := xdr.MustNewNativeAsset().ContractID(passphrase)
+		require.NoError(t, err)
+		nativeContractId := xdr.Hash(rawNativeContractId)
+		xdrEvent.ContractId = &nativeContractId
+		_, err = NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
 
 		// now change the asset but keep the ID
-		resetEvent()
+		resetEvent(randomAccount, zeroContract, randomAsset)
 		diffRandomAsset := xdr.MustNewCreditAsset("TESTING", keypair.MustRandom().Address())
-		baseXdrEvent.Body.V0.Topics = makeTransferTopic(diffRandomAsset)
-		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		xdrEvent.Body.V0.Topics = makeTransferTopic(diffRandomAsset)
+		_, err = NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
 	})
 
 	// Ensure that system events are rejected
 	t.Run("system events", func(t *testing.T) {
-		resetEvent()
-		baseXdrEvent.Type = xdr.ContractEventTypeSystem
-		_, err = NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+		resetEvent(randomAccount, zeroContract, randomAsset)
+		xdrEvent.Type = xdr.ContractEventTypeSystem
+		_, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
-		baseXdrEvent.Type = xdr.ContractEventTypeContract
 	})
 }
 
 func TestSACMintEvent(t *testing.T) {
-	baseXdrEvent := makeEvent()
-	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
-		Topics: makeMintTopic(randomAsset),
-		Data:   makeAmount(10000),
-	}
+	xdrEvent := GenerateEvent(EventTypeMint, "", zeroContract, randomAccount, randomAsset, big.NewInt(10000), passphrase)
 
 	// Ensure the happy path for mint events works
-	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	sacEvent, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
 	require.Equal(t, EventTypeMint, sacEvent.GetType())
@@ -190,14 +177,10 @@ func TestSACMintEvent(t *testing.T) {
 }
 
 func TestSACClawbackEvent(t *testing.T) {
-	baseXdrEvent := makeEvent()
-	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
-		Topics: makeClawbackTopic(randomAsset),
-		Data:   makeAmount(10000),
-	}
+	xdrEvent := GenerateEvent(EventTypeClawback, zeroContract, "", randomAccount, randomAsset, big.NewInt(10000), passphrase)
 
 	// Ensure the happy path for clawback events works
-	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	sacEvent, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
 	require.Equal(t, EventTypeClawback, sacEvent.GetType())
@@ -210,14 +193,10 @@ func TestSACClawbackEvent(t *testing.T) {
 }
 
 func TestSACBurnEvent(t *testing.T) {
-	baseXdrEvent := makeEvent()
-	baseXdrEvent.Body.V0 = &xdr.ContractEventV0{
-		Topics: makeBurnTopic(randomAsset),
-		Data:   makeAmount(10000),
-	}
+	xdrEvent := GenerateEvent(EventTypeBurn, randomAccount, "", "", randomAsset, big.NewInt(10000), passphrase)
 
 	// Ensure the happy path for burn events works
-	sacEvent, err := NewStellarAssetContractEvent(&baseXdrEvent, passphrase)
+	sacEvent, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 	require.NoError(t, err)
 	require.NotNil(t, sacEvent)
 	require.Equal(t, EventTypeBurn, sacEvent.GetType())
@@ -244,18 +223,16 @@ func TestFuzzingSACEventParser(t *testing.T) {
 	}
 }
 
-func TestRealXdr(t *testing.T) {
-	base64xdr := "AAAAAAAAAAGP097PJPXCcbtgOhu8wDc/ELPABxTdosN//YtrzxEJyAAAAAEAAAAAAAAABAAAAAUAAAAIdHJhbnNmZXIAAAAEAAAAAQAAAAgAAAAAAAAAAHN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAABAAAAAEAAAAIAAAAAAAAAAB4Ijl70f/hhiVmJftmpmXIoHZyUoyEiPSrpZAd5RfalwAAAAQAAAABAAAABgAAACVVU0QAOnN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAAAAAABAAAAAEAAAAFAAAAABHhowAAAAAAAAAAAA=="
-
-	rawXdr, err := base64.StdEncoding.DecodeString(base64xdr)
-	require.NoError(t, err)
+func TestRealTransferEvent(t *testing.T) {
+	decoded := base64.StdEncoding.EncodeToString(xferEventXdr)
 
 	event := xdr.ContractEvent{}
-	require.NoError(t, event.UnmarshalBinary(rawXdr))
+	require.NoErrorf(t, event.UnmarshalBinary(xferEventXdr),
+		"couldn't unmarshal event: '%s'", decoded)
 
 	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
-	assert.NoError(t, err)
-	assert.Equal(t, EventTypeTransfer, parsed.GetType())
+	assert.NoErrorf(t, err, "couldn't parse event: '%s'", decoded)
+	assert.Equalf(t, EventTypeTransfer, parsed.GetType(), "event: '%s'", decoded)
 }
 
 //
@@ -286,14 +263,10 @@ func makeTransferTopic(asset xdr.Asset) xdr.ScVec {
 	contractStr := strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 
 	return xdr.ScVec([]xdr.ScVal{
-		// event name
-		makeSymbol("transfer"),
-		// from
-		makeAddress(randomAccount),
-		// to
-		makeAddress(contractStr),
-		// asset details
-		makeAsset(asset),
+		makeSymbol("transfer"),     // event name
+		makeAddress(randomAccount), // from
+		makeAddress(contractStr),   // to
+		makeAsset(asset),           // asset details
 	})
 }
 

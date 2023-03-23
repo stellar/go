@@ -235,16 +235,20 @@ func (q *OperationsQ) ForTransaction(ctx context.Context, hash string) *Operatio
 }
 
 // OnlyPayments filters the query being built to only include operations that
-// are in the "payment" class of operations:  CreateAccountOps, Payments, and
-// PathPayments.
+// are in the "payment" class of classic operations:  CreateAccountOps, Payments, and
+// PathPayments. OR also includes contract asset balance changes as expressed in 'is_payment' flag
+// on the history operations table.
 func (q *OperationsQ) OnlyPayments() *OperationsQ {
-	q.sql = q.sql.Where(sq.Eq{"hop.type": []xdr.OperationType{
-		xdr.OperationTypeCreateAccount,
-		xdr.OperationTypePayment,
-		xdr.OperationTypePathPaymentStrictReceive,
-		xdr.OperationTypePathPaymentStrictSend,
-		xdr.OperationTypeAccountMerge,
-	}})
+	q.sql = q.sql.Where(sq.Or{
+		sq.Eq{"hop.type": []xdr.OperationType{
+			xdr.OperationTypeCreateAccount,
+			xdr.OperationTypePayment,
+			xdr.OperationTypePathPaymentStrictReceive,
+			xdr.OperationTypePathPaymentStrictSend,
+			xdr.OperationTypeAccountMerge,
+		}},
+		sq.Eq{"hop.is_payment": true}})
+
 	return q
 }
 
@@ -390,6 +394,7 @@ var selectOperation = sq.Select(
 		"hop.details, " +
 		"hop.source_account, " +
 		"hop.source_account_muxed, " +
+		"hop.is_payment, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
 		"COALESCE(ht.successful, true) as transaction_successful").

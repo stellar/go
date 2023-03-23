@@ -277,6 +277,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		details,
 		account.Address(),
 		null.String{},
+		false,
 	))
 	tt.Assert.NoError(opBuilder.Exec(ctx))
 

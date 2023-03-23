@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"testing"
 
 	"github.com/guregu/null"
@@ -13,7 +14,10 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -41,6 +45,7 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.processor = NewOperationProcessor(
 		s.mockQ,
 		56,
+		"test network",
 	)
 }
 
@@ -83,6 +88,7 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 				detailsJSON,
 				acID.Address(),
 				muxedAccount,
+				mock.Anything,
 			).Return(nil).Once()
 		}
 	}
@@ -100,13 +106,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 	contractParamVal2 := xdr.Int32(-5)
 	contractParamVal3 := xdr.Uint32(6)
 	contractParamVal4 := xdr.Uint64(3)
-	scoObjectBytes := []byte{0, 1, 2}
-	contractParamVal5 := xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &scoObjectBytes,
-	}
-	contractParamVal5Addr := &contractParamVal5
-	contractParamVal6 := xdr.ScStaticScsTrue
+	contractParamVal5 := xdr.ScBytes([]byte{0, 1, 2})
+	contractParamVal6 := true
 
 	ledgerKeyAccount := xdr.LedgerKeyAccount{
 		AccountId: source.ToAccountId(),
@@ -143,16 +144,16 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 									U32:  &contractParamVal3,
 								},
 								{
-									Type: xdr.ScValTypeScvBitset,
-									Bits: &contractParamVal4,
+									Type: xdr.ScValTypeScvU64,
+									U64:  &contractParamVal4,
 								},
 								{
-									Type: xdr.ScValTypeScvObject,
-									Obj:  &contractParamVal5Addr,
+									Type:  xdr.ScValTypeScvBytes,
+									Bytes: &contractParamVal5,
 								},
 								{
-									Type: xdr.ScValTypeScvStatic,
-									Ic:   &contractParamVal6,
+									Type: xdr.ScValTypeScvBool,
+									B:    &contractParamVal6,
 								},
 								{
 									// invalid ScVal
@@ -186,10 +187,104 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		s.assertInvokeHostFunctionParameter(serializedParams, 0, "Sym", args[0])
 		s.assertInvokeHostFunctionParameter(serializedParams, 1, "I32", args[1])
 		s.assertInvokeHostFunctionParameter(serializedParams, 2, "U32", args[2])
-		s.assertInvokeHostFunctionParameter(serializedParams, 3, "Bits", args[3])
-		s.assertInvokeHostFunctionParameter(serializedParams, 4, "Obj", args[4])
-		s.assertInvokeHostFunctionParameter(serializedParams, 5, "Ic", args[5])
+		s.assertInvokeHostFunctionParameter(serializedParams, 3, "U64", args[3])
+		s.assertInvokeHostFunctionParameter(serializedParams, 4, "Bytes", args[4])
+		s.assertInvokeHostFunctionParameter(serializedParams, 5, "B", args[5])
 		s.assertInvokeHostFunctionParameter(serializedParams, 6, "n/a", args[6])
+	})
+
+	s.T().Run("InvokeContractWithSACEventsInDetails", func(t *testing.T) {
+
+		randomIssuer := keypair.MustRandom()
+		randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
+		passphrase := "passphrase"
+		randomAccount := keypair.MustRandom().Address()
+		contractId := [32]byte{}
+		zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
+		s.Assert().NoError(err)
+
+		xferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, randomAccount, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase)
+		burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", "", randomAsset, big.NewInt(10000000), passphrase)
+		mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+		clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+
+		tx = ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					Events: []xdr.OperationEvents{
+						{
+							Events: []xdr.ContractEvent{
+								xferContractEvent,
+								burnContractEvent,
+								mintContractEvent,
+								clawbackContractEvent,
+							},
+						},
+					},
+				},
+			},
+		}
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						Function: xdr.HostFunction{
+							Type:       xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeArgs: &xdr.ScVec{},
+						},
+						Footprint: xdr.LedgerFootprint{
+							ReadOnly: []xdr.LedgerKey{
+								{
+									Type:    xdr.LedgerEntryTypeAccount,
+									Account: &ledgerKeyAccount,
+								},
+							},
+						},
+					},
+				},
+			},
+			network: passphrase,
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+		s.Assert().Len(details["asset_balance_changes"], 4)
+
+		found := 0
+		for _, assetBalanceChanged := range details["asset_balance_changes"].([]map[string]interface{}) {
+			if assetBalanceChanged["type"] == "transfer" {
+				s.Assert().Equal(assetBalanceChanged["from"], randomAccount)
+				s.Assert().Equal(assetBalanceChanged["to"], zeroContractStrKey)
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+
+			if assetBalanceChanged["type"] == "burn" {
+				s.Assert().Equal(assetBalanceChanged["from"], zeroContractStrKey)
+				s.Assert().NotContains(assetBalanceChanged, "to")
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+
+			if assetBalanceChanged["type"] == "mint" {
+				s.Assert().Equal(assetBalanceChanged["from"], randomAccount)
+				s.Assert().Equal(assetBalanceChanged["to"], zeroContractStrKey)
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+
+			if assetBalanceChanged["type"] == "clawback" {
+				s.Assert().Equal(assetBalanceChanged["from"], zeroContractStrKey)
+				s.Assert().Equal(assetBalanceChanged["to"], randomAccount)
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+		}
+		s.Assert().Equal(found, 4, "should have one balance changed record for each of mint, burn, clawback, transfer")
 	})
 
 	s.T().Run("CreateContract", func(t *testing.T) {
@@ -225,8 +320,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 										Salt:      salt,
 									},
 								},
-								Source: xdr.ScContractCode{
-									Type: xdr.ScContractCodeTypeSccontractCodeToken,
+								Source: xdr.ScContractExecutable{
+									Type: xdr.ScContractExecutableTypeSccontractExecutableToken,
 								},
 							},
 						},
@@ -355,6 +450,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 	s.mockBatchInsertBuilder.
 		On(
 			"Add", s.ctx,
+			mock.Anything,
 			mock.Anything,
 			mock.Anything,
 			mock.Anything,
