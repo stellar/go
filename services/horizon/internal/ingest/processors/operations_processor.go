@@ -268,13 +268,13 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 	case xdr.OperationTypeAccountMerge:
 		return true
 	case xdr.OperationTypeInvokeHostFunction:
-		events, err := operation.transaction.GetOperationEvents(0)
+		diagnosticEvents, err := operation.transaction.GetOperationEvents(operation.index)
 		if err != nil {
 			return false
 		}
 		// scan all the contract events for at least one SAC event, qualified to be a payment
 		// in horizon
-		for _, contractEvent := range events {
+		for _, contractEvent := range filterEvents(diagnosticEvents) {
 			if sacEvent, err := contractevents.NewStellarAssetContractEvent(&contractEvent, operation.network); err == nil {
 				switch sacEvent.GetType() {
 				case contractevents.EventTypeTransfer:
@@ -719,14 +719,14 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContractEvents() ([]map[string]interface{}, error) {
 	balanceChanges := []map[string]interface{}{}
 
-	events, err := operation.transaction.GetOperationEvents(0)
+	diagnosticEvents, err := operation.transaction.GetOperationEvents(operation.index)
 	if err != nil {
 		// this operation in this context must be an InvokeHostFunctionOp, therefore V3Meta should be present
 		// as it's in same soroban model, so if any err, it's real,
 		return nil, err
 	}
 
-	for _, contractEvent := range events {
+	for _, contractEvent := range filterEvents(diagnosticEvents) {
 		// Parse the xdr contract event to contractevents.StellarAssetContractEvent model
 
 		// has some convenience like to/from attributes are expressed in strkey format for accounts(G...) and contracts(C...)

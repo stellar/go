@@ -236,14 +236,14 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeInvokeHostFunction:
 		// If there's an invokeHostFunction operation, there's definitely V3
 		// meta in the transaction, which means this error is real.
-		events, innerErr := operation.transaction.GetOperationEvents(operation.index)
+		diagnosticEvents, innerErr := operation.transaction.GetOperationEvents(operation.index)
 		if innerErr != nil {
 			return nil, innerErr
 		}
 
 		// For now, the only effects are related to the events themselves.
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
-		err = wrapper.addInvokeHostFunctionEffects(events)
+		err = wrapper.addInvokeHostFunctionEffects(filterEvents(diagnosticEvents))
 
 	default:
 		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
@@ -272,6 +272,17 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	}
 
 	return wrapper.effects, nil
+}
+
+func filterEvents(diagnosticEvents []xdr.DiagnosticEvent) []xdr.ContractEvent {
+	var filtered []xdr.ContractEvent
+	for _, diagnosticEvent := range diagnosticEvents {
+		if !diagnosticEvent.InSuccessfulContractCall || diagnosticEvent.Event.Type != xdr.ContractEventTypeContract {
+			continue
+		}
+		filtered = append(filtered, diagnosticEvent.Event)
+	}
+	return filtered
 }
 
 type effectsWrapper struct {
