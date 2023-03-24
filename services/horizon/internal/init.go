@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/stellar/go/services/horizon/internal/paths"
-
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
@@ -114,6 +114,8 @@ func initIngester(app *App) {
 		RemoteCaptiveCoreURL:         app.config.RemoteCaptiveCoreURL,
 		EnableCaptiveCore:            app.config.EnableCaptiveCoreIngestion,
 		DisableStateVerification:     app.config.IngestDisableStateVerification,
+		StateVerificationFrequency:   uint32(app.config.IngestStateVerificationFrequency),
+		StateVerificationTimeout:     app.config.IngestStateVerificationTimeout,
 		EnableReapLookupTables:       app.config.HistoryRetentionCount > 0,
 		EnableExtendedLogLedgerStats: app.config.IngestEnableExtendedLogLedgerStats,
 		RoundingSlippageFilter:       app.config.RoundingSlippageFilter,

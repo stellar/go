@@ -284,6 +284,7 @@ type IngestionQ interface {
 	TruncateIngestStateTables(context.Context) error
 	DeleteRangeAll(ctx context.Context, start, end int64) error
 	DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error)
+	TryStateVerificationLock(ctx context.Context) (bool, error)
 }
 
 // QAccounts defines account related queries.
