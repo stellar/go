@@ -35,7 +35,6 @@ var (
 		xdr.ScSymbol("burn"):     EventTypeBurn,
 	}
 
-	// TODO: Finer-grained parsing errors
 	ErrNotStellarAssetContract = errors.New("event was not from a Stellar Asset Contract")
 	ErrEventUnsupported        = errors.New("this type of Stellar Asset Contract event is unsupported")
 	ErrEventIntegrity          = errors.New("contract ID doesn't match asset + passphrase")
@@ -99,12 +98,7 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	// For all parsing errors, we just continue, since it's not a real error,
 	// just an event non-complaint with SAC events.
 	rawAsset := topics[len(topics)-1]
-	assetContainer, ok := rawAsset.GetObj()
-	if !ok || assetContainer == nil {
-		return evt, ErrNotStellarAssetContract
-	}
-
-	assetBytes, ok := assetContainer.GetBin()
+	assetBytes, ok := rawAsset.GetBytes()
 	if !ok || assetBytes == nil {
 		return evt, ErrNotStellarAssetContract
 	}

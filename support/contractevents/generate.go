@@ -127,26 +127,17 @@ func makeBigAmount(amount *big.Int) xdr.ScVal {
 	hi := new(big.Int).Rsh(amount, 64)
 	lo := amount.And(amount, keepLower)
 
-	amountObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoI128,
+	return xdr.ScVal{
+		Type: xdr.ScValTypeScvI128,
 		I128: &xdr.Int128Parts{
 			Lo: xdr.Uint64(lo.Uint64()),
 			Hi: xdr.Uint64(hi.Uint64()),
 		},
 	}
-
-	return xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &amountObj,
-	}
 }
 
 func makeAddress(address string) xdr.ScVal {
 	scAddress := xdr.ScAddress{}
-	scObject := &xdr.ScObject{
-		Type:    xdr.ScObjectTypeScoAddress,
-		Address: &scAddress,
-	}
 
 	switch address[0] {
 	case 'C':
@@ -163,8 +154,8 @@ func makeAddress(address string) xdr.ScVal {
 	}
 
 	return xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &scObject,
+		Type:    xdr.ScValTypeScvAddress,
+		Address: &scAddress,
 	}
 }
 
@@ -212,14 +203,9 @@ func makeAsset(asset xdr.Asset) xdr.ScVal {
 		panic("unexpected asset type")
 	}
 
-	slice := buffer.Bytes()
-	scObject := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &slice,
-	}
-
+	slice := xdr.ScBytes(buffer.Bytes())
 	return xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &scObject,
+		Type:  xdr.ScValTypeScvBytes,
+		Bytes: &slice,
 	}
 }

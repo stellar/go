@@ -117,10 +117,6 @@ type String64 = string // bound 64
 
 type SequenceNumber = Int64
 
-type TimePoint = Uint64
-
-type Duration = Uint64
-
 type DataValue = []byte // bound 64
 
 // SHA256(LiquidityPoolParameters)
@@ -1206,8 +1202,9 @@ type TransactionMetaV2 struct {
 type ContractEventType int32
 
 const (
-	SYSTEM   ContractEventType = 0
-	CONTRACT ContractEventType = 1
+	SYSTEM     ContractEventType = 0
+	CONTRACT   ContractEventType = 1
+	DIAGNOSTIC ContractEventType = 2
 )
 
 type ContractEvent struct {
@@ -1230,6 +1227,15 @@ type XdrAnon_ContractEvent_Body_V0 struct {
 	Data   SCVal
 }
 
+type DiagnosticEvent struct {
+	InSuccessfulContractCall bool
+	Event                    ContractEvent
+}
+
+type OperationDiagnosticEvents struct {
+	Events []DiagnosticEvent
+}
+
 type OperationEvents struct {
 	Events []ContractEvent
 }
@@ -1247,6 +1253,10 @@ type TransactionMetaV3 struct {
 	TxResult TransactionResult
 	// stores sha256(txChangesBefore, operations, txChangesAfter),
 	Hashes [3]Hash
+	// Diagnostics events that are not hashed. One list per operation.
+	// This will contain all contract and diagnostic events. Even ones
+	// that were emitted in a failed contract call.
+	DiagnosticEvents []OperationDiagnosticEvents
 }
 
 // this is the meta produced when applying transactions
@@ -2122,7 +2132,7 @@ type XdrAnon_ContractID_FromEd25519PublicKey struct {
 
 type CreateContractArgs struct {
 	ContractID ContractID
-	Source     SCContractCode
+	Source     SCContractExecutable
 }
 
 type HostFunction struct {
@@ -2284,7 +2294,7 @@ type XdrAnon_HashIDPreimage_SourceAccountContractID struct {
 }
 type XdrAnon_HashIDPreimage_CreateContractArgs struct {
 	NetworkID Hash
-	Source    SCContractCode
+	Source    SCContractExecutable
 	Salt      Uint256
 }
 type XdrAnon_HashIDPreimage_ContractAuth struct {
@@ -3484,6 +3494,10 @@ type Uint64 = uint64
 
 type Int64 = int64
 
+type TimePoint = Uint64
+
+type Duration = Uint64
+
 // An ExtensionPoint is always marshaled as a 32-bit 0 value.  At a
 // later point, it can be replaced by a different union so as to
 // extend a structure.
@@ -3596,19 +3610,23 @@ type SCSpecType int32
 const (
 	SC_SPEC_TYPE_VAL SCSpecType = 0
 	// Types with no parameters.
-	SC_SPEC_TYPE_U32     SCSpecType = 1
-	SC_SPEC_TYPE_I32     SCSpecType = 2
-	SC_SPEC_TYPE_U64     SCSpecType = 3
-	SC_SPEC_TYPE_I64     SCSpecType = 4
-	SC_SPEC_TYPE_U128    SCSpecType = 5
-	SC_SPEC_TYPE_I128    SCSpecType = 6
-	SC_SPEC_TYPE_BOOL    SCSpecType = 7
-	SC_SPEC_TYPE_SYMBOL  SCSpecType = 8
-	SC_SPEC_TYPE_BITSET  SCSpecType = 9
-	SC_SPEC_TYPE_STATUS  SCSpecType = 10
-	SC_SPEC_TYPE_BYTES   SCSpecType = 11
-	SC_SPEC_TYPE_INVOKER SCSpecType = 12
-	SC_SPEC_TYPE_ADDRESS SCSpecType = 13
+	SC_SPEC_TYPE_BOOL      SCSpecType = 1
+	SC_SPEC_TYPE_VOID      SCSpecType = 2
+	SC_SPEC_TYPE_STATUS    SCSpecType = 3
+	SC_SPEC_TYPE_U32       SCSpecType = 4
+	SC_SPEC_TYPE_I32       SCSpecType = 5
+	SC_SPEC_TYPE_U64       SCSpecType = 6
+	SC_SPEC_TYPE_I64       SCSpecType = 7
+	SC_SPEC_TYPE_TIMEPOINT SCSpecType = 8
+	SC_SPEC_TYPE_DURATION  SCSpecType = 9
+	SC_SPEC_TYPE_U128      SCSpecType = 10
+	SC_SPEC_TYPE_I128      SCSpecType = 11
+	SC_SPEC_TYPE_U256      SCSpecType = 12
+	SC_SPEC_TYPE_I256      SCSpecType = 13
+	SC_SPEC_TYPE_BYTES     SCSpecType = 14
+	SC_SPEC_TYPE_STRING    SCSpecType = 16
+	SC_SPEC_TYPE_SYMBOL    SCSpecType = 17
+	SC_SPEC_TYPE_ADDRESS   SCSpecType = 19
 	// Types with parameters.
 	SC_SPEC_TYPE_OPTION  SCSpecType = 1000
 	SC_SPEC_TYPE_RESULT  SCSpecType = 1001
@@ -3657,7 +3675,7 @@ type SCSpecTypeUDT struct {
 
 type SCSpecTypeDef struct {
 	// The union discriminant Type selects among the following arms:
-	//   SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_ADDRESS:
+	//   SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS:
 	//      void
 	//   SC_SPEC_TYPE_OPTION:
 	//      Option() *SCSpecTypeOption
@@ -3792,32 +3810,49 @@ type SCSpecEntry struct {
 	_u   interface{}
 }
 
-// A symbol is up to 10 chars drawn from [a-zA-Z0-9_], which can be packed
-// into 60 bits with a 6-bit-per-character code, usable as a small key type
-// to specify function, argument, tx-local environment and map entries
-// efficiently.
-type SCSymbol = string // bound 10
-
 type SCValType int32
 
 const (
-	SCV_U63    SCValType = 0
-	SCV_U32    SCValType = 1
-	SCV_I32    SCValType = 2
-	SCV_STATIC SCValType = 3
-	SCV_OBJECT SCValType = 4
-	SCV_SYMBOL SCValType = 5
-	SCV_BITSET SCValType = 6
-	SCV_STATUS SCValType = 7
-)
-
-type SCStatic int32
-
-const (
-	SCS_VOID                     SCStatic = 0
-	SCS_TRUE                     SCStatic = 1
-	SCS_FALSE                    SCStatic = 2
-	SCS_LEDGER_KEY_CONTRACT_CODE SCStatic = 3
+	SCV_BOOL   SCValType = 0
+	SCV_VOID   SCValType = 1
+	SCV_STATUS SCValType = 2
+	// 32 bits is the smallest type in WASM or XDR; no need for u8/u16.
+	SCV_U32 SCValType = 3
+	SCV_I32 SCValType = 4
+	// 64 bits is naturally supported by both WASM and XDR also.
+	SCV_U64 SCValType = 5
+	SCV_I64 SCValType = 6
+	// Time-related u64 subtypes with their own functions and formatting.
+	SCV_TIMEPOINT SCValType = 7
+	SCV_DURATION  SCValType = 8
+	// 128 bits is naturally supported by Rust and we use it for Soroban
+	// fixed-point arithmetic prices / balances / similar "quantities". These
+	// are represented in XDR as a pair of 2 u64s, unlike {u,i}256 which is
+	// represented as an array of 32 bytes.
+	SCV_U128 SCValType = 9
+	SCV_I128 SCValType = 10
+	// 256 bits is the size of sha256 output, ed25519 keys, and the EVM machine
+	// word, so for interop use we include this even though it requires a small
+	// amount of Rust guest and/or host library code.
+	SCV_U256 SCValType = 11
+	SCV_I256 SCValType = 12
+	// Bytes come in 3 flavors, 2 of which have meaningfully different
+	// formatting and validity-checking / domain-restriction.
+	SCV_BYTES  SCValType = 13
+	SCV_STRING SCValType = 14
+	SCV_SYMBOL SCValType = 15
+	// Vecs and maps are just polymorphic containers of other ScVals.
+	SCV_VEC SCValType = 16
+	SCV_MAP SCValType = 17
+	// SCContractExecutable and SCAddressType are types that gets used separately from
+	// SCVal so we do not flatten their structures into separate SCVal cases.
+	SCV_CONTRACT_EXECUTABLE SCValType = 18
+	SCV_ADDRESS             SCValType = 19
+	// SCV_LEDGER_KEY_CONTRACT_EXECUTABLE and SCV_LEDGER_KEY_NONCE are unique
+	// symbolic SCVals used as the key for ledger entries for a contract's code
+	// and an address' nonce, respectively.
+	SCV_LEDGER_KEY_CONTRACT_EXECUTABLE SCValType = 20
+	SCV_LEDGER_KEY_NONCE               SCValType = 21
 )
 
 type SCStatusType int32
@@ -3958,77 +3993,29 @@ type SCStatus struct {
 	_u   interface{}
 }
 
-type SCVal struct {
-	// The union discriminant Type selects among the following arms:
-	//   SCV_U63:
-	//      U63() *Int64
-	//   SCV_U32:
-	//      U32() *Uint32
-	//   SCV_I32:
-	//      I32() *Int32
-	//   SCV_STATIC:
-	//      Ic() *SCStatic
-	//   SCV_OBJECT:
-	//      Obj() **SCObject
-	//   SCV_SYMBOL:
-	//      Sym() *SCSymbol
-	//   SCV_BITSET:
-	//      Bits() *Uint64
-	//   SCV_STATUS:
-	//      Status() *SCStatus
-	Type SCValType
-	_u   interface{}
-}
-
-type SCObjectType int32
-
-const (
-	SCO_VEC           SCObjectType = 0
-	SCO_MAP           SCObjectType = 1
-	SCO_U64           SCObjectType = 2
-	SCO_I64           SCObjectType = 3
-	SCO_U128          SCObjectType = 4
-	SCO_I128          SCObjectType = 5
-	SCO_BYTES         SCObjectType = 6
-	SCO_CONTRACT_CODE SCObjectType = 7
-	SCO_ADDRESS       SCObjectType = 8
-	SCO_NONCE_KEY     SCObjectType = 9
-)
-
-type SCMapEntry struct {
-	Key SCVal
-	Val SCVal
-}
-
-const SCVAL_LIMIT = 256000
-
-type SCVec = []SCVal // bound SCVAL_LIMIT
-
-type SCMap = []SCMapEntry // bound SCVAL_LIMIT
-
-type SCContractCodeType int32
-
-const (
-	SCCONTRACT_CODE_WASM_REF SCContractCodeType = 0
-	SCCONTRACT_CODE_TOKEN    SCContractCodeType = 1
-)
-
-type SCContractCode struct {
-	// The union discriminant Type selects among the following arms:
-	//   SCCONTRACT_CODE_WASM_REF:
-	//      Wasm_id() *Hash
-	//   SCCONTRACT_CODE_TOKEN:
-	//      void
-	Type SCContractCodeType
-	_u   interface{}
-}
-
 type Int128Parts struct {
 	// Both signed and unsigned 128-bit ints
 	// are transported in a pair of uint64s
 	// to reduce the risk of sign-extension.
 	Lo Uint64
 	Hi Uint64
+}
+
+type SCContractExecutableType int32
+
+const (
+	SCCONTRACT_EXECUTABLE_WASM_REF SCContractExecutableType = 0
+	SCCONTRACT_EXECUTABLE_TOKEN    SCContractExecutableType = 1
+)
+
+type SCContractExecutable struct {
+	// The union discriminant Type selects among the following arms:
+	//   SCCONTRACT_EXECUTABLE_WASM_REF:
+	//      Wasm_id() *Hash
+	//   SCCONTRACT_EXECUTABLE_TOKEN:
+	//      void
+	Type SCContractExecutableType
+	_u   interface{}
 }
 
 type SCAddressType int32
@@ -4048,30 +4035,77 @@ type SCAddress struct {
 	_u   interface{}
 }
 
-type SCObject struct {
+const SCVAL_LIMIT = 256000
+
+const SCSYMBOL_LIMIT = 32
+
+type SCVec = []SCVal // bound SCVAL_LIMIT
+
+type SCMap = []SCMapEntry // bound SCVAL_LIMIT
+
+type SCBytes = []byte // bound SCVAL_LIMIT
+
+type SCString = string // bound SCVAL_LIMIT
+
+type SCSymbol = string // bound SCSYMBOL_LIMIT
+
+type SCNonceKey struct {
+	Nonce_address SCAddress
+}
+
+type SCVal struct {
 	// The union discriminant Type selects among the following arms:
-	//   SCO_VEC:
-	//      Vec() *SCVec
-	//   SCO_MAP:
-	//      Map() *SCMap
-	//   SCO_U64:
+	//   SCV_BOOL:
+	//      B() *bool
+	//   SCV_VOID:
+	//      void
+	//   SCV_STATUS:
+	//      Error() *SCStatus
+	//   SCV_U32:
+	//      U32() *Uint32
+	//   SCV_I32:
+	//      I32() *Int32
+	//   SCV_U64:
 	//      U64() *Uint64
-	//   SCO_I64:
+	//   SCV_I64:
 	//      I64() *Int64
-	//   SCO_U128:
+	//   SCV_TIMEPOINT:
+	//      Timepoint() *TimePoint
+	//   SCV_DURATION:
+	//      Duration() *Duration
+	//   SCV_U128:
 	//      U128() *Int128Parts
-	//   SCO_I128:
+	//   SCV_I128:
 	//      I128() *Int128Parts
-	//   SCO_BYTES:
-	//      Bin() *[]byte // bound SCVAL_LIMIT
-	//   SCO_CONTRACT_CODE:
-	//      ContractCode() *SCContractCode
-	//   SCO_ADDRESS:
+	//   SCV_U256:
+	//      U256() *Uint256
+	//   SCV_I256:
+	//      I256() *Uint256
+	//   SCV_BYTES:
+	//      Bytes() *SCBytes
+	//   SCV_STRING:
+	//      Str() *SCString
+	//   SCV_SYMBOL:
+	//      Sym() *SCSymbol
+	//   SCV_VEC:
+	//      Vec() **SCVec
+	//   SCV_MAP:
+	//      Map() **SCMap
+	//   SCV_CONTRACT_EXECUTABLE:
+	//      Exec() *SCContractExecutable
+	//   SCV_ADDRESS:
 	//      Address() *SCAddress
-	//   SCO_NONCE_KEY:
-	//      NonceAddress() *SCAddress
-	Type SCObjectType
+	//   SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+	//      void
+	//   SCV_LEDGER_KEY_NONCE:
+	//      Nonce_key() *SCNonceKey
+	Type SCValType
 	_u   interface{}
+}
+
+type SCMapEntry struct {
+	Key SCVal
+	Val SCVal
 }
 
 type StoredTransactionSet struct {
@@ -4752,26 +4786,6 @@ func XDR_SequenceNumber(v *SequenceNumber) XdrType_SequenceNumber {
 }
 func (XdrType_SequenceNumber) XdrTypeName() string  { return "SequenceNumber" }
 func (v XdrType_SequenceNumber) XdrUnwrap() XdrType { return v.XdrType_Int64 }
-
-type XdrType_TimePoint struct {
-	XdrType_Uint64
-}
-
-func XDR_TimePoint(v *TimePoint) XdrType_TimePoint {
-	return XdrType_TimePoint{XDR_Uint64(v)}
-}
-func (XdrType_TimePoint) XdrTypeName() string  { return "TimePoint" }
-func (v XdrType_TimePoint) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
-
-type XdrType_Duration struct {
-	XdrType_Uint64
-}
-
-func XDR_Duration(v *Duration) XdrType_Duration {
-	return XdrType_Duration{XDR_Uint64(v)}
-}
-func (XdrType_Duration) XdrTypeName() string  { return "Duration" }
-func (v XdrType_Duration) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
 
 type XdrType_DataValue struct {
 	XdrVecOpaque
@@ -11343,12 +11357,14 @@ func (v *TransactionMetaV2) XdrRecurse(x XDR, name string) {
 func XDR_TransactionMetaV2(v *TransactionMetaV2) *TransactionMetaV2 { return v }
 
 var _XdrNames_ContractEventType = map[int32]string{
-	int32(SYSTEM):   "SYSTEM",
-	int32(CONTRACT): "CONTRACT",
+	int32(SYSTEM):     "SYSTEM",
+	int32(CONTRACT):   "CONTRACT",
+	int32(DIAGNOSTIC): "DIAGNOSTIC",
 }
 var _XdrValues_ContractEventType = map[string]int32{
-	"SYSTEM":   int32(SYSTEM),
-	"CONTRACT": int32(CONTRACT),
+	"SYSTEM":     int32(SYSTEM),
+	"CONTRACT":   int32(CONTRACT),
+	"DIAGNOSTIC": int32(DIAGNOSTIC),
 }
 
 func (ContractEventType) XdrEnumNames() map[int32]string {
@@ -11566,6 +11582,92 @@ func (v *ContractEvent) XdrRecurse(x XDR, name string) {
 }
 func XDR_ContractEvent(v *ContractEvent) *ContractEvent { return v }
 
+type XdrType_DiagnosticEvent = *DiagnosticEvent
+
+func (v *DiagnosticEvent) XdrPointer() interface{}       { return v }
+func (DiagnosticEvent) XdrTypeName() string              { return "DiagnosticEvent" }
+func (v DiagnosticEvent) XdrValue() interface{}          { return v }
+func (v *DiagnosticEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *DiagnosticEvent) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sinSuccessfulContractCall", name), XDR_bool(&v.InSuccessfulContractCall))
+	x.Marshal(x.Sprintf("%sevent", name), XDR_ContractEvent(&v.Event))
+}
+func XDR_DiagnosticEvent(v *DiagnosticEvent) *DiagnosticEvent { return v }
+
+type _XdrVec_unbounded_DiagnosticEvent []DiagnosticEvent
+
+func (_XdrVec_unbounded_DiagnosticEvent) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_DiagnosticEvent) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_DiagnosticEvent length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_DiagnosticEvent) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_DiagnosticEvent) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]DiagnosticEvent, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_DiagnosticEvent(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_DiagnosticEvent) XdrTypeName() string              { return "DiagnosticEvent<>" }
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrPointer() interface{}       { return (*[]DiagnosticEvent)(v) }
+func (v _XdrVec_unbounded_DiagnosticEvent) XdrValue() interface{}          { return ([]DiagnosticEvent)(v) }
+func (v *_XdrVec_unbounded_DiagnosticEvent) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_OperationDiagnosticEvents = *OperationDiagnosticEvents
+
+func (v *OperationDiagnosticEvents) XdrPointer() interface{}       { return v }
+func (OperationDiagnosticEvents) XdrTypeName() string              { return "OperationDiagnosticEvents" }
+func (v OperationDiagnosticEvents) XdrValue() interface{}          { return v }
+func (v *OperationDiagnosticEvents) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *OperationDiagnosticEvents) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sevents", name), (*_XdrVec_unbounded_DiagnosticEvent)(&v.Events))
+}
+func XDR_OperationDiagnosticEvents(v *OperationDiagnosticEvents) *OperationDiagnosticEvents { return v }
+
 type _XdrVec_unbounded_ContractEvent []ContractEvent
 
 func (_XdrVec_unbounded_ContractEvent) XdrBound() uint32 {
@@ -11710,6 +11812,71 @@ func (_XdrArray_3_Hash) XdrTypeName() string              { return "Hash[]" }
 func (v *_XdrArray_3_Hash) XdrValue() interface{}         { return v[:] }
 func (v *_XdrArray_3_Hash) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
+type _XdrVec_unbounded_OperationDiagnosticEvents []OperationDiagnosticEvents
+
+func (_XdrVec_unbounded_OperationDiagnosticEvents) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_OperationDiagnosticEvents) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_OperationDiagnosticEvents length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_OperationDiagnosticEvents length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_OperationDiagnosticEvents) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_OperationDiagnosticEvents) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]OperationDiagnosticEvents, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_OperationDiagnosticEvents) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_OperationDiagnosticEvents(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_OperationDiagnosticEvents) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_OperationDiagnosticEvents) XdrTypeName() string {
+	return "OperationDiagnosticEvents<>"
+}
+func (v *_XdrVec_unbounded_OperationDiagnosticEvents) XdrPointer() interface{} {
+	return (*[]OperationDiagnosticEvents)(v)
+}
+func (v _XdrVec_unbounded_OperationDiagnosticEvents) XdrValue() interface{} {
+	return ([]OperationDiagnosticEvents)(v)
+}
+func (v *_XdrVec_unbounded_OperationDiagnosticEvents) XdrMarshal(x XDR, name string) {
+	x.Marshal(name, v)
+}
+
 type XdrType_TransactionMetaV3 = *TransactionMetaV3
 
 func (v *TransactionMetaV3) XdrPointer() interface{}       { return v }
@@ -11726,6 +11893,7 @@ func (v *TransactionMetaV3) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sevents", name), (*_XdrVec_unbounded_OperationEvents)(&v.Events))
 	x.Marshal(x.Sprintf("%stxResult", name), XDR_TransactionResult(&v.TxResult))
 	x.Marshal(x.Sprintf("%shashes", name), (*_XdrArray_3_Hash)(&v.Hashes))
+	x.Marshal(x.Sprintf("%sdiagnosticEvents", name), (*_XdrVec_unbounded_OperationDiagnosticEvents)(&v.DiagnosticEvents))
 }
 func XDR_TransactionMetaV3(v *TransactionMetaV3) *TransactionMetaV3 { return v }
 
@@ -15482,7 +15650,7 @@ func (v *CreateContractArgs) XdrRecurse(x XDR, name string) {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%scontractID", name), XDR_ContractID(&v.ContractID))
-	x.Marshal(x.Sprintf("%ssource", name), XDR_SCContractCode(&v.Source))
+	x.Marshal(x.Sprintf("%ssource", name), XDR_SCContractExecutable(&v.Source))
 }
 func XDR_CreateContractArgs(v *CreateContractArgs) *CreateContractArgs { return v }
 
@@ -16671,7 +16839,7 @@ func (v *XdrAnon_HashIDPreimage_CreateContractArgs) XdrRecurse(x XDR, name strin
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%snetworkID", name), XDR_Hash(&v.NetworkID))
-	x.Marshal(x.Sprintf("%ssource", name), XDR_SCContractCode(&v.Source))
+	x.Marshal(x.Sprintf("%ssource", name), XDR_SCContractExecutable(&v.Source))
 	x.Marshal(x.Sprintf("%ssalt", name), XDR_Uint256(&v.Salt))
 }
 func XDR_XdrAnon_HashIDPreimage_CreateContractArgs(v *XdrAnon_HashIDPreimage_CreateContractArgs) *XdrAnon_HashIDPreimage_CreateContractArgs {
@@ -23706,6 +23874,26 @@ func XDR_Int64(v *Int64) XdrType_Int64 {
 func (XdrType_Int64) XdrTypeName() string  { return "Int64" }
 func (v XdrType_Int64) XdrUnwrap() XdrType { return v.XdrType_int64 }
 
+type XdrType_TimePoint struct {
+	XdrType_Uint64
+}
+
+func XDR_TimePoint(v *TimePoint) XdrType_TimePoint {
+	return XdrType_TimePoint{XDR_Uint64(v)}
+}
+func (XdrType_TimePoint) XdrTypeName() string  { return "TimePoint" }
+func (v XdrType_TimePoint) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
+
+type XdrType_Duration struct {
+	XdrType_Uint64
+}
+
+func XDR_Duration(v *Duration) XdrType_Duration {
+	return XdrType_Duration{XDR_Uint64(v)}
+}
+func (XdrType_Duration) XdrTypeName() string  { return "Duration" }
+func (v XdrType_Duration) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
+
 var _XdrTags_ExtensionPoint = map[int32]bool{
 	XdrToI32(0): true,
 }
@@ -24353,52 +24541,60 @@ func (u *SCEnvMetaEntry) XdrRecurse(x XDR, name string) {
 func XDR_SCEnvMetaEntry(v *SCEnvMetaEntry) *SCEnvMetaEntry { return v }
 
 var _XdrNames_SCSpecType = map[int32]string{
-	int32(SC_SPEC_TYPE_VAL):     "SC_SPEC_TYPE_VAL",
-	int32(SC_SPEC_TYPE_U32):     "SC_SPEC_TYPE_U32",
-	int32(SC_SPEC_TYPE_I32):     "SC_SPEC_TYPE_I32",
-	int32(SC_SPEC_TYPE_U64):     "SC_SPEC_TYPE_U64",
-	int32(SC_SPEC_TYPE_I64):     "SC_SPEC_TYPE_I64",
-	int32(SC_SPEC_TYPE_U128):    "SC_SPEC_TYPE_U128",
-	int32(SC_SPEC_TYPE_I128):    "SC_SPEC_TYPE_I128",
-	int32(SC_SPEC_TYPE_BOOL):    "SC_SPEC_TYPE_BOOL",
-	int32(SC_SPEC_TYPE_SYMBOL):  "SC_SPEC_TYPE_SYMBOL",
-	int32(SC_SPEC_TYPE_BITSET):  "SC_SPEC_TYPE_BITSET",
-	int32(SC_SPEC_TYPE_STATUS):  "SC_SPEC_TYPE_STATUS",
-	int32(SC_SPEC_TYPE_BYTES):   "SC_SPEC_TYPE_BYTES",
-	int32(SC_SPEC_TYPE_INVOKER): "SC_SPEC_TYPE_INVOKER",
-	int32(SC_SPEC_TYPE_ADDRESS): "SC_SPEC_TYPE_ADDRESS",
-	int32(SC_SPEC_TYPE_OPTION):  "SC_SPEC_TYPE_OPTION",
-	int32(SC_SPEC_TYPE_RESULT):  "SC_SPEC_TYPE_RESULT",
-	int32(SC_SPEC_TYPE_VEC):     "SC_SPEC_TYPE_VEC",
-	int32(SC_SPEC_TYPE_SET):     "SC_SPEC_TYPE_SET",
-	int32(SC_SPEC_TYPE_MAP):     "SC_SPEC_TYPE_MAP",
-	int32(SC_SPEC_TYPE_TUPLE):   "SC_SPEC_TYPE_TUPLE",
-	int32(SC_SPEC_TYPE_BYTES_N): "SC_SPEC_TYPE_BYTES_N",
-	int32(SC_SPEC_TYPE_UDT):     "SC_SPEC_TYPE_UDT",
+	int32(SC_SPEC_TYPE_VAL):       "SC_SPEC_TYPE_VAL",
+	int32(SC_SPEC_TYPE_BOOL):      "SC_SPEC_TYPE_BOOL",
+	int32(SC_SPEC_TYPE_VOID):      "SC_SPEC_TYPE_VOID",
+	int32(SC_SPEC_TYPE_STATUS):    "SC_SPEC_TYPE_STATUS",
+	int32(SC_SPEC_TYPE_U32):       "SC_SPEC_TYPE_U32",
+	int32(SC_SPEC_TYPE_I32):       "SC_SPEC_TYPE_I32",
+	int32(SC_SPEC_TYPE_U64):       "SC_SPEC_TYPE_U64",
+	int32(SC_SPEC_TYPE_I64):       "SC_SPEC_TYPE_I64",
+	int32(SC_SPEC_TYPE_TIMEPOINT): "SC_SPEC_TYPE_TIMEPOINT",
+	int32(SC_SPEC_TYPE_DURATION):  "SC_SPEC_TYPE_DURATION",
+	int32(SC_SPEC_TYPE_U128):      "SC_SPEC_TYPE_U128",
+	int32(SC_SPEC_TYPE_I128):      "SC_SPEC_TYPE_I128",
+	int32(SC_SPEC_TYPE_U256):      "SC_SPEC_TYPE_U256",
+	int32(SC_SPEC_TYPE_I256):      "SC_SPEC_TYPE_I256",
+	int32(SC_SPEC_TYPE_BYTES):     "SC_SPEC_TYPE_BYTES",
+	int32(SC_SPEC_TYPE_STRING):    "SC_SPEC_TYPE_STRING",
+	int32(SC_SPEC_TYPE_SYMBOL):    "SC_SPEC_TYPE_SYMBOL",
+	int32(SC_SPEC_TYPE_ADDRESS):   "SC_SPEC_TYPE_ADDRESS",
+	int32(SC_SPEC_TYPE_OPTION):    "SC_SPEC_TYPE_OPTION",
+	int32(SC_SPEC_TYPE_RESULT):    "SC_SPEC_TYPE_RESULT",
+	int32(SC_SPEC_TYPE_VEC):       "SC_SPEC_TYPE_VEC",
+	int32(SC_SPEC_TYPE_SET):       "SC_SPEC_TYPE_SET",
+	int32(SC_SPEC_TYPE_MAP):       "SC_SPEC_TYPE_MAP",
+	int32(SC_SPEC_TYPE_TUPLE):     "SC_SPEC_TYPE_TUPLE",
+	int32(SC_SPEC_TYPE_BYTES_N):   "SC_SPEC_TYPE_BYTES_N",
+	int32(SC_SPEC_TYPE_UDT):       "SC_SPEC_TYPE_UDT",
 }
 var _XdrValues_SCSpecType = map[string]int32{
-	"SC_SPEC_TYPE_VAL":     int32(SC_SPEC_TYPE_VAL),
-	"SC_SPEC_TYPE_U32":     int32(SC_SPEC_TYPE_U32),
-	"SC_SPEC_TYPE_I32":     int32(SC_SPEC_TYPE_I32),
-	"SC_SPEC_TYPE_U64":     int32(SC_SPEC_TYPE_U64),
-	"SC_SPEC_TYPE_I64":     int32(SC_SPEC_TYPE_I64),
-	"SC_SPEC_TYPE_U128":    int32(SC_SPEC_TYPE_U128),
-	"SC_SPEC_TYPE_I128":    int32(SC_SPEC_TYPE_I128),
-	"SC_SPEC_TYPE_BOOL":    int32(SC_SPEC_TYPE_BOOL),
-	"SC_SPEC_TYPE_SYMBOL":  int32(SC_SPEC_TYPE_SYMBOL),
-	"SC_SPEC_TYPE_BITSET":  int32(SC_SPEC_TYPE_BITSET),
-	"SC_SPEC_TYPE_STATUS":  int32(SC_SPEC_TYPE_STATUS),
-	"SC_SPEC_TYPE_BYTES":   int32(SC_SPEC_TYPE_BYTES),
-	"SC_SPEC_TYPE_INVOKER": int32(SC_SPEC_TYPE_INVOKER),
-	"SC_SPEC_TYPE_ADDRESS": int32(SC_SPEC_TYPE_ADDRESS),
-	"SC_SPEC_TYPE_OPTION":  int32(SC_SPEC_TYPE_OPTION),
-	"SC_SPEC_TYPE_RESULT":  int32(SC_SPEC_TYPE_RESULT),
-	"SC_SPEC_TYPE_VEC":     int32(SC_SPEC_TYPE_VEC),
-	"SC_SPEC_TYPE_SET":     int32(SC_SPEC_TYPE_SET),
-	"SC_SPEC_TYPE_MAP":     int32(SC_SPEC_TYPE_MAP),
-	"SC_SPEC_TYPE_TUPLE":   int32(SC_SPEC_TYPE_TUPLE),
-	"SC_SPEC_TYPE_BYTES_N": int32(SC_SPEC_TYPE_BYTES_N),
-	"SC_SPEC_TYPE_UDT":     int32(SC_SPEC_TYPE_UDT),
+	"SC_SPEC_TYPE_VAL":       int32(SC_SPEC_TYPE_VAL),
+	"SC_SPEC_TYPE_BOOL":      int32(SC_SPEC_TYPE_BOOL),
+	"SC_SPEC_TYPE_VOID":      int32(SC_SPEC_TYPE_VOID),
+	"SC_SPEC_TYPE_STATUS":    int32(SC_SPEC_TYPE_STATUS),
+	"SC_SPEC_TYPE_U32":       int32(SC_SPEC_TYPE_U32),
+	"SC_SPEC_TYPE_I32":       int32(SC_SPEC_TYPE_I32),
+	"SC_SPEC_TYPE_U64":       int32(SC_SPEC_TYPE_U64),
+	"SC_SPEC_TYPE_I64":       int32(SC_SPEC_TYPE_I64),
+	"SC_SPEC_TYPE_TIMEPOINT": int32(SC_SPEC_TYPE_TIMEPOINT),
+	"SC_SPEC_TYPE_DURATION":  int32(SC_SPEC_TYPE_DURATION),
+	"SC_SPEC_TYPE_U128":      int32(SC_SPEC_TYPE_U128),
+	"SC_SPEC_TYPE_I128":      int32(SC_SPEC_TYPE_I128),
+	"SC_SPEC_TYPE_U256":      int32(SC_SPEC_TYPE_U256),
+	"SC_SPEC_TYPE_I256":      int32(SC_SPEC_TYPE_I256),
+	"SC_SPEC_TYPE_BYTES":     int32(SC_SPEC_TYPE_BYTES),
+	"SC_SPEC_TYPE_STRING":    int32(SC_SPEC_TYPE_STRING),
+	"SC_SPEC_TYPE_SYMBOL":    int32(SC_SPEC_TYPE_SYMBOL),
+	"SC_SPEC_TYPE_ADDRESS":   int32(SC_SPEC_TYPE_ADDRESS),
+	"SC_SPEC_TYPE_OPTION":    int32(SC_SPEC_TYPE_OPTION),
+	"SC_SPEC_TYPE_RESULT":    int32(SC_SPEC_TYPE_RESULT),
+	"SC_SPEC_TYPE_VEC":       int32(SC_SPEC_TYPE_VEC),
+	"SC_SPEC_TYPE_SET":       int32(SC_SPEC_TYPE_SET),
+	"SC_SPEC_TYPE_MAP":       int32(SC_SPEC_TYPE_MAP),
+	"SC_SPEC_TYPE_TUPLE":     int32(SC_SPEC_TYPE_TUPLE),
+	"SC_SPEC_TYPE_BYTES_N":   int32(SC_SPEC_TYPE_BYTES_N),
+	"SC_SPEC_TYPE_UDT":       int32(SC_SPEC_TYPE_UDT),
 }
 
 func (SCSpecType) XdrEnumNames() map[int32]string {
@@ -24438,7 +24634,7 @@ type XdrType_SCSpecType = *SCSpecType
 func XDR_SCSpecType(v *SCSpecType) *SCSpecType { return v }
 
 var _XdrComments_SCSpecType = map[int32]string{
-	int32(SC_SPEC_TYPE_U32):    "Types with no parameters.",
+	int32(SC_SPEC_TYPE_BOOL):   "Types with no parameters.",
 	int32(SC_SPEC_TYPE_OPTION): "Types with parameters.",
 	int32(SC_SPEC_TYPE_UDT):    "User defined types.",
 }
@@ -24619,27 +24815,32 @@ func (v *SCSpecTypeUDT) XdrRecurse(x XDR, name string) {
 func XDR_SCSpecTypeUDT(v *SCSpecTypeUDT) *SCSpecTypeUDT { return v }
 
 var _XdrTags_SCSpecTypeDef = map[int32]bool{
-	XdrToI32(SC_SPEC_TYPE_VAL):     true,
-	XdrToI32(SC_SPEC_TYPE_U64):     true,
-	XdrToI32(SC_SPEC_TYPE_I64):     true,
-	XdrToI32(SC_SPEC_TYPE_U128):    true,
-	XdrToI32(SC_SPEC_TYPE_I128):    true,
-	XdrToI32(SC_SPEC_TYPE_U32):     true,
-	XdrToI32(SC_SPEC_TYPE_I32):     true,
-	XdrToI32(SC_SPEC_TYPE_BOOL):    true,
-	XdrToI32(SC_SPEC_TYPE_SYMBOL):  true,
-	XdrToI32(SC_SPEC_TYPE_BITSET):  true,
-	XdrToI32(SC_SPEC_TYPE_STATUS):  true,
-	XdrToI32(SC_SPEC_TYPE_BYTES):   true,
-	XdrToI32(SC_SPEC_TYPE_ADDRESS): true,
-	XdrToI32(SC_SPEC_TYPE_OPTION):  true,
-	XdrToI32(SC_SPEC_TYPE_RESULT):  true,
-	XdrToI32(SC_SPEC_TYPE_VEC):     true,
-	XdrToI32(SC_SPEC_TYPE_MAP):     true,
-	XdrToI32(SC_SPEC_TYPE_SET):     true,
-	XdrToI32(SC_SPEC_TYPE_TUPLE):   true,
-	XdrToI32(SC_SPEC_TYPE_BYTES_N): true,
-	XdrToI32(SC_SPEC_TYPE_UDT):     true,
+	XdrToI32(SC_SPEC_TYPE_VAL):       true,
+	XdrToI32(SC_SPEC_TYPE_BOOL):      true,
+	XdrToI32(SC_SPEC_TYPE_VOID):      true,
+	XdrToI32(SC_SPEC_TYPE_STATUS):    true,
+	XdrToI32(SC_SPEC_TYPE_U32):       true,
+	XdrToI32(SC_SPEC_TYPE_I32):       true,
+	XdrToI32(SC_SPEC_TYPE_U64):       true,
+	XdrToI32(SC_SPEC_TYPE_I64):       true,
+	XdrToI32(SC_SPEC_TYPE_TIMEPOINT): true,
+	XdrToI32(SC_SPEC_TYPE_DURATION):  true,
+	XdrToI32(SC_SPEC_TYPE_U128):      true,
+	XdrToI32(SC_SPEC_TYPE_I128):      true,
+	XdrToI32(SC_SPEC_TYPE_U256):      true,
+	XdrToI32(SC_SPEC_TYPE_I256):      true,
+	XdrToI32(SC_SPEC_TYPE_BYTES):     true,
+	XdrToI32(SC_SPEC_TYPE_STRING):    true,
+	XdrToI32(SC_SPEC_TYPE_SYMBOL):    true,
+	XdrToI32(SC_SPEC_TYPE_ADDRESS):   true,
+	XdrToI32(SC_SPEC_TYPE_OPTION):    true,
+	XdrToI32(SC_SPEC_TYPE_RESULT):    true,
+	XdrToI32(SC_SPEC_TYPE_VEC):       true,
+	XdrToI32(SC_SPEC_TYPE_MAP):       true,
+	XdrToI32(SC_SPEC_TYPE_SET):       true,
+	XdrToI32(SC_SPEC_TYPE_TUPLE):     true,
+	XdrToI32(SC_SPEC_TYPE_BYTES_N):   true,
+	XdrToI32(SC_SPEC_TYPE_UDT):       true,
 }
 
 func (_ SCSpecTypeDef) XdrValidTags() map[int32]bool {
@@ -24767,7 +24968,7 @@ func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 }
 func (u SCSpecTypeDef) XdrValid() bool {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_SET, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_SET, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
 		return true
 	}
 	return false
@@ -24780,7 +24981,7 @@ func (u *SCSpecTypeDef) XdrUnionTagName() string {
 }
 func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_ADDRESS:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS:
 		return nil
 	case SC_SPEC_TYPE_OPTION:
 		return XDR_SCSpecTypeOption(u.Option())
@@ -24803,7 +25004,7 @@ func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 }
 func (u *SCSpecTypeDef) XdrUnionBodyName() string {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_ADDRESS:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS:
 		return ""
 	case SC_SPEC_TYPE_OPTION:
 		return "Option"
@@ -24837,7 +25038,7 @@ func (u *SCSpecTypeDef) XdrRecurse(x XDR, name string) {
 	}
 	XDR_SCSpecType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_BITSET, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_ADDRESS:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_STATUS, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS:
 		return
 	case SC_SPEC_TYPE_OPTION:
 		x.Marshal(x.Sprintf("%soption", name), XDR_SCSpecTypeOption(u.Option()))
@@ -25753,35 +25954,53 @@ func (u *SCSpecEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCSpecEntry(v *SCSpecEntry) *SCSpecEntry { return v }
 
-type XdrType_SCSymbol struct {
-	XdrString
-}
-
-func XDR_SCSymbol(v *SCSymbol) XdrType_SCSymbol {
-	return XdrType_SCSymbol{XdrString{v, 10}}
-}
-func (XdrType_SCSymbol) XdrTypeName() string  { return "SCSymbol" }
-func (v XdrType_SCSymbol) XdrUnwrap() XdrType { return v.XdrString }
-
 var _XdrNames_SCValType = map[int32]string{
-	int32(SCV_U63):    "SCV_U63",
-	int32(SCV_U32):    "SCV_U32",
-	int32(SCV_I32):    "SCV_I32",
-	int32(SCV_STATIC): "SCV_STATIC",
-	int32(SCV_OBJECT): "SCV_OBJECT",
-	int32(SCV_SYMBOL): "SCV_SYMBOL",
-	int32(SCV_BITSET): "SCV_BITSET",
-	int32(SCV_STATUS): "SCV_STATUS",
+	int32(SCV_BOOL):                "SCV_BOOL",
+	int32(SCV_VOID):                "SCV_VOID",
+	int32(SCV_STATUS):              "SCV_STATUS",
+	int32(SCV_U32):                 "SCV_U32",
+	int32(SCV_I32):                 "SCV_I32",
+	int32(SCV_U64):                 "SCV_U64",
+	int32(SCV_I64):                 "SCV_I64",
+	int32(SCV_TIMEPOINT):           "SCV_TIMEPOINT",
+	int32(SCV_DURATION):            "SCV_DURATION",
+	int32(SCV_U128):                "SCV_U128",
+	int32(SCV_I128):                "SCV_I128",
+	int32(SCV_U256):                "SCV_U256",
+	int32(SCV_I256):                "SCV_I256",
+	int32(SCV_BYTES):               "SCV_BYTES",
+	int32(SCV_STRING):              "SCV_STRING",
+	int32(SCV_SYMBOL):              "SCV_SYMBOL",
+	int32(SCV_VEC):                 "SCV_VEC",
+	int32(SCV_MAP):                 "SCV_MAP",
+	int32(SCV_CONTRACT_EXECUTABLE): "SCV_CONTRACT_EXECUTABLE",
+	int32(SCV_ADDRESS):             "SCV_ADDRESS",
+	int32(SCV_LEDGER_KEY_CONTRACT_EXECUTABLE): "SCV_LEDGER_KEY_CONTRACT_EXECUTABLE",
+	int32(SCV_LEDGER_KEY_NONCE):               "SCV_LEDGER_KEY_NONCE",
 }
 var _XdrValues_SCValType = map[string]int32{
-	"SCV_U63":    int32(SCV_U63),
-	"SCV_U32":    int32(SCV_U32),
-	"SCV_I32":    int32(SCV_I32),
-	"SCV_STATIC": int32(SCV_STATIC),
-	"SCV_OBJECT": int32(SCV_OBJECT),
-	"SCV_SYMBOL": int32(SCV_SYMBOL),
-	"SCV_BITSET": int32(SCV_BITSET),
-	"SCV_STATUS": int32(SCV_STATUS),
+	"SCV_BOOL":                           int32(SCV_BOOL),
+	"SCV_VOID":                           int32(SCV_VOID),
+	"SCV_STATUS":                         int32(SCV_STATUS),
+	"SCV_U32":                            int32(SCV_U32),
+	"SCV_I32":                            int32(SCV_I32),
+	"SCV_U64":                            int32(SCV_U64),
+	"SCV_I64":                            int32(SCV_I64),
+	"SCV_TIMEPOINT":                      int32(SCV_TIMEPOINT),
+	"SCV_DURATION":                       int32(SCV_DURATION),
+	"SCV_U128":                           int32(SCV_U128),
+	"SCV_I128":                           int32(SCV_I128),
+	"SCV_U256":                           int32(SCV_U256),
+	"SCV_I256":                           int32(SCV_I256),
+	"SCV_BYTES":                          int32(SCV_BYTES),
+	"SCV_STRING":                         int32(SCV_STRING),
+	"SCV_SYMBOL":                         int32(SCV_SYMBOL),
+	"SCV_VEC":                            int32(SCV_VEC),
+	"SCV_MAP":                            int32(SCV_MAP),
+	"SCV_CONTRACT_EXECUTABLE":            int32(SCV_CONTRACT_EXECUTABLE),
+	"SCV_ADDRESS":                        int32(SCV_ADDRESS),
+	"SCV_LEDGER_KEY_CONTRACT_EXECUTABLE": int32(SCV_LEDGER_KEY_CONTRACT_EXECUTABLE),
+	"SCV_LEDGER_KEY_NONCE":               int32(SCV_LEDGER_KEY_NONCE),
 }
 
 func (SCValType) XdrEnumNames() map[int32]string {
@@ -25820,54 +26039,21 @@ type XdrType_SCValType = *SCValType
 
 func XDR_SCValType(v *SCValType) *SCValType { return v }
 
-var _XdrNames_SCStatic = map[int32]string{
-	int32(SCS_VOID):                     "SCS_VOID",
-	int32(SCS_TRUE):                     "SCS_TRUE",
-	int32(SCS_FALSE):                    "SCS_FALSE",
-	int32(SCS_LEDGER_KEY_CONTRACT_CODE): "SCS_LEDGER_KEY_CONTRACT_CODE",
-}
-var _XdrValues_SCStatic = map[string]int32{
-	"SCS_VOID":                     int32(SCS_VOID),
-	"SCS_TRUE":                     int32(SCS_TRUE),
-	"SCS_FALSE":                    int32(SCS_FALSE),
-	"SCS_LEDGER_KEY_CONTRACT_CODE": int32(SCS_LEDGER_KEY_CONTRACT_CODE),
+var _XdrComments_SCValType = map[int32]string{
+	int32(SCV_U32):                            "32 bits is the smallest type in WASM or XDR; no need for u8/u16.",
+	int32(SCV_U64):                            "64 bits is naturally supported by both WASM and XDR also.",
+	int32(SCV_TIMEPOINT):                      "Time-related u64 subtypes with their own functions and formatting.",
+	int32(SCV_U128):                           "128 bits is naturally supported by Rust and we use it for Soroban fixed-point arithmetic prices / balances / similar \"quantities\". These are represented in XDR as a pair of 2 u64s, unlike {u,i}256 which is represented as an array of 32 bytes.",
+	int32(SCV_U256):                           "256 bits is the size of sha256 output, ed25519 keys, and the EVM machine word, so for interop use we include this even though it requires a small amount of Rust guest and/or host library code.",
+	int32(SCV_BYTES):                          "Bytes come in 3 flavors, 2 of which have meaningfully different formatting and validity-checking / domain-restriction.",
+	int32(SCV_VEC):                            "Vecs and maps are just polymorphic containers of other ScVals.",
+	int32(SCV_CONTRACT_EXECUTABLE):            "SCContractExecutable and SCAddressType are types that gets used separately from SCVal so we do not flatten their structures into separate SCVal cases.",
+	int32(SCV_LEDGER_KEY_CONTRACT_EXECUTABLE): "SCV_LEDGER_KEY_CONTRACT_EXECUTABLE and SCV_LEDGER_KEY_NONCE are unique symbolic SCVals used as the key for ledger entries for a contract's code and an address' nonce, respectively.",
 }
 
-func (SCStatic) XdrEnumNames() map[int32]string {
-	return _XdrNames_SCStatic
+func (e SCValType) XdrEnumComments() map[int32]string {
+	return _XdrComments_SCValType
 }
-func (v SCStatic) String() string {
-	if s, ok := _XdrNames_SCStatic[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("SCStatic#%d", v)
-}
-func (v *SCStatic) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_SCStatic[stok]; ok {
-			*v = SCStatic(val)
-			return nil
-		} else if stok == "SCStatic" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid SCStatic.", stok))
-	}
-}
-func (v SCStatic) GetU32() uint32                 { return uint32(v) }
-func (v *SCStatic) SetU32(n uint32)               { *v = SCStatic(n) }
-func (v *SCStatic) XdrPointer() interface{}       { return v }
-func (SCStatic) XdrTypeName() string              { return "SCStatic" }
-func (v SCStatic) XdrValue() interface{}          { return v }
-func (v *SCStatic) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_SCStatic = *SCStatic
-
-func XDR_SCStatic(v *SCStatic) *SCStatic { return v }
 
 var _XdrNames_SCStatusType = map[int32]string{
 	int32(SST_OK):                  "SST_OK",
@@ -26633,642 +26819,6 @@ func (u *SCStatus) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCStatus(v *SCStatus) *SCStatus { return v }
 
-type _XdrPtr_SCObject struct {
-	p **SCObject
-}
-type _ptrflag_SCObject _XdrPtr_SCObject
-
-func (v _ptrflag_SCObject) String() string {
-	if *v.p == nil {
-		return "nil"
-	}
-	return "non-nil"
-}
-func (v _ptrflag_SCObject) Scan(ss fmt.ScanState, r rune) error {
-	tok, err := ss.Token(true, func(c rune) bool {
-		return c == '-' || (c >= 'a' && c <= 'z')
-	})
-	if err != nil {
-		return err
-	}
-	switch string(tok) {
-	case "nil":
-		v.SetU32(0)
-	case "non-nil":
-		v.SetU32(1)
-	default:
-		return XdrError("SCObject flag should be \"nil\" or \"non-nil\"")
-	}
-	return nil
-}
-func (v _ptrflag_SCObject) GetU32() uint32 {
-	if *v.p == nil {
-		return 0
-	}
-	return 1
-}
-func (v _ptrflag_SCObject) SetU32(nv uint32) {
-	switch nv {
-	case 0:
-		*v.p = nil
-	case 1:
-		if *v.p == nil {
-			*v.p = new(SCObject)
-		}
-	default:
-		XdrPanic("*SCObject present flag value %d should be 0 or 1", nv)
-	}
-}
-func (_ptrflag_SCObject) XdrTypeName() string             { return "SCObject?" }
-func (v _ptrflag_SCObject) XdrPointer() interface{}       { return nil }
-func (v _ptrflag_SCObject) XdrValue() interface{}         { return v.GetU32() != 0 }
-func (v _ptrflag_SCObject) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v _ptrflag_SCObject) XdrBound() uint32              { return 1 }
-func (v _XdrPtr_SCObject) GetPresent() bool               { return *v.p != nil }
-func (v _XdrPtr_SCObject) SetPresent(present bool) {
-	if !present {
-		*v.p = nil
-	} else if *v.p == nil {
-		*v.p = new(SCObject)
-	}
-}
-func (v _XdrPtr_SCObject) XdrMarshalValue(x XDR, name string) {
-	if *v.p != nil {
-		XDR_SCObject(*v.p).XdrMarshal(x, name)
-	}
-}
-func (v _XdrPtr_SCObject) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v _XdrPtr_SCObject) XdrRecurse(x XDR, name string) {
-	x.Marshal(name, _ptrflag_SCObject(v))
-	v.XdrMarshalValue(x, name)
-}
-func (_XdrPtr_SCObject) XdrTypeName() string       { return "SCObject*" }
-func (v _XdrPtr_SCObject) XdrPointer() interface{} { return v.p }
-func (v _XdrPtr_SCObject) XdrValue() interface{}   { return *v.p }
-
-var _XdrTags_SCVal = map[int32]bool{
-	XdrToI32(SCV_U63):    true,
-	XdrToI32(SCV_U32):    true,
-	XdrToI32(SCV_I32):    true,
-	XdrToI32(SCV_STATIC): true,
-	XdrToI32(SCV_OBJECT): true,
-	XdrToI32(SCV_SYMBOL): true,
-	XdrToI32(SCV_BITSET): true,
-	XdrToI32(SCV_STATUS): true,
-}
-
-func (_ SCVal) XdrValidTags() map[int32]bool {
-	return _XdrTags_SCVal
-}
-func (u *SCVal) U63() *Int64 {
-	switch u.Type {
-	case SCV_U63:
-		if v, ok := u._u.(*Int64); ok {
-			return v
-		} else {
-			var zero Int64
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.U63 accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) U32() *Uint32 {
-	switch u.Type {
-	case SCV_U32:
-		if v, ok := u._u.(*Uint32); ok {
-			return v
-		} else {
-			var zero Uint32
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.U32 accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) I32() *Int32 {
-	switch u.Type {
-	case SCV_I32:
-		if v, ok := u._u.(*Int32); ok {
-			return v
-		} else {
-			var zero Int32
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.I32 accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) Ic() *SCStatic {
-	switch u.Type {
-	case SCV_STATIC:
-		if v, ok := u._u.(*SCStatic); ok {
-			return v
-		} else {
-			var zero SCStatic
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.Ic accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) Obj() **SCObject {
-	switch u.Type {
-	case SCV_OBJECT:
-		if v, ok := u._u.(**SCObject); ok {
-			return v
-		} else {
-			var zero *SCObject
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.Obj accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) Sym() *SCSymbol {
-	switch u.Type {
-	case SCV_SYMBOL:
-		if v, ok := u._u.(*SCSymbol); ok {
-			return v
-		} else {
-			var zero SCSymbol
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.Sym accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) Bits() *Uint64 {
-	switch u.Type {
-	case SCV_BITSET:
-		if v, ok := u._u.(*Uint64); ok {
-			return v
-		} else {
-			var zero Uint64
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.Bits accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u *SCVal) Status() *SCStatus {
-	switch u.Type {
-	case SCV_STATUS:
-		if v, ok := u._u.(*SCStatus); ok {
-			return v
-		} else {
-			var zero SCStatus
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCVal.Status accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u SCVal) XdrValid() bool {
-	switch u.Type {
-	case SCV_U63, SCV_U32, SCV_I32, SCV_STATIC, SCV_OBJECT, SCV_SYMBOL, SCV_BITSET, SCV_STATUS:
-		return true
-	}
-	return false
-}
-func (u *SCVal) XdrUnionTag() XdrNum32 {
-	return XDR_SCValType(&u.Type)
-}
-func (u *SCVal) XdrUnionTagName() string {
-	return "Type"
-}
-func (u *SCVal) XdrUnionBody() XdrType {
-	switch u.Type {
-	case SCV_U63:
-		return XDR_Int64(u.U63())
-	case SCV_U32:
-		return XDR_Uint32(u.U32())
-	case SCV_I32:
-		return XDR_Int32(u.I32())
-	case SCV_STATIC:
-		return XDR_SCStatic(u.Ic())
-	case SCV_OBJECT:
-		return _XdrPtr_SCObject{u.Obj()}
-	case SCV_SYMBOL:
-		return XDR_SCSymbol(u.Sym())
-	case SCV_BITSET:
-		return XDR_Uint64(u.Bits())
-	case SCV_STATUS:
-		return XDR_SCStatus(u.Status())
-	}
-	return nil
-}
-func (u *SCVal) XdrUnionBodyName() string {
-	switch u.Type {
-	case SCV_U63:
-		return "U63"
-	case SCV_U32:
-		return "U32"
-	case SCV_I32:
-		return "I32"
-	case SCV_STATIC:
-		return "Ic"
-	case SCV_OBJECT:
-		return "Obj"
-	case SCV_SYMBOL:
-		return "Sym"
-	case SCV_BITSET:
-		return "Bits"
-	case SCV_STATUS:
-		return "Status"
-	}
-	return ""
-}
-
-type XdrType_SCVal = *SCVal
-
-func (v *SCVal) XdrPointer() interface{}       { return v }
-func (SCVal) XdrTypeName() string              { return "SCVal" }
-func (v SCVal) XdrValue() interface{}          { return v }
-func (v *SCVal) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *SCVal) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_SCValType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
-	switch u.Type {
-	case SCV_U63:
-		x.Marshal(x.Sprintf("%su63", name), XDR_Int64(u.U63()))
-		return
-	case SCV_U32:
-		x.Marshal(x.Sprintf("%su32", name), XDR_Uint32(u.U32()))
-		return
-	case SCV_I32:
-		x.Marshal(x.Sprintf("%si32", name), XDR_Int32(u.I32()))
-		return
-	case SCV_STATIC:
-		x.Marshal(x.Sprintf("%sic", name), XDR_SCStatic(u.Ic()))
-		return
-	case SCV_OBJECT:
-		x.Marshal(x.Sprintf("%sobj", name), _XdrPtr_SCObject{u.Obj()})
-		return
-	case SCV_SYMBOL:
-		x.Marshal(x.Sprintf("%ssym", name), XDR_SCSymbol(u.Sym()))
-		return
-	case SCV_BITSET:
-		x.Marshal(x.Sprintf("%sbits", name), XDR_Uint64(u.Bits()))
-		return
-	case SCV_STATUS:
-		x.Marshal(x.Sprintf("%sstatus", name), XDR_SCStatus(u.Status()))
-		return
-	}
-	XdrPanic("invalid Type (%v) in SCVal", u.Type)
-}
-func XDR_SCVal(v *SCVal) *SCVal { return v }
-
-var _XdrNames_SCObjectType = map[int32]string{
-	int32(SCO_VEC):           "SCO_VEC",
-	int32(SCO_MAP):           "SCO_MAP",
-	int32(SCO_U64):           "SCO_U64",
-	int32(SCO_I64):           "SCO_I64",
-	int32(SCO_U128):          "SCO_U128",
-	int32(SCO_I128):          "SCO_I128",
-	int32(SCO_BYTES):         "SCO_BYTES",
-	int32(SCO_CONTRACT_CODE): "SCO_CONTRACT_CODE",
-	int32(SCO_ADDRESS):       "SCO_ADDRESS",
-	int32(SCO_NONCE_KEY):     "SCO_NONCE_KEY",
-}
-var _XdrValues_SCObjectType = map[string]int32{
-	"SCO_VEC":           int32(SCO_VEC),
-	"SCO_MAP":           int32(SCO_MAP),
-	"SCO_U64":           int32(SCO_U64),
-	"SCO_I64":           int32(SCO_I64),
-	"SCO_U128":          int32(SCO_U128),
-	"SCO_I128":          int32(SCO_I128),
-	"SCO_BYTES":         int32(SCO_BYTES),
-	"SCO_CONTRACT_CODE": int32(SCO_CONTRACT_CODE),
-	"SCO_ADDRESS":       int32(SCO_ADDRESS),
-	"SCO_NONCE_KEY":     int32(SCO_NONCE_KEY),
-}
-
-func (SCObjectType) XdrEnumNames() map[int32]string {
-	return _XdrNames_SCObjectType
-}
-func (v SCObjectType) String() string {
-	if s, ok := _XdrNames_SCObjectType[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("SCObjectType#%d", v)
-}
-func (v *SCObjectType) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_SCObjectType[stok]; ok {
-			*v = SCObjectType(val)
-			return nil
-		} else if stok == "SCObjectType" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid SCObjectType.", stok))
-	}
-}
-func (v SCObjectType) GetU32() uint32                 { return uint32(v) }
-func (v *SCObjectType) SetU32(n uint32)               { *v = SCObjectType(n) }
-func (v *SCObjectType) XdrPointer() interface{}       { return v }
-func (SCObjectType) XdrTypeName() string              { return "SCObjectType" }
-func (v SCObjectType) XdrValue() interface{}          { return v }
-func (v *SCObjectType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_SCObjectType = *SCObjectType
-
-func XDR_SCObjectType(v *SCObjectType) *SCObjectType { return v }
-
-type XdrType_SCMapEntry = *SCMapEntry
-
-func (v *SCMapEntry) XdrPointer() interface{}       { return v }
-func (SCMapEntry) XdrTypeName() string              { return "SCMapEntry" }
-func (v SCMapEntry) XdrValue() interface{}          { return v }
-func (v *SCMapEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *SCMapEntry) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%skey", name), XDR_SCVal(&v.Key))
-	x.Marshal(x.Sprintf("%sval", name), XDR_SCVal(&v.Val))
-}
-func XDR_SCMapEntry(v *SCMapEntry) *SCMapEntry { return v }
-
-type _XdrVec_256000_SCVal []SCVal
-
-func (_XdrVec_256000_SCVal) XdrBound() uint32 {
-	const bound uint32 = 256000 // Force error if not const or doesn't fit
-	return bound
-}
-func (_XdrVec_256000_SCVal) XdrCheckLen(length uint32) {
-	if length > uint32(256000) {
-		XdrPanic("_XdrVec_256000_SCVal length %d exceeds bound 256000", length)
-	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_256000_SCVal length %d exceeds max int", length)
-	}
-}
-func (v _XdrVec_256000_SCVal) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_256000_SCVal) SetVecLen(length uint32) {
-	v.XdrCheckLen(length)
-	if int(length) <= cap(*v) {
-		if int(length) != len(*v) {
-			*v = (*v)[:int(length)]
-		}
-		return
-	}
-	newcap := 2 * cap(*v)
-	if newcap < int(length) { // also catches overflow where 2*cap < 0
-		newcap = int(length)
-	} else if bound := uint(256000); uint(newcap) > bound {
-		if int(bound) < 0 {
-			bound = ^uint(0) >> 1
-		}
-		newcap = int(bound)
-	}
-	nv := make([]SCVal, int(length), newcap)
-	copy(nv, *v)
-	*v = nv
-}
-func (v *_XdrVec_256000_SCVal) XdrMarshalN(x XDR, name string, n uint32) {
-	v.XdrCheckLen(n)
-	for i := 0; i < int(n); i++ {
-		if i >= len(*v) {
-			v.SetVecLen(uint32(i + 1))
-		}
-		XDR_SCVal(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
-	}
-	if int(n) < len(*v) {
-		*v = (*v)[:int(n)]
-	}
-}
-func (v *_XdrVec_256000_SCVal) XdrRecurse(x XDR, name string) {
-	size := XdrSize{Size: uint32(len(*v)), Bound: 256000}
-	x.Marshal(name, &size)
-	v.XdrMarshalN(x, name, size.Size)
-}
-func (_XdrVec_256000_SCVal) XdrTypeName() string              { return "SCVal<>" }
-func (v *_XdrVec_256000_SCVal) XdrPointer() interface{}       { return (*[]SCVal)(v) }
-func (v _XdrVec_256000_SCVal) XdrValue() interface{}          { return ([]SCVal)(v) }
-func (v *_XdrVec_256000_SCVal) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_SCVec struct {
-	*_XdrVec_256000_SCVal
-}
-
-func XDR_SCVec(v *SCVec) XdrType_SCVec {
-	return XdrType_SCVec{(*_XdrVec_256000_SCVal)(v)}
-}
-func (XdrType_SCVec) XdrTypeName() string  { return "SCVec" }
-func (v XdrType_SCVec) XdrUnwrap() XdrType { return v._XdrVec_256000_SCVal }
-
-type _XdrVec_256000_SCMapEntry []SCMapEntry
-
-func (_XdrVec_256000_SCMapEntry) XdrBound() uint32 {
-	const bound uint32 = 256000 // Force error if not const or doesn't fit
-	return bound
-}
-func (_XdrVec_256000_SCMapEntry) XdrCheckLen(length uint32) {
-	if length > uint32(256000) {
-		XdrPanic("_XdrVec_256000_SCMapEntry length %d exceeds bound 256000", length)
-	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_256000_SCMapEntry length %d exceeds max int", length)
-	}
-}
-func (v _XdrVec_256000_SCMapEntry) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_256000_SCMapEntry) SetVecLen(length uint32) {
-	v.XdrCheckLen(length)
-	if int(length) <= cap(*v) {
-		if int(length) != len(*v) {
-			*v = (*v)[:int(length)]
-		}
-		return
-	}
-	newcap := 2 * cap(*v)
-	if newcap < int(length) { // also catches overflow where 2*cap < 0
-		newcap = int(length)
-	} else if bound := uint(256000); uint(newcap) > bound {
-		if int(bound) < 0 {
-			bound = ^uint(0) >> 1
-		}
-		newcap = int(bound)
-	}
-	nv := make([]SCMapEntry, int(length), newcap)
-	copy(nv, *v)
-	*v = nv
-}
-func (v *_XdrVec_256000_SCMapEntry) XdrMarshalN(x XDR, name string, n uint32) {
-	v.XdrCheckLen(n)
-	for i := 0; i < int(n); i++ {
-		if i >= len(*v) {
-			v.SetVecLen(uint32(i + 1))
-		}
-		XDR_SCMapEntry(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
-	}
-	if int(n) < len(*v) {
-		*v = (*v)[:int(n)]
-	}
-}
-func (v *_XdrVec_256000_SCMapEntry) XdrRecurse(x XDR, name string) {
-	size := XdrSize{Size: uint32(len(*v)), Bound: 256000}
-	x.Marshal(name, &size)
-	v.XdrMarshalN(x, name, size.Size)
-}
-func (_XdrVec_256000_SCMapEntry) XdrTypeName() string              { return "SCMapEntry<>" }
-func (v *_XdrVec_256000_SCMapEntry) XdrPointer() interface{}       { return (*[]SCMapEntry)(v) }
-func (v _XdrVec_256000_SCMapEntry) XdrValue() interface{}          { return ([]SCMapEntry)(v) }
-func (v *_XdrVec_256000_SCMapEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_SCMap struct {
-	*_XdrVec_256000_SCMapEntry
-}
-
-func XDR_SCMap(v *SCMap) XdrType_SCMap {
-	return XdrType_SCMap{(*_XdrVec_256000_SCMapEntry)(v)}
-}
-func (XdrType_SCMap) XdrTypeName() string  { return "SCMap" }
-func (v XdrType_SCMap) XdrUnwrap() XdrType { return v._XdrVec_256000_SCMapEntry }
-
-var _XdrNames_SCContractCodeType = map[int32]string{
-	int32(SCCONTRACT_CODE_WASM_REF): "SCCONTRACT_CODE_WASM_REF",
-	int32(SCCONTRACT_CODE_TOKEN):    "SCCONTRACT_CODE_TOKEN",
-}
-var _XdrValues_SCContractCodeType = map[string]int32{
-	"SCCONTRACT_CODE_WASM_REF": int32(SCCONTRACT_CODE_WASM_REF),
-	"SCCONTRACT_CODE_TOKEN":    int32(SCCONTRACT_CODE_TOKEN),
-}
-
-func (SCContractCodeType) XdrEnumNames() map[int32]string {
-	return _XdrNames_SCContractCodeType
-}
-func (v SCContractCodeType) String() string {
-	if s, ok := _XdrNames_SCContractCodeType[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("SCContractCodeType#%d", v)
-}
-func (v *SCContractCodeType) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_SCContractCodeType[stok]; ok {
-			*v = SCContractCodeType(val)
-			return nil
-		} else if stok == "SCContractCodeType" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid SCContractCodeType.", stok))
-	}
-}
-func (v SCContractCodeType) GetU32() uint32                 { return uint32(v) }
-func (v *SCContractCodeType) SetU32(n uint32)               { *v = SCContractCodeType(n) }
-func (v *SCContractCodeType) XdrPointer() interface{}       { return v }
-func (SCContractCodeType) XdrTypeName() string              { return "SCContractCodeType" }
-func (v SCContractCodeType) XdrValue() interface{}          { return v }
-func (v *SCContractCodeType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_SCContractCodeType = *SCContractCodeType
-
-func XDR_SCContractCodeType(v *SCContractCodeType) *SCContractCodeType { return v }
-
-var _XdrTags_SCContractCode = map[int32]bool{
-	XdrToI32(SCCONTRACT_CODE_WASM_REF): true,
-	XdrToI32(SCCONTRACT_CODE_TOKEN):    true,
-}
-
-func (_ SCContractCode) XdrValidTags() map[int32]bool {
-	return _XdrTags_SCContractCode
-}
-func (u *SCContractCode) Wasm_id() *Hash {
-	switch u.Type {
-	case SCCONTRACT_CODE_WASM_REF:
-		if v, ok := u._u.(*Hash); ok {
-			return v
-		} else {
-			var zero Hash
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCContractCode.Wasm_id accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u SCContractCode) XdrValid() bool {
-	switch u.Type {
-	case SCCONTRACT_CODE_WASM_REF, SCCONTRACT_CODE_TOKEN:
-		return true
-	}
-	return false
-}
-func (u *SCContractCode) XdrUnionTag() XdrNum32 {
-	return XDR_SCContractCodeType(&u.Type)
-}
-func (u *SCContractCode) XdrUnionTagName() string {
-	return "Type"
-}
-func (u *SCContractCode) XdrUnionBody() XdrType {
-	switch u.Type {
-	case SCCONTRACT_CODE_WASM_REF:
-		return XDR_Hash(u.Wasm_id())
-	case SCCONTRACT_CODE_TOKEN:
-		return nil
-	}
-	return nil
-}
-func (u *SCContractCode) XdrUnionBodyName() string {
-	switch u.Type {
-	case SCCONTRACT_CODE_WASM_REF:
-		return "Wasm_id"
-	case SCCONTRACT_CODE_TOKEN:
-		return ""
-	}
-	return ""
-}
-
-type XdrType_SCContractCode = *SCContractCode
-
-func (v *SCContractCode) XdrPointer() interface{}       { return v }
-func (SCContractCode) XdrTypeName() string              { return "SCContractCode" }
-func (v SCContractCode) XdrValue() interface{}          { return v }
-func (v *SCContractCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *SCContractCode) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_SCContractCodeType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
-	switch u.Type {
-	case SCCONTRACT_CODE_WASM_REF:
-		x.Marshal(x.Sprintf("%swasm_id", name), XDR_Hash(u.Wasm_id()))
-		return
-	case SCCONTRACT_CODE_TOKEN:
-		return
-	}
-	XdrPanic("invalid Type (%v) in SCContractCode", u.Type)
-}
-func XDR_SCContractCode(v *SCContractCode) *SCContractCode { return v }
-
 type XdrType_Int128Parts = *Int128Parts
 
 func (v *Int128Parts) XdrPointer() interface{}       { return v }
@@ -27283,6 +26833,128 @@ func (v *Int128Parts) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%shi", name), XDR_Uint64(&v.Hi))
 }
 func XDR_Int128Parts(v *Int128Parts) *Int128Parts { return v }
+
+var _XdrNames_SCContractExecutableType = map[int32]string{
+	int32(SCCONTRACT_EXECUTABLE_WASM_REF): "SCCONTRACT_EXECUTABLE_WASM_REF",
+	int32(SCCONTRACT_EXECUTABLE_TOKEN):    "SCCONTRACT_EXECUTABLE_TOKEN",
+}
+var _XdrValues_SCContractExecutableType = map[string]int32{
+	"SCCONTRACT_EXECUTABLE_WASM_REF": int32(SCCONTRACT_EXECUTABLE_WASM_REF),
+	"SCCONTRACT_EXECUTABLE_TOKEN":    int32(SCCONTRACT_EXECUTABLE_TOKEN),
+}
+
+func (SCContractExecutableType) XdrEnumNames() map[int32]string {
+	return _XdrNames_SCContractExecutableType
+}
+func (v SCContractExecutableType) String() string {
+	if s, ok := _XdrNames_SCContractExecutableType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("SCContractExecutableType#%d", v)
+}
+func (v *SCContractExecutableType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_SCContractExecutableType[stok]; ok {
+			*v = SCContractExecutableType(val)
+			return nil
+		} else if stok == "SCContractExecutableType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid SCContractExecutableType.", stok))
+	}
+}
+func (v SCContractExecutableType) GetU32() uint32                 { return uint32(v) }
+func (v *SCContractExecutableType) SetU32(n uint32)               { *v = SCContractExecutableType(n) }
+func (v *SCContractExecutableType) XdrPointer() interface{}       { return v }
+func (SCContractExecutableType) XdrTypeName() string              { return "SCContractExecutableType" }
+func (v SCContractExecutableType) XdrValue() interface{}          { return v }
+func (v *SCContractExecutableType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_SCContractExecutableType = *SCContractExecutableType
+
+func XDR_SCContractExecutableType(v *SCContractExecutableType) *SCContractExecutableType { return v }
+
+var _XdrTags_SCContractExecutable = map[int32]bool{
+	XdrToI32(SCCONTRACT_EXECUTABLE_WASM_REF): true,
+	XdrToI32(SCCONTRACT_EXECUTABLE_TOKEN):    true,
+}
+
+func (_ SCContractExecutable) XdrValidTags() map[int32]bool {
+	return _XdrTags_SCContractExecutable
+}
+func (u *SCContractExecutable) Wasm_id() *Hash {
+	switch u.Type {
+	case SCCONTRACT_EXECUTABLE_WASM_REF:
+		if v, ok := u._u.(*Hash); ok {
+			return v
+		} else {
+			var zero Hash
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCContractExecutable.Wasm_id accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u SCContractExecutable) XdrValid() bool {
+	switch u.Type {
+	case SCCONTRACT_EXECUTABLE_WASM_REF, SCCONTRACT_EXECUTABLE_TOKEN:
+		return true
+	}
+	return false
+}
+func (u *SCContractExecutable) XdrUnionTag() XdrNum32 {
+	return XDR_SCContractExecutableType(&u.Type)
+}
+func (u *SCContractExecutable) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *SCContractExecutable) XdrUnionBody() XdrType {
+	switch u.Type {
+	case SCCONTRACT_EXECUTABLE_WASM_REF:
+		return XDR_Hash(u.Wasm_id())
+	case SCCONTRACT_EXECUTABLE_TOKEN:
+		return nil
+	}
+	return nil
+}
+func (u *SCContractExecutable) XdrUnionBodyName() string {
+	switch u.Type {
+	case SCCONTRACT_EXECUTABLE_WASM_REF:
+		return "Wasm_id"
+	case SCCONTRACT_EXECUTABLE_TOKEN:
+		return ""
+	}
+	return ""
+}
+
+type XdrType_SCContractExecutable = *SCContractExecutable
+
+func (v *SCContractExecutable) XdrPointer() interface{}       { return v }
+func (SCContractExecutable) XdrTypeName() string              { return "SCContractExecutable" }
+func (v SCContractExecutable) XdrValue() interface{}          { return v }
+func (v *SCContractExecutable) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *SCContractExecutable) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_SCContractExecutableType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case SCCONTRACT_EXECUTABLE_WASM_REF:
+		x.Marshal(x.Sprintf("%swasm_id", name), XDR_Hash(u.Wasm_id()))
+		return
+	case SCCONTRACT_EXECUTABLE_TOKEN:
+		return
+	}
+	XdrPanic("invalid Type (%v) in SCContractExecutable", u.Type)
+}
+func XDR_SCContractExecutable(v *SCContractExecutable) *SCContractExecutable { return v }
 
 var _XdrNames_SCAddressType = map[int32]string{
 	int32(SC_ADDRESS_TYPE_ACCOUNT):  "SC_ADDRESS_TYPE_ACCOUNT",
@@ -27422,55 +27094,421 @@ func (u *SCAddress) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCAddress(v *SCAddress) *SCAddress { return v }
 
-var _XdrTags_SCObject = map[int32]bool{
-	XdrToI32(SCO_VEC):           true,
-	XdrToI32(SCO_MAP):           true,
-	XdrToI32(SCO_U64):           true,
-	XdrToI32(SCO_I64):           true,
-	XdrToI32(SCO_U128):          true,
-	XdrToI32(SCO_I128):          true,
-	XdrToI32(SCO_BYTES):         true,
-	XdrToI32(SCO_CONTRACT_CODE): true,
-	XdrToI32(SCO_ADDRESS):       true,
-	XdrToI32(SCO_NONCE_KEY):     true,
+type _XdrVec_256000_SCVal []SCVal
+
+func (_XdrVec_256000_SCVal) XdrBound() uint32 {
+	const bound uint32 = 256000 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_256000_SCVal) XdrCheckLen(length uint32) {
+	if length > uint32(256000) {
+		XdrPanic("_XdrVec_256000_SCVal length %d exceeds bound 256000", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_256000_SCVal length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_256000_SCVal) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_256000_SCVal) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(256000); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]SCVal, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_256000_SCVal) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_SCVal(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_256000_SCVal) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 256000}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_256000_SCVal) XdrTypeName() string              { return "SCVal<>" }
+func (v *_XdrVec_256000_SCVal) XdrPointer() interface{}       { return (*[]SCVal)(v) }
+func (v _XdrVec_256000_SCVal) XdrValue() interface{}          { return ([]SCVal)(v) }
+func (v *_XdrVec_256000_SCVal) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_SCVec struct {
+	*_XdrVec_256000_SCVal
 }
 
-func (_ SCObject) XdrValidTags() map[int32]bool {
-	return _XdrTags_SCObject
+func XDR_SCVec(v *SCVec) XdrType_SCVec {
+	return XdrType_SCVec{(*_XdrVec_256000_SCVal)(v)}
 }
-func (u *SCObject) Vec() *SCVec {
+func (XdrType_SCVec) XdrTypeName() string  { return "SCVec" }
+func (v XdrType_SCVec) XdrUnwrap() XdrType { return v._XdrVec_256000_SCVal }
+
+type _XdrVec_256000_SCMapEntry []SCMapEntry
+
+func (_XdrVec_256000_SCMapEntry) XdrBound() uint32 {
+	const bound uint32 = 256000 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_256000_SCMapEntry) XdrCheckLen(length uint32) {
+	if length > uint32(256000) {
+		XdrPanic("_XdrVec_256000_SCMapEntry length %d exceeds bound 256000", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_256000_SCMapEntry length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_256000_SCMapEntry) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_256000_SCMapEntry) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(256000); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]SCMapEntry, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_256000_SCMapEntry) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_SCMapEntry(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_256000_SCMapEntry) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 256000}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_256000_SCMapEntry) XdrTypeName() string              { return "SCMapEntry<>" }
+func (v *_XdrVec_256000_SCMapEntry) XdrPointer() interface{}       { return (*[]SCMapEntry)(v) }
+func (v _XdrVec_256000_SCMapEntry) XdrValue() interface{}          { return ([]SCMapEntry)(v) }
+func (v *_XdrVec_256000_SCMapEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_SCMap struct {
+	*_XdrVec_256000_SCMapEntry
+}
+
+func XDR_SCMap(v *SCMap) XdrType_SCMap {
+	return XdrType_SCMap{(*_XdrVec_256000_SCMapEntry)(v)}
+}
+func (XdrType_SCMap) XdrTypeName() string  { return "SCMap" }
+func (v XdrType_SCMap) XdrUnwrap() XdrType { return v._XdrVec_256000_SCMapEntry }
+
+type XdrType_SCBytes struct {
+	XdrVecOpaque
+}
+
+func XDR_SCBytes(v *SCBytes) XdrType_SCBytes {
+	return XdrType_SCBytes{XdrVecOpaque{v, SCVAL_LIMIT}}
+}
+func (XdrType_SCBytes) XdrTypeName() string  { return "SCBytes" }
+func (v XdrType_SCBytes) XdrUnwrap() XdrType { return v.XdrVecOpaque }
+
+type XdrType_SCString struct {
+	XdrString
+}
+
+func XDR_SCString(v *SCString) XdrType_SCString {
+	return XdrType_SCString{XdrString{v, SCVAL_LIMIT}}
+}
+func (XdrType_SCString) XdrTypeName() string  { return "SCString" }
+func (v XdrType_SCString) XdrUnwrap() XdrType { return v.XdrString }
+
+type XdrType_SCSymbol struct {
+	XdrString
+}
+
+func XDR_SCSymbol(v *SCSymbol) XdrType_SCSymbol {
+	return XdrType_SCSymbol{XdrString{v, SCSYMBOL_LIMIT}}
+}
+func (XdrType_SCSymbol) XdrTypeName() string  { return "SCSymbol" }
+func (v XdrType_SCSymbol) XdrUnwrap() XdrType { return v.XdrString }
+
+type XdrType_SCNonceKey = *SCNonceKey
+
+func (v *SCNonceKey) XdrPointer() interface{}       { return v }
+func (SCNonceKey) XdrTypeName() string              { return "SCNonceKey" }
+func (v SCNonceKey) XdrValue() interface{}          { return v }
+func (v *SCNonceKey) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SCNonceKey) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%snonce_address", name), XDR_SCAddress(&v.Nonce_address))
+}
+func XDR_SCNonceKey(v *SCNonceKey) *SCNonceKey { return v }
+
+type _XdrPtr_SCVec struct {
+	p **SCVec
+}
+type _ptrflag_SCVec _XdrPtr_SCVec
+
+func (v _ptrflag_SCVec) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_SCVec) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("SCVec flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_SCVec) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_SCVec) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(SCVec)
+		}
+	default:
+		XdrPanic("*SCVec present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_SCVec) XdrTypeName() string             { return "SCVec?" }
+func (v _ptrflag_SCVec) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_SCVec) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_SCVec) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_SCVec) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_SCVec) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_SCVec) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(SCVec)
+	}
+}
+func (v _XdrPtr_SCVec) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_SCVec(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_SCVec) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_SCVec) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_SCVec(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_SCVec) XdrTypeName() string       { return "SCVec*" }
+func (v _XdrPtr_SCVec) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_SCVec) XdrValue() interface{}   { return *v.p }
+
+type _XdrPtr_SCMap struct {
+	p **SCMap
+}
+type _ptrflag_SCMap _XdrPtr_SCMap
+
+func (v _ptrflag_SCMap) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_SCMap) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("SCMap flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_SCMap) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_SCMap) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(SCMap)
+		}
+	default:
+		XdrPanic("*SCMap present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_SCMap) XdrTypeName() string             { return "SCMap?" }
+func (v _ptrflag_SCMap) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_SCMap) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_SCMap) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_SCMap) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_SCMap) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_SCMap) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(SCMap)
+	}
+}
+func (v _XdrPtr_SCMap) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_SCMap(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_SCMap) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_SCMap) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_SCMap(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_SCMap) XdrTypeName() string       { return "SCMap*" }
+func (v _XdrPtr_SCMap) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_SCMap) XdrValue() interface{}   { return *v.p }
+
+var _XdrTags_SCVal = map[int32]bool{
+	XdrToI32(SCV_BOOL):                           true,
+	XdrToI32(SCV_VOID):                           true,
+	XdrToI32(SCV_STATUS):                         true,
+	XdrToI32(SCV_U32):                            true,
+	XdrToI32(SCV_I32):                            true,
+	XdrToI32(SCV_U64):                            true,
+	XdrToI32(SCV_I64):                            true,
+	XdrToI32(SCV_TIMEPOINT):                      true,
+	XdrToI32(SCV_DURATION):                       true,
+	XdrToI32(SCV_U128):                           true,
+	XdrToI32(SCV_I128):                           true,
+	XdrToI32(SCV_U256):                           true,
+	XdrToI32(SCV_I256):                           true,
+	XdrToI32(SCV_BYTES):                          true,
+	XdrToI32(SCV_STRING):                         true,
+	XdrToI32(SCV_SYMBOL):                         true,
+	XdrToI32(SCV_VEC):                            true,
+	XdrToI32(SCV_MAP):                            true,
+	XdrToI32(SCV_CONTRACT_EXECUTABLE):            true,
+	XdrToI32(SCV_ADDRESS):                        true,
+	XdrToI32(SCV_LEDGER_KEY_CONTRACT_EXECUTABLE): true,
+	XdrToI32(SCV_LEDGER_KEY_NONCE):               true,
+}
+
+func (_ SCVal) XdrValidTags() map[int32]bool {
+	return _XdrTags_SCVal
+}
+func (u *SCVal) B() *bool {
 	switch u.Type {
-	case SCO_VEC:
-		if v, ok := u._u.(*SCVec); ok {
+	case SCV_BOOL:
+		if v, ok := u._u.(*bool); ok {
 			return v
 		} else {
-			var zero SCVec
+			var zero bool
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.Vec accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.B accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) Map() *SCMap {
+func (u *SCVal) Error() *SCStatus {
 	switch u.Type {
-	case SCO_MAP:
-		if v, ok := u._u.(*SCMap); ok {
+	case SCV_STATUS:
+		if v, ok := u._u.(*SCStatus); ok {
 			return v
 		} else {
-			var zero SCMap
+			var zero SCStatus
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.Map accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.Error accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) U64() *Uint64 {
+func (u *SCVal) U32() *Uint32 {
 	switch u.Type {
-	case SCO_U64:
+	case SCV_U32:
+		if v, ok := u._u.(*Uint32); ok {
+			return v
+		} else {
+			var zero Uint32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.U32 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) I32() *Int32 {
+	switch u.Type {
+	case SCV_I32:
+		if v, ok := u._u.(*Int32); ok {
+			return v
+		} else {
+			var zero Int32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.I32 accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) U64() *Uint64 {
+	switch u.Type {
+	case SCV_U64:
 		if v, ok := u._u.(*Uint64); ok {
 			return v
 		} else {
@@ -27479,13 +27517,13 @@ func (u *SCObject) U64() *Uint64 {
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.U64 accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.U64 accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) I64() *Int64 {
+func (u *SCVal) I64() *Int64 {
 	switch u.Type {
-	case SCO_I64:
+	case SCV_I64:
 		if v, ok := u._u.(*Int64); ok {
 			return v
 		} else {
@@ -27494,13 +27532,43 @@ func (u *SCObject) I64() *Int64 {
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.I64 accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.I64 accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) U128() *Int128Parts {
+func (u *SCVal) Timepoint() *TimePoint {
 	switch u.Type {
-	case SCO_U128:
+	case SCV_TIMEPOINT:
+		if v, ok := u._u.(*TimePoint); ok {
+			return v
+		} else {
+			var zero TimePoint
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Timepoint accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Duration() *Duration {
+	switch u.Type {
+	case SCV_DURATION:
+		if v, ok := u._u.(*Duration); ok {
+			return v
+		} else {
+			var zero Duration
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Duration accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) U128() *Int128Parts {
+	switch u.Type {
+	case SCV_U128:
 		if v, ok := u._u.(*Int128Parts); ok {
 			return v
 		} else {
@@ -27509,13 +27577,13 @@ func (u *SCObject) U128() *Int128Parts {
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.U128 accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.U128 accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) I128() *Int128Parts {
+func (u *SCVal) I128() *Int128Parts {
 	switch u.Type {
-	case SCO_I128:
+	case SCV_I128:
 		if v, ok := u._u.(*Int128Parts); ok {
 			return v
 		} else {
@@ -27524,43 +27592,133 @@ func (u *SCObject) I128() *Int128Parts {
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.I128 accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.I128 accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) Bin() *[]byte {
+func (u *SCVal) U256() *Uint256 {
 	switch u.Type {
-	case SCO_BYTES:
-		if v, ok := u._u.(*[]byte); ok {
+	case SCV_U256:
+		if v, ok := u._u.(*Uint256); ok {
 			return v
 		} else {
-			var zero []byte
+			var zero Uint256
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.Bin accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.U256 accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) ContractCode() *SCContractCode {
+func (u *SCVal) I256() *Uint256 {
 	switch u.Type {
-	case SCO_CONTRACT_CODE:
-		if v, ok := u._u.(*SCContractCode); ok {
+	case SCV_I256:
+		if v, ok := u._u.(*Uint256); ok {
 			return v
 		} else {
-			var zero SCContractCode
+			var zero Uint256
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.ContractCode accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.I256 accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) Address() *SCAddress {
+func (u *SCVal) Bytes() *SCBytes {
 	switch u.Type {
-	case SCO_ADDRESS:
+	case SCV_BYTES:
+		if v, ok := u._u.(*SCBytes); ok {
+			return v
+		} else {
+			var zero SCBytes
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Bytes accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Str() *SCString {
+	switch u.Type {
+	case SCV_STRING:
+		if v, ok := u._u.(*SCString); ok {
+			return v
+		} else {
+			var zero SCString
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Str accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Sym() *SCSymbol {
+	switch u.Type {
+	case SCV_SYMBOL:
+		if v, ok := u._u.(*SCSymbol); ok {
+			return v
+		} else {
+			var zero SCSymbol
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Sym accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Vec() **SCVec {
+	switch u.Type {
+	case SCV_VEC:
+		if v, ok := u._u.(**SCVec); ok {
+			return v
+		} else {
+			var zero *SCVec
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Vec accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Map() **SCMap {
+	switch u.Type {
+	case SCV_MAP:
+		if v, ok := u._u.(**SCMap); ok {
+			return v
+		} else {
+			var zero *SCMap
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Map accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Exec() *SCContractExecutable {
+	switch u.Type {
+	case SCV_CONTRACT_EXECUTABLE:
+		if v, ok := u._u.(*SCContractExecutable); ok {
+			return v
+		} else {
+			var zero SCContractExecutable
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCVal.Exec accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCVal) Address() *SCAddress {
+	switch u.Type {
+	case SCV_ADDRESS:
 		if v, ok := u._u.(*SCAddress); ok {
 			return v
 		} else {
@@ -27569,135 +27727,232 @@ func (u *SCObject) Address() *SCAddress {
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.Address accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.Address accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u *SCObject) NonceAddress() *SCAddress {
+func (u *SCVal) Nonce_key() *SCNonceKey {
 	switch u.Type {
-	case SCO_NONCE_KEY:
-		if v, ok := u._u.(*SCAddress); ok {
+	case SCV_LEDGER_KEY_NONCE:
+		if v, ok := u._u.(*SCNonceKey); ok {
 			return v
 		} else {
-			var zero SCAddress
+			var zero SCNonceKey
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("SCObject.NonceAddress accessed when Type == %v", u.Type)
+		XdrPanic("SCVal.Nonce_key accessed when Type == %v", u.Type)
 		return nil
 	}
 }
-func (u SCObject) XdrValid() bool {
+func (u SCVal) XdrValid() bool {
 	switch u.Type {
-	case SCO_VEC, SCO_MAP, SCO_U64, SCO_I64, SCO_U128, SCO_I128, SCO_BYTES, SCO_CONTRACT_CODE, SCO_ADDRESS, SCO_NONCE_KEY:
+	case SCV_BOOL, SCV_VOID, SCV_STATUS, SCV_U32, SCV_I32, SCV_U64, SCV_I64, SCV_TIMEPOINT, SCV_DURATION, SCV_U128, SCV_I128, SCV_U256, SCV_I256, SCV_BYTES, SCV_STRING, SCV_SYMBOL, SCV_VEC, SCV_MAP, SCV_CONTRACT_EXECUTABLE, SCV_ADDRESS, SCV_LEDGER_KEY_CONTRACT_EXECUTABLE, SCV_LEDGER_KEY_NONCE:
 		return true
 	}
 	return false
 }
-func (u *SCObject) XdrUnionTag() XdrNum32 {
-	return XDR_SCObjectType(&u.Type)
+func (u *SCVal) XdrUnionTag() XdrNum32 {
+	return XDR_SCValType(&u.Type)
 }
-func (u *SCObject) XdrUnionTagName() string {
+func (u *SCVal) XdrUnionTagName() string {
 	return "Type"
 }
-func (u *SCObject) XdrUnionBody() XdrType {
+func (u *SCVal) XdrUnionBody() XdrType {
 	switch u.Type {
-	case SCO_VEC:
-		return XDR_SCVec(u.Vec())
-	case SCO_MAP:
-		return XDR_SCMap(u.Map())
-	case SCO_U64:
+	case SCV_BOOL:
+		return XDR_bool(u.B())
+	case SCV_VOID:
+		return nil
+	case SCV_STATUS:
+		return XDR_SCStatus(u.Error())
+	case SCV_U32:
+		return XDR_Uint32(u.U32())
+	case SCV_I32:
+		return XDR_Int32(u.I32())
+	case SCV_U64:
 		return XDR_Uint64(u.U64())
-	case SCO_I64:
+	case SCV_I64:
 		return XDR_Int64(u.I64())
-	case SCO_U128:
+	case SCV_TIMEPOINT:
+		return XDR_TimePoint(u.Timepoint())
+	case SCV_DURATION:
+		return XDR_Duration(u.Duration())
+	case SCV_U128:
 		return XDR_Int128Parts(u.U128())
-	case SCO_I128:
+	case SCV_I128:
 		return XDR_Int128Parts(u.I128())
-	case SCO_BYTES:
-		return XdrVecOpaque{u.Bin(), SCVAL_LIMIT}
-	case SCO_CONTRACT_CODE:
-		return XDR_SCContractCode(u.ContractCode())
-	case SCO_ADDRESS:
+	case SCV_U256:
+		return XDR_Uint256(u.U256())
+	case SCV_I256:
+		return XDR_Uint256(u.I256())
+	case SCV_BYTES:
+		return XDR_SCBytes(u.Bytes())
+	case SCV_STRING:
+		return XDR_SCString(u.Str())
+	case SCV_SYMBOL:
+		return XDR_SCSymbol(u.Sym())
+	case SCV_VEC:
+		return _XdrPtr_SCVec{u.Vec()}
+	case SCV_MAP:
+		return _XdrPtr_SCMap{u.Map()}
+	case SCV_CONTRACT_EXECUTABLE:
+		return XDR_SCContractExecutable(u.Exec())
+	case SCV_ADDRESS:
 		return XDR_SCAddress(u.Address())
-	case SCO_NONCE_KEY:
-		return XDR_SCAddress(u.NonceAddress())
+	case SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+		return nil
+	case SCV_LEDGER_KEY_NONCE:
+		return XDR_SCNonceKey(u.Nonce_key())
 	}
 	return nil
 }
-func (u *SCObject) XdrUnionBodyName() string {
+func (u *SCVal) XdrUnionBodyName() string {
 	switch u.Type {
-	case SCO_VEC:
-		return "Vec"
-	case SCO_MAP:
-		return "Map"
-	case SCO_U64:
+	case SCV_BOOL:
+		return "B"
+	case SCV_VOID:
+		return ""
+	case SCV_STATUS:
+		return "Error"
+	case SCV_U32:
+		return "U32"
+	case SCV_I32:
+		return "I32"
+	case SCV_U64:
 		return "U64"
-	case SCO_I64:
+	case SCV_I64:
 		return "I64"
-	case SCO_U128:
+	case SCV_TIMEPOINT:
+		return "Timepoint"
+	case SCV_DURATION:
+		return "Duration"
+	case SCV_U128:
 		return "U128"
-	case SCO_I128:
+	case SCV_I128:
 		return "I128"
-	case SCO_BYTES:
-		return "Bin"
-	case SCO_CONTRACT_CODE:
-		return "ContractCode"
-	case SCO_ADDRESS:
+	case SCV_U256:
+		return "U256"
+	case SCV_I256:
+		return "I256"
+	case SCV_BYTES:
+		return "Bytes"
+	case SCV_STRING:
+		return "Str"
+	case SCV_SYMBOL:
+		return "Sym"
+	case SCV_VEC:
+		return "Vec"
+	case SCV_MAP:
+		return "Map"
+	case SCV_CONTRACT_EXECUTABLE:
+		return "Exec"
+	case SCV_ADDRESS:
 		return "Address"
-	case SCO_NONCE_KEY:
-		return "NonceAddress"
+	case SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+		return ""
+	case SCV_LEDGER_KEY_NONCE:
+		return "Nonce_key"
 	}
 	return ""
 }
 
-type XdrType_SCObject = *SCObject
+type XdrType_SCVal = *SCVal
 
-func (v *SCObject) XdrPointer() interface{}       { return v }
-func (SCObject) XdrTypeName() string              { return "SCObject" }
-func (v SCObject) XdrValue() interface{}          { return v }
-func (v *SCObject) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *SCObject) XdrRecurse(x XDR, name string) {
+func (v *SCVal) XdrPointer() interface{}       { return v }
+func (SCVal) XdrTypeName() string              { return "SCVal" }
+func (v SCVal) XdrValue() interface{}          { return v }
+func (v *SCVal) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *SCVal) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	XDR_SCObjectType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	XDR_SCValType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
-	case SCO_VEC:
-		x.Marshal(x.Sprintf("%svec", name), XDR_SCVec(u.Vec()))
+	case SCV_BOOL:
+		x.Marshal(x.Sprintf("%sb", name), XDR_bool(u.B()))
 		return
-	case SCO_MAP:
-		x.Marshal(x.Sprintf("%smap", name), XDR_SCMap(u.Map()))
+	case SCV_VOID:
 		return
-	case SCO_U64:
+	case SCV_STATUS:
+		x.Marshal(x.Sprintf("%serror", name), XDR_SCStatus(u.Error()))
+		return
+	case SCV_U32:
+		x.Marshal(x.Sprintf("%su32", name), XDR_Uint32(u.U32()))
+		return
+	case SCV_I32:
+		x.Marshal(x.Sprintf("%si32", name), XDR_Int32(u.I32()))
+		return
+	case SCV_U64:
 		x.Marshal(x.Sprintf("%su64", name), XDR_Uint64(u.U64()))
 		return
-	case SCO_I64:
+	case SCV_I64:
 		x.Marshal(x.Sprintf("%si64", name), XDR_Int64(u.I64()))
 		return
-	case SCO_U128:
+	case SCV_TIMEPOINT:
+		x.Marshal(x.Sprintf("%stimepoint", name), XDR_TimePoint(u.Timepoint()))
+		return
+	case SCV_DURATION:
+		x.Marshal(x.Sprintf("%sduration", name), XDR_Duration(u.Duration()))
+		return
+	case SCV_U128:
 		x.Marshal(x.Sprintf("%su128", name), XDR_Int128Parts(u.U128()))
 		return
-	case SCO_I128:
+	case SCV_I128:
 		x.Marshal(x.Sprintf("%si128", name), XDR_Int128Parts(u.I128()))
 		return
-	case SCO_BYTES:
-		x.Marshal(x.Sprintf("%sbin", name), XdrVecOpaque{u.Bin(), SCVAL_LIMIT})
+	case SCV_U256:
+		x.Marshal(x.Sprintf("%su256", name), XDR_Uint256(u.U256()))
 		return
-	case SCO_CONTRACT_CODE:
-		x.Marshal(x.Sprintf("%scontractCode", name), XDR_SCContractCode(u.ContractCode()))
+	case SCV_I256:
+		x.Marshal(x.Sprintf("%si256", name), XDR_Uint256(u.I256()))
 		return
-	case SCO_ADDRESS:
+	case SCV_BYTES:
+		x.Marshal(x.Sprintf("%sbytes", name), XDR_SCBytes(u.Bytes()))
+		return
+	case SCV_STRING:
+		x.Marshal(x.Sprintf("%sstr", name), XDR_SCString(u.Str()))
+		return
+	case SCV_SYMBOL:
+		x.Marshal(x.Sprintf("%ssym", name), XDR_SCSymbol(u.Sym()))
+		return
+	case SCV_VEC:
+		x.Marshal(x.Sprintf("%svec", name), _XdrPtr_SCVec{u.Vec()})
+		return
+	case SCV_MAP:
+		x.Marshal(x.Sprintf("%smap", name), _XdrPtr_SCMap{u.Map()})
+		return
+	case SCV_CONTRACT_EXECUTABLE:
+		x.Marshal(x.Sprintf("%sexec", name), XDR_SCContractExecutable(u.Exec()))
+		return
+	case SCV_ADDRESS:
 		x.Marshal(x.Sprintf("%saddress", name), XDR_SCAddress(u.Address()))
 		return
-	case SCO_NONCE_KEY:
-		x.Marshal(x.Sprintf("%snonceAddress", name), XDR_SCAddress(u.NonceAddress()))
+	case SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+		return
+	case SCV_LEDGER_KEY_NONCE:
+		x.Marshal(x.Sprintf("%snonce_key", name), XDR_SCNonceKey(u.Nonce_key()))
 		return
 	}
-	XdrPanic("invalid Type (%v) in SCObject", u.Type)
+	XdrPanic("invalid Type (%v) in SCVal", u.Type)
 }
-func XDR_SCObject(v *SCObject) *SCObject { return v }
+func XDR_SCVal(v *SCVal) *SCVal { return v }
+
+type XdrType_SCMapEntry = *SCMapEntry
+
+func (v *SCMapEntry) XdrPointer() interface{}       { return v }
+func (SCMapEntry) XdrTypeName() string              { return "SCMapEntry" }
+func (v SCMapEntry) XdrValue() interface{}          { return v }
+func (v *SCMapEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *SCMapEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%skey", name), XDR_SCVal(&v.Key))
+	x.Marshal(x.Sprintf("%sval", name), XDR_SCVal(&v.Val))
+}
+func XDR_SCMapEntry(v *SCMapEntry) *SCMapEntry { return v }
 
 var _XdrTags_StoredTransactionSet = map[int32]bool{
 	XdrToI32(0): true,

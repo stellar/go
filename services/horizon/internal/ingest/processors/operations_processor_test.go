@@ -106,13 +106,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 	contractParamVal2 := xdr.Int32(-5)
 	contractParamVal3 := xdr.Uint32(6)
 	contractParamVal4 := xdr.Uint64(3)
-	scoObjectBytes := []byte{0, 1, 2}
-	contractParamVal5 := xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &scoObjectBytes,
-	}
-	contractParamVal5Addr := &contractParamVal5
-	contractParamVal6 := xdr.ScStaticScsTrue
+	contractParamVal5 := xdr.ScBytes([]byte{0, 1, 2})
+	contractParamVal6 := true
 
 	ledgerKeyAccount := xdr.LedgerKeyAccount{
 		AccountId: source.ToAccountId(),
@@ -149,16 +144,16 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 									U32:  &contractParamVal3,
 								},
 								{
-									Type: xdr.ScValTypeScvBitset,
-									Bits: &contractParamVal4,
+									Type: xdr.ScValTypeScvU64,
+									U64:  &contractParamVal4,
 								},
 								{
-									Type: xdr.ScValTypeScvObject,
-									Obj:  &contractParamVal5Addr,
+									Type:  xdr.ScValTypeScvBytes,
+									Bytes: &contractParamVal5,
 								},
 								{
-									Type: xdr.ScValTypeScvStatic,
-									Ic:   &contractParamVal6,
+									Type: xdr.ScValTypeScvBool,
+									B:    &contractParamVal6,
 								},
 								{
 									// invalid ScVal
@@ -192,9 +187,9 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		s.assertInvokeHostFunctionParameter(serializedParams, 0, "Sym", args[0])
 		s.assertInvokeHostFunctionParameter(serializedParams, 1, "I32", args[1])
 		s.assertInvokeHostFunctionParameter(serializedParams, 2, "U32", args[2])
-		s.assertInvokeHostFunctionParameter(serializedParams, 3, "Bits", args[3])
-		s.assertInvokeHostFunctionParameter(serializedParams, 4, "Obj", args[4])
-		s.assertInvokeHostFunctionParameter(serializedParams, 5, "Ic", args[5])
+		s.assertInvokeHostFunctionParameter(serializedParams, 3, "U64", args[3])
+		s.assertInvokeHostFunctionParameter(serializedParams, 4, "Bytes", args[4])
+		s.assertInvokeHostFunctionParameter(serializedParams, 5, "B", args[5])
 		s.assertInvokeHostFunctionParameter(serializedParams, 6, "n/a", args[6])
 	})
 
@@ -325,8 +320,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 										Salt:      salt,
 									},
 								},
-								Source: xdr.ScContractCode{
-									Type: xdr.ScContractCodeTypeSccontractCodeToken,
+								Source: xdr.ScContractExecutable{
+									Type: xdr.ScContractExecutableTypeSccontractExecutableToken,
 								},
 							},
 						},

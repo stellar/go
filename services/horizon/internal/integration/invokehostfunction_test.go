@@ -201,13 +201,9 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	contractCodeLedgerKey := createContractOp.Footprint.ReadOnly[0]
 
 	contractIdBytes := contractID[:]
-	contractIdParameterObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &contractIdBytes,
-	}
 	contractIdParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &contractIdParameterObj,
+		Type:  xdr.ScValTypeScvBytes,
+		Bytes: (*xdr.ScBytes)(&contractIdBytes),
 	}
 
 	contractFnParameterSym := xdr.ScSymbol("add")
@@ -217,18 +213,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	}
 
 	firstParamValue := xdr.Uint64(4)
-	firstParamValueObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoU64,
-		U64:  &firstParamValue,
-	}
-
 	secondParamValue := xdr.Uint64(5)
-	secondParamValueObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoU64,
-		U64:  &secondParamValue,
-	}
-
-	contractCodeLedgerkeyAddr := xdr.ScStaticScsLedgerKeyContractCode
 
 	invokeHostFunctionOp := &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
@@ -237,12 +222,12 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 				contractIdParameter,
 				contractFnParameter,
 				xdr.ScVal{
-					Type: xdr.ScValTypeScvObject,
-					Obj:  &firstParamValueObj,
+					Type: xdr.ScValTypeScvU64,
+					U64:  &firstParamValue,
 				},
 				xdr.ScVal{
-					Type: xdr.ScValTypeScvObject,
-					Obj:  &secondParamValueObj,
+					Type: xdr.ScValTypeScvU64,
+					U64:  &secondParamValue,
 				},
 			},
 		},
@@ -253,8 +238,8 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 					ContractData: &xdr.LedgerKeyContractData{
 						ContractId: contractID,
 						Key: xdr.ScVal{
-							Type: xdr.ScValTypeScvStatic,
-							Ic:   &contractCodeLedgerkeyAddr,
+							Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+							// symbolic: no value
 						},
 					},
 				},
@@ -285,7 +270,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 
 	// check the function response, should have summed the two input numbers
 	scval := invokeHostFunctionResult.MustSuccess()
-	assert.Equal(t, xdr.Uint64(9), scval.MustObj().MustU64())
+	assert.Equal(t, xdr.Uint64(9), scval.MustU64())
 }
 
 func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
@@ -319,13 +304,9 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	contractCodeLedgerKey := createContractOp.Footprint.ReadOnly[0]
 
 	contractIdBytes := contractID[:]
-	contractIdParameterObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &contractIdBytes,
-	}
 	contractIdParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &contractIdParameterObj,
+		Type:  xdr.ScValTypeScvBytes,
+		Bytes: (*xdr.ScBytes)(&contractIdBytes),
 	}
 
 	contractFnParameterSym := xdr.ScSymbol("increment")
@@ -335,8 +316,6 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	}
 
 	contractStateFootprintSym := xdr.ScSymbol("COUNTER")
-	contractCodeLedgerkeyAddr := xdr.ScStaticScsLedgerKeyContractCode
-
 	invokeHostFunctionOp := &txnbuild.InvokeHostFunction{
 		Function: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
@@ -352,8 +331,8 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 					ContractData: &xdr.LedgerKeyContractData{
 						ContractId: contractID,
 						Key: xdr.ScVal{
-							Type: xdr.ScValTypeScvStatic,
-							Ic:   &contractCodeLedgerkeyAddr,
+							Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+							// symbolic: no value
 						},
 					},
 				},
@@ -460,12 +439,11 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 	assert.NoError(t, err)
 	contractHash := xdr.Hash(sha256.Sum256(installContractCodeArgs))
 
-	ledgerKeyContractCodeAddr := xdr.ScStaticScsLedgerKeyContractCode
 	ledgerKey := xdr.LedgerKeyContractData{
 		ContractId: xdr.Hash(hashedContractID),
 		Key: xdr.ScVal{
-			Type: xdr.ScValTypeScvStatic,
-			Ic:   &ledgerKeyContractCodeAddr,
+			Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+			// symbolic: no value
 		},
 	}
 
@@ -477,8 +455,8 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 					Type: xdr.ContractIdTypeContractIdFromSourceAccount,
 					Salt: &saltParameter,
 				},
-				Source: xdr.ScContractCode{
-					Type:   xdr.ScContractCodeTypeSccontractCodeWasmRef,
+				Source: xdr.ScContractExecutable{
+					Type:   xdr.ScContractExecutableTypeSccontractExecutableWasmRef,
 					WasmId: &contractHash,
 				},
 			},

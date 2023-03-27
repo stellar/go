@@ -30,14 +30,14 @@ import (
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":               "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
 	"xdr/Stellar-contract-env-meta.x": "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
-	"xdr/Stellar-contract-spec.x":     "83f5adc57ccaea49a67063352b869641049c4caf198a3070c4825c5f6e82802a",
-	"xdr/Stellar-contract.x":          "99696979513d389fabe843874b84dd75a7fec8f8f329ca9ae833c600850dee2d",
+	"xdr/Stellar-contract-spec.x":     "6268629577238adf6210d6e919e41375a3b380e941d0c7acb662013c6f8aa575",
+	"xdr/Stellar-contract.x":          "7ec20def7e005a7d90357ac7b39d616435ab5835dc806989515faecdb506f51d",
 	"xdr/Stellar-internal.x":          "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
-	"xdr/Stellar-ledger-entries.x":    "dae8eead47f2ce6b74b87fc196080cde2b432eedba9e58893f1d5ad315155e4e",
-	"xdr/Stellar-ledger.x":            "b19c10a07c9775594723ad12927259dd4bbd9ed9dfd0e70078662ec2e90e130d",
+	"xdr/Stellar-ledger-entries.x":    "40ea6015526933dfa49a459b62e1f0f1fbd950ef95949f7faabec4b89d5a9241",
+	"xdr/Stellar-ledger.x":            "968fff69d58c70dbd27edf4635c4d7f99f7667981076ce29548e6ef289de3df5",
 	"xdr/Stellar-overlay.x":           "972f38a9d4a064273f3362cbfa7d3c563293fd5396d5f0774ce6cc690e27645d",
-	"xdr/Stellar-transaction.x":       "0ab9890a6ffbe3a7f0b4496f7f531606812c1207b862a0a7bc03b70e83dbdf72",
-	"xdr/Stellar-types.x":             "7b3e5470c4bcf7c19f9cc8f8bf81a494b540fc2157476329cf19863afab2343b",
+	"xdr/Stellar-transaction.x":       "4fee5c1982810aa1746dbaf81dd6d84f1fe8193cb535bf0839da3509e7907547",
+	"xdr/Stellar-types.x":             "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
 type xdrType interface {
@@ -1557,116 +1557,6 @@ var (
 func (s SequenceNumber) xdrType() {}
 
 var _ xdrType = (*SequenceNumber)(nil)
-
-// TimePoint is an XDR Typedef defines as:
-//
-//	typedef uint64 TimePoint;
-type TimePoint Uint64
-
-// EncodeTo encodes this value using the Encoder.
-func (s TimePoint) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = Uint64(s).EncodeTo(e); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*TimePoint)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *TimePoint) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = (*Uint64)(s).DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Uint64: %s", err)
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s TimePoint) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *TimePoint) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*TimePoint)(nil)
-	_ encoding.BinaryUnmarshaler = (*TimePoint)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s TimePoint) xdrType() {}
-
-var _ xdrType = (*TimePoint)(nil)
-
-// Duration is an XDR Typedef defines as:
-//
-//	typedef uint64 Duration;
-type Duration Uint64
-
-// EncodeTo encodes this value using the Encoder.
-func (s Duration) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = Uint64(s).EncodeTo(e); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*Duration)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *Duration) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = (*Uint64)(s).DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Uint64: %s", err)
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s Duration) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *Duration) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*Duration)(nil)
-	_ encoding.BinaryUnmarshaler = (*Duration)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s Duration) xdrType() {}
-
-var _ xdrType = (*Duration)(nil)
 
 // DataValue is an XDR Typedef defines as:
 //
@@ -15560,18 +15450,21 @@ var _ xdrType = (*TransactionMetaV2)(nil)
 //	enum ContractEventType
 //	 {
 //	     SYSTEM = 0,
-//	     CONTRACT = 1
+//	     CONTRACT = 1,
+//	     DIAGNOSTIC = 2
 //	 };
 type ContractEventType int32
 
 const (
-	ContractEventTypeSystem   ContractEventType = 0
-	ContractEventTypeContract ContractEventType = 1
+	ContractEventTypeSystem     ContractEventType = 0
+	ContractEventTypeContract   ContractEventType = 1
+	ContractEventTypeDiagnostic ContractEventType = 2
 )
 
 var contractEventTypeMap = map[int32]string{
 	0: "ContractEventTypeSystem",
 	1: "ContractEventTypeContract",
+	2: "ContractEventTypeDiagnostic",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -15965,6 +15858,153 @@ func (s ContractEvent) xdrType() {}
 
 var _ xdrType = (*ContractEvent)(nil)
 
+// DiagnosticEvent is an XDR Struct defines as:
+//
+//	struct DiagnosticEvent
+//	 {
+//	     bool inSuccessfulContractCall;
+//	     ContractEvent event;
+//	 };
+type DiagnosticEvent struct {
+	InSuccessfulContractCall bool
+	Event                    ContractEvent
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *DiagnosticEvent) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeBool(bool(s.InSuccessfulContractCall)); err != nil {
+		return err
+	}
+	if err = s.Event.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*DiagnosticEvent)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *DiagnosticEvent) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	s.InSuccessfulContractCall, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Bool: %s", err)
+	}
+	nTmp, err = s.Event.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractEvent: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s DiagnosticEvent) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *DiagnosticEvent) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*DiagnosticEvent)(nil)
+	_ encoding.BinaryUnmarshaler = (*DiagnosticEvent)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s DiagnosticEvent) xdrType() {}
+
+var _ xdrType = (*DiagnosticEvent)(nil)
+
+// OperationDiagnosticEvents is an XDR Struct defines as:
+//
+//	struct OperationDiagnosticEvents
+//	 {
+//	     DiagnosticEvent events<>;
+//	 };
+type OperationDiagnosticEvents struct {
+	Events []DiagnosticEvent
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *OperationDiagnosticEvents) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s.Events))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.Events); i++ {
+		if err = s.Events[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*OperationDiagnosticEvents)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *OperationDiagnosticEvents) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding DiagnosticEvent: %s", err)
+	}
+	s.Events = nil
+	if l > 0 {
+		s.Events = make([]DiagnosticEvent, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.Events[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding DiagnosticEvent: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s OperationDiagnosticEvents) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *OperationDiagnosticEvents) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*OperationDiagnosticEvents)(nil)
+	_ encoding.BinaryUnmarshaler = (*OperationDiagnosticEvents)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s OperationDiagnosticEvents) xdrType() {}
+
+var _ xdrType = (*OperationDiagnosticEvents)(nil)
+
 // OperationEvents is an XDR Struct defines as:
 //
 //	struct OperationEvents
@@ -16057,14 +16097,20 @@ var _ xdrType = (*OperationEvents)(nil)
 //
 //	     Hash hashes[3];                     // stores sha256(txChangesBefore, operations, txChangesAfter),
 //	                                         // sha256(events), and sha256(txResult)
+//
+//	     // Diagnostics events that are not hashed. One list per operation.
+//	     // This will contain all contract and diagnostic events. Even ones
+//	     // that were emitted in a failed contract call.
+//	     OperationDiagnosticEvents diagnosticEvents<>;
 //	 };
 type TransactionMetaV3 struct {
-	TxChangesBefore LedgerEntryChanges
-	Operations      []OperationMeta
-	TxChangesAfter  LedgerEntryChanges
-	Events          []OperationEvents
-	TxResult        TransactionResult
-	Hashes          [3]Hash
+	TxChangesBefore  LedgerEntryChanges
+	Operations       []OperationMeta
+	TxChangesAfter   LedgerEntryChanges
+	Events           []OperationEvents
+	TxResult         TransactionResult
+	Hashes           [3]Hash
+	DiagnosticEvents []OperationDiagnosticEvents
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -16097,6 +16143,14 @@ func (s *TransactionMetaV3) EncodeTo(e *xdr.Encoder) error {
 	}
 	for i := 0; i < len(s.Hashes); i++ {
 		if err = s.Hashes[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	if _, err = e.EncodeUint(uint32(len(s.DiagnosticEvents))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.DiagnosticEvents); i++ {
+		if err = s.DiagnosticEvents[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
@@ -16162,6 +16216,22 @@ func (s *TransactionMetaV3) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
+		}
+	}
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding OperationDiagnosticEvents: %s", err)
+	}
+	s.DiagnosticEvents = nil
+	if l > 0 {
+		s.DiagnosticEvents = make([]OperationDiagnosticEvents, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.DiagnosticEvents[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding OperationDiagnosticEvents: %s", err)
+			}
 		}
 	}
 	return n, nil
@@ -25163,11 +25233,11 @@ var _ xdrType = (*ContractId)(nil)
 //	struct CreateContractArgs
 //	 {
 //	     ContractID contractID;
-//	     SCContractCode source;
+//	     SCContractExecutable source;
 //	 };
 type CreateContractArgs struct {
 	ContractId ContractId
-	Source     ScContractCode
+	Source     ScContractExecutable
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -25196,7 +25266,7 @@ func (s *CreateContractArgs) DecodeFrom(d *xdr.Decoder) (int, error) {
 	nTmp, err = s.Source.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractCode: %s", err)
+		return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
 	}
 	return n, nil
 }
@@ -27732,12 +27802,12 @@ var _ xdrType = (*HashIdPreimageSourceAccountContractId)(nil)
 //	struct
 //	     {
 //	         Hash networkID;
-//	         SCContractCode source;
+//	         SCContractExecutable source;
 //	         uint256 salt;
 //	     }
 type HashIdPreimageCreateContractArgs struct {
 	NetworkId Hash
-	Source    ScContractCode
+	Source    ScContractExecutable
 	Salt      Uint256
 }
 
@@ -27770,7 +27840,7 @@ func (s *HashIdPreimageCreateContractArgs) DecodeFrom(d *xdr.Decoder) (int, erro
 	nTmp, err = s.Source.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractCode: %s", err)
+		return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
 	}
 	nTmp, err = s.Salt.DecodeFrom(d)
 	n += nTmp
@@ -27938,7 +28008,7 @@ var _ xdrType = (*HashIdPreimageContractAuth)(nil)
 //	     struct
 //	     {
 //	         Hash networkID;
-//	         SCContractCode source;
+//	         SCContractExecutable source;
 //	         uint256 salt;
 //	     } createContractArgs;
 //	 case ENVELOPE_TYPE_CONTRACT_AUTH:
@@ -42601,6 +42671,116 @@ func (s Int64) xdrType() {}
 
 var _ xdrType = (*Int64)(nil)
 
+// TimePoint is an XDR Typedef defines as:
+//
+//	typedef uint64 TimePoint;
+type TimePoint Uint64
+
+// EncodeTo encodes this value using the Encoder.
+func (s TimePoint) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = Uint64(s).EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*TimePoint)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *TimePoint) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = (*Uint64)(s).DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TimePoint) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TimePoint) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TimePoint)(nil)
+	_ encoding.BinaryUnmarshaler = (*TimePoint)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s TimePoint) xdrType() {}
+
+var _ xdrType = (*TimePoint)(nil)
+
+// Duration is an XDR Typedef defines as:
+//
+//	typedef uint64 Duration;
+type Duration Uint64
+
+// EncodeTo encodes this value using the Encoder.
+func (s Duration) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = Uint64(s).EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*Duration)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *Duration) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = (*Uint64)(s).DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s Duration) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Duration) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*Duration)(nil)
+	_ encoding.BinaryUnmarshaler = (*Duration)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s Duration) xdrType() {}
+
+var _ xdrType = (*Duration)(nil)
+
 // ExtensionPoint is an XDR Union defines as:
 //
 //	union ExtensionPoint switch (int v)
@@ -44220,19 +44400,23 @@ const ScSpecDocLimit = 1024
 //	     SC_SPEC_TYPE_VAL = 0,
 //
 //	     // Types with no parameters.
-//	     SC_SPEC_TYPE_U32 = 1,
-//	     SC_SPEC_TYPE_I32 = 2,
-//	     SC_SPEC_TYPE_U64 = 3,
-//	     SC_SPEC_TYPE_I64 = 4,
-//	     SC_SPEC_TYPE_U128 = 5,
-//	     SC_SPEC_TYPE_I128 = 6,
-//	     SC_SPEC_TYPE_BOOL = 7,
-//	     SC_SPEC_TYPE_SYMBOL = 8,
-//	     SC_SPEC_TYPE_BITSET = 9,
-//	     SC_SPEC_TYPE_STATUS = 10,
-//	     SC_SPEC_TYPE_BYTES = 11,
-//	     SC_SPEC_TYPE_INVOKER = 12,
-//	     SC_SPEC_TYPE_ADDRESS = 13,
+//	     SC_SPEC_TYPE_BOOL = 1,
+//	     SC_SPEC_TYPE_VOID = 2,
+//	     SC_SPEC_TYPE_STATUS = 3,
+//	     SC_SPEC_TYPE_U32 = 4,
+//	     SC_SPEC_TYPE_I32 = 5,
+//	     SC_SPEC_TYPE_U64 = 6,
+//	     SC_SPEC_TYPE_I64 = 7,
+//	     SC_SPEC_TYPE_TIMEPOINT = 8,
+//	     SC_SPEC_TYPE_DURATION = 9,
+//	     SC_SPEC_TYPE_U128 = 10,
+//	     SC_SPEC_TYPE_I128 = 11,
+//	     SC_SPEC_TYPE_U256 = 12,
+//	     SC_SPEC_TYPE_I256 = 13,
+//	     SC_SPEC_TYPE_BYTES = 14,
+//	     SC_SPEC_TYPE_STRING = 16,
+//	     SC_SPEC_TYPE_SYMBOL = 17,
+//	     SC_SPEC_TYPE_ADDRESS = 19,
 //
 //	     // Types with parameters.
 //	     SC_SPEC_TYPE_OPTION = 1000,
@@ -44249,45 +44433,53 @@ const ScSpecDocLimit = 1024
 type ScSpecType int32
 
 const (
-	ScSpecTypeScSpecTypeVal     ScSpecType = 0
-	ScSpecTypeScSpecTypeU32     ScSpecType = 1
-	ScSpecTypeScSpecTypeI32     ScSpecType = 2
-	ScSpecTypeScSpecTypeU64     ScSpecType = 3
-	ScSpecTypeScSpecTypeI64     ScSpecType = 4
-	ScSpecTypeScSpecTypeU128    ScSpecType = 5
-	ScSpecTypeScSpecTypeI128    ScSpecType = 6
-	ScSpecTypeScSpecTypeBool    ScSpecType = 7
-	ScSpecTypeScSpecTypeSymbol  ScSpecType = 8
-	ScSpecTypeScSpecTypeBitset  ScSpecType = 9
-	ScSpecTypeScSpecTypeStatus  ScSpecType = 10
-	ScSpecTypeScSpecTypeBytes   ScSpecType = 11
-	ScSpecTypeScSpecTypeInvoker ScSpecType = 12
-	ScSpecTypeScSpecTypeAddress ScSpecType = 13
-	ScSpecTypeScSpecTypeOption  ScSpecType = 1000
-	ScSpecTypeScSpecTypeResult  ScSpecType = 1001
-	ScSpecTypeScSpecTypeVec     ScSpecType = 1002
-	ScSpecTypeScSpecTypeSet     ScSpecType = 1003
-	ScSpecTypeScSpecTypeMap     ScSpecType = 1004
-	ScSpecTypeScSpecTypeTuple   ScSpecType = 1005
-	ScSpecTypeScSpecTypeBytesN  ScSpecType = 1006
-	ScSpecTypeScSpecTypeUdt     ScSpecType = 2000
+	ScSpecTypeScSpecTypeVal       ScSpecType = 0
+	ScSpecTypeScSpecTypeBool      ScSpecType = 1
+	ScSpecTypeScSpecTypeVoid      ScSpecType = 2
+	ScSpecTypeScSpecTypeStatus    ScSpecType = 3
+	ScSpecTypeScSpecTypeU32       ScSpecType = 4
+	ScSpecTypeScSpecTypeI32       ScSpecType = 5
+	ScSpecTypeScSpecTypeU64       ScSpecType = 6
+	ScSpecTypeScSpecTypeI64       ScSpecType = 7
+	ScSpecTypeScSpecTypeTimepoint ScSpecType = 8
+	ScSpecTypeScSpecTypeDuration  ScSpecType = 9
+	ScSpecTypeScSpecTypeU128      ScSpecType = 10
+	ScSpecTypeScSpecTypeI128      ScSpecType = 11
+	ScSpecTypeScSpecTypeU256      ScSpecType = 12
+	ScSpecTypeScSpecTypeI256      ScSpecType = 13
+	ScSpecTypeScSpecTypeBytes     ScSpecType = 14
+	ScSpecTypeScSpecTypeString    ScSpecType = 16
+	ScSpecTypeScSpecTypeSymbol    ScSpecType = 17
+	ScSpecTypeScSpecTypeAddress   ScSpecType = 19
+	ScSpecTypeScSpecTypeOption    ScSpecType = 1000
+	ScSpecTypeScSpecTypeResult    ScSpecType = 1001
+	ScSpecTypeScSpecTypeVec       ScSpecType = 1002
+	ScSpecTypeScSpecTypeSet       ScSpecType = 1003
+	ScSpecTypeScSpecTypeMap       ScSpecType = 1004
+	ScSpecTypeScSpecTypeTuple     ScSpecType = 1005
+	ScSpecTypeScSpecTypeBytesN    ScSpecType = 1006
+	ScSpecTypeScSpecTypeUdt       ScSpecType = 2000
 )
 
 var scSpecTypeMap = map[int32]string{
 	0:    "ScSpecTypeScSpecTypeVal",
-	1:    "ScSpecTypeScSpecTypeU32",
-	2:    "ScSpecTypeScSpecTypeI32",
-	3:    "ScSpecTypeScSpecTypeU64",
-	4:    "ScSpecTypeScSpecTypeI64",
-	5:    "ScSpecTypeScSpecTypeU128",
-	6:    "ScSpecTypeScSpecTypeI128",
-	7:    "ScSpecTypeScSpecTypeBool",
-	8:    "ScSpecTypeScSpecTypeSymbol",
-	9:    "ScSpecTypeScSpecTypeBitset",
-	10:   "ScSpecTypeScSpecTypeStatus",
-	11:   "ScSpecTypeScSpecTypeBytes",
-	12:   "ScSpecTypeScSpecTypeInvoker",
-	13:   "ScSpecTypeScSpecTypeAddress",
+	1:    "ScSpecTypeScSpecTypeBool",
+	2:    "ScSpecTypeScSpecTypeVoid",
+	3:    "ScSpecTypeScSpecTypeStatus",
+	4:    "ScSpecTypeScSpecTypeU32",
+	5:    "ScSpecTypeScSpecTypeI32",
+	6:    "ScSpecTypeScSpecTypeU64",
+	7:    "ScSpecTypeScSpecTypeI64",
+	8:    "ScSpecTypeScSpecTypeTimepoint",
+	9:    "ScSpecTypeScSpecTypeDuration",
+	10:   "ScSpecTypeScSpecTypeU128",
+	11:   "ScSpecTypeScSpecTypeI128",
+	12:   "ScSpecTypeScSpecTypeU256",
+	13:   "ScSpecTypeScSpecTypeI256",
+	14:   "ScSpecTypeScSpecTypeBytes",
+	16:   "ScSpecTypeScSpecTypeString",
+	17:   "ScSpecTypeScSpecTypeSymbol",
+	19:   "ScSpecTypeScSpecTypeAddress",
 	1000: "ScSpecTypeScSpecTypeOption",
 	1001: "ScSpecTypeScSpecTypeResult",
 	1002: "ScSpecTypeScSpecTypeVec",
@@ -44887,17 +45079,22 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 //	union SCSpecTypeDef switch (SCSpecType type)
 //	 {
 //	 case SC_SPEC_TYPE_VAL:
-//	 case SC_SPEC_TYPE_U64:
-//	 case SC_SPEC_TYPE_I64:
-//	 case SC_SPEC_TYPE_U128:
-//	 case SC_SPEC_TYPE_I128:
+//	 case SC_SPEC_TYPE_BOOL:
+//	 case SC_SPEC_TYPE_VOID:
+//	 case SC_SPEC_TYPE_STATUS:
 //	 case SC_SPEC_TYPE_U32:
 //	 case SC_SPEC_TYPE_I32:
-//	 case SC_SPEC_TYPE_BOOL:
-//	 case SC_SPEC_TYPE_SYMBOL:
-//	 case SC_SPEC_TYPE_BITSET:
-//	 case SC_SPEC_TYPE_STATUS:
+//	 case SC_SPEC_TYPE_U64:
+//	 case SC_SPEC_TYPE_I64:
+//	 case SC_SPEC_TYPE_TIMEPOINT:
+//	 case SC_SPEC_TYPE_DURATION:
+//	 case SC_SPEC_TYPE_U128:
+//	 case SC_SPEC_TYPE_I128:
+//	 case SC_SPEC_TYPE_U256:
+//	 case SC_SPEC_TYPE_I256:
 //	 case SC_SPEC_TYPE_BYTES:
+//	 case SC_SPEC_TYPE_STRING:
+//	 case SC_SPEC_TYPE_SYMBOL:
 //	 case SC_SPEC_TYPE_ADDRESS:
 //	     void;
 //	 case SC_SPEC_TYPE_OPTION:
@@ -44941,27 +45138,37 @@ func (u ScSpecTypeDef) ArmForSwitch(sw int32) (string, bool) {
 	switch ScSpecType(sw) {
 	case ScSpecTypeScSpecTypeVal:
 		return "", true
-	case ScSpecTypeScSpecTypeU64:
+	case ScSpecTypeScSpecTypeBool:
 		return "", true
-	case ScSpecTypeScSpecTypeI64:
+	case ScSpecTypeScSpecTypeVoid:
 		return "", true
-	case ScSpecTypeScSpecTypeU128:
-		return "", true
-	case ScSpecTypeScSpecTypeI128:
+	case ScSpecTypeScSpecTypeStatus:
 		return "", true
 	case ScSpecTypeScSpecTypeU32:
 		return "", true
 	case ScSpecTypeScSpecTypeI32:
 		return "", true
-	case ScSpecTypeScSpecTypeBool:
+	case ScSpecTypeScSpecTypeU64:
 		return "", true
-	case ScSpecTypeScSpecTypeSymbol:
+	case ScSpecTypeScSpecTypeI64:
 		return "", true
-	case ScSpecTypeScSpecTypeBitset:
+	case ScSpecTypeScSpecTypeTimepoint:
 		return "", true
-	case ScSpecTypeScSpecTypeStatus:
+	case ScSpecTypeScSpecTypeDuration:
+		return "", true
+	case ScSpecTypeScSpecTypeU128:
+		return "", true
+	case ScSpecTypeScSpecTypeI128:
+		return "", true
+	case ScSpecTypeScSpecTypeU256:
+		return "", true
+	case ScSpecTypeScSpecTypeI256:
 		return "", true
 	case ScSpecTypeScSpecTypeBytes:
+		return "", true
+	case ScSpecTypeScSpecTypeString:
+		return "", true
+	case ScSpecTypeScSpecTypeSymbol:
 		return "", true
 	case ScSpecTypeScSpecTypeAddress:
 		return "", true
@@ -44991,27 +45198,37 @@ func NewScSpecTypeDef(aType ScSpecType, value interface{}) (result ScSpecTypeDef
 	switch ScSpecType(aType) {
 	case ScSpecTypeScSpecTypeVal:
 		// void
-	case ScSpecTypeScSpecTypeU64:
+	case ScSpecTypeScSpecTypeBool:
 		// void
-	case ScSpecTypeScSpecTypeI64:
+	case ScSpecTypeScSpecTypeVoid:
 		// void
-	case ScSpecTypeScSpecTypeU128:
-		// void
-	case ScSpecTypeScSpecTypeI128:
+	case ScSpecTypeScSpecTypeStatus:
 		// void
 	case ScSpecTypeScSpecTypeU32:
 		// void
 	case ScSpecTypeScSpecTypeI32:
 		// void
-	case ScSpecTypeScSpecTypeBool:
+	case ScSpecTypeScSpecTypeU64:
 		// void
-	case ScSpecTypeScSpecTypeSymbol:
+	case ScSpecTypeScSpecTypeI64:
 		// void
-	case ScSpecTypeScSpecTypeBitset:
+	case ScSpecTypeScSpecTypeTimepoint:
 		// void
-	case ScSpecTypeScSpecTypeStatus:
+	case ScSpecTypeScSpecTypeDuration:
+		// void
+	case ScSpecTypeScSpecTypeU128:
+		// void
+	case ScSpecTypeScSpecTypeI128:
+		// void
+	case ScSpecTypeScSpecTypeU256:
+		// void
+	case ScSpecTypeScSpecTypeI256:
 		// void
 	case ScSpecTypeScSpecTypeBytes:
+		// void
+	case ScSpecTypeScSpecTypeString:
+		// void
+	case ScSpecTypeScSpecTypeSymbol:
 		// void
 	case ScSpecTypeScSpecTypeAddress:
 		// void
@@ -45285,16 +45502,13 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 	case ScSpecTypeScSpecTypeVal:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeU64:
+	case ScSpecTypeScSpecTypeBool:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeI64:
+	case ScSpecTypeScSpecTypeVoid:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeU128:
-		// Void
-		return nil
-	case ScSpecTypeScSpecTypeI128:
+	case ScSpecTypeScSpecTypeStatus:
 		// Void
 		return nil
 	case ScSpecTypeScSpecTypeU32:
@@ -45303,19 +45517,37 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 	case ScSpecTypeScSpecTypeI32:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeBool:
+	case ScSpecTypeScSpecTypeU64:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeSymbol:
+	case ScSpecTypeScSpecTypeI64:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeBitset:
+	case ScSpecTypeScSpecTypeTimepoint:
 		// Void
 		return nil
-	case ScSpecTypeScSpecTypeStatus:
+	case ScSpecTypeScSpecTypeDuration:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeU128:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeI128:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeU256:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeI256:
 		// Void
 		return nil
 	case ScSpecTypeScSpecTypeBytes:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeString:
+		// Void
+		return nil
+	case ScSpecTypeScSpecTypeSymbol:
 		// Void
 		return nil
 	case ScSpecTypeScSpecTypeAddress:
@@ -45380,16 +45612,13 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ScSpecTypeScSpecTypeVal:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeU64:
+	case ScSpecTypeScSpecTypeBool:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeI64:
+	case ScSpecTypeScSpecTypeVoid:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeU128:
-		// Void
-		return n, nil
-	case ScSpecTypeScSpecTypeI128:
+	case ScSpecTypeScSpecTypeStatus:
 		// Void
 		return n, nil
 	case ScSpecTypeScSpecTypeU32:
@@ -45398,19 +45627,37 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 	case ScSpecTypeScSpecTypeI32:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeBool:
+	case ScSpecTypeScSpecTypeU64:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeSymbol:
+	case ScSpecTypeScSpecTypeI64:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeBitset:
+	case ScSpecTypeScSpecTypeTimepoint:
 		// Void
 		return n, nil
-	case ScSpecTypeScSpecTypeStatus:
+	case ScSpecTypeScSpecTypeDuration:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeU128:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeI128:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeU256:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeI256:
 		// Void
 		return n, nil
 	case ScSpecTypeScSpecTypeBytes:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeString:
+		// Void
+		return n, nil
+	case ScSpecTypeScSpecTypeSymbol:
 		// Void
 		return n, nil
 	case ScSpecTypeScSpecTypeAddress:
@@ -47265,103 +47512,113 @@ func (s ScSpecEntry) xdrType() {}
 
 var _ xdrType = (*ScSpecEntry)(nil)
 
-// ScSymbol is an XDR Typedef defines as:
-//
-//	typedef string SCSymbol<10>;
-type ScSymbol string
-
-// XDRMaxSize implements the Sized interface for ScSymbol
-func (e ScSymbol) XDRMaxSize() int {
-	return 10
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s ScSymbol) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if _, err = e.EncodeString(string(s)); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*ScSymbol)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *ScSymbol) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	var v string
-	v, nTmp, err = d.DecodeString(10)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScSymbol: %s", err)
-	}
-	*s = ScSymbol(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScSymbol) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScSymbol) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScSymbol)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScSymbol)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScSymbol) xdrType() {}
-
-var _ xdrType = (*ScSymbol)(nil)
-
 // ScValType is an XDR Enum defines as:
 //
 //	enum SCValType
 //	 {
-//	     SCV_U63 = 0,
-//	     SCV_U32 = 1,
-//	     SCV_I32 = 2,
-//	     SCV_STATIC = 3,
-//	     SCV_OBJECT = 4,
-//	     SCV_SYMBOL = 5,
-//	     SCV_BITSET = 6,
-//	     SCV_STATUS = 7
+//	     SCV_BOOL = 0,
+//	     SCV_VOID = 1,
+//	     SCV_STATUS = 2,
+//
+//	     // 32 bits is the smallest type in WASM or XDR; no need for u8/u16.
+//	     SCV_U32 = 3,
+//	     SCV_I32 = 4,
+//
+//	     // 64 bits is naturally supported by both WASM and XDR also.
+//	     SCV_U64 = 5,
+//	     SCV_I64 = 6,
+//
+//	     // Time-related u64 subtypes with their own functions and formatting.
+//	     SCV_TIMEPOINT = 7,
+//	     SCV_DURATION = 8,
+//
+//	     // 128 bits is naturally supported by Rust and we use it for Soroban
+//	     // fixed-point arithmetic prices / balances / similar "quantities". These
+//	     // are represented in XDR as a pair of 2 u64s, unlike {u,i}256 which is
+//	     // represented as an array of 32 bytes.
+//	     SCV_U128 = 9,
+//	     SCV_I128 = 10,
+//
+//	     // 256 bits is the size of sha256 output, ed25519 keys, and the EVM machine
+//	     // word, so for interop use we include this even though it requires a small
+//	     // amount of Rust guest and/or host library code.
+//	     SCV_U256 = 11,
+//	     SCV_I256 = 12,
+//
+//	     // TODO: possibly allocate subtypes of i64, i128 and/or u256 for
+//	     // fixed-precision with a specific number of decimals.
+//
+//	     // Bytes come in 3 flavors, 2 of which have meaningfully different
+//	     // formatting and validity-checking / domain-restriction.
+//	     SCV_BYTES = 13,
+//	     SCV_STRING = 14,
+//	     SCV_SYMBOL = 15,
+//
+//	     // Vecs and maps are just polymorphic containers of other ScVals.
+//	     SCV_VEC = 16,
+//	     SCV_MAP = 17,
+//
+//	     // SCContractExecutable and SCAddressType are types that gets used separately from
+//	     // SCVal so we do not flatten their structures into separate SCVal cases.
+//	     SCV_CONTRACT_EXECUTABLE = 18,
+//	     SCV_ADDRESS = 19,
+//
+//	     // SCV_LEDGER_KEY_CONTRACT_EXECUTABLE and SCV_LEDGER_KEY_NONCE are unique
+//	     // symbolic SCVals used as the key for ledger entries for a contract's code
+//	     // and an address' nonce, respectively.
+//	     SCV_LEDGER_KEY_CONTRACT_EXECUTABLE = 20,
+//	     SCV_LEDGER_KEY_NONCE = 21
 //	 };
 type ScValType int32
 
 const (
-	ScValTypeScvU63    ScValType = 0
-	ScValTypeScvU32    ScValType = 1
-	ScValTypeScvI32    ScValType = 2
-	ScValTypeScvStatic ScValType = 3
-	ScValTypeScvObject ScValType = 4
-	ScValTypeScvSymbol ScValType = 5
-	ScValTypeScvBitset ScValType = 6
-	ScValTypeScvStatus ScValType = 7
+	ScValTypeScvBool                        ScValType = 0
+	ScValTypeScvVoid                        ScValType = 1
+	ScValTypeScvStatus                      ScValType = 2
+	ScValTypeScvU32                         ScValType = 3
+	ScValTypeScvI32                         ScValType = 4
+	ScValTypeScvU64                         ScValType = 5
+	ScValTypeScvI64                         ScValType = 6
+	ScValTypeScvTimepoint                   ScValType = 7
+	ScValTypeScvDuration                    ScValType = 8
+	ScValTypeScvU128                        ScValType = 9
+	ScValTypeScvI128                        ScValType = 10
+	ScValTypeScvU256                        ScValType = 11
+	ScValTypeScvI256                        ScValType = 12
+	ScValTypeScvBytes                       ScValType = 13
+	ScValTypeScvString                      ScValType = 14
+	ScValTypeScvSymbol                      ScValType = 15
+	ScValTypeScvVec                         ScValType = 16
+	ScValTypeScvMap                         ScValType = 17
+	ScValTypeScvContractExecutable          ScValType = 18
+	ScValTypeScvAddress                     ScValType = 19
+	ScValTypeScvLedgerKeyContractExecutable ScValType = 20
+	ScValTypeScvLedgerKeyNonce              ScValType = 21
 )
 
 var scValTypeMap = map[int32]string{
-	0: "ScValTypeScvU63",
-	1: "ScValTypeScvU32",
-	2: "ScValTypeScvI32",
-	3: "ScValTypeScvStatic",
-	4: "ScValTypeScvObject",
-	5: "ScValTypeScvSymbol",
-	6: "ScValTypeScvBitset",
-	7: "ScValTypeScvStatus",
+	0:  "ScValTypeScvBool",
+	1:  "ScValTypeScvVoid",
+	2:  "ScValTypeScvStatus",
+	3:  "ScValTypeScvU32",
+	4:  "ScValTypeScvI32",
+	5:  "ScValTypeScvU64",
+	6:  "ScValTypeScvI64",
+	7:  "ScValTypeScvTimepoint",
+	8:  "ScValTypeScvDuration",
+	9:  "ScValTypeScvU128",
+	10: "ScValTypeScvI128",
+	11: "ScValTypeScvU256",
+	12: "ScValTypeScvI256",
+	13: "ScValTypeScvBytes",
+	14: "ScValTypeScvString",
+	15: "ScValTypeScvSymbol",
+	16: "ScValTypeScvVec",
+	17: "ScValTypeScvMap",
+	18: "ScValTypeScvContractExecutable",
+	19: "ScValTypeScvAddress",
+	20: "ScValTypeScvLedgerKeyContractExecutable",
+	21: "ScValTypeScvLedgerKeyNonce",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -47427,95 +47684,6 @@ var (
 func (s ScValType) xdrType() {}
 
 var _ xdrType = (*ScValType)(nil)
-
-// ScStatic is an XDR Enum defines as:
-//
-//	enum SCStatic
-//	 {
-//	     SCS_VOID = 0,
-//	     SCS_TRUE = 1,
-//	     SCS_FALSE = 2,
-//	     SCS_LEDGER_KEY_CONTRACT_CODE = 3
-//	 };
-type ScStatic int32
-
-const (
-	ScStaticScsVoid                  ScStatic = 0
-	ScStaticScsTrue                  ScStatic = 1
-	ScStaticScsFalse                 ScStatic = 2
-	ScStaticScsLedgerKeyContractCode ScStatic = 3
-)
-
-var scStaticMap = map[int32]string{
-	0: "ScStaticScsVoid",
-	1: "ScStaticScsTrue",
-	2: "ScStaticScsFalse",
-	3: "ScStaticScsLedgerKeyContractCode",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScStatic
-func (e ScStatic) ValidEnum(v int32) bool {
-	_, ok := scStaticMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ScStatic) String() string {
-	name, _ := scStaticMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e ScStatic) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := scStaticMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ScStatic enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*ScStatic)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *ScStatic) DecodeFrom(d *xdr.Decoder) (int, error) {
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding ScStatic: %s", err)
-	}
-	if _, ok := scStaticMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ScStatic enum value", v)
-	}
-	*e = ScStatic(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScStatic) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScStatic) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScStatic)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScStatic)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScStatic) xdrType() {}
-
-var _ xdrType = (*ScStatic)(nil)
 
 // ScStatusType is an XDR Enum defines as:
 //
@@ -48958,1083 +49126,6 @@ func (s ScStatus) xdrType() {}
 
 var _ xdrType = (*ScStatus)(nil)
 
-// ScVal is an XDR Union defines as:
-//
-//	union SCVal switch (SCValType type)
-//	 {
-//	 case SCV_U63:
-//	     int64 u63;
-//	 case SCV_U32:
-//	     uint32 u32;
-//	 case SCV_I32:
-//	     int32 i32;
-//	 case SCV_STATIC:
-//	     SCStatic ic;
-//	 case SCV_OBJECT:
-//	     SCObject* obj;
-//	 case SCV_SYMBOL:
-//	     SCSymbol sym;
-//	 case SCV_BITSET:
-//	     uint64 bits;
-//	 case SCV_STATUS:
-//	     SCStatus status;
-//	 };
-type ScVal struct {
-	Type   ScValType
-	U63    *Int64
-	U32    *Uint32
-	I32    *Int32
-	Ic     *ScStatic
-	Obj    **ScObject
-	Sym    *ScSymbol
-	Bits   *Uint64
-	Status *ScStatus
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u ScVal) SwitchFieldName() string {
-	return "Type"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScVal
-func (u ScVal) ArmForSwitch(sw int32) (string, bool) {
-	switch ScValType(sw) {
-	case ScValTypeScvU63:
-		return "U63", true
-	case ScValTypeScvU32:
-		return "U32", true
-	case ScValTypeScvI32:
-		return "I32", true
-	case ScValTypeScvStatic:
-		return "Ic", true
-	case ScValTypeScvObject:
-		return "Obj", true
-	case ScValTypeScvSymbol:
-		return "Sym", true
-	case ScValTypeScvBitset:
-		return "Bits", true
-	case ScValTypeScvStatus:
-		return "Status", true
-	}
-	return "-", false
-}
-
-// NewScVal creates a new  ScVal.
-func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
-	result.Type = aType
-	switch ScValType(aType) {
-	case ScValTypeScvU63:
-		tv, ok := value.(Int64)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Int64")
-			return
-		}
-		result.U63 = &tv
-	case ScValTypeScvU32:
-		tv, ok := value.(Uint32)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint32")
-			return
-		}
-		result.U32 = &tv
-	case ScValTypeScvI32:
-		tv, ok := value.(Int32)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Int32")
-			return
-		}
-		result.I32 = &tv
-	case ScValTypeScvStatic:
-		tv, ok := value.(ScStatic)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScStatic")
-			return
-		}
-		result.Ic = &tv
-	case ScValTypeScvObject:
-		tv, ok := value.(*ScObject)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be *ScObject")
-			return
-		}
-		result.Obj = &tv
-	case ScValTypeScvSymbol:
-		tv, ok := value.(ScSymbol)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScSymbol")
-			return
-		}
-		result.Sym = &tv
-	case ScValTypeScvBitset:
-		tv, ok := value.(Uint64)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint64")
-			return
-		}
-		result.Bits = &tv
-	case ScValTypeScvStatus:
-		tv, ok := value.(ScStatus)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScStatus")
-			return
-		}
-		result.Status = &tv
-	}
-	return
-}
-
-// MustU63 retrieves the U63 value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustU63() Int64 {
-	val, ok := u.GetU63()
-
-	if !ok {
-		panic("arm U63 is not set")
-	}
-
-	return val
-}
-
-// GetU63 retrieves the U63 value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetU63() (result Int64, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "U63" {
-		result = *u.U63
-		ok = true
-	}
-
-	return
-}
-
-// MustU32 retrieves the U32 value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustU32() Uint32 {
-	val, ok := u.GetU32()
-
-	if !ok {
-		panic("arm U32 is not set")
-	}
-
-	return val
-}
-
-// GetU32 retrieves the U32 value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetU32() (result Uint32, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "U32" {
-		result = *u.U32
-		ok = true
-	}
-
-	return
-}
-
-// MustI32 retrieves the I32 value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustI32() Int32 {
-	val, ok := u.GetI32()
-
-	if !ok {
-		panic("arm I32 is not set")
-	}
-
-	return val
-}
-
-// GetI32 retrieves the I32 value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetI32() (result Int32, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "I32" {
-		result = *u.I32
-		ok = true
-	}
-
-	return
-}
-
-// MustIc retrieves the Ic value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustIc() ScStatic {
-	val, ok := u.GetIc()
-
-	if !ok {
-		panic("arm Ic is not set")
-	}
-
-	return val
-}
-
-// GetIc retrieves the Ic value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetIc() (result ScStatic, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Ic" {
-		result = *u.Ic
-		ok = true
-	}
-
-	return
-}
-
-// MustObj retrieves the Obj value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustObj() *ScObject {
-	val, ok := u.GetObj()
-
-	if !ok {
-		panic("arm Obj is not set")
-	}
-
-	return val
-}
-
-// GetObj retrieves the Obj value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetObj() (result *ScObject, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Obj" {
-		result = *u.Obj
-		ok = true
-	}
-
-	return
-}
-
-// MustSym retrieves the Sym value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustSym() ScSymbol {
-	val, ok := u.GetSym()
-
-	if !ok {
-		panic("arm Sym is not set")
-	}
-
-	return val
-}
-
-// GetSym retrieves the Sym value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetSym() (result ScSymbol, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Sym" {
-		result = *u.Sym
-		ok = true
-	}
-
-	return
-}
-
-// MustBits retrieves the Bits value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustBits() Uint64 {
-	val, ok := u.GetBits()
-
-	if !ok {
-		panic("arm Bits is not set")
-	}
-
-	return val
-}
-
-// GetBits retrieves the Bits value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetBits() (result Uint64, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Bits" {
-		result = *u.Bits
-		ok = true
-	}
-
-	return
-}
-
-// MustStatus retrieves the Status value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustStatus() ScStatus {
-	val, ok := u.GetStatus()
-
-	if !ok {
-		panic("arm Status is not set")
-	}
-
-	return val
-}
-
-// GetStatus retrieves the Status value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetStatus() (result ScStatus, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Status" {
-		result = *u.Status
-		ok = true
-	}
-
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u ScVal) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = u.Type.EncodeTo(e); err != nil {
-		return err
-	}
-	switch ScValType(u.Type) {
-	case ScValTypeScvU63:
-		if err = (*u.U63).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScValTypeScvU32:
-		if err = (*u.U32).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScValTypeScvI32:
-		if err = (*u.I32).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScValTypeScvStatic:
-		if err = (*u.Ic).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScValTypeScvObject:
-		if _, err = e.EncodeBool((*u.Obj) != nil); err != nil {
-			return err
-		}
-		if (*u.Obj) != nil {
-			if err = (*(*u.Obj)).EncodeTo(e); err != nil {
-				return err
-			}
-		}
-		return nil
-	case ScValTypeScvSymbol:
-		if err = (*u.Sym).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScValTypeScvBitset:
-		if err = (*u.Bits).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScValTypeScvStatus:
-		if err = (*u.Status).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("Type (ScValType) switch value '%d' is not valid for union ScVal", u.Type)
-}
-
-var _ decoderFrom = (*ScVal)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScValType: %s", err)
-	}
-	switch ScValType(u.Type) {
-	case ScValTypeScvU63:
-		u.U63 = new(Int64)
-		nTmp, err = (*u.U63).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Int64: %s", err)
-		}
-		return n, nil
-	case ScValTypeScvU32:
-		u.U32 = new(Uint32)
-		nTmp, err = (*u.U32).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Uint32: %s", err)
-		}
-		return n, nil
-	case ScValTypeScvI32:
-		u.I32 = new(Int32)
-		nTmp, err = (*u.I32).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Int32: %s", err)
-		}
-		return n, nil
-	case ScValTypeScvStatic:
-		u.Ic = new(ScStatic)
-		nTmp, err = (*u.Ic).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScStatic: %s", err)
-		}
-		return n, nil
-	case ScValTypeScvObject:
-		u.Obj = new(*ScObject)
-		var b bool
-		b, nTmp, err = d.DecodeBool()
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScObject: %s", err)
-		}
-		(*u.Obj) = nil
-		if b {
-			(*u.Obj) = new(ScObject)
-			nTmp, err = (*u.Obj).DecodeFrom(d)
-			n += nTmp
-			if err != nil {
-				return n, fmt.Errorf("decoding ScObject: %s", err)
-			}
-		}
-		return n, nil
-	case ScValTypeScvSymbol:
-		u.Sym = new(ScSymbol)
-		nTmp, err = (*u.Sym).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScSymbol: %s", err)
-		}
-		return n, nil
-	case ScValTypeScvBitset:
-		u.Bits = new(Uint64)
-		nTmp, err = (*u.Bits).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Uint64: %s", err)
-		}
-		return n, nil
-	case ScValTypeScvStatus:
-		u.Status = new(ScStatus)
-		nTmp, err = (*u.Status).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScStatus: %s", err)
-		}
-		return n, nil
-	}
-	return n, fmt.Errorf("union ScVal has invalid Type (ScValType) switch value '%d'", u.Type)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScVal) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScVal) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScVal)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScVal)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScVal) xdrType() {}
-
-var _ xdrType = (*ScVal)(nil)
-
-// ScObjectType is an XDR Enum defines as:
-//
-//	enum SCObjectType
-//	 {
-//	     // We have a few objects that represent non-stellar-specific concepts
-//	     // like general-purpose maps, vectors, numbers, blobs.
-//
-//	     SCO_VEC = 0,
-//	     SCO_MAP = 1,
-//	     SCO_U64 = 2,
-//	     SCO_I64 = 3,
-//	     SCO_U128 = 4,
-//	     SCO_I128 = 5,
-//	     SCO_BYTES = 6,
-//	     SCO_CONTRACT_CODE = 7,
-//	     SCO_ADDRESS = 8,
-//	     SCO_NONCE_KEY = 9
-//
-//	     // TODO: add more
-//	 };
-type ScObjectType int32
-
-const (
-	ScObjectTypeScoVec          ScObjectType = 0
-	ScObjectTypeScoMap          ScObjectType = 1
-	ScObjectTypeScoU64          ScObjectType = 2
-	ScObjectTypeScoI64          ScObjectType = 3
-	ScObjectTypeScoU128         ScObjectType = 4
-	ScObjectTypeScoI128         ScObjectType = 5
-	ScObjectTypeScoBytes        ScObjectType = 6
-	ScObjectTypeScoContractCode ScObjectType = 7
-	ScObjectTypeScoAddress      ScObjectType = 8
-	ScObjectTypeScoNonceKey     ScObjectType = 9
-)
-
-var scObjectTypeMap = map[int32]string{
-	0: "ScObjectTypeScoVec",
-	1: "ScObjectTypeScoMap",
-	2: "ScObjectTypeScoU64",
-	3: "ScObjectTypeScoI64",
-	4: "ScObjectTypeScoU128",
-	5: "ScObjectTypeScoI128",
-	6: "ScObjectTypeScoBytes",
-	7: "ScObjectTypeScoContractCode",
-	8: "ScObjectTypeScoAddress",
-	9: "ScObjectTypeScoNonceKey",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScObjectType
-func (e ScObjectType) ValidEnum(v int32) bool {
-	_, ok := scObjectTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ScObjectType) String() string {
-	name, _ := scObjectTypeMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e ScObjectType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := scObjectTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ScObjectType enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*ScObjectType)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *ScObjectType) DecodeFrom(d *xdr.Decoder) (int, error) {
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding ScObjectType: %s", err)
-	}
-	if _, ok := scObjectTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ScObjectType enum value", v)
-	}
-	*e = ScObjectType(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScObjectType) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScObjectType) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScObjectType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScObjectType)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScObjectType) xdrType() {}
-
-var _ xdrType = (*ScObjectType)(nil)
-
-// ScMapEntry is an XDR Struct defines as:
-//
-//	struct SCMapEntry
-//	 {
-//	     SCVal key;
-//	     SCVal val;
-//	 };
-type ScMapEntry struct {
-	Key ScVal
-	Val ScVal
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s *ScMapEntry) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = s.Key.EncodeTo(e); err != nil {
-		return err
-	}
-	if err = s.Val.EncodeTo(e); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*ScMapEntry)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *ScMapEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = s.Key.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScVal: %s", err)
-	}
-	nTmp, err = s.Val.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScVal: %s", err)
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScMapEntry) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScMapEntry) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScMapEntry)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScMapEntry)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScMapEntry) xdrType() {}
-
-var _ xdrType = (*ScMapEntry)(nil)
-
-// ScvalLimit is an XDR Const defines as:
-//
-//	const SCVAL_LIMIT = 256000;
-const ScvalLimit = 256000
-
-// ScVec is an XDR Typedef defines as:
-//
-//	typedef SCVal SCVec<SCVAL_LIMIT>;
-type ScVec []ScVal
-
-// XDRMaxSize implements the Sized interface for ScVec
-func (e ScVec) XDRMaxSize() int {
-	return 256000
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s ScVec) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
-		return err
-	}
-	for i := 0; i < len(s); i++ {
-		if err = s[i].EncodeTo(e); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-var _ decoderFrom = (*ScVec)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *ScVec) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	var l uint32
-	l, nTmp, err = d.DecodeUint()
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScVal: %s", err)
-	}
-	if l > 256000 {
-		return n, fmt.Errorf("decoding ScVal: data size (%d) exceeds size limit (256000)", l)
-	}
-	(*s) = nil
-	if l > 0 {
-		(*s) = make([]ScVal, l)
-		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
-			n += nTmp
-			if err != nil {
-				return n, fmt.Errorf("decoding ScVal: %s", err)
-			}
-		}
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScVec) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScVec) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScVec)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScVec)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScVec) xdrType() {}
-
-var _ xdrType = (*ScVec)(nil)
-
-// ScMap is an XDR Typedef defines as:
-//
-//	typedef SCMapEntry SCMap<SCVAL_LIMIT>;
-type ScMap []ScMapEntry
-
-// XDRMaxSize implements the Sized interface for ScMap
-func (e ScMap) XDRMaxSize() int {
-	return 256000
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s ScMap) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
-		return err
-	}
-	for i := 0; i < len(s); i++ {
-		if err = s[i].EncodeTo(e); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-var _ decoderFrom = (*ScMap)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *ScMap) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	var l uint32
-	l, nTmp, err = d.DecodeUint()
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScMapEntry: %s", err)
-	}
-	if l > 256000 {
-		return n, fmt.Errorf("decoding ScMapEntry: data size (%d) exceeds size limit (256000)", l)
-	}
-	(*s) = nil
-	if l > 0 {
-		(*s) = make([]ScMapEntry, l)
-		for i := uint32(0); i < l; i++ {
-			nTmp, err = (*s)[i].DecodeFrom(d)
-			n += nTmp
-			if err != nil {
-				return n, fmt.Errorf("decoding ScMapEntry: %s", err)
-			}
-		}
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScMap) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScMap) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScMap)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScMap)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScMap) xdrType() {}
-
-var _ xdrType = (*ScMap)(nil)
-
-// ScContractCodeType is an XDR Enum defines as:
-//
-//	enum SCContractCodeType
-//	 {
-//	     SCCONTRACT_CODE_WASM_REF = 0,
-//	     SCCONTRACT_CODE_TOKEN = 1
-//	 };
-type ScContractCodeType int32
-
-const (
-	ScContractCodeTypeSccontractCodeWasmRef ScContractCodeType = 0
-	ScContractCodeTypeSccontractCodeToken   ScContractCodeType = 1
-)
-
-var scContractCodeTypeMap = map[int32]string{
-	0: "ScContractCodeTypeSccontractCodeWasmRef",
-	1: "ScContractCodeTypeSccontractCodeToken",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScContractCodeType
-func (e ScContractCodeType) ValidEnum(v int32) bool {
-	_, ok := scContractCodeTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ScContractCodeType) String() string {
-	name, _ := scContractCodeTypeMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e ScContractCodeType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := scContractCodeTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ScContractCodeType enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*ScContractCodeType)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *ScContractCodeType) DecodeFrom(d *xdr.Decoder) (int, error) {
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding ScContractCodeType: %s", err)
-	}
-	if _, ok := scContractCodeTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ScContractCodeType enum value", v)
-	}
-	*e = ScContractCodeType(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScContractCodeType) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScContractCodeType) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScContractCodeType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScContractCodeType)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScContractCodeType) xdrType() {}
-
-var _ xdrType = (*ScContractCodeType)(nil)
-
-// ScContractCode is an XDR Union defines as:
-//
-//	union SCContractCode switch (SCContractCodeType type)
-//	 {
-//	 case SCCONTRACT_CODE_WASM_REF:
-//	     Hash wasm_id;
-//	 case SCCONTRACT_CODE_TOKEN:
-//	     void;
-//	 };
-type ScContractCode struct {
-	Type   ScContractCodeType
-	WasmId *Hash
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u ScContractCode) SwitchFieldName() string {
-	return "Type"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScContractCode
-func (u ScContractCode) ArmForSwitch(sw int32) (string, bool) {
-	switch ScContractCodeType(sw) {
-	case ScContractCodeTypeSccontractCodeWasmRef:
-		return "WasmId", true
-	case ScContractCodeTypeSccontractCodeToken:
-		return "", true
-	}
-	return "-", false
-}
-
-// NewScContractCode creates a new  ScContractCode.
-func NewScContractCode(aType ScContractCodeType, value interface{}) (result ScContractCode, err error) {
-	result.Type = aType
-	switch ScContractCodeType(aType) {
-	case ScContractCodeTypeSccontractCodeWasmRef:
-		tv, ok := value.(Hash)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Hash")
-			return
-		}
-		result.WasmId = &tv
-	case ScContractCodeTypeSccontractCodeToken:
-		// void
-	}
-	return
-}
-
-// MustWasmId retrieves the WasmId value from the union,
-// panicing if the value is not set.
-func (u ScContractCode) MustWasmId() Hash {
-	val, ok := u.GetWasmId()
-
-	if !ok {
-		panic("arm WasmId is not set")
-	}
-
-	return val
-}
-
-// GetWasmId retrieves the WasmId value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScContractCode) GetWasmId() (result Hash, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "WasmId" {
-		result = *u.WasmId
-		ok = true
-	}
-
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u ScContractCode) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = u.Type.EncodeTo(e); err != nil {
-		return err
-	}
-	switch ScContractCodeType(u.Type) {
-	case ScContractCodeTypeSccontractCodeWasmRef:
-		if err = (*u.WasmId).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	case ScContractCodeTypeSccontractCodeToken:
-		// Void
-		return nil
-	}
-	return fmt.Errorf("Type (ScContractCodeType) switch value '%d' is not valid for union ScContractCode", u.Type)
-}
-
-var _ decoderFrom = (*ScContractCode)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *ScContractCode) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScContractCodeType: %s", err)
-	}
-	switch ScContractCodeType(u.Type) {
-	case ScContractCodeTypeSccontractCodeWasmRef:
-		u.WasmId = new(Hash)
-		nTmp, err = (*u.WasmId).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Hash: %s", err)
-		}
-		return n, nil
-	case ScContractCodeTypeSccontractCodeToken:
-		// Void
-		return n, nil
-	}
-	return n, fmt.Errorf("union ScContractCode has invalid Type (ScContractCodeType) switch value '%d'", u.Type)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScContractCode) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScContractCode) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScContractCode)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScContractCode)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScContractCode) xdrType() {}
-
-var _ xdrType = (*ScContractCode)(nil)
-
 // Int128Parts is an XDR Struct defines as:
 //
 //	struct Int128Parts {
@@ -50106,6 +49197,236 @@ var (
 func (s Int128Parts) xdrType() {}
 
 var _ xdrType = (*Int128Parts)(nil)
+
+// ScContractExecutableType is an XDR Enum defines as:
+//
+//	enum SCContractExecutableType
+//	 {
+//	     SCCONTRACT_EXECUTABLE_WASM_REF = 0,
+//	     SCCONTRACT_EXECUTABLE_TOKEN = 1
+//	 };
+type ScContractExecutableType int32
+
+const (
+	ScContractExecutableTypeSccontractExecutableWasmRef ScContractExecutableType = 0
+	ScContractExecutableTypeSccontractExecutableToken   ScContractExecutableType = 1
+)
+
+var scContractExecutableTypeMap = map[int32]string{
+	0: "ScContractExecutableTypeSccontractExecutableWasmRef",
+	1: "ScContractExecutableTypeSccontractExecutableToken",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ScContractExecutableType
+func (e ScContractExecutableType) ValidEnum(v int32) bool {
+	_, ok := scContractExecutableTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ScContractExecutableType) String() string {
+	name, _ := scContractExecutableTypeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ScContractExecutableType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := scContractExecutableTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ScContractExecutableType enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ScContractExecutableType)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ScContractExecutableType) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ScContractExecutableType: %s", err)
+	}
+	if _, ok := scContractExecutableTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ScContractExecutableType enum value", v)
+	}
+	*e = ScContractExecutableType(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScContractExecutableType) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScContractExecutableType) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScContractExecutableType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScContractExecutableType)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScContractExecutableType) xdrType() {}
+
+var _ xdrType = (*ScContractExecutableType)(nil)
+
+// ScContractExecutable is an XDR Union defines as:
+//
+//	union SCContractExecutable switch (SCContractExecutableType type)
+//	 {
+//	 case SCCONTRACT_EXECUTABLE_WASM_REF:
+//	     Hash wasm_id;
+//	 case SCCONTRACT_EXECUTABLE_TOKEN:
+//	     void;
+//	 };
+type ScContractExecutable struct {
+	Type   ScContractExecutableType
+	WasmId *Hash
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ScContractExecutable) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ScContractExecutable
+func (u ScContractExecutable) ArmForSwitch(sw int32) (string, bool) {
+	switch ScContractExecutableType(sw) {
+	case ScContractExecutableTypeSccontractExecutableWasmRef:
+		return "WasmId", true
+	case ScContractExecutableTypeSccontractExecutableToken:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewScContractExecutable creates a new  ScContractExecutable.
+func NewScContractExecutable(aType ScContractExecutableType, value interface{}) (result ScContractExecutable, err error) {
+	result.Type = aType
+	switch ScContractExecutableType(aType) {
+	case ScContractExecutableTypeSccontractExecutableWasmRef:
+		tv, ok := value.(Hash)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Hash")
+			return
+		}
+		result.WasmId = &tv
+	case ScContractExecutableTypeSccontractExecutableToken:
+		// void
+	}
+	return
+}
+
+// MustWasmId retrieves the WasmId value from the union,
+// panicing if the value is not set.
+func (u ScContractExecutable) MustWasmId() Hash {
+	val, ok := u.GetWasmId()
+
+	if !ok {
+		panic("arm WasmId is not set")
+	}
+
+	return val
+}
+
+// GetWasmId retrieves the WasmId value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScContractExecutable) GetWasmId() (result Hash, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "WasmId" {
+		result = *u.WasmId
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ScContractExecutable) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Type.EncodeTo(e); err != nil {
+		return err
+	}
+	switch ScContractExecutableType(u.Type) {
+	case ScContractExecutableTypeSccontractExecutableWasmRef:
+		if err = (*u.WasmId).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScContractExecutableTypeSccontractExecutableToken:
+		// Void
+		return nil
+	}
+	return fmt.Errorf("Type (ScContractExecutableType) switch value '%d' is not valid for union ScContractExecutable", u.Type)
+}
+
+var _ decoderFrom = (*ScContractExecutable)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *ScContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Type.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScContractExecutableType: %s", err)
+	}
+	switch ScContractExecutableType(u.Type) {
+	case ScContractExecutableTypeSccontractExecutableWasmRef:
+		u.WasmId = new(Hash)
+		nTmp, err = (*u.WasmId).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Hash: %s", err)
+		}
+		return n, nil
+	case ScContractExecutableTypeSccontractExecutableToken:
+		// Void
+		return n, nil
+	}
+	return n, fmt.Errorf("union ScContractExecutable has invalid Type (ScContractExecutableType) switch value '%d'", u.Type)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScContractExecutable) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScContractExecutable) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScContractExecutable)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScContractExecutable)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScContractExecutable) xdrType() {}
+
+var _ xdrType = (*ScContractExecutable)(nil)
 
 // ScAddressType is an XDR Enum defines as:
 //
@@ -50375,201 +49696,809 @@ func (s ScAddress) xdrType() {}
 
 var _ xdrType = (*ScAddress)(nil)
 
-// ScObject is an XDR Union defines as:
+// ScvalLimit is an XDR Const defines as:
 //
-//	union SCObject switch (SCObjectType type)
-//	 {
-//	 case SCO_VEC:
-//	     SCVec vec;
-//	 case SCO_MAP:
-//	     SCMap map;
-//	 case SCO_U64:
-//	     uint64 u64;
-//	 case SCO_I64:
-//	     int64 i64;
-//	 case SCO_U128:
-//	     Int128Parts u128;
-//	 case SCO_I128:
-//	     Int128Parts i128;
-//	 case SCO_BYTES:
-//	     opaque bin<SCVAL_LIMIT>;
-//	 case SCO_CONTRACT_CODE:
-//	     SCContractCode contractCode;
-//	 case SCO_ADDRESS:
-//	     SCAddress address;
-//	 case SCO_NONCE_KEY:
-//	     SCAddress nonceAddress;
+//	const SCVAL_LIMIT = 256000;
+const ScvalLimit = 256000
+
+// ScsymbolLimit is an XDR Const defines as:
+//
+//	const SCSYMBOL_LIMIT = 32;
+const ScsymbolLimit = 32
+
+// ScVec is an XDR Typedef defines as:
+//
+//	typedef SCVal SCVec<SCVAL_LIMIT>;
+type ScVec []ScVal
+
+// XDRMaxSize implements the Sized interface for ScVec
+func (e ScVec) XDRMaxSize() int {
+	return 256000
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s ScVec) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScVec)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScVec) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScVal: %s", err)
+	}
+	if l > 256000 {
+		return n, fmt.Errorf("decoding ScVal: data size (%d) exceeds size limit (256000)", l)
+	}
+	(*s) = nil
+	if l > 0 {
+		(*s) = make([]ScVal, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScVal: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScVec) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScVec) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScVec)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScVec)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScVec) xdrType() {}
+
+var _ xdrType = (*ScVec)(nil)
+
+// ScMap is an XDR Typedef defines as:
+//
+//	typedef SCMapEntry SCMap<SCVAL_LIMIT>;
+type ScMap []ScMapEntry
+
+// XDRMaxSize implements the Sized interface for ScMap
+func (e ScMap) XDRMaxSize() int {
+	return 256000
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s ScMap) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s); i++ {
+		if err = s[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScMap)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScMap) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScMapEntry: %s", err)
+	}
+	if l > 256000 {
+		return n, fmt.Errorf("decoding ScMapEntry: data size (%d) exceeds size limit (256000)", l)
+	}
+	(*s) = nil
+	if l > 0 {
+		(*s) = make([]ScMapEntry, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = (*s)[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScMapEntry: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScMap) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScMap) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScMap)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScMap)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScMap) xdrType() {}
+
+var _ xdrType = (*ScMap)(nil)
+
+// ScBytes is an XDR Typedef defines as:
+//
+//	typedef opaque SCBytes<SCVAL_LIMIT>;
+type ScBytes []byte
+
+// XDRMaxSize implements the Sized interface for ScBytes
+func (e ScBytes) XDRMaxSize() int {
+	return 256000
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s ScBytes) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeOpaque(s[:]); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScBytes)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScBytes) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	(*s), nTmp, err = d.DecodeOpaque(256000)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScBytes: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScBytes) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScBytes) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScBytes)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScBytes)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScBytes) xdrType() {}
+
+var _ xdrType = (*ScBytes)(nil)
+
+// ScString is an XDR Typedef defines as:
+//
+//	typedef string SCString<SCVAL_LIMIT>;
+type ScString string
+
+// XDRMaxSize implements the Sized interface for ScString
+func (e ScString) XDRMaxSize() int {
+	return 256000
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s ScString) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s)); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScString)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScString) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var v string
+	v, nTmp, err = d.DecodeString(256000)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScString: %s", err)
+	}
+	*s = ScString(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScString) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScString) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScString)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScString)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScString) xdrType() {}
+
+var _ xdrType = (*ScString)(nil)
+
+// ScSymbol is an XDR Typedef defines as:
+//
+//	typedef string SCSymbol<SCSYMBOL_LIMIT>;
+type ScSymbol string
+
+// XDRMaxSize implements the Sized interface for ScSymbol
+func (e ScSymbol) XDRMaxSize() int {
+	return 32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s ScSymbol) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeString(string(s)); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScSymbol)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScSymbol) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var v string
+	v, nTmp, err = d.DecodeString(32)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScSymbol: %s", err)
+	}
+	*s = ScSymbol(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScSymbol) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScSymbol) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScSymbol)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScSymbol)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScSymbol) xdrType() {}
+
+var _ xdrType = (*ScSymbol)(nil)
+
+// ScNonceKey is an XDR Struct defines as:
+//
+//	struct SCNonceKey {
+//	     SCAddress nonce_address;
 //	 };
-type ScObject struct {
-	Type         ScObjectType
-	Vec          *ScVec
-	Map          *ScMap
-	U64          *Uint64
-	I64          *Int64
-	U128         *Int128Parts
-	I128         *Int128Parts
-	Bin          *[]byte `xdrmaxsize:"256000"`
-	ContractCode *ScContractCode
-	Address      *ScAddress
-	NonceAddress *ScAddress
+type ScNonceKey struct {
+	NonceAddress ScAddress
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScNonceKey) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.NonceAddress.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScNonceKey)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScNonceKey) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.NonceAddress.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScAddress: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScNonceKey) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScNonceKey) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScNonceKey)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScNonceKey)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScNonceKey) xdrType() {}
+
+var _ xdrType = (*ScNonceKey)(nil)
+
+// ScVal is an XDR Union defines as:
+//
+//	union SCVal switch (SCValType type)
+//	 {
+//
+//	 case SCV_BOOL:
+//	     bool b;
+//	 case SCV_VOID:
+//	     void;
+//	 case SCV_STATUS:
+//	     SCStatus error;
+//
+//	 case SCV_U32:
+//	     uint32 u32;
+//	 case SCV_I32:
+//	     int32 i32;
+//
+//	 case SCV_U64:
+//	     uint64 u64;
+//	 case SCV_I64:
+//	     int64 i64;
+//	 case SCV_TIMEPOINT:
+//	     TimePoint timepoint;
+//	 case SCV_DURATION:
+//	     Duration duration;
+//
+//	 case SCV_U128:
+//	     Int128Parts u128;
+//	 case SCV_I128:
+//	     Int128Parts i128;
+//
+//	 case SCV_U256:
+//	     uint256 u256;
+//	 case SCV_I256:
+//	     uint256 i256;
+//
+//	 case SCV_BYTES:
+//	     SCBytes bytes;
+//	 case SCV_STRING:
+//	     SCString str;
+//	 case SCV_SYMBOL:
+//	     SCSymbol sym;
+//
+//	 // Vec and Map are recursive so need to live
+//	 // behind an option, due to xdrpp limitations.
+//	 case SCV_VEC:
+//	     SCVec *vec;
+//	 case SCV_MAP:
+//	     SCMap *map;
+//
+//	 case SCV_CONTRACT_EXECUTABLE:
+//	     SCContractExecutable exec;
+//	 case SCV_ADDRESS:
+//	     SCAddress address;
+//
+//	 // Special SCVals reserved for system-constructed contract-data
+//	 // ledger keys, not generally usable elsewhere.
+//	 case SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+//	     void;
+//	 case SCV_LEDGER_KEY_NONCE:
+//	     SCNonceKey nonce_key;
+//	 };
+type ScVal struct {
+	Type      ScValType
+	B         *bool
+	Error     *ScStatus
+	U32       *Uint32
+	I32       *Int32
+	U64       *Uint64
+	I64       *Int64
+	Timepoint *TimePoint
+	Duration  *Duration
+	U128      *Int128Parts
+	I128      *Int128Parts
+	U256      *Uint256
+	I256      *Uint256
+	Bytes     *ScBytes
+	Str       *ScString
+	Sym       *ScSymbol
+	Vec       **ScVec
+	Map       **ScMap
+	Exec      *ScContractExecutable
+	Address   *ScAddress
+	NonceKey  *ScNonceKey
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u ScObject) SwitchFieldName() string {
+func (u ScVal) SwitchFieldName() string {
 	return "Type"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScObject
-func (u ScObject) ArmForSwitch(sw int32) (string, bool) {
-	switch ScObjectType(sw) {
-	case ScObjectTypeScoVec:
-		return "Vec", true
-	case ScObjectTypeScoMap:
-		return "Map", true
-	case ScObjectTypeScoU64:
+// the value for an instance of ScVal
+func (u ScVal) ArmForSwitch(sw int32) (string, bool) {
+	switch ScValType(sw) {
+	case ScValTypeScvBool:
+		return "B", true
+	case ScValTypeScvVoid:
+		return "", true
+	case ScValTypeScvStatus:
+		return "Error", true
+	case ScValTypeScvU32:
+		return "U32", true
+	case ScValTypeScvI32:
+		return "I32", true
+	case ScValTypeScvU64:
 		return "U64", true
-	case ScObjectTypeScoI64:
+	case ScValTypeScvI64:
 		return "I64", true
-	case ScObjectTypeScoU128:
+	case ScValTypeScvTimepoint:
+		return "Timepoint", true
+	case ScValTypeScvDuration:
+		return "Duration", true
+	case ScValTypeScvU128:
 		return "U128", true
-	case ScObjectTypeScoI128:
+	case ScValTypeScvI128:
 		return "I128", true
-	case ScObjectTypeScoBytes:
-		return "Bin", true
-	case ScObjectTypeScoContractCode:
-		return "ContractCode", true
-	case ScObjectTypeScoAddress:
+	case ScValTypeScvU256:
+		return "U256", true
+	case ScValTypeScvI256:
+		return "I256", true
+	case ScValTypeScvBytes:
+		return "Bytes", true
+	case ScValTypeScvString:
+		return "Str", true
+	case ScValTypeScvSymbol:
+		return "Sym", true
+	case ScValTypeScvVec:
+		return "Vec", true
+	case ScValTypeScvMap:
+		return "Map", true
+	case ScValTypeScvContractExecutable:
+		return "Exec", true
+	case ScValTypeScvAddress:
 		return "Address", true
-	case ScObjectTypeScoNonceKey:
-		return "NonceAddress", true
+	case ScValTypeScvLedgerKeyContractExecutable:
+		return "", true
+	case ScValTypeScvLedgerKeyNonce:
+		return "NonceKey", true
 	}
 	return "-", false
 }
 
-// NewScObject creates a new  ScObject.
-func NewScObject(aType ScObjectType, value interface{}) (result ScObject, err error) {
+// NewScVal creates a new  ScVal.
+func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 	result.Type = aType
-	switch ScObjectType(aType) {
-	case ScObjectTypeScoVec:
-		tv, ok := value.(ScVec)
+	switch ScValType(aType) {
+	case ScValTypeScvBool:
+		tv, ok := value.(bool)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ScVec")
+			err = fmt.Errorf("invalid value, must be bool")
 			return
 		}
-		result.Vec = &tv
-	case ScObjectTypeScoMap:
-		tv, ok := value.(ScMap)
+		result.B = &tv
+	case ScValTypeScvVoid:
+		// void
+	case ScValTypeScvStatus:
+		tv, ok := value.(ScStatus)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ScMap")
+			err = fmt.Errorf("invalid value, must be ScStatus")
 			return
 		}
-		result.Map = &tv
-	case ScObjectTypeScoU64:
+		result.Error = &tv
+	case ScValTypeScvU32:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.U32 = &tv
+	case ScValTypeScvI32:
+		tv, ok := value.(Int32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Int32")
+			return
+		}
+		result.I32 = &tv
+	case ScValTypeScvU64:
 		tv, ok := value.(Uint64)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be Uint64")
 			return
 		}
 		result.U64 = &tv
-	case ScObjectTypeScoI64:
+	case ScValTypeScvI64:
 		tv, ok := value.(Int64)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be Int64")
 			return
 		}
 		result.I64 = &tv
-	case ScObjectTypeScoU128:
+	case ScValTypeScvTimepoint:
+		tv, ok := value.(TimePoint)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TimePoint")
+			return
+		}
+		result.Timepoint = &tv
+	case ScValTypeScvDuration:
+		tv, ok := value.(Duration)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Duration")
+			return
+		}
+		result.Duration = &tv
+	case ScValTypeScvU128:
 		tv, ok := value.(Int128Parts)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be Int128Parts")
 			return
 		}
 		result.U128 = &tv
-	case ScObjectTypeScoI128:
+	case ScValTypeScvI128:
 		tv, ok := value.(Int128Parts)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be Int128Parts")
 			return
 		}
 		result.I128 = &tv
-	case ScObjectTypeScoBytes:
-		tv, ok := value.([]byte)
+	case ScValTypeScvU256:
+		tv, ok := value.(Uint256)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be []byte")
+			err = fmt.Errorf("invalid value, must be Uint256")
 			return
 		}
-		result.Bin = &tv
-	case ScObjectTypeScoContractCode:
-		tv, ok := value.(ScContractCode)
+		result.U256 = &tv
+	case ScValTypeScvI256:
+		tv, ok := value.(Uint256)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ScContractCode")
+			err = fmt.Errorf("invalid value, must be Uint256")
 			return
 		}
-		result.ContractCode = &tv
-	case ScObjectTypeScoAddress:
+		result.I256 = &tv
+	case ScValTypeScvBytes:
+		tv, ok := value.(ScBytes)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScBytes")
+			return
+		}
+		result.Bytes = &tv
+	case ScValTypeScvString:
+		tv, ok := value.(ScString)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScString")
+			return
+		}
+		result.Str = &tv
+	case ScValTypeScvSymbol:
+		tv, ok := value.(ScSymbol)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScSymbol")
+			return
+		}
+		result.Sym = &tv
+	case ScValTypeScvVec:
+		tv, ok := value.(*ScVec)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be *ScVec")
+			return
+		}
+		result.Vec = &tv
+	case ScValTypeScvMap:
+		tv, ok := value.(*ScMap)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be *ScMap")
+			return
+		}
+		result.Map = &tv
+	case ScValTypeScvContractExecutable:
+		tv, ok := value.(ScContractExecutable)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScContractExecutable")
+			return
+		}
+		result.Exec = &tv
+	case ScValTypeScvAddress:
 		tv, ok := value.(ScAddress)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be ScAddress")
 			return
 		}
 		result.Address = &tv
-	case ScObjectTypeScoNonceKey:
-		tv, ok := value.(ScAddress)
+	case ScValTypeScvLedgerKeyContractExecutable:
+		// void
+	case ScValTypeScvLedgerKeyNonce:
+		tv, ok := value.(ScNonceKey)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ScAddress")
+			err = fmt.Errorf("invalid value, must be ScNonceKey")
 			return
 		}
-		result.NonceAddress = &tv
+		result.NonceKey = &tv
 	}
 	return
 }
 
-// MustVec retrieves the Vec value from the union,
+// MustB retrieves the B value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustVec() ScVec {
-	val, ok := u.GetVec()
+func (u ScVal) MustB() bool {
+	val, ok := u.GetB()
 
 	if !ok {
-		panic("arm Vec is not set")
+		panic("arm B is not set")
 	}
 
 	return val
 }
 
-// GetVec retrieves the Vec value from the union,
+// GetB retrieves the B value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetVec() (result ScVec, ok bool) {
+func (u ScVal) GetB() (result bool, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "Vec" {
-		result = *u.Vec
+	if armName == "B" {
+		result = *u.B
 		ok = true
 	}
 
 	return
 }
 
-// MustMap retrieves the Map value from the union,
+// MustError retrieves the Error value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustMap() ScMap {
-	val, ok := u.GetMap()
+func (u ScVal) MustError() ScStatus {
+	val, ok := u.GetError()
 
 	if !ok {
-		panic("arm Map is not set")
+		panic("arm Error is not set")
 	}
 
 	return val
 }
 
-// GetMap retrieves the Map value from the union,
+// GetError retrieves the Error value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetMap() (result ScMap, ok bool) {
+func (u ScVal) GetError() (result ScStatus, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "Map" {
-		result = *u.Map
+	if armName == "Error" {
+		result = *u.Error
+		ok = true
+	}
+
+	return
+}
+
+// MustU32 retrieves the U32 value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustU32() Uint32 {
+	val, ok := u.GetU32()
+
+	if !ok {
+		panic("arm U32 is not set")
+	}
+
+	return val
+}
+
+// GetU32 retrieves the U32 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetU32() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "U32" {
+		result = *u.U32
+		ok = true
+	}
+
+	return
+}
+
+// MustI32 retrieves the I32 value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustI32() Int32 {
+	val, ok := u.GetI32()
+
+	if !ok {
+		panic("arm I32 is not set")
+	}
+
+	return val
+}
+
+// GetI32 retrieves the I32 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetI32() (result Int32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "I32" {
+		result = *u.I32
 		ok = true
 	}
 
@@ -50578,7 +50507,7 @@ func (u ScObject) GetMap() (result ScMap, ok bool) {
 
 // MustU64 retrieves the U64 value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustU64() Uint64 {
+func (u ScVal) MustU64() Uint64 {
 	val, ok := u.GetU64()
 
 	if !ok {
@@ -50590,7 +50519,7 @@ func (u ScObject) MustU64() Uint64 {
 
 // GetU64 retrieves the U64 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetU64() (result Uint64, ok bool) {
+func (u ScVal) GetU64() (result Uint64, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "U64" {
@@ -50603,7 +50532,7 @@ func (u ScObject) GetU64() (result Uint64, ok bool) {
 
 // MustI64 retrieves the I64 value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustI64() Int64 {
+func (u ScVal) MustI64() Int64 {
 	val, ok := u.GetI64()
 
 	if !ok {
@@ -50615,7 +50544,7 @@ func (u ScObject) MustI64() Int64 {
 
 // GetI64 retrieves the I64 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetI64() (result Int64, ok bool) {
+func (u ScVal) GetI64() (result Int64, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "I64" {
@@ -50626,9 +50555,59 @@ func (u ScObject) GetI64() (result Int64, ok bool) {
 	return
 }
 
+// MustTimepoint retrieves the Timepoint value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustTimepoint() TimePoint {
+	val, ok := u.GetTimepoint()
+
+	if !ok {
+		panic("arm Timepoint is not set")
+	}
+
+	return val
+}
+
+// GetTimepoint retrieves the Timepoint value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetTimepoint() (result TimePoint, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Timepoint" {
+		result = *u.Timepoint
+		ok = true
+	}
+
+	return
+}
+
+// MustDuration retrieves the Duration value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustDuration() Duration {
+	val, ok := u.GetDuration()
+
+	if !ok {
+		panic("arm Duration is not set")
+	}
+
+	return val
+}
+
+// GetDuration retrieves the Duration value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetDuration() (result Duration, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Duration" {
+		result = *u.Duration
+		ok = true
+	}
+
+	return
+}
+
 // MustU128 retrieves the U128 value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustU128() Int128Parts {
+func (u ScVal) MustU128() Int128Parts {
 	val, ok := u.GetU128()
 
 	if !ok {
@@ -50640,7 +50619,7 @@ func (u ScObject) MustU128() Int128Parts {
 
 // GetU128 retrieves the U128 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetU128() (result Int128Parts, ok bool) {
+func (u ScVal) GetU128() (result Int128Parts, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "U128" {
@@ -50653,7 +50632,7 @@ func (u ScObject) GetU128() (result Int128Parts, ok bool) {
 
 // MustI128 retrieves the I128 value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustI128() Int128Parts {
+func (u ScVal) MustI128() Int128Parts {
 	val, ok := u.GetI128()
 
 	if !ok {
@@ -50665,7 +50644,7 @@ func (u ScObject) MustI128() Int128Parts {
 
 // GetI128 retrieves the I128 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetI128() (result Int128Parts, ok bool) {
+func (u ScVal) GetI128() (result Int128Parts, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "I128" {
@@ -50676,50 +50655,200 @@ func (u ScObject) GetI128() (result Int128Parts, ok bool) {
 	return
 }
 
-// MustBin retrieves the Bin value from the union,
+// MustU256 retrieves the U256 value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustBin() []byte {
-	val, ok := u.GetBin()
+func (u ScVal) MustU256() Uint256 {
+	val, ok := u.GetU256()
 
 	if !ok {
-		panic("arm Bin is not set")
+		panic("arm U256 is not set")
 	}
 
 	return val
 }
 
-// GetBin retrieves the Bin value from the union,
+// GetU256 retrieves the U256 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetBin() (result []byte, ok bool) {
+func (u ScVal) GetU256() (result Uint256, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "Bin" {
-		result = *u.Bin
+	if armName == "U256" {
+		result = *u.U256
 		ok = true
 	}
 
 	return
 }
 
-// MustContractCode retrieves the ContractCode value from the union,
+// MustI256 retrieves the I256 value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustContractCode() ScContractCode {
-	val, ok := u.GetContractCode()
+func (u ScVal) MustI256() Uint256 {
+	val, ok := u.GetI256()
 
 	if !ok {
-		panic("arm ContractCode is not set")
+		panic("arm I256 is not set")
 	}
 
 	return val
 }
 
-// GetContractCode retrieves the ContractCode value from the union,
+// GetI256 retrieves the I256 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetContractCode() (result ScContractCode, ok bool) {
+func (u ScVal) GetI256() (result Uint256, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "ContractCode" {
-		result = *u.ContractCode
+	if armName == "I256" {
+		result = *u.I256
+		ok = true
+	}
+
+	return
+}
+
+// MustBytes retrieves the Bytes value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustBytes() ScBytes {
+	val, ok := u.GetBytes()
+
+	if !ok {
+		panic("arm Bytes is not set")
+	}
+
+	return val
+}
+
+// GetBytes retrieves the Bytes value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetBytes() (result ScBytes, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Bytes" {
+		result = *u.Bytes
+		ok = true
+	}
+
+	return
+}
+
+// MustStr retrieves the Str value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustStr() ScString {
+	val, ok := u.GetStr()
+
+	if !ok {
+		panic("arm Str is not set")
+	}
+
+	return val
+}
+
+// GetStr retrieves the Str value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetStr() (result ScString, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Str" {
+		result = *u.Str
+		ok = true
+	}
+
+	return
+}
+
+// MustSym retrieves the Sym value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustSym() ScSymbol {
+	val, ok := u.GetSym()
+
+	if !ok {
+		panic("arm Sym is not set")
+	}
+
+	return val
+}
+
+// GetSym retrieves the Sym value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetSym() (result ScSymbol, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Sym" {
+		result = *u.Sym
+		ok = true
+	}
+
+	return
+}
+
+// MustVec retrieves the Vec value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustVec() *ScVec {
+	val, ok := u.GetVec()
+
+	if !ok {
+		panic("arm Vec is not set")
+	}
+
+	return val
+}
+
+// GetVec retrieves the Vec value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetVec() (result *ScVec, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Vec" {
+		result = *u.Vec
+		ok = true
+	}
+
+	return
+}
+
+// MustMap retrieves the Map value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustMap() *ScMap {
+	val, ok := u.GetMap()
+
+	if !ok {
+		panic("arm Map is not set")
+	}
+
+	return val
+}
+
+// GetMap retrieves the Map value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetMap() (result *ScMap, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Map" {
+		result = *u.Map
+		ok = true
+	}
+
+	return
+}
+
+// MustExec retrieves the Exec value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustExec() ScContractExecutable {
+	val, ok := u.GetExec()
+
+	if !ok {
+		panic("arm Exec is not set")
+	}
+
+	return val
+}
+
+// GetExec retrieves the Exec value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetExec() (result ScContractExecutable, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Exec" {
+		result = *u.Exec
 		ok = true
 	}
 
@@ -50728,7 +50857,7 @@ func (u ScObject) GetContractCode() (result ScContractCode, ok bool) {
 
 // MustAddress retrieves the Address value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustAddress() ScAddress {
+func (u ScVal) MustAddress() ScAddress {
 	val, ok := u.GetAddress()
 
 	if !ok {
@@ -50740,7 +50869,7 @@ func (u ScObject) MustAddress() ScAddress {
 
 // GetAddress retrieves the Address value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetAddress() (result ScAddress, ok bool) {
+func (u ScVal) GetAddress() (result ScAddress, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "Address" {
@@ -50751,25 +50880,25 @@ func (u ScObject) GetAddress() (result ScAddress, ok bool) {
 	return
 }
 
-// MustNonceAddress retrieves the NonceAddress value from the union,
+// MustNonceKey retrieves the NonceKey value from the union,
 // panicing if the value is not set.
-func (u ScObject) MustNonceAddress() ScAddress {
-	val, ok := u.GetNonceAddress()
+func (u ScVal) MustNonceKey() ScNonceKey {
+	val, ok := u.GetNonceKey()
 
 	if !ok {
-		panic("arm NonceAddress is not set")
+		panic("arm NonceKey is not set")
 	}
 
 	return val
 }
 
-// GetNonceAddress retrieves the NonceAddress value from the union,
+// GetNonceKey retrieves the NonceKey value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScObject) GetNonceAddress() (result ScAddress, ok bool) {
+func (u ScVal) GetNonceKey() (result ScNonceKey, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "NonceAddress" {
-		result = *u.NonceAddress
+	if armName == "NonceKey" {
+		result = *u.NonceKey
 		ok = true
 	}
 
@@ -50777,95 +50906,180 @@ func (u ScObject) GetNonceAddress() (result ScAddress, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (u ScObject) EncodeTo(e *xdr.Encoder) error {
+func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ScObjectType(u.Type) {
-	case ScObjectTypeScoVec:
-		if err = (*u.Vec).EncodeTo(e); err != nil {
+	switch ScValType(u.Type) {
+	case ScValTypeScvBool:
+		if _, err = e.EncodeBool(bool((*u.B))); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoMap:
-		if err = (*u.Map).EncodeTo(e); err != nil {
+	case ScValTypeScvVoid:
+		// Void
+		return nil
+	case ScValTypeScvStatus:
+		if err = (*u.Error).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoU64:
+	case ScValTypeScvU32:
+		if err = (*u.U32).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvI32:
+		if err = (*u.I32).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvU64:
 		if err = (*u.U64).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoI64:
+	case ScValTypeScvI64:
 		if err = (*u.I64).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoU128:
+	case ScValTypeScvTimepoint:
+		if err = (*u.Timepoint).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvDuration:
+		if err = (*u.Duration).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvU128:
 		if err = (*u.U128).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoI128:
+	case ScValTypeScvI128:
 		if err = (*u.I128).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoBytes:
-		if _, err = e.EncodeOpaque((*u.Bin)[:]); err != nil {
+	case ScValTypeScvU256:
+		if err = (*u.U256).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoContractCode:
-		if err = (*u.ContractCode).EncodeTo(e); err != nil {
+	case ScValTypeScvI256:
+		if err = (*u.I256).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoAddress:
+	case ScValTypeScvBytes:
+		if err = (*u.Bytes).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvString:
+		if err = (*u.Str).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvSymbol:
+		if err = (*u.Sym).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvVec:
+		if _, err = e.EncodeBool((*u.Vec) != nil); err != nil {
+			return err
+		}
+		if (*u.Vec) != nil {
+			if err = (*(*u.Vec)).EncodeTo(e); err != nil {
+				return err
+			}
+		}
+		return nil
+	case ScValTypeScvMap:
+		if _, err = e.EncodeBool((*u.Map) != nil); err != nil {
+			return err
+		}
+		if (*u.Map) != nil {
+			if err = (*(*u.Map)).EncodeTo(e); err != nil {
+				return err
+			}
+		}
+		return nil
+	case ScValTypeScvContractExecutable:
+		if err = (*u.Exec).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvAddress:
 		if err = (*u.Address).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScObjectTypeScoNonceKey:
-		if err = (*u.NonceAddress).EncodeTo(e); err != nil {
+	case ScValTypeScvLedgerKeyContractExecutable:
+		// Void
+		return nil
+	case ScValTypeScvLedgerKeyNonce:
+		if err = (*u.NonceKey).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
 	}
-	return fmt.Errorf("Type (ScObjectType) switch value '%d' is not valid for union ScObject", u.Type)
+	return fmt.Errorf("Type (ScValType) switch value '%d' is not valid for union ScVal", u.Type)
 }
 
-var _ decoderFrom = (*ScObject)(nil)
+var _ decoderFrom = (*ScVal)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
 	nTmp, err = u.Type.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScObjectType: %s", err)
+		return n, fmt.Errorf("decoding ScValType: %s", err)
 	}
-	switch ScObjectType(u.Type) {
-	case ScObjectTypeScoVec:
-		u.Vec = new(ScVec)
-		nTmp, err = (*u.Vec).DecodeFrom(d)
+	switch ScValType(u.Type) {
+	case ScValTypeScvBool:
+		u.B = new(bool)
+		(*u.B), nTmp, err = d.DecodeBool()
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding ScVec: %s", err)
+			return n, fmt.Errorf("decoding Bool: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoMap:
-		u.Map = new(ScMap)
-		nTmp, err = (*u.Map).DecodeFrom(d)
+	case ScValTypeScvVoid:
+		// Void
+		return n, nil
+	case ScValTypeScvStatus:
+		u.Error = new(ScStatus)
+		nTmp, err = (*u.Error).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding ScMap: %s", err)
+			return n, fmt.Errorf("decoding ScStatus: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoU64:
+	case ScValTypeScvU32:
+		u.U32 = new(Uint32)
+		nTmp, err = (*u.U32).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint32: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvI32:
+		u.I32 = new(Int32)
+		nTmp, err = (*u.I32).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Int32: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvU64:
 		u.U64 = new(Uint64)
 		nTmp, err = (*u.U64).DecodeFrom(d)
 		n += nTmp
@@ -50873,7 +51087,7 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Uint64: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoI64:
+	case ScValTypeScvI64:
 		u.I64 = new(Int64)
 		nTmp, err = (*u.I64).DecodeFrom(d)
 		n += nTmp
@@ -50881,7 +51095,23 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Int64: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoU128:
+	case ScValTypeScvTimepoint:
+		u.Timepoint = new(TimePoint)
+		nTmp, err = (*u.Timepoint).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding TimePoint: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvDuration:
+		u.Duration = new(Duration)
+		nTmp, err = (*u.Duration).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Duration: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvU128:
 		u.U128 = new(Int128Parts)
 		nTmp, err = (*u.U128).DecodeFrom(d)
 		n += nTmp
@@ -50889,7 +51119,7 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Int128Parts: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoI128:
+	case ScValTypeScvI128:
 		u.I128 = new(Int128Parts)
 		nTmp, err = (*u.I128).DecodeFrom(d)
 		n += nTmp
@@ -50897,23 +51127,91 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Int128Parts: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoBytes:
-		u.Bin = new([]byte)
-		(*u.Bin), nTmp, err = d.DecodeOpaque(256000)
+	case ScValTypeScvU256:
+		u.U256 = new(Uint256)
+		nTmp, err = (*u.U256).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding Bin: %s", err)
+			return n, fmt.Errorf("decoding Uint256: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoContractCode:
-		u.ContractCode = new(ScContractCode)
-		nTmp, err = (*u.ContractCode).DecodeFrom(d)
+	case ScValTypeScvI256:
+		u.I256 = new(Uint256)
+		nTmp, err = (*u.I256).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding ScContractCode: %s", err)
+			return n, fmt.Errorf("decoding Uint256: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoAddress:
+	case ScValTypeScvBytes:
+		u.Bytes = new(ScBytes)
+		nTmp, err = (*u.Bytes).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScBytes: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvString:
+		u.Str = new(ScString)
+		nTmp, err = (*u.Str).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScString: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvSymbol:
+		u.Sym = new(ScSymbol)
+		nTmp, err = (*u.Sym).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScSymbol: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvVec:
+		u.Vec = new(*ScVec)
+		var b bool
+		b, nTmp, err = d.DecodeBool()
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScVec: %s", err)
+		}
+		(*u.Vec) = nil
+		if b {
+			(*u.Vec) = new(ScVec)
+			nTmp, err = (*u.Vec).DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScVec: %s", err)
+			}
+		}
+		return n, nil
+	case ScValTypeScvMap:
+		u.Map = new(*ScMap)
+		var b bool
+		b, nTmp, err = d.DecodeBool()
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScMap: %s", err)
+		}
+		(*u.Map) = nil
+		if b {
+			(*u.Map) = new(ScMap)
+			nTmp, err = (*u.Map).DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ScMap: %s", err)
+			}
+		}
+		return n, nil
+	case ScValTypeScvContractExecutable:
+		u.Exec = new(ScContractExecutable)
+		nTmp, err = (*u.Exec).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvAddress:
 		u.Address = new(ScAddress)
 		nTmp, err = (*u.Address).DecodeFrom(d)
 		n += nTmp
@@ -50921,20 +51219,23 @@ func (u *ScObject) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ScAddress: %s", err)
 		}
 		return n, nil
-	case ScObjectTypeScoNonceKey:
-		u.NonceAddress = new(ScAddress)
-		nTmp, err = (*u.NonceAddress).DecodeFrom(d)
+	case ScValTypeScvLedgerKeyContractExecutable:
+		// Void
+		return n, nil
+	case ScValTypeScvLedgerKeyNonce:
+		u.NonceKey = new(ScNonceKey)
+		nTmp, err = (*u.NonceKey).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding ScAddress: %s", err)
+			return n, fmt.Errorf("decoding ScNonceKey: %s", err)
 		}
 		return n, nil
 	}
-	return n, fmt.Errorf("union ScObject has invalid Type (ScObjectType) switch value '%d'", u.Type)
+	return n, fmt.Errorf("union ScVal has invalid Type (ScValType) switch value '%d'", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScObject) MarshalBinary() ([]byte, error) {
+func (s ScVal) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -50942,7 +51243,7 @@ func (s ScObject) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScObject) UnmarshalBinary(inp []byte) error {
+func (s *ScVal) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -50950,15 +51251,85 @@ func (s *ScObject) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ScObject)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScObject)(nil)
+	_ encoding.BinaryMarshaler   = (*ScVal)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScVal)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ScObject) xdrType() {}
+func (s ScVal) xdrType() {}
 
-var _ xdrType = (*ScObject)(nil)
+var _ xdrType = (*ScVal)(nil)
+
+// ScMapEntry is an XDR Struct defines as:
+//
+//	struct SCMapEntry
+//	 {
+//	     SCVal key;
+//	     SCVal val;
+//	 };
+type ScMapEntry struct {
+	Key ScVal
+	Val ScVal
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScMapEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Key.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Val.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScMapEntry)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScMapEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Key.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScVal: %s", err)
+	}
+	nTmp, err = s.Val.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScVal: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScMapEntry) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScMapEntry) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScMapEntry)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScMapEntry)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScMapEntry) xdrType() {}
+
+var _ xdrType = (*ScMapEntry)(nil)
 
 // StoredTransactionSet is an XDR Union defines as:
 //

@@ -2,6 +2,7 @@ package contractevents
 
 import (
 	"crypto/rand"
+	_ "embed"
 	"encoding/base64"
 	"math"
 	"math/big"
@@ -27,6 +28,9 @@ var (
 	zeroContract     = strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 )
 
+//go:embed fixtures/transfer_event_xdr.bin
+var xferEventXdr []byte
+
 func TestScValCreators(t *testing.T) {
 	val := makeSymbol("hello")
 	assert.Equal(t, val.Type, xdr.ScValTypeScvSymbol)
@@ -34,11 +38,7 @@ func TestScValCreators(t *testing.T) {
 	assert.EqualValues(t, *val.Sym, "hello")
 
 	val = makeAmount(1234)
-	obj, ok := val.GetObj()
-	assert.True(t, ok)
-	assert.NotNil(t, obj)
-
-	amt, ok := obj.GetI128()
+	amt, ok := val.GetI128()
 	assert.True(t, ok)
 	assert.EqualValues(t, 0, amt.Hi)
 	assert.EqualValues(t, 1234, amt.Lo)
@@ -52,11 +52,7 @@ func TestScValCreators(t *testing.T) {
 		Add(amount, big.NewInt(1234+4))        // now it's 2^66 + 1234
 
 	val = makeBigAmount(amount)
-	obj, ok = val.GetObj()
-	assert.True(t, ok)
-	assert.NotNil(t, obj)
-
-	amt, ok = obj.GetI128()
+	amt, ok = val.GetI128()
 	assert.True(t, ok)
 	assert.EqualValues(t, 4, amt.Hi)
 	assert.EqualValues(t, 1234, amt.Lo)
@@ -129,9 +125,9 @@ func TestSACEventCreation(t *testing.T) {
 	// Ensure that invalid asset binaries are rejected
 	t.Run("bad asset binary", func(t *testing.T) {
 		resetEvent(randomAccount, zeroContract, randomAsset)
-		bsAsset := make([]byte, 42)
-		rand.Read(bsAsset)
-		(*xdrEvent.Body.V0.Topics[3].Obj).Bin = &bsAsset
+		rawBsAsset := make([]byte, 42)
+		rand.Read(rawBsAsset)
+		xdrEvent.Body.V0.Topics[3].Bytes = (*xdr.ScBytes)(&rawBsAsset)
 		_, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
 	})
@@ -227,18 +223,16 @@ func TestFuzzingSACEventParser(t *testing.T) {
 	}
 }
 
-func TestRealXdr(t *testing.T) {
-	base64xdr := "AAAAAAAAAAGP097PJPXCcbtgOhu8wDc/ELPABxTdosN//YtrzxEJyAAAAAEAAAAAAAAABAAAAAUAAAAIdHJhbnNmZXIAAAAEAAAAAQAAAAgAAAAAAAAAAHN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAABAAAAAEAAAAIAAAAAAAAAAB4Ijl70f/hhiVmJftmpmXIoHZyUoyEiPSrpZAd5RfalwAAAAQAAAABAAAABgAAACVVU0QAOnN2/eiOTNYcwPspSheGs/HQYfXy8cpXRl+qkyIRuUbWAAAAAAAABAAAAAEAAAAFAAAAABHhowAAAAAAAAAAAA=="
-
-	rawXdr, err := base64.StdEncoding.DecodeString(base64xdr)
-	require.NoError(t, err)
+func TestRealTransferEvent(t *testing.T) {
+	decoded := base64.StdEncoding.EncodeToString(xferEventXdr)
 
 	event := xdr.ContractEvent{}
-	require.NoError(t, event.UnmarshalBinary(rawXdr))
+	require.NoErrorf(t, event.UnmarshalBinary(xferEventXdr),
+		"couldn't unmarshal event: '%s'", decoded)
 
 	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
-	assert.NoError(t, err)
-	assert.Equal(t, EventTypeTransfer, parsed.GetType())
+	assert.NoErrorf(t, err, "couldn't parse event: '%s'", decoded)
+	assert.Equalf(t, EventTypeTransfer, parsed.GetType(), "event: '%s'", decoded)
 }
 
 //
@@ -269,14 +263,10 @@ func makeTransferTopic(asset xdr.Asset) xdr.ScVec {
 	contractStr := strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 
 	return xdr.ScVec([]xdr.ScVal{
-		// event name
-		makeSymbol("transfer"),
-		// from
-		makeAddress(randomAccount),
-		// to
-		makeAddress(contractStr),
-		// asset details
-		makeAsset(asset),
+		makeSymbol("transfer"),     // event name
+		makeAddress(randomAccount), // from
+		makeAddress(contractStr),   // to
+		makeAsset(asset),           // asset details
 	})
 }
 

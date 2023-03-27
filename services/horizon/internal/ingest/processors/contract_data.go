@@ -8,34 +8,51 @@ import (
 )
 
 var (
+	nativeAssetSym     = xdr.ScSymbol("Native")
 	balanceMetadataSym = xdr.ScSymbol("Balance")
 	assetMetadataSym   = xdr.ScSymbol("Metadata")
-	assetMetadataObj   = &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoVec,
-		Vec: &xdr.ScVec{
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &assetMetadataSym,
-			},
+	assetMetadataVec   = &xdr.ScVec{
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &assetMetadataSym,
 		},
 	}
 	assetMetadataKey = xdr.ScVal{
-		Type: xdr.ScValTypeScvObject,
-		Obj:  &assetMetadataObj,
+		Type: xdr.ScValTypeScvVec,
+		Vec:  &assetMetadataVec,
 	}
 )
 
-// AssetFromContractData takes a ledger entry and verifies if the ledger entry corresponds
-// to the asset metadata written to contract storage by the Stellar Asset Contract upon
-// initialization. See:
-// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/public_types.rs#L21
-// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/metadata.rs#L8
-// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L108
-// Note that AssetFromContractData will ignore forged asset metadata entries by deriving
-// the Stellar Asset Contract id from the asset metadata and comparing it to the contract
-// id found in the ledger entry.
-// If the given ledger entry is a verified asset metadata entry AssetFromContractData will
-// return the corresponding Stellar asset. Otherwise, AssetFromContractData will return nil.
+// AssetFromContractData takes a ledger entry and verifies if the ledger entry
+// corresponds to the asset metadata written to contract storage by the Stellar
+// Asset Contract upon initialization.
+//
+// Note that AssetFromContractData will ignore forged asset metadata entries by
+// deriving the Stellar Asset Contract ID from the asset metadata and comparing
+// it to the contract ID found in the ledger entry.
+//
+// If the given ledger entry is a verified asset metadata entry,
+// AssetFromContractData will return the corresponding Stellar asset. Otherwise,
+// it returns nil.
+//
+// References:
+//
+//	https://github.com/stellar/rs-soroban-env/blob/da325551829d31dcbfa71427d51c18e71a121c5f/soroban-env-host/src/native_contract/token/public_types.rs#L21
+//	https://github.com/stellar/rs-soroban-env/blob/da325551829d31dcbfa71427d51c18e71a121c5f/soroban-env-host/src/native_contract/token/metadata.rs#L8
+//	https://github.com/stellar/rs-soroban-env/blob/da325551829d31dcbfa71427d51c18e71a121c5f/soroban-env-host/src/native_contract/token/contract.rs#L108
+//
+// The `ContractData` entry takes the following form:
+//
+//   - Key: a vector with one element, which is the symbol "Metadata"
+//
+//     ScVal{ Vec: ScVec({ ScVal{ Sym: ScSymbol("metadata") }})}
+//
+//   - Value: a map with two key-value pairs: code and issuer
+//
+//     ScVal{ Map: ScMap(
+//     { ScVal{ Sym: ScSymbol("asset_code") } -> ScVal{ Bytes: ScBytes(...) } },
+//     { ScVal{ Sym: ScSymbol("asset_code") } -> ScVal{ Bytes: ScBytes(...) } }
+//     )}
 func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.Asset {
 	contractData, ok := ledgerEntry.Data.GetContractData()
 	if !ok {
@@ -51,15 +68,12 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if !contractData.Key.Equals(assetMetadataKey) {
 		return nil
 	}
-	obj, ok := contractData.Val.GetObj()
-	if !ok || obj == nil {
-		return nil
-	}
 
-	vec, ok := obj.GetVec()
-	if !ok || len(vec) <= 0 {
+	vecPtr, ok := contractData.Val.GetVec()
+	if !ok || vecPtr == nil || len(*vecPtr) != 2 {
 		return nil
 	}
+	vec := *vecPtr
 
 	sym, ok := vec[0].GetSym()
 	if !ok {
@@ -71,28 +85,20 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	default:
 		return nil
 	}
-	if len(vec) != 2 {
-		return nil
-	}
 
 	var assetCode, assetIssuer string
-	obj, ok = vec[1].GetObj()
-	if !ok || obj == nil {
+	assetMapPtr, ok := vec[1].GetMap()
+	if !ok || assetMapPtr == nil || len(*assetMapPtr) != 2 {
 		return nil
 	}
-	assetMap, ok := obj.GetMap()
-	if !ok || len(assetMap) != 2 {
-		return nil
-	}
+	assetMap := *assetMapPtr
+
 	assetCodeEntry, assetIssuerEntry := assetMap[0], assetMap[1]
 	if sym, ok = assetCodeEntry.Key.GetSym(); !ok || sym != "asset_code" {
 		return nil
 	}
-	if obj, ok = assetCodeEntry.Val.GetObj(); !ok || obj == nil {
-		return nil
-	}
-	bin, ok := obj.GetBin()
-	if !ok {
+	bin, ok := assetCodeEntry.Val.GetBytes()
+	if !ok || bin == nil {
 		return nil
 	}
 	assetCode = string(bin)
@@ -100,11 +106,8 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if sym, ok = assetIssuerEntry.Key.GetSym(); !ok || sym != "issuer" {
 		return nil
 	}
-	if obj, ok = assetIssuerEntry.Val.GetObj(); !ok || obj == nil {
-		return nil
-	}
-	bin, ok = obj.GetBin()
-	if !ok {
+	bin, ok = assetIssuerEntry.Val.GetBytes()
+	if !ok || bin == nil {
 		return nil
 	}
 	assetIssuer, err = strkey.Encode(strkey.VersionByteAccountID, bin)
@@ -128,9 +131,13 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	return &asset
 }
 
-// ContractBalanceFromContractData takes a ledger entry and verifies if the ledger entry corresponds
-// to the balance entry written to contract storage by the Stellar Asset Contract. See:
-// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/storage_types.rs#L11-L24
+// ContractBalanceFromContractData takes a ledger entry and verifies that the
+// ledger entry corresponds to the balance entry written to contract storage by
+// the Stellar Asset Contract.
+//
+// Reference:
+//
+//	https://github.com/stellar/rs-soroban-env/blob/da325551829d31dcbfa71427d51c18e71a121c5f/soroban-env-host/src/native_contract/token/storage_types.rs#L11-L24
 func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) ([32]byte, *big.Int, bool) {
 	contractData, ok := ledgerEntry.Data.GetContractData()
 	if !ok {
@@ -143,34 +150,35 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 
-	keyObj, ok := contractData.Key.GetObj()
-	if !ok || keyObj == nil {
+	keyEnumVecPtr, ok := contractData.Key.GetVec()
+	if !ok || keyEnumVecPtr == nil {
 		return [32]byte{}, nil, false
 	}
-	keyEnumVec, ok := keyObj.GetVec()
-	if !ok || len(keyEnumVec) != 2 || !keyEnumVec[0].Equals(
-		xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym},
+	keyEnumVec := *keyEnumVecPtr
+	if len(keyEnumVec) != 2 || !keyEnumVec[0].Equals(
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &balanceMetadataSym,
+		},
 	) {
 		return [32]byte{}, nil, false
 	}
-	addressObj, ok := keyEnumVec[1].GetObj()
-	if !ok || addressObj == nil {
-		return [32]byte{}, nil, false
-	}
-	scAddress, ok := addressObj.GetAddress()
+
+	scAddress, ok := keyEnumVec[1].GetAddress()
 	if !ok {
 		return [32]byte{}, nil, false
 	}
+
 	holder, ok := scAddress.GetContractId()
 	if !ok {
 		return [32]byte{}, nil, false
 	}
 
-	obj, ok := contractData.Val.GetObj()
-	if !ok || obj == nil {
+	balanceMapPtr, ok := contractData.Val.GetMap()
+	if !ok || balanceMapPtr == nil {
 		return [32]byte{}, nil, false
 	}
-	balanceMap, ok := obj.GetMap()
+	balanceMap := *balanceMapPtr
 	if !ok || len(balanceMap) != 3 {
 		return [32]byte{}, nil, false
 	}
@@ -187,14 +195,11 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		!balanceMap[2].Val.IsBool() {
 		return [32]byte{}, nil, false
 	}
-	amountObj, ok := balanceMap[0].Val.GetObj()
-	if !ok || amountObj == nil {
-		return [32]byte{}, nil, false
-	}
-	amount, ok := amountObj.GetI128()
+	amount, ok := balanceMap[0].Val.GetI128()
 	if !ok {
 		return [32]byte{}, nil, false
 	}
+
 	// amount cannot be negative
 	// https://github.com/stellar/rs-soroban-env/blob/a66f0815ba06a2f5328ac420950690fd1642f887/soroban-env-host/src/native_contract/token/balance.rs#L92-L93
 	if int64(amount.Hi) < 0 {
@@ -205,19 +210,14 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 	return holder, amt, true
 }
 
-func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, error) {
+func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScVec, error) {
 	if isNative {
-		symbol := xdr.ScSymbol("Native")
-		metadataObj := &xdr.ScObject{
-			Type: xdr.ScObjectTypeScoVec,
-			Vec: &xdr.ScVec{
-				xdr.ScVal{
-					Type: xdr.ScValTypeScvSymbol,
-					Sym:  &symbol,
-				},
+		return &xdr.ScVec{
+			xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &nativeAssetSym,
 			},
-		}
-		return metadataObj, nil
+		}, nil
 	}
 
 	var assetCodeLength int
@@ -229,69 +229,57 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScObject, er
 		symbol = "AlphaNum12"
 		assetCodeLength = 12
 	}
+
+	assetCodeSymbol := xdr.ScSymbol("asset_code")
 	assetCodeBytes := make([]byte, assetCodeLength)
 	copy(assetCodeBytes, code)
-	assetCodeSymbol := xdr.ScSymbol("asset_code")
-	issuerSymbol := xdr.ScSymbol("issuer")
 
-	assetCodeObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &assetCodeBytes,
-	}
+	issuerSymbol := xdr.ScSymbol("issuer")
 	issuerBytes, err := strkey.Decode(strkey.VersionByteAccountID, issuer)
 	if err != nil {
 		return nil, err
 	}
-	issuerObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoBytes,
-		Bin:  &issuerBytes,
+
+	mapObj := &xdr.ScMap{
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &assetCodeSymbol,
+			},
+			Val: xdr.ScVal{
+				Type:  xdr.ScValTypeScvBytes,
+				Bytes: (*xdr.ScBytes)(&assetCodeBytes),
+			},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &issuerSymbol,
+			},
+			Val: xdr.ScVal{
+				Type:  xdr.ScValTypeScvBytes,
+				Bytes: (*xdr.ScBytes)(&issuerBytes),
+			},
+		},
 	}
 
-	mapObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoMap,
-		Map: &xdr.ScMap{
-			xdr.ScMapEntry{
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvSymbol,
-					Sym:  &assetCodeSymbol,
-				},
-				Val: xdr.ScVal{
-					Type: xdr.ScValTypeScvObject,
-					Obj:  &assetCodeObj,
-				},
-			},
-			xdr.ScMapEntry{
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvSymbol,
-					Sym:  &issuerSymbol,
-				},
-				Val: xdr.ScVal{
-					Type: xdr.ScValTypeScvObject,
-					Obj:  &issuerObj,
-				},
-			},
+	return &xdr.ScVec{
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &symbol,
 		},
-	}
-	metadataObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoVec,
-		Vec: &xdr.ScVec{
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &symbol,
-			},
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvObject,
-				Obj:  &mapObj,
-			},
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvMap,
+			Map:  &mapObj,
 		},
-	}
-	return metadataObj, nil
+	}, nil
 }
 
-// AssetToContractData is the inverse of AssetFromContractData. It creates a ledger entry
-// containing the asset metadata written to contract storage by the Stellar Asset Contract.
+// AssetToContractData is the inverse of AssetFromContractData. It creates a
+// ledger entry containing the asset metadata written to contract storage by the
+// Stellar Asset Contract.
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
-	obj, err := metadataObjFromAsset(isNative, code, issuer)
+	vec, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
@@ -301,15 +289,16 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 			ContractId: contractID,
 			Key:        assetMetadataKey,
 			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvObject,
-				Obj:  &obj,
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &vec,
 			},
 		},
 	}, nil
 }
 
-// BalanceToContractData is the inverse of ContractBalanceFromContractData. It creates a ledger entry
-// containing the asset balance of a contract holder written to contract storage by the Stellar Asset Contract.
+// BalanceToContractData is the inverse of ContractBalanceFromContractData. It
+// creates a ledger entry containing the asset balance of a contract holder
+// written to contract storage by the Stellar Asset Contract.
 func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
 	return balanceToContractData(assetContractId, holderID, xdr.Int128Parts{
 		Lo: xdr.Uint64(amt),
@@ -319,64 +308,48 @@ func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.L
 
 func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Parts) xdr.LedgerEntryData {
 	holder := xdr.Hash(holderID)
-	addressObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoAddress,
-		Address: &xdr.ScAddress{
-			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: &holder,
-		},
+	scAddress := &xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &holder,
 	}
-	keyObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoVec,
-		Vec: &xdr.ScVec{
-			xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym},
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvObject,
-				Obj:  &addressObj,
-			},
-		},
+	keyVec := &xdr.ScVec{
+		xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &balanceMetadataSym},
+		xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: scAddress},
 	}
 
-	amountObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoI128,
-		I128: &amt,
-	}
 	amountSym := xdr.ScSymbol("amount")
 	authorizedSym := xdr.ScSymbol("authorized")
 	clawbackSym := xdr.ScSymbol("clawback")
-	trueIc := xdr.ScStaticScsTrue
-	dataObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoMap,
-		Map: &xdr.ScMap{
-			xdr.ScMapEntry{
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvSymbol,
-					Sym:  &amountSym,
-				},
-				Val: xdr.ScVal{
-					Type: xdr.ScValTypeScvObject,
-					Obj:  &amountObj,
-				},
+	trueIc := true
+	dataMap := &xdr.ScMap{
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &amountSym,
 			},
-			xdr.ScMapEntry{
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvSymbol,
-					Sym:  &authorizedSym,
-				},
-				Val: xdr.ScVal{
-					Type: xdr.ScValTypeScvStatic,
-					Ic:   &trueIc,
-				},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvI128,
+				I128: &amt,
 			},
-			xdr.ScMapEntry{
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvSymbol,
-					Sym:  &clawbackSym,
-				},
-				Val: xdr.ScVal{
-					Type: xdr.ScValTypeScvStatic,
-					Ic:   &trueIc,
-				},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &authorizedSym,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvBool,
+				B:    &trueIc,
+			},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &clawbackSym,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvBool,
+				B:    &trueIc,
 			},
 		},
 	}
@@ -386,12 +359,12 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		ContractData: &xdr.ContractDataEntry{
 			ContractId: assetContractId,
 			Key: xdr.ScVal{
-				Type: xdr.ScValTypeScvObject,
-				Obj:  &keyObj,
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &keyVec,
 			},
 			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvObject,
-				Obj:  &dataObj,
+				Type: xdr.ScValTypeScvMap,
+				Map:  &dataMap,
 			},
 		},
 	}

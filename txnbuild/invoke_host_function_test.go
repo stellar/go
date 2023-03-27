@@ -40,18 +40,7 @@ func TestCreateInvokeHostFunctionInvalid(t *testing.T) {
 func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 	val := xdr.Int32(4)
 	wasmId := xdr.Hash{1, 2, 3, 4}
-	obj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoContractCode,
-		ContractCode: &xdr.ScContractCode{
-			Type:   xdr.ScContractCodeTypeSccontractCodeWasmRef,
-			WasmId: &wasmId,
-		},
-	}
 	i64 := xdr.Int64(45)
-	rwObj := &xdr.ScObject{
-		Type: xdr.ScObjectTypeScoI64,
-		I64:  &i64,
-	}
 	accountId := xdr.MustAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	invokeHostFunctionOp := &InvokeHostFunction{
 		Function: xdr.HostFunction{
@@ -88,8 +77,11 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 					ContractData: &xdr.LedgerKeyContractData{
 						ContractId: xdr.Hash{1, 2, 3},
 						Key: xdr.ScVal{
-							Type: xdr.ScValTypeScvObject,
-							Obj:  &obj,
+							Type: xdr.ScValTypeScvContractExecutable,
+							Exec: &xdr.ScContractExecutable{
+								Type:   xdr.ScContractExecutableTypeSccontractExecutableWasmRef,
+								WasmId: &wasmId,
+							},
 						},
 					},
 				},
@@ -100,8 +92,8 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 					ContractData: &xdr.LedgerKeyContractData{
 						ContractId: xdr.Hash{1, 2, 3},
 						Key: xdr.ScVal{
-							Type: xdr.ScValTypeScvObject,
-							Obj:  &rwObj,
+							Type: xdr.ScValTypeScvI64,
+							I64:  &i64,
 						},
 					},
 				},

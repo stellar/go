@@ -70,7 +70,8 @@ func TestGetOperationEvents(t *testing.T) {
 	events, err := tx.GetOperationEvents(0)
 	assert.NoError(t, err)
 	assert.Len(t, events, 1)
-	assert.Equal(t, *events[0].Body.V0.Data.U32, values[0])
+	assert.True(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[0])
 
 	events, err = tx.GetOperationEvents(1)
 	assert.NoError(t, err)
@@ -79,8 +80,105 @@ func TestGetOperationEvents(t *testing.T) {
 	events, err = tx.GetOperationEvents(2)
 	assert.NoError(t, err)
 	assert.Len(t, events, 2)
-	assert.Equal(t, *events[0].Body.V0.Data.U32, values[1])
-	assert.Equal(t, *events[1].Body.V0.Data.U32, values[2])
+	assert.True(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[1])
+	assert.True(t, events[1].InSuccessfulContractCall)
+	assert.Equal(t, *events[1].Event.Body.V0.Data.U32, values[2])
+
+	events, err = tx.GetOperationEvents(3)
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+
+	tx.UnsafeMeta.V = 0
+	_, err = tx.GetOperationEvents(0)
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 0")
+
+	tx.UnsafeMeta.V = 4
+	_, err = tx.GetOperationEvents(0)
+	assert.EqualError(t, err, "unsupported TransactionMeta version: 4")
+
+	tx.UnsafeMeta.V = 1
+	events, err = tx.GetOperationEvents(0)
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+
+	tx.UnsafeMeta.V = 2
+	events, err = tx.GetOperationEvents(0)
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+}
+
+func TestGetDiagnosticEvents(t *testing.T) {
+	values := make([]xdr.Uint32, 3)
+	for i := range values {
+		values[i] = xdr.Uint32(i)
+	}
+	tx := LedgerTransaction{
+		FeeChanges: xdr.LedgerEntryChanges{},
+		UnsafeMeta: xdr.TransactionMeta{
+			V: 3,
+			V3: &xdr.TransactionMetaV3{
+				DiagnosticEvents: []xdr.OperationDiagnosticEvents{
+					{Events: []xdr.DiagnosticEvent{
+						{
+							InSuccessfulContractCall: false,
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+									},
+								},
+							},
+						},
+					}},
+					{Events: []xdr.DiagnosticEvent{}},
+					{Events: []xdr.DiagnosticEvent{
+						{
+							InSuccessfulContractCall: true,
+
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+									},
+								},
+							}},
+						{
+							InSuccessfulContractCall: true,
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[2]},
+									},
+								},
+							}},
+					}},
+				},
+			},
+		}}
+	events, err := tx.GetOperationEvents(0)
+	assert.NoError(t, err)
+	assert.Len(t, events, 1)
+	assert.False(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[0])
+
+	events, err = tx.GetOperationEvents(1)
+	assert.NoError(t, err)
+	assert.Empty(t, events)
+
+	events, err = tx.GetOperationEvents(2)
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
+	assert.True(t, events[0].InSuccessfulContractCall)
+	assert.Equal(t, *events[0].Event.Body.V0.Data.U32, values[1])
+	assert.True(t, events[1].InSuccessfulContractCall)
+	assert.Equal(t, *events[1].Event.Body.V0.Data.U32, values[2])
 
 	events, err = tx.GetOperationEvents(3)
 	assert.NoError(t, err)
