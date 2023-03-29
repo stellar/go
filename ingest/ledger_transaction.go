@@ -167,12 +167,18 @@ func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.Dia
 	case 3:
 		diagnosticEventsByOperation := t.UnsafeMeta.MustV3().DiagnosticEvents
 		if int(operationIndex) < len(diagnosticEventsByOperation) {
+			// all contract events and diag events for a single operation(by it's index in the tx) were available
+			// in tx meta's DiagnosticEvents, no need to look anywhere else for events
 			return diagnosticEventsByOperation[operationIndex].Events, nil
 		}
 		eventsByOperation := t.UnsafeMeta.MustV3().Events
 		if int(operationIndex) >= len(eventsByOperation) {
+			// no events were present in this tx meta
 			return nil, nil
 		}
+
+		// tx meta only provided contract events, no diagnostic events, we convert the contract
+		// event to a diagnostic event, to fit the response interface.
 		events := eventsByOperation[operationIndex].Events
 		diagnosticEvents := make([]xdr.DiagnosticEvent, len(events))
 		for i, event := range events {
