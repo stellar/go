@@ -102,6 +102,21 @@ type Config struct {
 	EnableIngestionFiltering bool
 }
 
+// LocalCaptiveCoreEnabled returns true if configured to run
+// a local captive core instance for ingestion.
+func (c Config) LocalCaptiveCoreEnabled() bool {
+	// c.EnableCaptiveCore is true for both local and remote captive core
+	// and c.RemoteCaptiveCoreURL is always empty when running
+	// local captive core.
+	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL == ""
+}
+
+// RemoteCaptiveCoreEnabled returns true if configured to run
+// a remote captive core instance for ingestion.
+func (c Config) RemoteCaptiveCoreEnabled() bool {
+	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL != ""
+}
+
 const (
 	getLastIngestedErrMsg        string = "Error getting last ingested ledger"
 	getIngestVersionErrMsg       string = "Error getting ingestion version"
@@ -231,34 +246,32 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	var ledgerBackend ledgerbackend.LedgerBackend
-	if config.EnableCaptiveCore {
-		if len(config.RemoteCaptiveCoreURL) > 0 {
-			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
-			if err != nil {
-				cancel()
-				return nil, errors.Wrap(err, "error creating captive core backend")
-			}
-		} else {
-			logger := log.WithField("subservice", "stellar-core")
-			ledgerBackend, err = ledgerbackend.NewCaptive(
-				ledgerbackend.CaptiveCoreConfig{
-					BinaryPath:          config.CaptiveCoreBinaryPath,
-					StoragePath:         config.CaptiveCoreStoragePath,
-					UseDB:               config.CaptiveCoreConfigUseDB,
-					Toml:                config.CaptiveCoreToml,
-					NetworkPassphrase:   config.NetworkPassphrase,
-					HistoryArchiveURLs:  config.HistoryArchiveURLs,
-					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-					Log:                 logger,
-					Context:             ctx,
-					UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-				},
-			)
-			if err != nil {
-				cancel()
-				return nil, errors.Wrap(err, "error creating captive core backend")
-			}
+	if config.RemoteCaptiveCoreEnabled() {
+		ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
+		}
+	} else if config.LocalCaptiveCoreEnabled() {
+		logger := log.WithField("subservice", "stellar-core")
+		ledgerBackend, err = ledgerbackend.NewCaptive(
+			ledgerbackend.CaptiveCoreConfig{
+				BinaryPath:          config.CaptiveCoreBinaryPath,
+				StoragePath:         config.CaptiveCoreStoragePath,
+				UseDB:               config.CaptiveCoreConfigUseDB,
+				Toml:                config.CaptiveCoreToml,
+				NetworkPassphrase:   config.NetworkPassphrase,
+				HistoryArchiveURLs:  config.HistoryArchiveURLs,
+				CheckpointFrequency: config.CheckpointFrequency,
+				LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+				Log:                 logger,
+				Context:             ctx,
+				UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			},
+		)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
@@ -397,7 +410,8 @@ func (s *system) initMetrics() {
 			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
 		},
 		func() float64 {
-			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
+			if !s.config.LocalCaptiveCoreEnabled() || // local captive core is disabled
+				(s.config.CaptiveCoreToml.HTTPPort == 0) { // captive core http port is disabled
 				return -1
 			}
 
@@ -428,7 +442,8 @@ func (s *system) initMetrics() {
 			Help: "determines the supported version of the protocol by Captive-Core",
 		},
 		func() float64 {
-			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
+			if !s.config.LocalCaptiveCoreEnabled() || // local captive core is disabled
+				(s.config.CaptiveCoreToml.HTTPPort == 0) { // captive core http port is disabled
 				return -1
 			}
 
