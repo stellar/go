@@ -271,7 +271,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 			}
 
 			if assetBalanceChanged["type"] == "mint" {
-				s.Assert().Equal(assetBalanceChanged["from"], randomAccount)
+				s.Assert().NotContains(assetBalanceChanged, "from")
 				s.Assert().Equal(assetBalanceChanged["to"], zeroContractStrKey)
 				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
 				found++
@@ -279,7 +279,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 
 			if assetBalanceChanged["type"] == "clawback" {
 				s.Assert().Equal(assetBalanceChanged["from"], zeroContractStrKey)
-				s.Assert().Equal(assetBalanceChanged["to"], randomAccount)
+				s.Assert().NotContains(assetBalanceChanged, "to")
 				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
 				found++
 			}

@@ -72,7 +72,7 @@ func TestContractMintToAccount(t *testing.T) {
 	assert.Equal(t, issuer, creditEffect.Asset.Issuer)
 	assert.Equal(t, code, creditEffect.Asset.Code)
 	assert.Equal(t, "20.0000000", creditEffect.Amount)
-	assertEventPayments(itest, mintTx, asset, issuer, recipient.GetAccountID(), "mint", "20.0000000")
+	assertEventPayments(itest, mintTx, asset, "", recipient.GetAccountID(), "mint", "20.0000000")
 
 	otherRecipientKp, otherRecipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(otherRecipientKp, otherRecipient, txnbuild.MustAssetFromXDR(asset))
@@ -143,7 +143,7 @@ func TestContractMintToContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.I128).Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.I128).Hi)
-	assertEventPayments(itest, mintTx, asset, issuer, strkeyRecipientContractID, "mint", amount.String128(mintAmount))
+	assertEventPayments(itest, mintTx, asset, "", strkeyRecipientContractID, "mint", amount.String128(mintAmount))
 
 	// calling xfer from the issuer account will also mint the asset
 	_, xferTx := assertInvokeHostFnSucceeds(
@@ -656,7 +656,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 		balanceContracts: big.NewInt(0),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
-	assertEventPayments(itest, clawTx, asset, recipientKp.Address(), issuer, "clawback", "1000.0000000")
+	assertEventPayments(itest, clawTx, asset, recipientKp.Address(), "", "clawback", "1000.0000000")
 }
 
 func TestContractClawbackFromContract(t *testing.T) {
@@ -725,7 +725,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 		balanceContracts: big.NewInt(int64(amount.MustParse("990"))),
 		contractID:       stellarAssetContractID(itest, asset),
 	})
-	assertEventPayments(itest, clawTx, asset, strkeyRecipientContractID, issuer, "clawback", "10.0000000")
+	assertEventPayments(itest, clawTx, asset, strkeyRecipientContractID, "", "clawback", "10.0000000")
 }
 
 func assertContainsBalance(itest *integration.Test, acct *keypair.Full, issuer, code string, amt xdr.Int64) {

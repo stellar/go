@@ -737,10 +737,10 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(transferEvt.From, transferEvt.To, transferEvt.Amount, transferEvt.Asset, "transfer"))
 			case contractevents.EventTypeMint:
 				mintEvt := sacEvent.(*contractevents.MintEvent)
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(mintEvt.Admin, mintEvt.To, mintEvt.Amount, mintEvt.Asset, "mint"))
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry("", mintEvt.To, mintEvt.Amount, mintEvt.Asset, "mint"))
 			case contractevents.EventTypeClawback:
 				clawbackEvt := sacEvent.(*contractevents.ClawbackEvent)
-				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(clawbackEvt.From, clawbackEvt.Admin, clawbackEvt.Amount, clawbackEvt.Asset, "clawback"))
+				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(clawbackEvt.From, "", clawbackEvt.Amount, clawbackEvt.Asset, "clawback"))
 			case contractevents.EventTypeBurn:
 				burnEvt := sacEvent.(*contractevents.BurnEvent)
 				balanceChanges = append(balanceChanges, createSACBalanceChangeEntry(burnEvt.From, "", burnEvt.Amount, burnEvt.Asset, "burn"))
@@ -761,7 +761,9 @@ func (operation *transactionOperationWrapper) parseAssetBalanceChangesFromContra
 func createSACBalanceChangeEntry(fromAccount string, toAccount string, amountChanged xdr.Int128Parts, asset xdr.Asset, changeType string) map[string]interface{} {
 	balanceChange := map[string]interface{}{}
 
-	balanceChange["from"] = fromAccount
+	if fromAccount != "" {
+		balanceChange["from"] = fromAccount
+	}
 	if toAccount != "" {
 		balanceChange["to"] = toAccount
 	}
