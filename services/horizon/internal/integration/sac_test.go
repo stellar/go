@@ -133,7 +133,8 @@ func TestContractMintToContract(t *testing.T) {
 			i128Param(uint64(mintAmount.Hi), uint64(mintAmount.Lo)),
 			contractAddressParam(recipientContractID)),
 	)
-	assert.Empty(t, getTxEffects(itest, mintTx, asset))
+	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
+		effects.EffectContractCredited)
 
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
@@ -152,10 +153,9 @@ func TestContractMintToContract(t *testing.T) {
 		xferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID)),
 	)
 
-	// while contract-to-contract shouldn't have effects (i.e. the mintTx), the
-	// xfer comes from the issuer account, so it *should* generate a debit
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountDebited)
+		effects.EffectAccountDebited,
+		effects.EffectContractCredited)
 
 	balanceAmount, _ = assertInvokeHostFnSucceeds(
 		itest,
@@ -303,7 +303,9 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
-	assert.Empty(t, getTxEffects(itest, mintTx, asset)) // no effects: the only actor is a contract
+	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
+		effects.EffectContractCredited)
+
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -322,7 +324,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountDebited) // effects: account is involved, contract ignored
+		effects.EffectAccountDebited, effects.EffectContractCredited)
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -345,7 +347,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 			accountAddressParam(recipient.GetAccountID())),
 	)
 	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
-		effects.EffectAccountCredited) // effects: account is involved, contract ignored
+		effects.EffectContractDebited, effects.EffectAccountCredited)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1470"))
 	assertAssetStats(itest, assetStats{
 		code:             code,
@@ -414,7 +416,8 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 		itest.Master(),
 		xferFromContract(itest, issuer, emitterContractID, "10", contractAddressParam(recipientContractID)),
 	)
-	assert.Empty(t, getTxEffects(itest, xferTx, asset))
+	assertContainsEffect(t, getTxEffects(itest, xferTx, asset),
+		effects.EffectContractCredited, effects.EffectContractDebited)
 
 	// Check balances of emitter and recipient
 	emitterBalanceAmount, _ := assertInvokeHostFnSucceeds(
@@ -570,9 +573,9 @@ func TestContractBurnFromContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.I128).Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.I128).Hi)
 
-	// Burn transactions across contracts generate burn events, but these
-	// shouldn't be included as account-related effects.
-	assert.Empty(t, getTxEffects(itest, burnTx, asset))
+	assertContainsEffect(t, getTxEffects(itest, burnTx, asset),
+		effects.EffectContractDebited)
+
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
@@ -714,8 +717,9 @@ func TestContractClawbackFromContract(t *testing.T) {
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*balanceAmount.I128).Lo)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(0), (*balanceAmount.I128).Hi)
 
-	// clawbacks between contracts generate events but not effects
-	assert.Empty(t, getTxEffects(itest, clawTx, asset))
+	assertContainsEffect(t, getTxEffects(itest, clawTx, asset),
+		effects.EffectContractDebited)
+
 	assertAssetStats(itest, assetStats{
 		code:             code,
 		issuer:           issuer,
