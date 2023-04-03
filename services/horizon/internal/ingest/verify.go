@@ -88,17 +88,17 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		"sequence":   ledgerSequence,
 	})
 
+	if !s.runStateVerificationOnLedger(ledgerSequence) {
+		localLog.Info("Current ledger is not eligible for state verification. Canceling...")
+		return nil
+	}
+
 	ok, err := historyQ.TryStateVerificationLock(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error acquiring state verification lock")
 	}
 	if !ok {
 		localLog.Info("State verification is already in progress. Canceling...")
-		return nil
-	}
-
-	if !s.runStateVerificationOnLedger(ledgerSequence) {
-		localLog.Info("Current ledger is not eligible for state verification. Canceling...")
 		return nil
 	}
 

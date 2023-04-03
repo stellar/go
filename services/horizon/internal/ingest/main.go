@@ -95,9 +95,9 @@ type Config struct {
 	ReingestRetryBackoffSeconds int
 
 	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
-	CheckpointFrequency        uint32
-	StateVerificationFrequency uint32
-	StateVerificationTimeout   time.Duration
+	CheckpointFrequency                  uint32
+	StateVerificationCheckpointFrequency uint32
+	StateVerificationTimeout             time.Duration
 
 	RoundingSlippageFilter int
 
@@ -310,7 +310,7 @@ func NewSystem(config Config) (System, error) {
 		},
 		runStateVerificationOnLedger: ledgerEligibleForStateVerification(
 			config.CheckpointFrequency,
-			config.StateVerificationFrequency,
+			config.StateVerificationCheckpointFrequency,
 		),
 	}
 

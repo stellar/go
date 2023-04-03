@@ -501,8 +501,8 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
 		},
 		&support.ConfigOption{
-			Name:        "ingest-state-verification-frequency",
-			ConfigKey:   &config.IngestStateVerificationFrequency,
+			Name:        "ingest-state-verification-checkpoint-frequency",
+			ConfigKey:   &config.IngestStateVerificationCheckpointFrequency,
 			OptType:     types.Uint,
 			FlagDefault: uint(1),
 			Usage: "the frequency in units per checkpoint for how often state verification is executed. " +
