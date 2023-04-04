@@ -1427,6 +1427,7 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		return errors.New("invokeHostFunction effects cannot be determined unless network passphrase is set")
 	}
 
+	source := e.operation.SourceAccount()
 	for _, event := range events {
 		evt, err := contractevents.NewStellarAssetContractEvent(&event, e.operation.network)
 		if err != nil {
@@ -1447,6 +1448,11 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		case contractevents.EventTypeTransfer:
 			xferEvent := evt.(*contractevents.TransferEvent)
 			details["amount"] = amount.String128(xferEvent.Amount)
+			toDetails := map[string]interface{}{}
+			for key, val := range details {
+				toDetails[key] = val
+			}
+
 			if strkey.IsValidEd25519PublicKey(xferEvent.From) {
 				e.add(
 					xferEvent.From,
@@ -1454,14 +1460,21 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 					history.EffectAccountDebited,
 					details,
 				)
+			} else {
+				details["contract"] = xferEvent.From
+				e.addMuxed(source, history.EffectContractDebited, details)
 			}
+
 			if strkey.IsValidEd25519PublicKey(xferEvent.To) {
 				e.add(
 					xferEvent.To,
 					null.String{},
 					history.EffectAccountCredited,
-					details,
+					toDetails,
 				)
+			} else {
+				toDetails["contract"] = xferEvent.To
+				e.addMuxed(source, history.EffectContractCredited, toDetails)
 			}
 
 		// Mint events imply a non-native asset, and it results in a credit to
@@ -1476,6 +1489,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 					history.EffectAccountCredited,
 					details,
 				)
+			} else {
+				details["contract"] = mintEvent.To
+				e.addMuxed(source, history.EffectContractCredited, details)
 			}
 
 		// Clawback events result in a debit to the `from` address, but acts
@@ -1490,6 +1506,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 					history.EffectAccountDebited,
 					details,
 				)
+			} else {
+				details["contract"] = cbEvent.From
+				e.addMuxed(source, history.EffectContractDebited, details)
 			}
 
 		case contractevents.EventTypeBurn:
@@ -1502,6 +1521,9 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 					history.EffectAccountDebited,
 					details,
 				)
+			} else {
+				details["contract"] = burnEvent.From
+				e.addMuxed(source, history.EffectContractDebited, details)
 			}
 		}
 	}

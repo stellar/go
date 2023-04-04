@@ -218,6 +218,16 @@ const (
 
 	// EffectLiquidityPoolRevoked occurs when a liquidity pool is revoked
 	EffectLiquidityPoolRevoked EffectType = 95 // from change_trust_line_flags and allow_trust
+
+	// EffectContractCredited effects occur when a contract receives some
+	// currency from SAC events involving transfers, mints, and burns.
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectContractCredited EffectType = 96
+
+	// EffectContractDebited effects occur when a contract sends some currency
+	// from SAC events involving transfers, mints, and burns.
+	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
+	EffectContractDebited EffectType = 97
 )
 
 // Account is a row of data from the `history_accounts` table
