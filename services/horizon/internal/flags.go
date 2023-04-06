@@ -501,6 +501,24 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
 		},
 		&support.ConfigOption{
+			Name:        "ingest-state-verification-checkpoint-frequency",
+			ConfigKey:   &config.IngestStateVerificationCheckpointFrequency,
+			OptType:     types.Uint,
+			FlagDefault: uint(1),
+			Usage: "the frequency in units per checkpoint for how often state verification is executed. " +
+				"A value of 1 implies running state verification on every checkpoint. " +
+				"A value of 2 implies running state verification on every second checkpoint.",
+		},
+		&support.ConfigOption{
+			Name:           "ingest-state-verification-timeout",
+			ConfigKey:      &config.IngestStateVerificationTimeout,
+			OptType:        types.Int,
+			FlagDefault:    0,
+			CustomSetValue: support.SetDurationMinutes,
+			Usage: "defines an upper bound in minutes for on how long state verification is allowed to run. " +
+				"A value of 0 disables the timeout.",
+		},
+		&support.ConfigOption{
 			Name:        "ingest-enable-extended-log-ledger-stats",
 			ConfigKey:   &config.IngestEnableExtendedLogLedgerStats,
 			OptType:     types.Bool,
