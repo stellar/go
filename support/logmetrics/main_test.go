@@ -2,6 +2,7 @@ package logmetrics
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,7 +35,16 @@ func TestLogPackageMetrics(t *testing.T) {
 		l.Panic("foo")
 	})
 
-	for _, meter := range m {
+	for level, meter := range m {
+		levelString := level.String()
+		if levelString == "warning" {
+			levelString = "warn"
+		}
+		expectedDesc := fmt.Sprintf(
+			"Desc{fqName: \"horizon_log_%s_total\", help: \"\", constLabels: {}, variableLabels: []}",
+			levelString,
+		)
+		assert.Equal(t, expectedDesc, meter.Desc().String())
 		assert.Equal(t, float64(1), getMetricValue(meter).GetCounter().GetValue())
 	}
 }

@@ -11,6 +11,8 @@ import (
 type Metrics map[logrus.Level]prometheus.Counter
 
 // New creates a new hook for recording metrics.
+// New takes a namespace parameter which defines the namespace
+// for the prometheus metrics.
 func New(namespace string) Metrics {
 	return Metrics{
 		logrus.DebugLevel: prometheus.NewCounter(prometheus.CounterOpts{
