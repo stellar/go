@@ -8,16 +8,21 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/support/log"
 )
 
 func TestLogPackageMetrics(t *testing.T) {
 	output := new(bytes.Buffer)
-	l, m := New()
+	l := log.New()
+	m := New("horizon")
+
 	l.DisableColors()
 	l.SetLevel(logrus.DebugLevel)
 	l.SetOutput(output)
+	l.AddHook(m)
 
-	for _, meter := range *m {
+	for _, meter := range m {
 		assert.Equal(t, float64(0), getMetricValue(meter).GetCounter().GetValue())
 	}
 
@@ -29,7 +34,7 @@ func TestLogPackageMetrics(t *testing.T) {
 		l.Panic("foo")
 	})
 
-	for _, meter := range *m {
+	for _, meter := range m {
 		assert.Equal(t, float64(1), getMetricValue(meter).GetCounter().GetValue())
 	}
 }
