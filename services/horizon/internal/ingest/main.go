@@ -712,7 +712,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		return
 	}
 
-	err = s.historyQ.Begin()
+	err = s.historyQ.Begin(s.ctx)
 	if err != nil {
 		log.WithField("err", err).Error("Error starting a transaction")
 		return

@@ -52,7 +52,7 @@ func mockPathFindingClient(
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			s := session.Clone()
-			s.BeginTx(&sql.TxOptions{
+			s.BeginTx(r.Context(), &sql.TxOptions{
 				Isolation: sql.LevelRepeatableRead,
 				ReadOnly:  true,
 			})

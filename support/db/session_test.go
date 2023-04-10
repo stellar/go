@@ -97,7 +97,7 @@ func TestSession(t *testing.T) {
 
 	// Test transactions
 	db.Load(testSchema)
-	require.NoError(sess.Begin(), "begin failed")
+	require.NoError(sess.Begin(ctx), "begin failed")
 	err = sess.GetRaw(ctx, &count, "SELECT COUNT(*) FROM people")
 	assert.NoError(err)
 	assert.Equal(3, count)
@@ -109,7 +109,7 @@ func TestSession(t *testing.T) {
 	assert.NoError(sess.Rollback(), "rollback failed")
 
 	// Ensure commit works
-	require.NoError(sess.Begin(), "begin failed")
+	require.NoError(sess.Begin(ctx), "begin failed")
 	sess.ExecRaw(ctx, "DELETE FROM people")
 	assert.NoError(sess.Commit(), "commit failed")
 	err = sess.GetRaw(ctx, &count, "SELECT COUNT(*) FROM people")
@@ -153,7 +153,7 @@ func TestIdleTransactionTimeout(t *testing.T) {
 	assert.NoError(err)
 	defer sess.Close()
 
-	assert.NoError(sess.Begin())
+	assert.NoError(sess.Begin(context.Background()))
 	<-time.After(100 * time.Millisecond)
 
 	var count int

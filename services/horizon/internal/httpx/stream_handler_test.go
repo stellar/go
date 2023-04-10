@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -477,13 +478,13 @@ func TestRepeatableReadStream(t *testing.T) {
 		}
 
 		session := &db.MockSession{}
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.AnythingOfType("*context.cancelCtx"), &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
 		session.On("Rollback").Return(nil).Once()
 
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.AnythingOfType("*context.cancelCtx"), &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
@@ -516,13 +517,13 @@ func TestRepeatableReadStream(t *testing.T) {
 		}
 
 		session := &db.MockSession{}
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.AnythingOfType("*context.cancelCtx"), &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
 		session.On("Rollback").Return(nil).Once()
 
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.AnythingOfType("*context.cancelCtx"), &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()

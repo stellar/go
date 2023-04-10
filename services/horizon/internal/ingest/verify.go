@@ -62,7 +62,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	historyQ := s.historyQ.CloneIngestionQ()
 	defer historyQ.Rollback()
-	err := historyQ.BeginTx(&sql.TxOptions{
+	err := historyQ.BeginTx(s.ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
