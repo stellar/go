@@ -287,8 +287,8 @@ type IngestionQ interface {
 	QTransactions
 	QTrustLines
 
-	Begin() error
-	BeginTx(*sql.TxOptions) error
+	Begin(context.Context) error
+	BeginTx(context.Context, *sql.TxOptions) error
 	Commit() error
 	CloneIngestionQ() IngestionQ
 	Close() error

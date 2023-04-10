@@ -624,7 +624,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 				"current_state": cur,
 				"next_state":    next.node,
 			})
-			if isCancelledError(err) {
+			if isCancelledError(s.ctx, err) {
 				// We only expect context.Canceled errors to occur when horizon is shutting down
 				// so we log these errors using the info log level
 				logger.Info("Error in ingestion state machine")
@@ -657,7 +657,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil {
-		if !isCancelledError(err) {
+		if !isCancelledError(s.ctx, err) {
 			log.WithField("err", err).Error("Error getting state invalid value")
 		}
 		return
@@ -673,7 +673,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 
 			err := s.verifyState(true)
 			if err != nil {
-				if isCancelledError(err) {
+				if isCancelledError(s.ctx, err) {
 					return
 				}
 
@@ -712,7 +712,7 @@ func (s *system) maybeReapLookupTables(lastIngestedLedger uint32) {
 		return
 	}
 
-	err = s.historyQ.Begin()
+	err = s.historyQ.Begin(s.ctx)
 	if err != nil {
 		log.WithField("err", err).Error("Error starting a transaction")
 		return
@@ -817,7 +817,8 @@ func markStateInvalid(ctx context.Context, historyQ history.IngestionQ, err erro
 	}
 }
 
-func isCancelledError(err error) bool {
+func isCancelledError(ctx context.Context, err error) bool {
 	cause := errors.Cause(err)
-	return cause == context.Canceled || cause == db.ErrCancelled
+	return cause == context.Canceled || cause == db.ErrCancelled ||
+		(ctx.Err() == context.Canceled && cause == db.ErrAlreadyRolledback)
 }
