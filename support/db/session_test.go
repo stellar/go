@@ -165,46 +165,36 @@ func TestSessionRollbackAfterContextCanceled(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
 
-	var cancel context.CancelFunc
-	ctx := context.Background()
-	ctx, cancel = context.WithCancel(ctx)
-	assert := assert.New(t)
-
-	sess := &Session{DB: db.Open()}
+	sess := setupRolledbackTx(t, db)
 	defer sess.DB.Close()
 
-	assert.NoError(sess.Begin(ctx))
-
-	var count int
-	assert.NoError(sess.GetRaw(ctx, &count, "SELECT COUNT(*) FROM people"))
-	assert.Equal(3, count)
-
-	cancel()
-	time.Sleep(500 * time.Millisecond)
-
-	assert.ErrorIs(sess.Rollback(), ErrAlreadyRolledback)
+	assert.ErrorIs(t, sess.Rollback(), ErrAlreadyRolledback)
 }
 
 func TestSessionCommitAfterContextCanceled(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
 
+	sess := setupRolledbackTx(t, db)
+	defer sess.DB.Close()
+
+	assert.ErrorIs(t, sess.Commit(), ErrAlreadyRolledback)
+}
+
+func setupRolledbackTx(t *testing.T, db *dbtest.DB) *Session {
 	var cancel context.CancelFunc
 	ctx := context.Background()
 	ctx, cancel = context.WithCancel(ctx)
-	assert := assert.New(t)
 
 	sess := &Session{DB: db.Open()}
-	defer sess.DB.Close()
 
-	assert.NoError(sess.Begin(ctx))
+	assert.NoError(t, sess.Begin(ctx))
 
 	var count int
-	assert.NoError(sess.GetRaw(ctx, &count, "SELECT COUNT(*) FROM people"))
-	assert.Equal(3, count)
+	assert.NoError(t, sess.GetRaw(ctx, &count, "SELECT COUNT(*) FROM people"))
+	assert.Equal(t, 3, count)
 
 	cancel()
 	time.Sleep(500 * time.Millisecond)
-
-	assert.ErrorIs(sess.Commit(), ErrAlreadyRolledback)
+	return sess
 }
