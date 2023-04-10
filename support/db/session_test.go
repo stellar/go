@@ -184,3 +184,27 @@ func TestSessionRollbackAfterContextCanceled(t *testing.T) {
 
 	assert.Error(sess.Rollback(), "transaction has already been committed or rolled back")
 }
+
+func TestSessionCommitAfterContextCanceled(t *testing.T) {
+	db := dbtest.Postgres(t).Load(testSchema)
+	defer db.Close()
+
+	var cancel context.CancelFunc
+	ctx := context.Background()
+	ctx, cancel = context.WithCancel(ctx)
+	assert := assert.New(t)
+
+	sess := &Session{DB: db.Open()}
+	defer sess.DB.Close()
+
+	assert.NoError(sess.Begin(ctx))
+
+	var count int
+	assert.NoError(sess.GetRaw(ctx, &count, "SELECT COUNT(*) FROM people"))
+	assert.Equal(3, count)
+
+	cancel()
+	time.Sleep(500 * time.Millisecond)
+
+	assert.Error(sess.Commit(), "transaction has already been committed or rolled back")
+}
