@@ -182,7 +182,7 @@ func TestSessionRollbackAfterContextCanceled(t *testing.T) {
 	cancel()
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Error(sess.Rollback(), "transaction has already been committed or rolled back")
+	assert.ErrorIs(sess.Rollback(), ErrAlreadyRolledback)
 }
 
 func TestSessionCommitAfterContextCanceled(t *testing.T) {
@@ -206,5 +206,5 @@ func TestSessionCommitAfterContextCanceled(t *testing.T) {
 	cancel()
 	time.Sleep(500 * time.Millisecond)
 
-	assert.Error(sess.Commit(), "transaction has already been committed or rolled back")
+	assert.ErrorIs(sess.Commit(), ErrAlreadyRolledback)
 }

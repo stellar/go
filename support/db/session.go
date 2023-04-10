@@ -253,6 +253,8 @@ func (s *Session) replaceWithKnownError(err error, ctx context.Context) error {
 		return ErrBadConnection
 	case strings.Contains(err.Error(), "pq: canceling statement due to statement timeout"):
 		return ErrStatementTimeout
+	case strings.Contains(err.Error(), "transaction has already been committed or rolled back"):
+		return ErrAlreadyRolledback
 	default:
 		return nil
 	}
