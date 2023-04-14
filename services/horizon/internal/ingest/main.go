@@ -6,7 +6,6 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"runtime"
 	"sync"
 	"time"
@@ -157,18 +156,6 @@ type Metrics struct {
 
 	// ProcessorsRunDurationSummary exposes processors run durations.
 	ProcessorsRunDurationSummary *prometheus.SummaryVec
-
-	// LedgerFetchDurationSummary exposes a summary of durations required to
-	// fetch data from ledger backend.
-	LedgerFetchDurationSummary prometheus.Summary
-
-	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
-	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
-	CaptiveStellarCoreSynced prometheus.GaugeFunc
-
-	// CaptiveCoreSupportedProtocolVersion exposes the maximum protocol version
-	// supported by the running Captive-Core.
-	CaptiveCoreSupportedProtocolVersion prometheus.GaugeFunc
 }
 
 type System interface {
@@ -385,71 +372,6 @@ func (s *system) initMetrics() {
 		},
 		[]string{"name"},
 	)
-
-	s.metrics.LedgerFetchDurationSummary = prometheus.NewSummary(
-		prometheus.SummaryOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "ledger_fetch_duration_seconds",
-			Help: "duration of fetching ledgers from ledger backend, sliding window = 10m",
-		},
-	)
-
-	s.metrics.CaptiveStellarCoreSynced = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_synced",
-			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
-		},
-		func() float64 {
-			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
-				return -1
-			}
-
-			client := stellarcore.Client{
-				HTTP: &http.Client{
-					Timeout: 2 * time.Second,
-				},
-				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
-			}
-
-			info, err := client.Info(s.ctx)
-			if err != nil {
-				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
-				return -1
-			}
-
-			if info.IsSynced() {
-				return 1
-			} else {
-				return 0
-			}
-		},
-	)
-
-	s.metrics.CaptiveCoreSupportedProtocolVersion = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_supported_protocol_version",
-			Help: "determines the supported version of the protocol by Captive-Core",
-		},
-		func() float64 {
-			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
-				return -1
-			}
-
-			client := stellarcore.Client{
-				HTTP: &http.Client{
-					Timeout: 2 * time.Second,
-				},
-				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
-			}
-
-			info, err := client.Info(s.ctx)
-			if err != nil {
-				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
-				return -1
-			}
-
-			return float64(info.Info.ProtocolVersion)
-		},
-	)
 }
 
 func (s *system) Metrics() Metrics {
@@ -468,10 +390,8 @@ func (s *system) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(s.metrics.LedgerStatsCounter)
 	registry.MustRegister(s.metrics.ProcessorsRunDuration)
 	registry.MustRegister(s.metrics.ProcessorsRunDurationSummary)
-	registry.MustRegister(s.metrics.CaptiveStellarCoreSynced)
-	registry.MustRegister(s.metrics.CaptiveCoreSupportedProtocolVersion)
-	registry.MustRegister(s.metrics.LedgerFetchDurationSummary)
 	registry.MustRegister(s.metrics.StateVerifyLedgerEntriesCount)
+	s.ledgerBackend = ledgerbackend.WithMetrics(s.ledgerBackend, registry, "horizon")
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion

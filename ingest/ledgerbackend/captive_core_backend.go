@@ -3,12 +3,17 @@ package ledgerbackend
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
+	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -97,6 +102,8 @@ type CaptiveStellarCore struct {
 	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
+	coreSyncedMetric   func() float64
+	coreVersionMetric  func() float64
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -183,7 +190,60 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	c.stellarCoreRunnerFactory = func() stellarCoreRunnerInterface {
 		return newStellarCoreRunner(config)
 	}
+
+	if config.Toml == nil || config.Toml.HTTPPort == 0 {
+		c.coreSyncedMetric = func() float64 { return -1 }
+		c.coreVersionMetric = func() float64 { return -1 }
+	} else {
+		client := stellarcore.Client{
+			HTTP: &http.Client{
+				Timeout: 2 * time.Second,
+			},
+			URL: fmt.Sprintf("http://localhost:%d", config.Toml.HTTPPort),
+		}
+
+		c.coreSyncedMetric = func() float64 {
+			info, err := client.Info(config.Context)
+			if err != nil {
+				config.Log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
+				return -1
+			}
+
+			if info.IsSynced() {
+				return 1
+			} else {
+				return 0
+			}
+		}
+		c.coreVersionMetric = func() float64 {
+			info, err := client.Info(config.Context)
+			if err != nil {
+				config.Log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
+				return -1
+			}
+			return float64(info.Info.ProtocolVersion)
+		}
+	}
+
 	return c, nil
+}
+
+func (c *CaptiveStellarCore) registerCoreMetrics(registry *prometheus.Registry, namespace string) {
+	coreSynced := prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: namespace, Subsystem: "ingest", Name: "captive_stellar_core_synced",
+			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
+		},
+		c.coreSyncedMetric,
+	)
+	supportedProtocolVersion := prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: namespace, Subsystem: "ingest", Name: "captive_stellar_core_supported_protocol_version",
+			Help: "determines the supported version of the protocol by Captive-Core",
+		},
+		c.coreVersionMetric,
+	)
+	registry.MustRegister(coreSynced, supportedProtocolVersion)
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
