@@ -102,8 +102,9 @@ type CaptiveStellarCore struct {
 	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
-	coreSyncedMetric   func() float64
-	coreVersionMetric  func() float64
+
+	config            CaptiveCoreConfig
+	stellarCoreClient *stellarcore.Client
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -184,6 +185,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		ledgerHashStore:   config.LedgerHashStore,
 		useDB:             config.UseDB,
 		cancel:            cancel,
+		config:            config,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
@@ -191,41 +193,48 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		return newStellarCoreRunner(config)
 	}
 
-	if config.Toml == nil || config.Toml.HTTPPort == 0 {
-		c.coreSyncedMetric = func() float64 { return -1 }
-		c.coreVersionMetric = func() float64 { return -1 }
-	} else {
-		client := stellarcore.Client{
+	if config.Toml != nil && config.Toml.HTTPPort != 0 {
+		c.stellarCoreClient = &stellarcore.Client{
 			HTTP: &http.Client{
 				Timeout: 2 * time.Second,
 			},
 			URL: fmt.Sprintf("http://localhost:%d", config.Toml.HTTPPort),
 		}
-
-		c.coreSyncedMetric = func() float64 {
-			info, err := client.Info(config.Context)
-			if err != nil {
-				config.Log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
-				return -1
-			}
-
-			if info.IsSynced() {
-				return 1
-			} else {
-				return 0
-			}
-		}
-		c.coreVersionMetric = func() float64 {
-			info, err := client.Info(config.Context)
-			if err != nil {
-				config.Log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
-				return -1
-			}
-			return float64(info.Info.ProtocolVersion)
-		}
 	}
 
 	return c, nil
+}
+
+func (c *CaptiveStellarCore) coreSyncedMetric() float64 {
+	if c.stellarCoreClient == nil {
+		return -2
+	}
+
+	info, err := c.stellarCoreClient.Info(c.config.Context)
+	if err != nil {
+		c.config.Log.WithError(err).Warn("Cannot connect to Captive Stellar-Core HTTP server")
+		return -1
+	}
+
+	if info.IsSynced() {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func (c *CaptiveStellarCore) coreVersionMetric() float64 {
+	if c.stellarCoreClient == nil {
+		return -2
+	}
+
+	info, err := c.stellarCoreClient.Info(c.config.Context)
+	if err != nil {
+		c.config.Log.WithError(err).Warn("Cannot connect to Captive Stellar-Core HTTP server")
+		return -1
+	}
+
+	return float64(info.Info.ProtocolVersion)
 }
 
 func (c *CaptiveStellarCore) registerCoreMetrics(registry *prometheus.Registry, namespace string) {
