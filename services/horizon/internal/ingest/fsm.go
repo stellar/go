@@ -403,8 +403,6 @@ func (r resumeState) run(s *system) (transition, error) {
 		"duration": duration,
 	}).Info("Ledger returned from the backend")
 
-	s.Metrics().LedgerFetchDurationSummary.Observe(float64(duration))
-
 	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return retryResume(r),
 			errors.Wrap(err, "Error starting a transaction")
