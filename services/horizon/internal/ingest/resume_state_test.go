@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -38,13 +37,13 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.system = &system{
-		ctx:               s.ctx,
-		historyQ:          s.historyQ,
-		historyAdapter:    s.historyAdapter,
-		runner:            s.runner,
-		ledgerBackend:     s.ledgerBackend,
-		stellarCoreClient: s.stellarCoreClient,
-		checkpointManager: historyarchive.NewCheckpointManager(64),
+		ctx:                          s.ctx,
+		historyQ:                     s.historyQ,
+		historyAdapter:               s.historyAdapter,
+		runner:                       s.runner,
+		ledgerBackend:                s.ledgerBackend,
+		stellarCoreClient:            s.stellarCoreClient,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
 	}
 	s.system.initMetrics()
 
@@ -310,9 +309,6 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 		defaultCoreCursorName,
 		int32(101),
 	).Return(errors.New("my error")).Once()
-
-	// Skips state verification but ensures maybeVerifyState called
-	s.historyQ.On("GetExpStateInvalid", s.ctx).Return(true, nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 99}.run(s.system)
 	s.Assert().NoError(err)

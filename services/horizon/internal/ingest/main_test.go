@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -77,6 +76,15 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 		stateVerifierExpectedIngestionVersion,
 		"State verifier is outdated, update it, then update stateVerifierExpectedIngestionVersion value",
 	)
+}
+
+func TestLedgerEligibleForStateVerification(t *testing.T) {
+	checker := ledgerEligibleForStateVerification(64, 3)
+	for ledger := uint32(1); ledger < 64*6; ledger++ {
+		run := checker(ledger)
+		expected := (ledger+1)%(64*3) == 0
+		assert.Equal(t, expected, run)
+	}
 }
 
 func TestNewSystem(t *testing.T) {
@@ -165,9 +173,9 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
-		historyQ:          historyQ,
-		ctx:               context.Background(),
-		checkpointManager: historyarchive.NewCheckpointManager(64),
+		historyQ:                     historyQ,
+		ctx:                          context.Background(),
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
 	}
 
 	var out bytes.Buffer
@@ -200,9 +208,9 @@ func TestMaybeVerifyStateGetExpStateInvalidError(t *testing.T) {
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
-		historyQ:          historyQ,
-		ctx:               context.Background(),
-		checkpointManager: historyarchive.NewCheckpointManager(64),
+		historyQ:                     historyQ,
+		ctx:                          context.Background(),
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
 	}
 
 	var out bytes.Buffer
@@ -282,6 +290,11 @@ func (m *mockDBQ) Close() error {
 func (m *mockDBQ) Rollback() error {
 	args := m.Called()
 	return args.Error(0)
+}
+
+func (m *mockDBQ) TryStateVerificationLock(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockDBQ) GetTx() *sqlx.Tx {

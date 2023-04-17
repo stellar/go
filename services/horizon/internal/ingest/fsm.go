@@ -430,8 +430,6 @@ func (r resumeState) run(s *system) (transition, error) {
 			log.WithError(err).Warn("error updating stellar-core cursor")
 		}
 
-		s.maybeVerifyState(ingestLedger)
-
 		// resume immediately so Captive-Core catchup is not slowed down
 		return resumeImmediately(lastIngestedLedger), nil
 	}
