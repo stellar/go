@@ -12,10 +12,6 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/guregu/null/zero"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
-
-	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
@@ -24,6 +20,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestVerifyRangeStateTestSuite(t *testing.T) {
@@ -47,12 +45,12 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
-		ctx:               s.ctx,
-		historyQ:          s.historyQ,
-		historyAdapter:    s.historyAdapter,
-		ledgerBackend:     s.ledgerBackend,
-		runner:            s.runner,
-		checkpointManager: historyarchive.NewCheckpointManager(64),
+		ctx:                          s.ctx,
+		historyQ:                     s.historyQ,
+		historyAdapter:               s.historyAdapter,
+		ledgerBackend:                s.ledgerBackend,
+		runner:                       s.runner,
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(64, 1),
 	}
 	s.system.initMetrics()
 
@@ -283,6 +281,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	}).Return(nil).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
 	clonedQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(63), nil).Once()
+	clonedQ.On("TryStateVerificationLock", s.ctx).Return(true, nil).Once()
 	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"

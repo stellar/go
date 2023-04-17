@@ -3,11 +3,22 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-
 ## Unreleased
 
+## [11.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v11.0.0) - 2023-03-29
 
-## [10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v9.0.0) - 2022-04-18
+### Breaking changes
+
+* Muxed accounts and ID memos can be used in the `BuildChallengeTx()` and `ReadChallengeTx()` SEP-10 utilitiy functions to identify users of shared Stellar accounts. ([#4746](https://github.com/stellar/go/pull/4746))
+  * `BuildChallengeTx()`:
+    * Muxed account addresses can be passed as the `clientAccountID`.
+    * Adds an additional parameter of type `*txnbuild.MemoID`. Memos cannot be specified if the `clientAccoutID` id a muxed account address.
+  * `ReadChallengeTx()`:
+    * Muxed account addresses may be returned as the `clientAccountID`.
+    * Adds an additional return value of type `*txnbuild.MemoID`.
+
+
+## [10.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v10.0.0) - 2022-04-18
 
 * Adds support for Protocol 19 transaction preconditions ([CAP-21](https://stellar.org/protocol/cap-21)).
 

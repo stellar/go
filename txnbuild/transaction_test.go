@@ -1073,7 +1073,7 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	{
 		// 1 minute timebound
-		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute)
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, nil)
 		assert.NoError(t, err)
 		txeBase64, err := tx.Base64()
 		assert.NoError(t, err)
@@ -1097,7 +1097,7 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	{
 		// 5 minutes timebound
-		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Duration(5*time.Minute), nil)
 		assert.NoError(t, err)
 		txeBase64, err := tx.Base64()
 		assert.NoError(t, err)
@@ -1120,8 +1120,37 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Equal(t, "testwebauth.stellar.org", string(*webAuthOp.Body.ManageDataOp.DataValue), "DataValue should be 'testwebauth.stellar.org'")
 	}
 
+	// transaction with invalid clientAccountID
+	{
+		_, err := BuildChallengeTx(kp0.Seed(), "test", "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, nil)
+		require.EqualError(t, err, "test is not a valid account id or muxed account: invalid address length")
+	}
+
+	// transaction with memo
+	{
+		var memo MemoID = MemoID(1)
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, &memo)
+		assert.NoError(t, err)
+		assert.Equal(t, tx.Memo(), &memo)
+	}
+
+	// transaction with muxed account
+	{
+		muxedAccount := "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK"
+		tx, err := BuildChallengeTx(kp0.Seed(), muxedAccount, "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, tx.operations[0].GetSourceAccount(), muxedAccount)
+	}
+
+	// transaction with memo and muxed account
+	{
+		var memo MemoID = MemoID(1)
+		_, err := BuildChallengeTx(kp0.Seed(), "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", "testwebauth.stellar.org", "testanchor.stellar.org", network.TestNetworkPassphrase, time.Minute, &memo)
+		assert.EqualError(t, err, "memos are not valid for challenge transactions with a muxed client account")
+	}
+
 	//transaction with infinite timebound
-	_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "webauthdomain", "sdf", network.TestNetworkPassphrase, 0)
+	_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "webauthdomain", "sdf", network.TestNetworkPassphrase, 0, nil)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -1878,7 +1907,7 @@ func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -1913,7 +1942,7 @@ func TestReadChallengeTx_validSignedByServer(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -1946,7 +1975,7 @@ func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
 
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
@@ -1982,7 +2011,7 @@ func TestReadChallengeTx_invalidCorrupted(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	tx64 = strings.ReplaceAll(tx64, "A", "B")
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Nil(t, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(
@@ -2022,7 +2051,7 @@ func TestReadChallengeTx_invalidServerAccountIDMismatch(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction source account is not equal to server's account")
@@ -2057,7 +2086,7 @@ func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction sequence number must be 0")
@@ -2092,7 +2121,7 @@ func TestReadChallengeTx_invalidTimeboundsInfinite(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction requires non-infinite timebounds")
@@ -2127,7 +2156,7 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.Error(t, err)
@@ -2164,7 +2193,7 @@ func TestReadChallengeTx_validTimeboundsWithGracePeriod(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -2200,7 +2229,7 @@ func TestReadChallengeTx_invalidTimeboundsWithGracePeriod(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.Error(t, err)
@@ -2230,7 +2259,7 @@ func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "operation type should be manage_data")
@@ -2258,7 +2287,7 @@ func TestReadChallengeTx_invalidOperationNoSourceAccount(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.EqualError(t, err, "operation should have a source account")
 }
 
@@ -2291,7 +2320,7 @@ func TestReadChallengeTx_invalidDataValueWrongEncodedLength(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "random nonce encoded as base64 should be 64 bytes long")
@@ -2326,7 +2355,7 @@ func TestReadChallengeTx_invalidDataValueCorruptBase64(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "failed to decode random nonce provided in manage_data operation: illegal base64 data at input byte 37")
@@ -2362,7 +2391,7 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 	tx64, err := tx.Base64()
 	assert.NoError(t, err)
 
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "random nonce before encoding as base64 should be 48 bytes long")
@@ -2377,6 +2406,7 @@ func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
 		"testanchor.stellar.org",
 		network.TestNetworkPassphrase,
 		time.Hour,
+		nil,
 	)
 	assert.NoError(t, err)
 
@@ -2391,7 +2421,7 @@ func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, challenge := range []string{v1Challenge, v0Challenge} {
-		parsedTx, clientAccountID, _, err := ReadChallengeTx(
+		parsedTx, clientAccountID, _, _, err := ReadChallengeTx(
 			challenge,
 			kp0.Address(),
 			network.TestNetworkPassphrase,
@@ -2417,6 +2447,7 @@ func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
 		"testanchor.stellar.org",
 		network.TestNetworkPassphrase,
 		time.Hour,
+		nil,
 	)
 	assert.NoError(t, err)
 
@@ -2435,7 +2466,7 @@ func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
 
 	challenge, err := feeBumpTx.Base64()
 	assert.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(
+	_, _, _, _, err = ReadChallengeTx(
 		challenge,
 		kp0.Address(),
 		network.TestNetworkPassphrase,
@@ -2445,19 +2476,48 @@ func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
 	assert.EqualError(t, err, "challenge cannot be a fee bump transaction")
 }
 
-func TestReadChallengeTx_forbidsMuxedAccounts(t *testing.T) {
+func TestReadChallengeTx_allowsMuxedAccountsForClientAccountId(t *testing.T) {
 	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	aid := xdr.MustAddress(kp1.Address())
+	muxedAccount := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *aid.Ed25519,
+		},
+	}
 	tx, err := BuildChallengeTx(
 		kp0.Seed(),
-		kp0.Address(),
+		muxedAccount.Address(),
 		"testwebauth.stellar.org",
 		"testanchor.stellar.org",
 		network.TestNetworkPassphrase,
 		time.Hour,
+		nil,
 	)
-
-	env := tx.ToXDR()
 	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	tx, _, _, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+		"testwebauth.stellar.org",
+		[]string{"testanchor.stellar.org"},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tx.envelope.Operations()[0].SourceAccount, &muxedAccount)
+}
+
+func TestReadChallengeTransaction_forbidsMuxedTxSourceAccount(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	homeDomain := "testanchor.stellar.org"
+	webAuthDomain := "testwebauth.stellar.org"
+
 	aid := xdr.MustAddress(kp0.Address())
 	muxedAccount := xdr.MuxedAccount{
 		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
@@ -2466,20 +2526,174 @@ func TestReadChallengeTx_forbidsMuxedAccounts(t *testing.T) {
 			Ed25519: *aid.Ed25519,
 		},
 	}
-	*env.V1.Tx.Operations[0].SourceAccount = muxedAccount
+	serverAccount := SimpleAccount{
+		AccountID: muxedAccount.Address(),
+		Sequence:  0,
+	}
+	randomNonce, _ := generateRandomNonce(48)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(300)
 
-	challenge, err := marshallBase64(env, env.Signatures())
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &serverAccount,
+			IncrementSequenceNum: false,
+			Operations: []Operation{
+				&ManageData{
+					SourceAccount: kp1.Address(),
+					Name:          homeDomain + " auth",
+					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverAccount.GetAccountID(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
+			},
+			BaseFee: MinBaseFee,
+			Memo:    MemoID(1),
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
+		},
+	)
 	assert.NoError(t, err)
 
-	_, _, _, err = ReadChallengeTx(
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	_, _, _, _, err = ReadChallengeTx(
 		challenge,
 		kp0.Address(),
 		network.TestNetworkPassphrase,
-		"testwebauth.stellar.org",
-		[]string{"testanchor.stellar.org"},
+		webAuthDomain,
+		[]string{homeDomain},
 	)
-	errorMessage := "only valid Ed25519 accounts are allowed in challenge transactions"
-	assert.Contains(t, err.Error(), errorMessage)
+	assert.EqualError(t, err, "invalid source account: only valid Ed25519 accounts are allowed in challenge transactions")
+}
+
+func TestReadChallengeTransaction_forbidsMemoWithMuxedClientAccount(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	homeDomain := "testanchor.stellar.org"
+	webAuthDomain := "testwebauth.stellar.org"
+
+	serverAccount := SimpleAccount{
+		AccountID: kp0.Address(),
+		Sequence:  0,
+	}
+	aid := xdr.MustAddress(kp1.Address())
+	muxedAccount := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *aid.Ed25519,
+		},
+	}
+	randomNonce, _ := generateRandomNonce(48)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(300)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &serverAccount,
+			IncrementSequenceNum: false,
+			Operations: []Operation{
+				&ManageData{
+					SourceAccount: muxedAccount.Address(),
+					Name:          homeDomain + " auth",
+					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverAccount.GetAccountID(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
+			},
+			BaseFee: MinBaseFee,
+			Memo:    MemoID(1),
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	_, _, _, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+		webAuthDomain,
+		[]string{homeDomain},
+	)
+	assert.EqualError(t, err, "memos are not valid for challenge transactions with a muxed client account")
+}
+
+func TestReadChallengeTransaction_forbidsNonIdMemo(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	homeDomain := "testanchor.stellar.org"
+	webAuthDomain := "testwebauth.stellar.org"
+
+	serverAccount := SimpleAccount{
+		AccountID: kp0.Address(),
+		Sequence:  0,
+	}
+	randomNonce, _ := generateRandomNonce(48)
+	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(300)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &serverAccount,
+			IncrementSequenceNum: false,
+			Operations: []Operation{
+				&ManageData{
+					SourceAccount: kp1.Address(),
+					Name:          homeDomain + " auth",
+					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverAccount.GetAccountID(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
+			},
+			BaseFee: MinBaseFee,
+			Memo:    MemoText("test"),
+			Preconditions: Preconditions{
+				TimeBounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			},
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	challenge, err := marshallBase64(tx.ToXDR(), tx.Signatures())
+	assert.NoError(t, err)
+
+	_, _, _, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+		webAuthDomain,
+		[]string{homeDomain},
+	)
+	assert.EqualError(t, err, "invalid memo, only ID memos are permitted")
 }
 
 func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
@@ -2511,7 +2725,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"willfail"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"willfail"})
 	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[willfail])")
 }
 
@@ -2544,7 +2758,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainSuccess(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, nil, err)
 }
 
@@ -2582,7 +2796,7 @@ func TestReadChallengeTx_allowsAdditionalManageDataOpsWithSourceAccountSetToServ
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -2622,7 +2836,7 @@ func TestReadChallengeTx_disallowsAdditionalManageDataOpsWithoutSourceAccountSet
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.EqualError(t, err, "subsequent operations are unrecognized")
 }
 
@@ -2659,7 +2873,7 @@ func TestReadChallengeTx_disallowsAdditionalOpsOfOtherTypes(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "operation type should be manage_data")
@@ -2693,7 +2907,7 @@ func TestReadChallengeTx_matchesHomeDomain(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, matchedHomeDomain, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, matchedHomeDomain, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	require.NoError(t, err)
 	assert.Equal(t, matchedHomeDomain, "testanchor.stellar.org")
 }
@@ -2726,7 +2940,7 @@ func TestReadChallengeTx_doesNotMatchHomeDomain(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, matchedHomeDomain, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"not", "going", "to", "match"})
+	_, _, matchedHomeDomain, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"not", "going", "to", "match"})
 	assert.Equal(t, matchedHomeDomain, "")
 	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[not going to match])")
 }
@@ -2754,7 +2968,7 @@ func TestReadChallengeTx_validWhenWebAuthDomainMissing(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.NoError(t, err)
 }
 
@@ -2786,7 +3000,7 @@ func TestReadChallengeTx_invalidWebAuthDomainSourceAccount(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.EqualError(t, err, `web auth domain operation must have server source account`)
 }
 
@@ -2818,7 +3032,7 @@ func TestReadChallengeTx_invalidWebAuthDomain(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	_, _, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
 	assert.EqualError(t, err, `web auth domain operation value is "testwebauth.example.org" but expect "testwebauth.stellar.org"`)
 }
 

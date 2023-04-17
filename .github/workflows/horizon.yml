@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        go: ["1.19", "1.20"]
+        go: ["1.19.6", "1.20.1"]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
         protocol-version: [19, 20]
@@ -101,7 +101,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ./empty
-        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_20_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}-${{ matrix.protocol-version }}
+        key: horizon-hash-${{ hashFiles('./horizon') }}-${{ hashFiles('./clients/horizonclient/**') }}-${{ hashFiles('./protocols/horizon/**') }}-${{ hashFiles('./txnbuild/**') }}-${{ hashFiles('./services/horizon/internal/integration/**') }}-${{ env.PROTOCOL_20_CORE_DOCKER_IMG }}-${{ env.PROTOCOL_19_CORE_DOCKER_IMG }}
 
     - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
       run: go test -race -timeout 35m -v ./services/horizon/internal/integration/...
@@ -110,7 +110,7 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-20.04
     env:
-      STELLAR_CORE_VERSION: 19.6.0-1138.b3a6bc281.focal
+      STELLAR_CORE_VERSION: 19.9.0-1254.064a2787a.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
     - uses: actions/checkout@v3
