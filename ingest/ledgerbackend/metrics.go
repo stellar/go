@@ -12,7 +12,7 @@ import (
 // WithMetrics decorates the given LedgerBackend with metrics
 func WithMetrics(base LedgerBackend, registry *prometheus.Registry, namespace string) LedgerBackend {
 	if captiveCoreBackend, ok := base.(*CaptiveStellarCore); ok {
-		captiveCoreBackend.registerCoreMetrics(registry, namespace)
+		captiveCoreBackend.registerMetrics(registry, namespace)
 	}
 	summary := prometheus.NewSummary(
 		prometheus.SummaryOpts{
