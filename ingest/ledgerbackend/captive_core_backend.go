@@ -237,7 +237,7 @@ func (c *CaptiveStellarCore) coreVersionMetric() float64 {
 	return float64(info.Info.ProtocolVersion)
 }
 
-func (c *CaptiveStellarCore) registerCoreMetrics(registry *prometheus.Registry, namespace string) {
+func (c *CaptiveStellarCore) registerMetrics(registry *prometheus.Registry, namespace string) {
 	coreSynced := prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
 			Namespace: namespace, Subsystem: "ingest", Name: "captive_stellar_core_synced",
@@ -252,7 +252,19 @@ func (c *CaptiveStellarCore) registerCoreMetrics(registry *prometheus.Registry, 
 		},
 		c.coreVersionMetric,
 	)
-	registry.MustRegister(coreSynced, supportedProtocolVersion)
+	latestLedger := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: namespace, Subsystem: "ingest", Name: "captive_stellar_core_latest_ledger",
+		Help: "sequence number of the latest ledger available in the ledger backend",
+	},
+		func() float64 {
+			latest, err := c.GetLatestLedgerSequence(context.Background())
+			if err != nil {
+				return 0
+			}
+			return float64(latest)
+		},
+	)
+	registry.MustRegister(coreSynced, supportedProtocolVersion, latestLedger)
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
