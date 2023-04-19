@@ -635,37 +635,112 @@ type ContractCodeEntry struct {
 	Code []byte // bound SCVAL_LIMIT
 }
 
-type ConfigSettingType int32
-
-const (
-	CONFIG_SETTING_TYPE_UINT32 ConfigSettingType = 0
-)
-
-type ConfigSetting struct {
-	// The union discriminant Type selects among the following arms:
-	//   CONFIG_SETTING_TYPE_UINT32:
-	//      Uint32Val() *Uint32
-	Type ConfigSettingType
-	_u   interface{}
-}
-
+// Identifiers of all the network settings.
 type ConfigSettingID int32
 
 const (
-	CONFIG_SETTING_CONTRACT_MAX_SIZE ConfigSettingID = 0
+	CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES     ConfigSettingID = 0
+	CONFIG_SETTING_CONTRACT_COMPUTE_V0         ConfigSettingID = 1
+	CONFIG_SETTING_CONTRACT_LEDGER_COST_V0     ConfigSettingID = 2
+	CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0 ConfigSettingID = 3
+	CONFIG_SETTING_CONTRACT_META_DATA_V0       ConfigSettingID = 4
+	CONFIG_SETTING_CONTRACT_BANDWIDTH_V0       ConfigSettingID = 5
+	CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION ConfigSettingID = 6
 )
 
-type ConfigSettingEntry struct {
-	Ext             XdrAnon_ConfigSettingEntry_Ext
-	ConfigSettingID ConfigSettingID
-	Setting         ConfigSetting
+// "Compute" settings for contracts (instructions and memory).
+type ConfigSettingContractComputeV0 struct {
+	// Maximum instructions per ledger
+	LedgerMaxInstructions Int64
+	// Maximum instructions per transaction
+	TxMaxInstructions Int64
+	// Cost of 10000 instructions
+	FeeRatePerInstructionsIncrement Int64
+	// Memory limit per contract/host function invocation. Unlike
+	// instructions, there is no fee for memory and it's not
+	// accumulated between operations - the same limit is applied
+	// to every operation.
+	MemoryLimit Uint32
 }
-type XdrAnon_ConfigSettingEntry_Ext struct {
-	// The union discriminant V selects among the following arms:
-	//   0:
-	//      void
-	V  int32
-	_u interface{}
+
+// Ledger access settings for contracts.
+type ConfigSettingContractLedgerCostV0 struct {
+	// Maximum number of ledger entry read operations per ledger
+	LedgerMaxReadLedgerEntries Uint32
+	// Maximum number of bytes that can be read per ledger
+	LedgerMaxReadBytes Uint32
+	// Maximum number of ledger entry write operations per ledger
+	LedgerMaxWriteLedgerEntries Uint32
+	// Maximum number of bytes that can be written per ledger
+	LedgerMaxWriteBytes Uint32
+	// Maximum number of ledger entry read operations per transaction
+	TxMaxReadLedgerEntries Uint32
+	// Maximum number of bytes that can be read per transaction
+	TxMaxReadBytes Uint32
+	// Maximum number of ledger entry write operations per transaction
+	TxMaxWriteLedgerEntries Uint32
+	// Maximum number of bytes that can be written per transaction
+	TxMaxWriteBytes Uint32
+	// Fee per ledger entry read
+	FeeReadLedgerEntry Int64
+	// Fee per ledger entry write
+	FeeWriteLedgerEntry Int64
+	// Fee for reading 1KB
+	FeeRead1KB Int64
+	// Fee for writing 1KB
+	FeeWrite1KB Int64
+	// Bucket list fees grow slowly up to that size
+	BucketListSizeBytes Int64
+	// Fee rate in stroops when the bucket list is empty
+	BucketListFeeRateLow Int64
+	// Fee rate in stroops when the bucket list reached bucketListSizeBytes
+	BucketListFeeRateHigh Int64
+	// Rate multiplier for any additional data past the first bucketListSizeBytes
+	BucketListGrowthFactor Uint32
+}
+
+// Historical data (pushed to core archives) settings for contracts.
+type ConfigSettingContractHistoricalDataV0 struct {
+	// Fee for storing 1KB in archives
+	FeeHistorical1KB Int64
+}
+
+// Meta data (pushed to downstream systems) settings for contracts.
+type ConfigSettingContractMetaDataV0 struct {
+	// Maximum size of extended meta data produced by a transaction
+	TxMaxExtendedMetaDataSizeBytes Uint32
+	// Fee for generating 1KB of extended meta data
+	FeeExtendedMetaData1KB Int64
+}
+
+// Bandwidth related data settings for contracts
+type ConfigSettingContractBandwidthV0 struct {
+	// Maximum size in bytes to propagate per ledger
+	LedgerMaxPropagateSizeBytes Uint32
+	// Maximum size in bytes for a transaction
+	TxMaxSizeBytes Uint32
+	// Fee for propagating 1KB of data
+	FeePropagateData1KB Int64
+}
+
+type ConfigSettingEntry struct {
+	// The union discriminant ConfigSettingID selects among the following arms:
+	//   CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES:
+	//      ContractMaxSizeBytes() *Uint32
+	//   CONFIG_SETTING_CONTRACT_COMPUTE_V0:
+	//      ContractCompute() *ConfigSettingContractComputeV0
+	//   CONFIG_SETTING_CONTRACT_LEDGER_COST_V0:
+	//      ContractLedgerCost() *ConfigSettingContractLedgerCostV0
+	//   CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
+	//      ContractHistoricalData() *ConfigSettingContractHistoricalDataV0
+	//   CONFIG_SETTING_CONTRACT_META_DATA_V0:
+	//      ContractMetaData() *ConfigSettingContractMetaDataV0
+	//   CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
+	//      ContractBandwidth() *ConfigSettingContractBandwidthV0
+	//   CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
+	//      ContractHostLogicVersion() *Uint32
+	ConfigSettingID ConfigSettingID
+	_u              interface{}
 }
 
 type LedgerEntryExtensionV1 struct {
@@ -932,6 +1007,11 @@ const (
 	LEDGER_UPGRADE_CONFIG          LedgerUpgradeType = 6
 )
 
+type ConfigUpgradeSetKey struct {
+	ContractID  Hash
+	ContentHash Hash
+}
+
 type LedgerUpgrade struct {
 	// The union discriminant Type selects among the following arms:
 	//   LEDGER_UPGRADE_VERSION:
@@ -945,15 +1025,13 @@ type LedgerUpgrade struct {
 	//   LEDGER_UPGRADE_FLAGS:
 	//      NewFlags() *Uint32
 	//   LEDGER_UPGRADE_CONFIG:
-	//      ConfigSetting() *XdrAnon_LedgerUpgrade_ConfigSetting
+	//      NewConfig() *ConfigUpgradeSetKey
 	Type LedgerUpgradeType
 	_u   interface{}
 }
-type XdrAnon_LedgerUpgrade_ConfigSetting struct {
-	// id to update
-	Id ConfigSettingID
-	// new value
-	Setting ConfigSetting
+
+type ConfigUpgradeSet struct {
+	UpdatedEntry []ConfigSettingEntry
 }
 
 /* Entries used to define the bucket list */
@@ -3993,12 +4071,36 @@ type SCStatus struct {
 	_u   interface{}
 }
 
-type Int128Parts struct {
-	// Both signed and unsigned 128-bit ints
-	// are transported in a pair of uint64s
-	// to reduce the risk of sign-extension.
-	Lo Uint64
+type UInt128Parts struct {
 	Hi Uint64
+	Lo Uint64
+}
+
+// A signed int128 has a high sign bit and 127 value bits. We break it into a
+// signed high int64 (that carries the sign bit and the high 63 value bits) and
+// a low unsigned uint64 that carries the low 64 bits. This will sort in
+// generated code in the same order the underlying int128 sorts.
+type Int128Parts struct {
+	Hi Int64
+	Lo Uint64
+}
+
+type UInt256Parts struct {
+	Hi_hi Uint64
+	Hi_lo Uint64
+	Lo_hi Uint64
+	Lo_lo Uint64
+}
+
+// A signed int256 has a high sign bit and 255 value bits. We break it into a
+// signed high int64 (that carries the sign bit and the high 63 value bits) and
+// three low unsigned `uint64`s that carry the lower bits. This will sort in
+// generated code in the same order the underlying int256 sorts.
+type Int256Parts struct {
+	Hi_hi Int64
+	Hi_lo Uint64
+	Lo_hi Uint64
+	Lo_lo Uint64
 }
 
 type SCContractExecutableType int32
@@ -4074,13 +4176,13 @@ type SCVal struct {
 	//   SCV_DURATION:
 	//      Duration() *Duration
 	//   SCV_U128:
-	//      U128() *Int128Parts
+	//      U128() *UInt128Parts
 	//   SCV_I128:
 	//      I128() *Int128Parts
 	//   SCV_U256:
-	//      U256() *Uint256
+	//      U256() *UInt256Parts
 	//   SCV_I256:
-	//      I256() *Uint256
+	//      I256() *Int256Parts
 	//   SCV_BYTES:
 	//      Bytes() *SCBytes
 	//   SCV_STRING:
@@ -7618,124 +7720,23 @@ func (v *ContractCodeEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_ContractCodeEntry(v *ContractCodeEntry) *ContractCodeEntry { return v }
 
-var _XdrNames_ConfigSettingType = map[int32]string{
-	int32(CONFIG_SETTING_TYPE_UINT32): "CONFIG_SETTING_TYPE_UINT32",
-}
-var _XdrValues_ConfigSettingType = map[string]int32{
-	"CONFIG_SETTING_TYPE_UINT32": int32(CONFIG_SETTING_TYPE_UINT32),
-}
-
-func (ConfigSettingType) XdrEnumNames() map[int32]string {
-	return _XdrNames_ConfigSettingType
-}
-func (v ConfigSettingType) String() string {
-	if s, ok := _XdrNames_ConfigSettingType[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("ConfigSettingType#%d", v)
-}
-func (v *ConfigSettingType) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_ConfigSettingType[stok]; ok {
-			*v = ConfigSettingType(val)
-			return nil
-		} else if stok == "ConfigSettingType" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid ConfigSettingType.", stok))
-	}
-}
-func (v ConfigSettingType) GetU32() uint32                 { return uint32(v) }
-func (v *ConfigSettingType) SetU32(n uint32)               { *v = ConfigSettingType(n) }
-func (v *ConfigSettingType) XdrPointer() interface{}       { return v }
-func (ConfigSettingType) XdrTypeName() string              { return "ConfigSettingType" }
-func (v ConfigSettingType) XdrValue() interface{}          { return v }
-func (v *ConfigSettingType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_ConfigSettingType = *ConfigSettingType
-
-func XDR_ConfigSettingType(v *ConfigSettingType) *ConfigSettingType { return v }
-
-var _XdrTags_ConfigSetting = map[int32]bool{
-	XdrToI32(CONFIG_SETTING_TYPE_UINT32): true,
-}
-
-func (_ ConfigSetting) XdrValidTags() map[int32]bool {
-	return _XdrTags_ConfigSetting
-}
-func (u *ConfigSetting) Uint32Val() *Uint32 {
-	switch u.Type {
-	case CONFIG_SETTING_TYPE_UINT32:
-		if v, ok := u._u.(*Uint32); ok {
-			return v
-		} else {
-			var zero Uint32
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("ConfigSetting.Uint32Val accessed when Type == %v", u.Type)
-		return nil
-	}
-}
-func (u ConfigSetting) XdrValid() bool {
-	switch u.Type {
-	case CONFIG_SETTING_TYPE_UINT32:
-		return true
-	}
-	return false
-}
-func (u *ConfigSetting) XdrUnionTag() XdrNum32 {
-	return XDR_ConfigSettingType(&u.Type)
-}
-func (u *ConfigSetting) XdrUnionTagName() string {
-	return "Type"
-}
-func (u *ConfigSetting) XdrUnionBody() XdrType {
-	switch u.Type {
-	case CONFIG_SETTING_TYPE_UINT32:
-		return XDR_Uint32(u.Uint32Val())
-	}
-	return nil
-}
-func (u *ConfigSetting) XdrUnionBodyName() string {
-	switch u.Type {
-	case CONFIG_SETTING_TYPE_UINT32:
-		return "Uint32Val"
-	}
-	return ""
-}
-
-type XdrType_ConfigSetting = *ConfigSetting
-
-func (v *ConfigSetting) XdrPointer() interface{}       { return v }
-func (ConfigSetting) XdrTypeName() string              { return "ConfigSetting" }
-func (v ConfigSetting) XdrValue() interface{}          { return v }
-func (v *ConfigSetting) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *ConfigSetting) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_ConfigSettingType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
-	switch u.Type {
-	case CONFIG_SETTING_TYPE_UINT32:
-		x.Marshal(x.Sprintf("%suint32Val", name), XDR_Uint32(u.Uint32Val()))
-		return
-	}
-	XdrPanic("invalid Type (%v) in ConfigSetting", u.Type)
-}
-func XDR_ConfigSetting(v *ConfigSetting) *ConfigSetting { return v }
-
 var _XdrNames_ConfigSettingID = map[int32]string{
-	int32(CONFIG_SETTING_CONTRACT_MAX_SIZE): "CONFIG_SETTING_CONTRACT_MAX_SIZE",
+	int32(CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES):     "CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES",
+	int32(CONFIG_SETTING_CONTRACT_COMPUTE_V0):         "CONFIG_SETTING_CONTRACT_COMPUTE_V0",
+	int32(CONFIG_SETTING_CONTRACT_LEDGER_COST_V0):     "CONFIG_SETTING_CONTRACT_LEDGER_COST_V0",
+	int32(CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0): "CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0",
+	int32(CONFIG_SETTING_CONTRACT_META_DATA_V0):       "CONFIG_SETTING_CONTRACT_META_DATA_V0",
+	int32(CONFIG_SETTING_CONTRACT_BANDWIDTH_V0):       "CONFIG_SETTING_CONTRACT_BANDWIDTH_V0",
+	int32(CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION): "CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION",
 }
 var _XdrValues_ConfigSettingID = map[string]int32{
-	"CONFIG_SETTING_CONTRACT_MAX_SIZE": int32(CONFIG_SETTING_CONTRACT_MAX_SIZE),
+	"CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES":     int32(CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES),
+	"CONFIG_SETTING_CONTRACT_COMPUTE_V0":         int32(CONFIG_SETTING_CONTRACT_COMPUTE_V0),
+	"CONFIG_SETTING_CONTRACT_LEDGER_COST_V0":     int32(CONFIG_SETTING_CONTRACT_LEDGER_COST_V0),
+	"CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0": int32(CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0),
+	"CONFIG_SETTING_CONTRACT_META_DATA_V0":       int32(CONFIG_SETTING_CONTRACT_META_DATA_V0),
+	"CONFIG_SETTING_CONTRACT_BANDWIDTH_V0":       int32(CONFIG_SETTING_CONTRACT_BANDWIDTH_V0),
+	"CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION": int32(CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION),
 }
 
 func (ConfigSettingID) XdrEnumNames() map[int32]string {
@@ -7774,60 +7775,281 @@ type XdrType_ConfigSettingID = *ConfigSettingID
 
 func XDR_ConfigSettingID(v *ConfigSettingID) *ConfigSettingID { return v }
 
-var _XdrTags_XdrAnon_ConfigSettingEntry_Ext = map[int32]bool{
-	XdrToI32(0): true,
+type XdrType_ConfigSettingContractComputeV0 = *ConfigSettingContractComputeV0
+
+func (v *ConfigSettingContractComputeV0) XdrPointer() interface{}       { return v }
+func (ConfigSettingContractComputeV0) XdrTypeName() string              { return "ConfigSettingContractComputeV0" }
+func (v ConfigSettingContractComputeV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractComputeV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractComputeV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sledgerMaxInstructions", name), XDR_Int64(&v.LedgerMaxInstructions))
+	x.Marshal(x.Sprintf("%stxMaxInstructions", name), XDR_Int64(&v.TxMaxInstructions))
+	x.Marshal(x.Sprintf("%sfeeRatePerInstructionsIncrement", name), XDR_Int64(&v.FeeRatePerInstructionsIncrement))
+	x.Marshal(x.Sprintf("%smemoryLimit", name), XDR_Uint32(&v.MemoryLimit))
+}
+func XDR_ConfigSettingContractComputeV0(v *ConfigSettingContractComputeV0) *ConfigSettingContractComputeV0 {
+	return v
 }
 
-func (_ XdrAnon_ConfigSettingEntry_Ext) XdrValidTags() map[int32]bool {
-	return _XdrTags_XdrAnon_ConfigSettingEntry_Ext
+type XdrType_ConfigSettingContractLedgerCostV0 = *ConfigSettingContractLedgerCostV0
+
+func (v *ConfigSettingContractLedgerCostV0) XdrPointer() interface{} { return v }
+func (ConfigSettingContractLedgerCostV0) XdrTypeName() string {
+	return "ConfigSettingContractLedgerCostV0"
 }
-func (u XdrAnon_ConfigSettingEntry_Ext) XdrValid() bool {
-	switch u.V {
-	case 0:
+func (v ConfigSettingContractLedgerCostV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractLedgerCostV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractLedgerCostV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sledgerMaxReadLedgerEntries", name), XDR_Uint32(&v.LedgerMaxReadLedgerEntries))
+	x.Marshal(x.Sprintf("%sledgerMaxReadBytes", name), XDR_Uint32(&v.LedgerMaxReadBytes))
+	x.Marshal(x.Sprintf("%sledgerMaxWriteLedgerEntries", name), XDR_Uint32(&v.LedgerMaxWriteLedgerEntries))
+	x.Marshal(x.Sprintf("%sledgerMaxWriteBytes", name), XDR_Uint32(&v.LedgerMaxWriteBytes))
+	x.Marshal(x.Sprintf("%stxMaxReadLedgerEntries", name), XDR_Uint32(&v.TxMaxReadLedgerEntries))
+	x.Marshal(x.Sprintf("%stxMaxReadBytes", name), XDR_Uint32(&v.TxMaxReadBytes))
+	x.Marshal(x.Sprintf("%stxMaxWriteLedgerEntries", name), XDR_Uint32(&v.TxMaxWriteLedgerEntries))
+	x.Marshal(x.Sprintf("%stxMaxWriteBytes", name), XDR_Uint32(&v.TxMaxWriteBytes))
+	x.Marshal(x.Sprintf("%sfeeReadLedgerEntry", name), XDR_Int64(&v.FeeReadLedgerEntry))
+	x.Marshal(x.Sprintf("%sfeeWriteLedgerEntry", name), XDR_Int64(&v.FeeWriteLedgerEntry))
+	x.Marshal(x.Sprintf("%sfeeRead1KB", name), XDR_Int64(&v.FeeRead1KB))
+	x.Marshal(x.Sprintf("%sfeeWrite1KB", name), XDR_Int64(&v.FeeWrite1KB))
+	x.Marshal(x.Sprintf("%sbucketListSizeBytes", name), XDR_Int64(&v.BucketListSizeBytes))
+	x.Marshal(x.Sprintf("%sbucketListFeeRateLow", name), XDR_Int64(&v.BucketListFeeRateLow))
+	x.Marshal(x.Sprintf("%sbucketListFeeRateHigh", name), XDR_Int64(&v.BucketListFeeRateHigh))
+	x.Marshal(x.Sprintf("%sbucketListGrowthFactor", name), XDR_Uint32(&v.BucketListGrowthFactor))
+}
+func XDR_ConfigSettingContractLedgerCostV0(v *ConfigSettingContractLedgerCostV0) *ConfigSettingContractLedgerCostV0 {
+	return v
+}
+
+type XdrType_ConfigSettingContractHistoricalDataV0 = *ConfigSettingContractHistoricalDataV0
+
+func (v *ConfigSettingContractHistoricalDataV0) XdrPointer() interface{} { return v }
+func (ConfigSettingContractHistoricalDataV0) XdrTypeName() string {
+	return "ConfigSettingContractHistoricalDataV0"
+}
+func (v ConfigSettingContractHistoricalDataV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractHistoricalDataV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractHistoricalDataV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sfeeHistorical1KB", name), XDR_Int64(&v.FeeHistorical1KB))
+}
+func XDR_ConfigSettingContractHistoricalDataV0(v *ConfigSettingContractHistoricalDataV0) *ConfigSettingContractHistoricalDataV0 {
+	return v
+}
+
+type XdrType_ConfigSettingContractMetaDataV0 = *ConfigSettingContractMetaDataV0
+
+func (v *ConfigSettingContractMetaDataV0) XdrPointer() interface{}       { return v }
+func (ConfigSettingContractMetaDataV0) XdrTypeName() string              { return "ConfigSettingContractMetaDataV0" }
+func (v ConfigSettingContractMetaDataV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractMetaDataV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractMetaDataV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stxMaxExtendedMetaDataSizeBytes", name), XDR_Uint32(&v.TxMaxExtendedMetaDataSizeBytes))
+	x.Marshal(x.Sprintf("%sfeeExtendedMetaData1KB", name), XDR_Int64(&v.FeeExtendedMetaData1KB))
+}
+func XDR_ConfigSettingContractMetaDataV0(v *ConfigSettingContractMetaDataV0) *ConfigSettingContractMetaDataV0 {
+	return v
+}
+
+type XdrType_ConfigSettingContractBandwidthV0 = *ConfigSettingContractBandwidthV0
+
+func (v *ConfigSettingContractBandwidthV0) XdrPointer() interface{} { return v }
+func (ConfigSettingContractBandwidthV0) XdrTypeName() string {
+	return "ConfigSettingContractBandwidthV0"
+}
+func (v ConfigSettingContractBandwidthV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractBandwidthV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractBandwidthV0) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sledgerMaxPropagateSizeBytes", name), XDR_Uint32(&v.LedgerMaxPropagateSizeBytes))
+	x.Marshal(x.Sprintf("%stxMaxSizeBytes", name), XDR_Uint32(&v.TxMaxSizeBytes))
+	x.Marshal(x.Sprintf("%sfeePropagateData1KB", name), XDR_Int64(&v.FeePropagateData1KB))
+}
+func XDR_ConfigSettingContractBandwidthV0(v *ConfigSettingContractBandwidthV0) *ConfigSettingContractBandwidthV0 {
+	return v
+}
+
+var _XdrTags_ConfigSettingEntry = map[int32]bool{
+	XdrToI32(CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES):     true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_COMPUTE_V0):         true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_LEDGER_COST_V0):     true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0): true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_META_DATA_V0):       true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_BANDWIDTH_V0):       true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION): true,
+}
+
+func (_ ConfigSettingEntry) XdrValidTags() map[int32]bool {
+	return _XdrTags_ConfigSettingEntry
+}
+func (u *ConfigSettingEntry) ContractMaxSizeBytes() *Uint32 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES:
+		if v, ok := u._u.(*Uint32); ok {
+			return v
+		} else {
+			var zero Uint32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractMaxSizeBytes accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u *ConfigSettingEntry) ContractCompute() *ConfigSettingContractComputeV0 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_COMPUTE_V0:
+		if v, ok := u._u.(*ConfigSettingContractComputeV0); ok {
+			return v
+		} else {
+			var zero ConfigSettingContractComputeV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractCompute accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u *ConfigSettingEntry) ContractLedgerCost() *ConfigSettingContractLedgerCostV0 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_LEDGER_COST_V0:
+		if v, ok := u._u.(*ConfigSettingContractLedgerCostV0); ok {
+			return v
+		} else {
+			var zero ConfigSettingContractLedgerCostV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractLedgerCost accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u *ConfigSettingEntry) ContractHistoricalData() *ConfigSettingContractHistoricalDataV0 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
+		if v, ok := u._u.(*ConfigSettingContractHistoricalDataV0); ok {
+			return v
+		} else {
+			var zero ConfigSettingContractHistoricalDataV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractHistoricalData accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u *ConfigSettingEntry) ContractMetaData() *ConfigSettingContractMetaDataV0 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
+		if v, ok := u._u.(*ConfigSettingContractMetaDataV0); ok {
+			return v
+		} else {
+			var zero ConfigSettingContractMetaDataV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractMetaData accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u *ConfigSettingEntry) ContractBandwidth() *ConfigSettingContractBandwidthV0 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
+		if v, ok := u._u.(*ConfigSettingContractBandwidthV0); ok {
+			return v
+		} else {
+			var zero ConfigSettingContractBandwidthV0
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractBandwidth accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u *ConfigSettingEntry) ContractHostLogicVersion() *Uint32 {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
+		if v, ok := u._u.(*Uint32); ok {
+			return v
+		} else {
+			var zero Uint32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.ContractHostLogicVersion accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
+func (u ConfigSettingEntry) XdrValid() bool {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_META_DATA_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
 		return true
 	}
 	return false
 }
-func (u *XdrAnon_ConfigSettingEntry_Ext) XdrUnionTag() XdrNum32 {
-	return XDR_int32(&u.V)
+func (u *ConfigSettingEntry) XdrUnionTag() XdrNum32 {
+	return XDR_ConfigSettingID(&u.ConfigSettingID)
 }
-func (u *XdrAnon_ConfigSettingEntry_Ext) XdrUnionTagName() string {
-	return "V"
+func (u *ConfigSettingEntry) XdrUnionTagName() string {
+	return "ConfigSettingID"
 }
-func (u *XdrAnon_ConfigSettingEntry_Ext) XdrUnionBody() XdrType {
-	switch u.V {
-	case 0:
-		return nil
+func (u *ConfigSettingEntry) XdrUnionBody() XdrType {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES:
+		return XDR_Uint32(u.ContractMaxSizeBytes())
+	case CONFIG_SETTING_CONTRACT_COMPUTE_V0:
+		return XDR_ConfigSettingContractComputeV0(u.ContractCompute())
+	case CONFIG_SETTING_CONTRACT_LEDGER_COST_V0:
+		return XDR_ConfigSettingContractLedgerCostV0(u.ContractLedgerCost())
+	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
+		return XDR_ConfigSettingContractHistoricalDataV0(u.ContractHistoricalData())
+	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
+		return XDR_ConfigSettingContractMetaDataV0(u.ContractMetaData())
+	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
+		return XDR_ConfigSettingContractBandwidthV0(u.ContractBandwidth())
+	case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
+		return XDR_Uint32(u.ContractHostLogicVersion())
 	}
 	return nil
 }
-func (u *XdrAnon_ConfigSettingEntry_Ext) XdrUnionBodyName() string {
-	switch u.V {
-	case 0:
-		return ""
+func (u *ConfigSettingEntry) XdrUnionBodyName() string {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES:
+		return "ContractMaxSizeBytes"
+	case CONFIG_SETTING_CONTRACT_COMPUTE_V0:
+		return "ContractCompute"
+	case CONFIG_SETTING_CONTRACT_LEDGER_COST_V0:
+		return "ContractLedgerCost"
+	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
+		return "ContractHistoricalData"
+	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
+		return "ContractMetaData"
+	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
+		return "ContractBandwidth"
+	case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
+		return "ContractHostLogicVersion"
 	}
 	return ""
-}
-
-type XdrType_XdrAnon_ConfigSettingEntry_Ext = *XdrAnon_ConfigSettingEntry_Ext
-
-func (v *XdrAnon_ConfigSettingEntry_Ext) XdrPointer() interface{}       { return v }
-func (XdrAnon_ConfigSettingEntry_Ext) XdrTypeName() string              { return "XdrAnon_ConfigSettingEntry_Ext" }
-func (v XdrAnon_ConfigSettingEntry_Ext) XdrValue() interface{}          { return v }
-func (v *XdrAnon_ConfigSettingEntry_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *XdrAnon_ConfigSettingEntry_Ext) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
-	switch u.V {
-	case 0:
-		return
-	}
-	XdrPanic("invalid V (%v) in XdrAnon_ConfigSettingEntry_Ext", u.V)
-}
-func XDR_XdrAnon_ConfigSettingEntry_Ext(v *XdrAnon_ConfigSettingEntry_Ext) *XdrAnon_ConfigSettingEntry_Ext {
-	return v
 }
 
 type XdrType_ConfigSettingEntry = *ConfigSettingEntry
@@ -7836,13 +8058,35 @@ func (v *ConfigSettingEntry) XdrPointer() interface{}       { return v }
 func (ConfigSettingEntry) XdrTypeName() string              { return "ConfigSettingEntry" }
 func (v ConfigSettingEntry) XdrValue() interface{}          { return v }
 func (v *ConfigSettingEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *ConfigSettingEntry) XdrRecurse(x XDR, name string) {
+func (u *ConfigSettingEntry) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_ConfigSettingEntry_Ext(&v.Ext))
-	x.Marshal(x.Sprintf("%sconfigSettingID", name), XDR_ConfigSettingID(&v.ConfigSettingID))
-	x.Marshal(x.Sprintf("%ssetting", name), XDR_ConfigSetting(&v.Setting))
+	XDR_ConfigSettingID(&u.ConfigSettingID).XdrMarshal(x, x.Sprintf("%sconfigSettingID", name))
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES:
+		x.Marshal(x.Sprintf("%scontractMaxSizeBytes", name), XDR_Uint32(u.ContractMaxSizeBytes()))
+		return
+	case CONFIG_SETTING_CONTRACT_COMPUTE_V0:
+		x.Marshal(x.Sprintf("%scontractCompute", name), XDR_ConfigSettingContractComputeV0(u.ContractCompute()))
+		return
+	case CONFIG_SETTING_CONTRACT_LEDGER_COST_V0:
+		x.Marshal(x.Sprintf("%scontractLedgerCost", name), XDR_ConfigSettingContractLedgerCostV0(u.ContractLedgerCost()))
+		return
+	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
+		x.Marshal(x.Sprintf("%scontractHistoricalData", name), XDR_ConfigSettingContractHistoricalDataV0(u.ContractHistoricalData()))
+		return
+	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
+		x.Marshal(x.Sprintf("%scontractMetaData", name), XDR_ConfigSettingContractMetaDataV0(u.ContractMetaData()))
+		return
+	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
+		x.Marshal(x.Sprintf("%scontractBandwidth", name), XDR_ConfigSettingContractBandwidthV0(u.ContractBandwidth()))
+		return
+	case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
+		x.Marshal(x.Sprintf("%scontractHostLogicVersion", name), XDR_Uint32(u.ContractHostLogicVersion()))
+		return
+	}
+	XdrPanic("invalid ConfigSettingID (%v) in ConfigSettingEntry", u.ConfigSettingID)
 }
 func XDR_ConfigSettingEntry(v *ConfigSettingEntry) *ConfigSettingEntry { return v }
 
@@ -9274,24 +9518,20 @@ func (v *LedgerUpgradeType) XdrInitialize() {
 	}
 }
 
-type XdrType_XdrAnon_LedgerUpgrade_ConfigSetting = *XdrAnon_LedgerUpgrade_ConfigSetting
+type XdrType_ConfigUpgradeSetKey = *ConfigUpgradeSetKey
 
-func (v *XdrAnon_LedgerUpgrade_ConfigSetting) XdrPointer() interface{} { return v }
-func (XdrAnon_LedgerUpgrade_ConfigSetting) XdrTypeName() string {
-	return "XdrAnon_LedgerUpgrade_ConfigSetting"
-}
-func (v XdrAnon_LedgerUpgrade_ConfigSetting) XdrValue() interface{}          { return v }
-func (v *XdrAnon_LedgerUpgrade_ConfigSetting) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *XdrAnon_LedgerUpgrade_ConfigSetting) XdrRecurse(x XDR, name string) {
+func (v *ConfigUpgradeSetKey) XdrPointer() interface{}       { return v }
+func (ConfigUpgradeSetKey) XdrTypeName() string              { return "ConfigUpgradeSetKey" }
+func (v ConfigUpgradeSetKey) XdrValue() interface{}          { return v }
+func (v *ConfigUpgradeSetKey) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigUpgradeSetKey) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sid", name), XDR_ConfigSettingID(&v.Id))
-	x.Marshal(x.Sprintf("%ssetting", name), XDR_ConfigSetting(&v.Setting))
+	x.Marshal(x.Sprintf("%scontractID", name), XDR_Hash(&v.ContractID))
+	x.Marshal(x.Sprintf("%scontentHash", name), XDR_Hash(&v.ContentHash))
 }
-func XDR_XdrAnon_LedgerUpgrade_ConfigSetting(v *XdrAnon_LedgerUpgrade_ConfigSetting) *XdrAnon_LedgerUpgrade_ConfigSetting {
-	return v
-}
+func XDR_ConfigUpgradeSetKey(v *ConfigUpgradeSetKey) *ConfigUpgradeSetKey { return v }
 
 var _XdrTags_LedgerUpgrade = map[int32]bool{
 	XdrToI32(LEDGER_UPGRADE_VERSION):         true,
@@ -9390,18 +9630,18 @@ func (u *LedgerUpgrade) NewFlags() *Uint32 {
 		return nil
 	}
 }
-func (u *LedgerUpgrade) ConfigSetting() *XdrAnon_LedgerUpgrade_ConfigSetting {
+func (u *LedgerUpgrade) NewConfig() *ConfigUpgradeSetKey {
 	switch u.Type {
 	case LEDGER_UPGRADE_CONFIG:
-		if v, ok := u._u.(*XdrAnon_LedgerUpgrade_ConfigSetting); ok {
+		if v, ok := u._u.(*ConfigUpgradeSetKey); ok {
 			return v
 		} else {
-			var zero XdrAnon_LedgerUpgrade_ConfigSetting
+			var zero ConfigUpgradeSetKey
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("LedgerUpgrade.ConfigSetting accessed when Type == %v", u.Type)
+		XdrPanic("LedgerUpgrade.NewConfig accessed when Type == %v", u.Type)
 		return nil
 	}
 }
@@ -9431,7 +9671,7 @@ func (u *LedgerUpgrade) XdrUnionBody() XdrType {
 	case LEDGER_UPGRADE_FLAGS:
 		return XDR_Uint32(u.NewFlags())
 	case LEDGER_UPGRADE_CONFIG:
-		return XDR_XdrAnon_LedgerUpgrade_ConfigSetting(u.ConfigSetting())
+		return XDR_ConfigUpgradeSetKey(u.NewConfig())
 	}
 	return nil
 }
@@ -9448,7 +9688,7 @@ func (u *LedgerUpgrade) XdrUnionBodyName() string {
 	case LEDGER_UPGRADE_FLAGS:
 		return "NewFlags"
 	case LEDGER_UPGRADE_CONFIG:
-		return "ConfigSetting"
+		return "NewConfig"
 	}
 	return ""
 }
@@ -9481,7 +9721,7 @@ func (u *LedgerUpgrade) XdrRecurse(x XDR, name string) {
 		x.Marshal(x.Sprintf("%snewFlags", name), XDR_Uint32(u.NewFlags()))
 		return
 	case LEDGER_UPGRADE_CONFIG:
-		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_XdrAnon_LedgerUpgrade_ConfigSetting(u.ConfigSetting()))
+		x.Marshal(x.Sprintf("%snewConfig", name), XDR_ConfigUpgradeSetKey(u.NewConfig()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in LedgerUpgrade", u.Type)
@@ -9497,6 +9737,81 @@ func (v *LedgerUpgrade) XdrInitialize() {
 	}
 }
 func XDR_LedgerUpgrade(v *LedgerUpgrade) *LedgerUpgrade { return v }
+
+type _XdrVec_unbounded_ConfigSettingEntry []ConfigSettingEntry
+
+func (_XdrVec_unbounded_ConfigSettingEntry) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_ConfigSettingEntry) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_ConfigSettingEntry length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_ConfigSettingEntry length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_ConfigSettingEntry) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_ConfigSettingEntry) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]ConfigSettingEntry, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_ConfigSettingEntry) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_ConfigSettingEntry(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_ConfigSettingEntry) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_ConfigSettingEntry) XdrTypeName() string { return "ConfigSettingEntry<>" }
+func (v *_XdrVec_unbounded_ConfigSettingEntry) XdrPointer() interface{} {
+	return (*[]ConfigSettingEntry)(v)
+}
+func (v _XdrVec_unbounded_ConfigSettingEntry) XdrValue() interface{} {
+	return ([]ConfigSettingEntry)(v)
+}
+func (v *_XdrVec_unbounded_ConfigSettingEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_ConfigUpgradeSet = *ConfigUpgradeSet
+
+func (v *ConfigUpgradeSet) XdrPointer() interface{}       { return v }
+func (ConfigUpgradeSet) XdrTypeName() string              { return "ConfigUpgradeSet" }
+func (v ConfigUpgradeSet) XdrValue() interface{}          { return v }
+func (v *ConfigUpgradeSet) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigUpgradeSet) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%supdatedEntry", name), (*_XdrVec_unbounded_ConfigSettingEntry)(&v.UpdatedEntry))
+}
+func XDR_ConfigUpgradeSet(v *ConfigUpgradeSet) *ConfigUpgradeSet { return v }
 
 var _XdrNames_BucketEntryType = map[int32]string{
 	int32(METAENTRY): "METAENTRY",
@@ -26819,6 +27134,21 @@ func (u *SCStatus) XdrRecurse(x XDR, name string) {
 }
 func XDR_SCStatus(v *SCStatus) *SCStatus { return v }
 
+type XdrType_UInt128Parts = *UInt128Parts
+
+func (v *UInt128Parts) XdrPointer() interface{}       { return v }
+func (UInt128Parts) XdrTypeName() string              { return "UInt128Parts" }
+func (v UInt128Parts) XdrValue() interface{}          { return v }
+func (v *UInt128Parts) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *UInt128Parts) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%shi", name), XDR_Uint64(&v.Hi))
+	x.Marshal(x.Sprintf("%slo", name), XDR_Uint64(&v.Lo))
+}
+func XDR_UInt128Parts(v *UInt128Parts) *UInt128Parts { return v }
+
 type XdrType_Int128Parts = *Int128Parts
 
 func (v *Int128Parts) XdrPointer() interface{}       { return v }
@@ -26829,10 +27159,44 @@ func (v *Int128Parts) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%shi", name), XDR_Int64(&v.Hi))
 	x.Marshal(x.Sprintf("%slo", name), XDR_Uint64(&v.Lo))
-	x.Marshal(x.Sprintf("%shi", name), XDR_Uint64(&v.Hi))
 }
 func XDR_Int128Parts(v *Int128Parts) *Int128Parts { return v }
+
+type XdrType_UInt256Parts = *UInt256Parts
+
+func (v *UInt256Parts) XdrPointer() interface{}       { return v }
+func (UInt256Parts) XdrTypeName() string              { return "UInt256Parts" }
+func (v UInt256Parts) XdrValue() interface{}          { return v }
+func (v *UInt256Parts) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *UInt256Parts) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%shi_hi", name), XDR_Uint64(&v.Hi_hi))
+	x.Marshal(x.Sprintf("%shi_lo", name), XDR_Uint64(&v.Hi_lo))
+	x.Marshal(x.Sprintf("%slo_hi", name), XDR_Uint64(&v.Lo_hi))
+	x.Marshal(x.Sprintf("%slo_lo", name), XDR_Uint64(&v.Lo_lo))
+}
+func XDR_UInt256Parts(v *UInt256Parts) *UInt256Parts { return v }
+
+type XdrType_Int256Parts = *Int256Parts
+
+func (v *Int256Parts) XdrPointer() interface{}       { return v }
+func (Int256Parts) XdrTypeName() string              { return "Int256Parts" }
+func (v Int256Parts) XdrValue() interface{}          { return v }
+func (v *Int256Parts) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *Int256Parts) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%shi_hi", name), XDR_Int64(&v.Hi_hi))
+	x.Marshal(x.Sprintf("%shi_lo", name), XDR_Uint64(&v.Hi_lo))
+	x.Marshal(x.Sprintf("%slo_hi", name), XDR_Uint64(&v.Lo_hi))
+	x.Marshal(x.Sprintf("%slo_lo", name), XDR_Uint64(&v.Lo_lo))
+}
+func XDR_Int256Parts(v *Int256Parts) *Int256Parts { return v }
 
 var _XdrNames_SCContractExecutableType = map[int32]string{
 	int32(SCCONTRACT_EXECUTABLE_WASM_REF): "SCCONTRACT_EXECUTABLE_WASM_REF",
@@ -27566,13 +27930,13 @@ func (u *SCVal) Duration() *Duration {
 		return nil
 	}
 }
-func (u *SCVal) U128() *Int128Parts {
+func (u *SCVal) U128() *UInt128Parts {
 	switch u.Type {
 	case SCV_U128:
-		if v, ok := u._u.(*Int128Parts); ok {
+		if v, ok := u._u.(*UInt128Parts); ok {
 			return v
 		} else {
-			var zero Int128Parts
+			var zero UInt128Parts
 			u._u = &zero
 			return &zero
 		}
@@ -27596,13 +27960,13 @@ func (u *SCVal) I128() *Int128Parts {
 		return nil
 	}
 }
-func (u *SCVal) U256() *Uint256 {
+func (u *SCVal) U256() *UInt256Parts {
 	switch u.Type {
 	case SCV_U256:
-		if v, ok := u._u.(*Uint256); ok {
+		if v, ok := u._u.(*UInt256Parts); ok {
 			return v
 		} else {
-			var zero Uint256
+			var zero UInt256Parts
 			u._u = &zero
 			return &zero
 		}
@@ -27611,13 +27975,13 @@ func (u *SCVal) U256() *Uint256 {
 		return nil
 	}
 }
-func (u *SCVal) I256() *Uint256 {
+func (u *SCVal) I256() *Int256Parts {
 	switch u.Type {
 	case SCV_I256:
-		if v, ok := u._u.(*Uint256); ok {
+		if v, ok := u._u.(*Int256Parts); ok {
 			return v
 		} else {
-			var zero Uint256
+			var zero Int256Parts
 			u._u = &zero
 			return &zero
 		}
@@ -27780,13 +28144,13 @@ func (u *SCVal) XdrUnionBody() XdrType {
 	case SCV_DURATION:
 		return XDR_Duration(u.Duration())
 	case SCV_U128:
-		return XDR_Int128Parts(u.U128())
+		return XDR_UInt128Parts(u.U128())
 	case SCV_I128:
 		return XDR_Int128Parts(u.I128())
 	case SCV_U256:
-		return XDR_Uint256(u.U256())
+		return XDR_UInt256Parts(u.U256())
 	case SCV_I256:
-		return XDR_Uint256(u.I256())
+		return XDR_Int256Parts(u.I256())
 	case SCV_BYTES:
 		return XDR_SCBytes(u.Bytes())
 	case SCV_STRING:
@@ -27897,16 +28261,16 @@ func (u *SCVal) XdrRecurse(x XDR, name string) {
 		x.Marshal(x.Sprintf("%sduration", name), XDR_Duration(u.Duration()))
 		return
 	case SCV_U128:
-		x.Marshal(x.Sprintf("%su128", name), XDR_Int128Parts(u.U128()))
+		x.Marshal(x.Sprintf("%su128", name), XDR_UInt128Parts(u.U128()))
 		return
 	case SCV_I128:
 		x.Marshal(x.Sprintf("%si128", name), XDR_Int128Parts(u.I128()))
 		return
 	case SCV_U256:
-		x.Marshal(x.Sprintf("%su256", name), XDR_Uint256(u.U256()))
+		x.Marshal(x.Sprintf("%su256", name), XDR_UInt256Parts(u.U256()))
 		return
 	case SCV_I256:
-		x.Marshal(x.Sprintf("%si256", name), XDR_Uint256(u.I256()))
+		x.Marshal(x.Sprintf("%si256", name), XDR_Int256Parts(u.I256()))
 		return
 	case SCV_BYTES:
 		x.Marshal(x.Sprintf("%sbytes", name), XDR_SCBytes(u.Bytes()))
