@@ -1,11 +1,12 @@
 package processors
 
 import (
-	"github.com/stellar/go/keypair"
 	"math"
 	"math/big"
 	"sort"
 	"testing"
+
+	"github.com/stellar/go/keypair"
 
 	"github.com/stretchr/testify/assert"
 
@@ -132,7 +133,7 @@ func TestAddContractData(t *testing.T) {
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Post: &xdr.LedgerEntry{
-			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
 		},
 	})
 	assert.NoError(t, err)
@@ -280,7 +281,7 @@ func TestUpdateContractBalance(t *testing.T) {
 			Data: BalanceToContractData(etherID, [32]byte{}, 200),
 		},
 		Post: &xdr.LedgerEntry{
-			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
 		},
 	})
 	assert.NoError(t, err)
@@ -289,7 +290,7 @@ func TestUpdateContractBalance(t *testing.T) {
 	err = set.AddContractData(ingest.Change{
 		Type: xdr.LedgerEntryTypeContractData,
 		Pre: &xdr.LedgerEntry{
-			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: 1 << 63, Lo: 0}),
+			Data: balanceToContractData(etherID, [32]byte{1}, xdr.Int128Parts{Hi: -1, Lo: 0}),
 		},
 		Post: &xdr.LedgerEntry{
 			Data: BalanceToContractData(etherID, [32]byte{}, 200),

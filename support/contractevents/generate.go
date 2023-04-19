@@ -131,7 +131,7 @@ func makeBigAmount(amount *big.Int) xdr.ScVal {
 		Type: xdr.ScValTypeScvI128,
 		I128: &xdr.Int128Parts{
 			Lo: xdr.Uint64(lo.Uint64()),
-			Hi: xdr.Uint64(hi.Uint64()),
+			Hi: xdr.Int64(hi.Int64()),
 		},
 	}
 }

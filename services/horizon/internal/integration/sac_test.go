@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/big"
 	"strings"
-
 	"testing"
 
 	"github.com/stellar/go/amount"
@@ -130,7 +129,7 @@ func TestContractMintToContract(t *testing.T) {
 		mintWithAmt(
 			itest,
 			issuer, asset,
-			i128Param(uint64(mintAmount.Hi), uint64(mintAmount.Lo)),
+			i128Param(int64(mintAmount.Hi), uint64(mintAmount.Lo)),
 			contractAddressParam(recipientContractID)),
 	)
 	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
@@ -878,9 +877,9 @@ func contractAddressParam(contractID xdr.Hash) xdr.ScVal {
 	}
 }
 
-func i128Param(hi, lo uint64) xdr.ScVal {
+func i128Param(hi int64, lo uint64) xdr.ScVal {
 	i128 := &xdr.Int128Parts{
-		Hi: xdr.Uint64(hi),
+		Hi: xdr.Int64(hi),
 		Lo: xdr.Uint64(lo),
 	}
 	return xdr.ScVal{
