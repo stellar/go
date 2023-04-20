@@ -37,7 +37,7 @@ regulated-assets-approval-server:
 
 gxdr/xdr_generated.go: $(XDRS)
 	go run github.com/xdrpp/goxdr/cmd/goxdr -p gxdr -enum-comments -o $@ $(XDRS)
-	go fmt $@
+	gofmt -s -w $@
 
 xdr/%.x:
 	printf "%s" ${XDRNEXT_COMMIT} > xdr/xdr_commit_generated.txt
@@ -52,7 +52,7 @@ xdr/xdr_generated.go: $(XDRS)
 			--namespace xdr \
 			--output xdr/ \
 			$(XDRS)'
-	go fmt $@
+	gofmt -s -w $@
 
 xdr: gxdr/xdr_generated.go xdr/xdr_generated.go
 
