@@ -31,10 +31,10 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":               "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
 	"xdr/Stellar-contract-env-meta.x": "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-spec.x":     "6268629577238adf6210d6e919e41375a3b380e941d0c7acb662013c6f8aa575",
-	"xdr/Stellar-contract.x":          "7ec20def7e005a7d90357ac7b39d616435ab5835dc806989515faecdb506f51d",
+	"xdr/Stellar-contract.x":          "d618ba1a958d2dc50ddab1c986ab1a660a0b638a382a98bfe42d2f62b24aea05",
 	"xdr/Stellar-internal.x":          "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
-	"xdr/Stellar-ledger-entries.x":    "40ea6015526933dfa49a459b62e1f0f1fbd950ef95949f7faabec4b89d5a9241",
-	"xdr/Stellar-ledger.x":            "968fff69d58c70dbd27edf4635c4d7f99f7667981076ce29548e6ef289de3df5",
+	"xdr/Stellar-ledger-entries.x":    "73145d35602132ba63f538c21adcdddff6aebbc6bc7033cda4f6c496d30bf5be",
+	"xdr/Stellar-ledger.x":            "cd4ac7622931831291ed848004328d926d8a317122ca966f4bc105367819cd6c",
 	"xdr/Stellar-overlay.x":           "972f38a9d4a064273f3362cbfa7d3c563293fd5396d5f0774ce6cc690e27645d",
 	"xdr/Stellar-transaction.x":       "4fee5c1982810aa1746dbaf81dd6d84f1fe8193cb535bf0839da3509e7907547",
 	"xdr/Stellar-types.x":             "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
@@ -7635,235 +7635,38 @@ func (s ContractCodeEntry) xdrType() {}
 
 var _ xdrType = (*ContractCodeEntry)(nil)
 
-// ConfigSettingType is an XDR Enum defines as:
-//
-//	enum ConfigSettingType
-//	 {
-//	     CONFIG_SETTING_TYPE_UINT32 = 0
-//	 };
-type ConfigSettingType int32
-
-const (
-	ConfigSettingTypeConfigSettingTypeUint32 ConfigSettingType = 0
-)
-
-var configSettingTypeMap = map[int32]string{
-	0: "ConfigSettingTypeConfigSettingTypeUint32",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ConfigSettingType
-func (e ConfigSettingType) ValidEnum(v int32) bool {
-	_, ok := configSettingTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ConfigSettingType) String() string {
-	name, _ := configSettingTypeMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e ConfigSettingType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := configSettingTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ConfigSettingType enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*ConfigSettingType)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *ConfigSettingType) DecodeFrom(d *xdr.Decoder) (int, error) {
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding ConfigSettingType: %s", err)
-	}
-	if _, ok := configSettingTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ConfigSettingType enum value", v)
-	}
-	*e = ConfigSettingType(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ConfigSettingType) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ConfigSettingType) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ConfigSettingType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ConfigSettingType)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ConfigSettingType) xdrType() {}
-
-var _ xdrType = (*ConfigSettingType)(nil)
-
-// ConfigSetting is an XDR Union defines as:
-//
-//	union ConfigSetting switch (ConfigSettingType type)
-//	 {
-//	 case CONFIG_SETTING_TYPE_UINT32:
-//	     uint32 uint32Val;
-//	 };
-type ConfigSetting struct {
-	Type      ConfigSettingType
-	Uint32Val *Uint32
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u ConfigSetting) SwitchFieldName() string {
-	return "Type"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ConfigSetting
-func (u ConfigSetting) ArmForSwitch(sw int32) (string, bool) {
-	switch ConfigSettingType(sw) {
-	case ConfigSettingTypeConfigSettingTypeUint32:
-		return "Uint32Val", true
-	}
-	return "-", false
-}
-
-// NewConfigSetting creates a new  ConfigSetting.
-func NewConfigSetting(aType ConfigSettingType, value interface{}) (result ConfigSetting, err error) {
-	result.Type = aType
-	switch ConfigSettingType(aType) {
-	case ConfigSettingTypeConfigSettingTypeUint32:
-		tv, ok := value.(Uint32)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint32")
-			return
-		}
-		result.Uint32Val = &tv
-	}
-	return
-}
-
-// MustUint32Val retrieves the Uint32Val value from the union,
-// panicing if the value is not set.
-func (u ConfigSetting) MustUint32Val() Uint32 {
-	val, ok := u.GetUint32Val()
-
-	if !ok {
-		panic("arm Uint32Val is not set")
-	}
-
-	return val
-}
-
-// GetUint32Val retrieves the Uint32Val value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ConfigSetting) GetUint32Val() (result Uint32, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Uint32Val" {
-		result = *u.Uint32Val
-		ok = true
-	}
-
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u ConfigSetting) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = u.Type.EncodeTo(e); err != nil {
-		return err
-	}
-	switch ConfigSettingType(u.Type) {
-	case ConfigSettingTypeConfigSettingTypeUint32:
-		if err = (*u.Uint32Val).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("Type (ConfigSettingType) switch value '%d' is not valid for union ConfigSetting", u.Type)
-}
-
-var _ decoderFrom = (*ConfigSetting)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *ConfigSetting) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = u.Type.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ConfigSettingType: %s", err)
-	}
-	switch ConfigSettingType(u.Type) {
-	case ConfigSettingTypeConfigSettingTypeUint32:
-		u.Uint32Val = new(Uint32)
-		nTmp, err = (*u.Uint32Val).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Uint32: %s", err)
-		}
-		return n, nil
-	}
-	return n, fmt.Errorf("union ConfigSetting has invalid Type (ConfigSettingType) switch value '%d'", u.Type)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ConfigSetting) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ConfigSetting) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ConfigSetting)(nil)
-	_ encoding.BinaryUnmarshaler = (*ConfigSetting)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ConfigSetting) xdrType() {}
-
-var _ xdrType = (*ConfigSetting)(nil)
-
 // ConfigSettingId is an XDR Enum defines as:
 //
 //	enum ConfigSettingID
 //	 {
-//	     CONFIG_SETTING_CONTRACT_MAX_SIZE = 0
+//	     CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES = 0,
+//	     CONFIG_SETTING_CONTRACT_COMPUTE_V0 = 1,
+//	     CONFIG_SETTING_CONTRACT_LEDGER_COST_V0 = 2,
+//	     CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0 = 3,
+//	     CONFIG_SETTING_CONTRACT_META_DATA_V0 = 4,
+//	     CONFIG_SETTING_CONTRACT_BANDWIDTH_V0 = 5,
+//	     CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION = 6
 //	 };
 type ConfigSettingId int32
 
 const (
-	ConfigSettingIdConfigSettingContractMaxSize ConfigSettingId = 0
+	ConfigSettingIdConfigSettingContractMaxSizeBytes     ConfigSettingId = 0
+	ConfigSettingIdConfigSettingContractComputeV0        ConfigSettingId = 1
+	ConfigSettingIdConfigSettingContractLedgerCostV0     ConfigSettingId = 2
+	ConfigSettingIdConfigSettingContractHistoricalDataV0 ConfigSettingId = 3
+	ConfigSettingIdConfigSettingContractMetaDataV0       ConfigSettingId = 4
+	ConfigSettingIdConfigSettingContractBandwidthV0      ConfigSettingId = 5
+	ConfigSettingIdConfigSettingContractHostLogicVersion ConfigSettingId = 6
 )
 
 var configSettingIdMap = map[int32]string{
-	0: "ConfigSettingIdConfigSettingContractMaxSize",
+	0: "ConfigSettingIdConfigSettingContractMaxSizeBytes",
+	1: "ConfigSettingIdConfigSettingContractComputeV0",
+	2: "ConfigSettingIdConfigSettingContractLedgerCostV0",
+	3: "ConfigSettingIdConfigSettingContractHistoricalDataV0",
+	4: "ConfigSettingIdConfigSettingContractMetaDataV0",
+	5: "ConfigSettingIdConfigSettingContractBandwidthV0",
+	6: "ConfigSettingIdConfigSettingContractHostLogicVersion",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -7930,78 +7733,79 @@ func (s ConfigSettingId) xdrType() {}
 
 var _ xdrType = (*ConfigSettingId)(nil)
 
-// ConfigSettingEntryExt is an XDR NestedUnion defines as:
+// ConfigSettingContractComputeV0 is an XDR Struct defines as:
 //
-//	union switch (int v)
-//	     {
-//	     case 0:
-//	         void;
-//	     }
-type ConfigSettingEntryExt struct {
-	V int32
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u ConfigSettingEntryExt) SwitchFieldName() string {
-	return "V"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ConfigSettingEntryExt
-func (u ConfigSettingEntryExt) ArmForSwitch(sw int32) (string, bool) {
-	switch int32(sw) {
-	case 0:
-		return "", true
-	}
-	return "-", false
-}
-
-// NewConfigSettingEntryExt creates a new  ConfigSettingEntryExt.
-func NewConfigSettingEntryExt(v int32, value interface{}) (result ConfigSettingEntryExt, err error) {
-	result.V = v
-	switch int32(v) {
-	case 0:
-		// void
-	}
-	return
+//	struct ConfigSettingContractComputeV0
+//	 {
+//	     // Maximum instructions per ledger
+//	     int64 ledgerMaxInstructions;
+//	     // Maximum instructions per transaction
+//	     int64 txMaxInstructions;
+//	     // Cost of 10000 instructions
+//	     int64 feeRatePerInstructionsIncrement;
+//
+//	     // Memory limit per contract/host function invocation. Unlike
+//	     // instructions, there is no fee for memory and it's not
+//	     // accumulated between operations - the same limit is applied
+//	     // to every operation.
+//	     uint32 memoryLimit;
+//	 };
+type ConfigSettingContractComputeV0 struct {
+	LedgerMaxInstructions           Int64
+	TxMaxInstructions               Int64
+	FeeRatePerInstructionsIncrement Int64
+	MemoryLimit                     Uint32
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (u ConfigSettingEntryExt) EncodeTo(e *xdr.Encoder) error {
+func (s *ConfigSettingContractComputeV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if _, err = e.EncodeInt(int32(u.V)); err != nil {
+	if err = s.LedgerMaxInstructions.EncodeTo(e); err != nil {
 		return err
 	}
-	switch int32(u.V) {
-	case 0:
-		// Void
-		return nil
+	if err = s.TxMaxInstructions.EncodeTo(e); err != nil {
+		return err
 	}
-	return fmt.Errorf("V (int32) switch value '%d' is not valid for union ConfigSettingEntryExt", u.V)
+	if err = s.FeeRatePerInstructionsIncrement.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.MemoryLimit.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
 }
 
-var _ decoderFrom = (*ConfigSettingEntryExt)(nil)
+var _ decoderFrom = (*ConfigSettingContractComputeV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ConfigSettingEntryExt) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractComputeV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	u.V, nTmp, err = d.DecodeInt()
+	nTmp, err = s.LedgerMaxInstructions.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Int: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	switch int32(u.V) {
-	case 0:
-		// Void
-		return n, nil
+	nTmp, err = s.TxMaxInstructions.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	return n, fmt.Errorf("union ConfigSettingEntryExt has invalid V (int32) switch value '%d'", u.V)
+	nTmp, err = s.FeeRatePerInstructionsIncrement.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.MemoryLimit.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ConfigSettingEntryExt) MarshalBinary() ([]byte, error) {
+func (s ConfigSettingContractComputeV0) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -8009,7 +7813,7 @@ func (s ConfigSettingEntryExt) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ConfigSettingEntryExt) UnmarshalBinary(inp []byte) error {
+func (s *ConfigSettingContractComputeV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -8017,73 +7821,864 @@ func (s *ConfigSettingEntryExt) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ConfigSettingEntryExt)(nil)
-	_ encoding.BinaryUnmarshaler = (*ConfigSettingEntryExt)(nil)
+	_ encoding.BinaryMarshaler   = (*ConfigSettingContractComputeV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractComputeV0)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ConfigSettingEntryExt) xdrType() {}
+func (s ConfigSettingContractComputeV0) xdrType() {}
 
-var _ xdrType = (*ConfigSettingEntryExt)(nil)
+var _ xdrType = (*ConfigSettingContractComputeV0)(nil)
 
-// ConfigSettingEntry is an XDR Struct defines as:
+// ConfigSettingContractLedgerCostV0 is an XDR Struct defines as:
 //
-//	struct ConfigSettingEntry
+//	struct ConfigSettingContractLedgerCostV0
 //	 {
-//	     union switch (int v)
-//	     {
-//	     case 0:
-//	         void;
-//	     }
-//	     ext;
+//	     // Maximum number of ledger entry read operations per ledger
+//	     uint32 ledgerMaxReadLedgerEntries;
+//	     // Maximum number of bytes that can be read per ledger
+//	     uint32 ledgerMaxReadBytes;
+//	     // Maximum number of ledger entry write operations per ledger
+//	     uint32 ledgerMaxWriteLedgerEntries;
+//	     // Maximum number of bytes that can be written per ledger
+//	     uint32 ledgerMaxWriteBytes;
 //
-//	     ConfigSettingID configSettingID;
-//	     ConfigSetting setting;
+//	     // Maximum number of ledger entry read operations per transaction
+//	     uint32 txMaxReadLedgerEntries;
+//	     // Maximum number of bytes that can be read per transaction
+//	     uint32 txMaxReadBytes;
+//	     // Maximum number of ledger entry write operations per transaction
+//	     uint32 txMaxWriteLedgerEntries;
+//	     // Maximum number of bytes that can be written per transaction
+//	     uint32 txMaxWriteBytes;
+//
+//	     int64 feeReadLedgerEntry;  // Fee per ledger entry read
+//	     int64 feeWriteLedgerEntry; // Fee per ledger entry write
+//
+//	     int64 feeRead1KB;  // Fee for reading 1KB
+//	     int64 feeWrite1KB; // Fee for writing 1KB
+//
+//	     // Bucket list fees grow slowly up to that size
+//	     int64 bucketListSizeBytes;
+//	     // Fee rate in stroops when the bucket list is empty
+//	     int64 bucketListFeeRateLow;
+//	     // Fee rate in stroops when the bucket list reached bucketListSizeBytes
+//	     int64 bucketListFeeRateHigh;
+//	     // Rate multiplier for any additional data past the first bucketListSizeBytes
+//	     uint32 bucketListGrowthFactor;
 //	 };
-type ConfigSettingEntry struct {
-	Ext             ConfigSettingEntryExt
-	ConfigSettingId ConfigSettingId
-	Setting         ConfigSetting
+type ConfigSettingContractLedgerCostV0 struct {
+	LedgerMaxReadLedgerEntries  Uint32
+	LedgerMaxReadBytes          Uint32
+	LedgerMaxWriteLedgerEntries Uint32
+	LedgerMaxWriteBytes         Uint32
+	TxMaxReadLedgerEntries      Uint32
+	TxMaxReadBytes              Uint32
+	TxMaxWriteLedgerEntries     Uint32
+	TxMaxWriteBytes             Uint32
+	FeeReadLedgerEntry          Int64
+	FeeWriteLedgerEntry         Int64
+	FeeRead1Kb                  Int64
+	FeeWrite1Kb                 Int64
+	BucketListSizeBytes         Int64
+	BucketListFeeRateLow        Int64
+	BucketListFeeRateHigh       Int64
+	BucketListGrowthFactor      Uint32
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s *ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
+func (s *ConfigSettingContractLedgerCostV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.Ext.EncodeTo(e); err != nil {
+	if err = s.LedgerMaxReadLedgerEntries.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.ConfigSettingId.EncodeTo(e); err != nil {
+	if err = s.LedgerMaxReadBytes.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.Setting.EncodeTo(e); err != nil {
+	if err = s.LedgerMaxWriteLedgerEntries.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LedgerMaxWriteBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TxMaxReadLedgerEntries.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TxMaxReadBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TxMaxWriteLedgerEntries.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TxMaxWriteBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FeeReadLedgerEntry.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FeeWriteLedgerEntry.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FeeRead1Kb.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FeeWrite1Kb.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.BucketListSizeBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.BucketListFeeRateLow.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.BucketListFeeRateHigh.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.BucketListGrowthFactor.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
 }
 
+var _ decoderFrom = (*ConfigSettingContractLedgerCostV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ConfigSettingContractLedgerCostV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.LedgerMaxReadLedgerEntries.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.LedgerMaxReadBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.LedgerMaxWriteLedgerEntries.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.LedgerMaxWriteBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.TxMaxReadLedgerEntries.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.TxMaxReadBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.TxMaxWriteLedgerEntries.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.TxMaxWriteBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.FeeReadLedgerEntry.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.FeeWriteLedgerEntry.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.FeeRead1Kb.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.FeeWrite1Kb.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.BucketListSizeBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.BucketListFeeRateLow.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.BucketListFeeRateHigh.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.BucketListGrowthFactor.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ConfigSettingContractLedgerCostV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ConfigSettingContractLedgerCostV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ConfigSettingContractLedgerCostV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractLedgerCostV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ConfigSettingContractLedgerCostV0) xdrType() {}
+
+var _ xdrType = (*ConfigSettingContractLedgerCostV0)(nil)
+
+// ConfigSettingContractHistoricalDataV0 is an XDR Struct defines as:
+//
+//	struct ConfigSettingContractHistoricalDataV0
+//	 {
+//	     int64 feeHistorical1KB; // Fee for storing 1KB in archives
+//	 };
+type ConfigSettingContractHistoricalDataV0 struct {
+	FeeHistorical1Kb Int64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ConfigSettingContractHistoricalDataV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.FeeHistorical1Kb.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ConfigSettingContractHistoricalDataV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ConfigSettingContractHistoricalDataV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.FeeHistorical1Kb.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ConfigSettingContractHistoricalDataV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ConfigSettingContractHistoricalDataV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ConfigSettingContractHistoricalDataV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractHistoricalDataV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ConfigSettingContractHistoricalDataV0) xdrType() {}
+
+var _ xdrType = (*ConfigSettingContractHistoricalDataV0)(nil)
+
+// ConfigSettingContractMetaDataV0 is an XDR Struct defines as:
+//
+//	struct ConfigSettingContractMetaDataV0
+//	 {
+//	     // Maximum size of extended meta data produced by a transaction
+//	     uint32 txMaxExtendedMetaDataSizeBytes;
+//	     // Fee for generating 1KB of extended meta data
+//	     int64 feeExtendedMetaData1KB;
+//	 };
+type ConfigSettingContractMetaDataV0 struct {
+	TxMaxExtendedMetaDataSizeBytes Uint32
+	FeeExtendedMetaData1Kb         Int64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ConfigSettingContractMetaDataV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.TxMaxExtendedMetaDataSizeBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FeeExtendedMetaData1Kb.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ConfigSettingContractMetaDataV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ConfigSettingContractMetaDataV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.TxMaxExtendedMetaDataSizeBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.FeeExtendedMetaData1Kb.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ConfigSettingContractMetaDataV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ConfigSettingContractMetaDataV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ConfigSettingContractMetaDataV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractMetaDataV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ConfigSettingContractMetaDataV0) xdrType() {}
+
+var _ xdrType = (*ConfigSettingContractMetaDataV0)(nil)
+
+// ConfigSettingContractBandwidthV0 is an XDR Struct defines as:
+//
+//	struct ConfigSettingContractBandwidthV0
+//	 {
+//	     // Maximum size in bytes to propagate per ledger
+//	     uint32 ledgerMaxPropagateSizeBytes;
+//	     // Maximum size in bytes for a transaction
+//	     uint32 txMaxSizeBytes;
+//
+//	     // Fee for propagating 1KB of data
+//	     int64 feePropagateData1KB;
+//	 };
+type ConfigSettingContractBandwidthV0 struct {
+	LedgerMaxPropagateSizeBytes Uint32
+	TxMaxSizeBytes              Uint32
+	FeePropagateData1Kb         Int64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ConfigSettingContractBandwidthV0) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.LedgerMaxPropagateSizeBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.TxMaxSizeBytes.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.FeePropagateData1Kb.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ConfigSettingContractBandwidthV0)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ConfigSettingContractBandwidthV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.LedgerMaxPropagateSizeBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.TxMaxSizeBytes.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.FeePropagateData1Kb.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ConfigSettingContractBandwidthV0) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ConfigSettingContractBandwidthV0) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ConfigSettingContractBandwidthV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractBandwidthV0)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ConfigSettingContractBandwidthV0) xdrType() {}
+
+var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
+
+// ConfigSettingEntry is an XDR Union defines as:
+//
+//	union ConfigSettingEntry switch (ConfigSettingID configSettingID)
+//	 {
+//	 case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES:
+//	     uint32 contractMaxSizeBytes;
+//	 case CONFIG_SETTING_CONTRACT_COMPUTE_V0:
+//	     ConfigSettingContractComputeV0 contractCompute;
+//	 case CONFIG_SETTING_CONTRACT_LEDGER_COST_V0:
+//	     ConfigSettingContractLedgerCostV0 contractLedgerCost;
+//	 case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
+//	     ConfigSettingContractHistoricalDataV0 contractHistoricalData;
+//	 case CONFIG_SETTING_CONTRACT_META_DATA_V0:
+//	     ConfigSettingContractMetaDataV0 contractMetaData;
+//	 case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
+//	     ConfigSettingContractBandwidthV0 contractBandwidth;
+//	 case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
+//	     uint32 contractHostLogicVersion;
+//	 };
+type ConfigSettingEntry struct {
+	ConfigSettingId          ConfigSettingId
+	ContractMaxSizeBytes     *Uint32
+	ContractCompute          *ConfigSettingContractComputeV0
+	ContractLedgerCost       *ConfigSettingContractLedgerCostV0
+	ContractHistoricalData   *ConfigSettingContractHistoricalDataV0
+	ContractMetaData         *ConfigSettingContractMetaDataV0
+	ContractBandwidth        *ConfigSettingContractBandwidthV0
+	ContractHostLogicVersion *Uint32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u ConfigSettingEntry) SwitchFieldName() string {
+	return "ConfigSettingId"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of ConfigSettingEntry
+func (u ConfigSettingEntry) ArmForSwitch(sw int32) (string, bool) {
+	switch ConfigSettingId(sw) {
+	case ConfigSettingIdConfigSettingContractMaxSizeBytes:
+		return "ContractMaxSizeBytes", true
+	case ConfigSettingIdConfigSettingContractComputeV0:
+		return "ContractCompute", true
+	case ConfigSettingIdConfigSettingContractLedgerCostV0:
+		return "ContractLedgerCost", true
+	case ConfigSettingIdConfigSettingContractHistoricalDataV0:
+		return "ContractHistoricalData", true
+	case ConfigSettingIdConfigSettingContractMetaDataV0:
+		return "ContractMetaData", true
+	case ConfigSettingIdConfigSettingContractBandwidthV0:
+		return "ContractBandwidth", true
+	case ConfigSettingIdConfigSettingContractHostLogicVersion:
+		return "ContractHostLogicVersion", true
+	}
+	return "-", false
+}
+
+// NewConfigSettingEntry creates a new  ConfigSettingEntry.
+func NewConfigSettingEntry(configSettingId ConfigSettingId, value interface{}) (result ConfigSettingEntry, err error) {
+	result.ConfigSettingId = configSettingId
+	switch ConfigSettingId(configSettingId) {
+	case ConfigSettingIdConfigSettingContractMaxSizeBytes:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.ContractMaxSizeBytes = &tv
+	case ConfigSettingIdConfigSettingContractComputeV0:
+		tv, ok := value.(ConfigSettingContractComputeV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ConfigSettingContractComputeV0")
+			return
+		}
+		result.ContractCompute = &tv
+	case ConfigSettingIdConfigSettingContractLedgerCostV0:
+		tv, ok := value.(ConfigSettingContractLedgerCostV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ConfigSettingContractLedgerCostV0")
+			return
+		}
+		result.ContractLedgerCost = &tv
+	case ConfigSettingIdConfigSettingContractHistoricalDataV0:
+		tv, ok := value.(ConfigSettingContractHistoricalDataV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ConfigSettingContractHistoricalDataV0")
+			return
+		}
+		result.ContractHistoricalData = &tv
+	case ConfigSettingIdConfigSettingContractMetaDataV0:
+		tv, ok := value.(ConfigSettingContractMetaDataV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ConfigSettingContractMetaDataV0")
+			return
+		}
+		result.ContractMetaData = &tv
+	case ConfigSettingIdConfigSettingContractBandwidthV0:
+		tv, ok := value.(ConfigSettingContractBandwidthV0)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ConfigSettingContractBandwidthV0")
+			return
+		}
+		result.ContractBandwidth = &tv
+	case ConfigSettingIdConfigSettingContractHostLogicVersion:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.ContractHostLogicVersion = &tv
+	}
+	return
+}
+
+// MustContractMaxSizeBytes retrieves the ContractMaxSizeBytes value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractMaxSizeBytes() Uint32 {
+	val, ok := u.GetContractMaxSizeBytes()
+
+	if !ok {
+		panic("arm ContractMaxSizeBytes is not set")
+	}
+
+	return val
+}
+
+// GetContractMaxSizeBytes retrieves the ContractMaxSizeBytes value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractMaxSizeBytes() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractMaxSizeBytes" {
+		result = *u.ContractMaxSizeBytes
+		ok = true
+	}
+
+	return
+}
+
+// MustContractCompute retrieves the ContractCompute value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractCompute() ConfigSettingContractComputeV0 {
+	val, ok := u.GetContractCompute()
+
+	if !ok {
+		panic("arm ContractCompute is not set")
+	}
+
+	return val
+}
+
+// GetContractCompute retrieves the ContractCompute value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractCompute() (result ConfigSettingContractComputeV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractCompute" {
+		result = *u.ContractCompute
+		ok = true
+	}
+
+	return
+}
+
+// MustContractLedgerCost retrieves the ContractLedgerCost value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractLedgerCost() ConfigSettingContractLedgerCostV0 {
+	val, ok := u.GetContractLedgerCost()
+
+	if !ok {
+		panic("arm ContractLedgerCost is not set")
+	}
+
+	return val
+}
+
+// GetContractLedgerCost retrieves the ContractLedgerCost value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractLedgerCost() (result ConfigSettingContractLedgerCostV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractLedgerCost" {
+		result = *u.ContractLedgerCost
+		ok = true
+	}
+
+	return
+}
+
+// MustContractHistoricalData retrieves the ContractHistoricalData value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractHistoricalData() ConfigSettingContractHistoricalDataV0 {
+	val, ok := u.GetContractHistoricalData()
+
+	if !ok {
+		panic("arm ContractHistoricalData is not set")
+	}
+
+	return val
+}
+
+// GetContractHistoricalData retrieves the ContractHistoricalData value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractHistoricalData() (result ConfigSettingContractHistoricalDataV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractHistoricalData" {
+		result = *u.ContractHistoricalData
+		ok = true
+	}
+
+	return
+}
+
+// MustContractMetaData retrieves the ContractMetaData value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractMetaData() ConfigSettingContractMetaDataV0 {
+	val, ok := u.GetContractMetaData()
+
+	if !ok {
+		panic("arm ContractMetaData is not set")
+	}
+
+	return val
+}
+
+// GetContractMetaData retrieves the ContractMetaData value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractMetaData() (result ConfigSettingContractMetaDataV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractMetaData" {
+		result = *u.ContractMetaData
+		ok = true
+	}
+
+	return
+}
+
+// MustContractBandwidth retrieves the ContractBandwidth value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractBandwidth() ConfigSettingContractBandwidthV0 {
+	val, ok := u.GetContractBandwidth()
+
+	if !ok {
+		panic("arm ContractBandwidth is not set")
+	}
+
+	return val
+}
+
+// GetContractBandwidth retrieves the ContractBandwidth value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractBandwidth() (result ConfigSettingContractBandwidthV0, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractBandwidth" {
+		result = *u.ContractBandwidth
+		ok = true
+	}
+
+	return
+}
+
+// MustContractHostLogicVersion retrieves the ContractHostLogicVersion value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractHostLogicVersion() Uint32 {
+	val, ok := u.GetContractHostLogicVersion()
+
+	if !ok {
+		panic("arm ContractHostLogicVersion is not set")
+	}
+
+	return val
+}
+
+// GetContractHostLogicVersion retrieves the ContractHostLogicVersion value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractHostLogicVersion() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractHostLogicVersion" {
+		result = *u.ContractHostLogicVersion
+		ok = true
+	}
+
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.ConfigSettingId.EncodeTo(e); err != nil {
+		return err
+	}
+	switch ConfigSettingId(u.ConfigSettingId) {
+	case ConfigSettingIdConfigSettingContractMaxSizeBytes:
+		if err = (*u.ContractMaxSizeBytes).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractComputeV0:
+		if err = (*u.ContractCompute).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractLedgerCostV0:
+		if err = (*u.ContractLedgerCost).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractHistoricalDataV0:
+		if err = (*u.ContractHistoricalData).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractMetaDataV0:
+		if err = (*u.ContractMetaData).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractBandwidthV0:
+		if err = (*u.ContractBandwidth).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractHostLogicVersion:
+		if err = (*u.ContractHostLogicVersion).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("ConfigSettingId (ConfigSettingId) switch value '%d' is not valid for union ConfigSettingEntry", u.ConfigSettingId)
+}
+
 var _ decoderFrom = (*ConfigSettingEntry)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Ext.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ConfigSettingEntryExt: %s", err)
-	}
-	nTmp, err = s.ConfigSettingId.DecodeFrom(d)
+	nTmp, err = u.ConfigSettingId.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ConfigSettingId: %s", err)
 	}
-	nTmp, err = s.Setting.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ConfigSetting: %s", err)
+	switch ConfigSettingId(u.ConfigSettingId) {
+	case ConfigSettingIdConfigSettingContractMaxSizeBytes:
+		u.ContractMaxSizeBytes = new(Uint32)
+		nTmp, err = (*u.ContractMaxSizeBytes).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint32: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractComputeV0:
+		u.ContractCompute = new(ConfigSettingContractComputeV0)
+		nTmp, err = (*u.ContractCompute).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ConfigSettingContractComputeV0: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractLedgerCostV0:
+		u.ContractLedgerCost = new(ConfigSettingContractLedgerCostV0)
+		nTmp, err = (*u.ContractLedgerCost).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ConfigSettingContractLedgerCostV0: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractHistoricalDataV0:
+		u.ContractHistoricalData = new(ConfigSettingContractHistoricalDataV0)
+		nTmp, err = (*u.ContractHistoricalData).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ConfigSettingContractHistoricalDataV0: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractMetaDataV0:
+		u.ContractMetaData = new(ConfigSettingContractMetaDataV0)
+		nTmp, err = (*u.ContractMetaData).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ConfigSettingContractMetaDataV0: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractBandwidthV0:
+		u.ContractBandwidth = new(ConfigSettingContractBandwidthV0)
+		nTmp, err = (*u.ContractBandwidth).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ConfigSettingContractBandwidthV0: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractHostLogicVersion:
+		u.ContractHostLogicVersion = new(Uint32)
+		nTmp, err = (*u.ContractHostLogicVersion).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint32: %s", err)
+		}
+		return n, nil
 	}
-	return n, nil
+	return n, fmt.Errorf("union ConfigSettingEntry has invalid ConfigSettingId (ConfigSettingId) switch value '%d'", u.ConfigSettingId)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -11592,51 +12187,50 @@ func (s LedgerUpgradeType) xdrType() {}
 
 var _ xdrType = (*LedgerUpgradeType)(nil)
 
-// LedgerUpgradeConfigSetting is an XDR NestedStruct defines as:
+// ConfigUpgradeSetKey is an XDR Struct defines as:
 //
-//	struct
-//	     {
-//	         ConfigSettingID id; // id to update
-//	         ConfigSetting setting; // new value
-//	     }
-type LedgerUpgradeConfigSetting struct {
-	Id      ConfigSettingId
-	Setting ConfigSetting
+//	struct ConfigUpgradeSetKey {
+//	     Hash contractID;
+//	     Hash contentHash;
+//	 };
+type ConfigUpgradeSetKey struct {
+	ContractId  Hash
+	ContentHash Hash
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s *LedgerUpgradeConfigSetting) EncodeTo(e *xdr.Encoder) error {
+func (s *ConfigUpgradeSetKey) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.Id.EncodeTo(e); err != nil {
+	if err = s.ContractId.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.Setting.EncodeTo(e); err != nil {
+	if err = s.ContentHash.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
 }
 
-var _ decoderFrom = (*LedgerUpgradeConfigSetting)(nil)
+var _ decoderFrom = (*ConfigUpgradeSetKey)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *LedgerUpgradeConfigSetting) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigUpgradeSetKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Id.DecodeFrom(d)
+	nTmp, err = s.ContractId.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ConfigSettingId: %s", err)
+		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.Setting.DecodeFrom(d)
+	nTmp, err = s.ContentHash.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ConfigSetting: %s", err)
+		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
 	return n, nil
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s LedgerUpgradeConfigSetting) MarshalBinary() ([]byte, error) {
+func (s ConfigUpgradeSetKey) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -11644,7 +12238,7 @@ func (s LedgerUpgradeConfigSetting) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *LedgerUpgradeConfigSetting) UnmarshalBinary(inp []byte) error {
+func (s *ConfigUpgradeSetKey) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -11652,15 +12246,15 @@ func (s *LedgerUpgradeConfigSetting) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*LedgerUpgradeConfigSetting)(nil)
-	_ encoding.BinaryUnmarshaler = (*LedgerUpgradeConfigSetting)(nil)
+	_ encoding.BinaryMarshaler   = (*ConfigUpgradeSetKey)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigUpgradeSetKey)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s LedgerUpgradeConfigSetting) xdrType() {}
+func (s ConfigUpgradeSetKey) xdrType() {}
 
-var _ xdrType = (*LedgerUpgradeConfigSetting)(nil)
+var _ xdrType = (*ConfigUpgradeSetKey)(nil)
 
 // LedgerUpgrade is an XDR Union defines as:
 //
@@ -11677,11 +12271,7 @@ var _ xdrType = (*LedgerUpgradeConfigSetting)(nil)
 //	 case LEDGER_UPGRADE_FLAGS:
 //	     uint32 newFlags; // update flags
 //	 case LEDGER_UPGRADE_CONFIG:
-//	     struct
-//	     {
-//	         ConfigSettingID id; // id to update
-//	         ConfigSetting setting; // new value
-//	     } configSetting;
+//	     ConfigUpgradeSetKey newConfig;
 //	 };
 type LedgerUpgrade struct {
 	Type             LedgerUpgradeType
@@ -11690,7 +12280,7 @@ type LedgerUpgrade struct {
 	NewMaxTxSetSize  *Uint32
 	NewBaseReserve   *Uint32
 	NewFlags         *Uint32
-	ConfigSetting    *LedgerUpgradeConfigSetting
+	NewConfig        *ConfigUpgradeSetKey
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -11714,7 +12304,7 @@ func (u LedgerUpgrade) ArmForSwitch(sw int32) (string, bool) {
 	case LedgerUpgradeTypeLedgerUpgradeFlags:
 		return "NewFlags", true
 	case LedgerUpgradeTypeLedgerUpgradeConfig:
-		return "ConfigSetting", true
+		return "NewConfig", true
 	}
 	return "-", false
 }
@@ -11759,12 +12349,12 @@ func NewLedgerUpgrade(aType LedgerUpgradeType, value interface{}) (result Ledger
 		}
 		result.NewFlags = &tv
 	case LedgerUpgradeTypeLedgerUpgradeConfig:
-		tv, ok := value.(LedgerUpgradeConfigSetting)
+		tv, ok := value.(ConfigUpgradeSetKey)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be LedgerUpgradeConfigSetting")
+			err = fmt.Errorf("invalid value, must be ConfigUpgradeSetKey")
 			return
 		}
-		result.ConfigSetting = &tv
+		result.NewConfig = &tv
 	}
 	return
 }
@@ -11894,25 +12484,25 @@ func (u LedgerUpgrade) GetNewFlags() (result Uint32, ok bool) {
 	return
 }
 
-// MustConfigSetting retrieves the ConfigSetting value from the union,
+// MustNewConfig retrieves the NewConfig value from the union,
 // panicing if the value is not set.
-func (u LedgerUpgrade) MustConfigSetting() LedgerUpgradeConfigSetting {
-	val, ok := u.GetConfigSetting()
+func (u LedgerUpgrade) MustNewConfig() ConfigUpgradeSetKey {
+	val, ok := u.GetNewConfig()
 
 	if !ok {
-		panic("arm ConfigSetting is not set")
+		panic("arm NewConfig is not set")
 	}
 
 	return val
 }
 
-// GetConfigSetting retrieves the ConfigSetting value from the union,
+// GetNewConfig retrieves the NewConfig value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u LedgerUpgrade) GetConfigSetting() (result LedgerUpgradeConfigSetting, ok bool) {
+func (u LedgerUpgrade) GetNewConfig() (result ConfigUpgradeSetKey, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "ConfigSetting" {
-		result = *u.ConfigSetting
+	if armName == "NewConfig" {
+		result = *u.NewConfig
 		ok = true
 	}
 
@@ -11952,7 +12542,7 @@ func (u LedgerUpgrade) EncodeTo(e *xdr.Encoder) error {
 		}
 		return nil
 	case LedgerUpgradeTypeLedgerUpgradeConfig:
-		if err = (*u.ConfigSetting).EncodeTo(e); err != nil {
+		if err = (*u.NewConfig).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -12013,11 +12603,11 @@ func (u *LedgerUpgrade) DecodeFrom(d *xdr.Decoder) (int, error) {
 		}
 		return n, nil
 	case LedgerUpgradeTypeLedgerUpgradeConfig:
-		u.ConfigSetting = new(LedgerUpgradeConfigSetting)
-		nTmp, err = (*u.ConfigSetting).DecodeFrom(d)
+		u.NewConfig = new(ConfigUpgradeSetKey)
+		nTmp, err = (*u.NewConfig).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding LedgerUpgradeConfigSetting: %s", err)
+			return n, fmt.Errorf("decoding ConfigUpgradeSetKey: %s", err)
 		}
 		return n, nil
 	}
@@ -12050,6 +12640,82 @@ var (
 func (s LedgerUpgrade) xdrType() {}
 
 var _ xdrType = (*LedgerUpgrade)(nil)
+
+// ConfigUpgradeSet is an XDR Struct defines as:
+//
+//	struct ConfigUpgradeSet {
+//	     ConfigSettingEntry updatedEntry<>;
+//	 };
+type ConfigUpgradeSet struct {
+	UpdatedEntry []ConfigSettingEntry
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ConfigUpgradeSet) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if _, err = e.EncodeUint(uint32(len(s.UpdatedEntry))); err != nil {
+		return err
+	}
+	for i := 0; i < len(s.UpdatedEntry); i++ {
+		if err = s.UpdatedEntry[i].EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ConfigUpgradeSet)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ConfigUpgradeSet) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	var l uint32
+	l, nTmp, err = d.DecodeUint()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ConfigSettingEntry: %s", err)
+	}
+	s.UpdatedEntry = nil
+	if l > 0 {
+		s.UpdatedEntry = make([]ConfigSettingEntry, l)
+		for i := uint32(0); i < l; i++ {
+			nTmp, err = s.UpdatedEntry[i].DecodeFrom(d)
+			n += nTmp
+			if err != nil {
+				return n, fmt.Errorf("decoding ConfigSettingEntry: %s", err)
+			}
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ConfigUpgradeSet) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ConfigUpgradeSet) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ConfigUpgradeSet)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigUpgradeSet)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ConfigUpgradeSet) xdrType() {}
+
+var _ xdrType = (*ConfigUpgradeSet)(nil)
 
 // BucketEntryType is an XDR Enum defines as:
 //
@@ -49126,27 +49792,93 @@ func (s ScStatus) xdrType() {}
 
 var _ xdrType = (*ScStatus)(nil)
 
+// UInt128Parts is an XDR Struct defines as:
+//
+//	struct UInt128Parts {
+//	     uint64 hi;
+//	     uint64 lo;
+//	 };
+type UInt128Parts struct {
+	Hi Uint64
+	Lo Uint64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *UInt128Parts) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Hi.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.Lo.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*UInt128Parts)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *UInt128Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Hi.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	nTmp, err = s.Lo.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s UInt128Parts) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *UInt128Parts) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*UInt128Parts)(nil)
+	_ encoding.BinaryUnmarshaler = (*UInt128Parts)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s UInt128Parts) xdrType() {}
+
+var _ xdrType = (*UInt128Parts)(nil)
+
 // Int128Parts is an XDR Struct defines as:
 //
 //	struct Int128Parts {
-//	     // Both signed and unsigned 128-bit ints
-//	     // are transported in a pair of uint64s
-//	     // to reduce the risk of sign-extension.
+//	     int64 hi;
 //	     uint64 lo;
-//	     uint64 hi;
 //	 };
 type Int128Parts struct {
+	Hi Int64
 	Lo Uint64
-	Hi Uint64
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *Int128Parts) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.Lo.EncodeTo(e); err != nil {
+	if err = s.Hi.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.Hi.EncodeTo(e); err != nil {
+	if err = s.Lo.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -49158,12 +49890,12 @@ var _ decoderFrom = (*Int128Parts)(nil)
 func (s *Int128Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.Lo.DecodeFrom(d)
+	nTmp, err = s.Hi.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Uint64: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Hi.DecodeFrom(d)
+	nTmp, err = s.Lo.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
@@ -49197,6 +49929,184 @@ var (
 func (s Int128Parts) xdrType() {}
 
 var _ xdrType = (*Int128Parts)(nil)
+
+// UInt256Parts is an XDR Struct defines as:
+//
+//	struct UInt256Parts {
+//	     uint64 hi_hi;
+//	     uint64 hi_lo;
+//	     uint64 lo_hi;
+//	     uint64 lo_lo;
+//	 };
+type UInt256Parts struct {
+	HiHi Uint64
+	HiLo Uint64
+	LoHi Uint64
+	LoLo Uint64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *UInt256Parts) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.HiHi.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.HiLo.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LoHi.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LoLo.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*UInt256Parts)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *UInt256Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.HiHi.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	nTmp, err = s.HiLo.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	nTmp, err = s.LoHi.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	nTmp, err = s.LoLo.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s UInt256Parts) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *UInt256Parts) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*UInt256Parts)(nil)
+	_ encoding.BinaryUnmarshaler = (*UInt256Parts)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s UInt256Parts) xdrType() {}
+
+var _ xdrType = (*UInt256Parts)(nil)
+
+// Int256Parts is an XDR Struct defines as:
+//
+//	struct Int256Parts {
+//	     int64 hi_hi;
+//	     uint64 hi_lo;
+//	     uint64 lo_hi;
+//	     uint64 lo_lo;
+//	 };
+type Int256Parts struct {
+	HiHi Int64
+	HiLo Uint64
+	LoHi Uint64
+	LoLo Uint64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *Int256Parts) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.HiHi.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.HiLo.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LoHi.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LoLo.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*Int256Parts)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *Int256Parts) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.HiHi.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.HiLo.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	nTmp, err = s.LoHi.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	nTmp, err = s.LoLo.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s Int256Parts) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Int256Parts) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*Int256Parts)(nil)
+	_ encoding.BinaryUnmarshaler = (*Int256Parts)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s Int256Parts) xdrType() {}
+
+var _ xdrType = (*Int256Parts)(nil)
 
 // ScContractExecutableType is an XDR Enum defines as:
 //
@@ -50136,14 +51046,14 @@ var _ xdrType = (*ScNonceKey)(nil)
 //	     Duration duration;
 //
 //	 case SCV_U128:
-//	     Int128Parts u128;
+//	     UInt128Parts u128;
 //	 case SCV_I128:
 //	     Int128Parts i128;
 //
 //	 case SCV_U256:
-//	     uint256 u256;
+//	     UInt256Parts u256;
 //	 case SCV_I256:
-//	     uint256 i256;
+//	     Int256Parts i256;
 //
 //	 case SCV_BYTES:
 //	     SCBytes bytes;
@@ -50181,10 +51091,10 @@ type ScVal struct {
 	I64       *Int64
 	Timepoint *TimePoint
 	Duration  *Duration
-	U128      *Int128Parts
+	U128      *UInt128Parts
 	I128      *Int128Parts
-	U256      *Uint256
-	I256      *Uint256
+	U256      *UInt256Parts
+	I256      *Int256Parts
 	Bytes     *ScBytes
 	Str       *ScString
 	Sym       *ScSymbol
@@ -50316,9 +51226,9 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 		}
 		result.Duration = &tv
 	case ScValTypeScvU128:
-		tv, ok := value.(Int128Parts)
+		tv, ok := value.(UInt128Parts)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Int128Parts")
+			err = fmt.Errorf("invalid value, must be UInt128Parts")
 			return
 		}
 		result.U128 = &tv
@@ -50330,16 +51240,16 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 		}
 		result.I128 = &tv
 	case ScValTypeScvU256:
-		tv, ok := value.(Uint256)
+		tv, ok := value.(UInt256Parts)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint256")
+			err = fmt.Errorf("invalid value, must be UInt256Parts")
 			return
 		}
 		result.U256 = &tv
 	case ScValTypeScvI256:
-		tv, ok := value.(Uint256)
+		tv, ok := value.(Int256Parts)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint256")
+			err = fmt.Errorf("invalid value, must be Int256Parts")
 			return
 		}
 		result.I256 = &tv
@@ -50607,7 +51517,7 @@ func (u ScVal) GetDuration() (result Duration, ok bool) {
 
 // MustU128 retrieves the U128 value from the union,
 // panicing if the value is not set.
-func (u ScVal) MustU128() Int128Parts {
+func (u ScVal) MustU128() UInt128Parts {
 	val, ok := u.GetU128()
 
 	if !ok {
@@ -50619,7 +51529,7 @@ func (u ScVal) MustU128() Int128Parts {
 
 // GetU128 retrieves the U128 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetU128() (result Int128Parts, ok bool) {
+func (u ScVal) GetU128() (result UInt128Parts, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "U128" {
@@ -50657,7 +51567,7 @@ func (u ScVal) GetI128() (result Int128Parts, ok bool) {
 
 // MustU256 retrieves the U256 value from the union,
 // panicing if the value is not set.
-func (u ScVal) MustU256() Uint256 {
+func (u ScVal) MustU256() UInt256Parts {
 	val, ok := u.GetU256()
 
 	if !ok {
@@ -50669,7 +51579,7 @@ func (u ScVal) MustU256() Uint256 {
 
 // GetU256 retrieves the U256 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetU256() (result Uint256, ok bool) {
+func (u ScVal) GetU256() (result UInt256Parts, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "U256" {
@@ -50682,7 +51592,7 @@ func (u ScVal) GetU256() (result Uint256, ok bool) {
 
 // MustI256 retrieves the I256 value from the union,
 // panicing if the value is not set.
-func (u ScVal) MustI256() Uint256 {
+func (u ScVal) MustI256() Int256Parts {
 	val, ok := u.GetI256()
 
 	if !ok {
@@ -50694,7 +51604,7 @@ func (u ScVal) MustI256() Uint256 {
 
 // GetI256 retrieves the I256 value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetI256() (result Uint256, ok bool) {
+func (u ScVal) GetI256() (result Int256Parts, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "I256" {
@@ -51112,11 +52022,11 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		}
 		return n, nil
 	case ScValTypeScvU128:
-		u.U128 = new(Int128Parts)
+		u.U128 = new(UInt128Parts)
 		nTmp, err = (*u.U128).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding Int128Parts: %s", err)
+			return n, fmt.Errorf("decoding UInt128Parts: %s", err)
 		}
 		return n, nil
 	case ScValTypeScvI128:
@@ -51128,19 +52038,19 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		}
 		return n, nil
 	case ScValTypeScvU256:
-		u.U256 = new(Uint256)
+		u.U256 = new(UInt256Parts)
 		nTmp, err = (*u.U256).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding Uint256: %s", err)
+			return n, fmt.Errorf("decoding UInt256Parts: %s", err)
 		}
 		return n, nil
 	case ScValTypeScvI256:
-		u.I256 = new(Uint256)
+		u.I256 = new(Int256Parts)
 		nTmp, err = (*u.I256).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding Uint256: %s", err)
+			return n, fmt.Errorf("decoding Int256Parts: %s", err)
 		}
 		return n, nil
 	case ScValTypeScvBytes:

@@ -192,7 +192,7 @@ func TestLedgerKeyBinaryCompress(t *testing.T) {
 			key: LedgerKey{
 				Type: LedgerEntryTypeConfigSetting,
 				ConfigSetting: &LedgerKeyConfigSetting{
-					ConfigSettingId: ConfigSettingIdConfigSettingContractMaxSize,
+					ConfigSettingId: ConfigSettingIdConfigSettingContractMaxSizeBytes,
 				},
 			},
 			expectedOut: []byte{0x8, 0x0, 0x0, 0x0, 0x0},
