@@ -4,7 +4,19 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## Unreleased
+## 2.25.0
+
+### Changes
+
+- Running Horizon with remote captive core is now deprecated ([4826](https://github.com/stellar/go/pull/4826)).
+- Add two new configuration variables to control the behavior of state verification ([4821](https://github.com/stellar/go/pull/4821)):
+  - `--ingest-state-verification-frequency` which specifies the frequency in checkpoints for how often state verification is run
+  - `--ingest-state-verification-timeout` which specifies a timeout on how long state verification can run
+
+### Fixes
+
+* Fix crash in horizon ingestion when running horizon with a remote captive core ([4824](https://github.com/stellar/go/pull/4824)).
+
 
 ## 2.24.1
 
