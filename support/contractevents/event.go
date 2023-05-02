@@ -23,7 +23,7 @@ const (
 	// TODO: Not implemented
 	EventTypeIncrAllow
 	EventTypeDecrAllow
-	EventTypeSetAuth
+	EventTypeSetAuthorized
 	EventTypeSetAdmin
 )
 
