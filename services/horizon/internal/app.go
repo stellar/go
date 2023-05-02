@@ -229,6 +229,9 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 
 	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
+		if a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
+			return
+		}
 		logErr(err, "failed to load the stellar-core info")
 		return
 	}

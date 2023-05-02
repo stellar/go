@@ -556,6 +556,11 @@ func (m *mockSystem) BuildGenesisState() error {
 	return args.Error(0)
 }
 
+func (m *mockSystem) GetCurrentState() StateName {
+	args := m.Called()
+	return args.Get(0).(StateName)
+}
+
 func (m *mockSystem) Shutdown() {
 	m.Called()
 }
