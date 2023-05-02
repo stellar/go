@@ -11,7 +11,7 @@ import (
 type Event = xdr.ContractEvent
 type EventType int
 
-// Note that there is no distinction between xfer() and xfer_from() in events,
+// Note that there is no distinction between transfer() and transfer_from() in events,
 // nor the other *_from variants. This is intentional from the host environment.
 
 const (
@@ -123,8 +123,8 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 
 	switch evt.GetType() {
 	case EventTypeTransfer:
-		xferEvent := TransferEvent{sacEvent: *evt}
-		return &xferEvent, xferEvent.parse(topics, value)
+		transferEvent := TransferEvent{sacEvent: *evt}
+		return &transferEvent, transferEvent.parse(topics, value)
 
 	case EventTypeMint:
 		mintEvent := MintEvent{sacEvent: *evt}
