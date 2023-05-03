@@ -1446,34 +1446,34 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		// Transfer events generate an `account_debited` effect for the `from`
 		// (sender) and an `account_credited` effect for the `to` (recipient).
 		case contractevents.EventTypeTransfer:
-			xferEvent := evt.(*contractevents.TransferEvent)
-			details["amount"] = amount.String128(xferEvent.Amount)
+			transferEvent := evt.(*contractevents.TransferEvent)
+			details["amount"] = amount.String128(transferEvent.Amount)
 			toDetails := map[string]interface{}{}
 			for key, val := range details {
 				toDetails[key] = val
 			}
 
-			if strkey.IsValidEd25519PublicKey(xferEvent.From) {
+			if strkey.IsValidEd25519PublicKey(transferEvent.From) {
 				e.add(
-					xferEvent.From,
+					transferEvent.From,
 					null.String{},
 					history.EffectAccountDebited,
 					details,
 				)
 			} else {
-				details["contract"] = xferEvent.From
+				details["contract"] = transferEvent.From
 				e.addMuxed(source, history.EffectContractDebited, details)
 			}
 
-			if strkey.IsValidEd25519PublicKey(xferEvent.To) {
+			if strkey.IsValidEd25519PublicKey(transferEvent.To) {
 				e.add(
-					xferEvent.To,
+					transferEvent.To,
 					null.String{},
 					history.EffectAccountCredited,
 					toDetails,
 				)
 			} else {
-				toDetails["contract"] = xferEvent.To
+				toDetails["contract"] = transferEvent.To
 				e.addMuxed(source, history.EffectContractCredited, toDetails)
 			}
 
