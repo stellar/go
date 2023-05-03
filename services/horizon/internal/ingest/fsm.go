@@ -30,10 +30,10 @@ func (e ErrReingestRangeConflict) Error() string {
 	return fmt.Sprintf("reingest range overlaps with horizon ingestion, supplied range shouldn't contain ledger %d", e.maximumLedgerSequence)
 }
 
-type StateName int
+type State int
 
 const (
-	None StateName = iota
+	None State = iota
 	Start
 	Stop
 	Build
@@ -48,7 +48,7 @@ const (
 type stateMachineNode interface {
 	run(*system) (transition, error)
 	String() string
-	GetName() StateName
+	GetState() State
 }
 
 type transition struct {
@@ -121,7 +121,7 @@ func (stopState) String() string {
 	return "stop"
 }
 
-func (stopState) GetName() StateName {
+func (stopState) GetState() State {
 	return Stop
 }
 
@@ -137,7 +137,7 @@ func (startState) String() string {
 	return "start"
 }
 
-func (startState) GetName() StateName {
+func (startState) GetState() State {
 	return Start
 }
 
@@ -258,7 +258,7 @@ func (b buildState) String() string {
 	return fmt.Sprintf("buildFromCheckpoint(checkpointLedger=%d, skipChecks=%t)", b.checkpointLedger, b.skipChecks)
 }
 
-func (buildState) GetName() StateName {
+func (buildState) GetState() State {
 	return Build
 }
 
@@ -405,7 +405,7 @@ func (r resumeState) String() string {
 	return fmt.Sprintf("resume(latestSuccessfullyProcessedLedger=%d)", r.latestSuccessfullyProcessedLedger)
 }
 
-func (resumeState) GetName() StateName {
+func (resumeState) GetState() State {
 	return Resume
 }
 
@@ -598,7 +598,7 @@ func (h historyRangeState) String() string {
 	)
 }
 
-func (historyRangeState) GetName() StateName {
+func (historyRangeState) GetState() State {
 	return HistoryRange
 }
 
@@ -715,7 +715,7 @@ func (h reingestHistoryRangeState) String() string {
 	)
 }
 
-func (reingestHistoryRangeState) GetName() StateName {
+func (reingestHistoryRangeState) GetState() State {
 	return ReingestHistoryRange
 }
 
@@ -873,7 +873,7 @@ func (waitForCheckpointState) String() string {
 	return "waitForCheckpoint"
 }
 
-func (waitForCheckpointState) GetName() StateName {
+func (waitForCheckpointState) GetState() State {
 	return WaitForCheckpoint
 }
 
@@ -898,7 +898,7 @@ func (v verifyRangeState) String() string {
 	)
 }
 
-func (verifyRangeState) GetName() StateName {
+func (verifyRangeState) GetState() State {
 	return VerifyRange
 }
 
@@ -1033,7 +1033,7 @@ func (stressTestState) String() string {
 	return "stressTest"
 }
 
-func (stressTestState) GetName() StateName {
+func (stressTestState) GetState() State {
 	return StressTest
 }
 

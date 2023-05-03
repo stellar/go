@@ -196,7 +196,7 @@ type System interface {
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
 	BuildGenesisState() error
 	Shutdown()
-	GetCurrentState() StateName
+	GetCurrentState() State
 }
 
 type system struct {
@@ -230,7 +230,7 @@ type system struct {
 
 	reapOffsets map[string]int64
 
-	currentState StateName
+	currentState State
 }
 
 func NewSystem(config Config) (System, error) {
@@ -483,7 +483,7 @@ func (s *system) initMetrics() {
 	)
 }
 
-func (s *system) GetCurrentState() StateName {
+func (s *system) GetCurrentState() State {
 	return s.currentState
 }
 
@@ -652,7 +652,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 			panic("unexpected transaction")
 		}
 
-		s.currentState = cur.GetName()
+		s.currentState = cur.GetState()
 		next, err := cur.run(s)
 		if err != nil {
 			logger := log.WithFields(logpkg.F{
