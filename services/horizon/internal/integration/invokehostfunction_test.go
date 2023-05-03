@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
@@ -9,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/protocols/stellarcore"
+	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -38,6 +37,7 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	sourceAccount, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
 		AccountID: itest.Master().Address(),
 	})
+	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), installContractOp)
@@ -61,7 +61,17 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
-	txEnv.V1.Tx.Operations[0].Body.GetInvokeHostFunctionOp()
+	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(t, err)
+
+	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.True(t, ok)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions, 1)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters, 0)
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Type, "upload_wasm")
+
 }
 
 func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
@@ -87,27 +97,6 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 
 	require.NoError(t, err)
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
-	opXDR, err := createContractOp.BuildXDR()
-	require.NoError(t, err)
-
-	invokeHostFunctionOp := opXDR.Body.MustInvokeHostFunctionOp()
-	expectedFootPrint, err := xdr.MarshalBase64(createContractOp.Ext.SorobanData.Resources.Footprint)
-	require.NoError(t, err)
-
-	response, err := itest.CoreClient().Preflight(
-		context.Background(),
-		createContractOp.SourceAccount,
-		invokeHostFunctionOp,
-	)
-	require.NoError(t, err)
-	err = xdr.SafeUnmarshalBase64(response.Footprint, createContractOp.Ext.SorobanData.Resources.Footprint)
-	require.NoError(t, err)
-	require.Equal(t, stellarcore.PreflightStatusOk, response.Status)
-	require.Equal(t, expectedFootPrint, response.Footprint)
-	require.Greater(t, response.CPUInstructions, uint64(0))
-	require.Greater(t, response.MemoryBytes, uint64(0))
-	require.Empty(t, response.Detail)
-
 	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
 	require.NoError(t, err)
 
@@ -125,13 +114,24 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 	invokeHostFunctionResult, ok := opResults[0].MustTr().GetInvokeHostFunctionResult()
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
+
+	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(t, err)
+
+	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.True(t, ok)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions, 1)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters, 2)
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Type, "create_contract")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[0]["from"], "source_account")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[0]["type"], "string")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["salt"], "110986164698320180327942133831752629430491002266485370052238869825166557303060")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["type"], "string")
 }
 
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
-	os.Setenv("HORIZON_INTEGRATION_TESTS_ENABLED", "true")
-	os.Setenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL", "20")
-	os.Setenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG", "sreuland/stellar-core:19.9.1-1270.04f2a6d5c.focal-soroban")
-
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -176,6 +176,15 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	firstParamValue := xdr.Uint64(4)
 	secondParamValue := xdr.Uint64(5)
 
+	firstParamScVal := xdr.ScVal{
+		Type: xdr.ScValTypeScvU64,
+		U64:  &firstParamValue,
+	}
+	secondParamScVal := xdr.ScVal{
+		Type: xdr.ScValTypeScvU64,
+		U64:  &secondParamValue,
+	}
+
 	invokeHostFunctionOp := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
@@ -184,14 +193,8 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 					InvokeContract: &xdr.ScVec{
 						contractIdParameter,
 						contractFnParameter,
-						xdr.ScVal{
-							Type: xdr.ScValTypeScvU64,
-							U64:  &firstParamValue,
-						},
-						xdr.ScVal{
-							Type: xdr.ScValTypeScvU64,
-							U64:  &secondParamValue,
-						},
+						firstParamScVal,
+						secondParamScVal,
 					},
 				},
 			},
@@ -253,6 +256,25 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	for _, scval := range scvals {
 		assert.Equal(t, xdr.Uint64(9), scval.MustU64())
 	}
+
+	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(t, err)
+
+	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.True(t, ok)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions, 1)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters, 4)
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Type, "invoke_contract")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[0]["value"], "AAAADQAAACDhq+vRxjISTR62JpK1SAnzz1cZKpSpkRlwLJH6Zrzssg==")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[0]["type"], "Bytes")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["value"], "AAAADwAAAANhZGQA")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["type"], "Sym")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[2]["value"], "AAAABQAAAAAAAAAE")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[2]["type"], "U64")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[3]["value"], "AAAABQAAAAAAAAAF")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[3]["type"], "U64")
 }
 
 func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
@@ -378,6 +400,21 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	for _, scval := range scvals {
 		assert.Equal(t, xdr.Uint32(1), scval.MustU32())
 	}
+
+	clientInvokeOp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: tx.Hash,
+	})
+	require.NoError(t, err)
+
+	invokeHostFunctionOpJson, ok := clientInvokeOp.Embedded.Records[0].(operations.InvokeHostFunction)
+	assert.True(t, ok)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions, 1)
+	assert.Len(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters, 2)
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Type, "invoke_contract")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[0]["value"], "AAAADQAAACDhq+vRxjISTR62JpK1SAnzz1cZKpSpkRlwLJH6Zrzssg==")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[0]["type"], "Bytes")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["value"], "AAAADwAAAAlpbmNyZW1lbnQAAAA=")
+	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["type"], "Sym")
 }
 
 func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileName string) *txnbuild.InvokeHostFunctions {
