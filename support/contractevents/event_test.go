@@ -29,7 +29,7 @@ var (
 )
 
 //go:embed fixtures/transfer_event_xdr.bin
-var xferEventXdr []byte
+var transferEventXdr []byte
 
 func TestScValCreators(t *testing.T) {
 	val := makeSymbol("hello")
@@ -94,11 +94,11 @@ func TestSACTransferEvent(t *testing.T) {
 	require.NotNil(t, sacEvent)
 	require.Equal(t, EventTypeTransfer, sacEvent.GetType())
 
-	xferEvent := sacEvent.(*TransferEvent)
-	require.Equal(t, randomAccount, xferEvent.From)
-	require.Equal(t, zeroContract, xferEvent.To)
-	require.EqualValues(t, 10000, xferEvent.Amount.Lo)
-	require.EqualValues(t, 0, xferEvent.Amount.Hi)
+	transferEvent := sacEvent.(*TransferEvent)
+	require.Equal(t, randomAccount, transferEvent.From)
+	require.Equal(t, zeroContract, transferEvent.To)
+	require.EqualValues(t, 10000, transferEvent.Amount.Lo)
+	require.EqualValues(t, 0, transferEvent.Amount.Hi)
 }
 
 func TestSACEventCreation(t *testing.T) {
@@ -224,10 +224,10 @@ func TestFuzzingSACEventParser(t *testing.T) {
 }
 
 func TestRealTransferEvent(t *testing.T) {
-	decoded := base64.StdEncoding.EncodeToString(xferEventXdr)
+	decoded := base64.StdEncoding.EncodeToString(transferEventXdr)
 
 	event := xdr.ContractEvent{}
-	require.NoErrorf(t, event.UnmarshalBinary(xferEventXdr),
+	require.NoErrorf(t, event.UnmarshalBinary(transferEventXdr),
 		"couldn't unmarshal event: '%s'", decoded)
 
 	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")

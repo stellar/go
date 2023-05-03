@@ -36,9 +36,9 @@ impl SACTest {
         client.burn(&env.current_contract_address(), &amount);
     }
 
-    pub fn xfer(env: Env, to: Address, amount: i128) {
+    pub fn transfer(env: Env, to: Address, amount: i128) {
         let client = token::Client::new(&env, &get_token(&env));
-        client.xfer(&env.current_contract_address(), &to, &amount);
+        client.transfer(&env.current_contract_address(), &to, &amount);
     }
 }
 
@@ -64,7 +64,7 @@ fn test() {
     assert_eq!(token.balance(&contract_address), 600);
 
     let user = Address::random(&env);
-    contract.xfer(&user, &100);
+    contract.transfer(&user, &100);
     assert_eq!(token.balance(&contract_address), 500);
     assert_eq!(token.balance(&user), 100);
 }
