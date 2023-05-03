@@ -8,13 +8,14 @@ xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
 xdr/Stellar-types.x \
 xdr/Stellar-contract-env-meta.x \
+xdr/Stellar-contract-meta.x \
 xdr/Stellar-contract-spec.x \
 xdr/Stellar-contract.x \
 xdr/Stellar-internal.x \
 xdr/Stellar-contract-config-setting.x
 
 XDRGEN_COMMIT=80e38ef2a96489f6b501d4db3a350406e5aa3bab
-XDRNEXT_COMMIT=2f16687fdf6f4bcfb56805e2035f69997f4b34c4
+XDRNEXT_COMMIT=b721f812a353e15db286b6e1a3c095b9be9f4bd4
 
 .PHONY: xdr xdr-clean xdr-update
 

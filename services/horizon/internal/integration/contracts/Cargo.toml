@@ -24,9 +24,4 @@ lto = true
 [workspace.dependencies.soroban-sdk]
 version = "0.7.0"
 git = "https://github.com/stellar/rs-soroban-sdk"
-rev = "8abd3353c728f09ee1c8a2544f67a853e915afc2"
-
-[workspace.dependencies.soroban-auth]
-version = "0.7.0"
-git = "https://github.com/stellar/rs-soroban-sdk"
-rev = "8abd3353c728f09ee1c8a2544f67a853e915afc2"
+rev = "6217a3d50c2f770c1c25ddaad1570d0b4cae7b76"
