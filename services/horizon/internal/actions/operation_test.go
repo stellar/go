@@ -153,15 +153,15 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 	tt.Assert.Equal(op.HostFunctions[0].Type, "invoke_contract")
 	tt.Assert.Equal(len(op.HostFunctions[0].Parameters), 2)
 	tt.Assert.Equal(op.HostFunctions[0].Parameters[0]["value"], "AAAADwAAAAdmbl9uYW1lAA==")
-    tt.Assert.Equal(op.HostFunctions[0].Parameters[0]["type"], "Sym")
-    tt.Assert.Equal(op.HostFunctions[0].Parameters[1]["value"], "AAAAAwAAAAI=")
-    tt.Assert.Equal(op.HostFunctions[0].Parameters[1]["type"], "U32")
-    
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[0]["type"], "Sym")
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[1]["value"], "AAAAAwAAAAI=")
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[1]["type"], "U32")
+
 	tt.Assert.Equal(op.HostFunctions[1].Type, "create_contract")
 	tt.Assert.Equal(len(op.HostFunctions[1].Parameters), 2)
 	tt.Assert.Equal(op.HostFunctions[1].Parameters[0]["from"], "source_account")
 	tt.Assert.Equal(op.HostFunctions[1].Parameters[0]["type"], "string")
-    tt.Assert.Equal(op.HostFunctions[1].Parameters[1]["salt"], "123")
+	tt.Assert.Equal(op.HostFunctions[1].Parameters[1]["salt"], "123")
 	tt.Assert.Equal(op.HostFunctions[1].Parameters[1]["type"], "string")
 
 	tt.Assert.Equal(op.HostFunctions[2].Type, "upload_wasm")

@@ -637,11 +637,11 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		} else {
 			details["asset_balance_changes"] = balanceChanges
 		}
-        for _, function := range op.Functions {
+		for _, function := range op.Functions {
 			hostFunctionInvocation := make(map[string]interface{}, 2)
 			hostFunctions = append(hostFunctions, hostFunctionInvocation)
-            params := []map[string]string{}
-			
+			params := []map[string]string{}
+
 			switch function.Args.Type {
 			case xdr.HostFunctionTypeHostFunctionTypeInvokeContract:
 				hostFunctionInvocation["type"] = "invoke_contract"
@@ -663,12 +663,12 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			case xdr.HostFunctionTypeHostFunctionTypeCreateContract:
 				hostFunctionInvocation["type"] = "create_contract"
 				args := function.Args.MustCreateContract()
-				
+
 				switch args.ContractId.Type {
 				case xdr.ContractIdTypeContractIdFromSourceAccount:
-					params = append(params, 
+					params = append(params,
 						map[string]string{"from": "source_account", "type": "string"},
-					    map[string]string{"salt": args.ContractId.MustSalt().String(), "type": "string"},
+						map[string]string{"salt": args.ContractId.MustSalt().String(), "type": "string"},
 					)
 				case xdr.ContractIdTypeContractIdFromEd25519PublicKey:
 					fromEd25519PublicKey := args.ContractId.MustFromEd25519PublicKey()
@@ -680,14 +680,14 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 					if err != nil {
 						return nil, err
 					}
-					params = append(params, 
+					params = append(params,
 						map[string]string{"from": "public_key", "type": "string"},
 						map[string]string{"key": fromKeyStr, "type": "string"},
 						map[string]string{"sig": signature, "type": "string"},
 						map[string]string{"salt": fromEd25519PublicKey.Salt.String(), "type": "string"},
 					)
 				case xdr.ContractIdTypeContractIdFromAsset:
-					params = append(params, 
+					params = append(params,
 						map[string]string{"from": "asset", "type": "string"},
 						map[string]string{"asset": args.ContractId.MustAsset().StringCanonical(), "type": "string"},
 					)

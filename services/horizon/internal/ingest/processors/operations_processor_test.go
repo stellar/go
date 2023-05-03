@@ -129,7 +129,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 								Args: xdr.HostFunctionArgs{
 									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
 									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId {
+										ContractId: xdr.ContractId{
 											Type: xdr.ContractIdTypeContractIdFromAsset,
 											Asset: &xdr.Asset{
 												Type: 1,
@@ -146,13 +146,13 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 								Args: xdr.HostFunctionArgs{
 									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
 									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId {
+										ContractId: xdr.ContractId{
 											Type: xdr.ContractIdTypeContractIdFromSourceAccount,
 											Salt: &xdr.Uint256{
-												    0, 0, 0, 0, 0, 0, 0, 0,
-													0, 0, 0, 0, 0, 0, 0, 0,
-													0, 0, 0, 0, 0, 0, 0, 0,
-													0, 0, 0, 0, 0, 0, 0, 1,},
+												0, 0, 0, 0, 0, 0, 0, 0,
+												0, 0, 0, 0, 0, 0, 0, 0,
+												0, 0, 0, 0, 0, 0, 0, 0,
+												0, 0, 0, 0, 0, 0, 0, 1},
 										},
 									},
 								},
@@ -161,12 +161,12 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 								Args: xdr.HostFunctionArgs{
 									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
 									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId {
+										ContractId: xdr.ContractId{
 											Type: xdr.ContractIdTypeContractIdFromEd25519PublicKey,
 											FromEd25519PublicKey: &xdr.ContractIdFromEd25519PublicKey{
-												Key: xdr.Uint256{1,2,3},
+												Key:  xdr.Uint256{1, 2, 3},
 												Salt: xdr.Uint256{1},
-												Signature: xdr.Signature {
+												Signature: xdr.Signature{
 													0, 0, 0, 0, 0, 0, 0, 0,
 													0, 0, 0, 0, 0, 0, 0, 0,
 													0, 0, 0, 0, 0, 0, 0, 0,
@@ -214,7 +214,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 							},
 							{
 								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
+									Type:               xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
 									UploadContractWasm: &xdr.UploadContractWasmArgs{},
 								},
 							},
@@ -226,27 +226,27 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 
 		details, err := wrapper.Details()
 		s.Assert().NoError(err)
-		
-		detailsHostFunctions := details["host_functions"].([]map[string]interface{})
-	    s.Assert().Len(detailsHostFunctions, 5)
 
-    	var detailsFunctionParams []map[string]string = detailsHostFunctions[0]["parameters"].([]map[string]string)
+		detailsHostFunctions := details["host_functions"].([]map[string]interface{})
+		s.Assert().Len(detailsHostFunctions, 5)
+
+		var detailsFunctionParams []map[string]string = detailsHostFunctions[0]["parameters"].([]map[string]string)
 		s.Assert().Equal(detailsHostFunctions[0]["type"], "create_contract")
 		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "asset", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[1], map[string]string{"asset": "ARS:GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF", "type": "string"})
-       
-       detailsFunctionParams = detailsHostFunctions[1]["parameters"].([]map[string]string)
-	    s.Assert().Equal(detailsHostFunctions[1]["type"], "create_contract")	
-	    s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "source_account", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[1], map[string]string{"salt": "1", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"asset": "ARS:GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF", "type": "string"})
 
-        detailsFunctionParams = detailsHostFunctions[2]["parameters"].([]map[string]string)
+		detailsFunctionParams = detailsHostFunctions[1]["parameters"].([]map[string]string)
+		s.Assert().Equal(detailsHostFunctions[1]["type"], "create_contract")
+		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "source_account", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"salt": "1", "type": "string"})
+
+		detailsFunctionParams = detailsHostFunctions[2]["parameters"].([]map[string]string)
 		s.Assert().Equal(detailsHostFunctions[2]["type"], "create_contract")
 		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "public_key", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[1], map[string]string{"key": "GAAQEAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATFL", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[2], map[string]string{"sig": "AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBgcI", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[3], map[string]string{"salt": "452312848583266388373324160190187140051835877600158453279131187530910662656", "type": "string"})
-   
+		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"key": "GAAQEAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATFL", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[2], map[string]string{"sig": "AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBgcI", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[3], map[string]string{"salt": "452312848583266388373324160190187140051835877600158453279131187530910662656", "type": "string"})
+
 		var hostFnArgs []xdr.ScVal = *(wrapper.operation.Body.InvokeHostFunctionOp.Functions[3].Args.InvokeContract)
 		detailsFunctionParams = detailsHostFunctions[3]["parameters"].([]map[string]string)
 		s.Assert().Equal(detailsHostFunctions[3]["type"], "invoke_contract")
@@ -360,7 +360,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 			0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 5, 6, 7, 8,
 		}
-		
+
 		salt := xdr.Uint256{
 			0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0,
@@ -403,14 +403,14 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		s.Assert().NoError(err)
 
 		serializedDetailsHostFunctions := details["host_functions"].([]map[string]interface{})
-	    s.Assert().Len(serializedDetailsHostFunctions, 1)
+		s.Assert().Len(serializedDetailsHostFunctions, 1)
 
 		var detailsFunctionParams []map[string]string = serializedDetailsHostFunctions[0]["parameters"].([]map[string]string)
 		s.Assert().Equal(serializedDetailsHostFunctions[0]["type"], "create_contract")
 		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "public_key", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[1], map[string]string{"key": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[2], map[string]string{"sig": "AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBgcI", "type": "string"})
-        s.Assert().Equal(detailsFunctionParams[3], map[string]string{"salt": "16909060", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"key": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[2], map[string]string{"sig": "AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBgcI", "type": "string"})
+		s.Assert().Equal(detailsFunctionParams[3], map[string]string{"salt": "16909060", "type": "string"})
 	})
 
 	s.T().Run("InstallContractCode", func(t *testing.T) {
@@ -441,7 +441,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		s.Assert().NoError(err)
 
 		serializedDetailsHostFunctions := details["host_functions"].([]map[string]interface{})
-	    s.Assert().Len(serializedDetailsHostFunctions, 1)
+		s.Assert().Len(serializedDetailsHostFunctions, 1)
 
 		s.Assert().Equal(serializedDetailsHostFunctions[0]["type"], "upload_wasm")
 		var detailsFunctionParams []map[string]string = serializedDetailsHostFunctions[0]["parameters"].([]map[string]string)

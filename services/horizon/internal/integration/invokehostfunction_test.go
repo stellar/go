@@ -24,51 +24,6 @@ const increment_contract = "soroban_increment_contract.wasm"
 // Tests use precompiled wasm bin files that are added to the testdata directory.
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
-//
-// `test_add_u64.wasm` is compiled from ./serivces/horizon/internal/integration/contracts/add_u64
-// and has interface of one func called 'add':
-//
-/*
-	{
-		"type": "function",
-		"name": "add",
-		"inputs": [
-			{
-			"name": "a",
-			"value": {
-				"type": "u64"
-			}
-			},
-			{
-			"name": "b",
-			"value": {
-				"type": "u64"
-			}
-			}
-		],
-		"outputs": [
-			{
-			"type": "u64"
-			}
-		]
-	}
-
-*/
-
-// `soroban_increment_contract.wasm` is compiled from ./serivces/horizon/internal/integration/contracts/increment
-// and has interface of one func called 'increment':
-/*
-	{
-		"type": "function",
-		"name": "increment",
-		"inputs": [],
-		"outputs": [
-			{
-			"type": "u32"
-			}
-		]
-	}
-*/
 
 func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
@@ -95,6 +50,10 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
 	require.NoError(t, err)
 
+	var txEnv xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(clientTx.EnvelopeXdr, &txEnv)
+	require.NoError(t, err)
+
 	opResults, ok := txResult.OperationResults()
 	assert.True(t, ok)
 	assert.Equal(t, len(opResults), 1)
@@ -102,6 +61,7 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
+	txEnv.V1.Tx.Operations[0].Body.GetInvokeHostFunctionOp()
 }
 
 func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
@@ -168,6 +128,9 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
+	os.Setenv("HORIZON_INTEGRATION_TESTS_ENABLED", "true")
+	os.Setenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL", "20")
+	os.Setenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG", "sreuland/stellar-core:19.9.1-1270.04f2a6d5c.focal-soroban")
 
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
