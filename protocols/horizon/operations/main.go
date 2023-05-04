@@ -345,50 +345,53 @@ type LiquidityPoolWithdraw struct {
 	ReservesReceived []base.AssetAmount `json:"reserves_received"`
 }
 
-// InvokeHostFunction is the json resource representing a single smart contract
-// function invocation operation, having type InvokeHostFunction.
+// InvokeHostFunction is the json resource representing a single InvokeHostFunctionOp.
+// The model for InvokeHostFunction assimilates InvokeHostFunctionOp, but is simplified.
+// Functions            - list of contract function invocations performed.
+// AssetBalanceChanges  - array of asset balance changed records related to contract invocations in this host invocation.
 //
-// The model for InvokeHostFunction is intentionally simplified.
-// Parameters          - array of tuples of each function input parameter value and it's data type
-// Function            - name of contract function
-// Footprint           - base64 encoded string of it's xdr serialization.
-// AssetBalanceChanges - array of asset balance changed records.
-//                       The asset balance change record is captured at ingestion time from the asset contract
-//                       events present in tx meta. Only asset contract events that have a reference to classic account in
-//                       either the 'from' or 'to' participants will be included here as an asset balance change.
-//                       Any pure contract-to-contract events with no reference to classic accounts are not included,
-//                       as there is no explicit model in horizon for contract addresses yet.
-
+//	The asset balance change record is captured at ingestion time from the asset contract
+//	events present in tx meta. Only asset contract events that have a reference to classic account in
+//	either the 'from' or 'to' participants will be included here as an asset balance change.
+//	Any pure contract-to-contract events with no reference to classic accounts are not included,
+//	as there is no explicit model in horizon for contract addresses yet.
 type InvokeHostFunction struct {
 	Base
-	Parameters          []HostFunctionParameter      `json:"parameters"`
-	Function            string                       `json:"function"`
-	Footprint           string                       `json:"footprint"`
+	HostFunctions       []HostFunction               `json:"host_functions"`
 	AssetBalanceChanges []AssetContractBalanceChange `json:"asset_balance_changes"`
 }
 
-// InvokeHostFunction parameter model, intentionally simplified, Value
-// just contains a base64 encoded string of the ScVal xdr serialization.
-type HostFunctionParameter struct {
-	Value string `json:"value"`
-	Type  string `json:"type"`
+// HostFunction has the values specific to a single host function invocation
+// Type                - the type of host function, invoke_contract, create_contract, upload_wasm
+// Parameters          - array of key,value tuples for each function parameter.
+//
+//	one key that will always be incluced is 'type' which will be one of:
+//	xdr.ScValTypeScv's ( Sym, I32, U32, U64, Bytes, B ) or 'n/a' or 'string'
+type HostFunction struct {
+	Type       string              `json:"type"`
+	Parameters []map[string]string `json:"parameters"`
 }
 
 // Type   - refers to the source SAC Event
 //
 //	it can only be one of 'transfer', 'mint', 'clawback' or 'burn'
 //
-// From   - this is classic account that asset balance was changed.
-// To     - this is the classic account that asset balance was changed, or if not applicable
+// From   - this is classic account that asset balance was changed,
 //
-//	for asset contract event type, it can be absent such as 'burn'
+//	or absent if not applicable for function
+//
+// To     - this is the classic account that asset balance was changed,
+//
+//	         or absent if not applicable for function
+//
+//		for asset contract event type, it can be absent such as 'burn'
 //
 // Amount - expressed as a signed decimal to 7 digits precision.
 // Asset  - the classic asset expressed as issuer and code.
 type AssetContractBalanceChange struct {
 	base.Asset
 	Type   string `json:"type"`
-	From   string `json:"from"`
+	From   string `json:"from,omitempty"`
 	To     string `json:"to,omitempty"`
 	Amount string `json:"amount"`
 }

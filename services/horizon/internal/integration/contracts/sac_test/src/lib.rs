@@ -1,13 +1,7 @@
 #![no_std]
 use soroban_sdk::{
-    contractimpl, contracttype, Address, BytesN, Env,
+    contractimpl, contracttype, token, Address, BytesN, Env,
 };
-
-mod token {
-    soroban_sdk::contractimport!(
-        file = "../soroban_token_spec.wasm"
-    );
-}
 
 #[contracttype]
 pub enum DataKey {
@@ -52,13 +46,13 @@ fn test() {
 
     let contract_id = env.register_contract(None, SACTest);
     let contract = SACTestClient::new(&env, &contract_id);
-    let contract_address = Address::from_contract_id(&env, &contract_id);
+    let contract_address = Address::from_contract_id(&contract_id);
     contract.init(&token_contract_id);
 
     let token = token::Client::new(&env, &contract.get_token());
     assert_eq!(token.decimals(), 7);
     
-    token.mint(&admin, &contract_address, &1000);
+    token.mint(&contract_address, &1000);
 
     contract.burn_self(&400);
     assert_eq!(token.balance(&contract_address), 600);

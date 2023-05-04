@@ -65,9 +65,37 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 		1,
 		xdr.OperationTypeInvokeHostFunction,
 		[]byte(`{
-			"parameters": [],
-	        "function": "fn",
-	        "footprint": "",
+	        "host_functions": [
+				{
+					"type": "invoke_contract",
+                    "parameters": [
+						{
+							"value": "AAAADwAAAAdmbl9uYW1lAA==",
+							"type": "Sym"
+						},
+						{
+							"value": "AAAAAwAAAAI=",
+							"type": "U32"
+						}
+					]
+				},
+				{
+					"type": "create_contract",
+                    "parameters": [
+						{
+							"from": "source_account",
+							"type": "string"
+						},
+						{
+							"salt": "123",
+							"type": "string"
+						}
+					]
+				},
+				{
+					"type": "upload_wasm"
+				}
+			],	
 			"asset_balance_changes": [
                 {
 					"asset_type": "credit_alphanum4",
@@ -121,7 +149,24 @@ func TestInvokeHostFnDetailsInPaymentOperations(t *testing.T) {
 	tt.Assert.Len(records, 1)
 
 	op := records[0].(operations.InvokeHostFunction)
-	tt.Assert.Equal(op.Function, "fn")
+	tt.Assert.Equal(len(op.HostFunctions), 3)
+	tt.Assert.Equal(op.HostFunctions[0].Type, "invoke_contract")
+	tt.Assert.Equal(len(op.HostFunctions[0].Parameters), 2)
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[0]["value"], "AAAADwAAAAdmbl9uYW1lAA==")
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[0]["type"], "Sym")
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[1]["value"], "AAAAAwAAAAI=")
+	tt.Assert.Equal(op.HostFunctions[0].Parameters[1]["type"], "U32")
+
+	tt.Assert.Equal(op.HostFunctions[1].Type, "create_contract")
+	tt.Assert.Equal(len(op.HostFunctions[1].Parameters), 2)
+	tt.Assert.Equal(op.HostFunctions[1].Parameters[0]["from"], "source_account")
+	tt.Assert.Equal(op.HostFunctions[1].Parameters[0]["type"], "string")
+	tt.Assert.Equal(op.HostFunctions[1].Parameters[1]["salt"], "123")
+	tt.Assert.Equal(op.HostFunctions[1].Parameters[1]["type"], "string")
+
+	tt.Assert.Equal(op.HostFunctions[2].Type, "upload_wasm")
+	tt.Assert.Equal(len(op.HostFunctions[2].Parameters), 0)
+
 	tt.Assert.Equal(len(op.AssetBalanceChanges), 4)
 	tt.Assert.Equal(op.AssetBalanceChanges[0].From, "C_CONTRACT_ADDRESS1")
 	tt.Assert.Equal(op.AssetBalanceChanges[0].To, "G_CLASSIC_ADDRESS1")

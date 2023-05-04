@@ -77,7 +77,7 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		newOp = &LiquidityPoolWithdraw{}
 	case xdr.OperationTypeInvokeHostFunction:
-		newOp = &InvokeHostFunction{}
+		newOp = &InvokeHostFunctions{}
 	default:
 		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}
@@ -91,4 +91,9 @@ func accountFromXDR(account *xdr.MuxedAccount) string {
 		return account.Address()
 	}
 	return ""
+}
+
+// SorobanOperation represents a smart contract operation on the Stellar network.
+type SorobanOperation interface {
+	BuildTransactionExt() (xdr.TransactionExt, error)
 }

@@ -499,6 +499,8 @@ func String(code interface{}) (string, error) {
 			return OpMalformed, nil
 		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionTrapped:
 			return "function_trapped", nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded:
+			return "resource_limit_exceeded", nil
 
 		}
 	}
