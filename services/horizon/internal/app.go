@@ -229,7 +229,11 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 
 	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
-		if a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
+		// #4446 If the ingestion state machine is in the build state, the query can time out
+		// because the captive-core buffer may be full. In this case, it is not really an error.
+		localCaptiveCoreUrl := fmt.Sprintf("http://localhost:%d", a.config.CaptiveCoreToml.HTTPPort)
+		if a.config.StellarCoreURL == localCaptiveCoreUrl &&
+			a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
 			return
 		}
 		logErr(err, "failed to load the stellar-core info")
