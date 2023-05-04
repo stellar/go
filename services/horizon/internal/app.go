@@ -218,6 +218,14 @@ func (a *App) Paths() paths.Finder {
 func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 	var next ledger.CoreStatus
 
+	// #4446 If the ingestion state machine is in the build state, the query can time out
+	// because the captive-core buffer may be full. In this case, skip the check.
+	if a.config.CaptiveCoreToml != nil &&
+		a.config.StellarCoreURL == fmt.Sprintf("http://localhost:%d", a.config.CaptiveCoreToml.HTTPPort) &&
+		a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
+		return
+	}
+
 	logErr := func(err error, msg string) {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
 	}
@@ -229,13 +237,6 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 
 	coreInfo, err := coreClient.Info(ctx)
 	if err != nil {
-		// #4446 If the ingestion state machine is in the build state, the query can time out
-		// because the captive-core buffer may be full. In this case, it is not really an error.
-		localCaptiveCoreUrl := fmt.Sprintf("http://localhost:%d", a.config.CaptiveCoreToml.HTTPPort)
-		if a.config.StellarCoreURL == localCaptiveCoreUrl &&
-			a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
-			return
-		}
 		logErr(err, "failed to load the stellar-core info")
 		return
 	}
