@@ -1098,35 +1098,6 @@ func burnSelf(itest *integration.Test, sourceAccount string, sacTestcontractID x
 	return invokeHostFn
 }
 
-func xferFromContract(itest *integration.Test, sourceAccount string, sacTestcontractID xdr.Hash, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
-		Functions: []xdr.HostFunction{
-			{
-				Args: xdr.HostFunctionArgs{
-					Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-					InvokeContract: &xdr.ScVec{
-						contractIDParam(sacTestcontractID),
-						functionNameParam("transfer"),
-						recipient,
-						i128Param(0, uint64(amount.MustParse(assetAmount))),
-					},
-				},
-			},
-		},
-		SourceAccount: sourceAccount,
-	})
-
-	invokeHostFn.Functions[0].Auth = addAuthNextInvokerFlow(
-		"transfer",
-		sacTestcontractID,
-		xdr.ScVec{
-			recipient,
-			i128Param(0, uint64(amount.MustParse(assetAmount))),
-		})
-
-	return invokeHostFn
-}
-
 func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string) *txnbuild.InvokeHostFunctions {
 	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
