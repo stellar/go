@@ -31,7 +31,7 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "350bf4f54a9fd3a335fe6c72f03540766ead5fd86fa99d9036fe27a51231e942",
+	"xdr/Stellar-contract-config-setting.x": "45dc460924dae4c150567c215b43f21977618b48e6667edd814da2c05dd05a7e",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "6268629577238adf6210d6e919e41375a3b380e941d0c7acb662013c6f8aa575",
@@ -40,7 +40,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-ledger-entries.x":          "95ab2a488911a6c1a3342e68f88f2fa44ec4bc48af9c9227ccb07bb9b682d3fd",
 	"xdr/Stellar-ledger.x":                  "cd4ac7622931831291ed848004328d926d8a317122ca966f4bc105367819cd6c",
 	"xdr/Stellar-overlay.x":                 "972f38a9d4a064273f3362cbfa7d3c563293fd5396d5f0774ce6cc690e27645d",
-	"xdr/Stellar-transaction.x":             "77f857e3cf6d0bfc8eba00de25bcffb368954ad006dbd5ef092d15795148feb0",
+	"xdr/Stellar-transaction.x":             "dcb90dcd0e7832f38a0db70d65dc603f308c4fc816ed7219c299e481b29897ce",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -41036,6 +41036,7 @@ var _ xdrType = (*TransactionResultCode)(nil)
 //	     case txBAD_SPONSORSHIP:
 //	     case txBAD_MIN_SEQ_AGE_OR_GAP:
 //	     case txMALFORMED:
+//	     case txSOROBAN_RESOURCE_LIMIT_EXCEEDED:
 //	         void;
 //	     }
 type InnerTransactionResultResult struct {
@@ -41084,6 +41085,8 @@ func (u InnerTransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		return "", true
 	case TransactionResultCodeTxMalformed:
+		return "", true
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
 		return "", true
 	}
 	return "-", false
@@ -41134,6 +41137,8 @@ func NewInnerTransactionResultResult(code TransactionResultCode, value interface
 	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		// void
 	case TransactionResultCodeTxMalformed:
+		// void
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
 		// void
 	}
 	return
@@ -41233,6 +41238,9 @@ func (u InnerTransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 	case TransactionResultCodeTxMalformed:
 		// Void
 		return nil
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
+		// Void
+		return nil
 	}
 	return fmt.Errorf("Code (TransactionResultCode) switch value '%d' is not valid for union InnerTransactionResultResult", u.Code)
 }
@@ -41329,6 +41337,9 @@ func (u *InnerTransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case TransactionResultCodeTxMalformed:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
 		// Void
 		return n, nil
 	}
@@ -41487,6 +41498,7 @@ var _ xdrType = (*InnerTransactionResultExt)(nil)
 //	     case txBAD_SPONSORSHIP:
 //	     case txBAD_MIN_SEQ_AGE_OR_GAP:
 //	     case txMALFORMED:
+//	     case txSOROBAN_RESOURCE_LIMIT_EXCEEDED:
 //	         void;
 //	     }
 //	     result;
@@ -41666,6 +41678,7 @@ var _ xdrType = (*InnerTransactionResultPair)(nil)
 //	     case txBAD_SPONSORSHIP:
 //	     case txBAD_MIN_SEQ_AGE_OR_GAP:
 //	     case txMALFORMED:
+//	     case txSOROBAN_RESOURCE_LIMIT_EXCEEDED:
 //	         void;
 //	     }
 type TransactionResultResult struct {
@@ -41719,6 +41732,8 @@ func (u TransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		return "", true
 	case TransactionResultCodeTxMalformed:
+		return "", true
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
 		return "", true
 	}
 	return "-", false
@@ -41783,6 +41798,8 @@ func NewTransactionResultResult(code TransactionResultCode, value interface{}) (
 	case TransactionResultCodeTxBadMinSeqAgeOrGap:
 		// void
 	case TransactionResultCodeTxMalformed:
+		// void
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
 		// void
 	}
 	return
@@ -41917,6 +41934,9 @@ func (u TransactionResultResult) EncodeTo(e *xdr.Encoder) error {
 	case TransactionResultCodeTxMalformed:
 		// Void
 		return nil
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
+		// Void
+		return nil
 	}
 	return fmt.Errorf("Code (TransactionResultCode) switch value '%d' is not valid for union TransactionResultResult", u.Code)
 }
@@ -42029,6 +42049,9 @@ func (u *TransactionResultResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case TransactionResultCodeTxMalformed:
+		// Void
+		return n, nil
+	case TransactionResultCodeTxSorobanResourceLimitExceeded:
 		// Void
 		return n, nil
 	}
@@ -42188,6 +42211,7 @@ var _ xdrType = (*TransactionResultExt)(nil)
 //	     case txBAD_SPONSORSHIP:
 //	     case txBAD_MIN_SEQ_AGE_OR_GAP:
 //	     case txMALFORMED:
+//	     case txSOROBAN_RESOURCE_LIMIT_EXCEEDED:
 //	         void;
 //	     }
 //	     result;
@@ -53116,14 +53140,14 @@ var _ xdrType = (*ContractCostType)(nil)
 // ContractCostParamEntry is an XDR Struct defines as:
 //
 //	struct ContractCostParamEntry {
-//	     int32 constTerm;
-//	     int32 linearTerm;
+//	     int64 constTerm;
+//	     int64 linearTerm;
 //	     // use `ext` to add more terms (e.g. higher order polynomials) in the future
 //	     ExtensionPoint ext;
 //	 };
 type ContractCostParamEntry struct {
-	ConstTerm  Int32
-	LinearTerm Int32
+	ConstTerm  Int64
+	LinearTerm Int64
 	Ext        ExtensionPoint
 }
 
@@ -53151,12 +53175,12 @@ func (s *ContractCostParamEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	nTmp, err = s.ConstTerm.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Int32: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
 	nTmp, err = s.LinearTerm.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Int32: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
 	nTmp, err = s.Ext.DecodeFrom(d)
 	n += nTmp
@@ -53288,9 +53312,10 @@ var _ xdrType = (*ContractCostParams)(nil)
 //	     CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0 = 3,
 //	     CONFIG_SETTING_CONTRACT_META_DATA_V0 = 4,
 //	     CONFIG_SETTING_CONTRACT_BANDWIDTH_V0 = 5,
-//	     CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION = 6,
-//	     CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS = 7,
-//	     CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES = 8
+//	     CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS = 6,
+//	     CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES = 7,
+//	     CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES = 8,
+//	     CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES = 9
 //	 };
 type ConfigSettingId int32
 
@@ -53301,9 +53326,10 @@ const (
 	ConfigSettingIdConfigSettingContractHistoricalDataV0          ConfigSettingId = 3
 	ConfigSettingIdConfigSettingContractMetaDataV0                ConfigSettingId = 4
 	ConfigSettingIdConfigSettingContractBandwidthV0               ConfigSettingId = 5
-	ConfigSettingIdConfigSettingContractHostLogicVersion          ConfigSettingId = 6
-	ConfigSettingIdConfigSettingContractCostParamsCpuInstructions ConfigSettingId = 7
-	ConfigSettingIdConfigSettingContractCostParamsMemoryBytes     ConfigSettingId = 8
+	ConfigSettingIdConfigSettingContractCostParamsCpuInstructions ConfigSettingId = 6
+	ConfigSettingIdConfigSettingContractCostParamsMemoryBytes     ConfigSettingId = 7
+	ConfigSettingIdConfigSettingContractDataKeySizeBytes          ConfigSettingId = 8
+	ConfigSettingIdConfigSettingContractDataEntrySizeBytes        ConfigSettingId = 9
 )
 
 var configSettingIdMap = map[int32]string{
@@ -53313,9 +53339,10 @@ var configSettingIdMap = map[int32]string{
 	3: "ConfigSettingIdConfigSettingContractHistoricalDataV0",
 	4: "ConfigSettingIdConfigSettingContractMetaDataV0",
 	5: "ConfigSettingIdConfigSettingContractBandwidthV0",
-	6: "ConfigSettingIdConfigSettingContractHostLogicVersion",
-	7: "ConfigSettingIdConfigSettingContractCostParamsCpuInstructions",
-	8: "ConfigSettingIdConfigSettingContractCostParamsMemoryBytes",
+	6: "ConfigSettingIdConfigSettingContractCostParamsCpuInstructions",
+	7: "ConfigSettingIdConfigSettingContractCostParamsMemoryBytes",
+	8: "ConfigSettingIdConfigSettingContractDataKeySizeBytes",
+	9: "ConfigSettingIdConfigSettingContractDataEntrySizeBytes",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -53398,12 +53425,14 @@ var _ xdrType = (*ConfigSettingId)(nil)
 //	     ConfigSettingContractMetaDataV0 contractMetaData;
 //	 case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
 //	     ConfigSettingContractBandwidthV0 contractBandwidth;
-//	 case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
-//	     uint32 contractHostLogicVersion;
 //	 case CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS:
 //	     ContractCostParams contractCostParamsCpuInsns;
 //	 case CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES:
 //	     ContractCostParams contractCostParamsMemBytes;
+//	 case CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES:
+//	     uint32 contractDataKeySizeBytes;
+//	 case CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
+//	     uint32 contractDataEntrySizeBytes;
 //	 };
 type ConfigSettingEntry struct {
 	ConfigSettingId            ConfigSettingId
@@ -53413,9 +53442,10 @@ type ConfigSettingEntry struct {
 	ContractHistoricalData     *ConfigSettingContractHistoricalDataV0
 	ContractMetaData           *ConfigSettingContractMetaDataV0
 	ContractBandwidth          *ConfigSettingContractBandwidthV0
-	ContractHostLogicVersion   *Uint32
 	ContractCostParamsCpuInsns *ContractCostParams
 	ContractCostParamsMemBytes *ContractCostParams
+	ContractDataKeySizeBytes   *Uint32
+	ContractDataEntrySizeBytes *Uint32
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -53440,12 +53470,14 @@ func (u ConfigSettingEntry) ArmForSwitch(sw int32) (string, bool) {
 		return "ContractMetaData", true
 	case ConfigSettingIdConfigSettingContractBandwidthV0:
 		return "ContractBandwidth", true
-	case ConfigSettingIdConfigSettingContractHostLogicVersion:
-		return "ContractHostLogicVersion", true
 	case ConfigSettingIdConfigSettingContractCostParamsCpuInstructions:
 		return "ContractCostParamsCpuInsns", true
 	case ConfigSettingIdConfigSettingContractCostParamsMemoryBytes:
 		return "ContractCostParamsMemBytes", true
+	case ConfigSettingIdConfigSettingContractDataKeySizeBytes:
+		return "ContractDataKeySizeBytes", true
+	case ConfigSettingIdConfigSettingContractDataEntrySizeBytes:
+		return "ContractDataEntrySizeBytes", true
 	}
 	return "-", false
 }
@@ -53496,13 +53528,6 @@ func NewConfigSettingEntry(configSettingId ConfigSettingId, value interface{}) (
 			return
 		}
 		result.ContractBandwidth = &tv
-	case ConfigSettingIdConfigSettingContractHostLogicVersion:
-		tv, ok := value.(Uint32)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Uint32")
-			return
-		}
-		result.ContractHostLogicVersion = &tv
 	case ConfigSettingIdConfigSettingContractCostParamsCpuInstructions:
 		tv, ok := value.(ContractCostParams)
 		if !ok {
@@ -53517,6 +53542,20 @@ func NewConfigSettingEntry(configSettingId ConfigSettingId, value interface{}) (
 			return
 		}
 		result.ContractCostParamsMemBytes = &tv
+	case ConfigSettingIdConfigSettingContractDataKeySizeBytes:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.ContractDataKeySizeBytes = &tv
+	case ConfigSettingIdConfigSettingContractDataEntrySizeBytes:
+		tv, ok := value.(Uint32)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint32")
+			return
+		}
+		result.ContractDataEntrySizeBytes = &tv
 	}
 	return
 }
@@ -53671,31 +53710,6 @@ func (u ConfigSettingEntry) GetContractBandwidth() (result ConfigSettingContract
 	return
 }
 
-// MustContractHostLogicVersion retrieves the ContractHostLogicVersion value from the union,
-// panicing if the value is not set.
-func (u ConfigSettingEntry) MustContractHostLogicVersion() Uint32 {
-	val, ok := u.GetContractHostLogicVersion()
-
-	if !ok {
-		panic("arm ContractHostLogicVersion is not set")
-	}
-
-	return val
-}
-
-// GetContractHostLogicVersion retrieves the ContractHostLogicVersion value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ConfigSettingEntry) GetContractHostLogicVersion() (result Uint32, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
-
-	if armName == "ContractHostLogicVersion" {
-		result = *u.ContractHostLogicVersion
-		ok = true
-	}
-
-	return
-}
-
 // MustContractCostParamsCpuInsns retrieves the ContractCostParamsCpuInsns value from the union,
 // panicing if the value is not set.
 func (u ConfigSettingEntry) MustContractCostParamsCpuInsns() ContractCostParams {
@@ -53746,6 +53760,56 @@ func (u ConfigSettingEntry) GetContractCostParamsMemBytes() (result ContractCost
 	return
 }
 
+// MustContractDataKeySizeBytes retrieves the ContractDataKeySizeBytes value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractDataKeySizeBytes() Uint32 {
+	val, ok := u.GetContractDataKeySizeBytes()
+
+	if !ok {
+		panic("arm ContractDataKeySizeBytes is not set")
+	}
+
+	return val
+}
+
+// GetContractDataKeySizeBytes retrieves the ContractDataKeySizeBytes value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractDataKeySizeBytes() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractDataKeySizeBytes" {
+		result = *u.ContractDataKeySizeBytes
+		ok = true
+	}
+
+	return
+}
+
+// MustContractDataEntrySizeBytes retrieves the ContractDataEntrySizeBytes value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustContractDataEntrySizeBytes() Uint32 {
+	val, ok := u.GetContractDataEntrySizeBytes()
+
+	if !ok {
+		panic("arm ContractDataEntrySizeBytes is not set")
+	}
+
+	return val
+}
+
+// GetContractDataEntrySizeBytes retrieves the ContractDataEntrySizeBytes value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetContractDataEntrySizeBytes() (result Uint32, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "ContractDataEntrySizeBytes" {
+		result = *u.ContractDataEntrySizeBytes
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -53783,11 +53847,6 @@ func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case ConfigSettingIdConfigSettingContractHostLogicVersion:
-		if err = (*u.ContractHostLogicVersion).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
 	case ConfigSettingIdConfigSettingContractCostParamsCpuInstructions:
 		if err = (*u.ContractCostParamsCpuInsns).EncodeTo(e); err != nil {
 			return err
@@ -53795,6 +53854,16 @@ func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ConfigSettingIdConfigSettingContractCostParamsMemoryBytes:
 		if err = (*u.ContractCostParamsMemBytes).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractDataKeySizeBytes:
+		if err = (*u.ContractDataKeySizeBytes).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingContractDataEntrySizeBytes:
+		if err = (*u.ContractDataEntrySizeBytes).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -53862,14 +53931,6 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ConfigSettingContractBandwidthV0: %s", err)
 		}
 		return n, nil
-	case ConfigSettingIdConfigSettingContractHostLogicVersion:
-		u.ContractHostLogicVersion = new(Uint32)
-		nTmp, err = (*u.ContractHostLogicVersion).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding Uint32: %s", err)
-		}
-		return n, nil
 	case ConfigSettingIdConfigSettingContractCostParamsCpuInstructions:
 		u.ContractCostParamsCpuInsns = new(ContractCostParams)
 		nTmp, err = (*u.ContractCostParamsCpuInsns).DecodeFrom(d)
@@ -53884,6 +53945,22 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractCostParams: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractDataKeySizeBytes:
+		u.ContractDataKeySizeBytes = new(Uint32)
+		nTmp, err = (*u.ContractDataKeySizeBytes).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint32: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingContractDataEntrySizeBytes:
+		u.ContractDataEntrySizeBytes = new(Uint32)
+		nTmp, err = (*u.ContractDataEntrySizeBytes).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint32: %s", err)
 		}
 		return n, nil
 	}

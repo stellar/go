@@ -14,6 +14,7 @@ https://www.rust-lang.org/tools/install
 
 ```bash
 cd ./services/horizon/internal/integration/contracts
+cargo update
 cargo build --target wasm32-unknown-unknown --release
 cp target/wasm32-unknown-unknown/release/*.wasm ../testdata/
 ```

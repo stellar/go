@@ -26,7 +26,7 @@ const sac_contract = "soroban_sac_test.wasm"
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
 func TestContractMintToAccount(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
@@ -102,7 +102,7 @@ func TestContractMintToAccount(t *testing.T) {
 }
 
 func TestContractMintToContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -181,7 +181,7 @@ func TestContractMintToContract(t *testing.T) {
 }
 
 func TestContractTransferBetweenAccounts(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -253,7 +253,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 }
 
 func TestContractTransferBetweenAccountAndContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -373,7 +373,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 }
 
 func TestContractTransferBetweenContracts(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -455,7 +455,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 }
 
 func TestContractBurnFromAccount(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -527,7 +527,7 @@ func TestContractBurnFromAccount(t *testing.T) {
 }
 
 func TestContractBurnFromContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -594,7 +594,7 @@ func TestContractBurnFromContract(t *testing.T) {
 }
 
 func TestContractClawbackFromAccount(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -669,7 +669,7 @@ func TestContractClawbackFromAccount(t *testing.T) {
 }
 
 func TestContractClawbackFromContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint resolved")
+	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}

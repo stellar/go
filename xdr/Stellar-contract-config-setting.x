@@ -129,13 +129,14 @@ enum ContractCostType {
 };
 
 struct ContractCostParamEntry {
-    int32 constTerm;
-    int32 linearTerm;
+    int64 constTerm;
+    int64 linearTerm;
     // use `ext` to add more terms (e.g. higher order polynomials) in the future
     ExtensionPoint ext;
 };
 
-const CONTRACT_COST_COUNT_LIMIT = 1024; // limits the ContractCostParams size to 12kB
+// limits the ContractCostParams size to 20kB
+const CONTRACT_COST_COUNT_LIMIT = 1024;
 
 typedef ContractCostParamEntry ContractCostParams<CONTRACT_COST_COUNT_LIMIT>;
 
@@ -148,9 +149,10 @@ enum ConfigSettingID
     CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0 = 3,
     CONFIG_SETTING_CONTRACT_META_DATA_V0 = 4,
     CONFIG_SETTING_CONTRACT_BANDWIDTH_V0 = 5,
-    CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION = 6,
-    CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS = 7,
-    CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES = 8
+    CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS = 6,
+    CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES = 7,
+    CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES = 8,
+    CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES = 9
 };
 
 union ConfigSettingEntry switch (ConfigSettingID configSettingID)
@@ -167,11 +169,13 @@ case CONFIG_SETTING_CONTRACT_META_DATA_V0:
     ConfigSettingContractMetaDataV0 contractMetaData;
 case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
     ConfigSettingContractBandwidthV0 contractBandwidth;
-case CONFIG_SETTING_CONTRACT_HOST_LOGIC_VERSION:
-    uint32 contractHostLogicVersion;
 case CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS:
     ContractCostParams contractCostParamsCpuInsns;
 case CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES:
-    ContractCostParams contractCostParamsMemBytes;    
+    ContractCostParams contractCostParamsMemBytes;
+case CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES:
+    uint32 contractDataKeySizeBytes;
+case CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
+    uint32 contractDataEntrySizeBytes;
 };
 }

@@ -34,8 +34,8 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 19.10.1-1280.057b75410.focal~soroban
-      PROTOCOL_20_CORE_DOCKER_IMG: 2opremio/stellar-core:19.10.1-1280.057b75410.focal-soroban
+      PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 19.10.1-1282.57cc8198c.focal~soroban
+      PROTOCOL_20_CORE_DOCKER_IMG: 2opremio/stellar-core:19.10.1-1282.57cc8198c.focal-soroban
       PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.5.0-1108.ca2fb0605.focal
       PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.5.0-1108.ca2fb0605.focal
       PGHOST: localhost
