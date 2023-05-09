@@ -293,10 +293,21 @@ func getPathFromAccessLog(line string) (string, error) {
 	if len(matches) != 3 {
 		return "", errors.Errorf("Can't find match: %s", line)
 	}
+	
+	// Check for expected length
+	if len(matches[0]) != len(line) {
+       		return "", errors.Errorf("Found invalid match length in line: %s", line)
+  	}
 
 	if matches[1] != "GET" {
 		return "", nil
 	}
+	
+	// Check for expected path value
+   	path := matches[2]
+    	if path == "" || strings.Contains(path, "//") {
+        	return "", errors.Errorf("Found invalid match value in line: %s", line)
+    	}
 
 	// Remove duplicate /
 	path := "/" + strings.TrimLeft(matches[2], "/")
