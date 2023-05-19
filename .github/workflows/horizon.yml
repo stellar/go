@@ -34,8 +34,8 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.9.0-1254.064a2787a.focal
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.9.0-1254.064a2787a.focal
+      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.10.0-1275.bff2c2b37.focal
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.10.0-1275.bff2c2b37.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -108,7 +108,7 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-20.04
     env:
-      STELLAR_CORE_VERSION: 19.9.0-1254.064a2787a.focal
+      STELLAR_CORE_VERSION: 19.10.0-1275.bff2c2b37.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
     - uses: actions/checkout@v3
