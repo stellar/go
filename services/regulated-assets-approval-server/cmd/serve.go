@@ -4,6 +4,7 @@ import (
 	"go/types"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve"
@@ -89,8 +90,9 @@ func (c *ServeCommand) Command() *cobra.Command {
 		Use:   "serve",
 		Short: "Serve the SEP-8 Approval Server",
 		Run: func(_ *cobra.Command, _ []string) {
-			configOpts.Require()
-			configOpts.SetValues()
+			v := viper.New()
+			configOpts.Require(v)
+			configOpts.SetValues(v)
 			c.Run(opts)
 		},
 	}

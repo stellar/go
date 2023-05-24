@@ -4,6 +4,7 @@ import (
 	"go/types"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/webauth/internal/serve"
 	"github.com/stellar/go/network"
@@ -109,8 +110,9 @@ func (c *ServeCommand) Command() *cobra.Command {
 		Use:   "serve",
 		Short: "Run the SEP-10 Web Authentication server",
 		Run: func(_ *cobra.Command, _ []string) {
-			configOpts.Require()
-			configOpts.SetValues()
+			v := viper.New()
+			configOpts.Require(v)
+			configOpts.SetValues(v)
 			c.Run(opts)
 		},
 	}

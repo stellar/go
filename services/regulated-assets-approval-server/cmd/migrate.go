@@ -7,6 +7,7 @@ import (
 
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbmigrate"
 	"github.com/stellar/go/support/config"
@@ -32,8 +33,9 @@ func (c *MigrateCommand) Command() *cobra.Command {
 		Use:   "migrate [up|down] [count]",
 		Short: "Run migrations on the database",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			configOpts.Require()
-			configOpts.SetValues()
+			v := viper.New()
+			configOpts.Require(v)
+			configOpts.SetValues(v)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			c.Migrate(cmd, args)

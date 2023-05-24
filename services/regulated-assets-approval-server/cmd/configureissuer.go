@@ -4,6 +4,7 @@ import (
 	"go/types"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/configureissuer"
@@ -57,8 +58,9 @@ func (c *ConfigureIssuer) Command() *cobra.Command {
 		Use:   "configure-issuer",
 		Short: "Configure the Asset Issuer Account for SEP-8 Regulated Assets",
 		Run: func(_ *cobra.Command, _ []string) {
-			configOpts.Require()
-			configOpts.SetValues()
+			v := viper.New()
+			configOpts.Require(v)
+			configOpts.SetValues(v)
 			c.Run(opts)
 		},
 	}

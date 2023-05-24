@@ -4,6 +4,7 @@ import (
 	"go/types"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
@@ -107,8 +108,9 @@ func (c *ServeCommand) Command() *cobra.Command {
 		Use:   "serve",
 		Short: "Run the SEP-30 Recovery Signer server",
 		Run: func(_ *cobra.Command, _ []string) {
-			configOpts.Require()
-			configOpts.SetValues()
+			v := viper.New()
+			configOpts.Require(v)
+			configOpts.SetValues(v)
 			c.Run(opts)
 		},
 	}
