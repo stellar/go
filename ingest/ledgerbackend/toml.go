@@ -70,11 +70,12 @@ type captiveCoreTomlValues struct {
 	BucketDirPath string `toml:"BUCKET_DIR_PATH,omitempty"`
 	// we cannot omitempty because 0 is a valid configuration for HTTP_PORT
 	// and the default is 11626
-	HTTPPort          uint     `toml:"HTTP_PORT"`
-	PublicHTTPPort    bool     `toml:"PUBLIC_HTTP_PORT,omitempty"`
-	NodeNames         []string `toml:"NODE_NAMES,omitempty"`
-	NetworkPassphrase string   `toml:"NETWORK_PASSPHRASE,omitempty"`
-	PeerPort          uint     `toml:"PEER_PORT,omitempty"`
+	HTTPPort                  uint     `toml:"HTTP_PORT"`
+	PublicHTTPPort            bool     `toml:"PUBLIC_HTTP_PORT,omitempty"`
+	NodeNames                 []string `toml:"NODE_NAMES,omitempty"`
+	NetworkPassphrase         string   `toml:"NETWORK_PASSPHRASE,omitempty"`
+	PeerPort                  uint     `toml:"PEER_PORT,omitempty"`
+	LimitTxQueueSourceAccount bool     `toml:"LIMIT_TX_QUEUE_SOURCE_ACCOUNT,omitempty"`
 	// we cannot omitempty because 0 is a valid configuration for FAILURE_SAFETY
 	// and the default is -1
 	FailureSafety                        int                  `toml:"FAILURE_SAFETY"`
