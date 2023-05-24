@@ -599,11 +599,12 @@ type ApplyOptions struct {
 
 // ApplyFlags applies the command line flags on the given Config instance
 func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
+	v := viper.New()
 	// Verify required options and load the config struct
-	if err := flags.RequireE(); err != nil {
+	if err := flags.RequireE(v); err != nil {
 		return err
 	}
-	if err := flags.SetValues(); err != nil {
+	if err := flags.SetValues(v); err != nil {
 		return err
 	}
 

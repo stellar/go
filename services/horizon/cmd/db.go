@@ -34,14 +34,15 @@ var dbMigrateCmd = &cobra.Command{
 }
 
 func requireAndSetFlags(names ...string) error {
+	v := viper.New()
 	set := map[string]bool{}
 	for _, name := range names {
 		set[name] = true
 	}
 	for _, flag := range flags {
 		if set[flag.Name] {
-			flag.Require()
-			if err := flag.SetValue(); err != nil {
+			flag.Require(v)
+			if err := flag.SetValue(v); err != nil {
 				return err
 			}
 			delete(set, flag.Name)
@@ -300,10 +301,11 @@ var dbReingestRangeCmd = &cobra.Command{
 	Short: "reingests ledgers within a range",
 	Long:  "reingests ledgers between X and Y sequence number (closed intervals)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := dbReingestRangeCmdOpts.RequireE(); err != nil {
+		v := viper.New()
+		if err := dbReingestRangeCmdOpts.RequireE(v); err != nil {
 			return err
 		}
-		if err := dbReingestRangeCmdOpts.SetValues(); err != nil {
+		if err := dbReingestRangeCmdOpts.SetValues(v); err != nil {
 			return err
 		}
 
@@ -340,10 +342,11 @@ var dbFillGapsCmd = &cobra.Command{
 	Short: "Ingests any gaps found in the horizon db",
 	Long:  "Ingests any gaps found in the horizon db. The command takes an optional start and end parameters which restrict the range of ledgers ingested.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := dbFillGapsCmdOpts.RequireE(); err != nil {
+		v := viper.New()
+		if err := dbFillGapsCmdOpts.RequireE(v); err != nil {
 			return err
 		}
-		if err := dbFillGapsCmdOpts.SetValues(); err != nil {
+		if err := dbFillGapsCmdOpts.SetValues(v); err != nil {
 			return err
 		}
 

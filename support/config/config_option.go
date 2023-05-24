@@ -32,16 +32,16 @@ func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 }
 
 // Require calls Require on each ConfigOption.
-func (cos ConfigOptions) Require() {
+func (cos ConfigOptions) Require(v *viper.Viper) {
 	for _, co := range cos {
-		co.Require()
+		co.Require(v)
 	}
 }
 
 // RequireE is like Require, but returns the error instead of Fatal
-func (cos ConfigOptions) RequireE() error {
+func (cos ConfigOptions) RequireE(v *viper.Viper) error {
 	for _, co := range cos {
-		if err := co.RequireE(); err != nil {
+		if err := co.RequireE(v); err != nil {
 			return err
 		}
 	}
@@ -49,9 +49,9 @@ func (cos ConfigOptions) RequireE() error {
 }
 
 // SetValues calls SetValue on each ConfigOption.
-func (cos ConfigOptions) SetValues() error {
+func (cos ConfigOptions) SetValues(v *viper.Viper) error {
 	for _, co := range cos {
-		if err := co.SetValue(); err != nil {
+		if err := co.SetValue(v); err != nil {
 			return err
 		}
 	}
@@ -69,6 +69,7 @@ type ConfigOption struct {
 	CustomSetValue func(*ConfigOption) error // Optional function for custom validation/transformation
 	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
 	flag           *pflag.Flag               // The persistent flag that the config option is attached to
+	viper          *viper.Viper              // The viper instance that the config option is attached to
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -83,30 +84,31 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 }
 
 // Bind binds the config option to viper.
-func (co *ConfigOption) Bind() {
-	viper.BindPFlag(co.Name, co.flag)
-	viper.BindEnv(co.Name, co.EnvVar)
+func (co *ConfigOption) Bind(v *viper.Viper) {
+	co.viper = v
+	co.viper.BindPFlag(co.Name, co.flag)
+	co.viper.BindEnv(co.Name, co.EnvVar)
 }
 
 // Require checks that a required string configuration option is not empty, raising a user error if it is.
-func (co *ConfigOption) Require() {
-	if err := co.RequireE(); err != nil {
+func (co *ConfigOption) Require(v *viper.Viper) {
+	if err := co.RequireE(v); err != nil {
 		stdLog.Fatal(err.Error())
 	}
 }
 
 // RequireE is like Require, but returns the error instead of Fatal
-func (co *ConfigOption) RequireE() error {
-	co.Bind()
-	if co.Required && viper.GetString(co.Name) == "" {
+func (co *ConfigOption) RequireE(v *viper.Viper) error {
+	co.Bind(v)
+	if co.Required && co.viper.GetString(co.Name) == "" {
 		return fmt.Errorf("Invalid config: %s is blank. Please specify --%s on the command line or set the %s environment variable.", co.Name, co.Name, co.EnvVar)
 	}
 	return nil
 }
 
 // SetValue sets a value in the global config, using a custom function, if one was provided.
-func (co *ConfigOption) SetValue() error {
-	co.Bind()
+func (co *ConfigOption) SetValue(v *viper.Viper) error {
+	co.Bind(v)
 
 	// Use a custom setting function, if one is provided
 	if co.CustomSetValue != nil {
@@ -132,17 +134,17 @@ func (co *ConfigOption) setSimpleValue() {
 	if co.ConfigKey != nil {
 		switch co.OptType {
 		case types.String:
-			*(co.ConfigKey.(*string)) = viper.GetString(co.Name)
+			*(co.ConfigKey.(*string)) = co.viper.GetString(co.Name)
 		case types.Int:
-			*(co.ConfigKey.(*int)) = viper.GetInt(co.Name)
+			*(co.ConfigKey.(*int)) = co.viper.GetInt(co.Name)
 		case types.Bool:
-			*(co.ConfigKey.(*bool)) = viper.GetBool(co.Name)
+			*(co.ConfigKey.(*bool)) = co.viper.GetBool(co.Name)
 		case types.Uint:
-			*(co.ConfigKey.(*uint)) = uint(viper.GetInt(co.Name))
+			*(co.ConfigKey.(*uint)) = uint(co.viper.GetInt(co.Name))
 		case types.Uint32:
-			*(co.ConfigKey.(*uint32)) = uint32(viper.GetInt(co.Name))
+			*(co.ConfigKey.(*uint32)) = uint32(co.viper.GetInt(co.Name))
 		case types.Float64:
-			*(co.ConfigKey.(*float64)) = float64(viper.GetFloat64(co.Name))
+			*(co.ConfigKey.(*float64)) = float64(co.viper.GetFloat64(co.Name))
 		}
 	}
 }
@@ -177,19 +179,19 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 
 // SetDuration converts a command line int to a duration, and stores it in the final config.
 func SetDuration(co *ConfigOption) error {
-	*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Second
+	*(co.ConfigKey.(*time.Duration)) = time.Duration(co.viper.GetInt(co.Name)) * time.Second
 	return nil
 }
 
 // SetDurationMinutes converts a command line minutes value to a duration, and stores it in the final config.
 func SetDurationMinutes(co *ConfigOption) error {
-	*(co.ConfigKey.(*time.Duration)) = time.Duration(viper.GetInt(co.Name)) * time.Minute
+	*(co.ConfigKey.(*time.Duration)) = time.Duration(co.viper.GetInt(co.Name)) * time.Minute
 	return nil
 }
 
 // SetURL converts a command line string to a URL, and stores it in the final config.
 func SetURL(co *ConfigOption) error {
-	urlString := viper.GetString(co.Name)
+	urlString := co.viper.GetString(co.Name)
 	if urlString != "" {
 		urlType, err := url.Parse(urlString)
 		if err != nil {
@@ -206,7 +208,7 @@ func SetOptionalUint(co *ConfigOption) error {
 	key := co.ConfigKey.(**uint)
 	if IsExplicitlySet(co) {
 		*key = new(uint)
-		**key = uint(viper.GetInt(co.Name))
+		**key = uint(co.viper.GetInt(co.Name))
 	} else {
 		*key = nil
 	}
@@ -238,7 +240,7 @@ func SetOptionalString(co *ConfigOption) error {
 	key := co.ConfigKey.(**string)
 	if IsExplicitlySet(co) {
 		*key = new(string)
-		**key = viper.GetString(co.Name)
+		**key = co.viper.GetString(co.Name)
 	} else {
 		*key = nil
 	}

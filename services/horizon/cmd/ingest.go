@@ -87,11 +87,12 @@ var ingestVerifyRangeCmd = &cobra.Command{
 	Short: "runs ingestion pipeline within a range. warning! requires clean DB.",
 	Long:  "runs ingestion pipeline between X and Y sequence number (inclusive)",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		v := viper.New()
 		for _, co := range ingestVerifyRangeCmdOpts {
-			if err := co.RequireE(); err != nil {
+			if err := co.RequireE(v); err != nil {
 				return err
 			}
-			co.SetValue()
+			co.SetValue(v)
 		}
 
 		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
@@ -196,11 +197,12 @@ var ingestStressTestCmd = &cobra.Command{
 	Short: "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
 	Long:  "runs ingestion pipeline on a ledger with many changes. warning! requires clean DB.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		v := viper.New()
 		for _, co := range stressTestCmdOpts {
-			if err := co.RequireE(); err != nil {
+			if err := co.RequireE(v); err != nil {
 				return err
 			}
-			co.SetValue()
+			co.SetValue(v)
 		}
 
 		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
@@ -356,11 +358,12 @@ var ingestBuildStateCmd = &cobra.Command{
 	Short: "builds state at a given checkpoint. warning! requires clean DB.",
 	Long:  "useful for debugging or starting Horizon at specific checkpoint.",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		v := viper.New()
 		for _, co := range ingestBuildStateCmdOpts {
-			if err := co.RequireE(); err != nil {
+			if err := co.RequireE(v); err != nil {
 				return err
 			}
-			co.SetValue()
+			co.SetValue(v)
 		}
 
 		if err := horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true}); err != nil {
