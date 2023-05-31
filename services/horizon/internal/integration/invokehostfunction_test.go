@@ -25,7 +25,6 @@ const increment_contract = "soroban_increment_contract.wasm"
 // contract code if needed to new wasm.
 
 func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -76,7 +75,6 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -134,7 +132,6 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -205,34 +202,22 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 		SourceAccount: sourceAccount.AccountID,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractData,
-								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: contractID,
-									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-										// symbolic: no value
-									},
-								},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadOnly: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.LedgerKeyContractData{
+							ContractId: contractID,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// symbolic: no value
 							},
-							contractCodeLedgerKey,
 						},
-						ReadWrite: []xdr.LedgerKey{},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
+					contractCodeLedgerKey,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
-				},
-			},
+				ReadWrite: []xdr.LedgerKey{},
+			}),
 		},
 	}
 
@@ -281,7 +266,6 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -339,45 +323,33 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 		SourceAccount: sourceAccount.AccountID,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractData,
-								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: contractID,
-									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-										// symbolic: no value
-									},
-								},
-							},
-							contractCodeLedgerKey,
-						},
-						ReadWrite: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractData,
-								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: contractID,
-									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvSymbol,
-										Sym:  &contractStateFootprintSym,
-									},
-								},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadOnly: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.LedgerKeyContractData{
+							ContractId: contractID,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// symbolic: no value
 							},
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
+					contractCodeLedgerKey,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
+				ReadWrite: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.LedgerKeyContractData{
+							ContractId: contractID,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvSymbol,
+								Sym:  &contractStateFootprintSym,
+							},
+						},
+					},
 				},
-			},
+			}),
 		},
 	}
 
@@ -421,6 +393,25 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["type"], "Sym")
 }
 
+func getMaxSorobanTransactionData(fp xdr.LedgerFootprint) *xdr.SorobanTransactionData {
+	// From https://soroban.stellar.org/docs/learn/fees-and-metering#resource-limits
+	stroopsIn1XLM := int64(10_000_000)
+	return &xdr.SorobanTransactionData{
+		Resources: xdr.SorobanResources{
+			Footprint:                 fp,
+			Instructions:              40_000_000,
+			ReadBytes:                 200 * 1024,
+			WriteBytes:                100 * 1024,
+			ExtendedMetaDataSizeBytes: 200 * 1024,
+		},
+		// 1 XML should be future-proof
+		RefundableFee: 1 * xdr.Int64(stroopsIn1XLM),
+		Ext: xdr.ExtensionPoint{
+			V: 0,
+		},
+	}
+}
+
 func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileName string) *txnbuild.InvokeHostFunctions {
 	// Assemble the InvokeHostFunction CreateContract operation:
 	// CAP-0047 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0047.md#creating-a-contract-using-invokehostfunctionop
@@ -447,28 +438,16 @@ func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileN
 		SourceAccount: sourceAccount,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadWrite: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractCode,
-								ContractCode: &xdr.LedgerKeyContractCode{
-									Hash: contractHash,
-								},
-							},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadWrite: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractCode,
+						ContractCode: &xdr.LedgerKeyContractCode{
+							Hash: contractHash,
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
-				},
-			},
+			}),
 		},
 	}
 }
@@ -531,34 +510,22 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 		SourceAccount: sourceAccount,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadWrite: []xdr.LedgerKey{
-							{
-								Type:         xdr.LedgerEntryTypeContractData,
-								ContractData: &ledgerKey,
-							},
-						},
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractCode,
-								ContractCode: &xdr.LedgerKeyContractCode{
-									Hash: contractHash,
-								},
-							},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadWrite: []xdr.LedgerKey{
+					{
+						Type:         xdr.LedgerEntryTypeContractData,
+						ContractData: &ledgerKey,
+					},
+				},
+				ReadOnly: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractCode,
+						ContractCode: &xdr.LedgerKeyContractCode{
+							Hash: contractHash,
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
-				},
-			},
+			}),
 		},
 	}
 }

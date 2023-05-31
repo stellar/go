@@ -17,8 +17,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/services/horizon/internal/ingest"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
@@ -826,10 +827,13 @@ func (i *Test) CreateSignedTransaction(signers []*keypair.Full, txParams txnbuil
 func (i *Test) CreateSignedTransactionFromOps(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {
+	stroopsIn1XLM := int64(10_000_000)
 	txParams := txnbuild.TransactionParams{
-		SourceAccount:        source,
-		Operations:           ops,
-		BaseFee:              txnbuild.MinBaseFee,
+		SourceAccount: source,
+		Operations:    ops,
+		// Set a very generous fee (10 XLM) which would satisfy any
+		// contract invocation
+		BaseFee:              10 * stroopsIn1XLM,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		IncrementSequenceNum: true,
 	}
