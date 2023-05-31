@@ -40,7 +40,8 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	// Set a very generous fee (10 XLM) which would satisfy any contract invocation
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 	require.NoError(t, err)
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
@@ -91,13 +92,14 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	// Set a very generous fee (10 XLM) which would satisfy any contract invocation
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 
 	// Create the contract
 
 	require.NoError(t, err)
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, createContractOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -149,12 +151,12 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 
 	// Create the contract
 
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, createContractOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -221,7 +223,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 		},
 	}
 
-	tx, err = itest.SubmitOperations(&sourceAccount, itest.Master(), invokeHostFunctionOp)
+	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, invokeHostFunctionOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -283,12 +285,12 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), increment_contract)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 
 	// Create the contract
 
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1", itest.GetPassPhrase())
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, createContractOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -353,7 +355,7 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 		},
 	}
 
-	tx, err = itest.SubmitOperations(&sourceAccount, itest.Master(), invokeHostFunctionOp)
+	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, invokeHostFunctionOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -393,9 +395,10 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["type"], "Sym")
 }
 
+const stroopsIn1XLM = int64(10_000_000)
+
 func getMaxSorobanTransactionData(fp xdr.LedgerFootprint) *xdr.SorobanTransactionData {
 	// From https://soroban.stellar.org/docs/learn/fees-and-metering#resource-limits
-	stroopsIn1XLM := int64(10_000_000)
 	return &xdr.SorobanTransactionData{
 		Resources: xdr.SorobanResources{
 			Footprint:                 fp,

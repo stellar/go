@@ -747,7 +747,13 @@ func (i *Test) MustGetAccount(source *keypair.Full) proto.Account {
 func (i *Test) MustSubmitOperations(
 	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
 ) proto.Transaction {
-	tx, err := i.SubmitOperations(source, signer, ops...)
+	return i.MustSubmitOperationsWithFee(source, signer, txnbuild.MinBaseFee, ops...)
+}
+
+func (i *Test) MustSubmitOperationsWithFee(
+	source txnbuild.Account, signer *keypair.Full, fee int64, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitOperationsWithFee(source, signer, fee, ops...)
 	panicIf(err)
 	return tx
 }
@@ -761,7 +767,19 @@ func (i *Test) SubmitOperations(
 func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
-	tx, err := i.CreateSignedTransactionFromOps(source, signers, ops...)
+	return i.SubmitMultiSigOperationsWithFee(source, signers, txnbuild.MinBaseFee, ops...)
+}
+
+func (i *Test) SubmitOperationsWithFee(
+	source txnbuild.Account, signer *keypair.Full, fee int64, ops ...txnbuild.Operation,
+) (proto.Transaction, error) {
+	return i.SubmitMultiSigOperationsWithFee(source, []*keypair.Full{signer}, fee, ops...)
+}
+
+func (i *Test) SubmitMultiSigOperationsWithFee(
+	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
+) (proto.Transaction, error) {
+	tx, err := i.CreateSignedTransactionFromOpsWithFee(source, signers, fee, ops...)
 	if err != nil {
 		return proto.Transaction{}, err
 	}
@@ -827,13 +845,16 @@ func (i *Test) CreateSignedTransaction(signers []*keypair.Full, txParams txnbuil
 func (i *Test) CreateSignedTransactionFromOps(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {
-	stroopsIn1XLM := int64(10_000_000)
+	return i.CreateSignedTransactionFromOpsWithFee(source, signers, txnbuild.MinBaseFee, ops...)
+}
+
+func (i *Test) CreateSignedTransactionFromOpsWithFee(
+	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
 	txParams := txnbuild.TransactionParams{
-		SourceAccount: source,
-		Operations:    ops,
-		// Set a very generous fee (10 XLM) which would satisfy any
-		// contract invocation
-		BaseFee:              10 * stroopsIn1XLM,
+		SourceAccount:        source,
+		Operations:           ops,
+		BaseFee:              fee,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		IncrementSequenceNum: true,
 	}
