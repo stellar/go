@@ -16,6 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2opremio/pretty"
+	"github.com/creachadair/jrpc2"
+	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
@@ -39,10 +42,12 @@ const (
 	stellarCorePort             = 11626
 	stellarCorePostgresPort     = 5641
 	historyArchivePort          = 1570
+	sorobanRPCPort              = 8080
 )
 
 var (
 	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
+	RunWithSorobanRPC       = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != ""
 	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
 
@@ -50,6 +55,7 @@ type Config struct {
 	ProtocolVersion       uint32
 	SkipContainerCreation bool
 	CoreDockerImage       string
+	SorobanRPCDockerImage string
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -152,6 +158,10 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
+	if RunWithSorobanRPC {
+		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
+		i.waitForSorobanRPC()
+	}
 
 	if !config.SkipHorizonStart {
 		if innerErr := i.StartHorizon(); innerErr != nil {
@@ -204,8 +214,13 @@ func (i *Test) getIngestParameter(argName, envName string) string {
 // Runs a docker-compose command applied to the above configs
 func (i *Test) runComposeCommand(args ...string) {
 	integrationYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.yml")
+	integrationSorobanRPCYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.soroban-rpc.yml")
 
-	cmdline := append([]string{"-f", integrationYaml}, args...)
+	cmdline := args
+	if RunWithSorobanRPC {
+		cmdline = append([]string{"-f", integrationSorobanRPCYaml}, cmdline...)
+	}
+	cmdline = append([]string{"-f", integrationYaml}, cmdline...)
 	cmd := exec.Command("docker-compose", cmdline...)
 	coreImageOverride := ""
 	if i.config.CoreDockerImage != "" {
@@ -213,10 +228,24 @@ func (i *Test) runComposeCommand(args ...string) {
 	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
 		coreImageOverride = img
 	}
+
+	cmd.Env = os.Environ()
 	if coreImageOverride != "" {
 		cmd.Env = append(
-			os.Environ(),
+			cmd.Environ(),
 			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
+		)
+	}
+	sorobanRPCOverride := ""
+	if i.config.SorobanRPCDockerImage != "" {
+		sorobanRPCOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG"); img != "" {
+		sorobanRPCOverride = img
+	}
+	if sorobanRPCOverride != "" {
+		cmd.Env = append(
+			cmd.Environ(),
+			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
 		)
 	}
 	i.t.Log("Running", cmd.Env, cmd.Args)
@@ -242,6 +271,9 @@ func (i *Test) prepareShutdownHandlers() {
 			}
 			i.runComposeCommand("rm", "-fvs", "core")
 			i.runComposeCommand("rm", "-fvs", "core-postgres")
+			if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != "" {
+				i.runComposeCommand("rm", "-fvs", "soroban-rpc")
+			}
 		},
 		i.environment.Restore,
 	)
@@ -474,6 +506,76 @@ func (i *Test) waitForCore() {
 		return
 	}
 	i.t.Fatal("Core could not sync after 30s")
+}
+
+// Wait for SorobanRPC to be up
+func (i *Test) waitForSorobanRPC() {
+	i.t.Log("Waiting for Soroban RPC to be up...")
+
+	for t := 30 * time.Second; t >= 0; t -= time.Second {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		// TODO: soroban-tools should be exporting a proper Go client
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		_, err := sorobanRPCClient.Call(ctx, "getHealth", nil)
+		cancel()
+		if err != nil {
+			i.t.Logf("SorobanRPC is unhealthy: %v", err)
+			time.Sleep(time.Second)
+			continue
+		}
+		i.t.Log("SorobanRPC is up.")
+		return
+	}
+
+	i.t.Fatal("SorobanRPC unhealthy after 30s")
+}
+
+// Wait for SorobanRPC to be up
+func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, functions txnbuild.InvokeHostFunctions) (txnbuild.InvokeHostFunctions, int64) {
+	// TODO: soroban-tools should be exporting a proper Go client
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	sorobanRPCClient := jrpc2.NewClient(ch, nil)
+	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, &functions)
+	txParams.IncrementSequenceNum = false
+	tx, err := txnbuild.NewTransaction(txParams)
+	assert.NoError(i.t, err)
+	base64, err := tx.Base64()
+	assert.NoError(i.t, err)
+	var result struct {
+		Error           string `json:"error,omitempty"`
+		TransactionData string `json:"transactionData"`
+		Results         []struct {
+			Auth []string `json:"auth"`
+		} `json:"results,omitempty"`
+		MinResourceFee int64 `json:"minResourceFee,string"`
+	}
+	err = sorobanRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
+		Transaction string `json:"transaction"`
+	}{base64}, &result)
+	assert.NoError(i.t, err)
+	assert.Empty(i.t, result.Error)
+	var transactionData xdr.SorobanTransactionData
+	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
+	assert.NoError(i.t, err)
+	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
+	functions.Ext = xdr.TransactionExt{
+		V:           1,
+		SorobanData: &transactionData,
+	}
+	for index, result := range result.Results {
+		var funAuth []xdr.ContractAuth
+		for _, authBase64 := range result.Auth {
+			var contractAuth xdr.ContractAuth
+			err = xdr.SafeUnmarshalBase64(authBase64, &contractAuth)
+			assert.NoError(i.t, err)
+			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(contractAuth))
+			funAuth = append(funAuth, contractAuth)
+		}
+		functions.Functions[index].Auth = funAuth
+	}
+
+	return functions, result.MinResourceFee
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
@@ -851,15 +953,25 @@ func (i *Test) CreateSignedTransactionFromOps(
 func (i *Test) CreateSignedTransactionFromOpsWithFee(
 	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {
-	txParams := txnbuild.TransactionParams{
+	txParams := GetBaseTransactionParamsWithFee(source, fee, ops...)
+	return i.CreateSignedTransaction(signers, txParams)
+}
+
+func GetBaseTransactionParamsWithFee(source txnbuild.Account, fee int64, ops ...txnbuild.Operation) txnbuild.TransactionParams {
+	return txnbuild.TransactionParams{
 		SourceAccount:        source,
 		Operations:           ops,
 		BaseFee:              fee,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		IncrementSequenceNum: true,
 	}
+}
 
-	return i.CreateSignedTransaction(signers, txParams)
+func (i *Test) CreateUnsignedTransaction(
+	source txnbuild.Account, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
+	txParams := GetBaseTransactionParamsWithFee(source, txnbuild.MinBaseFee, ops...)
+	return txnbuild.NewTransaction(txParams)
 }
 
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
