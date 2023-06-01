@@ -25,7 +25,6 @@ const increment_contract = "soroban_increment_contract.wasm"
 // contract code if needed to new wasm.
 
 func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -41,7 +40,8 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 	require.NoError(t, err)
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	// Set a very generous fee (10 XLM) which would satisfy any contract invocation
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 	require.NoError(t, err)
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(t, err)
@@ -76,7 +76,6 @@ func TestContractInvokeHostFunctionInstallContract(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -93,13 +92,14 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	// Set a very generous fee (10 XLM) which would satisfy any contract invocation
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 
 	// Create the contract
 
 	require.NoError(t, err)
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, createContractOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -134,7 +134,6 @@ func TestContractInvokeHostFunctionCreateContractBySourceAccount(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -152,12 +151,12 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), add_u64_contract)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 
 	// Create the contract
 
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), add_u64_contract, "a1", itest.GetPassPhrase())
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, createContractOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -205,38 +204,26 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 		SourceAccount: sourceAccount.AccountID,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractData,
-								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: contractID,
-									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-										// symbolic: no value
-									},
-								},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadOnly: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.LedgerKeyContractData{
+							ContractId: contractID,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// symbolic: no value
 							},
-							contractCodeLedgerKey,
 						},
-						ReadWrite: []xdr.LedgerKey{},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
+					contractCodeLedgerKey,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
-				},
-			},
+				ReadWrite: []xdr.LedgerKey{},
+			}),
 		},
 	}
 
-	tx, err = itest.SubmitOperations(&sourceAccount, itest.Master(), invokeHostFunctionOp)
+	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, invokeHostFunctionOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -281,7 +268,6 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 }
 
 func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -299,12 +285,12 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	// Install the contract
 
 	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), increment_contract)
-	itest.MustSubmitOperations(&sourceAccount, itest.Master(), installContractOp)
+	itest.MustSubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, installContractOp)
 
 	// Create the contract
 
 	createContractOp := assembleCreateContractOp(t, itest.Master().Address(), increment_contract, "a1", itest.GetPassPhrase())
-	tx, err := itest.SubmitOperations(&sourceAccount, itest.Master(), createContractOp)
+	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, createContractOp)
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
@@ -339,49 +325,37 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 		SourceAccount: sourceAccount.AccountID,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractData,
-								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: contractID,
-									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-										// symbolic: no value
-									},
-								},
-							},
-							contractCodeLedgerKey,
-						},
-						ReadWrite: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractData,
-								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: contractID,
-									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvSymbol,
-										Sym:  &contractStateFootprintSym,
-									},
-								},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadOnly: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.LedgerKeyContractData{
+							ContractId: contractID,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// symbolic: no value
 							},
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
+					contractCodeLedgerKey,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
+				ReadWrite: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractData,
+						ContractData: &xdr.LedgerKeyContractData{
+							ContractId: contractID,
+							Key: xdr.ScVal{
+								Type: xdr.ScValTypeScvSymbol,
+								Sym:  &contractStateFootprintSym,
+							},
+						},
+					},
 				},
-			},
+			}),
 		},
 	}
 
-	tx, err = itest.SubmitOperations(&sourceAccount, itest.Master(), invokeHostFunctionOp)
+	tx, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), 10*stroopsIn1XLM, invokeHostFunctionOp)
 	require.NoError(t, err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
@@ -421,6 +395,26 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	assert.Equal(t, invokeHostFunctionOpJson.HostFunctions[0].Parameters[1]["type"], "Sym")
 }
 
+const stroopsIn1XLM = int64(10_000_000)
+
+func getMaxSorobanTransactionData(fp xdr.LedgerFootprint) *xdr.SorobanTransactionData {
+	// From https://soroban.stellar.org/docs/learn/fees-and-metering#resource-limits
+	return &xdr.SorobanTransactionData{
+		Resources: xdr.SorobanResources{
+			Footprint:                 fp,
+			Instructions:              40_000_000,
+			ReadBytes:                 200 * 1024,
+			WriteBytes:                100 * 1024,
+			ExtendedMetaDataSizeBytes: 200 * 1024,
+		},
+		// 1 XML should be future-proof
+		RefundableFee: 1 * xdr.Int64(stroopsIn1XLM),
+		Ext: xdr.ExtensionPoint{
+			V: 0,
+		},
+	}
+}
+
 func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileName string) *txnbuild.InvokeHostFunctions {
 	// Assemble the InvokeHostFunction CreateContract operation:
 	// CAP-0047 - https://github.com/stellar/stellar-protocol/blob/master/core/cap-0047.md#creating-a-contract-using-invokehostfunctionop
@@ -447,28 +441,16 @@ func assembleInstallContractCodeOp(t *testing.T, sourceAccount string, wasmFileN
 		SourceAccount: sourceAccount,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadWrite: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractCode,
-								ContractCode: &xdr.LedgerKeyContractCode{
-									Hash: contractHash,
-								},
-							},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadWrite: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractCode,
+						ContractCode: &xdr.LedgerKeyContractCode{
+							Hash: contractHash,
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
-				},
-			},
+			}),
 		},
 	}
 }
@@ -531,34 +513,22 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 		SourceAccount: sourceAccount,
 		Ext: xdr.TransactionExt{
 			V: 1,
-			SorobanData: &xdr.SorobanTransactionData{
-				Resources: xdr.SorobanResources{
-					Footprint: xdr.LedgerFootprint{
-						ReadWrite: []xdr.LedgerKey{
-							{
-								Type:         xdr.LedgerEntryTypeContractData,
-								ContractData: &ledgerKey,
-							},
-						},
-						ReadOnly: []xdr.LedgerKey{
-							{
-								Type: xdr.LedgerEntryTypeContractCode,
-								ContractCode: &xdr.LedgerKeyContractCode{
-									Hash: contractHash,
-								},
-							},
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadWrite: []xdr.LedgerKey{
+					{
+						Type:         xdr.LedgerEntryTypeContractData,
+						ContractData: &ledgerKey,
+					},
+				},
+				ReadOnly: []xdr.LedgerKey{
+					{
+						Type: xdr.LedgerEntryTypeContractCode,
+						ContractCode: &xdr.LedgerKeyContractCode{
+							Hash: contractHash,
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
 				},
-				RefundableFee: 1,
-				Ext: xdr.ExtensionPoint{
-					V: 0,
-				},
-			},
+			}),
 		},
 	}
 }
