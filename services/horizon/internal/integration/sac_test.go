@@ -27,8 +27,6 @@ const sac_contract = "soroban_sac_test.wasm"
 // contract code if needed to new wasm.
 
 func TestContractMintToAccount(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
-
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -47,11 +45,10 @@ func TestContractMintToAccount(t *testing.T) {
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
 
-	trustlineAccountID := xdr.MustAddress(recipient.GetAccountID())
 	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "20", accountAddressParam(recipient.GetAccountID()), &trustlineAccountID),
+		mint(itest, issuer, asset, "20", accountAddressParam(recipient.GetAccountID())),
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
@@ -82,7 +79,7 @@ func TestContractMintToAccount(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		transfer(itest, issuer, asset, "30", accountAddressParam(otherRecipient.GetAccountID()), &trustlineAccountID),
+		transfer(itest, issuer, asset, "30", accountAddressParam(otherRecipient.GetAccountID())),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
 	assertContainsBalance(itest, otherRecipientKp, issuer, code, amount.MustParse("30"))
@@ -104,7 +101,6 @@ func TestContractMintToAccount(t *testing.T) {
 }
 
 func TestContractMintToContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -121,7 +117,7 @@ func TestContractMintToContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", add_u64_contract)
+	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a1", add_u64_contract)
 	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
 	assert.NoError(t, err)
 
@@ -133,8 +129,7 @@ func TestContractMintToContract(t *testing.T) {
 			itest,
 			issuer, asset,
 			i128Param(int64(mintAmount.Hi), uint64(mintAmount.Lo)),
-			contractAddressParam(recipientContractID),
-			nil),
+			contractAddressParam(recipientContractID)),
 	)
 	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
 		effects.EffectContractCredited)
@@ -153,7 +148,7 @@ func TestContractMintToContract(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		transferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID), nil),
+		transferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID)),
 	)
 
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
@@ -184,7 +179,6 @@ func TestContractMintToContract(t *testing.T) {
 }
 
 func TestContractTransferBetweenAccounts(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -234,7 +228,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transfer(itest, recipientKp.Address(), asset, "30", accountAddressParam(otherRecipient.GetAccountID()), nil),
+		transfer(itest, recipientKp.Address(), asset, "30", accountAddressParam(otherRecipient.GetAccountID())),
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
@@ -256,7 +250,6 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 }
 
 func TestContractTransferBetweenAccountAndContract(t *testing.T) {
-	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 	if integration.GetCoreMaxSupportedProtocol() < 20 {
 		t.Skip("This test run does not support less than Protocol 20")
 	}
@@ -290,7 +283,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
+	recipientContractID, recipientContractHash := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
 	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
 	assert.NoError(t, err)
 
@@ -298,15 +291,14 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		initAssetContract(itest, issuer, asset, recipientContractID),
+		initAssetContract(itest, issuer, asset, recipientContractID, recipientContractHash),
 	)
 
 	// Add funds to recipient contract
-	recipientAccountID := xdr.MustAddress(recipient.GetAccountID())
 	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID), &recipientAccountID),
+		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
 	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
@@ -326,7 +318,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID), nil),
+		transfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID)),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
@@ -346,7 +338,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	_, transferTx = assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transfer(itest, strkeyRecipientContractID, asset, "500", accountAddressParam(recipient.GetAccountID()), nil),
+		transferFromContract(itest, recipientKp.Address(), asset, recipientContractID, "500", accountAddressParam(recipient.GetAccountID())),
 	)
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
 		effects.EffectContractDebited, effects.EffectAccountCredited)
@@ -390,12 +382,12 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
+	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
 	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
 	assert.NoError(t, err)
 
 	// Create emitter contract
-	emitterContractID := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
+	emitterContractID, emitterContractHash := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
 	strkeyEmitterContractID, err := strkey.Encode(strkey.VersionByteContract, emitterContractID[:])
 	assert.NoError(t, err)
 
@@ -403,21 +395,21 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		initAssetContract(itest, issuer, asset, emitterContractID),
+		initAssetContract(itest, issuer, asset, emitterContractID, emitterContractHash),
 	)
 
 	// Add funds to emitter contract
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(emitterContractID), nil),
+		mint(itest, issuer, asset, "1000", contractAddressParam(emitterContractID)),
 	)
 
 	// Transfer funds from emitter to recipient
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		transfer(itest, strkeyEmitterContractID, asset, "10", contractAddressParam(recipientContractID), nil),
+		transfer(itest, strkeyEmitterContractID, asset, "10", contractAddressParam(recipientContractID)),
 	)
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
 		effects.EffectContractCredited, effects.EffectContractDebited)
@@ -544,21 +536,21 @@ func TestContractBurnFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
+	recipientContractID, recipientContractHash := mustCreateAndInstallContract(itest, itest.Master(), "a1", sac_contract)
 	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
 	assert.NoError(t, err)
 	// init contract with asset contract id
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		initAssetContract(itest, issuer, asset, recipientContractID),
+		initAssetContract(itest, issuer, asset, recipientContractID, recipientContractHash),
 	)
 
 	// Add funds to recipient contract
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID), nil),
+		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
 	)
 
 	// Burn funds
@@ -696,7 +688,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(itest, itest.Master(), createSAC(itest, issuer, asset))
 
 	// Create recipient contract
-	recipientContractID := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
+	recipientContractID, _ := mustCreateAndInstallContract(itest, itest.Master(), "a2", sac_contract)
 	strkeyRecipientContractID, err := strkey.Encode(strkey.VersionByteContract, recipientContractID[:])
 	assert.NoError(itest.CurrentTest(), err)
 
@@ -704,7 +696,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID), nil),
+		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
 	)
 
 	// Clawback funds
@@ -897,7 +889,7 @@ func i128Param(hi int64, lo uint64) xdr.ScVal {
 }
 
 func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey {
-	contractHash := stellarAssetContractID(itest, asset)
+	contractID := stellarAssetContractID(itest, asset)
 	metadata := xdr.ScSymbol("METADATA")
 	admin := xdr.ScSymbol("Admin")
 	assetInfo := xdr.ScSymbol("AssetInfo")
@@ -913,11 +905,16 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 			Sym:  &assetInfo,
 		},
 	}
+	masterAddress := xdr.MustAddress(itest.MasterAccount().GetAccountID())
 	return []xdr.LedgerKey{
+		{
+			Type:    xdr.LedgerEntryTypeAccount,
+			Account: &xdr.LedgerKeyAccount{AccountId: masterAddress},
+		},
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractHash,
+				ContractId: contractID,
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvSymbol,
 					Sym:  &metadata,
@@ -927,7 +924,7 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractHash,
+				ContractId: contractID,
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvVec,
 					Vec:  &adminVec,
@@ -937,7 +934,7 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractHash,
+				ContractId: contractID,
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvVec,
 					Vec:  &assetInfoVec,
@@ -947,13 +944,61 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractHash,
+				ContractId: contractID,
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 				},
 			},
 		},
 	}
+}
+
+func footprintForRecipientAddress(itest *integration.Test, contractAsset xdr.Asset, address xdr.ScAddress) xdr.LedgerFootprint {
+	footPrint := xdr.LedgerFootprint{
+		ReadOnly: baseSACFootPrint(itest, contractAsset),
+	}
+	contractID := stellarAssetContractID(itest, contractAsset)
+	switch address.Type {
+	case xdr.ScAddressTypeScAddressTypeAccount:
+		footPrint.ReadWrite = []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.LedgerKeyTrustLine{
+					AccountId: *address.AccountId,
+					Asset:     contractAsset.ToTrustLineAsset(),
+				},
+			},
+		}
+	case xdr.ScAddressTypeScAddressTypeContract:
+		balance := xdr.ScSymbol("Balance")
+		vec := &xdr.ScVec{
+			{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &balance,
+			},
+			{
+				Type: xdr.ScValTypeScvAddress,
+				Address: &xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: address.ContractId,
+				},
+			},
+		}
+		footPrint.ReadWrite = []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeContractData,
+				ContractData: &xdr.LedgerKeyContractData{
+					ContractId: contractID,
+					Key: xdr.ScVal{
+						Type: xdr.ScValTypeScvVec,
+						Vec:  &vec,
+					},
+				},
+			},
+		}
+
+	}
+	return footPrint
 }
 
 func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunctions {
@@ -986,25 +1031,12 @@ func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *
 	}
 }
 
-func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
-	return mintWithAmt(itest, sourceAccount, asset, i128Param(0, uint64(amount.MustParse(assetAmount))), recipient, trustlineAccount)
+func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
+	return mintWithAmt(itest, sourceAccount, asset, i128Param(0, uint64(amount.MustParse(assetAmount))), recipient)
 }
 
-func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
-	footPrint := xdr.LedgerFootprint{
-		ReadOnly: baseSACFootPrint(itest, asset),
-	}
-	if trustlineAccount != nil {
-		footPrint.ReadWrite = []xdr.LedgerKey{
-			{
-				Type: xdr.LedgerEntryTypeTrustline,
-				TrustLine: &xdr.LedgerKeyTrustLine{
-					AccountId: *trustlineAccount,
-					Asset:     asset.ToTrustLineAsset(),
-				},
-			},
-		}
-	}
+func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
+	footPrint := footprintForRecipientAddress(itest, asset, *recipient.Address)
 	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
@@ -1037,7 +1069,45 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 	return invokeHostFn
 }
 
-func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash) *txnbuild.InvokeHostFunctions {
+func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID, sacTestcontractHash xdr.Hash) *txnbuild.InvokeHostFunctions {
+	token := xdr.ScSymbol("Token")
+	tokenVec := &xdr.ScVec{
+		{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &token,
+		},
+	}
+	footPrint := xdr.LedgerFootprint{
+		ReadOnly: []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeContractData,
+				ContractData: &xdr.LedgerKeyContractData{
+					ContractId: sacTestcontractID,
+					Key: xdr.ScVal{
+						Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+					},
+				},
+			},
+			{
+				Type: xdr.LedgerEntryTypeContractCode,
+				ContractCode: &xdr.LedgerKeyContractCode{
+					Hash: sacTestcontractHash,
+				},
+			},
+		},
+		ReadWrite: []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeContractData,
+				ContractData: &xdr.LedgerKeyContractData{
+					ContractId: sacTestcontractID,
+					Key: xdr.ScVal{
+						Type: xdr.ScValTypeScvVec,
+						Vec:  &tokenVec,
+					},
+				},
+			},
+		},
+	}
 	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
@@ -1052,14 +1122,11 @@ func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.
 			},
 		},
 		SourceAccount: sourceAccount,
+		Ext: xdr.TransactionExt{
+			V:           1,
+			SorobanData: getMaxSorobanTransactionData(footPrint),
+		},
 	})
-
-	invokeHostFn.Functions[0].Auth = addAuthNextInvokerFlow(
-		"init",
-		sacTestcontractID,
-		xdr.ScVec{
-			contractIDParam(stellarAssetContractID(itest, asset)),
-		})
 
 	return invokeHostFn
 }
@@ -1096,7 +1163,8 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 }
 
 func balance(itest *integration.Test, sourceAccount string, asset xdr.Asset, holder xdr.ScVal) *txnbuild.InvokeHostFunctions {
-	return addFootprint(itest, &txnbuild.InvokeHostFunctions{
+
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -1110,34 +1178,33 @@ func balance(itest *integration.Test, sourceAccount string, asset xdr.Asset, hol
 			},
 		},
 		SourceAccount: sourceAccount,
-	})
-}
-
-func transfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
-	return transferWithAmount(
-		itest,
-		sourceAccount,
-		asset,
-		i128Param(0, uint64(amount.MustParse(assetAmount))),
-		recipient,
-		trustlineAccount,
-	)
-}
-
-func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
-	footPrint := xdr.LedgerFootprint{
-		ReadOnly: baseSACFootPrint(itest, asset),
+		Ext: xdr.TransactionExt{
+			V: 1,
+			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
+				ReadOnly: baseSACFootPrint(itest, asset),
+			}),
+		},
 	}
-	if trustlineAccount != nil {
-		footPrint.ReadWrite = []xdr.LedgerKey{
-			{
-				Type: xdr.LedgerEntryTypeTrustline,
-				TrustLine: &xdr.LedgerKeyTrustLine{
-					AccountId: *trustlineAccount,
-					Asset:     asset.ToTrustLineAsset(),
-				},
+
+	return invokeHostFn
+}
+
+func transfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
+	return transferWithAmount(itest, sourceAccount, asset, i128Param(0, uint64(amount.MustParse(assetAmount))), recipient)
+}
+
+func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
+	footPrint := footprintForRecipientAddress(itest, asset, *recipient.Address)
+	// FIXME: if I comment out this "if" , tx_internal_error is returned
+	//        potential core bug?
+	if sourceAccount != itest.Master().Address() {
+		footPrint.ReadWrite = append(footPrint.ReadWrite, xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.LedgerKeyTrustLine{
+				AccountId: xdr.MustAddress(sourceAccount),
+				Asset:     asset.ToTrustLineAsset(),
 			},
-		}
+		})
 	}
 	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
@@ -1169,6 +1236,86 @@ func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr
 			recipient,
 			assetAmount,
 		})
+
+	return invokeHostFn
+}
+
+func transferFromContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
+	contractID := stellarAssetContractID(itest, asset)
+	footPrint := footprintForRecipientAddress(itest, asset, *recipient.Address)
+	balance := xdr.ScSymbol("Balance")
+	sacTestContractAddress := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &sacTestcontractID,
+	}
+	vec := &xdr.ScVec{
+		{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &balance,
+		},
+		{
+			Type:    xdr.ScValTypeScvAddress,
+			Address: &sacTestContractAddress,
+		},
+	}
+	footPrint.ReadWrite = append(footPrint.ReadWrite,
+		xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractID,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvVec,
+					Vec:  &vec,
+				},
+			},
+		},
+		xdr.LedgerKey{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractID,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvLedgerKeyNonce,
+					NonceKey: &xdr.ScNonceKey{
+						NonceAddress: sacTestContractAddress,
+					},
+				},
+			},
+		},
+	)
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
+		Functions: []xdr.HostFunction{
+			{
+				Args: xdr.HostFunctionArgs{
+					Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+					InvokeContract: &xdr.ScVec{
+						contractIDParam(stellarAssetContractID(itest, asset)),
+						functionNameParam("transfer"),
+						contractAddressParam(sacTestcontractID),
+						recipient,
+						i128Param(0, uint64(amount.MustParse(assetAmount))),
+					},
+				},
+			},
+		},
+		SourceAccount: sourceAccount,
+		Ext: xdr.TransactionExt{
+			V:           1,
+			SorobanData: getMaxSorobanTransactionData(footPrint),
+		},
+	}
+	auth := addAuthNextInvokerFlow(
+		"transfer",
+		stellarAssetContractID(itest, asset),
+		xdr.ScVec{
+			contractAddressParam(sacTestcontractID),
+			recipient,
+			i128Param(0, uint64(amount.MustParse(assetAmount))),
+		})
+	auth[0].AddressWithNonce = &xdr.AddressWithNonce{
+		Address: sacTestContractAddress,
+	}
+
+	invokeHostFn.Functions[0].Auth = auth
 
 	return invokeHostFn
 }
@@ -1279,10 +1426,12 @@ func addAuthNextInvokerFlow(fnName string, contractId xdr.Hash, args xdr.ScVec) 
 	}
 }
 
-func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) xdr.Hash {
+func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full, contractSalt string, wasmFileName string) (xdr.Hash, xdr.Hash) {
 	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName)
 	assertInvokeHostFnSucceeds(itest, signer, installContractOp)
 	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, contractSalt, itest.GetPassPhrase())
 	assertInvokeHostFnSucceeds(itest, signer, createContractOp)
-	return createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().ContractId
+	contractHash := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0].MustContractCode().Hash
+	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().ContractId
+	return contractID, contractHash
 }
