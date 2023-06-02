@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -15,9 +18,6 @@ import (
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const sac_contract = "soroban_sac_test.wasm"
@@ -26,7 +26,6 @@ const sac_contract = "soroban_sac_test.wasm"
 // Refer to ./services/horizon/internal/integration/contracts/README.md on how to recompile
 // contract code if needed to new wasm.
 
-// TODO - need to figure out simulation tx data for contract invocations to re-enable tests
 func TestContractMintToAccount(t *testing.T) {
 	t.Skip("sac contract tests disabled until footprint/fees are set correctly")
 
@@ -48,10 +47,11 @@ func TestContractMintToAccount(t *testing.T) {
 	recipientKp, recipient := itest.CreateAccount("100")
 	itest.MustEstablishTrustline(recipientKp, recipient, txnbuild.MustAssetFromXDR(asset))
 
+	trustlineAccountID := xdr.MustAddress(recipient.GetAccountID())
 	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "20", accountAddressParam(recipient.GetAccountID())),
+		mint(itest, issuer, asset, "20", accountAddressParam(recipient.GetAccountID()), &trustlineAccountID),
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
@@ -82,7 +82,7 @@ func TestContractMintToAccount(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		transfer(itest, issuer, asset, "30", accountAddressParam(otherRecipient.GetAccountID())),
+		transfer(itest, issuer, asset, "30", accountAddressParam(otherRecipient.GetAccountID()), &trustlineAccountID),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("20"))
 	assertContainsBalance(itest, otherRecipientKp, issuer, code, amount.MustParse("30"))
@@ -133,7 +133,8 @@ func TestContractMintToContract(t *testing.T) {
 			itest,
 			issuer, asset,
 			i128Param(int64(mintAmount.Hi), uint64(mintAmount.Lo)),
-			contractAddressParam(recipientContractID)),
+			contractAddressParam(recipientContractID),
+			nil),
 	)
 	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
 		effects.EffectContractCredited)
@@ -152,7 +153,7 @@ func TestContractMintToContract(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		transferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID)),
+		transferWithAmount(itest, issuer, asset, i128Param(0, 3), contractAddressParam(recipientContractID), nil),
 	)
 
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
@@ -233,7 +234,7 @@ func TestContractTransferBetweenAccounts(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transfer(itest, recipientKp.Address(), asset, "30", accountAddressParam(otherRecipient.GetAccountID())),
+		transfer(itest, recipientKp.Address(), asset, "30", accountAddressParam(otherRecipient.GetAccountID()), nil),
 	)
 
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
@@ -301,10 +302,11 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	)
 
 	// Add funds to recipient contract
+	recipientAccountID := xdr.MustAddress(recipient.GetAccountID())
 	_, mintTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
+		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID), &recipientAccountID),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("1000"))
 	assertContainsEffect(t, getTxEffects(itest, mintTx, asset),
@@ -324,7 +326,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID)),
+		transfer(itest, recipientKp.Address(), asset, "30", contractAddressParam(recipientContractID), nil),
 	)
 	assertContainsBalance(itest, recipientKp, issuer, code, amount.MustParse("970"))
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
@@ -344,11 +346,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	_, transferTx = assertInvokeHostFnSucceeds(
 		itest,
 		recipientKp,
-		transfer(itest,
-			strkeyRecipientContractID,
-			asset,
-			"500",
-			accountAddressParam(recipient.GetAccountID())),
+		transfer(itest, strkeyRecipientContractID, asset, "500", accountAddressParam(recipient.GetAccountID()), nil),
 	)
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
 		effects.EffectContractDebited, effects.EffectAccountCredited)
@@ -412,14 +410,14 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(emitterContractID)),
+		mint(itest, issuer, asset, "1000", contractAddressParam(emitterContractID), nil),
 	)
 
 	// Transfer funds from emitter to recipient
 	_, transferTx := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		transfer(itest, strkeyEmitterContractID, asset, "10", contractAddressParam(recipientContractID)),
+		transfer(itest, strkeyEmitterContractID, asset, "10", contractAddressParam(recipientContractID), nil),
 	)
 	assertContainsEffect(t, getTxEffects(itest, transferTx, asset),
 		effects.EffectContractCredited, effects.EffectContractDebited)
@@ -560,7 +558,7 @@ func TestContractBurnFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
+		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID), nil),
 	)
 
 	// Burn funds
@@ -706,7 +704,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID)),
+		mint(itest, issuer, asset, "1000", contractAddressParam(recipientContractID), nil),
 	)
 
 	// Clawback funds
@@ -898,8 +896,72 @@ func i128Param(hi int64, lo uint64) xdr.ScVal {
 	}
 }
 
+func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey {
+	contractHash := stellarAssetContractID(itest, asset)
+	metadata := xdr.ScSymbol("METADATA")
+	admin := xdr.ScSymbol("Admin")
+	assetInfo := xdr.ScSymbol("AssetInfo")
+	adminVec := &xdr.ScVec{
+		{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &admin,
+		},
+	}
+	assetInfoVec := &xdr.ScVec{
+		{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &assetInfo,
+		},
+	}
+	return []xdr.LedgerKey{
+		{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractHash,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvSymbol,
+					Sym:  &metadata,
+				},
+			},
+		},
+		{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractHash,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvVec,
+					Vec:  &adminVec,
+				},
+			},
+		},
+		{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractHash,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvVec,
+					Vec:  &assetInfoVec,
+				},
+			},
+		},
+		{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractHash,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+				},
+			},
+		},
+	}
+}
+
 func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *txnbuild.InvokeHostFunctions {
-	return addFootprint(itest, &txnbuild.InvokeHostFunctions{
+	footPrint := xdr.LedgerFootprint{
+		ReadWrite: baseSACFootPrint(itest, asset),
+	}
+
+	return &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -917,15 +979,33 @@ func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *
 			},
 		},
 		SourceAccount: sourceAccount,
-	})
+		Ext: xdr.TransactionExt{
+			V:           1,
+			SorobanData: getMaxSorobanTransactionData(footPrint),
+		},
+	}
 }
 
-func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
-	return mintWithAmt(itest, sourceAccount, asset, i128Param(0, uint64(amount.MustParse(assetAmount))), recipient)
+func mint(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
+	return mintWithAmt(itest, sourceAccount, asset, i128Param(0, uint64(amount.MustParse(assetAmount))), recipient, trustlineAccount)
 }
 
-func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
+func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
+	footPrint := xdr.LedgerFootprint{
+		ReadOnly: baseSACFootPrint(itest, asset),
+	}
+	if trustlineAccount != nil {
+		footPrint.ReadWrite = []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.LedgerKeyTrustLine{
+					AccountId: *trustlineAccount,
+					Asset:     asset.ToTrustLineAsset(),
+				},
+			},
+		}
+	}
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -933,7 +1013,6 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 					InvokeContract: &xdr.ScVec{
 						contractIDParam(stellarAssetContractID(itest, asset)),
 						functionNameParam("mint"),
-						accountAddressParam(sourceAccount),
 						recipient,
 						assetAmount,
 					},
@@ -941,13 +1020,16 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 			},
 		},
 		SourceAccount: sourceAccount,
-	})
+		Ext: xdr.TransactionExt{
+			V:           1,
+			SorobanData: getMaxSorobanTransactionData(footPrint),
+		},
+	}
 
 	invokeHostFn.Functions[0].Auth = addAuthNextInvokerFlow(
 		"mint",
 		stellarAssetContractID(itest, asset),
 		xdr.ScVec{
-			accountAddressParam(sourceAccount),
 			recipient,
 			assetAmount,
 		})
@@ -1031,18 +1113,33 @@ func balance(itest *integration.Test, sourceAccount string, asset xdr.Asset, hol
 	})
 }
 
-func transfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
+func transfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
 	return transferWithAmount(
 		itest,
 		sourceAccount,
 		asset,
 		i128Param(0, uint64(amount.MustParse(assetAmount))),
 		recipient,
+		trustlineAccount,
 	)
 }
 
-func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
+func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal, trustlineAccount *xdr.AccountId) *txnbuild.InvokeHostFunctions {
+	footPrint := xdr.LedgerFootprint{
+		ReadOnly: baseSACFootPrint(itest, asset),
+	}
+	if trustlineAccount != nil {
+		footPrint.ReadWrite = []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.LedgerKeyTrustLine{
+					AccountId: *trustlineAccount,
+					Asset:     asset.ToTrustLineAsset(),
+				},
+			},
+		}
+	}
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -1058,7 +1155,11 @@ func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr
 			},
 		},
 		SourceAccount: sourceAccount,
-	})
+		Ext: xdr.TransactionExt{
+			V:           1,
+			SorobanData: getMaxSorobanTransactionData(footPrint),
+		},
+	}
 
 	invokeHostFn.Functions[0].Auth = addAuthNextInvokerFlow(
 		"transfer",
@@ -1130,35 +1231,12 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 }
 
 func addFootprint(itest *integration.Test, invokeHostFn *txnbuild.InvokeHostFunctions) *txnbuild.InvokeHostFunctions {
-	invokeHostFn.Ext = xdr.TransactionExt{
-		V: 1,
-		SorobanData: &xdr.SorobanTransactionData{
-			Resources: xdr.SorobanResources{
-				Instructions:              0,
-				ReadBytes:                 0,
-				WriteBytes:                0,
-				ExtendedMetaDataSizeBytes: 0,
-				Footprint: xdr.LedgerFootprint{
-					ReadOnly: []xdr.LedgerKey{
-						// TODO: derive the needed value
-					},
-					ReadWrite: []xdr.LedgerKey{
-						// TODO: derive the needed value
-					},
-				},
-			},
-			RefundableFee: 1,
-			Ext: xdr.ExtensionPoint{
-				V: 0,
-			},
-		},
-	}
 	return invokeHostFn
 }
 
 func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, op *txnbuild.InvokeHostFunctions) (*xdr.ScVal, string) {
 	acc := itest.MustGetAccount(signer)
-	tx, err := itest.SubmitOperations(&acc, signer, op)
+	tx, err := itest.SubmitOperationsWithFee(&acc, signer, 10*stroopsIn1XLM, op)
 	require.NoError(itest.CurrentTest(), err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
