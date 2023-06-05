@@ -30,9 +30,25 @@ func (e ErrReingestRangeConflict) Error() string {
 	return fmt.Sprintf("reingest range overlaps with horizon ingestion, supplied range shouldn't contain ledger %d", e.maximumLedgerSequence)
 }
 
+type State int
+
+const (
+	None State = iota
+	Start
+	Stop
+	Build
+	Resume
+	WaitForCheckpoint
+	StressTest
+	VerifyRange
+	HistoryRange
+	ReingestHistoryRange
+)
+
 type stateMachineNode interface {
 	run(*system) (transition, error)
 	String() string
+	GetState() State
 }
 
 type transition struct {
@@ -105,6 +121,10 @@ func (stopState) String() string {
 	return "stop"
 }
 
+func (stopState) GetState() State {
+	return Stop
+}
+
 func (stopState) run(s *system) (transition, error) {
 	return stop(), errors.New("Cannot run terminal state")
 }
@@ -115,6 +135,10 @@ type startState struct {
 
 func (startState) String() string {
 	return "start"
+}
+
+func (startState) GetState() State {
+	return Start
 }
 
 func (state startState) run(s *system) (transition, error) {
@@ -232,6 +256,10 @@ type buildState struct {
 
 func (b buildState) String() string {
 	return fmt.Sprintf("buildFromCheckpoint(checkpointLedger=%d, skipChecks=%t)", b.checkpointLedger, b.skipChecks)
+}
+
+func (buildState) GetState() State {
+	return Build
 }
 
 func (b buildState) run(s *system) (transition, error) {
@@ -375,6 +403,10 @@ type resumeState struct {
 
 func (r resumeState) String() string {
 	return fmt.Sprintf("resume(latestSuccessfullyProcessedLedger=%d)", r.latestSuccessfullyProcessedLedger)
+}
+
+func (resumeState) GetState() State {
+	return Resume
 }
 
 func (r resumeState) run(s *system) (transition, error) {
@@ -564,6 +596,10 @@ func (h historyRangeState) String() string {
 	)
 }
 
+func (historyRangeState) GetState() State {
+	return HistoryRange
+}
+
 // historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
@@ -675,6 +711,10 @@ func (h reingestHistoryRangeState) String() string {
 		h.toLedger,
 		h.force,
 	)
+}
+
+func (reingestHistoryRangeState) GetState() State {
+	return ReingestHistoryRange
 }
 
 func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger uint32) error {
@@ -831,6 +871,10 @@ func (waitForCheckpointState) String() string {
 	return "waitForCheckpoint"
 }
 
+func (waitForCheckpointState) GetState() State {
+	return WaitForCheckpoint
+}
+
 func (waitForCheckpointState) run(*system) (transition, error) {
 	log.Info("Waiting for the next checkpoint...")
 	time.Sleep(10 * time.Second)
@@ -850,6 +894,10 @@ func (v verifyRangeState) String() string {
 		v.toLedger,
 		v.verifyState,
 	)
+}
+
+func (verifyRangeState) GetState() State {
+	return VerifyRange
 }
 
 func (v verifyRangeState) run(s *system) (transition, error) {
@@ -981,6 +1029,10 @@ type stressTestState struct{}
 
 func (stressTestState) String() string {
 	return "stressTest"
+}
+
+func (stressTestState) GetState() State {
+	return StressTest
 }
 
 func (stressTestState) run(s *system) (transition, error) {
