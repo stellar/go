@@ -137,7 +137,7 @@ func TestContractMintToContract(t *testing.T) {
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64-3), (*balanceAmount.I128).Lo)
@@ -158,11 +158,11 @@ func TestContractMintToContract(t *testing.T) {
 	balanceAmount, _ = assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxUint64), (*balanceAmount.I128).Lo)
-	assert.Equal(itest.CurrentTest(), xdr.Uint64(math.MaxInt64), (*balanceAmount.I128).Hi)
+	assert.Equal(itest.CurrentTest(), xdr.Int64(math.MaxInt64), (*balanceAmount.I128).Hi)
 
 	// 2^127 - 1
 	balanceContracts := new(big.Int).Lsh(big.NewInt(1), 127)
@@ -357,7 +357,7 @@ func TestContractTransferBetweenAccountAndContract(t *testing.T) {
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(5300000000), (*balanceAmount.I128).Lo)
@@ -417,7 +417,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	emitterBalanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(emitterContractID)),
+		contractBalance(itest, issuer, asset, emitterContractID),
 	)
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, emitterBalanceAmount.Type)
 	assert.Equal(itest.CurrentTest(), xdr.Uint64(9900000000), (*emitterBalanceAmount.I128).Lo)
@@ -426,7 +426,7 @@ func TestContractTransferBetweenContracts(t *testing.T) {
 	recipientBalanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, recipientBalanceAmount.Type)
@@ -560,7 +560,7 @@ func TestContractBurnFromContract(t *testing.T) {
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
@@ -704,7 +704,7 @@ func TestContractClawbackFromContract(t *testing.T) {
 	balanceAmount, _ := assertInvokeHostFnSucceeds(
 		itest,
 		itest.Master(),
-		balance(itest, issuer, asset, contractAddressParam(recipientContractID)),
+		contractBalance(itest, issuer, asset, recipientContractID),
 	)
 
 	assert.Equal(itest.CurrentTest(), xdr.ScValTypeScvI128, balanceAmount.Type)
@@ -1164,8 +1164,50 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 	return invokeHostFn
 }
 
-func balance(itest *integration.Test, sourceAccount string, asset xdr.Asset, holder xdr.ScVal) *txnbuild.InvokeHostFunctions {
-
+func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash) *txnbuild.InvokeHostFunctions {
+	// FIXME: Possible Core bug, it returns 0 if I pass this:
+	// footPrint := xdr.LedgerFootprint{
+	//				ReadOnly: baseSACFootPrint(itest, asset),
+	//			}
+	contractID := stellarAssetContractID(itest, asset)
+	balance := xdr.ScSymbol("Balance")
+	sacTestContractAddress := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &sacTestcontractID,
+	}
+	vec := &xdr.ScVec{
+		{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &balance,
+		},
+		{
+			Type:    xdr.ScValTypeScvAddress,
+			Address: &sacTestContractAddress,
+		},
+	}
+	footPrint := xdr.LedgerFootprint{
+		ReadOnly: []xdr.LedgerKey{
+			{
+				Type: xdr.LedgerEntryTypeContractData,
+				ContractData: &xdr.LedgerKeyContractData{
+					ContractId: contractID,
+					Key: xdr.ScVal{
+						Type: xdr.ScValTypeScvVec,
+						Vec:  &vec,
+					},
+				},
+			},
+			{
+				Type: xdr.LedgerEntryTypeContractData,
+				ContractData: &xdr.LedgerKeyContractData{
+					ContractId: contractID,
+					Key: xdr.ScVal{
+						Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+					},
+				},
+			},
+		},
+	}
 	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
@@ -1174,17 +1216,15 @@ func balance(itest *integration.Test, sourceAccount string, asset xdr.Asset, hol
 					InvokeContract: &xdr.ScVec{
 						contractIDParam(stellarAssetContractID(itest, asset)),
 						functionNameParam("balance"),
-						holder,
+						contractAddressParam(sacTestcontractID),
 					},
 				},
 			},
 		},
 		SourceAccount: sourceAccount,
 		Ext: xdr.TransactionExt{
-			V: 1,
-			SorobanData: getMaxSorobanTransactionData(xdr.LedgerFootprint{
-				ReadOnly: baseSACFootPrint(itest, asset),
-			}),
+			V:           1,
+			SorobanData: getMaxSorobanTransactionData(footPrint),
 		},
 	}
 
