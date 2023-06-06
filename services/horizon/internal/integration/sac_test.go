@@ -948,15 +948,56 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 	}
 }
 
-func footprintForRecipientAddress(itest *integration.Test, contractAsset xdr.Asset, address xdr.ScAddress) xdr.LedgerFootprint {
-	footPrint := xdr.LedgerFootprint{
-		ReadOnly: baseSACFootPrint(itest, contractAsset),
+func tokenLedgerKey(contractID xdr.Hash) xdr.LedgerKey {
+	token := xdr.ScSymbol("Token")
+	tokenVec := &xdr.ScVec{
+		{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &token,
+		},
 	}
+	return xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			ContractId: contractID,
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &tokenVec,
+			},
+		},
+	}
+}
+
+func sacTestContractCodeLedgerKeys(contractID xdr.Hash, contractHash xdr.Hash) []xdr.LedgerKey {
+	return []xdr.LedgerKey{
+		{
+			Type: xdr.LedgerEntryTypeContractData,
+			ContractData: &xdr.LedgerKeyContractData{
+				ContractId: contractID,
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+				},
+			},
+		},
+		{
+			Type: xdr.LedgerEntryTypeContractCode,
+			ContractCode: &xdr.LedgerKeyContractCode{
+				Hash: contractHash,
+			},
+		},
+	}
+}
+
+func addressLedgerKeys(itest *integration.Test, contractAsset xdr.Asset, address xdr.ScAddress) []xdr.LedgerKey {
 	contractID := stellarAssetContractID(itest, contractAsset)
-	// TODO: these should also be added for the source
 	switch address.Type {
 	case xdr.ScAddressTypeScAddressTypeAccount:
-		footPrint.ReadWrite = []xdr.LedgerKey{
+		// FIXME: if I comment out this "if" , tx_internal_error is returned due to a Core bug
+		//        we should be able to uncomment it in the future
+		if address.AccountId.Address() == contractAsset.GetIssuer() {
+			return nil
+		}
+		return []xdr.LedgerKey{
 			{
 				Type: xdr.LedgerEntryTypeTrustline,
 				TrustLine: &xdr.LedgerKeyTrustLine{
@@ -966,7 +1007,6 @@ func footprintForRecipientAddress(itest *integration.Test, contractAsset xdr.Ass
 			},
 		}
 	case xdr.ScAddressTypeScAddressTypeContract:
-		// TODO: this is used verbatim in transferFromContract
 		balance := xdr.ScSymbol("Balance")
 		vec := &xdr.ScVec{
 			{
@@ -981,7 +1021,7 @@ func footprintForRecipientAddress(itest *integration.Test, contractAsset xdr.Ass
 				},
 			},
 		}
-		footPrint.ReadWrite = []xdr.LedgerKey{
+		return []xdr.LedgerKey{
 			{
 				Type: xdr.LedgerEntryTypeContractData,
 				ContractData: &xdr.LedgerKeyContractData{
@@ -993,8 +1033,16 @@ func footprintForRecipientAddress(itest *integration.Test, contractAsset xdr.Ass
 				},
 			},
 		}
-
 	}
+
+	return nil
+}
+
+func footprintForRecipientAddress(itest *integration.Test, contractAsset xdr.Asset, address xdr.ScAddress) xdr.LedgerFootprint {
+	footPrint := xdr.LedgerFootprint{
+		ReadOnly: baseSACFootPrint(itest, contractAsset),
+	}
+	footPrint.ReadWrite = addressLedgerKeys(itest, contractAsset, address)
 	return footPrint
 }
 
@@ -1069,45 +1117,11 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 }
 
 func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID, sacTestcontractHash xdr.Hash) *txnbuild.InvokeHostFunctions {
-	token := xdr.ScSymbol("Token")
-	tokenVec := &xdr.ScVec{
-		{
-			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &token,
-		},
-	}
 	footPrint := xdr.LedgerFootprint{
-		ReadOnly: []xdr.LedgerKey{
-			{
-				Type: xdr.LedgerEntryTypeContractData,
-				ContractData: &xdr.LedgerKeyContractData{
-					ContractId: sacTestcontractID,
-					Key: xdr.ScVal{
-						Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-					},
-				},
-			},
-			{
-				Type: xdr.LedgerEntryTypeContractCode,
-				ContractCode: &xdr.LedgerKeyContractCode{
-					Hash: sacTestcontractHash,
-				},
-			},
-		},
-		ReadWrite: []xdr.LedgerKey{
-			{
-				Type: xdr.LedgerEntryTypeContractData,
-				ContractData: &xdr.LedgerKeyContractData{
-					ContractId: sacTestcontractID,
-					Key: xdr.ScVal{
-						Type: xdr.ScValTypeScvVec,
-						Vec:  &tokenVec,
-					},
-				},
-			},
-		},
+		ReadOnly:  sacTestContractCodeLedgerKeys(sacTestcontractID, sacTestcontractHash),
+		ReadWrite: []xdr.LedgerKey{tokenLedgerKey(sacTestcontractID)},
 	}
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -1125,14 +1139,14 @@ func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.
 			V:           1,
 			SorobanData: getMaxSorobanTransactionData(footPrint),
 		},
-	})
+	}
 
 	return invokeHostFn
 }
 
 func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
 	footPrint := footprintForRecipientAddress(itest, asset, *recipient.Address)
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -1151,7 +1165,7 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 			V:           1,
 			SorobanData: getMaxSorobanTransactionData(footPrint),
 		},
-	})
+	}
 
 	invokeHostFn.Functions[0].Auth = addAuthNextInvokerFlow(
 		"clawback",
@@ -1165,39 +1179,11 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 }
 
 func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash) *txnbuild.InvokeHostFunctions {
-	// FIXME: Possible Core bug, it returns 0 if I pass this:
-	// footPrint := xdr.LedgerFootprint{
-	//				ReadOnly: baseSACFootPrint(itest, asset),
-	//			}
 	contractID := stellarAssetContractID(itest, asset)
-	balance := xdr.ScSymbol("Balance")
-	sacTestContractAddress := xdr.ScAddress{
-		Type:       xdr.ScAddressTypeScAddressTypeContract,
-		ContractId: &sacTestcontractID,
-	}
-	vec := &xdr.ScVec{
-		{
-			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &balance,
-		},
-		{
-			Type:    xdr.ScValTypeScvAddress,
-			Address: &sacTestContractAddress,
-		},
-	}
 	footPrint := xdr.LedgerFootprint{
-		ReadOnly: []xdr.LedgerKey{
-			{
-				Type: xdr.LedgerEntryTypeContractData,
-				ContractData: &xdr.LedgerKeyContractData{
-					ContractId: contractID,
-					Key: xdr.ScVal{
-						Type: xdr.ScValTypeScvVec,
-						Vec:  &vec,
-					},
-				},
-			},
-			{
+		ReadOnly: append(
+			addressLedgerKeys(itest, asset, *contractAddressParam(sacTestcontractID).Address),
+			xdr.LedgerKey{
 				Type: xdr.LedgerEntryTypeContractData,
 				ContractData: &xdr.LedgerKeyContractData{
 					ContractId: contractID,
@@ -1206,7 +1192,7 @@ func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.As
 					},
 				},
 			},
-		},
+		),
 	}
 	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
@@ -1237,17 +1223,7 @@ func transfer(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 
 func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount xdr.ScVal, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
 	footPrint := footprintForRecipientAddress(itest, asset, *recipient.Address)
-	// FIXME: if I comment out this "if" , tx_internal_error is returned
-	//        potential core bug?
-	if sourceAccount != itest.Master().Address() {
-		footPrint.ReadWrite = append(footPrint.ReadWrite, xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeTrustline,
-			TrustLine: &xdr.LedgerKeyTrustLine{
-				AccountId: xdr.MustAddress(sourceAccount),
-				Asset:     asset.ToTrustLineAsset(),
-			},
-		})
-	}
+	footPrint.ReadWrite = append(footPrint.ReadWrite, addressLedgerKeys(itest, asset, *accountAddressParam(sourceAccount).Address)...)
 	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
@@ -1283,69 +1259,10 @@ func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr
 }
 
 func transferFromContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash, sacTestContractHash xdr.Hash, assetAmount string, recipient xdr.ScVal) *txnbuild.InvokeHostFunctions {
-	contractID := stellarAssetContractID(itest, asset)
 	footPrint := footprintForRecipientAddress(itest, asset, *recipient.Address)
-	token := xdr.ScSymbol("Token")
-	tokenVec := &xdr.ScVec{
-		{
-			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &token,
-		},
-	}
-	footPrint.ReadOnly = append(footPrint.ReadOnly,
-		xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeContractData,
-			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: sacTestcontractID,
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvVec,
-					Vec:  &tokenVec,
-				},
-			},
-		},
-		xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeContractData,
-			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: sacTestcontractID,
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-				},
-			},
-		},
-		xdr.LedgerKey{
-			Type:         xdr.LedgerEntryTypeContractCode,
-			ContractCode: &xdr.LedgerKeyContractCode{Hash: sacTestContractHash},
-		},
-	)
-
-	// TODO: this can be added by the recipient address
-	balance := xdr.ScSymbol("Balance")
-	sacTestContractAddress := xdr.ScAddress{
-		Type:       xdr.ScAddressTypeScAddressTypeContract,
-		ContractId: &sacTestcontractID,
-	}
-	vec := &xdr.ScVec{
-		{
-			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &balance,
-		},
-		{
-			Type:    xdr.ScValTypeScvAddress,
-			Address: &sacTestContractAddress,
-		},
-	}
-	footPrint.ReadWrite = append(footPrint.ReadWrite,
-		xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeContractData,
-			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractID,
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvVec,
-					Vec:  &vec,
-				},
-			},
-		},
-	)
+	footPrint.ReadOnly = append(footPrint.ReadOnly, tokenLedgerKey(sacTestcontractID))
+	footPrint.ReadOnly = append(footPrint.ReadOnly, sacTestContractCodeLedgerKeys(sacTestcontractID, sacTestContractHash)...)
+	footPrint.ReadWrite = append(footPrint.ReadWrite, addressLedgerKeys(itest, asset, *contractAddressParam(sacTestcontractID).Address)...)
 
 	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
@@ -1374,39 +1291,9 @@ func transferFromContract(itest *integration.Test, sourceAccount string, asset x
 // Invokes burn_self from the sac_test contract (which just burns assets from itself)
 func burnSelf(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID xdr.Hash, sacTestContractHash xdr.Hash, assetAmount string) *txnbuild.InvokeHostFunctions {
 	footPrint := footprintForRecipientAddress(itest, asset, *contractAddressParam(sacTestcontractID).Address)
-	token := xdr.ScSymbol("Token")
-	tokenVec := &xdr.ScVec{
-		{
-			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &token,
-		},
-	}
-	footPrint.ReadOnly = append(footPrint.ReadOnly,
-		xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeContractData,
-			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: sacTestcontractID,
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvVec,
-					Vec:  &tokenVec,
-				},
-			},
-		},
-		xdr.LedgerKey{
-			Type: xdr.LedgerEntryTypeContractData,
-			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: sacTestcontractID,
-				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
-				},
-			},
-		},
-		xdr.LedgerKey{
-			Type:         xdr.LedgerEntryTypeContractCode,
-			ContractCode: &xdr.LedgerKeyContractCode{Hash: sacTestContractHash},
-		},
-	)
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
+	footPrint.ReadOnly = append(footPrint.ReadOnly, tokenLedgerKey(sacTestcontractID))
+	footPrint.ReadOnly = append(footPrint.ReadOnly, sacTestContractCodeLedgerKeys(sacTestcontractID, sacTestContractHash)...)
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -1424,14 +1311,14 @@ func burnSelf(itest *integration.Test, sourceAccount string, asset xdr.Asset, sa
 			V:           1,
 			SorobanData: getMaxSorobanTransactionData(footPrint),
 		},
-	})
+	}
 
 	return invokeHostFn
 }
 
 func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetAmount string) *txnbuild.InvokeHostFunctions {
 	footPrint := footprintForRecipientAddress(itest, asset, *accountAddressParam(sourceAccount).Address)
-	invokeHostFn := addFootprint(itest, &txnbuild.InvokeHostFunctions{
+	invokeHostFn := &txnbuild.InvokeHostFunctions{
 		Functions: []xdr.HostFunction{
 			{
 				Args: xdr.HostFunctionArgs{
@@ -1450,7 +1337,7 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 			V:           1,
 			SorobanData: getMaxSorobanTransactionData(footPrint),
 		},
-	})
+	}
 
 	invokeHostFn.Functions[0].Auth = addAuthNextInvokerFlow(
 		"burn",
@@ -1460,10 +1347,6 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 			i128Param(0, uint64(amount.MustParse(assetAmount))),
 		})
 
-	return invokeHostFn
-}
-
-func addFootprint(itest *integration.Test, invokeHostFn *txnbuild.InvokeHostFunctions) *txnbuild.InvokeHostFunctions {
 	return invokeHostFn
 }
 
