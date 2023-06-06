@@ -196,6 +196,7 @@ type System interface {
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
 	BuildGenesisState() error
 	Shutdown()
+	GetCurrentState() State
 }
 
 type system struct {
@@ -228,6 +229,9 @@ type system struct {
 	runStateVerificationOnLedger func(uint32) bool
 
 	reapOffsets map[string]int64
+
+	currentStateMutex sync.Mutex
+	currentState      State
 }
 
 func NewSystem(config Config) (System, error) {
@@ -292,6 +296,7 @@ func NewSystem(config Config) (System, error) {
 		cancel:                      cancel,
 		config:                      config,
 		ctx:                         ctx,
+		currentState:                None,
 		disableStateVerification:    config.DisableStateVerification,
 		historyAdapter:              historyAdapter,
 		historyQ:                    historyQ,
@@ -479,6 +484,12 @@ func (s *system) initMetrics() {
 	)
 }
 
+func (s *system) GetCurrentState() State {
+	s.currentStateMutex.Lock()
+	defer s.currentStateMutex.Unlock()
+	return s.currentState
+}
+
 func (s *system) Metrics() Metrics {
 	return s.metrics
 }
@@ -643,6 +654,10 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 		if s.historyQ.GetTx() != nil {
 			panic("unexpected transaction")
 		}
+
+		s.currentStateMutex.Lock()
+		s.currentState = cur.GetState()
+		s.currentStateMutex.Unlock()
 
 		next, err := cur.run(s)
 		if err != nil {
