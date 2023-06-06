@@ -177,7 +177,7 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:        CaptiveCoreConfigUseDB,
 			OptType:     types.Bool,
-			FlagDefault: false,
+			FlagDefault: true,
 			Required:    false,
 			Usage: `when enabled, Horizon ingestion will instruct the captive
 			              core invocation to use an external db url for ledger states rather than in memory(RAM).\n 
@@ -735,9 +735,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		}
 		if config.StellarCoreDatabaseURL != "" {
 			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
-		}
-		if config.CaptiveCoreConfigUseDB {
-			return fmt.Errorf("Invalid config: --%s has been set, but --ingest not set. ", CaptiveCoreConfigUseDB)
 		}
 	}
 
