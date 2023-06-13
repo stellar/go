@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -643,6 +644,71 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
+}
+
+func TestGetLatestLedgerSequenceRaceCondition(t *testing.T) {
+	var fromSeq uint32 = 64
+	var toSeq uint32 = 400
+	metaChan := make(chan metaResult, toSeq)
+
+	for i := fromSeq; i <= toSeq; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: i})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+	mockRunner.On("runFrom", mock.Anything, mock.Anything).Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: toSeq * 2,
+		}, nil)
+
+	mockArchive.
+		On("GetLedgerHeader", mock.Anything).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		stellarCoreRunnerFactory: func() stellarCoreRunnerInterface {
+			return mockRunner
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(10),
+	}
+
+	ledgerRange := UnboundedRange(fromSeq)
+	err := captiveBackend.PrepareRange(ctx, ledgerRange)
+	assert.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func(ctx context.Context) {
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				_, _ = captiveBackend.GetLatestLedgerSequence(ctx)
+			}
+		}
+	}(ctx)
+
+	for i := fromSeq; i < toSeq; i++ {
+		_, err = captiveBackend.GetLedger(ctx, i)
+		assert.NoError(t, err)
+	}
+
+	cancel()
+
+	wg.Wait()
 }
 
 func TestCaptiveGetLedger(t *testing.T) {
