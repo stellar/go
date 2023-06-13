@@ -2278,5 +2278,5 @@ func TestDetailsCoversAllOperationTypes(t *testing.T) {
 	f := func() {
 		operation.Details()
 	}
-	assert.PanicsWithError(t, "Unknown operation type: ", f)
+	assert.PanicsWithError(t, "unknown operation type: ", f)
 }

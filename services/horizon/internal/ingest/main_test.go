@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus"
@@ -240,6 +241,46 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	assert.Len(t, logged, 0)
 
 	historyQ.AssertExpectations(t)
+}
+
+func TestCurrentStateRaceCondition(t *testing.T) {
+	historyQ := &mockDBQ{}
+	s := &system{
+		historyQ: historyQ,
+		ctx:      context.Background(),
+	}
+
+	historyQ.On("GetTx").Return(nil)
+	historyQ.On("Begin", s.ctx).Return(nil)
+	historyQ.On("Rollback").Return(nil)
+	historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(1), nil)
+	historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil)
+
+	timer := time.NewTimer(2000 * time.Millisecond)
+	getCh := make(chan bool, 1)
+	doneCh := make(chan bool, 1)
+	go func() {
+		var state = buildState{checkpointLedger: 8,
+			skipChecks: true,
+			stop:       true}
+		for range getCh {
+			_ = s.runStateMachine(state)
+		}
+		close(doneCh)
+	}()
+
+loop:
+	for {
+		s.GetCurrentState()
+		select {
+		case <-timer.C:
+			break loop
+		default:
+		}
+		getCh <- true
+	}
+	close(getCh)
+	<-doneCh
 }
 
 type mockDBQ struct {
@@ -554,6 +595,11 @@ func (m *mockSystem) ReingestRange(ledgerRanges []history.LedgerRange, force boo
 func (m *mockSystem) BuildGenesisState() error {
 	args := m.Called()
 	return args.Error(0)
+}
+
+func (m *mockSystem) GetCurrentState() State {
+	args := m.Called()
+	return args.Get(0).(State)
 }
 
 func (m *mockSystem) Shutdown() {

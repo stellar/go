@@ -347,7 +347,7 @@ type LiquidityPoolWithdraw struct {
 
 // InvokeHostFunction is the json resource representing a single InvokeHostFunctionOp.
 // The model for InvokeHostFunction assimilates InvokeHostFunctionOp, but is simplified.
-// Functions            - list of contract function invocations performed.
+// HostFunction         - contract function invocation to be performed.
 // AssetBalanceChanges  - array of asset balance changed records related to contract invocations in this host invocation.
 //
 //	The asset balance change record is captured at ingestion time from the asset contract
@@ -357,19 +357,19 @@ type LiquidityPoolWithdraw struct {
 //	as there is no explicit model in horizon for contract addresses yet.
 type InvokeHostFunction struct {
 	Base
-	HostFunctions       []HostFunction               `json:"host_functions"`
+	Function            string                       `json:"function"`
+	Parameters          []HostFunctionParameter      `json:"parameters"`
+	Type                string                       `json:"type"`
+	Address             string                       `json:"address"`
+	Salt                string                       `json:"salt"`
 	AssetBalanceChanges []AssetContractBalanceChange `json:"asset_balance_changes"`
 }
 
-// HostFunction has the values specific to a single host function invocation
-// Type                - the type of host function, invoke_contract, create_contract, upload_wasm
-// Parameters          - array of key,value tuples for each function parameter.
-//
-//	one key that will always be incluced is 'type' which will be one of:
-//	xdr.ScValTypeScv's ( Sym, I32, U32, U64, Bytes, B ) or 'n/a' or 'string'
-type HostFunction struct {
-	Type       string              `json:"type"`
-	Parameters []map[string]string `json:"parameters"`
+// InvokeHostFunction parameter model, intentionally simplified, Value
+// just contains a base64 encoded string of the ScVal xdr serialization.
+type HostFunctionParameter struct {
+	Value string `json:"value"`
+	Type  string `json:"type"`
 }
 
 // Type   - refers to the source SAC Event

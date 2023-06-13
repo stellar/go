@@ -96,11 +96,9 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 	return nil
 }
 
-func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
+func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunctionDetails() {
 	sourceAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
 	source := xdr.MustMuxedAddress(sourceAddress)
-	sourceAccountId := source.ToAccountId()
-	sourcePublicKey := sourceAccountId.Ed25519
 
 	contractParamVal1 := xdr.ScSymbol("func1")
 	contractParamVal2 := xdr.Int32(-5)
@@ -108,6 +106,9 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 	contractParamVal4 := xdr.Uint64(3)
 	contractParamVal5 := xdr.ScBytes([]byte{0, 1, 2})
 	contractParamVal6 := true
+
+	accountId := xdr.MustAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	wasm := []byte("Some contract code")
 
 	tx := ingest.LedgerTransaction{
 		UnsafeMeta: xdr.TransactionMeta{
@@ -124,98 +125,65 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 				Body: xdr.OperationBody{
 					Type: xdr.OperationTypeInvokeHostFunction,
 					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-						Functions: []xdr.HostFunction{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeContract: &xdr.ScVec{
+								{
+									Type: xdr.ScValTypeScvSymbol,
+									Sym:  &contractParamVal1,
+								},
+								{
+									Type: xdr.ScValTypeScvI32,
+									I32:  &contractParamVal2,
+								},
+								{
+									Type: xdr.ScValTypeScvU32,
+									U32:  &contractParamVal3,
+								},
+								{
+									Type: xdr.ScValTypeScvU64,
+									U64:  &contractParamVal4,
+								},
+								{
+									Type:  xdr.ScValTypeScvBytes,
+									Bytes: &contractParamVal5,
+								},
+								{
+									Type: xdr.ScValTypeScvBool,
+									B:    &contractParamVal6,
+								},
+								{
+									// invalid ScVal
+									Type: 5555,
+								},
+							},
+						},
+						Auth: []xdr.SorobanAuthorizationEntry{
 							{
-								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
-									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId{
-											Type: xdr.ContractIdTypeContractIdFromAsset,
-											Asset: &xdr.Asset{
-												Type: 1,
-												AlphaNum4: &xdr.AlphaNum4{
-													AssetCode: xdr.AssetCode4{65, 82, 83, 0},
-													Issuer:    xdr.MustAddress("GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF"),
-												},
+								Credentials: xdr.SorobanCredentials{
+									Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
+									Address: &xdr.SorobanAddressCredentials{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Nonce:         0,
+										SignatureArgs: nil,
+									},
+								},
+								RootInvocation: xdr.SorobanAuthorizedInvocation{
+									Function: xdr.SorobanAuthorizedFunction{
+										Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
+										ContractFn: &xdr.SorobanAuthorizedContractFunction{
+											ContractAddress: xdr.ScAddress{
+												Type:      xdr.ScAddressTypeScAddressTypeAccount,
+												AccountId: &accountId,
 											},
+											FunctionName: "foo",
+											Args:         nil,
 										},
 									},
-								},
-							},
-							{
-								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
-									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId{
-											Type: xdr.ContractIdTypeContractIdFromSourceAccount,
-											Salt: &xdr.Uint256{
-												0, 0, 0, 0, 0, 0, 0, 0,
-												0, 0, 0, 0, 0, 0, 0, 0,
-												0, 0, 0, 0, 0, 0, 0, 0,
-												0, 0, 0, 0, 0, 0, 0, 1},
-										},
-									},
-								},
-							},
-							{
-								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
-									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId{
-											Type: xdr.ContractIdTypeContractIdFromEd25519PublicKey,
-											FromEd25519PublicKey: &xdr.ContractIdFromEd25519PublicKey{
-												Key:  xdr.Uint256{1, 2, 3},
-												Salt: xdr.Uint256{1},
-												Signature: xdr.Signature{
-													0, 0, 0, 0, 0, 0, 0, 0,
-													0, 0, 0, 0, 0, 0, 0, 0,
-													0, 0, 0, 0, 0, 0, 0, 0,
-													0, 0, 0, 0, 5, 6, 7, 8,
-												},
-											},
-										},
-									},
-								},
-							},
-							{
-								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-									InvokeContract: &xdr.ScVec{
-										{
-											Type: xdr.ScValTypeScvSymbol,
-											Sym:  &contractParamVal1,
-										},
-										{
-											Type: xdr.ScValTypeScvI32,
-											I32:  &contractParamVal2,
-										},
-										{
-											Type: xdr.ScValTypeScvU32,
-											U32:  &contractParamVal3,
-										},
-										{
-											Type: xdr.ScValTypeScvU64,
-											U64:  &contractParamVal4,
-										},
-										{
-											Type:  xdr.ScValTypeScvBytes,
-											Bytes: &contractParamVal5,
-										},
-										{
-											Type: xdr.ScValTypeScvBool,
-											B:    &contractParamVal6,
-										},
-										{
-											// invalid ScVal
-											Type: 5555,
-										},
-									},
-								},
-							},
-							{
-								Args: xdr.HostFunctionArgs{
-									Type:               xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
-									UploadContractWasm: &xdr.UploadContractWasmArgs{},
+									SubInvocations: nil,
 								},
 							},
 						},
@@ -227,29 +195,9 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		details, err := wrapper.Details()
 		s.Assert().NoError(err)
 
-		detailsHostFunctions := details["host_functions"].([]map[string]interface{})
-		s.Assert().Len(detailsHostFunctions, 5)
-
-		var detailsFunctionParams []map[string]string = detailsHostFunctions[0]["parameters"].([]map[string]string)
-		s.Assert().Equal(detailsHostFunctions[0]["type"], "create_contract")
-		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "asset", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"asset": "ARS:GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF", "type": "string"})
-
-		detailsFunctionParams = detailsHostFunctions[1]["parameters"].([]map[string]string)
-		s.Assert().Equal(detailsHostFunctions[1]["type"], "create_contract")
-		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "source_account", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"salt": "1", "type": "string"})
-
-		detailsFunctionParams = detailsHostFunctions[2]["parameters"].([]map[string]string)
-		s.Assert().Equal(detailsHostFunctions[2]["type"], "create_contract")
-		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "public_key", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"key": "GAAQEAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATFL", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[2], map[string]string{"sig": "AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBgcI", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[3], map[string]string{"salt": "452312848583266388373324160190187140051835877600158453279131187530910662656", "type": "string"})
-
-		var hostFnArgs []xdr.ScVal = *(wrapper.operation.Body.InvokeHostFunctionOp.Functions[3].Args.InvokeContract)
-		detailsFunctionParams = detailsHostFunctions[3]["parameters"].([]map[string]string)
-		s.Assert().Equal(detailsHostFunctions[3]["type"], "invoke_contract")
+		var hostFnArgs []xdr.ScVal = *(wrapper.operation.Body.InvokeHostFunctionOp.HostFunction.InvokeContract)
+		detailsFunctionParams := details["parameters"].([]map[string]string)
+		s.Assert().Equal(details["type"], "invoke_contract")
 		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 0, "Sym", hostFnArgs[0])
 		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 1, "I32", hostFnArgs[1])
 		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 2, "U32", hostFnArgs[2])
@@ -257,14 +205,196 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 4, "Bytes", hostFnArgs[4])
 		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 5, "B", hostFnArgs[5])
 		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 6, "n/a", hostFnArgs[6])
+	})
 
-		s.Assert().Equal(detailsHostFunctions[4]["type"], "upload_wasm")
-		detailsFunctionParams = detailsHostFunctions[4]["parameters"].([]map[string]string)
-		s.Assert().Len(detailsFunctionParams, 0)
+	s.T().Run("CreateContractFromAsset", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+							CreateContract: &xdr.CreateContractArgs{
+								ContractIdPreimage: xdr.ContractIdPreimage{
+									Type: xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
+									FromAsset: &xdr.Asset{
+										Type: 1,
+										AlphaNum4: &xdr.AlphaNum4{
+											AssetCode: xdr.AssetCode4{65, 82, 83, 0},
+											Issuer:    xdr.MustAddress("GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF"),
+										},
+									},
+								},
+								Executable: xdr.ScContractExecutable{
+									Type: xdr.ScContractExecutableTypeSccontractExecutableToken,
+								},
+							},
+						},
+						Auth: []xdr.SorobanAuthorizationEntry{
+							{
+								Credentials: xdr.SorobanCredentials{
+									Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
+									Address: &xdr.SorobanAddressCredentials{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Nonce:         0,
+										SignatureArgs: nil,
+									},
+								},
+								RootInvocation: xdr.SorobanAuthorizedInvocation{
+									Function: xdr.SorobanAuthorizedFunction{
+										Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
+										ContractFn: &xdr.SorobanAuthorizedContractFunction{
+											ContractAddress: xdr.ScAddress{
+												Type:      xdr.ScAddressTypeScAddressTypeAccount,
+												AccountId: &accountId,
+											},
+											FunctionName: "foo",
+											Args:         nil,
+										},
+									},
+									SubInvocations: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+
+		s.Assert().Equal(details["type"], "create_contract")
+		s.Assert().Equal(details["from"], "asset")
+		s.Assert().Equal(details["asset"], "ARS:GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF")
+	})
+
+	s.T().Run("CreateContractFromAddress", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+							CreateContract: &xdr.CreateContractArgs{
+								ContractIdPreimage: xdr.ContractIdPreimage{
+									Type: xdr.ContractIdPreimageTypeContractIdPreimageFromAddress,
+									FromAddress: &xdr.ContractIdPreimageFromAddress{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Salt: xdr.Uint256{1},
+									},
+								},
+								Executable: xdr.ScContractExecutable{},
+							},
+						},
+						Auth: []xdr.SorobanAuthorizationEntry{
+							{
+								Credentials: xdr.SorobanCredentials{
+									Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
+									Address: &xdr.SorobanAddressCredentials{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Nonce:         0,
+										SignatureArgs: nil,
+									},
+								},
+								RootInvocation: xdr.SorobanAuthorizedInvocation{
+									Function: xdr.SorobanAuthorizedFunction{
+										Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
+										ContractFn: &xdr.SorobanAuthorizedContractFunction{
+											ContractAddress: xdr.ScAddress{
+												Type:      xdr.ScAddressTypeScAddressTypeAccount,
+												AccountId: &accountId,
+											},
+											FunctionName: "foo",
+											Args:         nil,
+										},
+									},
+									SubInvocations: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+
+		s.Assert().Equal(details["type"], "create_contract")
+		s.Assert().Equal(details["from"], "address")
+		s.Assert().Equal(details["address"], "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+		s.Assert().Equal(details["salt"], xdr.Uint256{1})
+	})
+
+	s.T().Run("UploadContractWasm", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
+							Wasm: &wasm,
+						},
+						Auth: []xdr.SorobanAuthorizationEntry{
+							{
+								Credentials: xdr.SorobanCredentials{
+									Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
+									Address: &xdr.SorobanAddressCredentials{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Nonce:         0,
+										SignatureArgs: nil,
+									},
+								},
+								RootInvocation: xdr.SorobanAuthorizedInvocation{
+									Function: xdr.SorobanAuthorizedFunction{
+										Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
+										ContractFn: &xdr.SorobanAuthorizedContractFunction{
+											ContractAddress: xdr.ScAddress{
+												Type:      xdr.ScAddressTypeScAddressTypeAccount,
+												AccountId: &accountId,
+											},
+											FunctionName: "foo",
+											Args:         nil,
+										},
+									},
+									SubInvocations: nil,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+
+		s.Assert().Equal(details["type"], "upload_wasm")
 	})
 
 	s.T().Run("InvokeContractWithSACEventsInDetails", func(t *testing.T) {
-
 		randomIssuer := keypair.MustRandom()
 		randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
 		passphrase := "passphrase"
@@ -282,15 +412,11 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 			UnsafeMeta: xdr.TransactionMeta{
 				V: 3,
 				V3: &xdr.TransactionMetaV3{
-					Events: []xdr.OperationEvents{
-						{
-							Events: []xdr.ContractEvent{
-								transferContractEvent,
-								burnContractEvent,
-								mintContractEvent,
-								clawbackContractEvent,
-							},
-						},
+					Events: []xdr.ContractEvent{
+						transferContractEvent,
+						burnContractEvent,
+						mintContractEvent,
+						clawbackContractEvent,
 					},
 				},
 			},
@@ -302,11 +428,36 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 				Body: xdr.OperationBody{
 					Type: xdr.OperationTypeInvokeHostFunction,
 					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-						Functions: []xdr.HostFunction{
+						HostFunction: xdr.HostFunction{
+							Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeContract: &xdr.ScVec{},
+						},
+						Auth: []xdr.SorobanAuthorizationEntry{
 							{
-								Args: xdr.HostFunctionArgs{
-									Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-									InvokeContract: &xdr.ScVec{},
+								Credentials: xdr.SorobanCredentials{
+									Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
+									Address: &xdr.SorobanAddressCredentials{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Nonce:         0,
+										SignatureArgs: nil,
+									},
+								},
+								RootInvocation: xdr.SorobanAuthorizedInvocation{
+									Function: xdr.SorobanAuthorizedFunction{
+										Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
+										ContractFn: &xdr.SorobanAuthorizedContractFunction{
+											ContractAddress: xdr.ScAddress{
+												Type:      xdr.ScAddressTypeScAddressTypeAccount,
+												AccountId: &accountId,
+											},
+											FunctionName: "foo",
+											Args:         nil,
+										},
+									},
+									SubInvocations: nil,
 								},
 							},
 						},
@@ -351,101 +502,6 @@ func (s *OperationsProcessorTestSuiteLedger) TestInvokeFunctionDetails() {
 			}
 		}
 		s.Assert().Equal(found, 4, "should have one balance changed record for each of mint, burn, clawback, transfer")
-	})
-
-	s.T().Run("CreateContract", func(t *testing.T) {
-		signature := xdr.Signature{
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 5, 6, 7, 8,
-		}
-
-		salt := xdr.Uint256{
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 1, 2, 3, 4,
-		}
-		wrapper := transactionOperationWrapper{
-			transaction: tx,
-			operation: xdr.Operation{
-				SourceAccount: &source,
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypeInvokeHostFunction,
-					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-						Functions: []xdr.HostFunction{
-							{
-								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
-									CreateContract: &xdr.CreateContractArgs{
-										ContractId: xdr.ContractId{
-											Type: xdr.ContractIdTypeContractIdFromEd25519PublicKey,
-											FromEd25519PublicKey: &xdr.ContractIdFromEd25519PublicKey{
-												Key:       *sourcePublicKey,
-												Signature: signature,
-												Salt:      salt,
-											},
-										},
-										Executable: xdr.ScContractExecutable{
-											Type: xdr.ScContractExecutableTypeSccontractExecutableToken,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		details, err := wrapper.Details()
-		s.Assert().NoError(err)
-
-		serializedDetailsHostFunctions := details["host_functions"].([]map[string]interface{})
-		s.Assert().Len(serializedDetailsHostFunctions, 1)
-
-		var detailsFunctionParams []map[string]string = serializedDetailsHostFunctions[0]["parameters"].([]map[string]string)
-		s.Assert().Equal(serializedDetailsHostFunctions[0]["type"], "create_contract")
-		s.Assert().Equal(detailsFunctionParams[0], map[string]string{"from": "public_key", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[1], map[string]string{"key": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[2], map[string]string{"sig": "AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBgcI", "type": "string"})
-		s.Assert().Equal(detailsFunctionParams[3], map[string]string{"salt": "16909060", "type": "string"})
-	})
-
-	s.T().Run("InstallContractCode", func(t *testing.T) {
-		code := []byte("Some contract code")
-		wrapper := transactionOperationWrapper{
-			transaction: tx,
-			operation: xdr.Operation{
-				SourceAccount: &source,
-				Body: xdr.OperationBody{
-					Type: xdr.OperationTypeInvokeHostFunction,
-					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
-						Functions: []xdr.HostFunction{
-							{
-								Args: xdr.HostFunctionArgs{
-									Type: xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
-									UploadContractWasm: &xdr.UploadContractWasmArgs{
-										Code: code,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		details, err := wrapper.Details()
-		s.Assert().NoError(err)
-
-		serializedDetailsHostFunctions := details["host_functions"].([]map[string]interface{})
-		s.Assert().Len(serializedDetailsHostFunctions, 1)
-
-		s.Assert().Equal(serializedDetailsHostFunctions[0]["type"], "upload_wasm")
-		var detailsFunctionParams []map[string]string = serializedDetailsHostFunctions[0]["parameters"].([]map[string]string)
-		s.Assert().Len(detailsFunctionParams, 0)
 	})
 }
 

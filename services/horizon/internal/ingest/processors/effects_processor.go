@@ -236,7 +236,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeInvokeHostFunction:
 		// If there's an invokeHostFunction operation, there's definitely V3
 		// meta in the transaction, which means this error is real.
-		diagnosticEvents, innerErr := operation.transaction.GetOperationEvents(operation.index)
+		diagnosticEvents, innerErr := operation.transaction.GetDiagnosticEvents()
 		if innerErr != nil {
 			return nil, innerErr
 		}

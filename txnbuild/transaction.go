@@ -785,9 +785,9 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		if err != nil {
 			return nil, err
 		}
-		// if it's a soroban transaction, and we found a InvokeHostFunctions operation.
+		// if it's a soroban transaction, and we found a InvokeHostFunction operation.
 		if xdrEnv.V1 != nil && xdrEnv.V1.Tx.Ext.V != 0 {
-			if invoke, ok := newOp.(*InvokeHostFunctions); ok {
+			if invoke, ok := newOp.(*InvokeHostFunction); ok {
 				invoke.Ext = xdrEnv.V1.Tx.Ext
 			}
 		}

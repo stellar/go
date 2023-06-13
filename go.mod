@@ -4,12 +4,14 @@ go 1.19
 
 require (
 	firebase.google.com/go v3.12.0+incompatible
+	github.com/2opremio/pretty v0.2.2-0.20230601220618-e1d5758b2a95
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.39.5
+	github.com/creachadair/jrpc2 v0.41.1
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
 	github.com/go-chi/chi v4.0.3+incompatible
@@ -51,7 +53,11 @@ require (
 	gopkg.in/tylerb/graceful.v1 v1.2.13
 )
 
-require github.com/andybalholm/brotli v1.0.4 // indirect
+require (
+	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/rogpeppe/go-internal v1.6.1 // indirect
+	golang.org/x/sync v0.2.0 // indirect
+)
 
 require (
 	cloud.google.com/go v0.84.0 // indirect
@@ -65,7 +71,7 @@ require (
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect

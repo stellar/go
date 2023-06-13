@@ -1122,7 +1122,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDError() {
 
 	s.Assert().EqualError(
 		s.processor.Commit(s.ctx),
-		"attempting to set contract id b729e13867d5c4b2d161574e00854fd41bbba3e3b0e31d36c64904414a862fa7 but row credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H already has contract id set: 6645621141097c0f88b99360ce267c3396bcfd8cfdbe9c462b0dc167b72ecdc4",
+		"attempting to set contract id 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab but row credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H already has contract id set: c9cd6bbf712cfd4e086f0e25f90722c1af24416c0303728ad4527a6967ddc51b",
 	)
 }
 
@@ -1202,7 +1202,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDErr
 
 	s.Assert().EqualError(
 		s.processor.Commit(s.ctx),
-		"attempting to set contract id b729e13867d5c4b2d161574e00854fd41bbba3e3b0e31d36c64904414a862fa7 but row credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H already has contract id set: 6645621141097c0f88b99360ce267c3396bcfd8cfdbe9c462b0dc167b72ecdc4",
+		"attempting to set contract id 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab but row credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H already has contract id set: c9cd6bbf712cfd4e086f0e25f90722c1af24416c0303728ad4527a6967ddc51b",
 	)
 }
 
@@ -1228,7 +1228,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
 
 	s.Assert().EqualError(
 		s.processor.Commit(s.ctx),
-		"row for asset with contract b729e13867d5c4b2d161574e00854fd41bbba3e3b0e31d36c64904414a862fa7 is missing",
+		"row for asset with contract 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab is missing",
 	)
 }
 
@@ -1305,7 +1305,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContrac
 
 	s.Assert().EqualError(
 		s.processor.Commit(s.ctx),
-		"row has no contract id to remove b729e13867d5c4b2d161574e00854fd41bbba3e3b0e31d36c64904414a862fa7: AssetTypeAssetTypeCreditAlphanum4 EUR GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"row has no contract id to remove 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab: AssetTypeAssetTypeCreditAlphanum4 EUR GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	)
 }
 

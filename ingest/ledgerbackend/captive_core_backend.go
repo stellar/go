@@ -97,6 +97,12 @@ type CaptiveStellarCore struct {
 	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
 	cachedMeta *xdr.LedgerCloseMeta
 
+	// ledgerSequenceLock mutex is used to protect the member variables used in the
+	// read-only GetLatestLedgerSequence method from concurrent write operations.
+	// This is required when GetLatestLedgerSequence is called from other goroutine
+	// such as writing Prometheus metric captive_stellar_core_latest_ledger.
+	ledgerSequenceLock sync.RWMutex
+
 	prepared           *Range  // non-nil if any range is prepared
 	closed             bool    // False until the core is closed
 	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
@@ -307,6 +313,9 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	// The next ledger should be the first ledger of the checkpoint containing
 	// the requested ledger
 	ran := BoundedRange(from, to)
+	c.ledgerSequenceLock.Lock()
+	defer c.ledgerSequenceLock.Unlock()
+
 	c.prepared = &ran
 	c.nextLedger = c.roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
@@ -330,6 +339,9 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 	// In the online mode we update nextLedger after streaming the first ledger.
 	// This is to support versions before and after/including v17.1.0 that
 	// introduced minimal persistent DB.
+	c.ledgerSequenceLock.Lock()
+	defer c.ledgerSequenceLock.Unlock()
+
 	c.nextLedger = 0
 	ran := UnboundedRange(from)
 	c.prepared = &ran
@@ -647,7 +659,10 @@ func (c *CaptiveStellarCore) handleMetaPipeResult(sequence uint32, result metaRe
 		)
 	}
 
+	c.ledgerSequenceLock.Lock()
 	c.nextLedger = result.LedgerSequence() + 1
+	c.ledgerSequenceLock.Unlock()
+
 	currentLedgerHash := result.LedgerCloseMeta.LedgerHash().HexString()
 	c.previousLedgerHash = &currentLedgerHash
 
@@ -707,6 +722,9 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
+
+	c.ledgerSequenceLock.RLock()
+	defer c.ledgerSequenceLock.RUnlock()
 
 	if c.closed {
 		return 0, errors.New("stellar-core is no longer usable")

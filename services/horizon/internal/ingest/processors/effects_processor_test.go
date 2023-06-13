@@ -3788,9 +3788,7 @@ func makeInvocationTransaction(
 	meta := xdr.TransactionMetaV3{
 		// irrelevant for contract invocations: only events are inspected
 		Operations: []xdr.OperationMeta{},
-		Events: []xdr.OperationEvents{{
-			Events: make([]xdr.ContractEvent, len(types)),
-		}},
+		Events:     make([]xdr.ContractEvent, len(types)),
 	}
 
 	for idx, type_ := range types {
@@ -3801,7 +3799,7 @@ func makeInvocationTransaction(
 			amount,
 			networkPassphrase,
 		)
-		meta.Events[0].Events[idx] = event
+		meta.Events[idx] = event
 	}
 
 	envelope := xdr.TransactionV1Envelope{

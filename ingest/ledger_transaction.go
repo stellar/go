@@ -152,8 +152,8 @@ func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 	)
 }
 
-// GetOperationEvents returns all contract events emitted by a given operation.
-func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.DiagnosticEvent, error) {
+// GetDiagnosticEvents returns all contract events emitted by a given operation.
+func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
 	if t.txInternalError() {
 		return nil, nil
@@ -165,29 +165,29 @@ func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.Dia
 	case 2:
 		return nil, nil
 	case 3:
-		diagnosticEventsByOperation := t.UnsafeMeta.MustV3().DiagnosticEvents
-		if int(operationIndex) < len(diagnosticEventsByOperation) {
+		diagnosticEvents := t.UnsafeMeta.MustV3().DiagnosticEvents
+		if len(diagnosticEvents) > 0 {
 			// all contract events and diag events for a single operation(by it's index in the tx) were available
 			// in tx meta's DiagnosticEvents, no need to look anywhere else for events
-			return diagnosticEventsByOperation[operationIndex].Events, nil
+			return diagnosticEvents, nil
 		}
-		eventsByOperation := t.UnsafeMeta.MustV3().Events
-		if int(operationIndex) >= len(eventsByOperation) {
+
+		contractEvents := t.UnsafeMeta.MustV3().Events
+		if len(contractEvents) == 0 {
 			// no events were present in this tx meta
 			return nil, nil
 		}
 
 		// tx meta only provided contract events, no diagnostic events, we convert the contract
 		// event to a diagnostic event, to fit the response interface.
-		events := eventsByOperation[operationIndex].Events
-		diagnosticEvents := make([]xdr.DiagnosticEvent, len(events))
-		for i, event := range events {
-			diagnosticEvents[i] = xdr.DiagnosticEvent{
+		convertedDiagnosticEvents := make([]xdr.DiagnosticEvent, len(contractEvents))
+		for i, event := range contractEvents {
+			convertedDiagnosticEvents[i] = xdr.DiagnosticEvent{
 				InSuccessfulContractCall: true,
 				Event:                    event,
 			}
 		}
-		return diagnosticEvents, nil
+		return convertedDiagnosticEvents, nil
 	default:
 		return nil, fmt.Errorf("unsupported TransactionMeta version: %v", t.UnsafeMeta.V)
 	}

@@ -43,34 +43,34 @@ func (s ScContractExecutable) Equals(o ScContractExecutable) bool {
 	}
 }
 
-func (s ScStatus) Equals(o ScStatus) bool {
+func (s ScError) Equals(o ScError) bool {
 	if s.Type != o.Type {
 		return false
 	}
 
 	switch s.Type {
-	case ScStatusTypeSstContractError:
-		return s.MustContractCode() == o.MustContractCode()
-	case ScStatusTypeSstHostFunctionError:
-		return s.MustFnCode() == o.MustFnCode()
-	case ScStatusTypeSstHostObjectError:
-		return s.MustObjCode() == o.MustObjCode()
-	case ScStatusTypeSstHostContextError:
-		return s.MustContextCode() == o.MustContextCode()
-	case ScStatusTypeSstHostStorageError:
-		return s.MustStorageCode() == o.MustStorageCode()
-	case ScStatusTypeSstHostValueError:
-		return s.MustValCode() == o.MustValCode()
-	case ScStatusTypeSstOk:
-		return true
-	case ScStatusTypeSstVmError:
-		return s.MustVmCode() == o.MustVmCode()
-	case ScStatusTypeSstUnknownError:
-		return s.MustUnknownCode() == o.MustUnknownCode()
-	case ScStatusTypeSstHostAuthError:
-		return s.MustAuthCode() == o.MustAuthCode()
+	case ScErrorTypeSceContract:
+		return s.Code == o.Code
+	case ScErrorTypeSceWasmVm:
+		return s.Code == o.Code
+	case ScErrorTypeSceContext:
+		return s.Code == o.Code
+	case ScErrorTypeSceStorage:
+		return s.Code == o.Code
+	case ScErrorTypeSceObject:
+		return s.Code == o.Code
+	case ScErrorTypeSceCrypto:
+		return s.Code == o.Code
+	case ScErrorTypeSceEvents:
+		return s.Code == o.Code
+	case ScErrorTypeSceBudget:
+		return s.Code == o.Code
+	case ScErrorTypeSceValue:
+		return s.Code == o.Code
+	case ScErrorTypeSceAuth:
+		return s.Code == o.Code
 	default:
-		panic("unknown ScStatus type: " + s.Type.String())
+		panic("unknown ScError type: " + s.Type.String())
 	}
 }
 
@@ -84,7 +84,7 @@ func (s ScVal) Equals(o ScVal) bool {
 		return s.MustB() == o.MustB()
 	case ScValTypeScvVoid:
 		return true
-	case ScValTypeScvStatus:
+	case ScValTypeScvError:
 		return s.MustError().Equals(o.MustError())
 	case ScValTypeScvU32:
 		return s.MustU32() == o.MustU32()

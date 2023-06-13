@@ -12,16 +12,12 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := NewSimpleAccount(kp1.Address(), int64(41137196761100))
 
-	invokeHostFunctionOp := InvokeHostFunctions{
-		Functions: []xdr.HostFunction{
-			{
-				Args: xdr.HostFunctionArgs{
-					Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-					InvokeContract: &xdr.ScVec{},
-				},
-				Auth: []xdr.ContractAuth{},
-			},
+	invokeHostFunctionOp := InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.ScVec{},
 		},
+		Auth:          []xdr.SorobanAuthorizationEntry{},
 		SourceAccount: sourceAccount.AccountID,
 	}
 
@@ -29,16 +25,12 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 }
 
 func TestCreateInvokeHostFunctionInvalid(t *testing.T) {
-	invokeHostFunctionOp := InvokeHostFunctions{
-		Functions: []xdr.HostFunction{
-			{
-				Args: xdr.HostFunctionArgs{
-					Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-					InvokeContract: &xdr.ScVec{},
-				},
-				Auth: []xdr.ContractAuth{},
-			},
+	invokeHostFunctionOp := InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.ScVec{},
 		},
+		Auth:          []xdr.SorobanAuthorizationEntry{},
 		SourceAccount: "invalid account value",
 	}
 
@@ -50,38 +42,46 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 	wasmId := xdr.Hash{1, 2, 3, 4}
 	i64 := xdr.Int64(45)
 	accountId := xdr.MustAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
-	invokeHostFunctionOp := &InvokeHostFunctions{
-		Functions: []xdr.HostFunction{
-			{
-				Args: xdr.HostFunctionArgs{
-					Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-					InvokeContract: &xdr.ScVec{
-						xdr.ScVal{
-							Type: xdr.ScValTypeScvI32,
-							I32:  &val,
-						},
-					},
-				},
-				Auth: []xdr.ContractAuth{
-					{
-						AddressWithNonce: &xdr.AddressWithNonce{
-							Address: xdr.ScAddress{
-								Type:      xdr.ScAddressTypeScAddressTypeAccount,
-								AccountId: &accountId,
-							},
-							Nonce: 0,
-						},
-						RootInvocation: xdr.AuthorizedInvocation{
-							ContractId:     xdr.Hash{0xaa, 0xbb},
-							FunctionName:   "foo",
-							Args:           nil,
-							SubInvocations: nil,
-						},
-						SignatureArgs: nil,
-					},
+	invokeHostFunctionOp := &InvokeHostFunction{
+		HostFunction: xdr.HostFunction{
+			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+			InvokeContract: &xdr.ScVec{
+				xdr.ScVal{
+					Type: xdr.ScValTypeScvI32,
+					I32:  &val,
 				},
 			},
 		},
+		Auth: []xdr.SorobanAuthorizationEntry{
+			{
+				Credentials: xdr.SorobanCredentials{
+					Type: xdr.SorobanCredentialsTypeSorobanCredentialsAddress,
+					Address: &xdr.SorobanAddressCredentials{
+						Address: xdr.ScAddress{
+							Type:      xdr.ScAddressTypeScAddressTypeAccount,
+							AccountId: &accountId,
+						},
+						Nonce:         0,
+						SignatureArgs: nil,
+					},
+				},
+				RootInvocation: xdr.SorobanAuthorizedInvocation{
+					Function: xdr.SorobanAuthorizedFunction{
+						Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
+						ContractFn: &xdr.SorobanAuthorizedContractFunction{
+							ContractAddress: xdr.ScAddress{
+								Type:      xdr.ScAddressTypeScAddressTypeAccount,
+								AccountId: &accountId,
+							},
+							FunctionName: "foo",
+							Args:         nil,
+						},
+					},
+					SubInvocations: nil,
+				},
+			},
+		},
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 		Ext: xdr.TransactionExt{
 			V: 1,
 			SorobanData: &xdr.SorobanTransactionData{
@@ -126,7 +126,6 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 				},
 			},
 		},
-		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 	}
 	testOperationsMarshallingRoundtrip(t, []Operation{invokeHostFunctionOp}, false)
 
