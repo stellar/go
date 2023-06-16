@@ -97,6 +97,8 @@ func (s ScVal) Equals(o ScVal) bool {
 		return true
 	case ScValTypeScvLedgerKeyNonce:
 		return s.MustNonceKey().Equals(o.MustNonceKey())
+	case ScValTypeScvStorageType:
+		return s.MustStorageType() == o.MustStorageType()
 	default:
 		panic("unknown ScVal type: " + s.Type.String())
 	}
