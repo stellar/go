@@ -174,3 +174,19 @@ func (entry *LedgerEntry) Normalize() *LedgerEntry {
 
 	return entry
 }
+
+func (data *LedgerEntryData) SetContractData(entry *ContractDataEntry) error {
+	*data = LedgerEntryData{
+		Type:         LedgerEntryTypeContractData,
+		ContractData: entry,
+	}
+	return nil
+}
+
+func (data *LedgerEntryData) SetContractCode(entry *ContractCodeEntry) error {
+	*data = LedgerEntryData{
+		Type:         LedgerEntryTypeContractCode,
+		ContractCode: entry,
+	}
+	return nil
+}
