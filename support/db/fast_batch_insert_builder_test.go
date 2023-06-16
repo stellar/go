@@ -84,7 +84,7 @@ func TestFastBatchInsertBuilder(t *testing.T) {
 			"name":         "bubba3",
 			"hunger_level": "100",
 		}),
-		"cannot add more rows after Exec(). Reset() must be called before adding new rows",
+		"cannot add more rows after Exec() without calling Reset() first",
 	)
 	assert.Equal(t, 2, insertBuilder.Len())
 	assert.Equal(t, true, insertBuilder.sealed)
