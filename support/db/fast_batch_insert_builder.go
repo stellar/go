@@ -13,7 +13,7 @@ import (
 // ErrSealed is returned when trying to add rows to the FastBatchInsertBuilder after Exec() is called.
 // Once Exec() is called no more rows can be added to the FastBatchInsertBuilder unless you call Reset()
 // which clears out the old rows from the FastBatchInsertBuilder.
-var ErrSealed = errors.New("cannot add more rows after Exec(). Reset() must be called before adding new rows")
+var ErrSealed = errors.New("cannot add more rows after Exec() without calling Reset() first")
 
 // ErrNoTx is returned when Exec() is called outside of a transaction.
 var ErrNoTx = errors.New("cannot call Exec() outside of a transaction")
