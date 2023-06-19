@@ -244,7 +244,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		// For now, the only effects are related to the events themselves.
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
 		err = wrapper.addInvokeHostFunctionEffects(filterEvents(diagnosticEvents))
-
+	case xdr.OperationTypeBumpFootprintExpiration:
+		err = nil // what's the effect that need to be used here ?
 	default:
 		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}

@@ -150,6 +150,10 @@ func NewOperation(
 		e := operations.InvokeHostFunction{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
+	case xdr.OperationTypeBumpFootprintExpiration:
+		e := operations.BumpFootprintExpiration{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
 	default:
 		result = base
 	}
