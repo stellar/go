@@ -63,7 +63,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	if err != nil || contractData.ContractId == nativeAssetContractID {
+	if err != nil || (*contractData.Contract.ContractId) == nativeAssetContractID {
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if err != nil {
 		return nil
 	}
-	if expectedID != contractData.ContractId {
+	if expectedID != *(contractData.Contract.ContractId) {
 		return nil
 	}
 
@@ -148,7 +148,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	if err != nil || contractData.ContractId == nativeAssetContractID {
+	if err != nil || *contractData.Contract.ContractId == nativeAssetContractID {
 		return [32]byte{}, nil, false
 	}
 
@@ -285,12 +285,18 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
+	var ContractIdHash xdr.Hash
+	ContractIdHash = contractID
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			ContractId: contractID,
-			Key:        assetInfoKey,
-			Type:       xdr.ContractDataTypeExclusive,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &ContractIdHash,
+			},
+			Key:  assetInfoKey,
+			Type: xdr.ContractDataTypePersistent,
 			Body: xdr.ContractDataEntryBody{
 				LeType: xdr.ContractLedgerEntryTypeDataEntry,
 				Data: &xdr.ContractDataEntryData{
@@ -364,15 +370,21 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		},
 	}
 
+	var contractIDHash xdr.Hash
+	contractIDHash = assetContractId
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			ContractId: assetContractId,
+			//ContractId: assetContractId,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractIDHash,
+			},
 			Key: xdr.ScVal{
 				Type: xdr.ScValTypeScvVec,
 				Vec:  &keyVec,
 			},
-			Type: xdr.ContractDataTypeExclusive,
+			Type: xdr.ContractDataTypePersistent,
 			Body: xdr.ContractDataEntryBody{
 				LeType: xdr.ContractLedgerEntryTypeDataEntry,
 				Data: &xdr.ContractDataEntryData{

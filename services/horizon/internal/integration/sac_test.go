@@ -899,6 +899,8 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		},
 	}
 	masterAddress := xdr.MustAddress(itest.MasterAccount().GetAccountID())
+	var contractIDHash xdr.Hash
+	contractIDHash = contractID
 	return []xdr.LedgerKey{
 		{
 			Type:    xdr.LedgerEntryTypeAccount,
@@ -907,7 +909,10 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractID,
+				Contract: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &contractIDHash,
+				},
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvSymbol,
 					Sym:  &metadata,
@@ -917,7 +922,10 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractID,
+				Contract: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &contractIDHash,
+				},
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvVec,
 					Vec:  &adminVec,
@@ -927,7 +935,10 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractID,
+				Contract: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &contractIDHash,
+				},
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvVec,
 					Vec:  &assetInfoVec,
@@ -937,7 +948,10 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractID,
+				Contract: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &contractIDHash,
+				},
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 				},
@@ -957,7 +971,10 @@ func tokenLedgerKey(contractID xdr.Hash) xdr.LedgerKey {
 	return xdr.LedgerKey{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.LedgerKeyContractData{
-			ContractId: contractID,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractID,
+			},
 			Key: xdr.ScVal{
 				Type: xdr.ScValTypeScvVec,
 				Vec:  &tokenVec,
@@ -971,7 +988,10 @@ func sacTestContractCodeLedgerKeys(contractID xdr.Hash, contractHash xdr.Hash) [
 		{
 			Type: xdr.LedgerEntryTypeContractData,
 			ContractData: &xdr.LedgerKeyContractData{
-				ContractId: contractID,
+				Contract: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &contractID,
+				},
 				Key: xdr.ScVal{
 					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 				},
@@ -1023,7 +1043,10 @@ func addressLedgerKeys(itest *integration.Test, contractAsset xdr.Asset, address
 			{
 				Type: xdr.LedgerEntryTypeContractData,
 				ContractData: &xdr.LedgerKeyContractData{
-					ContractId: contractID,
+					Contract: xdr.ScAddress{
+						Type:       xdr.ScAddressTypeScAddressTypeContract,
+						ContractId: &contractID,
+					},
 					Key: xdr.ScVal{
 						Type: xdr.ScValTypeScvVec,
 						Vec:  &vec,
@@ -1180,7 +1203,10 @@ func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.As
 			xdr.LedgerKey{
 				Type: xdr.LedgerEntryTypeContractData,
 				ContractData: &xdr.LedgerKeyContractData{
-					ContractId: contractID,
+					Contract: xdr.ScAddress{
+						Type:       xdr.ScAddressTypeScAddressTypeContract,
+						ContractId: &contractID,
+					},
 					Key: xdr.ScVal{
 						Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 					},
@@ -1400,6 +1426,6 @@ func mustCreateAndInstallContract(itest *integration.Test, signer *keypair.Full,
 	createContractOp := assembleCreateContractOp(itest.CurrentTest(), itest.Master().Address(), wasmFileName, contractSalt, itest.GetPassPhrase())
 	assertInvokeHostFnSucceeds(itest, signer, createContractOp)
 	contractHash := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0].MustContractCode().Hash
-	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().ContractId
-	return contractID, contractHash
+	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
+	return *contractID, contractHash
 }

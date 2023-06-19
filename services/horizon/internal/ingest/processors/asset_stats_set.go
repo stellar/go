@@ -379,7 +379,7 @@ func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
 		if asset == nil {
 			return nil
 		}
-		contractID := change.Pre.Data.MustContractData().ContractId
+		contractID := *change.Pre.Data.MustContractData().Contract.ContractId
 		if change.Post == nil {
 			s.contractToAsset[contractID] = nil
 			return nil
@@ -396,7 +396,7 @@ func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
 		if asset == nil {
 			return nil
 		}
-		contractID := change.Post.Data.MustContractData().ContractId
+		contractID := *change.Post.Data.MustContractData().Contract.ContractId
 		s.contractToAsset[contractID] = asset
 	}
 	return nil
@@ -404,7 +404,7 @@ func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
 
 func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 	if change.Pre != nil {
-		contractID := change.Pre.Data.MustContractData().ContractId
+		contractID := *change.Pre.Data.MustContractData().Contract.ContractId
 		holder, amt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return
@@ -451,7 +451,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		return
 	}
 	// in this case there was no balance before the change
-	contractID := change.Post.Data.MustContractData().ContractId
+	contractID := *change.Post.Data.MustContractData().Contract.ContractId
 	_, amt, ok := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 	if !ok {
 		return

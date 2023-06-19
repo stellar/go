@@ -170,5 +170,5 @@ func (s ScMapEntry) Equals(o ScMapEntry) bool {
 }
 
 func (s ScNonceKey) Equals(o ScNonceKey) bool {
-	return s.NonceAddress.Equals(o.NonceAddress)
+	return s.Nonce == o.Nonce
 }
