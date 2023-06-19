@@ -285,8 +285,7 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
-	var ContractIdHash xdr.Hash
-	ContractIdHash = contractID
+	var ContractIdHash xdr.Hash = contractID
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
@@ -370,12 +369,10 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		},
 	}
 
-	var contractIDHash xdr.Hash
-	contractIDHash = assetContractId
+	var contractIDHash xdr.Hash = assetContractId
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			//ContractId: assetContractId,
 			Contract: xdr.ScAddress{
 				Type:       xdr.ScAddressTypeScAddressTypeContract,
 				ContractId: &contractIDHash,
