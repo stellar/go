@@ -160,6 +160,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	contractCodeLedgerKey := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0]
 
+	require.NotNil(t, contractID)
 	contractIdBytes := contractID[:]
 	contractIdParameter := xdr.ScVal{
 		Type:  xdr.ScValTypeScvBytes,
@@ -319,7 +320,7 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
 	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	contractCodeLedgerKey := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0]
-
+	require.NotNil(t, contractID)
 	contractIdBytes := contractID[:]
 	contractIdParameter := xdr.ScVal{
 		Type:  xdr.ScValTypeScvBytes,

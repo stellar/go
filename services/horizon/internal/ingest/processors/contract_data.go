@@ -126,7 +126,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if err != nil {
 		return nil
 	}
-	if expectedID != *(contractData.Contract.ContractId) {
+	if contractData.Contract.ContractId == nil || expectedID != *(contractData.Contract.ContractId) {
 		return nil
 	}
 
