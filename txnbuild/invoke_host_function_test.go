@@ -91,7 +91,10 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 							{
 								Type: xdr.LedgerEntryTypeContractData,
 								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: xdr.Hash{1, 2, 3},
+									Contract: xdr.ScAddress{
+										Type:       xdr.ScAddressTypeScAddressTypeContract,
+										ContractId: &xdr.Hash{1, 2, 3},
+									},
 									Key: xdr.ScVal{
 										Type: xdr.ScValTypeScvContractExecutable,
 										Exec: &xdr.ScContractExecutable{
@@ -106,7 +109,10 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 							{
 								Type: xdr.LedgerEntryTypeContractData,
 								ContractData: &xdr.LedgerKeyContractData{
-									ContractId: xdr.Hash{1, 2, 3},
+									Contract: xdr.ScAddress{
+										Type:       xdr.ScAddressTypeScAddressTypeContract,
+										ContractId: &xdr.Hash{1, 2, 3},
+									},
 									Key: xdr.ScVal{
 										Type: xdr.ScValTypeScvI64,
 										I64:  &i64,
