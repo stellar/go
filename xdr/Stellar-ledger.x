@@ -398,21 +398,31 @@ struct DiagnosticEvent
     ContractEvent event;
 };
 
-struct TransactionMetaV3
+struct SorobanTransactionMeta 
 {
-    LedgerEntryChanges txChangesBefore; // tx level changes before operations
-                                        // are applied if any
-    OperationMeta operations<>;         // meta for each operation
-    LedgerEntryChanges txChangesAfter;  // tx level changes after operations are
-                                        // applied if any
+    ExtensionPoint ext;
+
     ContractEvent events<>;             // custom events populated by the
                                         // contracts themselves.
-    SCVal returnValue;                  // return value of the invocation.
+    SCVal returnValue;                  // return value of the host fn invocation
 
     // Diagnostics events that are not hashed.
     // This will contain all contract and diagnostic events. Even ones
     // that were emitted in a failed contract call.
     DiagnosticEvent diagnosticEvents<>;
+};
+
+struct TransactionMetaV3
+{
+    ExtensionPoint ext;
+
+    LedgerEntryChanges txChangesBefore;  // tx level changes before operations
+                                         // are applied if any
+    OperationMeta operations<>;          // meta for each operation
+    LedgerEntryChanges txChangesAfter;   // tx level changes after operations are
+                                         // applied if any
+    SorobanTransactionMeta* sorobanMeta; // Soroban-specific meta (only for 
+                                         // Soroban transactions).
 };
 
 // This is in Stellar-ledger.x to due to a circular dependency 
@@ -490,11 +500,46 @@ struct LedgerCloseMetaV1
     SCPHistoryEntry scpInfo<>;
 };
 
+struct LedgerCloseMetaV2
+{
+    // We forgot to add an ExtensionPoint in v1 but at least
+    // we can add one now in v2.
+    ExtensionPoint ext;
+
+    LedgerHeaderHistoryEntry ledgerHeader;
+
+    GeneralizedTransactionSet txSet;
+
+    // NB: transactions are sorted in apply order here
+    // fees for all transactions are processed first
+    // followed by applying transactions
+    TransactionResultMeta txProcessing<>;
+
+    // upgrades are applied last
+    UpgradeEntryMeta upgradesProcessing<>;
+
+    // other misc information attached to the ledger close
+    SCPHistoryEntry scpInfo<>;
+
+    // Size in bytes of BucketList, to support downstream
+    // systems calculating storage fees correctly.
+    uint64 totalByteSizeOfBucketList;
+
+    // Expired temp keys that are being evicted at this ledger.
+    LedgerKey evictedTemporaryLedgerKeys<>;
+
+    // Expired restorable ledger entries that are being
+    // evicted at this ledger.
+    LedgerEntry evictedRestorableLedgerEntries<>;
+};
+
 union LedgerCloseMeta switch (int v)
 {
 case 0:
     LedgerCloseMetaV0 v0;
 case 1:
     LedgerCloseMetaV1 v1;
+case 2:
+    LedgerCloseMetaV2 v2;
 };
 }

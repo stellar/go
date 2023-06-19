@@ -1,6 +1,13 @@
 %#include "xdr/Stellar-types.h"
 
 namespace stellar {
+// General “Soroban execution lane” settings
+struct ConfigSettingContractExecutionLanesV0
+{
+    // maximum number of Soroban transactions per ledger
+    uint32 ledgerMaxTxCount;
+};
+
 // "Compute" settings for contracts (instructions and memory).
 struct ConfigSettingContractComputeV0
 {
@@ -129,10 +136,28 @@ enum ContractCostType {
 };
 
 struct ContractCostParamEntry {
-    int64 constTerm;
-    int64 linearTerm;
     // use `ext` to add more terms (e.g. higher order polynomials) in the future
     ExtensionPoint ext;
+    
+    int64 constTerm;
+    int64 linearTerm;
+};
+
+struct StateExpirationSettings {
+    uint32 maxEntryExpiration;
+    uint32 minTempEntryExpiration;
+    uint32 minRestorableEntryExpiration;
+    uint32 autoBumpLedgers;
+
+    // rent_fee = wfee_rate_average / rent_rate_denominator_for_type
+    int64 restorableRentRateDenominator;
+    int64 tempRentRateDenominator;
+
+    union switch (int v)
+    {
+    case 0:
+        void;
+    } ext;
 };
 
 // limits the ContractCostParams size to 20kB
@@ -152,7 +177,9 @@ enum ConfigSettingID
     CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS = 6,
     CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES = 7,
     CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES = 8,
-    CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES = 9
+    CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES = 9,
+    CONFIG_SETTING_STATE_EXPIRATION = 10,
+    CONFIG_SETTING_CONTRACT_EXECUTION_LANES = 11
 };
 
 union ConfigSettingEntry switch (ConfigSettingID configSettingID)
@@ -177,5 +204,9 @@ case CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES:
     uint32 contractDataKeySizeBytes;
 case CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES:
     uint32 contractDataEntrySizeBytes;
+case CONFIG_SETTING_STATE_EXPIRATION:
+    StateExpirationSettings stateExpirationSettings;
+case CONFIG_SETTING_CONTRACT_EXECUTION_LANES:
+    ConfigSettingContractExecutionLanesV0 contractExecutionLanes;
 };
 }
