@@ -88,6 +88,7 @@ type captiveCoreTomlValues struct {
 	UseBucketListDB                      bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
 	BucketListDBPageSizeExp              *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                   *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
+	LimitTxQueueSourceAccount            bool                 `toml:"LIMIT_TX_QUEUE_SOURCE_ACCOUNT,omitempty"`
 }
 
 // QuorumSetIsConfigured returns true if there is a quorum set defined in the configuration.
