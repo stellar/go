@@ -503,6 +503,15 @@ func String(code interface{}) (string, error) {
 			return "resource_limit_exceeded", nil
 
 		}
+	case xdr.BumpFootprintExpirationOpResultCode:
+		switch code {
+		case xdr.BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess:
+			return OpSuccess, nil
+		case xdr.BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed:
+			return OpMalformed, nil
+		case xdr.BumpFootprintExpirationOpResultCodeBumpFootprintExpirationResourceLimitExceeded:
+			return "resource_limit_exceeded", nil
+		}
 	}
 
 	return "", errors.New(ErrUnknownCode)
@@ -569,6 +578,8 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustLiquidityPoolWithdrawResult().Code
 	case xdr.OperationTypeInvokeHostFunction:
 		ic = ir.MustInvokeHostFunctionResult().Code
+	case xdr.OperationTypeBumpFootprintExpiration:
+		ic = ir.MustBumpFootprintExpirationResult().Code
 	}
 
 	return String(ic)
