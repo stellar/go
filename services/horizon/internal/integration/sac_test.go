@@ -1358,7 +1358,7 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	assert.True(itest.CurrentTest(), ok)
 	assert.Equal(itest.CurrentTest(), invokeHostFunctionResult.Code, xdr.InvokeHostFunctionResultCodeInvokeHostFunctionSuccess)
 
-	returnValue := txMetaResult.MustV3().ReturnValue
+	returnValue := txMetaResult.MustV3().SorobanMeta.ReturnValue
 
 	return &returnValue, tx.Hash
 }

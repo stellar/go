@@ -71,7 +71,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 
-	vecPtr, ok := contractData.Val.GetVec()
+	vecPtr, ok := contractData.Body.Data.Val.GetVec()
 	if !ok || vecPtr == nil || len(*vecPtr) != 2 {
 		return nil
 	}
@@ -176,7 +176,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 
-	balanceMapPtr, ok := contractData.Val.GetMap()
+	balanceMapPtr, ok := contractData.Body.Data.Val.GetMap()
 	if !ok || balanceMapPtr == nil {
 		return [32]byte{}, nil, false
 	}
@@ -290,10 +290,18 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 		ContractData: &xdr.ContractDataEntry{
 			ContractId: contractID,
 			Key:        assetInfoKey,
-			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvVec,
-				Vec:  &vec,
+			Type:       xdr.ContractDataTypeExclusive,
+			Body: xdr.ContractDataEntryBody{
+				LeType: xdr.ContractLedgerEntryTypeDataEntry,
+				Data: &xdr.ContractDataEntryData{
+					Val: xdr.ScVal{
+						Type: xdr.ScValTypeScvVec,
+						Vec:  &vec,
+					},
+					// Flags: ??
+				},
 			},
+			// ExpirationLedgerSeq: ???
 		},
 	}, nil
 }
@@ -364,10 +372,18 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 				Type: xdr.ScValTypeScvVec,
 				Vec:  &keyVec,
 			},
-			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvMap,
-				Map:  &dataMap,
+			Type: xdr.ContractDataTypeExclusive,
+			Body: xdr.ContractDataEntryBody{
+				LeType: xdr.ContractLedgerEntryTypeDataEntry,
+				Data: &xdr.ContractDataEntryData{
+					Val: xdr.ScVal{
+						Type: xdr.ScValTypeScvMap,
+						Map:  &dataMap,
+					},
+					// Flags: ??
+				},
 			},
+			// ExpirationLedgerSeq: ???
 		},
 	}
 }

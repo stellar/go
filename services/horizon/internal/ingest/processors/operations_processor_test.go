@@ -412,11 +412,13 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 			UnsafeMeta: xdr.TransactionMeta{
 				V: 3,
 				V3: &xdr.TransactionMetaV3{
-					Events: []xdr.ContractEvent{
-						transferContractEvent,
-						burnContractEvent,
-						mintContractEvent,
-						clawbackContractEvent,
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{
+							transferContractEvent,
+							burnContractEvent,
+							mintContractEvent,
+							clawbackContractEvent,
+						},
 					},
 				},
 			},
