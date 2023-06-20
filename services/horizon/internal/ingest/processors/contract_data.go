@@ -280,6 +280,8 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScVec, error
 // AssetToContractData is the inverse of AssetFromContractData. It creates a
 // ledger entry containing the asset info entry written to contract storage by the
 // Stellar Asset Contract.
+//
+// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
 	vec, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {
@@ -303,10 +305,14 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 						Type: xdr.ScValTypeScvVec,
 						Vec:  &vec,
 					},
-					// Flags: ??
+					// No flags written by the contract:
+					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/asset_info.rs#L12
+					Flags: 0,
 				},
 			},
-			// ExpirationLedgerSeq: ???
+			// Not realistic, but doesn't matter since this is only used in tests.
+			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
+			ExpirationLedgerSeq: 0,
 		},
 	}, nil
 }
