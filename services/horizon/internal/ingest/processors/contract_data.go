@@ -285,14 +285,14 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
-	var ContractIdHash xdr.Hash = contractID
+	var ContractIDHash xdr.Hash = contractID
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
 			Contract: xdr.ScAddress{
 				Type:       xdr.ScAddressTypeScAddressTypeContract,
 				AccountId:  nil,
-				ContractId: &ContractIdHash,
+				ContractId: &ContractIDHash,
 			},
 			Key:  assetInfoKey,
 			Type: xdr.ContractDataTypePersistent,
