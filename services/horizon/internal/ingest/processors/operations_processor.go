@@ -289,7 +289,7 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 			}
 		}
 	case xdr.OperationTypeBumpFootprintExpiration:
-		return false //  not sure about this one.
+		return true
 	}
 
 	return false
