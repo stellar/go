@@ -409,12 +409,15 @@ func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
 
 func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 	if change.Pre != nil {
-		contractID := *change.Pre.Data.MustContractData().Contract.ContractId
+		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
+		if pContractID == nil {
+			return
+		}
 		holder, amt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return
 		}
-		stats, ok := s.contractAssetStats[contractID]
+		stats, ok := s.contractAssetStats[*pContractID]
 		if !ok {
 			stats = contractAssetStatValue{
 				balance:    big.NewInt(0),
@@ -431,7 +434,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 			if amt.Cmp(big.NewInt(0)) > 0 {
 				stats.numHolders--
 			}
-			s.maybeAddContractAssetStat(contractID, stats)
+			s.maybeAddContractAssetStat(*pContractID, stats)
 			return
 		}
 		// if the updated ledger entry is not in the expected format then this
@@ -452,7 +455,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 			// contract holders increased
 			stats.numHolders++
 		}
-		s.maybeAddContractAssetStat(contractID, stats)
+		s.maybeAddContractAssetStat(*pContractID, stats)
 		return
 	}
 	// in this case there was no balance before the change
