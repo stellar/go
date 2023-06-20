@@ -275,7 +275,9 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 			}
 		}
 		// key
-		key.ContractData.Key.EncodeTo(e.encoder)
+		if err := key.ContractData.Key.EncodeTo(e.encoder); err != nil {
+			return err
+		}
 		// type
 		if err := e.xdrEncoderBuf.WriteByte(byte(key.ContractData.Type)); err != nil {
 			return err
