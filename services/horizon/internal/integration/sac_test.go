@@ -899,8 +899,7 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 		},
 	}
 	masterAddress := xdr.MustAddress(itest.MasterAccount().GetAccountID())
-	var contractIDHash xdr.Hash
-	contractIDHash = contractID
+	contractIDHash := contractID
 	return []xdr.LedgerKey{
 		{
 			Type:    xdr.LedgerEntryTypeAccount,
