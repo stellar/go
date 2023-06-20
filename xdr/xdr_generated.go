@@ -40,7 +40,7 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-ledger-entries.x":          "f648e16cd6cd19dac8103252af9eda3e0b73dd5b983dd7ca14d6fb32f108ac04",
 	"xdr/Stellar-ledger.x":                  "ac8c016a92e75e6ba29cccb00a3aa633f347ba15e5b4fcd0d6986d4eed52fe4e",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "4f4f349b46cb46aba71da54552ffbbb8c028e9a2a280b04849c889d1081f4b42",
+	"xdr/Stellar-transaction.x":             "eaa4b6c047f564b10a8179c66e4342359d085be8bd2a61ca5fb7b4fc18ec0a13",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -39582,9 +39582,9 @@ func (s InvokeHostFunctionResult) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionResult)(nil)
 
-// BumpFootprintExpirationOpResultCode is an XDR Enum defines as:
+// BumpFootprintExpirationResultCode is an XDR Enum defines as:
 //
-//	enum BumpFootprintExpirationOpResultCode
+//	enum BumpFootprintExpirationResultCode
 //	 {
 //	     // codes considered as "success" for the operation
 //	     BUMP_FOOTPRINT_EXPIRATION_SUCCESS = 0,
@@ -39593,59 +39593,59 @@ var _ xdrType = (*InvokeHostFunctionResult)(nil)
 //	     BUMP_FOOTPRINT_EXPIRATION_MALFORMED = -1,
 //	     BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED = -2
 //	 };
-type BumpFootprintExpirationOpResultCode int32
+type BumpFootprintExpirationResultCode int32
 
 const (
-	BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess               BumpFootprintExpirationOpResultCode = 0
-	BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed             BumpFootprintExpirationOpResultCode = -1
-	BumpFootprintExpirationOpResultCodeBumpFootprintExpirationResourceLimitExceeded BumpFootprintExpirationOpResultCode = -2
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess               BumpFootprintExpirationResultCode = 0
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed             BumpFootprintExpirationResultCode = -1
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded BumpFootprintExpirationResultCode = -2
 )
 
-var bumpFootprintExpirationOpResultCodeMap = map[int32]string{
-	0:  "BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess",
-	-1: "BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed",
-	-2: "BumpFootprintExpirationOpResultCodeBumpFootprintExpirationResourceLimitExceeded",
+var bumpFootprintExpirationResultCodeMap = map[int32]string{
+	0:  "BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess",
+	-1: "BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed",
+	-2: "BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for BumpFootprintExpirationOpResultCode
-func (e BumpFootprintExpirationOpResultCode) ValidEnum(v int32) bool {
-	_, ok := bumpFootprintExpirationOpResultCodeMap[v]
+// the Enum interface for BumpFootprintExpirationResultCode
+func (e BumpFootprintExpirationResultCode) ValidEnum(v int32) bool {
+	_, ok := bumpFootprintExpirationResultCodeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e BumpFootprintExpirationOpResultCode) String() string {
-	name, _ := bumpFootprintExpirationOpResultCodeMap[int32(e)]
+func (e BumpFootprintExpirationResultCode) String() string {
+	name, _ := bumpFootprintExpirationResultCodeMap[int32(e)]
 	return name
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (e BumpFootprintExpirationOpResultCode) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := bumpFootprintExpirationOpResultCodeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid BumpFootprintExpirationOpResultCode enum value", e)
+func (e BumpFootprintExpirationResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := bumpFootprintExpirationResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BumpFootprintExpirationResultCode enum value", e)
 	}
 	_, err := enc.EncodeInt(int32(e))
 	return err
 }
 
-var _ decoderFrom = (*BumpFootprintExpirationOpResultCode)(nil)
+var _ decoderFrom = (*BumpFootprintExpirationResultCode)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *BumpFootprintExpirationOpResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *BumpFootprintExpirationResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
 	v, n, err := d.DecodeInt()
 	if err != nil {
-		return n, fmt.Errorf("decoding BumpFootprintExpirationOpResultCode: %s", err)
+		return n, fmt.Errorf("decoding BumpFootprintExpirationResultCode: %s", err)
 	}
-	if _, ok := bumpFootprintExpirationOpResultCodeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid BumpFootprintExpirationOpResultCode enum value", v)
+	if _, ok := bumpFootprintExpirationResultCodeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid BumpFootprintExpirationResultCode enum value", v)
 	}
-	*e = BumpFootprintExpirationOpResultCode(v)
+	*e = BumpFootprintExpirationResultCode(v)
 	return n, nil
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s BumpFootprintExpirationOpResultCode) MarshalBinary() ([]byte, error) {
+func (s BumpFootprintExpirationResultCode) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -39653,7 +39653,7 @@ func (s BumpFootprintExpirationOpResultCode) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *BumpFootprintExpirationOpResultCode) UnmarshalBinary(inp []byte) error {
+func (s *BumpFootprintExpirationResultCode) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -39661,19 +39661,19 @@ func (s *BumpFootprintExpirationOpResultCode) UnmarshalBinary(inp []byte) error 
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*BumpFootprintExpirationOpResultCode)(nil)
-	_ encoding.BinaryUnmarshaler = (*BumpFootprintExpirationOpResultCode)(nil)
+	_ encoding.BinaryMarshaler   = (*BumpFootprintExpirationResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*BumpFootprintExpirationResultCode)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s BumpFootprintExpirationOpResultCode) xdrType() {}
+func (s BumpFootprintExpirationResultCode) xdrType() {}
 
-var _ xdrType = (*BumpFootprintExpirationOpResultCode)(nil)
+var _ xdrType = (*BumpFootprintExpirationResultCode)(nil)
 
 // BumpFootprintExpirationResult is an XDR Union defines as:
 //
-//	union BumpFootprintExpirationResult switch (BumpFootprintExpirationOpResultCode code)
+//	union BumpFootprintExpirationResult switch (BumpFootprintExpirationResultCode code)
 //	 {
 //	 case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
 //	     void;
@@ -39681,7 +39681,7 @@ var _ xdrType = (*BumpFootprintExpirationOpResultCode)(nil)
 //	     void;
 //	 };
 type BumpFootprintExpirationResult struct {
-	Code BumpFootprintExpirationOpResultCode
+	Code BumpFootprintExpirationResultCode
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -39693,22 +39693,22 @@ func (u BumpFootprintExpirationResult) SwitchFieldName() string {
 // ArmForSwitch returns which field name should be used for storing
 // the value for an instance of BumpFootprintExpirationResult
 func (u BumpFootprintExpirationResult) ArmForSwitch(sw int32) (string, bool) {
-	switch BumpFootprintExpirationOpResultCode(sw) {
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess:
+	switch BumpFootprintExpirationResultCode(sw) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
 		return "", true
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed:
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
 		return "", true
 	}
 	return "-", false
 }
 
 // NewBumpFootprintExpirationResult creates a new  BumpFootprintExpirationResult.
-func NewBumpFootprintExpirationResult(code BumpFootprintExpirationOpResultCode, value interface{}) (result BumpFootprintExpirationResult, err error) {
+func NewBumpFootprintExpirationResult(code BumpFootprintExpirationResultCode, value interface{}) (result BumpFootprintExpirationResult, err error) {
 	result.Code = code
-	switch BumpFootprintExpirationOpResultCode(code) {
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess:
+	switch BumpFootprintExpirationResultCode(code) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
 		// void
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed:
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
 		// void
 	}
 	return
@@ -39720,15 +39720,15 @@ func (u BumpFootprintExpirationResult) EncodeTo(e *xdr.Encoder) error {
 	if err = u.Code.EncodeTo(e); err != nil {
 		return err
 	}
-	switch BumpFootprintExpirationOpResultCode(u.Code) {
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess:
+	switch BumpFootprintExpirationResultCode(u.Code) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
 		// Void
 		return nil
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed:
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
 		// Void
 		return nil
 	}
-	return fmt.Errorf("Code (BumpFootprintExpirationOpResultCode) switch value '%d' is not valid for union BumpFootprintExpirationResult", u.Code)
+	return fmt.Errorf("Code (BumpFootprintExpirationResultCode) switch value '%d' is not valid for union BumpFootprintExpirationResult", u.Code)
 }
 
 var _ decoderFrom = (*BumpFootprintExpirationResult)(nil)
@@ -39740,17 +39740,17 @@ func (u *BumpFootprintExpirationResult) DecodeFrom(d *xdr.Decoder) (int, error) 
 	nTmp, err = u.Code.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding BumpFootprintExpirationOpResultCode: %s", err)
+		return n, fmt.Errorf("decoding BumpFootprintExpirationResultCode: %s", err)
 	}
-	switch BumpFootprintExpirationOpResultCode(u.Code) {
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess:
+	switch BumpFootprintExpirationResultCode(u.Code) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
 		// Void
 		return n, nil
-	case BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed:
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
 		// Void
 		return n, nil
 	}
-	return n, fmt.Errorf("union BumpFootprintExpirationResult has invalid Code (BumpFootprintExpirationOpResultCode) switch value '%d'", u.Code)
+	return n, fmt.Errorf("union BumpFootprintExpirationResult has invalid Code (BumpFootprintExpirationResultCode) switch value '%d'", u.Code)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.

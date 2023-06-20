@@ -503,13 +503,13 @@ func String(code interface{}) (string, error) {
 			return "resource_limit_exceeded", nil
 
 		}
-	case xdr.BumpFootprintExpirationOpResultCode:
+	case xdr.BumpFootprintExpirationResultCode:
 		switch code {
-		case xdr.BumpFootprintExpirationOpResultCodeBumpFootprintExpirationSuccess:
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
 			return OpSuccess, nil
-		case xdr.BumpFootprintExpirationOpResultCodeBumpFootprintExpirationMalformed:
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
 			return OpMalformed, nil
-		case xdr.BumpFootprintExpirationOpResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
 			return "resource_limit_exceeded", nil
 		}
 	}

@@ -3352,14 +3352,14 @@ type InvokeHostFunctionResult struct {
 	_u   interface{}
 }
 
-type BumpFootprintExpirationOpResultCode int32
+type BumpFootprintExpirationResultCode int32
 
 const (
 	// codes considered as "success" for the operation
-	BUMP_FOOTPRINT_EXPIRATION_SUCCESS BumpFootprintExpirationOpResultCode = 0
+	BUMP_FOOTPRINT_EXPIRATION_SUCCESS BumpFootprintExpirationResultCode = 0
 	// codes considered as "failure" for the operation
-	BUMP_FOOTPRINT_EXPIRATION_MALFORMED               BumpFootprintExpirationOpResultCode = -1
-	BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED BumpFootprintExpirationOpResultCode = -2
+	BUMP_FOOTPRINT_EXPIRATION_MALFORMED               BumpFootprintExpirationResultCode = -1
+	BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED BumpFootprintExpirationResultCode = -2
 )
 
 type BumpFootprintExpirationResult struct {
@@ -3368,7 +3368,7 @@ type BumpFootprintExpirationResult struct {
 	//      void
 	//   BUMP_FOOTPRINT_EXPIRATION_MALFORMED:
 	//      void
-	Code BumpFootprintExpirationOpResultCode
+	Code BumpFootprintExpirationResultCode
 	_u   interface{}
 }
 
@@ -22829,66 +22829,66 @@ func (u *InvokeHostFunctionResult) XdrRecurse(x XDR, name string) {
 }
 func XDR_InvokeHostFunctionResult(v *InvokeHostFunctionResult) *InvokeHostFunctionResult { return v }
 
-var _XdrNames_BumpFootprintExpirationOpResultCode = map[int32]string{
+var _XdrNames_BumpFootprintExpirationResultCode = map[int32]string{
 	int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                 "BUMP_FOOTPRINT_EXPIRATION_SUCCESS",
 	int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):               "BUMP_FOOTPRINT_EXPIRATION_MALFORMED",
 	int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED): "BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED",
 }
-var _XdrValues_BumpFootprintExpirationOpResultCode = map[string]int32{
+var _XdrValues_BumpFootprintExpirationResultCode = map[string]int32{
 	"BUMP_FOOTPRINT_EXPIRATION_SUCCESS":                 int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS),
 	"BUMP_FOOTPRINT_EXPIRATION_MALFORMED":               int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED),
 	"BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED": int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED),
 }
 
-func (BumpFootprintExpirationOpResultCode) XdrEnumNames() map[int32]string {
-	return _XdrNames_BumpFootprintExpirationOpResultCode
+func (BumpFootprintExpirationResultCode) XdrEnumNames() map[int32]string {
+	return _XdrNames_BumpFootprintExpirationResultCode
 }
-func (v BumpFootprintExpirationOpResultCode) String() string {
-	if s, ok := _XdrNames_BumpFootprintExpirationOpResultCode[int32(v)]; ok {
+func (v BumpFootprintExpirationResultCode) String() string {
+	if s, ok := _XdrNames_BumpFootprintExpirationResultCode[int32(v)]; ok {
 		return s
 	}
-	return fmt.Sprintf("BumpFootprintExpirationOpResultCode#%d", v)
+	return fmt.Sprintf("BumpFootprintExpirationResultCode#%d", v)
 }
-func (v *BumpFootprintExpirationOpResultCode) Scan(ss fmt.ScanState, _ rune) error {
+func (v *BumpFootprintExpirationResultCode) Scan(ss fmt.ScanState, _ rune) error {
 	if tok, err := ss.Token(true, XdrSymChar); err != nil {
 		return err
 	} else {
 		stok := string(tok)
-		if val, ok := _XdrValues_BumpFootprintExpirationOpResultCode[stok]; ok {
-			*v = BumpFootprintExpirationOpResultCode(val)
+		if val, ok := _XdrValues_BumpFootprintExpirationResultCode[stok]; ok {
+			*v = BumpFootprintExpirationResultCode(val)
 			return nil
-		} else if stok == "BumpFootprintExpirationOpResultCode" {
+		} else if stok == "BumpFootprintExpirationResultCode" {
 			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
 				return nil
 			}
 		}
-		return XdrError(fmt.Sprintf("%s is not a valid BumpFootprintExpirationOpResultCode.", stok))
+		return XdrError(fmt.Sprintf("%s is not a valid BumpFootprintExpirationResultCode.", stok))
 	}
 }
-func (v BumpFootprintExpirationOpResultCode) GetU32() uint32 { return uint32(v) }
-func (v *BumpFootprintExpirationOpResultCode) SetU32(n uint32) {
-	*v = BumpFootprintExpirationOpResultCode(n)
+func (v BumpFootprintExpirationResultCode) GetU32() uint32 { return uint32(v) }
+func (v *BumpFootprintExpirationResultCode) SetU32(n uint32) {
+	*v = BumpFootprintExpirationResultCode(n)
 }
-func (v *BumpFootprintExpirationOpResultCode) XdrPointer() interface{} { return v }
-func (BumpFootprintExpirationOpResultCode) XdrTypeName() string {
-	return "BumpFootprintExpirationOpResultCode"
+func (v *BumpFootprintExpirationResultCode) XdrPointer() interface{} { return v }
+func (BumpFootprintExpirationResultCode) XdrTypeName() string {
+	return "BumpFootprintExpirationResultCode"
 }
-func (v BumpFootprintExpirationOpResultCode) XdrValue() interface{}          { return v }
-func (v *BumpFootprintExpirationOpResultCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v BumpFootprintExpirationResultCode) XdrValue() interface{}          { return v }
+func (v *BumpFootprintExpirationResultCode) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
-type XdrType_BumpFootprintExpirationOpResultCode = *BumpFootprintExpirationOpResultCode
+type XdrType_BumpFootprintExpirationResultCode = *BumpFootprintExpirationResultCode
 
-func XDR_BumpFootprintExpirationOpResultCode(v *BumpFootprintExpirationOpResultCode) *BumpFootprintExpirationOpResultCode {
+func XDR_BumpFootprintExpirationResultCode(v *BumpFootprintExpirationResultCode) *BumpFootprintExpirationResultCode {
 	return v
 }
 
-var _XdrComments_BumpFootprintExpirationOpResultCode = map[int32]string{
+var _XdrComments_BumpFootprintExpirationResultCode = map[int32]string{
 	int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):   "codes considered as \"success\" for the operation",
 	int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED): "codes considered as \"failure\" for the operation",
 }
 
-func (e BumpFootprintExpirationOpResultCode) XdrEnumComments() map[int32]string {
-	return _XdrComments_BumpFootprintExpirationOpResultCode
+func (e BumpFootprintExpirationResultCode) XdrEnumComments() map[int32]string {
+	return _XdrComments_BumpFootprintExpirationResultCode
 }
 
 var _XdrTags_BumpFootprintExpirationResult = map[int32]bool{
@@ -22907,7 +22907,7 @@ func (u BumpFootprintExpirationResult) XdrValid() bool {
 	return false
 }
 func (u *BumpFootprintExpirationResult) XdrUnionTag() XdrNum32 {
-	return XDR_BumpFootprintExpirationOpResultCode(&u.Code)
+	return XDR_BumpFootprintExpirationResultCode(&u.Code)
 }
 func (u *BumpFootprintExpirationResult) XdrUnionTagName() string {
 	return "Code"
@@ -22941,7 +22941,7 @@ func (u *BumpFootprintExpirationResult) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	XDR_BumpFootprintExpirationOpResultCode(&u.Code).XdrMarshal(x, x.Sprintf("%scode", name))
+	XDR_BumpFootprintExpirationResultCode(&u.Code).XdrMarshal(x, x.Sprintf("%scode", name))
 	switch u.Code {
 	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
 		return
