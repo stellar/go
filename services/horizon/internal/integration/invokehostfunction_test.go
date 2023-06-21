@@ -237,7 +237,8 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 								ContractId: contractID,
 							},
 							Key: xdr.ScVal{
-								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// Tsachi - This need to be updated.
+								// Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 								// symbolic: no value
 							},
 						},
@@ -355,7 +356,8 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 								ContractId: contractID,
 							},
 							Key: xdr.ScVal{
-								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// Tsachi - This need to be updated.
+								// Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 								// symbolic: no value
 							},
 						},
@@ -512,7 +514,8 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 			ContractId: &hashedContractID,
 		},
 		Key: xdr.ScVal{
-			Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+			// Tsachi - This need to be updated.
+			//Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 			// symbolic: no value
 		},
 	}
@@ -531,9 +534,9 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 						Salt: saltParameter,
 					},
 				},
-				Executable: xdr.ScContractExecutable{
-					Type:   xdr.ScContractExecutableTypeSccontractExecutableWasmRef,
-					WasmId: &contractHash,
+				Executable: xdr.ContractExecutable{
+					Type:     xdr.ContractExecutableTypeContractExecutableWasm,
+					WasmHash: &contractHash,
 				},
 			},
 		},

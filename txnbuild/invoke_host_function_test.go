@@ -96,10 +96,13 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 										ContractId: &xdr.Hash{1, 2, 3},
 									},
 									Key: xdr.ScVal{
-										Type: xdr.ScValTypeScvContractExecutable,
-										Exec: &xdr.ScContractExecutable{
-											Type:   xdr.ScContractExecutableTypeSccontractExecutableWasmRef,
-											WasmId: &wasmId,
+										Type: xdr.ScValTypeScvContractInstance,
+										Instance: &xdr.ScContractInstance{
+											Executable: xdr.ContractExecutable{
+												Type:     xdr.ContractExecutableTypeContractExecutableWasm,
+												WasmHash: &wasmId,
+											},
+											Storage: &xdr.ScMap{},
 										},
 									},
 								},

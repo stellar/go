@@ -952,7 +952,8 @@ func baseSACFootPrint(itest *integration.Test, asset xdr.Asset) []xdr.LedgerKey 
 					ContractId: &contractIDHash,
 				},
 				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+					// Tsachi - This need to be updated.
+					//Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 				},
 			},
 		},
@@ -992,7 +993,8 @@ func sacTestContractCodeLedgerKeys(contractID xdr.Hash, contractHash xdr.Hash) [
 					ContractId: &contractID,
 				},
 				Key: xdr.ScVal{
-					Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+					// Tsachi - This need to be updated.
+					//Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 				},
 			},
 		},
@@ -1079,8 +1081,9 @@ func createSAC(itest *integration.Test, sourceAccount string, asset xdr.Asset) *
 					Type:      xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
 					FromAsset: &asset,
 				},
-				Executable: xdr.ScContractExecutable{
-					Type: xdr.ScContractExecutableTypeSccontractExecutableToken,
+				Executable: xdr.ContractExecutable{
+					Type:     xdr.ContractExecutableTypeContractExecutableToken,
+					WasmHash: nil,
 				},
 			},
 		},
@@ -1207,7 +1210,8 @@ func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.As
 						ContractId: &contractID,
 					},
 					Key: xdr.ScVal{
-						Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+						// Tsachi - This need to be updated.
+						//Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 					},
 				},
 			},

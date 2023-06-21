@@ -3,18 +3,18 @@
 
 // Package xdr is generated from:
 //
-//	xdr/Stellar-SCP.x
-//	xdr/Stellar-contract-config-setting.x
-//	xdr/Stellar-contract-env-meta.x
-//	xdr/Stellar-contract-meta.x
-//	xdr/Stellar-contract-spec.x
-//	xdr/Stellar-contract.x
-//	xdr/Stellar-internal.x
-//	xdr/Stellar-ledger-entries.x
-//	xdr/Stellar-ledger.x
-//	xdr/Stellar-overlay.x
-//	xdr/Stellar-transaction.x
-//	xdr/Stellar-types.x
+//  xdr/Stellar-SCP.x
+//  xdr/Stellar-contract-config-setting.x
+//  xdr/Stellar-contract-env-meta.x
+//  xdr/Stellar-contract-meta.x
+//  xdr/Stellar-contract-spec.x
+//  xdr/Stellar-contract.x
+//  xdr/Stellar-internal.x
+//  xdr/Stellar-ledger-entries.x
+//  xdr/Stellar-ledger.x
+//  xdr/Stellar-overlay.x
+//  xdr/Stellar-transaction.x
+//  xdr/Stellar-types.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
@@ -35,12 +35,12 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "739e2480ba197aa859f122632a93172668cb0dbe93e30a54c192b96878af207a",
-	"xdr/Stellar-contract.x":                "b864122a386370e9b4f2513c1cff762dfffead8a33e9760d96f41643d45207ff",
+	"xdr/Stellar-contract.x":                "62fedbf57a5acaee5326523d878ba12f14b9a38a137671715e4a0f8e077785be",
 	"xdr/Stellar-internal.x":                "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
 	"xdr/Stellar-ledger-entries.x":          "f648e16cd6cd19dac8103252af9eda3e0b73dd5b983dd7ca14d6fb32f108ac04",
 	"xdr/Stellar-ledger.x":                  "ac8c016a92e75e6ba29cccb00a3aa633f347ba15e5b4fcd0d6986d4eed52fe4e",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "eaa4b6c047f564b10a8179c66e4342359d085be8bd2a61ca5fb7b4fc18ec0a13",
+	"xdr/Stellar-transaction.x":             "3599090a2446d62804b8fcfe6b49a46a61f3b1546d3ede4b1969af4683e699ec",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -24944,11 +24944,11 @@ var _ xdrType = (*ContractIdPreimage)(nil)
 //	struct CreateContractArgs
 //	 {
 //	     ContractIDPreimage contractIDPreimage;
-//	     SCContractExecutable executable;
+//	     ContractExecutable executable;
 //	 };
 type CreateContractArgs struct {
 	ContractIdPreimage ContractIdPreimage
-	Executable         ScContractExecutable
+	Executable         ContractExecutable
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -24977,7 +24977,7 @@ func (s *CreateContractArgs) DecodeFrom(d *xdr.Decoder) (int, error) {
 	nTmp, err = s.Executable.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
+		return n, fmt.Errorf("decoding ContractExecutable: %s", err)
 	}
 	return n, nil
 }
@@ -48461,45 +48461,44 @@ var _ xdrType = (*ScSpecEntry)(nil)
 //	     SCV_VEC = 16,
 //	     SCV_MAP = 17,
 //
-//	     // SCContractExecutable and SCAddressType are types that gets used separately from
-//	     // SCVal so we do not flatten their structures into separate SCVal cases.
-//	     SCV_CONTRACT_EXECUTABLE = 18,
-//	     SCV_ADDRESS = 19,
+//	     // The following are the internal SCVal variants that are not
+//	     // exposed to the contracts.
+//	     SCV_ADDRESS = 18,
+//	     SCV_CONTRACT_INSTANCE = 19,
+//	     SCV_STORAGE_TYPE = 20,
 //
-//	     // SCV_LEDGER_KEY_CONTRACT_EXECUTABLE and SCV_LEDGER_KEY_NONCE are unique
-//	     // symbolic SCVals used as the key for ledger entries for a contract's code
-//	     // and an address' nonce, respectively.
-//	     SCV_LEDGER_KEY_CONTRACT_EXECUTABLE = 20,
-//	     SCV_LEDGER_KEY_NONCE = 21,
-//
-//	     SCV_STORAGE_TYPE = 22
+//	     // SCV_LEDGER_KEY_CONTRACT_INSTANCE and SCV_LEDGER_KEY_NONCE are unique
+//	     // symbolic SCVals used as the key for ledger entries for a contract's
+//	     // instance and an address' nonce, respectively.
+//	     SCV_LEDGER_KEY_CONTRACT_INSTANCE = 21,
+//	     SCV_LEDGER_KEY_NONCE = 22
 //	 };
 type ScValType int32
 
 const (
-	ScValTypeScvBool                        ScValType = 0
-	ScValTypeScvVoid                        ScValType = 1
-	ScValTypeScvError                       ScValType = 2
-	ScValTypeScvU32                         ScValType = 3
-	ScValTypeScvI32                         ScValType = 4
-	ScValTypeScvU64                         ScValType = 5
-	ScValTypeScvI64                         ScValType = 6
-	ScValTypeScvTimepoint                   ScValType = 7
-	ScValTypeScvDuration                    ScValType = 8
-	ScValTypeScvU128                        ScValType = 9
-	ScValTypeScvI128                        ScValType = 10
-	ScValTypeScvU256                        ScValType = 11
-	ScValTypeScvI256                        ScValType = 12
-	ScValTypeScvBytes                       ScValType = 13
-	ScValTypeScvString                      ScValType = 14
-	ScValTypeScvSymbol                      ScValType = 15
-	ScValTypeScvVec                         ScValType = 16
-	ScValTypeScvMap                         ScValType = 17
-	ScValTypeScvContractExecutable          ScValType = 18
-	ScValTypeScvAddress                     ScValType = 19
-	ScValTypeScvLedgerKeyContractExecutable ScValType = 20
-	ScValTypeScvLedgerKeyNonce              ScValType = 21
-	ScValTypeScvStorageType                 ScValType = 22
+	ScValTypeScvBool                      ScValType = 0
+	ScValTypeScvVoid                      ScValType = 1
+	ScValTypeScvError                     ScValType = 2
+	ScValTypeScvU32                       ScValType = 3
+	ScValTypeScvI32                       ScValType = 4
+	ScValTypeScvU64                       ScValType = 5
+	ScValTypeScvI64                       ScValType = 6
+	ScValTypeScvTimepoint                 ScValType = 7
+	ScValTypeScvDuration                  ScValType = 8
+	ScValTypeScvU128                      ScValType = 9
+	ScValTypeScvI128                      ScValType = 10
+	ScValTypeScvU256                      ScValType = 11
+	ScValTypeScvI256                      ScValType = 12
+	ScValTypeScvBytes                     ScValType = 13
+	ScValTypeScvString                    ScValType = 14
+	ScValTypeScvSymbol                    ScValType = 15
+	ScValTypeScvVec                       ScValType = 16
+	ScValTypeScvMap                       ScValType = 17
+	ScValTypeScvAddress                   ScValType = 18
+	ScValTypeScvContractInstance          ScValType = 19
+	ScValTypeScvStorageType               ScValType = 20
+	ScValTypeScvLedgerKeyContractInstance ScValType = 21
+	ScValTypeScvLedgerKeyNonce            ScValType = 22
 )
 
 var scValTypeMap = map[int32]string{
@@ -48521,11 +48520,11 @@ var scValTypeMap = map[int32]string{
 	15: "ScValTypeScvSymbol",
 	16: "ScValTypeScvVec",
 	17: "ScValTypeScvMap",
-	18: "ScValTypeScvContractExecutable",
-	19: "ScValTypeScvAddress",
-	20: "ScValTypeScvLedgerKeyContractExecutable",
-	21: "ScValTypeScvLedgerKeyNonce",
-	22: "ScValTypeScvStorageType",
+	18: "ScValTypeScvAddress",
+	19: "ScValTypeScvContractInstance",
+	20: "ScValTypeScvStorageType",
+	21: "ScValTypeScvLedgerKeyContractInstance",
+	22: "ScValTypeScvLedgerKeyNonce",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -49192,64 +49191,64 @@ func (s Int256Parts) xdrType() {}
 
 var _ xdrType = (*Int256Parts)(nil)
 
-// ScContractExecutableType is an XDR Enum defines as:
+// ContractExecutableType is an XDR Enum defines as:
 //
-//	enum SCContractExecutableType
+//	enum ContractExecutableType
 //	 {
-//	     SCCONTRACT_EXECUTABLE_WASM_REF = 0,
-//	     SCCONTRACT_EXECUTABLE_TOKEN = 1
+//	     CONTRACT_EXECUTABLE_WASM = 0,
+//	     CONTRACT_EXECUTABLE_TOKEN = 1
 //	 };
-type ScContractExecutableType int32
+type ContractExecutableType int32
 
 const (
-	ScContractExecutableTypeSccontractExecutableWasmRef ScContractExecutableType = 0
-	ScContractExecutableTypeSccontractExecutableToken   ScContractExecutableType = 1
+	ContractExecutableTypeContractExecutableWasm  ContractExecutableType = 0
+	ContractExecutableTypeContractExecutableToken ContractExecutableType = 1
 )
 
-var scContractExecutableTypeMap = map[int32]string{
-	0: "ScContractExecutableTypeSccontractExecutableWasmRef",
-	1: "ScContractExecutableTypeSccontractExecutableToken",
+var contractExecutableTypeMap = map[int32]string{
+	0: "ContractExecutableTypeContractExecutableWasm",
+	1: "ContractExecutableTypeContractExecutableToken",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScContractExecutableType
-func (e ScContractExecutableType) ValidEnum(v int32) bool {
-	_, ok := scContractExecutableTypeMap[v]
+// the Enum interface for ContractExecutableType
+func (e ContractExecutableType) ValidEnum(v int32) bool {
+	_, ok := contractExecutableTypeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e ScContractExecutableType) String() string {
-	name, _ := scContractExecutableTypeMap[int32(e)]
+func (e ContractExecutableType) String() string {
+	name, _ := contractExecutableTypeMap[int32(e)]
 	return name
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (e ScContractExecutableType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := scContractExecutableTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ScContractExecutableType enum value", e)
+func (e ContractExecutableType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := contractExecutableTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ContractExecutableType enum value", e)
 	}
 	_, err := enc.EncodeInt(int32(e))
 	return err
 }
 
-var _ decoderFrom = (*ScContractExecutableType)(nil)
+var _ decoderFrom = (*ContractExecutableType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScContractExecutableType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractExecutableType) DecodeFrom(d *xdr.Decoder) (int, error) {
 	v, n, err := d.DecodeInt()
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractExecutableType: %s", err)
+		return n, fmt.Errorf("decoding ContractExecutableType: %s", err)
 	}
-	if _, ok := scContractExecutableTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ScContractExecutableType enum value", v)
+	if _, ok := contractExecutableTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ContractExecutableType enum value", v)
 	}
-	*e = ScContractExecutableType(v)
+	*e = ContractExecutableType(v)
 	return n, nil
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScContractExecutableType) MarshalBinary() ([]byte, error) {
+func (s ContractExecutableType) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -49257,7 +49256,7 @@ func (s ScContractExecutableType) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScContractExecutableType) UnmarshalBinary(inp []byte) error {
+func (s *ContractExecutableType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -49265,84 +49264,84 @@ func (s *ScContractExecutableType) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ScContractExecutableType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScContractExecutableType)(nil)
+	_ encoding.BinaryMarshaler   = (*ContractExecutableType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractExecutableType)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ScContractExecutableType) xdrType() {}
+func (s ContractExecutableType) xdrType() {}
 
-var _ xdrType = (*ScContractExecutableType)(nil)
+var _ xdrType = (*ContractExecutableType)(nil)
 
-// ScContractExecutable is an XDR Union defines as:
+// ContractExecutable is an XDR Union defines as:
 //
-//	union SCContractExecutable switch (SCContractExecutableType type)
+//	union ContractExecutable switch (ContractExecutableType type)
 //	 {
-//	 case SCCONTRACT_EXECUTABLE_WASM_REF:
-//	     Hash wasm_id;
-//	 case SCCONTRACT_EXECUTABLE_TOKEN:
+//	 case CONTRACT_EXECUTABLE_WASM:
+//	     Hash wasm_hash;
+//	 case CONTRACT_EXECUTABLE_TOKEN:
 //	     void;
 //	 };
-type ScContractExecutable struct {
-	Type   ScContractExecutableType
-	WasmId *Hash
+type ContractExecutable struct {
+	Type     ContractExecutableType
+	WasmHash *Hash
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u ScContractExecutable) SwitchFieldName() string {
+func (u ContractExecutable) SwitchFieldName() string {
 	return "Type"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScContractExecutable
-func (u ScContractExecutable) ArmForSwitch(sw int32) (string, bool) {
-	switch ScContractExecutableType(sw) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		return "WasmId", true
-	case ScContractExecutableTypeSccontractExecutableToken:
+// the value for an instance of ContractExecutable
+func (u ContractExecutable) ArmForSwitch(sw int32) (string, bool) {
+	switch ContractExecutableType(sw) {
+	case ContractExecutableTypeContractExecutableWasm:
+		return "WasmHash", true
+	case ContractExecutableTypeContractExecutableToken:
 		return "", true
 	}
 	return "-", false
 }
 
-// NewScContractExecutable creates a new  ScContractExecutable.
-func NewScContractExecutable(aType ScContractExecutableType, value interface{}) (result ScContractExecutable, err error) {
+// NewContractExecutable creates a new  ContractExecutable.
+func NewContractExecutable(aType ContractExecutableType, value interface{}) (result ContractExecutable, err error) {
 	result.Type = aType
-	switch ScContractExecutableType(aType) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
+	switch ContractExecutableType(aType) {
+	case ContractExecutableTypeContractExecutableWasm:
 		tv, ok := value.(Hash)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be Hash")
 			return
 		}
-		result.WasmId = &tv
-	case ScContractExecutableTypeSccontractExecutableToken:
+		result.WasmHash = &tv
+	case ContractExecutableTypeContractExecutableToken:
 		// void
 	}
 	return
 }
 
-// MustWasmId retrieves the WasmId value from the union,
+// MustWasmHash retrieves the WasmHash value from the union,
 // panicing if the value is not set.
-func (u ScContractExecutable) MustWasmId() Hash {
-	val, ok := u.GetWasmId()
+func (u ContractExecutable) MustWasmHash() Hash {
+	val, ok := u.GetWasmHash()
 
 	if !ok {
-		panic("arm WasmId is not set")
+		panic("arm WasmHash is not set")
 	}
 
 	return val
 }
 
-// GetWasmId retrieves the WasmId value from the union,
+// GetWasmHash retrieves the WasmHash value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScContractExecutable) GetWasmId() (result Hash, ok bool) {
+func (u ContractExecutable) GetWasmHash() (result Hash, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "WasmId" {
-		result = *u.WasmId
+	if armName == "WasmHash" {
+		result = *u.WasmHash
 		ok = true
 	}
 
@@ -49350,53 +49349,53 @@ func (u ScContractExecutable) GetWasmId() (result Hash, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (u ScContractExecutable) EncodeTo(e *xdr.Encoder) error {
+func (u ContractExecutable) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ScContractExecutableType(u.Type) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		if err = (*u.WasmId).EncodeTo(e); err != nil {
+	switch ContractExecutableType(u.Type) {
+	case ContractExecutableTypeContractExecutableWasm:
+		if err = (*u.WasmHash).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScContractExecutableTypeSccontractExecutableToken:
+	case ContractExecutableTypeContractExecutableToken:
 		// Void
 		return nil
 	}
-	return fmt.Errorf("Type (ScContractExecutableType) switch value '%d' is not valid for union ScContractExecutable", u.Type)
+	return fmt.Errorf("Type (ContractExecutableType) switch value '%d' is not valid for union ContractExecutable", u.Type)
 }
 
-var _ decoderFrom = (*ScContractExecutable)(nil)
+var _ decoderFrom = (*ContractExecutable)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
 	nTmp, err = u.Type.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractExecutableType: %s", err)
+		return n, fmt.Errorf("decoding ContractExecutableType: %s", err)
 	}
-	switch ScContractExecutableType(u.Type) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		u.WasmId = new(Hash)
-		nTmp, err = (*u.WasmId).DecodeFrom(d)
+	switch ContractExecutableType(u.Type) {
+	case ContractExecutableTypeContractExecutableWasm:
+		u.WasmHash = new(Hash)
+		nTmp, err = (*u.WasmHash).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
 		}
 		return n, nil
-	case ScContractExecutableTypeSccontractExecutableToken:
+	case ContractExecutableTypeContractExecutableToken:
 		// Void
 		return n, nil
 	}
-	return n, fmt.Errorf("union ScContractExecutable has invalid Type (ScContractExecutableType) switch value '%d'", u.Type)
+	return n, fmt.Errorf("union ContractExecutable has invalid Type (ContractExecutableType) switch value '%d'", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScContractExecutable) MarshalBinary() ([]byte, error) {
+func (s ContractExecutable) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -49404,7 +49403,7 @@ func (s ScContractExecutable) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScContractExecutable) UnmarshalBinary(inp []byte) error {
+func (s *ContractExecutable) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -49412,15 +49411,15 @@ func (s *ScContractExecutable) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ScContractExecutable)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScContractExecutable)(nil)
+	_ encoding.BinaryMarshaler   = (*ContractExecutable)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractExecutable)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ScContractExecutable) xdrType() {}
+func (s ContractExecutable) xdrType() {}
 
-var _ xdrType = (*ScContractExecutable)(nil)
+var _ xdrType = (*ContractExecutable)(nil)
 
 // ScAddressType is an XDR Enum defines as:
 //
@@ -50154,6 +50153,90 @@ func (s ScNonceKey) xdrType() {}
 
 var _ xdrType = (*ScNonceKey)(nil)
 
+// ScContractInstance is an XDR Struct defines as:
+//
+//	struct SCContractInstance {
+//	     ContractExecutable executable;
+//	     SCMap* storage;
+//	 };
+type ScContractInstance struct {
+	Executable ContractExecutable
+	Storage    *ScMap
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScContractInstance) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Executable.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeBool(s.Storage != nil); err != nil {
+		return err
+	}
+	if s.Storage != nil {
+		if err = (*s.Storage).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScContractInstance)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScContractInstance) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Executable.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractExecutable: %s", err)
+	}
+	var b bool
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScMap: %s", err)
+	}
+	s.Storage = nil
+	if b {
+		s.Storage = new(ScMap)
+		nTmp, err = s.Storage.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScMap: %s", err)
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScContractInstance) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScContractInstance) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScContractInstance)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScContractInstance)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScContractInstance) xdrType() {}
+
+var _ xdrType = (*ScContractInstance)(nil)
+
 // ScVal is an XDR Union defines as:
 //
 //	union SCVal switch (SCValType type)
@@ -50204,20 +50287,21 @@ var _ xdrType = (*ScNonceKey)(nil)
 //	 case SCV_MAP:
 //	     SCMap *map;
 //
-//	 case SCV_CONTRACT_EXECUTABLE:
-//	     SCContractExecutable exec;
 //	 case SCV_ADDRESS:
 //	     SCAddress address;
 //
 //	 // Special SCVals reserved for system-constructed contract-data
 //	 // ledger keys, not generally usable elsewhere.
-//	 case SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+//	 case SCV_LEDGER_KEY_CONTRACT_INSTANCE:
 //	     void;
 //	 case SCV_LEDGER_KEY_NONCE:
 //	     SCNonceKey nonce_key;
 //
 //	 case SCV_STORAGE_TYPE:
 //	     ContractDataType storageType;
+//
+//	 case SCV_CONTRACT_INSTANCE:
+//	     SCContractInstance instance;
 //	 };
 type ScVal struct {
 	Type        ScValType
@@ -50238,10 +50322,10 @@ type ScVal struct {
 	Sym         *ScSymbol
 	Vec         **ScVec
 	Map         **ScMap
-	Exec        *ScContractExecutable
 	Address     *ScAddress
 	NonceKey    *ScNonceKey
 	StorageType *ContractDataType
+	Instance    *ScContractInstance
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -50290,16 +50374,16 @@ func (u ScVal) ArmForSwitch(sw int32) (string, bool) {
 		return "Vec", true
 	case ScValTypeScvMap:
 		return "Map", true
-	case ScValTypeScvContractExecutable:
-		return "Exec", true
 	case ScValTypeScvAddress:
 		return "Address", true
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		return "", true
 	case ScValTypeScvLedgerKeyNonce:
 		return "NonceKey", true
 	case ScValTypeScvStorageType:
 		return "StorageType", true
+	case ScValTypeScvContractInstance:
+		return "Instance", true
 	}
 	return "-", false
 }
@@ -50429,13 +50513,6 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 			return
 		}
 		result.Map = &tv
-	case ScValTypeScvContractExecutable:
-		tv, ok := value.(ScContractExecutable)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScContractExecutable")
-			return
-		}
-		result.Exec = &tv
 	case ScValTypeScvAddress:
 		tv, ok := value.(ScAddress)
 		if !ok {
@@ -50443,7 +50520,7 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 			return
 		}
 		result.Address = &tv
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		// void
 	case ScValTypeScvLedgerKeyNonce:
 		tv, ok := value.(ScNonceKey)
@@ -50459,6 +50536,13 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 			return
 		}
 		result.StorageType = &tv
+	case ScValTypeScvContractInstance:
+		tv, ok := value.(ScContractInstance)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be ScContractInstance")
+			return
+		}
+		result.Instance = &tv
 	}
 	return
 }
@@ -50888,31 +50972,6 @@ func (u ScVal) GetMap() (result *ScMap, ok bool) {
 	return
 }
 
-// MustExec retrieves the Exec value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustExec() ScContractExecutable {
-	val, ok := u.GetExec()
-
-	if !ok {
-		panic("arm Exec is not set")
-	}
-
-	return val
-}
-
-// GetExec retrieves the Exec value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetExec() (result ScContractExecutable, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Exec" {
-		result = *u.Exec
-		ok = true
-	}
-
-	return
-}
-
 // MustAddress retrieves the Address value from the union,
 // panicing if the value is not set.
 func (u ScVal) MustAddress() ScAddress {
@@ -50982,6 +51041,31 @@ func (u ScVal) GetStorageType() (result ContractDataType, ok bool) {
 
 	if armName == "StorageType" {
 		result = *u.StorageType
+		ok = true
+	}
+
+	return
+}
+
+// MustInstance retrieves the Instance value from the union,
+// panicing if the value is not set.
+func (u ScVal) MustInstance() ScContractInstance {
+	val, ok := u.GetInstance()
+
+	if !ok {
+		panic("arm Instance is not set")
+	}
+
+	return val
+}
+
+// GetInstance retrieves the Instance value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ScVal) GetInstance() (result ScContractInstance, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Instance" {
+		result = *u.Instance
 		ok = true
 	}
 
@@ -51093,17 +51177,12 @@ func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 			}
 		}
 		return nil
-	case ScValTypeScvContractExecutable:
-		if err = (*u.Exec).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
 	case ScValTypeScvAddress:
 		if err = (*u.Address).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		// Void
 		return nil
 	case ScValTypeScvLedgerKeyNonce:
@@ -51113,6 +51192,11 @@ func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case ScValTypeScvStorageType:
 		if err = (*u.StorageType).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case ScValTypeScvContractInstance:
+		if err = (*u.Instance).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -51291,14 +51375,6 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 			}
 		}
 		return n, nil
-	case ScValTypeScvContractExecutable:
-		u.Exec = new(ScContractExecutable)
-		nTmp, err = (*u.Exec).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
-		}
-		return n, nil
 	case ScValTypeScvAddress:
 		u.Address = new(ScAddress)
 		nTmp, err = (*u.Address).DecodeFrom(d)
@@ -51307,7 +51383,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ScAddress: %s", err)
 		}
 		return n, nil
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		// Void
 		return n, nil
 	case ScValTypeScvLedgerKeyNonce:
@@ -51324,6 +51400,14 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ContractDataType: %s", err)
+		}
+		return n, nil
+	case ScValTypeScvContractInstance:
+		u.Instance = new(ScContractInstance)
+		nTmp, err = (*u.Instance).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScContractInstance: %s", err)
 		}
 		return n, nil
 	}
