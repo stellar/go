@@ -102,7 +102,6 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 												Type:     xdr.ContractExecutableTypeContractExecutableWasm,
 												WasmHash: &wasmId,
 											},
-											Storage: &xdr.ScMap{},
 										},
 									},
 								},
