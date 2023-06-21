@@ -1558,7 +1558,6 @@ func (e *effectsWrapper) addBumpFootprintExpirationEffect() error {
 			}
 		case xdr.LedgerEntryTypeContractCode:
 			v := change.Post.Data.MustContractCode()
-			var key xdr.LedgerKey
 			if err := key.SetContractCode(v.Hash); err != nil {
 				return err
 			}
