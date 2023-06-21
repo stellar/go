@@ -245,7 +245,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		// Possible add'l work: https://github.com/stellar/go/issues/4585
 		err = wrapper.addInvokeHostFunctionEffects(filterEvents(diagnosticEvents))
 	case xdr.OperationTypeBumpFootprintExpiration:
-		err = nil // what's the effect that need to be used here ?
+		err = wrapper.addBumpFootprintExpirationEffect()
 	default:
 		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}
@@ -1529,5 +1529,56 @@ func (e *effectsWrapper) addInvokeHostFunctionEffects(events []contractevents.Ev
 		}
 	}
 
+	return nil
+}
+
+func (e *effectsWrapper) addBumpFootprintExpirationEffect() error {
+	op := e.operation.operation.Body.MustBumpFootprintExpirationOp()
+	if op.LedgersToExpire == nil {
+		return fmt.Errorf("invalid bump footprint expiration operation: %v", op)
+	}
+
+	// Figure out which entries were affected
+	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
+	if err != nil {
+		return err
+	}
+	entries := make([]string, 0, len(changes))
+	for _, change := range changes {
+		// They should all have a post
+		if change.Post == nil {
+			return fmt.Errorf("invalid bump footprint expiration operation: %v", op)
+		}
+		var key xdr.LedgerKey
+		switch change.Post.Data.Type {
+		case xdr.LedgerEntryTypeContractData:
+			v := change.Post.Data.MustContractData()
+			if err := key.SetContractData(v.Contract, v.Key, v.Type, v.Body.LeType); err != nil {
+				return err
+			}
+		case xdr.LedgerEntryTypeContractCode:
+			v := change.Post.Data.MustContractCode()
+			var key xdr.LedgerKey
+			if err := key.SetContractCode(v.Hash); err != nil {
+				return err
+			}
+		default:
+			// Ignore any non-contract entries, as they couldn't have been affected.
+			//
+			// Should we error here? No, because there might be other entries
+			// affected, for example, the user's balance.
+			continue
+		}
+		b64, err := xdr.MarshalBase64(key)
+		if err != nil {
+			return err
+		}
+		entries = append(entries, b64)
+	}
+	details := map[string]interface{}{
+		"entries":           entries,
+		"ledgers_to_expire": op.LedgersToExpire,
+	}
+	e.addMuxed(e.operation.SourceAccount(), history.EffectBumpFootprintExpiration, details)
 	return nil
 }
