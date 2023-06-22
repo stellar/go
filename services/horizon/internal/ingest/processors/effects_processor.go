@@ -181,7 +181,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeCreateAccount:
 		wrapper.addAccountCreatedEffects()
 	case xdr.OperationTypePayment:
-		wrapper.addPaymentEffects()
+		err = wrapper.addPaymentEffects()
 	case xdr.OperationTypePathPaymentStrictReceive:
 		err = wrapper.pathPaymentStrictReceiveEffects()
 	case xdr.OperationTypePathPaymentStrictSend:
@@ -193,7 +193,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		err = wrapper.addCreatePassiveSellOfferEffect()
 	case xdr.OperationTypeSetOptions:
-		wrapper.addSetOptionsEffects()
+		err = wrapper.addSetOptionsEffects()
 	case xdr.OperationTypeChangeTrust:
 		err = wrapper.addChangeTrustEffects()
 	case xdr.OperationTypeAllowTrust:
@@ -244,7 +244,9 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	// Liquidity pools
 	for _, change := range changes {
 		// Effects caused by ChangeTrust (creation), AllowTrust and SetTrustlineFlags (removal through revocation)
-		wrapper.addLedgerEntryLiquidityPoolEffects(change)
+		if err = wrapper.addLedgerEntryLiquidityPoolEffects(change); err != nil {
+			return nil, err
+		}
 	}
 
 	return wrapper.effects, nil
@@ -511,11 +513,13 @@ func (e *effectsWrapper) addAccountCreatedEffects() {
 	)
 }
 
-func (e *effectsWrapper) addPaymentEffects() {
+func (e *effectsWrapper) addPaymentEffects() (err error) {
 	op := e.operation.operation.Body.MustPaymentOp()
 
 	details := map[string]interface{}{"amount": amount.String(op.Amount)}
-	addAssetDetails(details, op.Asset, "")
+	if err = addAssetDetails(details, op.Asset, ""); err != nil {
+		return err
+	}
 
 	e.addMuxed(
 		&op.Destination,
@@ -527,6 +531,8 @@ func (e *effectsWrapper) addPaymentEffects() {
 		history.EffectAccountDebited,
 		details,
 	)
+
+	return nil
 }
 
 func (e *effectsWrapper) pathPaymentStrictReceiveEffects() error {
@@ -535,7 +541,9 @@ func (e *effectsWrapper) pathPaymentStrictReceiveEffects() error {
 	source := e.operation.SourceAccount()
 
 	details := map[string]interface{}{"amount": amount.String(op.DestAmount)}
-	addAssetDetails(details, op.DestAsset, "")
+	if err := addAssetDetails(details, op.DestAsset, ""); err != nil {
+		return err
+	}
 
 	e.addMuxed(
 		&op.Destination,
@@ -545,7 +553,9 @@ func (e *effectsWrapper) pathPaymentStrictReceiveEffects() error {
 
 	result := e.operation.OperationResult().MustPathPaymentStrictReceiveResult()
 	details = map[string]interface{}{"amount": amount.String(result.SendAmount())}
-	addAssetDetails(details, op.SendAsset, "")
+	if err := addAssetDetails(details, op.SendAsset, ""); err != nil {
+		return err
+	}
 
 	e.addMuxed(
 		source,
@@ -563,11 +573,15 @@ func (e *effectsWrapper) addPathPaymentStrictSendEffects() error {
 	result := e.operation.OperationResult().MustPathPaymentStrictSendResult()
 
 	details := map[string]interface{}{"amount": amount.String(result.DestAmount())}
-	addAssetDetails(details, op.DestAsset, "")
+	if err := addAssetDetails(details, op.DestAsset, ""); err != nil {
+		return err
+	}
 	e.addMuxed(&op.Destination, history.EffectAccountCredited, details)
 
 	details = map[string]interface{}{"amount": amount.String(op.SendAmount)}
-	addAssetDetails(details, op.SendAsset, "")
+	if err := addAssetDetails(details, op.SendAsset, ""); err != nil {
+		return err
+	}
 	e.addMuxed(source, history.EffectAccountDebited, details)
 
 	return e.addIngestTradeEffects(*source, resultSuccess.Offers)
@@ -769,7 +783,9 @@ func (e *effectsWrapper) addChangeTrustEffects() error {
 				return err
 			}
 		} else {
-			addAssetDetails(details, op.Line.ToAsset(), "")
+			if err := addAssetDetails(details, op.Line.ToAsset(), ""); err != nil {
+				return err
+			}
 		}
 
 		e.addMuxed(source, effect, details)
@@ -786,7 +802,9 @@ func (e *effectsWrapper) addAllowTrustEffects() error {
 	details := map[string]interface{}{
 		"trustor": op.Trustor.Address(),
 	}
-	addAssetDetails(details, asset, "")
+	if err := addAssetDetails(details, asset, ""); err != nil {
+		return err
+	}
 
 	switch {
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
@@ -923,7 +941,9 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Chang
 			continue
 		}
 		cb = change.Post.Data.ClaimableBalance
-		e.addClaimableBalanceEntryCreatedEffects(source, cb)
+		if err := e.addClaimableBalanceEntryCreatedEffects(source, cb); err != nil {
+			return err
+		}
 		break
 	}
 	if cb == nil {
@@ -933,7 +953,9 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Chang
 	details := map[string]interface{}{
 		"amount": amount.String(cb.Amount),
 	}
-	addAssetDetails(details, cb.Asset, "")
+	if err := addAssetDetails(details, cb.Asset, ""); err != nil {
+		return err
+	}
 	e.addMuxed(
 		source,
 		history.EffectAccountDebited,
@@ -1005,8 +1027,8 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 
 		if change.Pre != nil && change.Post == nil {
 			cBalance = change.Pre.Data.MustClaimableBalance()
-			preBalanceID, err := xdr.MarshalHex(cBalance.BalanceId)
-			if err != nil {
+			preBalanceID, innerErr := xdr.MarshalHex(cBalance.BalanceId)
+			if innerErr != nil {
 				return fmt.Errorf("Invalid balanceId in meta changes for op: %d", e.operation.index)
 			}
 
@@ -1037,7 +1059,9 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 	details = map[string]interface{}{
 		"amount": amount.String(cBalance.Amount),
 	}
-	addAssetDetails(details, cBalance.Asset, "")
+	if err = addAssetDetails(details, cBalance.Asset, ""); err != nil {
+		return err
+	}
 	e.addMuxed(
 		source,
 		history.EffectAccountCredited,
@@ -1107,7 +1131,9 @@ func (e *effectsWrapper) addClawbackEffects() error {
 		"amount": amount.String(op.Amount),
 	}
 	source := e.operation.SourceAccount()
-	addAssetDetails(details, op.Asset, "")
+	if err := addAssetDetails(details, op.Asset, ""); err != nil {
+		return err
+	}
 
 	// The funds will be burned, but even with that, we generated an account credited effect
 	e.addMuxed(
