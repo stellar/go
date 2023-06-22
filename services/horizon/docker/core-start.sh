@@ -24,6 +24,7 @@ if [ "$1" = "standalone" ]; then
   pushd ./history/vs/
   python3 -m http.server 1570 &
   popd
+  stellar-core --conf stellar-core.cfg offline-close 8
 fi
 
 exec stellar-core run
