@@ -3788,7 +3788,9 @@ func makeInvocationTransaction(
 	meta := xdr.TransactionMetaV3{
 		// irrelevant for contract invocations: only events are inspected
 		Operations: []xdr.OperationMeta{},
-		Events:     make([]xdr.ContractEvent, len(types)),
+		SorobanMeta: &xdr.SorobanTransactionMeta{
+			Events: make([]xdr.ContractEvent, len(types)),
+		},
 	}
 
 	for idx, type_ := range types {
@@ -3799,7 +3801,7 @@ func makeInvocationTransaction(
 			amount,
 			networkPassphrase,
 		)
-		meta.Events[idx] = event
+		meta.SorobanMeta.Events[idx] = event
 	}
 
 	envelope := xdr.TransactionV1Envelope{
@@ -3838,4 +3840,145 @@ func makeInvocationTransaction(
 		},
 		UnsafeMeta: xdr.TransactionMeta{V: 3, V3: &meta},
 	}
+}
+
+func TestBumpFootprintExpirationEffects(t *testing.T) {
+	randAddr := func() string {
+		return keypair.MustRandom().Address()
+	}
+
+	admin := randAddr()
+	contractBytes := xdr.Hash{}
+	contract := xdr.ScAddress{Type: xdr.ScAddressTypeScAddressTypeContract, ContractId: &contractBytes}
+	keyBytes := xdr.ScSymbol("key")
+	key := xdr.ScVal{
+		Type: xdr.ScValTypeScvSymbol,
+		Sym:  &keyBytes,
+	}
+	valBool := true
+	val := xdr.ScVal{
+		Type: xdr.ScValTypeScvBool,
+		B:    &valBool,
+	}
+	ledgerEntryKey := xdr.LedgerKey{
+		Type: xdr.LedgerEntryTypeContractData,
+		ContractData: &xdr.LedgerKeyContractData{
+			Contract: contract,
+			Key:      key,
+			Type:     xdr.ContractDataTypePersistent,
+			LeType:   xdr.ContractLedgerEntryTypeExpirationExtension,
+		},
+	}
+	ledgerEntryKeyStr, err := xdr.MarshalBase64(ledgerEntryKey)
+	assert.NoError(t, err)
+
+	rawContractId := [64]byte{}
+	rand.Read(rawContractId[:])
+
+	meta := xdr.TransactionMetaV3{
+		Operations: []xdr.OperationMeta{
+			{
+				Changes: xdr.LedgerEntryChanges{
+					// TODO: Confirm this STATE entry is emitted from core as part of the
+					// ledger close meta we get.
+					{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+						State: &xdr.LedgerEntry{
+							LastModifiedLedgerSeq: 1,
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeContractData,
+								ContractData: &xdr.ContractDataEntry{
+									Contract: contract,
+									Key:      key,
+									Type:     xdr.ContractDataTypePersistent,
+									Body: xdr.ContractDataEntryBody{
+										LeType: xdr.ContractLedgerEntryTypeDataEntry,
+										Data:   &xdr.ContractDataEntryData{Val: val},
+									},
+									ExpirationLedgerSeq: 1,
+								},
+							},
+						},
+					},
+					{
+						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+						Updated: &xdr.LedgerEntry{
+							Data: xdr.LedgerEntryData{
+								Type: xdr.LedgerEntryTypeContractData,
+								ContractData: &xdr.ContractDataEntry{
+									Contract: contract,
+									Key:      key,
+									Type:     xdr.ContractDataTypePersistent,
+									Body: xdr.ContractDataEntryBody{
+										LeType: xdr.ContractLedgerEntryTypeExpirationExtension,
+									},
+									ExpirationLedgerSeq: 1234,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	extension := xdr.Uint32(1234)
+	envelope := xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			// the rest doesn't matter for effect ingestion
+			Operations: []xdr.Operation{
+				{
+					SourceAccount: xdr.MustMuxedAddressPtr(admin),
+					Body: xdr.OperationBody{
+						Type: xdr.OperationTypeBumpFootprintExpiration,
+						BumpFootprintExpirationOp: &xdr.BumpFootprintExpirationOp{
+							Type:            xdr.BumpFootprintExpirationTypeBumpFootprintExpirationUniform,
+							LedgersToExpire: &extension,
+						},
+					},
+				},
+			},
+		},
+	}
+	tx := ingest.LedgerTransaction{
+		Index: 0,
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1:   &envelope,
+		},
+		UnsafeMeta: xdr.TransactionMeta{
+			V:          3,
+			Operations: &meta.Operations,
+			V3:         &meta,
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index:          0,
+		transaction:    tx,
+		operation:      tx.Envelope.Operations()[0],
+		ledgerSequence: 1,
+		network:        networkPassphrase,
+	}
+
+	effects, err := operation.effects()
+	assert.NoError(t, err)
+	assert.Len(t, effects, 1)
+	assert.Equal(t,
+		[]effect{
+			{
+				order:       1,
+				address:     admin,
+				effectType:  history.EffectBumpFootprintExpiration,
+				operationID: toid.New(1, 0, 1).ToInt64(),
+				details: map[string]interface{}{
+					"entries": []string{
+						ledgerEntryKeyStr,
+					},
+					"ledgers_to_expire": &extension,
+				},
+			},
+		},
+		effects,
+	)
 }

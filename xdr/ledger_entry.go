@@ -43,8 +43,10 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 	case LedgerEntryTypeContractData:
 		contractData := entry.Data.MustContractData()
 		body = LedgerKeyContractData{
-			ContractId: contractData.ContractId,
-			Key:        contractData.Key,
+			Contract: contractData.Contract,
+			Key:      contractData.Key,
+			Type:     contractData.Type,
+			LeType:   contractData.Body.LeType,
 		}
 	case LedgerEntryTypeContractCode:
 		contractCode := entry.Data.MustContractCode()
@@ -173,4 +175,20 @@ func (entry *LedgerEntry) Normalize() *LedgerEntry {
 	}
 
 	return entry
+}
+
+func (data *LedgerEntryData) SetContractData(entry *ContractDataEntry) error {
+	*data = LedgerEntryData{
+		Type:         LedgerEntryTypeContractData,
+		ContractData: entry,
+	}
+	return nil
+}
+
+func (data *LedgerEntryData) SetContractCode(entry *ContractCodeEntry) error {
+	*data = LedgerEntryData{
+		Type:         LedgerEntryTypeContractCode,
+		ContractCode: entry,
+	}
+	return nil
 }

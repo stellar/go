@@ -63,7 +63,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	if err != nil || contractData.ContractId == nativeAssetContractID {
+	if err != nil || (contractData.Contract.ContractId != nil && (*contractData.Contract.ContractId) == nativeAssetContractID) {
 		return nil
 	}
 
@@ -71,7 +71,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 		return nil
 	}
 
-	vecPtr, ok := contractData.Val.GetVec()
+	vecPtr, ok := contractData.Body.Data.Val.GetVec()
 	if !ok || vecPtr == nil || len(*vecPtr) != 2 {
 		return nil
 	}
@@ -126,7 +126,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if err != nil {
 		return nil
 	}
-	if expectedID != contractData.ContractId {
+	if contractData.Contract.ContractId == nil || expectedID != *(contractData.Contract.ContractId) {
 		return nil
 	}
 
@@ -148,7 +148,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	if err != nil || contractData.ContractId == nativeAssetContractID {
+	if err != nil || (contractData.Contract.ContractId != nil && *contractData.Contract.ContractId == nativeAssetContractID) {
 		return [32]byte{}, nil, false
 	}
 
@@ -176,7 +176,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 
-	balanceMapPtr, ok := contractData.Val.GetMap()
+	balanceMapPtr, ok := contractData.Body.Data.Val.GetMap()
 	if !ok || balanceMapPtr == nil {
 		return [32]byte{}, nil, false
 	}
@@ -280,20 +280,39 @@ func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScVec, error
 // AssetToContractData is the inverse of AssetFromContractData. It creates a
 // ledger entry containing the asset info entry written to contract storage by the
 // Stellar Asset Contract.
+//
+// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
 	vec, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
+	var ContractIDHash xdr.Hash = contractID
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			ContractId: contractID,
-			Key:        assetInfoKey,
-			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvVec,
-				Vec:  &vec,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &ContractIDHash,
 			},
+			Key:  assetInfoKey,
+			Type: xdr.ContractDataTypePersistent,
+			Body: xdr.ContractDataEntryBody{
+				LeType: xdr.ContractLedgerEntryTypeDataEntry,
+				Data: &xdr.ContractDataEntryData{
+					Val: xdr.ScVal{
+						Type: xdr.ScValTypeScvVec,
+						Vec:  &vec,
+					},
+					// No flags written by the contract:
+					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/asset_info.rs#L12
+					Flags: 0,
+				},
+			},
+			// Not realistic, but doesn't matter since this is only used in tests.
+			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
+			ExpirationLedgerSeq: 0,
 		},
 	}, nil
 }
@@ -301,6 +320,8 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 // BalanceToContractData is the inverse of ContractBalanceFromContractData. It
 // creates a ledger entry containing the asset balance of a contract holder
 // written to contract storage by the Stellar Asset Contract.
+//
+// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
 func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
 	return balanceToContractData(assetContractId, holderID, xdr.Int128Parts{
 		Lo: xdr.Uint64(amt),
@@ -356,18 +377,34 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		},
 	}
 
+	var contractIDHash xdr.Hash = assetContractId
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			ContractId: assetContractId,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractIDHash,
+			},
 			Key: xdr.ScVal{
 				Type: xdr.ScValTypeScvVec,
 				Vec:  &keyVec,
 			},
-			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvMap,
-				Map:  &dataMap,
+			Type: xdr.ContractDataTypePersistent,
+			Body: xdr.ContractDataEntryBody{
+				LeType: xdr.ContractLedgerEntryTypeDataEntry,
+				Data: &xdr.ContractDataEntryData{
+					Val: xdr.ScVal{
+						Type: xdr.ScValTypeScvMap,
+						Map:  &dataMap,
+					},
+					// No flags written by the contract:
+					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/balance.rs#L60
+					Flags: 0,
+				},
 			},
+			// Not realistic, but doesn't matter since this is only used in tests.
+			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
+			ExpirationLedgerSeq: 0,
 		},
 	}
 }

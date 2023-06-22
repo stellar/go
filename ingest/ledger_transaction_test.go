@@ -27,7 +27,9 @@ func TestGetContractEventsEmpty(t *testing.T) {
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
-				Events: []xdr.ContractEvent{},
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{},
+				},
 			},
 		},
 	}
@@ -44,13 +46,15 @@ func TestGetContractEventsSingle(t *testing.T) {
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
-				Events: []xdr.ContractEvent{
-					{
-						Type: xdr.ContractEventTypeSystem,
-						Body: xdr.ContractEventBody{
-							V: 0,
-							V0: &xdr.ContractEventV0{
-								Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{
+						{
+							Type: xdr.ContractEventTypeSystem,
+							Body: xdr.ContractEventBody{
+								V: 0,
+								V0: &xdr.ContractEventV0{
+									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
+								},
 							},
 						},
 					},
@@ -93,22 +97,24 @@ func TestGetContractEventsMultiple(t *testing.T) {
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
-				Events: []xdr.ContractEvent{
-					{
-						Type: xdr.ContractEventTypeSystem,
-						Body: xdr.ContractEventBody{
-							V: 0,
-							V0: &xdr.ContractEventV0{
-								Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					Events: []xdr.ContractEvent{
+						{
+							Type: xdr.ContractEventTypeSystem,
+							Body: xdr.ContractEventBody{
+								V: 0,
+								V0: &xdr.ContractEventV0{
+									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+								},
 							},
 						},
-					},
-					{
-						Type: xdr.ContractEventTypeSystem,
-						Body: xdr.ContractEventBody{
-							V: 0,
-							V0: &xdr.ContractEventV0{
-								Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+						{
+							Type: xdr.ContractEventTypeSystem,
+							Body: xdr.ContractEventBody{
+								V: 0,
+								V0: &xdr.ContractEventV0{
+									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+								},
 							},
 						},
 					},
@@ -131,7 +137,9 @@ func TestGetDiagnosticEventsEmpty(t *testing.T) {
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
-				DiagnosticEvents: []xdr.DiagnosticEvent{},
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					DiagnosticEvents: []xdr.DiagnosticEvent{},
+				},
 			},
 		},
 	}
@@ -148,15 +156,17 @@ func TestGetDiagnosticEventsSingle(t *testing.T) {
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
-				DiagnosticEvents: []xdr.DiagnosticEvent{
-					{
-						InSuccessfulContractCall: false,
-						Event: xdr.ContractEvent{
-							Type: xdr.ContractEventTypeSystem,
-							Body: xdr.ContractEventBody{
-								V: 0,
-								V0: &xdr.ContractEventV0{
-									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					DiagnosticEvents: []xdr.DiagnosticEvent{
+						{
+							InSuccessfulContractCall: false,
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &value},
+									},
 								},
 							},
 						},
@@ -201,28 +211,30 @@ func TestGetDiagnosticEventsMultiple(t *testing.T) {
 		UnsafeMeta: xdr.TransactionMeta{
 			V: 3,
 			V3: &xdr.TransactionMetaV3{
-				DiagnosticEvents: []xdr.DiagnosticEvent{
-					{
-						InSuccessfulContractCall: true,
+				SorobanMeta: &xdr.SorobanTransactionMeta{
+					DiagnosticEvents: []xdr.DiagnosticEvent{
+						{
+							InSuccessfulContractCall: true,
 
-						Event: xdr.ContractEvent{
-							Type: xdr.ContractEventTypeSystem,
-							Body: xdr.ContractEventBody{
-								V: 0,
-								V0: &xdr.ContractEventV0{
-									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[0]},
+									},
 								},
 							},
 						},
-					},
-					{
-						InSuccessfulContractCall: true,
-						Event: xdr.ContractEvent{
-							Type: xdr.ContractEventTypeSystem,
-							Body: xdr.ContractEventBody{
-								V: 0,
-								V0: &xdr.ContractEventV0{
-									Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+						{
+							InSuccessfulContractCall: true,
+							Event: xdr.ContractEvent{
+								Type: xdr.ContractEventTypeSystem,
+								Body: xdr.ContractEventBody{
+									V: 0,
+									V0: &xdr.ContractEventV0{
+										Data: xdr.ScVal{Type: xdr.ScValTypeScvU32, U32: &values[1]},
+									},
 								},
 							},
 						},

@@ -383,11 +383,11 @@ func TestTransactionPreconditionsEdgeCases(t *testing.T) {
 
 	maxMinSeq := int64(math.MaxInt64)
 	preconditionTests := []txnbuild.Preconditions{
-		{LedgerBounds: &txnbuild.LedgerBounds{1, 0}},
-		{LedgerBounds: &txnbuild.LedgerBounds{0, math.MaxUint32}},
-		{LedgerBounds: &txnbuild.LedgerBounds{math.MaxUint32, 1}},
+		{LedgerBounds: &txnbuild.LedgerBounds{MinLedger: 1, MaxLedger: 0}},
+		{LedgerBounds: &txnbuild.LedgerBounds{MinLedger: 0, MaxLedger: math.MaxUint32}},
+		{LedgerBounds: &txnbuild.LedgerBounds{MinLedger: math.MaxUint32, MaxLedger: 1}},
 		{
-			LedgerBounds: &txnbuild.LedgerBounds{math.MaxUint32, 1},
+			LedgerBounds: &txnbuild.LedgerBounds{MinLedger: math.MaxUint32, MaxLedger: 1},
 			ExtraSigners: []string{},
 		},
 		{

@@ -228,8 +228,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 										},
 									},
 								},
-								Executable: xdr.ScContractExecutable{
-									Type: xdr.ScContractExecutableTypeSccontractExecutableToken,
+								Executable: xdr.ContractExecutable{
+									Type: xdr.ContractExecutableTypeContractExecutableToken,
 								},
 							},
 						},
@@ -296,7 +296,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 										Salt: xdr.Uint256{1},
 									},
 								},
-								Executable: xdr.ScContractExecutable{},
+								Executable: xdr.ContractExecutable{},
 							},
 						},
 						Auth: []xdr.SorobanAuthorizationEntry{
@@ -412,11 +412,13 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 			UnsafeMeta: xdr.TransactionMeta{
 				V: 3,
 				V3: &xdr.TransactionMetaV3{
-					Events: []xdr.ContractEvent{
-						transferContractEvent,
-						burnContractEvent,
-						mintContractEvent,
-						clawbackContractEvent,
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{
+							transferContractEvent,
+							burnContractEvent,
+							mintContractEvent,
+							clawbackContractEvent,
+						},
 					},
 				},
 			},

@@ -165,17 +165,21 @@ func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error)
 	case 2:
 		return nil, nil
 	case 3:
-		diagnosticEvents := t.UnsafeMeta.MustV3().DiagnosticEvents
-		if len(diagnosticEvents) > 0 {
-			// all contract events and diag events for a single operation(by it's index in the tx) were available
-			// in tx meta's DiagnosticEvents, no need to look anywhere else for events
-			return diagnosticEvents, nil
-		}
+		var diagnosticEvents []xdr.DiagnosticEvent
+		var contractEvents []xdr.ContractEvent
+		if sorobanMeta := t.UnsafeMeta.MustV3().SorobanMeta; sorobanMeta != nil {
+			diagnosticEvents = sorobanMeta.DiagnosticEvents
+			if len(diagnosticEvents) > 0 {
+				// all contract events and diag events for a single operation(by it's index in the tx) were available
+				// in tx meta's DiagnosticEvents, no need to look anywhere else for events
+				return diagnosticEvents, nil
+			}
 
-		contractEvents := t.UnsafeMeta.MustV3().Events
-		if len(contractEvents) == 0 {
-			// no events were present in this tx meta
-			return nil, nil
+			contractEvents = sorobanMeta.Events
+			if len(contractEvents) == 0 {
+				// no events were present in this tx meta
+				return nil, nil
+			}
 		}
 
 		// tx meta only provided contract events, no diagnostic events, we convert the contract

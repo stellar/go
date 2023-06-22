@@ -39,6 +39,7 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeLiquidityPoolDeposit:          "liquidity_pool_deposit",
 	xdr.OperationTypeLiquidityPoolWithdraw:         "liquidity_pool_withdraw",
 	xdr.OperationTypeInvokeHostFunction:            "invoke_host_function",
+	xdr.OperationTypeBumpFootprintExpiration:       "bump_footprint_expiration",
 }
 
 // Base represents the common attributes of an operation resource
@@ -372,6 +373,13 @@ type HostFunctionParameter struct {
 	Type  string `json:"type"`
 }
 
+// BumpFootprintExpiration is the json resource representing a single BumpFootprintExpirationOp.
+// The model for BumpFootprintExpiration assimilates BumpFootprintExpirationOp, but is simplified.
+type BumpFootprintExpiration struct {
+	Base
+	LedgersToExpire string `json:"ledger_to_expire"`
+}
+
 // Type   - refers to the source SAC Event
 //
 //	it can only be one of 'transfer', 'mint', 'clawback' or 'burn'
@@ -625,6 +633,12 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeInvokeHostFunction:
 		var op InvokeHostFunction
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeBumpFootprintExpiration:
+		var op BumpFootprintExpiration
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
