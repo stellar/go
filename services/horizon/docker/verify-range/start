@@ -8,8 +8,8 @@ fi
 rm -rf "$PGDATA"/* 
 sudo chown -R postgres "$PGDATA"
 sudo chmod -R 775 "$PGDATA"
-sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/12/bin/initdb
-sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/12/bin/pg_ctl start
+sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/initdb
+sudo -u postgres --preserve-env=PGDATA /usr/lib/postgresql/14/bin/pg_ctl start
 sudo -u postgres createdb horizon
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 
