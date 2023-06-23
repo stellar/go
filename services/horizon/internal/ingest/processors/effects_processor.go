@@ -247,8 +247,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeBumpFootprintExpiration:
 		err = wrapper.addBumpFootprintExpirationEffect()
 	case xdr.OperationTypeRestoreFootprint:
-		// Tsachi - todo, add effect.
-		//err = wrapper.addBumpFootprintExpirationEffect()
+		err = wrapper.addRestoreFootprintExpirationEffect()
 	default:
 		return nil, fmt.Errorf("unknown operation type: %s", op.Body.Type)
 	}
