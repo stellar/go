@@ -1335,7 +1335,7 @@ type LedgerCloseMetaV2 struct {
 	EvictedTemporaryLedgerKeys []LedgerKey
 	// Expired restorable ledger entries that are being
 	// evicted at this ledger.
-	EvictedRestorableLedgerEntries []LedgerEntry
+	EvictedPersistentLedgerEntries []LedgerEntry
 }
 
 type LedgerCloseMeta struct {
@@ -12646,7 +12646,7 @@ func (v *LedgerCloseMetaV2) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sscpInfo", name), (*_XdrVec_unbounded_SCPHistoryEntry)(&v.ScpInfo))
 	x.Marshal(x.Sprintf("%stotalByteSizeOfBucketList", name), XDR_Uint64(&v.TotalByteSizeOfBucketList))
 	x.Marshal(x.Sprintf("%sevictedTemporaryLedgerKeys", name), (*_XdrVec_unbounded_LedgerKey)(&v.EvictedTemporaryLedgerKeys))
-	x.Marshal(x.Sprintf("%sevictedRestorableLedgerEntries", name), (*_XdrVec_unbounded_LedgerEntry)(&v.EvictedRestorableLedgerEntries))
+	x.Marshal(x.Sprintf("%sevictedPersistentLedgerEntries", name), (*_XdrVec_unbounded_LedgerEntry)(&v.EvictedPersistentLedgerEntries))
 }
 func XDR_LedgerCloseMetaV2(v *LedgerCloseMetaV2) *LedgerCloseMetaV2 { return v }
 

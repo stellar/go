@@ -31,14 +31,14 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "a611a8fe8599c1605b3ab66cb7ee20129fc12b4aab4cdca3faea646649d631fa",
+	"xdr/Stellar-contract-config-setting.x": "04a5a8d1abc31f942b1d4a8eeb4b09fc059bc3d19a2d457d019dde5f53db9c75",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "739e2480ba197aa859f122632a93172668cb0dbe93e30a54c192b96878af207a",
 	"xdr/Stellar-contract.x":                "8238ab197e8755ae4691d8a66a7ff4614b54f0622263cafbcc04534dca4f6a3e",
 	"xdr/Stellar-internal.x":                "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
 	"xdr/Stellar-ledger-entries.x":          "3d1714508129ca3cf7bfd0fa0cb7b3e3bbd2f9496b7f766dda8fbb1d9c46a0ca",
-	"xdr/Stellar-ledger.x":                  "ac8c016a92e75e6ba29cccb00a3aa633f347ba15e5b4fcd0d6986d4eed52fe4e",
+	"xdr/Stellar-ledger.x":                  "7dd81b979b72042790ef4e595f484083dc1eeaaf708ceb603c105602bef50876",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
 	"xdr/Stellar-transaction.x":             "7663184071756803e1f24f57fe0f5d6529dc11ca03d66e91074822e5acdc7f79",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
@@ -17033,7 +17033,7 @@ var _ xdrType = (*LedgerCloseMetaV1)(nil)
 //
 //	     // Expired restorable ledger entries that are being
 //	     // evicted at this ledger.
-//	     LedgerEntry evictedRestorableLedgerEntries<>;
+//	     LedgerEntry evictedPersistentLedgerEntries<>;
 //	 };
 type LedgerCloseMetaV2 struct {
 	Ext                            ExtensionPoint
@@ -17044,7 +17044,7 @@ type LedgerCloseMetaV2 struct {
 	ScpInfo                        []ScpHistoryEntry
 	TotalByteSizeOfBucketList      Uint64
 	EvictedTemporaryLedgerKeys     []LedgerKey
-	EvictedRestorableLedgerEntries []LedgerEntry
+	EvictedPersistentLedgerEntries []LedgerEntry
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -17094,11 +17094,11 @@ func (s *LedgerCloseMetaV2) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 	}
-	if _, err = e.EncodeUint(uint32(len(s.EvictedRestorableLedgerEntries))); err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.EvictedPersistentLedgerEntries))); err != nil {
 		return err
 	}
-	for i := 0; i < len(s.EvictedRestorableLedgerEntries); i++ {
-		if err = s.EvictedRestorableLedgerEntries[i].EncodeTo(e); err != nil {
+	for i := 0; i < len(s.EvictedPersistentLedgerEntries); i++ {
+		if err = s.EvictedPersistentLedgerEntries[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
@@ -17201,11 +17201,11 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntry: %s", err)
 	}
-	s.EvictedRestorableLedgerEntries = nil
+	s.EvictedPersistentLedgerEntries = nil
 	if l > 0 {
-		s.EvictedRestorableLedgerEntries = make([]LedgerEntry, l)
+		s.EvictedPersistentLedgerEntries = make([]LedgerEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.EvictedRestorableLedgerEntries[i].DecodeFrom(d)
+			nTmp, err = s.EvictedPersistentLedgerEntries[i].DecodeFrom(d)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerEntry: %s", err)
