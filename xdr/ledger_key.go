@@ -44,7 +44,7 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 	case LedgerEntryTypeContractData:
 		l := key.MustContractData()
 		r := other.MustContractData()
-		return l.Contract.Equals(r.Contract) && l.Key.Equals(r.Key) && l.LeType == r.LeType && l.Type == r.Type
+		return l.Contract.Equals(r.Contract) && l.Key.Equals(r.Key) && l.Durability == r.Durability && l.BodyType == r.BodyType
 	case LedgerEntryTypeContractCode:
 		l := key.MustContractCode()
 		r := other.MustContractCode()
@@ -137,12 +137,12 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 
 // SetContractData mutates `key` such that it represents the identity of a
 // contract data entry.
-func (key *LedgerKey) SetContractData(contract ScAddress, keyVal ScVal, keyType ContractDataType, keyLeType ContractLedgerEntryType) error {
+func (key *LedgerKey) SetContractData(contract ScAddress, keyVal ScVal, keyDurability ContractDataDurability, keyBodyType ContractEntryBodyType) error {
 	data := LedgerKeyContractData{
-		Contract: contract,
-		Key:      keyVal,
-		Type:     keyType,
-		LeType:   keyLeType,
+		Contract:   contract,
+		Key:        keyVal,
+		Durability: keyDurability,
+		BodyType:   keyBodyType,
 	}
 	nkey, err := NewLedgerKey(LedgerEntryTypeContractData, data)
 	if err != nil {
@@ -201,8 +201,8 @@ func GetLedgerKeyFromData(data LedgerEntryData) (LedgerKey, error) {
 		if err := key.SetContractData(
 			data.ContractData.Contract,
 			data.ContractData.Key,
-			data.ContractData.Type,
-			data.ContractData.Body.LeType); err != nil {
+			data.ContractData.Durability,
+			data.ContractData.Body.BodyType); err != nil {
 			return key, err
 		}
 	case LedgerEntryTypeContractCode:
@@ -279,11 +279,11 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 			return err
 		}
 		// type
-		if err := e.xdrEncoderBuf.WriteByte(byte(key.ContractData.Type)); err != nil {
+		if err := e.xdrEncoderBuf.WriteByte(byte(key.ContractData.Durability)); err != nil {
 			return err
 		}
 		// letype
-		return e.xdrEncoderBuf.WriteByte(byte(key.ContractData.LeType))
+		return e.xdrEncoderBuf.WriteByte(byte(key.ContractData.BodyType))
 	case LedgerEntryTypeContractCode:
 		_, err := e.xdrEncoderBuf.Write(key.ContractCode.Hash[:])
 		return err

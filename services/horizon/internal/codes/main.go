@@ -580,6 +580,8 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustInvokeHostFunctionResult().Code
 	case xdr.OperationTypeBumpFootprintExpiration:
 		ic = ir.MustBumpFootprintExpirationResult().Code
+	case xdr.OperationTypeRestoreFootprint:
+		ic = ir.MustRestoreFootprintResult().Code
 	}
 
 	return String(ic)

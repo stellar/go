@@ -5,20 +5,18 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type BumpFootprintExpiration struct {
-	LedgersToExpire uint32
-	SourceAccount   string
+type RestoreFootprint struct {
+	SourceAccount string
 }
 
-func (f *BumpFootprintExpiration) BuildXDR() (xdr.Operation, error) {
-	xdrOp := xdr.BumpFootprintExpirationOp{
+func (f *RestoreFootprint) BuildXDR() (xdr.Operation, error) {
+	xdrOp := xdr.RestoreFootprintOp{
 		Ext: xdr.ExtensionPoint{
 			V: 0,
 		},
-		LedgersToExpire: xdr.Uint32(f.LedgersToExpire),
 	}
 
-	body, err := xdr.NewOperationBody(xdr.OperationTypeBumpFootprintExpiration, xdrOp)
+	body, err := xdr.NewOperationBody(xdr.OperationTypeRestoreFootprint, xdrOp)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR Operation")
 	}
@@ -29,17 +27,16 @@ func (f *BumpFootprintExpiration) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-func (f *BumpFootprintExpiration) FromXDR(xdrOp xdr.Operation) error {
-	result, ok := xdrOp.Body.GetBumpFootprintExpirationOp()
+func (f *RestoreFootprint) FromXDR(xdrOp xdr.Operation) error {
+	_, ok := xdrOp.Body.GetBumpFootprintExpirationOp()
 	if !ok {
 		return errors.New("error parsing invoke host function operation from xdr")
 	}
 	f.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	f.LedgersToExpire = uint32(result.LedgersToExpire)
 	return nil
 }
 
-func (f *BumpFootprintExpiration) Validate() error {
+func (f *RestoreFootprint) Validate() error {
 	if f.SourceAccount != "" {
 		_, err := xdr.AddressToMuxedAccount(f.SourceAccount)
 		if err != nil {
@@ -49,6 +46,6 @@ func (f *BumpFootprintExpiration) Validate() error {
 	return nil
 }
 
-func (f *BumpFootprintExpiration) GetSourceAccount() string {
+func (f *RestoreFootprint) GetSourceAccount() string {
 	return f.SourceAccount
 }

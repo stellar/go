@@ -296,10 +296,10 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 				AccountId:  nil,
 				ContractId: &ContractIDHash,
 			},
-			Key:  assetInfoKey,
-			Type: xdr.ContractDataTypePersistent,
+			Key:        assetInfoKey,
+			Durability: xdr.ContractDataDurabilityPersistent,
 			Body: xdr.ContractDataEntryBody{
-				LeType: xdr.ContractLedgerEntryTypeDataEntry,
+				BodyType: xdr.ContractEntryBodyTypeDataEntry,
 				Data: &xdr.ContractDataEntryData{
 					Val: xdr.ScVal{
 						Type: xdr.ScValTypeScvVec,
@@ -389,9 +389,9 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 				Type: xdr.ScValTypeScvVec,
 				Vec:  &keyVec,
 			},
-			Type: xdr.ContractDataTypePersistent,
+			Durability: xdr.ContractDataDurabilityPersistent,
 			Body: xdr.ContractDataEntryBody{
-				LeType: xdr.ContractLedgerEntryTypeDataEntry,
+				BodyType: xdr.ContractEntryBodyTypeDataEntry,
 				Data: &xdr.ContractDataEntryData{
 					Val: xdr.ScVal{
 						Type: xdr.ScValTypeScvMap,

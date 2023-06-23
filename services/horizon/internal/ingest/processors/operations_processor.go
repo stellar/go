@@ -290,6 +290,8 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 		}
 	case xdr.OperationTypeBumpFootprintExpiration:
 		return true
+	case xdr.OperationTypeRestoreFootprint:
+		return true
 	}
 
 	return false
@@ -689,9 +691,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeBumpFootprintExpiration:
 		op := operation.operation.Body.MustBumpFootprintExpirationOp()
 		details["type"] = "bump_footprint_expiration"
-		if op.LedgersToExpire != nil {
-			details["ledger_to_expire"] = *op.LedgersToExpire
-		}
+		details["ledger_to_expire"] = op.LedgersToExpire
+	case xdr.OperationTypeRestoreFootprint:
+		details["type"] = "restore_footprint"
 
 	default:
 		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
@@ -988,6 +990,8 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeInvokeHostFunction:
 		// the only direct participant is the source_account
 	case xdr.OperationTypeBumpFootprintExpiration:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeRestoreFootprint:
 		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("unknown operation type: %s", op.Body.Type)

@@ -154,6 +154,10 @@ func NewOperation(
 		e := operations.BumpFootprintExpiration{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
+	case xdr.OperationTypeRestoreFootprint:
+		e := operations.RestoreFootprint{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
 	default:
 		result = base
 	}

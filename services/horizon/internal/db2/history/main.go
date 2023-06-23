@@ -235,6 +235,10 @@ const (
 	// TODO: Should we emit this when they bump the ledger seq via the contract
 	// as well? Maybe rename it to `EffectContractEntryExpirationBumped`?
 	EffectBumpFootprintExpiration EffectType = 98
+
+	// EffectRestoreFootprint effects occur when a user attempts to restore a ledger entry
+	// via the RestoreFootprint.
+	EffectRestoreFootprint EffectType = 98
 )
 
 // Account is a row of data from the `history_accounts` table

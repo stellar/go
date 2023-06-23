@@ -93,8 +93,6 @@ func (s ScVal) Equals(o ScVal) bool {
 		return s.MustAddress().Equals(o.MustAddress())
 	case ScValTypeScvContractInstance:
 		return s.MustInstance().Executable.Equals(o.MustInstance().Executable) && s.MustInstance().Storage.Equals(o.MustInstance().Storage)
-	case ScValTypeScvStorageType:
-		return s.MustStorageType() == o.MustStorageType()
 	case ScValTypeScvLedgerKeyContractInstance:
 		return true
 	case ScValTypeScvLedgerKeyNonce:

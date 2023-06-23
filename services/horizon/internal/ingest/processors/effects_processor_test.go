@@ -3863,10 +3863,10 @@ func TestBumpFootprintExpirationEffects(t *testing.T) {
 	ledgerEntryKey := xdr.LedgerKey{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.LedgerKeyContractData{
-			Contract: contract,
-			Key:      key,
-			Type:     xdr.ContractDataTypePersistent,
-			LeType:   xdr.ContractLedgerEntryTypeExpirationExtension,
+			Contract:   contract,
+			Key:        key,
+			Durability: xdr.ContractDataDurabilityPersistent,
+			BodyType:   xdr.ContractEntryBodyTypeDataEntry,
 		},
 	}
 	ledgerEntryKeyStr, err := xdr.MarshalBase64(ledgerEntryKey)
@@ -3888,12 +3888,12 @@ func TestBumpFootprintExpirationEffects(t *testing.T) {
 							Data: xdr.LedgerEntryData{
 								Type: xdr.LedgerEntryTypeContractData,
 								ContractData: &xdr.ContractDataEntry{
-									Contract: contract,
-									Key:      key,
-									Type:     xdr.ContractDataTypePersistent,
+									Contract:   contract,
+									Key:        key,
+									Durability: xdr.ContractDataDurabilityPersistent,
 									Body: xdr.ContractDataEntryBody{
-										LeType: xdr.ContractLedgerEntryTypeDataEntry,
-										Data:   &xdr.ContractDataEntryData{Val: val},
+										BodyType: xdr.ContractEntryBodyTypeDataEntry,
+										Data:     &xdr.ContractDataEntryData{Val: val},
 									},
 									ExpirationLedgerSeq: 1,
 								},
@@ -3906,11 +3906,11 @@ func TestBumpFootprintExpirationEffects(t *testing.T) {
 							Data: xdr.LedgerEntryData{
 								Type: xdr.LedgerEntryTypeContractData,
 								ContractData: &xdr.ContractDataEntry{
-									Contract: contract,
-									Key:      key,
-									Type:     xdr.ContractDataTypePersistent,
+									Contract:   contract,
+									Key:        key,
+									Durability: xdr.ContractDataDurabilityPersistent,
 									Body: xdr.ContractDataEntryBody{
-										LeType: xdr.ContractLedgerEntryTypeExpirationExtension,
+										BodyType: xdr.ContractEntryBodyTypeDataEntry,
 									},
 									ExpirationLedgerSeq: 1234,
 								},
@@ -3922,7 +3922,6 @@ func TestBumpFootprintExpirationEffects(t *testing.T) {
 		},
 	}
 
-	extension := xdr.Uint32(1234)
 	envelope := xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
 			// the rest doesn't matter for effect ingestion
@@ -3932,8 +3931,10 @@ func TestBumpFootprintExpirationEffects(t *testing.T) {
 					Body: xdr.OperationBody{
 						Type: xdr.OperationTypeBumpFootprintExpiration,
 						BumpFootprintExpirationOp: &xdr.BumpFootprintExpirationOp{
-							Type:            xdr.BumpFootprintExpirationTypeBumpFootprintExpirationUniform,
-							LedgersToExpire: &extension,
+							Ext: xdr.ExtensionPoint{
+								V: 0,
+							},
+							LedgersToExpire: xdr.Uint32(1234),
 						},
 					},
 				},
@@ -3975,7 +3976,7 @@ func TestBumpFootprintExpirationEffects(t *testing.T) {
 					"entries": []string{
 						ledgerEntryKeyStr,
 					},
-					"ledgers_to_expire": &extension,
+					"ledgers_to_expire": xdr.Uint32(1234),
 				},
 			},
 		},
