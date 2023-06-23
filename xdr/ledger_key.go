@@ -137,7 +137,10 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 
 // SetContractData mutates `key` such that it represents the identity of a
 // contract data entry.
-func (key *LedgerKey) SetContractData(contract ScAddress, keyVal ScVal, keyDurability ContractDataDurability, keyBodyType ContractEntryBodyType) error {
+func (key *LedgerKey) SetContractData(contract ScAddress,
+	keyVal ScVal,
+	keyDurability ContractDataDurability,
+	keyBodyType ContractEntryBodyType) error {
 	data := LedgerKeyContractData{
 		Contract:   contract,
 		Key:        keyVal,
