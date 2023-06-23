@@ -95,11 +95,28 @@ type Config struct {
 	ReingestRetryBackoffSeconds int
 
 	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
-	CheckpointFrequency uint32
+	CheckpointFrequency                  uint32
+	StateVerificationCheckpointFrequency uint32
+	StateVerificationTimeout             time.Duration
 
 	RoundingSlippageFilter int
 
 	EnableIngestionFiltering bool
+}
+
+// LocalCaptiveCoreEnabled returns true if configured to run
+// a local captive core instance for ingestion.
+func (c Config) LocalCaptiveCoreEnabled() bool {
+	// c.EnableCaptiveCore is true for both local and remote captive core
+	// and c.RemoteCaptiveCoreURL is always empty when running
+	// local captive core.
+	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL == ""
+}
+
+// RemoteCaptiveCoreEnabled returns true if configured to run
+// a remote captive core instance for ingestion.
+func (c Config) RemoteCaptiveCoreEnabled() bool {
+	return c.EnableCaptiveCore && c.RemoteCaptiveCoreURL != ""
 }
 
 const (
@@ -179,6 +196,7 @@ type System interface {
 	ReingestRange(ledgerRanges []history.LedgerRange, force bool) error
 	BuildGenesisState() error
 	Shutdown()
+	GetCurrentState() State
 }
 
 type system struct {
@@ -208,9 +226,12 @@ type system struct {
 	stateVerificationRunning bool
 	disableStateVerification bool
 
-	checkpointManager historyarchive.CheckpointManager
+	runStateVerificationOnLedger func(uint32) bool
 
 	reapOffsets map[string]int64
+
+	currentStateMutex sync.Mutex
+	currentState      State
 }
 
 func NewSystem(config Config) (System, error) {
@@ -231,34 +252,32 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	var ledgerBackend ledgerbackend.LedgerBackend
-	if config.EnableCaptiveCore {
-		if len(config.RemoteCaptiveCoreURL) > 0 {
-			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
-			if err != nil {
-				cancel()
-				return nil, errors.Wrap(err, "error creating captive core backend")
-			}
-		} else {
-			logger := log.WithField("subservice", "stellar-core")
-			ledgerBackend, err = ledgerbackend.NewCaptive(
-				ledgerbackend.CaptiveCoreConfig{
-					BinaryPath:          config.CaptiveCoreBinaryPath,
-					StoragePath:         config.CaptiveCoreStoragePath,
-					UseDB:               config.CaptiveCoreConfigUseDB,
-					Toml:                config.CaptiveCoreToml,
-					NetworkPassphrase:   config.NetworkPassphrase,
-					HistoryArchiveURLs:  config.HistoryArchiveURLs,
-					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-					Log:                 logger,
-					Context:             ctx,
-					UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
-				},
-			)
-			if err != nil {
-				cancel()
-				return nil, errors.Wrap(err, "error creating captive core backend")
-			}
+	if config.RemoteCaptiveCoreEnabled() {
+		ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
+		}
+	} else if config.LocalCaptiveCoreEnabled() {
+		logger := log.WithField("subservice", "stellar-core")
+		ledgerBackend, err = ledgerbackend.NewCaptive(
+			ledgerbackend.CaptiveCoreConfig{
+				BinaryPath:          config.CaptiveCoreBinaryPath,
+				StoragePath:         config.CaptiveCoreStoragePath,
+				UseDB:               config.CaptiveCoreConfigUseDB,
+				Toml:                config.CaptiveCoreToml,
+				NetworkPassphrase:   config.NetworkPassphrase,
+				HistoryArchiveURLs:  config.HistoryArchiveURLs,
+				CheckpointFrequency: config.CheckpointFrequency,
+				LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+				Log:                 logger,
+				Context:             ctx,
+				UserAgent:           fmt.Sprintf("captivecore horizon/%s golang/%s", apkg.Version(), runtime.Version()),
+			},
+		)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
@@ -277,6 +296,7 @@ func NewSystem(config Config) (System, error) {
 		cancel:                      cancel,
 		config:                      config,
 		ctx:                         ctx,
+		currentState:                None,
 		disableStateVerification:    config.DisableStateVerification,
 		historyAdapter:              historyAdapter,
 		historyQ:                    historyQ,
@@ -293,11 +313,23 @@ func NewSystem(config Config) (System, error) {
 			historyAdapter: historyAdapter,
 			filters:        filters,
 		},
-		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
+		runStateVerificationOnLedger: ledgerEligibleForStateVerification(
+			config.CheckpointFrequency,
+			config.StateVerificationCheckpointFrequency,
+		),
 	}
 
 	system.initMetrics()
 	return system, nil
+}
+
+func ledgerEligibleForStateVerification(checkpointFrequency, stateVerificationFrequency uint32) func(ledger uint32) bool {
+	stateVerificationCheckpointManager := historyarchive.NewCheckpointManager(
+		checkpointFrequency * stateVerificationFrequency,
+	)
+	return func(ledger uint32) bool {
+		return stateVerificationCheckpointManager.IsCheckpoint(ledger)
+	}
 }
 
 func (s *system) initMetrics() {
@@ -397,7 +429,8 @@ func (s *system) initMetrics() {
 			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
 		},
 		func() float64 {
-			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
+			if !s.config.LocalCaptiveCoreEnabled() || // local captive core is disabled
+				(s.config.CaptiveCoreToml.HTTPPort == 0) { // captive core http port is disabled
 				return -1
 			}
 
@@ -428,7 +461,8 @@ func (s *system) initMetrics() {
 			Help: "determines the supported version of the protocol by Captive-Core",
 		},
 		func() float64 {
-			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
+			if !s.config.LocalCaptiveCoreEnabled() || // local captive core is disabled
+				(s.config.CaptiveCoreToml.HTTPPort == 0) { // captive core http port is disabled
 				return -1
 			}
 
@@ -448,6 +482,12 @@ func (s *system) initMetrics() {
 			return float64(info.Info.ProtocolVersion)
 		},
 	)
+}
+
+func (s *system) GetCurrentState() State {
+	s.currentStateMutex.Lock()
+	defer s.currentStateMutex.Unlock()
+	return s.currentState
 }
 
 func (s *system) Metrics() Metrics {
@@ -615,6 +655,10 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 			panic("unexpected transaction")
 		}
 
+		s.currentStateMutex.Lock()
+		s.currentState = cur.GetState()
+		s.currentStateMutex.Unlock()
+
 		next, err := cur.run(s)
 		if err != nil {
 			logger := log.WithFields(logpkg.F{
@@ -664,7 +708,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	// Run verification routine only when...
 	if !stateInvalid && // state has not been proved to be invalid...
 		!s.disableStateVerification && // state verification is not disabled...
-		s.checkpointManager.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
+		s.runStateVerificationOnLedger(lastIngestedLedger) { // it's a ledger eligible for state verification.
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()

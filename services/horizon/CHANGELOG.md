@@ -5,6 +5,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
 ## Unreleased
+### Changes
+### Breaking Changes
+- Modify the default value of `--captive-core-use-db` to true ([4856](https://github.com/stellar/go/issues/4856))
+  - This updates the default behavior of captive core to start in on-disk mode.
+  - To continue using the previous in-memory mode, explicitly set the `--captive-core-use-db` flag to false
 
 ## 2.24.1
 
