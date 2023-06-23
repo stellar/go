@@ -691,7 +691,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeBumpFootprintExpiration:
 		op := operation.operation.Body.MustBumpFootprintExpirationOp()
 		details["type"] = "bump_footprint_expiration"
-		details["ledger_to_expire"] = op.LedgersToExpire
+		details["ledgers_to_expire"] = op.LedgersToExpire
 	case xdr.OperationTypeRestoreFootprint:
 		details["type"] = "restore_footprint"
 
