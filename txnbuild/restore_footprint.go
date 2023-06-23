@@ -28,7 +28,7 @@ func (f *RestoreFootprint) BuildXDR() (xdr.Operation, error) {
 }
 
 func (f *RestoreFootprint) FromXDR(xdrOp xdr.Operation) error {
-	_, ok := xdrOp.Body.GetBumpFootprintExpirationOp()
+	_, ok := xdrOp.Body.GetRestoreFootprintOp()
 	if !ok {
 		return errors.New("error parsing invoke host function operation from xdr")
 	}
