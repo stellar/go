@@ -36,23 +36,21 @@ const (
 var lastCheck = time.Now()
 var reqsCheckedPerSeq = 0
 var pendingRequestsAdded, ignoredCount, diffsCount, okCount int64
-var pendingRequests map[string]*Request
+var pendingRequests = make(map[string]*Request)
 
 func main() {
 	processAll(os.Stdin, os.Stderr, os.Stdout)
-}
-
-func init() {
-	pendingRequests = make(map[string]*Request)
 }
 
 func processAll(stdin io.Reader, stderr, stdout io.Writer) {
 	log.SetOut(stderr)
 	log.SetLevel(log.InfoLevel)
 
+	bufSize := 20 * 1024 * 1024 // 20MB
 	scanner := bufio.NewScanner(stdin)
-	buf := make([]byte, 20*1024*1024) // 20MB
-	scanner.Buffer(buf, 20*1024*1024)
+	buf := make([]byte, bufSize)
+	scanner.Buffer(buf, bufSize)
+	var maxPendingRequests = 2000
 
 	for scanner.Scan() {
 		encoded := scanner.Bytes()
@@ -69,9 +67,9 @@ func processAll(stdin io.Reader, stderr, stdout io.Writer) {
 
 		process(stderr, stdout, buf)
 
-		if len(pendingRequests) > 2000 {
+		if len(pendingRequests) > maxPendingRequests {
 			// Around 3-4% of responses is lost (not sure why) so pendingRequests can grow
-			// indefinietly. Let's just truncate it when it becomes too big.
+			// indefinitely. Let's just truncate it when it becomes too big.
 			// There is one gotcha here. Goreplay will still send requests
 			// (`1` type payloads) even if traffic is rate limited. So if rate
 			// limit is applied even more requests can be lost. So we should
@@ -101,7 +99,7 @@ func process(stderr, stdout io.Writer, buf []byte) {
 			lastCheck = time.Now()
 
 			// Print stats every second
-			os.Stderr.WriteString(fmt.Sprintf(
+			_, _ = os.Stderr.WriteString(fmt.Sprintf(
 				"middleware stats: pendingRequests=%d requestsAdded=%d ok=%d diffs=%d ignored=%d\n",
 				len(pendingRequests),
 				pendingRequestsAdded,
@@ -122,7 +120,7 @@ func process(stderr, stdout io.Writer, buf []byte) {
 		// Emitting data back, without modification
 		_, err := io.WriteString(stdout, hex.EncodeToString(buf)+"\n")
 		if err != nil {
-			io.WriteString(stderr, fmt.Sprintf("stdout.WriteString error: %v", err))
+			_, _ = io.WriteString(stderr, fmt.Sprintf("stdout.WriteString error: %v", err))
 		}
 	case originalResponseType:
 		if req, ok := pendingRequests[reqID]; ok {
@@ -154,6 +152,6 @@ func process(stderr, stdout io.Writer, buf []byte) {
 			delete(pendingRequests, reqID)
 		}
 	default:
-		io.WriteString(stderr, "Unknown message type\n")
+		_, _ = io.WriteString(stderr, "Unknown message type\n")
 	}
 }

@@ -5,6 +5,7 @@ import (
 )
 
 func TestNormalizeResponseBody(t *testing.T) {
+	//nolint:all
 	resp := `{
 	"_links": {
 	  "self": {
