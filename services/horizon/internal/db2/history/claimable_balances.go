@@ -47,7 +47,7 @@ func (cbq ClaimableBalancesQuery) Cursor() (int64, string, error) {
 		}
 		r = parts[1]
 		if l < 0 {
-			return l, r, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
+			return l, r, errors.New("invalid cursor - first value should be higher than 0")
 		}
 	}
 
