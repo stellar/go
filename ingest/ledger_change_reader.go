@@ -130,6 +130,7 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			r.LedgerTransactionReader.ledgerCloseMeta.EvictedLedgerKeys(),
 		)
 		r.pending = append(r.pending, changes...)
+		r.state++
 		return r.Read()
 	case upgradeChangesState:
 		// Get upgrade changes

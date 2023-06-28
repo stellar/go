@@ -78,8 +78,9 @@ func GetChangesFromLedgerEntryEvictions(keys []xdr.LedgerKey) []Change {
 		switch key.Type {
 		case xdr.LedgerEntryTypeContractData:
 			state.Data.SetContractData(&xdr.ContractDataEntry{
-				ContractId: key.ContractData.ContractId,
+				Contract:   key.ContractData.Contract,
 				Key:        key.ContractData.Key,
+				Durability: key.ContractData.Durability,
 			})
 		case xdr.LedgerEntryTypeContractCode:
 			state.Data.SetContractCode(&xdr.ContractCodeEntry{
