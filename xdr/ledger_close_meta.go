@@ -52,14 +52,20 @@ func (l LedgerCloseMeta) TransactionEnvelopes() []TransactionEnvelope {
 	switch l.V {
 	case 0:
 		return l.MustV0().TxSet.Txs
-	case 1, 2:
+	case 1:
 		var envelopes = make([]TransactionEnvelope, 0, l.CountTransactions())
 		var phases []TransactionPhase
-		if l.V == 1 {
-			phases = l.MustV1().TxSet.V1TxSet.Phases
-		} else {
-			phases = l.MustV2().TxSet.V1TxSet.Phases
+		phases = l.MustV1().TxSet.V1TxSet.Phases
+		for _, phase := range phases {
+			for _, component := range *phase.V0Components {
+				envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
+			}
 		}
+		return envelopes
+	case 2:
+		var envelopes = make([]TransactionEnvelope, 0, l.CountTransactions())
+		var phases []TransactionPhase
+		phases = l.MustV2().TxSet.V1TxSet.Phases
 		for _, phase := range phases {
 			for _, component := range *phase.V0Components {
 				envelopes = append(envelopes, component.TxsMaybeDiscountedFee.Txs...)
@@ -93,9 +99,6 @@ func (l LedgerCloseMeta) TransactionResultPair(i int) TransactionResultPair {
 	case 1:
 		return l.MustV1().TxProcessing[i].Result
 	case 2:
-		if l.MustV2().TxProcessing[i].TxApplyProcessing.V != 3 {
-			panic("TransactionResult unavailable because LedgerCloseMeta.V = 2 and TransactionMeta.V != 3")
-		}
 		return l.MustV2().TxProcessing[i].Result
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
@@ -139,26 +142,6 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 		return l.MustV1().UpgradesProcessing
 	case 2:
 		return l.MustV2().UpgradesProcessing
-	default:
-		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
-	}
-}
-
-// EvictedTemporaryLedgerKeys     []LedgerKey
-// EvictedRestorableLedgerEntries []LedgerEntry
-// EvictedLedgerKeys returns the LedgerKeys for the EvictedTemporaryLedgerKeys
-// and EvictedRestorableLedgerEntrues for ledger.
-func (l LedgerCloseMeta) EvictedLedgerKeys() []LedgerKey {
-	switch l.V {
-	case 0, 1:
-		return nil
-	case 2:
-		var keys []LedgerKey
-		keys = append(keys, l.MustV2().EvictedTemporaryLedgerKeys...)
-		for _, entry := range l.MustV2().EvictedRestorableLedgerEntries {
-			keys = append(keys, entry.LedgerKey())
-		}
-		return keys
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}

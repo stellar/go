@@ -379,7 +379,11 @@ func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
 		if asset == nil {
 			return nil
 		}
-		contractID := change.Pre.Data.MustContractData().ContractId
+		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
+		if pContractID == nil {
+			return nil
+		}
+		contractID := *pContractID
 		if change.Post == nil {
 			s.contractToAsset[contractID] = nil
 			return nil
@@ -396,20 +400,24 @@ func (s AssetStatSet) ingestAssetContractMetadata(change ingest.Change) error {
 		if asset == nil {
 			return nil
 		}
-		contractID := change.Post.Data.MustContractData().ContractId
-		s.contractToAsset[contractID] = asset
+		if pContactID := change.Post.Data.MustContractData().Contract.ContractId; pContactID != nil {
+			s.contractToAsset[*pContactID] = asset
+		}
 	}
 	return nil
 }
 
 func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 	if change.Pre != nil {
-		contractID := change.Pre.Data.MustContractData().ContractId
+		pContractID := change.Pre.Data.MustContractData().Contract.ContractId
+		if pContractID == nil {
+			return
+		}
 		holder, amt, ok := ContractBalanceFromContractData(*change.Pre, s.networkPassphrase)
 		if !ok {
 			return
 		}
-		stats, ok := s.contractAssetStats[contractID]
+		stats, ok := s.contractAssetStats[*pContractID]
 		if !ok {
 			stats = contractAssetStatValue{
 				balance:    big.NewInt(0),
@@ -426,7 +434,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 			if amt.Cmp(big.NewInt(0)) > 0 {
 				stats.numHolders--
 			}
-			s.maybeAddContractAssetStat(contractID, stats)
+			s.maybeAddContractAssetStat(*pContractID, stats)
 			return
 		}
 		// if the updated ledger entry is not in the expected format then this
@@ -447,11 +455,15 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 			// contract holders increased
 			stats.numHolders++
 		}
-		s.maybeAddContractAssetStat(contractID, stats)
+		s.maybeAddContractAssetStat(*pContractID, stats)
 		return
 	}
 	// in this case there was no balance before the change
-	contractID := change.Post.Data.MustContractData().ContractId
+	pContractID := change.Post.Data.MustContractData().Contract.ContractId
+	if pContractID == nil {
+		return
+	}
+
 	_, amt, ok := ContractBalanceFromContractData(*change.Post, s.networkPassphrase)
 	if !ok {
 		return
@@ -464,7 +476,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 
 	// increase the number of contract holders because previously
 	// there was no balance
-	stats, ok := s.contractAssetStats[contractID]
+	stats, ok := s.contractAssetStats[*pContractID]
 	if !ok {
 		stats = contractAssetStatValue{
 			balance:    amt,
@@ -475,7 +487,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		stats.numHolders++
 	}
 
-	s.maybeAddContractAssetStat(contractID, stats)
+	s.maybeAddContractAssetStat(*pContractID, stats)
 }
 
 func (s AssetStatSet) maybeAddContractAssetStat(contractID [32]byte, stat contractAssetStatValue) {

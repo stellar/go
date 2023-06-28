@@ -288,6 +288,10 @@ func (operation *transactionOperationWrapper) IsPayment() bool {
 				}
 			}
 		}
+	case xdr.OperationTypeBumpFootprintExpiration:
+		return true
+	case xdr.OperationTypeRestoreFootprint:
+		return true
 	}
 
 	return false
@@ -684,6 +688,13 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		default:
 			panic(fmt.Errorf("unknown host function type: %s", op.HostFunction.Type))
 		}
+	case xdr.OperationTypeBumpFootprintExpiration:
+		op := operation.operation.Body.MustBumpFootprintExpirationOp()
+		details["type"] = "bump_footprint_expiration"
+		details["ledgers_to_expire"] = op.LedgersToExpire
+	case xdr.OperationTypeRestoreFootprint:
+		details["type"] = "restore_footprint"
+
 	default:
 		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
 	}
@@ -977,6 +988,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		// the only direct participant is the source_account
 	case xdr.OperationTypeInvokeHostFunction:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeBumpFootprintExpiration:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeRestoreFootprint:
 		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("unknown operation type: %s", op.Body.Type)

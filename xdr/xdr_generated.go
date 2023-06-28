@@ -31,16 +31,16 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "d653b5434b79b82ccf6252c2a9cfeef3c8c13537d59e9e0baa3c31a7524a5ef3",
+	"xdr/Stellar-contract-config-setting.x": "04a5a8d1abc31f942b1d4a8eeb4b09fc059bc3d19a2d457d019dde5f53db9c75",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "739e2480ba197aa859f122632a93172668cb0dbe93e30a54c192b96878af207a",
-	"xdr/Stellar-contract.x":                "71c38a756f77215c01b0b48e8e8c0a1ad6fc6a7ae4e69eb09f7084e9c39c34f6",
+	"xdr/Stellar-contract.x":                "8238ab197e8755ae4691d8a66a7ff4614b54f0622263cafbcc04534dca4f6a3e",
 	"xdr/Stellar-internal.x":                "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
-	"xdr/Stellar-ledger-entries.x":          "5da753824fd0f3ca01499f54ded9736bc6991bd3e152fffb8299c4f04a959ee9",
-	"xdr/Stellar-ledger.x":                  "ac8c016a92e75e6ba29cccb00a3aa633f347ba15e5b4fcd0d6986d4eed52fe4e",
+	"xdr/Stellar-ledger-entries.x":          "3d1714508129ca3cf7bfd0fa0cb7b3e3bbd2f9496b7f766dda8fbb1d9c46a0ca",
+	"xdr/Stellar-ledger.x":                  "7dd81b979b72042790ef4e595f484083dc1eeaaf708ceb603c105602bef50876",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "fccdf397df717d4acc1601ff04fd5d8ccc1defabef931ebbd2f5e41e21539f65",
+	"xdr/Stellar-transaction.x":             "7663184071756803e1f24f57fe0f5d6529dc11ca03d66e91074822e5acdc7f79",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -7480,63 +7480,63 @@ func (s LiquidityPoolEntry) xdrType() {}
 
 var _ xdrType = (*LiquidityPoolEntry)(nil)
 
-// ContractLedgerEntryType is an XDR Enum defines as:
+// ContractEntryBodyType is an XDR Enum defines as:
 //
-//	enum ContractLedgerEntryType {
+//	enum ContractEntryBodyType {
 //	     DATA_ENTRY = 0,
 //	     EXPIRATION_EXTENSION = 1
 //	 };
-type ContractLedgerEntryType int32
+type ContractEntryBodyType int32
 
 const (
-	ContractLedgerEntryTypeDataEntry           ContractLedgerEntryType = 0
-	ContractLedgerEntryTypeExpirationExtension ContractLedgerEntryType = 1
+	ContractEntryBodyTypeDataEntry           ContractEntryBodyType = 0
+	ContractEntryBodyTypeExpirationExtension ContractEntryBodyType = 1
 )
 
-var contractLedgerEntryTypeMap = map[int32]string{
-	0: "ContractLedgerEntryTypeDataEntry",
-	1: "ContractLedgerEntryTypeExpirationExtension",
+var contractEntryBodyTypeMap = map[int32]string{
+	0: "ContractEntryBodyTypeDataEntry",
+	1: "ContractEntryBodyTypeExpirationExtension",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ContractLedgerEntryType
-func (e ContractLedgerEntryType) ValidEnum(v int32) bool {
-	_, ok := contractLedgerEntryTypeMap[v]
+// the Enum interface for ContractEntryBodyType
+func (e ContractEntryBodyType) ValidEnum(v int32) bool {
+	_, ok := contractEntryBodyTypeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e ContractLedgerEntryType) String() string {
-	name, _ := contractLedgerEntryTypeMap[int32(e)]
+func (e ContractEntryBodyType) String() string {
+	name, _ := contractEntryBodyTypeMap[int32(e)]
 	return name
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (e ContractLedgerEntryType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := contractLedgerEntryTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ContractLedgerEntryType enum value", e)
+func (e ContractEntryBodyType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := contractEntryBodyTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ContractEntryBodyType enum value", e)
 	}
 	_, err := enc.EncodeInt(int32(e))
 	return err
 }
 
-var _ decoderFrom = (*ContractLedgerEntryType)(nil)
+var _ decoderFrom = (*ContractEntryBodyType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ContractLedgerEntryType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractEntryBodyType) DecodeFrom(d *xdr.Decoder) (int, error) {
 	v, n, err := d.DecodeInt()
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractLedgerEntryType: %s", err)
+		return n, fmt.Errorf("decoding ContractEntryBodyType: %s", err)
 	}
-	if _, ok := contractLedgerEntryTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ContractLedgerEntryType enum value", v)
+	if _, ok := contractEntryBodyTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ContractEntryBodyType enum value", v)
 	}
-	*e = ContractLedgerEntryType(v)
+	*e = ContractEntryBodyType(v)
 	return n, nil
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ContractLedgerEntryType) MarshalBinary() ([]byte, error) {
+func (s ContractEntryBodyType) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -7544,7 +7544,7 @@ func (s ContractLedgerEntryType) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ContractLedgerEntryType) UnmarshalBinary(inp []byte) error {
+func (s *ContractEntryBodyType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -7552,15 +7552,15 @@ func (s *ContractLedgerEntryType) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ContractLedgerEntryType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ContractLedgerEntryType)(nil)
+	_ encoding.BinaryMarshaler   = (*ContractEntryBodyType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractEntryBodyType)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ContractLedgerEntryType) xdrType() {}
+func (s ContractEntryBodyType) xdrType() {}
 
-var _ xdrType = (*ContractLedgerEntryType)(nil)
+var _ xdrType = (*ContractEntryBodyType)(nil)
 
 // MaskContractDataFlagsV20 is an XDR Const defines as:
 //
@@ -7648,6 +7648,88 @@ func (s ContractDataFlags) xdrType() {}
 
 var _ xdrType = (*ContractDataFlags)(nil)
 
+// ContractDataDurability is an XDR Enum defines as:
+//
+//	enum ContractDataDurability {
+//	     TEMPORARY = 0,
+//	     PERSISTENT = 1
+//	 };
+type ContractDataDurability int32
+
+const (
+	ContractDataDurabilityTemporary  ContractDataDurability = 0
+	ContractDataDurabilityPersistent ContractDataDurability = 1
+)
+
+var contractDataDurabilityMap = map[int32]string{
+	0: "ContractDataDurabilityTemporary",
+	1: "ContractDataDurabilityPersistent",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for ContractDataDurability
+func (e ContractDataDurability) ValidEnum(v int32) bool {
+	_, ok := contractDataDurabilityMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e ContractDataDurability) String() string {
+	name, _ := contractDataDurabilityMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e ContractDataDurability) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := contractDataDurabilityMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ContractDataDurability enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*ContractDataDurability)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *ContractDataDurability) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractDataDurability: %s", err)
+	}
+	if _, ok := contractDataDurabilityMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ContractDataDurability enum value", v)
+	}
+	*e = ContractDataDurability(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ContractDataDurability) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ContractDataDurability) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ContractDataDurability)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractDataDurability)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ContractDataDurability) xdrType() {}
+
+var _ xdrType = (*ContractDataDurability)(nil)
+
 // ContractDataEntryData is an XDR NestedStruct defines as:
 //
 //	struct
@@ -7720,7 +7802,7 @@ var _ xdrType = (*ContractDataEntryData)(nil)
 
 // ContractDataEntryBody is an XDR NestedUnion defines as:
 //
-//	union switch (ContractLedgerEntryType leType)
+//	union switch (ContractEntryBodyType bodyType)
 //	     {
 //	     case DATA_ENTRY:
 //	     struct
@@ -7732,40 +7814,40 @@ var _ xdrType = (*ContractDataEntryData)(nil)
 //	         void;
 //	     }
 type ContractDataEntryBody struct {
-	LeType ContractLedgerEntryType
-	Data   *ContractDataEntryData
+	BodyType ContractEntryBodyType
+	Data     *ContractDataEntryData
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
 func (u ContractDataEntryBody) SwitchFieldName() string {
-	return "LeType"
+	return "BodyType"
 }
 
 // ArmForSwitch returns which field name should be used for storing
 // the value for an instance of ContractDataEntryBody
 func (u ContractDataEntryBody) ArmForSwitch(sw int32) (string, bool) {
-	switch ContractLedgerEntryType(sw) {
-	case ContractLedgerEntryTypeDataEntry:
+	switch ContractEntryBodyType(sw) {
+	case ContractEntryBodyTypeDataEntry:
 		return "Data", true
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		return "", true
 	}
 	return "-", false
 }
 
 // NewContractDataEntryBody creates a new  ContractDataEntryBody.
-func NewContractDataEntryBody(leType ContractLedgerEntryType, value interface{}) (result ContractDataEntryBody, err error) {
-	result.LeType = leType
-	switch ContractLedgerEntryType(leType) {
-	case ContractLedgerEntryTypeDataEntry:
+func NewContractDataEntryBody(bodyType ContractEntryBodyType, value interface{}) (result ContractDataEntryBody, err error) {
+	result.BodyType = bodyType
+	switch ContractEntryBodyType(bodyType) {
+	case ContractEntryBodyTypeDataEntry:
 		tv, ok := value.(ContractDataEntryData)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be ContractDataEntryData")
 			return
 		}
 		result.Data = &tv
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		// void
 	}
 	return
@@ -7786,7 +7868,7 @@ func (u ContractDataEntryBody) MustData() ContractDataEntryData {
 // GetData retrieves the Data value from the union,
 // returning ok if the union's switch indicated the value is valid.
 func (u ContractDataEntryBody) GetData() (result ContractDataEntryData, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.LeType))
+	armName, _ := u.ArmForSwitch(int32(u.BodyType))
 
 	if armName == "Data" {
 		result = *u.Data
@@ -7799,20 +7881,20 @@ func (u ContractDataEntryBody) GetData() (result ContractDataEntryData, ok bool)
 // EncodeTo encodes this value using the Encoder.
 func (u ContractDataEntryBody) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = u.LeType.EncodeTo(e); err != nil {
+	if err = u.BodyType.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ContractLedgerEntryType(u.LeType) {
-	case ContractLedgerEntryTypeDataEntry:
+	switch ContractEntryBodyType(u.BodyType) {
+	case ContractEntryBodyTypeDataEntry:
 		if err = (*u.Data).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		// Void
 		return nil
 	}
-	return fmt.Errorf("LeType (ContractLedgerEntryType) switch value '%d' is not valid for union ContractDataEntryBody", u.LeType)
+	return fmt.Errorf("BodyType (ContractEntryBodyType) switch value '%d' is not valid for union ContractDataEntryBody", u.BodyType)
 }
 
 var _ decoderFrom = (*ContractDataEntryBody)(nil)
@@ -7821,13 +7903,13 @@ var _ decoderFrom = (*ContractDataEntryBody)(nil)
 func (u *ContractDataEntryBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = u.LeType.DecodeFrom(d)
+	nTmp, err = u.BodyType.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractLedgerEntryType: %s", err)
+		return n, fmt.Errorf("decoding ContractEntryBodyType: %s", err)
 	}
-	switch ContractLedgerEntryType(u.LeType) {
-	case ContractLedgerEntryTypeDataEntry:
+	switch ContractEntryBodyType(u.BodyType) {
+	case ContractEntryBodyTypeDataEntry:
 		u.Data = new(ContractDataEntryData)
 		nTmp, err = (*u.Data).DecodeFrom(d)
 		n += nTmp
@@ -7835,11 +7917,11 @@ func (u *ContractDataEntryBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ContractDataEntryData: %s", err)
 		}
 		return n, nil
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		// Void
 		return n, nil
 	}
-	return n, fmt.Errorf("union ContractDataEntryBody has invalid LeType (ContractLedgerEntryType) switch value '%d'", u.LeType)
+	return n, fmt.Errorf("union ContractDataEntryBody has invalid BodyType (ContractEntryBodyType) switch value '%d'", u.BodyType)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -7872,11 +7954,11 @@ var _ xdrType = (*ContractDataEntryBody)(nil)
 // ContractDataEntry is an XDR Struct defines as:
 //
 //	struct ContractDataEntry {
-//	     Hash contractID;
+//	     SCAddress contract;
 //	     SCVal key;
-//	     ContractDataType type;
+//	     ContractDataDurability durability;
 //
-//	     union switch (ContractLedgerEntryType leType)
+//	     union switch (ContractEntryBodyType bodyType)
 //	     {
 //	     case DATA_ENTRY:
 //	     struct
@@ -7891,9 +7973,9 @@ var _ xdrType = (*ContractDataEntryBody)(nil)
 //	     uint32 expirationLedgerSeq;
 //	 };
 type ContractDataEntry struct {
-	ContractId          Hash
+	Contract            ScAddress
 	Key                 ScVal
-	Type                ContractDataType
+	Durability          ContractDataDurability
 	Body                ContractDataEntryBody
 	ExpirationLedgerSeq Uint32
 }
@@ -7901,13 +7983,13 @@ type ContractDataEntry struct {
 // EncodeTo encodes this value using the Encoder.
 func (s *ContractDataEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.ContractId.EncodeTo(e); err != nil {
+	if err = s.Contract.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.Key.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.Type.EncodeTo(e); err != nil {
+	if err = s.Durability.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.Body.EncodeTo(e); err != nil {
@@ -7925,20 +8007,20 @@ var _ decoderFrom = (*ContractDataEntry)(nil)
 func (s *ContractDataEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ContractId.DecodeFrom(d)
+	nTmp, err = s.Contract.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Hash: %s", err)
+		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
 	nTmp, err = s.Key.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
 	}
-	nTmp, err = s.Type.DecodeFrom(d)
+	nTmp, err = s.Durability.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractDataType: %s", err)
+		return n, fmt.Errorf("decoding ContractDataDurability: %s", err)
 	}
 	nTmp, err = s.Body.DecodeFrom(d)
 	n += nTmp
@@ -7982,7 +8064,7 @@ var _ xdrType = (*ContractDataEntry)(nil)
 
 // ContractCodeEntryBody is an XDR NestedUnion defines as:
 //
-//	union switch (ContractLedgerEntryType leType)
+//	union switch (ContractEntryBodyType bodyType)
 //	     {
 //	     case DATA_ENTRY:
 //	         opaque code<>;
@@ -7990,40 +8072,40 @@ var _ xdrType = (*ContractDataEntry)(nil)
 //	         void;
 //	     }
 type ContractCodeEntryBody struct {
-	LeType ContractLedgerEntryType
-	Code   *[]byte
+	BodyType ContractEntryBodyType
+	Code     *[]byte
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
 func (u ContractCodeEntryBody) SwitchFieldName() string {
-	return "LeType"
+	return "BodyType"
 }
 
 // ArmForSwitch returns which field name should be used for storing
 // the value for an instance of ContractCodeEntryBody
 func (u ContractCodeEntryBody) ArmForSwitch(sw int32) (string, bool) {
-	switch ContractLedgerEntryType(sw) {
-	case ContractLedgerEntryTypeDataEntry:
+	switch ContractEntryBodyType(sw) {
+	case ContractEntryBodyTypeDataEntry:
 		return "Code", true
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		return "", true
 	}
 	return "-", false
 }
 
 // NewContractCodeEntryBody creates a new  ContractCodeEntryBody.
-func NewContractCodeEntryBody(leType ContractLedgerEntryType, value interface{}) (result ContractCodeEntryBody, err error) {
-	result.LeType = leType
-	switch ContractLedgerEntryType(leType) {
-	case ContractLedgerEntryTypeDataEntry:
+func NewContractCodeEntryBody(bodyType ContractEntryBodyType, value interface{}) (result ContractCodeEntryBody, err error) {
+	result.BodyType = bodyType
+	switch ContractEntryBodyType(bodyType) {
+	case ContractEntryBodyTypeDataEntry:
 		tv, ok := value.([]byte)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be []byte")
 			return
 		}
 		result.Code = &tv
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		// void
 	}
 	return
@@ -8044,7 +8126,7 @@ func (u ContractCodeEntryBody) MustCode() []byte {
 // GetCode retrieves the Code value from the union,
 // returning ok if the union's switch indicated the value is valid.
 func (u ContractCodeEntryBody) GetCode() (result []byte, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.LeType))
+	armName, _ := u.ArmForSwitch(int32(u.BodyType))
 
 	if armName == "Code" {
 		result = *u.Code
@@ -8057,20 +8139,20 @@ func (u ContractCodeEntryBody) GetCode() (result []byte, ok bool) {
 // EncodeTo encodes this value using the Encoder.
 func (u ContractCodeEntryBody) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = u.LeType.EncodeTo(e); err != nil {
+	if err = u.BodyType.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ContractLedgerEntryType(u.LeType) {
-	case ContractLedgerEntryTypeDataEntry:
+	switch ContractEntryBodyType(u.BodyType) {
+	case ContractEntryBodyTypeDataEntry:
 		if _, err = e.EncodeOpaque((*u.Code)[:]); err != nil {
 			return err
 		}
 		return nil
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		// Void
 		return nil
 	}
-	return fmt.Errorf("LeType (ContractLedgerEntryType) switch value '%d' is not valid for union ContractCodeEntryBody", u.LeType)
+	return fmt.Errorf("BodyType (ContractEntryBodyType) switch value '%d' is not valid for union ContractCodeEntryBody", u.BodyType)
 }
 
 var _ decoderFrom = (*ContractCodeEntryBody)(nil)
@@ -8079,13 +8161,13 @@ var _ decoderFrom = (*ContractCodeEntryBody)(nil)
 func (u *ContractCodeEntryBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = u.LeType.DecodeFrom(d)
+	nTmp, err = u.BodyType.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractLedgerEntryType: %s", err)
+		return n, fmt.Errorf("decoding ContractEntryBodyType: %s", err)
 	}
-	switch ContractLedgerEntryType(u.LeType) {
-	case ContractLedgerEntryTypeDataEntry:
+	switch ContractEntryBodyType(u.BodyType) {
+	case ContractEntryBodyTypeDataEntry:
 		u.Code = new([]byte)
 		(*u.Code), nTmp, err = d.DecodeOpaque(0)
 		n += nTmp
@@ -8093,11 +8175,11 @@ func (u *ContractCodeEntryBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding Code: %s", err)
 		}
 		return n, nil
-	case ContractLedgerEntryTypeExpirationExtension:
+	case ContractEntryBodyTypeExpirationExtension:
 		// Void
 		return n, nil
 	}
-	return n, fmt.Errorf("union ContractCodeEntryBody has invalid LeType (ContractLedgerEntryType) switch value '%d'", u.LeType)
+	return n, fmt.Errorf("union ContractCodeEntryBody has invalid BodyType (ContractEntryBodyType) switch value '%d'", u.BodyType)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8133,7 +8215,7 @@ var _ xdrType = (*ContractCodeEntryBody)(nil)
 //	     ExtensionPoint ext;
 //
 //	     Hash hash;
-//	     union switch (ContractLedgerEntryType leType)
+//	     union switch (ContractEntryBodyType bodyType)
 //	     {
 //	     case DATA_ENTRY:
 //	         opaque code<>;
@@ -9599,31 +9681,31 @@ var _ xdrType = (*LedgerKeyLiquidityPool)(nil)
 //
 //	struct
 //	     {
-//	         Hash contractID;
+//	         SCAddress contract;
 //	         SCVal key;
-//	         ContractDataType type;
-//	         ContractLedgerEntryType leType;
+//	         ContractDataDurability durability;
+//	         ContractEntryBodyType bodyType;
 //	     }
 type LedgerKeyContractData struct {
-	ContractId Hash
+	Contract   ScAddress
 	Key        ScVal
-	Type       ContractDataType
-	LeType     ContractLedgerEntryType
+	Durability ContractDataDurability
+	BodyType   ContractEntryBodyType
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *LedgerKeyContractData) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.ContractId.EncodeTo(e); err != nil {
+	if err = s.Contract.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.Key.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.Type.EncodeTo(e); err != nil {
+	if err = s.Durability.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.LeType.EncodeTo(e); err != nil {
+	if err = s.BodyType.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -9635,25 +9717,25 @@ var _ decoderFrom = (*LedgerKeyContractData)(nil)
 func (s *LedgerKeyContractData) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.ContractId.DecodeFrom(d)
+	nTmp, err = s.Contract.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Hash: %s", err)
+		return n, fmt.Errorf("decoding ScAddress: %s", err)
 	}
 	nTmp, err = s.Key.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding ScVal: %s", err)
 	}
-	nTmp, err = s.Type.DecodeFrom(d)
+	nTmp, err = s.Durability.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractDataType: %s", err)
+		return n, fmt.Errorf("decoding ContractDataDurability: %s", err)
 	}
-	nTmp, err = s.LeType.DecodeFrom(d)
+	nTmp, err = s.BodyType.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractLedgerEntryType: %s", err)
+		return n, fmt.Errorf("decoding ContractEntryBodyType: %s", err)
 	}
 	return n, nil
 }
@@ -9690,11 +9772,11 @@ var _ xdrType = (*LedgerKeyContractData)(nil)
 //	struct
 //	     {
 //	         Hash hash;
-//	         ContractLedgerEntryType leType;
+//	         ContractEntryBodyType bodyType;
 //	     }
 type LedgerKeyContractCode struct {
-	Hash   Hash
-	LeType ContractLedgerEntryType
+	Hash     Hash
+	BodyType ContractEntryBodyType
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -9703,7 +9785,7 @@ func (s *LedgerKeyContractCode) EncodeTo(e *xdr.Encoder) error {
 	if err = s.Hash.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.LeType.EncodeTo(e); err != nil {
+	if err = s.BodyType.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -9720,10 +9802,10 @@ func (s *LedgerKeyContractCode) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Hash: %s", err)
 	}
-	nTmp, err = s.LeType.DecodeFrom(d)
+	nTmp, err = s.BodyType.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ContractLedgerEntryType: %s", err)
+		return n, fmt.Errorf("decoding ContractEntryBodyType: %s", err)
 	}
 	return n, nil
 }
@@ -9860,16 +9942,16 @@ var _ xdrType = (*LedgerKeyConfigSetting)(nil)
 //	 case CONTRACT_DATA:
 //	     struct
 //	     {
-//	         Hash contractID;
+//	         SCAddress contract;
 //	         SCVal key;
-//	         ContractDataType type;
-//	         ContractLedgerEntryType leType;
+//	         ContractDataDurability durability;
+//	         ContractEntryBodyType bodyType;
 //	     } contractData;
 //	 case CONTRACT_CODE:
 //	     struct
 //	     {
 //	         Hash hash;
-//	         ContractLedgerEntryType leType;
+//	         ContractEntryBodyType bodyType;
 //	     } contractCode;
 //	 case CONFIG_SETTING:
 //	     struct
@@ -16951,7 +17033,7 @@ var _ xdrType = (*LedgerCloseMetaV1)(nil)
 //
 //	     // Expired restorable ledger entries that are being
 //	     // evicted at this ledger.
-//	     LedgerEntry evictedRestorableLedgerEntries<>;
+//	     LedgerEntry evictedPersistentLedgerEntries<>;
 //	 };
 type LedgerCloseMetaV2 struct {
 	Ext                            ExtensionPoint
@@ -16962,7 +17044,7 @@ type LedgerCloseMetaV2 struct {
 	ScpInfo                        []ScpHistoryEntry
 	TotalByteSizeOfBucketList      Uint64
 	EvictedTemporaryLedgerKeys     []LedgerKey
-	EvictedRestorableLedgerEntries []LedgerEntry
+	EvictedPersistentLedgerEntries []LedgerEntry
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -17012,11 +17094,11 @@ func (s *LedgerCloseMetaV2) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 	}
-	if _, err = e.EncodeUint(uint32(len(s.EvictedRestorableLedgerEntries))); err != nil {
+	if _, err = e.EncodeUint(uint32(len(s.EvictedPersistentLedgerEntries))); err != nil {
 		return err
 	}
-	for i := 0; i < len(s.EvictedRestorableLedgerEntries); i++ {
-		if err = s.EvictedRestorableLedgerEntries[i].EncodeTo(e); err != nil {
+	for i := 0; i < len(s.EvictedPersistentLedgerEntries); i++ {
+		if err = s.EvictedPersistentLedgerEntries[i].EncodeTo(e); err != nil {
 			return err
 		}
 	}
@@ -17119,11 +17201,11 @@ func (s *LedgerCloseMetaV2) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding LedgerEntry: %s", err)
 	}
-	s.EvictedRestorableLedgerEntries = nil
+	s.EvictedPersistentLedgerEntries = nil
 	if l > 0 {
-		s.EvictedRestorableLedgerEntries = make([]LedgerEntry, l)
+		s.EvictedPersistentLedgerEntries = make([]LedgerEntry, l)
 		for i := uint32(0); i < l; i++ {
-			nTmp, err = s.EvictedRestorableLedgerEntries[i].DecodeFrom(d)
+			nTmp, err = s.EvictedPersistentLedgerEntries[i].DecodeFrom(d)
 			n += nTmp
 			if err != nil {
 				return n, fmt.Errorf("decoding LedgerEntry: %s", err)
@@ -21858,7 +21940,9 @@ var _ xdrType = (*DecoratedSignature)(nil)
 //	     SET_TRUST_LINE_FLAGS = 21,
 //	     LIQUIDITY_POOL_DEPOSIT = 22,
 //	     LIQUIDITY_POOL_WITHDRAW = 23,
-//	     INVOKE_HOST_FUNCTION = 24
+//	     INVOKE_HOST_FUNCTION = 24,
+//	     BUMP_FOOTPRINT_EXPIRATION = 25,
+//	     RESTORE_FOOTPRINT = 26
 //	 };
 type OperationType int32
 
@@ -21888,6 +21972,8 @@ const (
 	OperationTypeLiquidityPoolDeposit          OperationType = 22
 	OperationTypeLiquidityPoolWithdraw         OperationType = 23
 	OperationTypeInvokeHostFunction            OperationType = 24
+	OperationTypeBumpFootprintExpiration       OperationType = 25
+	OperationTypeRestoreFootprint              OperationType = 26
 )
 
 var operationTypeMap = map[int32]string{
@@ -21916,6 +22002,8 @@ var operationTypeMap = map[int32]string{
 	22: "OperationTypeLiquidityPoolDeposit",
 	23: "OperationTypeLiquidityPoolWithdraw",
 	24: "OperationTypeInvokeHostFunction",
+	25: "OperationTypeBumpFootprintExpiration",
+	26: "OperationTypeRestoreFootprint",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -24941,11 +25029,11 @@ var _ xdrType = (*ContractIdPreimage)(nil)
 //	struct CreateContractArgs
 //	 {
 //	     ContractIDPreimage contractIDPreimage;
-//	     SCContractExecutable executable;
+//	     ContractExecutable executable;
 //	 };
 type CreateContractArgs struct {
 	ContractIdPreimage ContractIdPreimage
-	Executable         ScContractExecutable
+	Executable         ContractExecutable
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -24974,7 +25062,7 @@ func (s *CreateContractArgs) DecodeFrom(d *xdr.Decoder) (int, error) {
 	nTmp, err = s.Executable.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
+		return n, fmt.Errorf("decoding ContractExecutable: %s", err)
 	}
 	return n, nil
 }
@@ -25681,13 +25769,15 @@ var _ xdrType = (*SorobanAuthorizedInvocation)(nil)
 //	struct SorobanAddressCredentials
 //	 {
 //	     SCAddress address;
-//	     uint64 nonce;
+//	     int64 nonce;
+//	     uint32 signatureExpirationLedger;
 //	     SCVec signatureArgs;
 //	 };
 type SorobanAddressCredentials struct {
-	Address       ScAddress
-	Nonce         Uint64
-	SignatureArgs ScVec
+	Address                   ScAddress
+	Nonce                     Int64
+	SignatureExpirationLedger Uint32
+	SignatureArgs             ScVec
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -25697,6 +25787,9 @@ func (s *SorobanAddressCredentials) EncodeTo(e *xdr.Encoder) error {
 		return err
 	}
 	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SignatureExpirationLedger.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.SignatureArgs.EncodeTo(e); err != nil {
@@ -25719,7 +25812,12 @@ func (s *SorobanAddressCredentials) DecodeFrom(d *xdr.Decoder) (int, error) {
 	nTmp, err = s.Nonce.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Uint64: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.SignatureExpirationLedger.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
 	nTmp, err = s.SignatureArgs.DecodeFrom(d)
 	n += nTmp
@@ -26145,6 +26243,136 @@ func (s InvokeHostFunctionOp) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionOp)(nil)
 
+// BumpFootprintExpirationOp is an XDR Struct defines as:
+//
+//	struct BumpFootprintExpirationOp
+//	 {
+//	     ExtensionPoint ext;
+//	     uint32 ledgersToExpire;
+//	 };
+type BumpFootprintExpirationOp struct {
+	Ext             ExtensionPoint
+	LedgersToExpire Uint32
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *BumpFootprintExpirationOp) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.LedgersToExpire.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*BumpFootprintExpirationOp)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *BumpFootprintExpirationOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
+	}
+	nTmp, err = s.LedgersToExpire.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BumpFootprintExpirationOp) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BumpFootprintExpirationOp) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BumpFootprintExpirationOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*BumpFootprintExpirationOp)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s BumpFootprintExpirationOp) xdrType() {}
+
+var _ xdrType = (*BumpFootprintExpirationOp)(nil)
+
+// RestoreFootprintOp is an XDR Struct defines as:
+//
+//	struct RestoreFootprintOp
+//	 {
+//	     ExtensionPoint ext;
+//	 };
+type RestoreFootprintOp struct {
+	Ext ExtensionPoint
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *RestoreFootprintOp) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Ext.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*RestoreFootprintOp)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *RestoreFootprintOp) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Ext.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ExtensionPoint: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s RestoreFootprintOp) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *RestoreFootprintOp) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*RestoreFootprintOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*RestoreFootprintOp)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s RestoreFootprintOp) xdrType() {}
+
+var _ xdrType = (*RestoreFootprintOp)(nil)
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //	union switch (OperationType type)
@@ -26199,6 +26427,10 @@ var _ xdrType = (*InvokeHostFunctionOp)(nil)
 //	         LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
 //	     case INVOKE_HOST_FUNCTION:
 //	         InvokeHostFunctionOp invokeHostFunctionOp;
+//	     case BUMP_FOOTPRINT_EXPIRATION:
+//	         BumpFootprintExpirationOp bumpFootprintExpirationOp;
+//	     case RESTORE_FOOTPRINT:
+//	         RestoreFootprintOp restoreFootprintOp;
 //	     }
 type OperationBody struct {
 	Type                            OperationType
@@ -26225,6 +26457,8 @@ type OperationBody struct {
 	LiquidityPoolDepositOp          *LiquidityPoolDepositOp
 	LiquidityPoolWithdrawOp         *LiquidityPoolWithdrawOp
 	InvokeHostFunctionOp            *InvokeHostFunctionOp
+	BumpFootprintExpirationOp       *BumpFootprintExpirationOp
+	RestoreFootprintOp              *RestoreFootprintOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -26287,6 +26521,10 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "LiquidityPoolWithdrawOp", true
 	case OperationTypeInvokeHostFunction:
 		return "InvokeHostFunctionOp", true
+	case OperationTypeBumpFootprintExpiration:
+		return "BumpFootprintExpirationOp", true
+	case OperationTypeRestoreFootprint:
+		return "RestoreFootprintOp", true
 	}
 	return "-", false
 }
@@ -26460,6 +26698,20 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.InvokeHostFunctionOp = &tv
+	case OperationTypeBumpFootprintExpiration:
+		tv, ok := value.(BumpFootprintExpirationOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be BumpFootprintExpirationOp")
+			return
+		}
+		result.BumpFootprintExpirationOp = &tv
+	case OperationTypeRestoreFootprint:
+		tv, ok := value.(RestoreFootprintOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be RestoreFootprintOp")
+			return
+		}
+		result.RestoreFootprintOp = &tv
 	}
 	return
 }
@@ -27039,6 +27291,56 @@ func (u OperationBody) GetInvokeHostFunctionOp() (result InvokeHostFunctionOp, o
 	return
 }
 
+// MustBumpFootprintExpirationOp retrieves the BumpFootprintExpirationOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustBumpFootprintExpirationOp() BumpFootprintExpirationOp {
+	val, ok := u.GetBumpFootprintExpirationOp()
+
+	if !ok {
+		panic("arm BumpFootprintExpirationOp is not set")
+	}
+
+	return val
+}
+
+// GetBumpFootprintExpirationOp retrieves the BumpFootprintExpirationOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetBumpFootprintExpirationOp() (result BumpFootprintExpirationOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "BumpFootprintExpirationOp" {
+		result = *u.BumpFootprintExpirationOp
+		ok = true
+	}
+
+	return
+}
+
+// MustRestoreFootprintOp retrieves the RestoreFootprintOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustRestoreFootprintOp() RestoreFootprintOp {
+	val, ok := u.GetRestoreFootprintOp()
+
+	if !ok {
+		panic("arm RestoreFootprintOp is not set")
+	}
+
+	return val
+}
+
+// GetRestoreFootprintOp retrieves the RestoreFootprintOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetRestoreFootprintOp() (result RestoreFootprintOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RestoreFootprintOp" {
+		result = *u.RestoreFootprintOp
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u OperationBody) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -27164,6 +27466,16 @@ func (u OperationBody) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case OperationTypeInvokeHostFunction:
 		if err = (*u.InvokeHostFunctionOp).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case OperationTypeBumpFootprintExpiration:
+		if err = (*u.BumpFootprintExpirationOp).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case OperationTypeRestoreFootprint:
+		if err = (*u.RestoreFootprintOp).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -27373,6 +27685,22 @@ func (u *OperationBody) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding InvokeHostFunctionOp: %s", err)
 		}
 		return n, nil
+	case OperationTypeBumpFootprintExpiration:
+		u.BumpFootprintExpirationOp = new(BumpFootprintExpirationOp)
+		nTmp, err = (*u.BumpFootprintExpirationOp).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding BumpFootprintExpirationOp: %s", err)
+		}
+		return n, nil
+	case OperationTypeRestoreFootprint:
+		u.RestoreFootprintOp = new(RestoreFootprintOp)
+		nTmp, err = (*u.RestoreFootprintOp).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding RestoreFootprintOp: %s", err)
+		}
+		return n, nil
 	}
 	return n, fmt.Errorf("union OperationBody has invalid Type (OperationType) switch value '%d'", u.Type)
 }
@@ -27465,6 +27793,10 @@ var _ xdrType = (*OperationBody)(nil)
 //	         LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
 //	     case INVOKE_HOST_FUNCTION:
 //	         InvokeHostFunctionOp invokeHostFunctionOp;
+//	     case BUMP_FOOTPRINT_EXPIRATION:
+//	         BumpFootprintExpirationOp bumpFootprintExpirationOp;
+//	     case RESTORE_FOOTPRINT:
+//	         RestoreFootprintOp restoreFootprintOp;
 //	     }
 //	     body;
 //	 };
@@ -27801,13 +28133,15 @@ var _ xdrType = (*HashIdPreimageContractId)(nil)
 //	struct
 //	     {
 //	         Hash networkID;
-//	         uint64 nonce;
+//	         int64 nonce;
+//	         uint32 signatureExpirationLedger;
 //	         SorobanAuthorizedInvocation invocation;
 //	     }
 type HashIdPreimageSorobanAuthorization struct {
-	NetworkId  Hash
-	Nonce      Uint64
-	Invocation SorobanAuthorizedInvocation
+	NetworkId                 Hash
+	Nonce                     Int64
+	SignatureExpirationLedger Uint32
+	Invocation                SorobanAuthorizedInvocation
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -27817,6 +28151,9 @@ func (s *HashIdPreimageSorobanAuthorization) EncodeTo(e *xdr.Encoder) error {
 		return err
 	}
 	if err = s.Nonce.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.SignatureExpirationLedger.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.Invocation.EncodeTo(e); err != nil {
@@ -27839,7 +28176,12 @@ func (s *HashIdPreimageSorobanAuthorization) DecodeFrom(d *xdr.Decoder) (int, er
 	nTmp, err = s.Nonce.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding Uint64: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
+	}
+	nTmp, err = s.SignatureExpirationLedger.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
 	nTmp, err = s.Invocation.DecodeFrom(d)
 	n += nTmp
@@ -27906,7 +28248,8 @@ var _ xdrType = (*HashIdPreimageSorobanAuthorization)(nil)
 //	     struct
 //	     {
 //	         Hash networkID;
-//	         uint64 nonce;
+//	         int64 nonce;
+//	         uint32 signatureExpirationLedger;
 //	         SorobanAuthorizedInvocation invocation;
 //	     } sorobanAuthorization;
 //	 };
@@ -39291,6 +39634,424 @@ func (s InvokeHostFunctionResult) xdrType() {}
 
 var _ xdrType = (*InvokeHostFunctionResult)(nil)
 
+// BumpFootprintExpirationResultCode is an XDR Enum defines as:
+//
+//	enum BumpFootprintExpirationResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     BUMP_FOOTPRINT_EXPIRATION_SUCCESS = 0,
+//
+//	     // codes considered as "failure" for the operation
+//	     BUMP_FOOTPRINT_EXPIRATION_MALFORMED = -1,
+//	     BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED = -2
+//	 };
+type BumpFootprintExpirationResultCode int32
+
+const (
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess               BumpFootprintExpirationResultCode = 0
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed             BumpFootprintExpirationResultCode = -1
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded BumpFootprintExpirationResultCode = -2
+)
+
+var bumpFootprintExpirationResultCodeMap = map[int32]string{
+	0:  "BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess",
+	-1: "BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed",
+	-2: "BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for BumpFootprintExpirationResultCode
+func (e BumpFootprintExpirationResultCode) ValidEnum(v int32) bool {
+	_, ok := bumpFootprintExpirationResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e BumpFootprintExpirationResultCode) String() string {
+	name, _ := bumpFootprintExpirationResultCodeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e BumpFootprintExpirationResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := bumpFootprintExpirationResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid BumpFootprintExpirationResultCode enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*BumpFootprintExpirationResultCode)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *BumpFootprintExpirationResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding BumpFootprintExpirationResultCode: %s", err)
+	}
+	if _, ok := bumpFootprintExpirationResultCodeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid BumpFootprintExpirationResultCode enum value", v)
+	}
+	*e = BumpFootprintExpirationResultCode(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BumpFootprintExpirationResultCode) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BumpFootprintExpirationResultCode) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BumpFootprintExpirationResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*BumpFootprintExpirationResultCode)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s BumpFootprintExpirationResultCode) xdrType() {}
+
+var _ xdrType = (*BumpFootprintExpirationResultCode)(nil)
+
+// BumpFootprintExpirationResult is an XDR Union defines as:
+//
+//	union BumpFootprintExpirationResult switch (BumpFootprintExpirationResultCode code)
+//	 {
+//	 case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
+//	     void;
+//	 case BUMP_FOOTPRINT_EXPIRATION_MALFORMED:
+//	 case BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+//	     void;
+//	 };
+type BumpFootprintExpirationResult struct {
+	Code BumpFootprintExpirationResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u BumpFootprintExpirationResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of BumpFootprintExpirationResult
+func (u BumpFootprintExpirationResult) ArmForSwitch(sw int32) (string, bool) {
+	switch BumpFootprintExpirationResultCode(sw) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
+		return "", true
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
+		return "", true
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewBumpFootprintExpirationResult creates a new  BumpFootprintExpirationResult.
+func NewBumpFootprintExpirationResult(code BumpFootprintExpirationResultCode, value interface{}) (result BumpFootprintExpirationResult, err error) {
+	result.Code = code
+	switch BumpFootprintExpirationResultCode(code) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
+		// void
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
+		// void
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		// void
+	}
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u BumpFootprintExpirationResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
+		return err
+	}
+	switch BumpFootprintExpirationResultCode(u.Code) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
+		// Void
+		return nil
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
+		// Void
+		return nil
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		// Void
+		return nil
+	}
+	return fmt.Errorf("Code (BumpFootprintExpirationResultCode) switch value '%d' is not valid for union BumpFootprintExpirationResult", u.Code)
+}
+
+var _ decoderFrom = (*BumpFootprintExpirationResult)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *BumpFootprintExpirationResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Code.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding BumpFootprintExpirationResultCode: %s", err)
+	}
+	switch BumpFootprintExpirationResultCode(u.Code) {
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess:
+		// Void
+		return n, nil
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
+		// Void
+		return n, nil
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		// Void
+		return n, nil
+	}
+	return n, fmt.Errorf("union BumpFootprintExpirationResult has invalid Code (BumpFootprintExpirationResultCode) switch value '%d'", u.Code)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s BumpFootprintExpirationResult) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *BumpFootprintExpirationResult) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*BumpFootprintExpirationResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*BumpFootprintExpirationResult)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s BumpFootprintExpirationResult) xdrType() {}
+
+var _ xdrType = (*BumpFootprintExpirationResult)(nil)
+
+// RestoreFootprintResultCode is an XDR Enum defines as:
+//
+//	enum RestoreFootprintResultCode
+//	 {
+//	     // codes considered as "success" for the operation
+//	     RESTORE_FOOTPRINT_SUCCESS = 0,
+//
+//	     // codes considered as "failure" for the operation
+//	     RESTORE_FOOTPRINT_MALFORMED = -1,
+//	     RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED = -2
+//	 };
+type RestoreFootprintResultCode int32
+
+const (
+	RestoreFootprintResultCodeRestoreFootprintSuccess               RestoreFootprintResultCode = 0
+	RestoreFootprintResultCodeRestoreFootprintMalformed             RestoreFootprintResultCode = -1
+	RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded RestoreFootprintResultCode = -2
+)
+
+var restoreFootprintResultCodeMap = map[int32]string{
+	0:  "RestoreFootprintResultCodeRestoreFootprintSuccess",
+	-1: "RestoreFootprintResultCodeRestoreFootprintMalformed",
+	-2: "RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for RestoreFootprintResultCode
+func (e RestoreFootprintResultCode) ValidEnum(v int32) bool {
+	_, ok := restoreFootprintResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e RestoreFootprintResultCode) String() string {
+	name, _ := restoreFootprintResultCodeMap[int32(e)]
+	return name
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (e RestoreFootprintResultCode) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := restoreFootprintResultCodeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid RestoreFootprintResultCode enum value", e)
+	}
+	_, err := enc.EncodeInt(int32(e))
+	return err
+}
+
+var _ decoderFrom = (*RestoreFootprintResultCode)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (e *RestoreFootprintResultCode) DecodeFrom(d *xdr.Decoder) (int, error) {
+	v, n, err := d.DecodeInt()
+	if err != nil {
+		return n, fmt.Errorf("decoding RestoreFootprintResultCode: %s", err)
+	}
+	if _, ok := restoreFootprintResultCodeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid RestoreFootprintResultCode enum value", v)
+	}
+	*e = RestoreFootprintResultCode(v)
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s RestoreFootprintResultCode) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *RestoreFootprintResultCode) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*RestoreFootprintResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*RestoreFootprintResultCode)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s RestoreFootprintResultCode) xdrType() {}
+
+var _ xdrType = (*RestoreFootprintResultCode)(nil)
+
+// RestoreFootprintResult is an XDR Union defines as:
+//
+//	union RestoreFootprintResult switch (RestoreFootprintResultCode code)
+//	 {
+//	 case RESTORE_FOOTPRINT_SUCCESS:
+//	     void;
+//	 case RESTORE_FOOTPRINT_MALFORMED:
+//	 case RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+//	     void;
+//	 };
+type RestoreFootprintResult struct {
+	Code RestoreFootprintResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u RestoreFootprintResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of RestoreFootprintResult
+func (u RestoreFootprintResult) ArmForSwitch(sw int32) (string, bool) {
+	switch RestoreFootprintResultCode(sw) {
+	case RestoreFootprintResultCodeRestoreFootprintSuccess:
+		return "", true
+	case RestoreFootprintResultCodeRestoreFootprintMalformed:
+		return "", true
+	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewRestoreFootprintResult creates a new  RestoreFootprintResult.
+func NewRestoreFootprintResult(code RestoreFootprintResultCode, value interface{}) (result RestoreFootprintResult, err error) {
+	result.Code = code
+	switch RestoreFootprintResultCode(code) {
+	case RestoreFootprintResultCodeRestoreFootprintSuccess:
+		// void
+	case RestoreFootprintResultCodeRestoreFootprintMalformed:
+		// void
+	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		// void
+	}
+	return
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (u RestoreFootprintResult) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = u.Code.EncodeTo(e); err != nil {
+		return err
+	}
+	switch RestoreFootprintResultCode(u.Code) {
+	case RestoreFootprintResultCodeRestoreFootprintSuccess:
+		// Void
+		return nil
+	case RestoreFootprintResultCodeRestoreFootprintMalformed:
+		// Void
+		return nil
+	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		// Void
+		return nil
+	}
+	return fmt.Errorf("Code (RestoreFootprintResultCode) switch value '%d' is not valid for union RestoreFootprintResult", u.Code)
+}
+
+var _ decoderFrom = (*RestoreFootprintResult)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (u *RestoreFootprintResult) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = u.Code.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding RestoreFootprintResultCode: %s", err)
+	}
+	switch RestoreFootprintResultCode(u.Code) {
+	case RestoreFootprintResultCodeRestoreFootprintSuccess:
+		// Void
+		return n, nil
+	case RestoreFootprintResultCodeRestoreFootprintMalformed:
+		// Void
+		return n, nil
+	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		// Void
+		return n, nil
+	}
+	return n, fmt.Errorf("union RestoreFootprintResult has invalid Code (RestoreFootprintResultCode) switch value '%d'", u.Code)
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s RestoreFootprintResult) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *RestoreFootprintResult) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*RestoreFootprintResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*RestoreFootprintResult)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s RestoreFootprintResult) xdrType() {}
+
+var _ xdrType = (*RestoreFootprintResult)(nil)
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //	enum OperationResultCode
@@ -39444,6 +40205,10 @@ var _ xdrType = (*OperationResultCode)(nil)
 //	         LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
 //	     case INVOKE_HOST_FUNCTION:
 //	         InvokeHostFunctionResult invokeHostFunctionResult;
+//	     case BUMP_FOOTPRINT_EXPIRATION:
+//	         BumpFootprintExpirationResult bumpFootprintExpirationResult;
+//	     case RESTORE_FOOTPRINT:
+//	         RestoreFootprintResult restoreFootprintResult;
 //	     }
 type OperationResultTr struct {
 	Type                                OperationType
@@ -39472,6 +40237,8 @@ type OperationResultTr struct {
 	LiquidityPoolDepositResult          *LiquidityPoolDepositResult
 	LiquidityPoolWithdrawResult         *LiquidityPoolWithdrawResult
 	InvokeHostFunctionResult            *InvokeHostFunctionResult
+	BumpFootprintExpirationResult       *BumpFootprintExpirationResult
+	RestoreFootprintResult              *RestoreFootprintResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -39534,6 +40301,10 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "LiquidityPoolWithdrawResult", true
 	case OperationTypeInvokeHostFunction:
 		return "InvokeHostFunctionResult", true
+	case OperationTypeBumpFootprintExpiration:
+		return "BumpFootprintExpirationResult", true
+	case OperationTypeRestoreFootprint:
+		return "RestoreFootprintResult", true
 	}
 	return "-", false
 }
@@ -39717,6 +40488,20 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.InvokeHostFunctionResult = &tv
+	case OperationTypeBumpFootprintExpiration:
+		tv, ok := value.(BumpFootprintExpirationResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be BumpFootprintExpirationResult")
+			return
+		}
+		result.BumpFootprintExpirationResult = &tv
+	case OperationTypeRestoreFootprint:
+		tv, ok := value.(RestoreFootprintResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be RestoreFootprintResult")
+			return
+		}
+		result.RestoreFootprintResult = &tv
 	}
 	return
 }
@@ -40346,6 +41131,56 @@ func (u OperationResultTr) GetInvokeHostFunctionResult() (result InvokeHostFunct
 	return
 }
 
+// MustBumpFootprintExpirationResult retrieves the BumpFootprintExpirationResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustBumpFootprintExpirationResult() BumpFootprintExpirationResult {
+	val, ok := u.GetBumpFootprintExpirationResult()
+
+	if !ok {
+		panic("arm BumpFootprintExpirationResult is not set")
+	}
+
+	return val
+}
+
+// GetBumpFootprintExpirationResult retrieves the BumpFootprintExpirationResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetBumpFootprintExpirationResult() (result BumpFootprintExpirationResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "BumpFootprintExpirationResult" {
+		result = *u.BumpFootprintExpirationResult
+		ok = true
+	}
+
+	return
+}
+
+// MustRestoreFootprintResult retrieves the RestoreFootprintResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustRestoreFootprintResult() RestoreFootprintResult {
+	val, ok := u.GetRestoreFootprintResult()
+
+	if !ok {
+		panic("arm RestoreFootprintResult is not set")
+	}
+
+	return val
+}
+
+// GetRestoreFootprintResult retrieves the RestoreFootprintResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetRestoreFootprintResult() (result RestoreFootprintResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "RestoreFootprintResult" {
+		result = *u.RestoreFootprintResult
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u OperationResultTr) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -40475,6 +41310,16 @@ func (u OperationResultTr) EncodeTo(e *xdr.Encoder) error {
 		return nil
 	case OperationTypeInvokeHostFunction:
 		if err = (*u.InvokeHostFunctionResult).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case OperationTypeBumpFootprintExpiration:
+		if err = (*u.BumpFootprintExpirationResult).EncodeTo(e); err != nil {
+			return err
+		}
+		return nil
+	case OperationTypeRestoreFootprint:
+		if err = (*u.RestoreFootprintResult).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -40694,6 +41539,22 @@ func (u *OperationResultTr) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding InvokeHostFunctionResult: %s", err)
 		}
 		return n, nil
+	case OperationTypeBumpFootprintExpiration:
+		u.BumpFootprintExpirationResult = new(BumpFootprintExpirationResult)
+		nTmp, err = (*u.BumpFootprintExpirationResult).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding BumpFootprintExpirationResult: %s", err)
+		}
+		return n, nil
+	case OperationTypeRestoreFootprint:
+		u.RestoreFootprintResult = new(RestoreFootprintResult)
+		nTmp, err = (*u.RestoreFootprintResult).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding RestoreFootprintResult: %s", err)
+		}
+		return n, nil
 	}
 	return n, fmt.Errorf("union OperationResultTr has invalid Type (OperationType) switch value '%d'", u.Type)
 }
@@ -40782,6 +41643,10 @@ var _ xdrType = (*OperationResultTr)(nil)
 //	         LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
 //	     case INVOKE_HOST_FUNCTION:
 //	         InvokeHostFunctionResult invokeHostFunctionResult;
+//	     case BUMP_FOOTPRINT_EXPIRATION:
+//	         BumpFootprintExpirationResult bumpFootprintExpirationResult;
+//	     case RESTORE_FOOTPRINT:
+//	         RestoreFootprintResult restoreFootprintResult;
 //	     }
 //	     tr;
 //	 case opBAD_AUTH:
@@ -47920,45 +48785,45 @@ var _ xdrType = (*ScSpecEntry)(nil)
 //	     SCV_VEC = 16,
 //	     SCV_MAP = 17,
 //
-//	     // SCContractExecutable and SCAddressType are types that gets used separately from
-//	     // SCVal so we do not flatten their structures into separate SCVal cases.
-//	     SCV_CONTRACT_EXECUTABLE = 18,
-//	     SCV_ADDRESS = 19,
+//	     // Address is the universal identifier for contracts and classic
+//	     // accounts.
+//	     SCV_ADDRESS = 18,
 //
-//	     // SCV_LEDGER_KEY_CONTRACT_EXECUTABLE and SCV_LEDGER_KEY_NONCE are unique
-//	     // symbolic SCVals used as the key for ledger entries for a contract's code
-//	     // and an address' nonce, respectively.
-//	     SCV_LEDGER_KEY_CONTRACT_EXECUTABLE = 20,
-//	     SCV_LEDGER_KEY_NONCE = 21,
+//	     // The following are the internal SCVal variants that are not
+//	     // exposed to the contracts.
+//	     SCV_CONTRACT_INSTANCE = 19,
 //
-//	     SCV_STORAGE_TYPE = 22
+//	     // SCV_LEDGER_KEY_CONTRACT_INSTANCE and SCV_LEDGER_KEY_NONCE are unique
+//	     // symbolic SCVals used as the key for ledger entries for a contract's
+//	     // instance and an address' nonce, respectively.
+//	     SCV_LEDGER_KEY_CONTRACT_INSTANCE = 20,
+//	     SCV_LEDGER_KEY_NONCE = 21
 //	 };
 type ScValType int32
 
 const (
-	ScValTypeScvBool                        ScValType = 0
-	ScValTypeScvVoid                        ScValType = 1
-	ScValTypeScvError                       ScValType = 2
-	ScValTypeScvU32                         ScValType = 3
-	ScValTypeScvI32                         ScValType = 4
-	ScValTypeScvU64                         ScValType = 5
-	ScValTypeScvI64                         ScValType = 6
-	ScValTypeScvTimepoint                   ScValType = 7
-	ScValTypeScvDuration                    ScValType = 8
-	ScValTypeScvU128                        ScValType = 9
-	ScValTypeScvI128                        ScValType = 10
-	ScValTypeScvU256                        ScValType = 11
-	ScValTypeScvI256                        ScValType = 12
-	ScValTypeScvBytes                       ScValType = 13
-	ScValTypeScvString                      ScValType = 14
-	ScValTypeScvSymbol                      ScValType = 15
-	ScValTypeScvVec                         ScValType = 16
-	ScValTypeScvMap                         ScValType = 17
-	ScValTypeScvContractExecutable          ScValType = 18
-	ScValTypeScvAddress                     ScValType = 19
-	ScValTypeScvLedgerKeyContractExecutable ScValType = 20
-	ScValTypeScvLedgerKeyNonce              ScValType = 21
-	ScValTypeScvStorageType                 ScValType = 22
+	ScValTypeScvBool                      ScValType = 0
+	ScValTypeScvVoid                      ScValType = 1
+	ScValTypeScvError                     ScValType = 2
+	ScValTypeScvU32                       ScValType = 3
+	ScValTypeScvI32                       ScValType = 4
+	ScValTypeScvU64                       ScValType = 5
+	ScValTypeScvI64                       ScValType = 6
+	ScValTypeScvTimepoint                 ScValType = 7
+	ScValTypeScvDuration                  ScValType = 8
+	ScValTypeScvU128                      ScValType = 9
+	ScValTypeScvI128                      ScValType = 10
+	ScValTypeScvU256                      ScValType = 11
+	ScValTypeScvI256                      ScValType = 12
+	ScValTypeScvBytes                     ScValType = 13
+	ScValTypeScvString                    ScValType = 14
+	ScValTypeScvSymbol                    ScValType = 15
+	ScValTypeScvVec                       ScValType = 16
+	ScValTypeScvMap                       ScValType = 17
+	ScValTypeScvAddress                   ScValType = 18
+	ScValTypeScvContractInstance          ScValType = 19
+	ScValTypeScvLedgerKeyContractInstance ScValType = 20
+	ScValTypeScvLedgerKeyNonce            ScValType = 21
 )
 
 var scValTypeMap = map[int32]string{
@@ -47980,11 +48845,10 @@ var scValTypeMap = map[int32]string{
 	15: "ScValTypeScvSymbol",
 	16: "ScValTypeScvVec",
 	17: "ScValTypeScvMap",
-	18: "ScValTypeScvContractExecutable",
-	19: "ScValTypeScvAddress",
-	20: "ScValTypeScvLedgerKeyContractExecutable",
+	18: "ScValTypeScvAddress",
+	19: "ScValTypeScvContractInstance",
+	20: "ScValTypeScvLedgerKeyContractInstance",
 	21: "ScValTypeScvLedgerKeyNonce",
-	22: "ScValTypeScvStorageType",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -48651,64 +49515,64 @@ func (s Int256Parts) xdrType() {}
 
 var _ xdrType = (*Int256Parts)(nil)
 
-// ScContractExecutableType is an XDR Enum defines as:
+// ContractExecutableType is an XDR Enum defines as:
 //
-//	enum SCContractExecutableType
+//	enum ContractExecutableType
 //	 {
-//	     SCCONTRACT_EXECUTABLE_WASM_REF = 0,
-//	     SCCONTRACT_EXECUTABLE_TOKEN = 1
+//	     CONTRACT_EXECUTABLE_WASM = 0,
+//	     CONTRACT_EXECUTABLE_TOKEN = 1
 //	 };
-type ScContractExecutableType int32
+type ContractExecutableType int32
 
 const (
-	ScContractExecutableTypeSccontractExecutableWasmRef ScContractExecutableType = 0
-	ScContractExecutableTypeSccontractExecutableToken   ScContractExecutableType = 1
+	ContractExecutableTypeContractExecutableWasm  ContractExecutableType = 0
+	ContractExecutableTypeContractExecutableToken ContractExecutableType = 1
 )
 
-var scContractExecutableTypeMap = map[int32]string{
-	0: "ScContractExecutableTypeSccontractExecutableWasmRef",
-	1: "ScContractExecutableTypeSccontractExecutableToken",
+var contractExecutableTypeMap = map[int32]string{
+	0: "ContractExecutableTypeContractExecutableWasm",
+	1: "ContractExecutableTypeContractExecutableToken",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ScContractExecutableType
-func (e ScContractExecutableType) ValidEnum(v int32) bool {
-	_, ok := scContractExecutableTypeMap[v]
+// the Enum interface for ContractExecutableType
+func (e ContractExecutableType) ValidEnum(v int32) bool {
+	_, ok := contractExecutableTypeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e ScContractExecutableType) String() string {
-	name, _ := scContractExecutableTypeMap[int32(e)]
+func (e ContractExecutableType) String() string {
+	name, _ := contractExecutableTypeMap[int32(e)]
 	return name
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (e ScContractExecutableType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := scContractExecutableTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ScContractExecutableType enum value", e)
+func (e ContractExecutableType) EncodeTo(enc *xdr.Encoder) error {
+	if _, ok := contractExecutableTypeMap[int32(e)]; !ok {
+		return fmt.Errorf("'%d' is not a valid ContractExecutableType enum value", e)
 	}
 	_, err := enc.EncodeInt(int32(e))
 	return err
 }
 
-var _ decoderFrom = (*ScContractExecutableType)(nil)
+var _ decoderFrom = (*ContractExecutableType)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (e *ScContractExecutableType) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (e *ContractExecutableType) DecodeFrom(d *xdr.Decoder) (int, error) {
 	v, n, err := d.DecodeInt()
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractExecutableType: %s", err)
+		return n, fmt.Errorf("decoding ContractExecutableType: %s", err)
 	}
-	if _, ok := scContractExecutableTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ScContractExecutableType enum value", v)
+	if _, ok := contractExecutableTypeMap[v]; !ok {
+		return n, fmt.Errorf("'%d' is not a valid ContractExecutableType enum value", v)
 	}
-	*e = ScContractExecutableType(v)
+	*e = ContractExecutableType(v)
 	return n, nil
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScContractExecutableType) MarshalBinary() ([]byte, error) {
+func (s ContractExecutableType) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -48716,7 +49580,7 @@ func (s ScContractExecutableType) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScContractExecutableType) UnmarshalBinary(inp []byte) error {
+func (s *ContractExecutableType) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -48724,84 +49588,84 @@ func (s *ScContractExecutableType) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ScContractExecutableType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScContractExecutableType)(nil)
+	_ encoding.BinaryMarshaler   = (*ContractExecutableType)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractExecutableType)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ScContractExecutableType) xdrType() {}
+func (s ContractExecutableType) xdrType() {}
 
-var _ xdrType = (*ScContractExecutableType)(nil)
+var _ xdrType = (*ContractExecutableType)(nil)
 
-// ScContractExecutable is an XDR Union defines as:
+// ContractExecutable is an XDR Union defines as:
 //
-//	union SCContractExecutable switch (SCContractExecutableType type)
+//	union ContractExecutable switch (ContractExecutableType type)
 //	 {
-//	 case SCCONTRACT_EXECUTABLE_WASM_REF:
-//	     Hash wasm_id;
-//	 case SCCONTRACT_EXECUTABLE_TOKEN:
+//	 case CONTRACT_EXECUTABLE_WASM:
+//	     Hash wasm_hash;
+//	 case CONTRACT_EXECUTABLE_TOKEN:
 //	     void;
 //	 };
-type ScContractExecutable struct {
-	Type   ScContractExecutableType
-	WasmId *Hash
+type ContractExecutable struct {
+	Type     ContractExecutableType
+	WasmHash *Hash
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u ScContractExecutable) SwitchFieldName() string {
+func (u ContractExecutable) SwitchFieldName() string {
 	return "Type"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ScContractExecutable
-func (u ScContractExecutable) ArmForSwitch(sw int32) (string, bool) {
-	switch ScContractExecutableType(sw) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		return "WasmId", true
-	case ScContractExecutableTypeSccontractExecutableToken:
+// the value for an instance of ContractExecutable
+func (u ContractExecutable) ArmForSwitch(sw int32) (string, bool) {
+	switch ContractExecutableType(sw) {
+	case ContractExecutableTypeContractExecutableWasm:
+		return "WasmHash", true
+	case ContractExecutableTypeContractExecutableToken:
 		return "", true
 	}
 	return "-", false
 }
 
-// NewScContractExecutable creates a new  ScContractExecutable.
-func NewScContractExecutable(aType ScContractExecutableType, value interface{}) (result ScContractExecutable, err error) {
+// NewContractExecutable creates a new  ContractExecutable.
+func NewContractExecutable(aType ContractExecutableType, value interface{}) (result ContractExecutable, err error) {
 	result.Type = aType
-	switch ScContractExecutableType(aType) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
+	switch ContractExecutableType(aType) {
+	case ContractExecutableTypeContractExecutableWasm:
 		tv, ok := value.(Hash)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be Hash")
 			return
 		}
-		result.WasmId = &tv
-	case ScContractExecutableTypeSccontractExecutableToken:
+		result.WasmHash = &tv
+	case ContractExecutableTypeContractExecutableToken:
 		// void
 	}
 	return
 }
 
-// MustWasmId retrieves the WasmId value from the union,
+// MustWasmHash retrieves the WasmHash value from the union,
 // panicing if the value is not set.
-func (u ScContractExecutable) MustWasmId() Hash {
-	val, ok := u.GetWasmId()
+func (u ContractExecutable) MustWasmHash() Hash {
+	val, ok := u.GetWasmHash()
 
 	if !ok {
-		panic("arm WasmId is not set")
+		panic("arm WasmHash is not set")
 	}
 
 	return val
 }
 
-// GetWasmId retrieves the WasmId value from the union,
+// GetWasmHash retrieves the WasmHash value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScContractExecutable) GetWasmId() (result Hash, ok bool) {
+func (u ContractExecutable) GetWasmHash() (result Hash, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "WasmId" {
-		result = *u.WasmId
+	if armName == "WasmHash" {
+		result = *u.WasmHash
 		ok = true
 	}
 
@@ -48809,53 +49673,53 @@ func (u ScContractExecutable) GetWasmId() (result Hash, ok bool) {
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (u ScContractExecutable) EncodeTo(e *xdr.Encoder) error {
+func (u ContractExecutable) EncodeTo(e *xdr.Encoder) error {
 	var err error
 	if err = u.Type.EncodeTo(e); err != nil {
 		return err
 	}
-	switch ScContractExecutableType(u.Type) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		if err = (*u.WasmId).EncodeTo(e); err != nil {
+	switch ContractExecutableType(u.Type) {
+	case ContractExecutableTypeContractExecutableWasm:
+		if err = (*u.WasmHash).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScContractExecutableTypeSccontractExecutableToken:
+	case ContractExecutableTypeContractExecutableToken:
 		// Void
 		return nil
 	}
-	return fmt.Errorf("Type (ScContractExecutableType) switch value '%d' is not valid for union ScContractExecutable", u.Type)
+	return fmt.Errorf("Type (ContractExecutableType) switch value '%d' is not valid for union ContractExecutable", u.Type)
 }
 
-var _ decoderFrom = (*ScContractExecutable)(nil)
+var _ decoderFrom = (*ContractExecutable)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (u *ScContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (u *ContractExecutable) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
 	nTmp, err = u.Type.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScContractExecutableType: %s", err)
+		return n, fmt.Errorf("decoding ContractExecutableType: %s", err)
 	}
-	switch ScContractExecutableType(u.Type) {
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		u.WasmId = new(Hash)
-		nTmp, err = (*u.WasmId).DecodeFrom(d)
+	switch ContractExecutableType(u.Type) {
+	case ContractExecutableTypeContractExecutableWasm:
+		u.WasmHash = new(Hash)
+		nTmp, err = (*u.WasmHash).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding Hash: %s", err)
 		}
 		return n, nil
-	case ScContractExecutableTypeSccontractExecutableToken:
+	case ContractExecutableTypeContractExecutableToken:
 		// Void
 		return n, nil
 	}
-	return n, fmt.Errorf("union ScContractExecutable has invalid Type (ScContractExecutableType) switch value '%d'", u.Type)
+	return n, fmt.Errorf("union ContractExecutable has invalid Type (ContractExecutableType) switch value '%d'", u.Type)
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScContractExecutable) MarshalBinary() ([]byte, error) {
+func (s ContractExecutable) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -48863,7 +49727,7 @@ func (s ScContractExecutable) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScContractExecutable) UnmarshalBinary(inp []byte) error {
+func (s *ContractExecutable) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -48871,15 +49735,15 @@ func (s *ScContractExecutable) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ScContractExecutable)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScContractExecutable)(nil)
+	_ encoding.BinaryMarshaler   = (*ContractExecutable)(nil)
+	_ encoding.BinaryUnmarshaler = (*ContractExecutable)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ScContractExecutable) xdrType() {}
+func (s ContractExecutable) xdrType() {}
 
-var _ xdrType = (*ScContractExecutable)(nil)
+var _ xdrType = (*ContractExecutable)(nil)
 
 // ScAddressType is an XDR Enum defines as:
 //
@@ -49148,91 +50012,6 @@ var (
 func (s ScAddress) xdrType() {}
 
 var _ xdrType = (*ScAddress)(nil)
-
-// ContractDataType is an XDR Enum defines as:
-//
-//	enum ContractDataType {
-//	     TEMPORARY = 0,
-//	     MERGEABLE = 1,
-//	     EXCLUSIVE = 2
-//	 };
-type ContractDataType int32
-
-const (
-	ContractDataTypeTemporary ContractDataType = 0
-	ContractDataTypeMergeable ContractDataType = 1
-	ContractDataTypeExclusive ContractDataType = 2
-)
-
-var contractDataTypeMap = map[int32]string{
-	0: "ContractDataTypeTemporary",
-	1: "ContractDataTypeMergeable",
-	2: "ContractDataTypeExclusive",
-}
-
-// ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ContractDataType
-func (e ContractDataType) ValidEnum(v int32) bool {
-	_, ok := contractDataTypeMap[v]
-	return ok
-}
-
-// String returns the name of `e`
-func (e ContractDataType) String() string {
-	name, _ := contractDataTypeMap[int32(e)]
-	return name
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (e ContractDataType) EncodeTo(enc *xdr.Encoder) error {
-	if _, ok := contractDataTypeMap[int32(e)]; !ok {
-		return fmt.Errorf("'%d' is not a valid ContractDataType enum value", e)
-	}
-	_, err := enc.EncodeInt(int32(e))
-	return err
-}
-
-var _ decoderFrom = (*ContractDataType)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (e *ContractDataType) DecodeFrom(d *xdr.Decoder) (int, error) {
-	v, n, err := d.DecodeInt()
-	if err != nil {
-		return n, fmt.Errorf("decoding ContractDataType: %s", err)
-	}
-	if _, ok := contractDataTypeMap[v]; !ok {
-		return n, fmt.Errorf("'%d' is not a valid ContractDataType enum value", v)
-	}
-	*e = ContractDataType(v)
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ContractDataType) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ContractDataType) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ContractDataType)(nil)
-	_ encoding.BinaryUnmarshaler = (*ContractDataType)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ContractDataType) xdrType() {}
-
-var _ xdrType = (*ContractDataType)(nil)
 
 // ScsymbolLimit is an XDR Const defines as:
 //
@@ -49560,16 +50339,16 @@ var _ xdrType = (*ScSymbol)(nil)
 // ScNonceKey is an XDR Struct defines as:
 //
 //	struct SCNonceKey {
-//	     SCAddress nonce_address;
+//	     int64 nonce;
 //	 };
 type ScNonceKey struct {
-	NonceAddress ScAddress
+	Nonce Int64
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *ScNonceKey) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.NonceAddress.EncodeTo(e); err != nil {
+	if err = s.Nonce.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -49581,10 +50360,10 @@ var _ decoderFrom = (*ScNonceKey)(nil)
 func (s *ScNonceKey) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.NonceAddress.DecodeFrom(d)
+	nTmp, err = s.Nonce.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding ScAddress: %s", err)
+		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
 	return n, nil
 }
@@ -49615,6 +50394,90 @@ var (
 func (s ScNonceKey) xdrType() {}
 
 var _ xdrType = (*ScNonceKey)(nil)
+
+// ScContractInstance is an XDR Struct defines as:
+//
+//	struct SCContractInstance {
+//	     ContractExecutable executable;
+//	     SCMap* storage;
+//	 };
+type ScContractInstance struct {
+	Executable ContractExecutable
+	Storage    *ScMap
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *ScContractInstance) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.Executable.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeBool(s.Storage != nil); err != nil {
+		return err
+	}
+	if s.Storage != nil {
+		if err = (*s.Storage).EncodeTo(e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var _ decoderFrom = (*ScContractInstance)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *ScContractInstance) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.Executable.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ContractExecutable: %s", err)
+	}
+	var b bool
+	b, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding ScMap: %s", err)
+	}
+	s.Storage = nil
+	if b {
+		s.Storage = new(ScMap)
+		nTmp, err = s.Storage.DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding ScMap: %s", err)
+		}
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s ScContractInstance) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *ScContractInstance) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*ScContractInstance)(nil)
+	_ encoding.BinaryUnmarshaler = (*ScContractInstance)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s ScContractInstance) xdrType() {}
+
+var _ xdrType = (*ScContractInstance)(nil)
 
 // ScVal is an XDR Union defines as:
 //
@@ -49666,44 +50529,41 @@ var _ xdrType = (*ScNonceKey)(nil)
 //	 case SCV_MAP:
 //	     SCMap *map;
 //
-//	 case SCV_CONTRACT_EXECUTABLE:
-//	     SCContractExecutable exec;
 //	 case SCV_ADDRESS:
 //	     SCAddress address;
 //
 //	 // Special SCVals reserved for system-constructed contract-data
 //	 // ledger keys, not generally usable elsewhere.
-//	 case SCV_LEDGER_KEY_CONTRACT_EXECUTABLE:
+//	 case SCV_LEDGER_KEY_CONTRACT_INSTANCE:
 //	     void;
 //	 case SCV_LEDGER_KEY_NONCE:
 //	     SCNonceKey nonce_key;
 //
-//	 case SCV_STORAGE_TYPE:
-//	     ContractDataType storageType;
+//	 case SCV_CONTRACT_INSTANCE:
+//	     SCContractInstance instance;
 //	 };
 type ScVal struct {
-	Type        ScValType
-	B           *bool
-	Error       *ScError
-	U32         *Uint32
-	I32         *Int32
-	U64         *Uint64
-	I64         *Int64
-	Timepoint   *TimePoint
-	Duration    *Duration
-	U128        *UInt128Parts
-	I128        *Int128Parts
-	U256        *UInt256Parts
-	I256        *Int256Parts
-	Bytes       *ScBytes
-	Str         *ScString
-	Sym         *ScSymbol
-	Vec         **ScVec
-	Map         **ScMap
-	Exec        *ScContractExecutable
-	Address     *ScAddress
-	NonceKey    *ScNonceKey
-	StorageType *ContractDataType
+	Type      ScValType
+	B         *bool
+	Error     *ScError
+	U32       *Uint32
+	I32       *Int32
+	U64       *Uint64
+	I64       *Int64
+	Timepoint *TimePoint
+	Duration  *Duration
+	U128      *UInt128Parts
+	I128      *Int128Parts
+	U256      *UInt256Parts
+	I256      *Int256Parts
+	Bytes     *ScBytes
+	Str       *ScString
+	Sym       *ScSymbol
+	Vec       **ScVec
+	Map       **ScMap
+	Address   *ScAddress
+	NonceKey  *ScNonceKey
+	Instance  *ScContractInstance
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -49752,16 +50612,14 @@ func (u ScVal) ArmForSwitch(sw int32) (string, bool) {
 		return "Vec", true
 	case ScValTypeScvMap:
 		return "Map", true
-	case ScValTypeScvContractExecutable:
-		return "Exec", true
 	case ScValTypeScvAddress:
 		return "Address", true
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		return "", true
 	case ScValTypeScvLedgerKeyNonce:
 		return "NonceKey", true
-	case ScValTypeScvStorageType:
-		return "StorageType", true
+	case ScValTypeScvContractInstance:
+		return "Instance", true
 	}
 	return "-", false
 }
@@ -49891,13 +50749,6 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 			return
 		}
 		result.Map = &tv
-	case ScValTypeScvContractExecutable:
-		tv, ok := value.(ScContractExecutable)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScContractExecutable")
-			return
-		}
-		result.Exec = &tv
 	case ScValTypeScvAddress:
 		tv, ok := value.(ScAddress)
 		if !ok {
@@ -49905,7 +50756,7 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 			return
 		}
 		result.Address = &tv
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		// void
 	case ScValTypeScvLedgerKeyNonce:
 		tv, ok := value.(ScNonceKey)
@@ -49914,13 +50765,13 @@ func NewScVal(aType ScValType, value interface{}) (result ScVal, err error) {
 			return
 		}
 		result.NonceKey = &tv
-	case ScValTypeScvStorageType:
-		tv, ok := value.(ContractDataType)
+	case ScValTypeScvContractInstance:
+		tv, ok := value.(ScContractInstance)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ContractDataType")
+			err = fmt.Errorf("invalid value, must be ScContractInstance")
 			return
 		}
-		result.StorageType = &tv
+		result.Instance = &tv
 	}
 	return
 }
@@ -50350,31 +51201,6 @@ func (u ScVal) GetMap() (result *ScMap, ok bool) {
 	return
 }
 
-// MustExec retrieves the Exec value from the union,
-// panicing if the value is not set.
-func (u ScVal) MustExec() ScContractExecutable {
-	val, ok := u.GetExec()
-
-	if !ok {
-		panic("arm Exec is not set")
-	}
-
-	return val
-}
-
-// GetExec retrieves the Exec value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetExec() (result ScContractExecutable, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Exec" {
-		result = *u.Exec
-		ok = true
-	}
-
-	return
-}
-
 // MustAddress retrieves the Address value from the union,
 // panicing if the value is not set.
 func (u ScVal) MustAddress() ScAddress {
@@ -50425,25 +51251,25 @@ func (u ScVal) GetNonceKey() (result ScNonceKey, ok bool) {
 	return
 }
 
-// MustStorageType retrieves the StorageType value from the union,
+// MustInstance retrieves the Instance value from the union,
 // panicing if the value is not set.
-func (u ScVal) MustStorageType() ContractDataType {
-	val, ok := u.GetStorageType()
+func (u ScVal) MustInstance() ScContractInstance {
+	val, ok := u.GetInstance()
 
 	if !ok {
-		panic("arm StorageType is not set")
+		panic("arm Instance is not set")
 	}
 
 	return val
 }
 
-// GetStorageType retrieves the StorageType value from the union,
+// GetInstance retrieves the Instance value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ScVal) GetStorageType() (result ContractDataType, ok bool) {
+func (u ScVal) GetInstance() (result ScContractInstance, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "StorageType" {
-		result = *u.StorageType
+	if armName == "Instance" {
+		result = *u.Instance
 		ok = true
 	}
 
@@ -50555,17 +51381,12 @@ func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 			}
 		}
 		return nil
-	case ScValTypeScvContractExecutable:
-		if err = (*u.Exec).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
 	case ScValTypeScvAddress:
 		if err = (*u.Address).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		// Void
 		return nil
 	case ScValTypeScvLedgerKeyNonce:
@@ -50573,8 +51394,8 @@ func (u ScVal) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case ScValTypeScvStorageType:
-		if err = (*u.StorageType).EncodeTo(e); err != nil {
+	case ScValTypeScvContractInstance:
+		if err = (*u.Instance).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -50753,14 +51574,6 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 			}
 		}
 		return n, nil
-	case ScValTypeScvContractExecutable:
-		u.Exec = new(ScContractExecutable)
-		nTmp, err = (*u.Exec).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScContractExecutable: %s", err)
-		}
-		return n, nil
 	case ScValTypeScvAddress:
 		u.Address = new(ScAddress)
 		nTmp, err = (*u.Address).DecodeFrom(d)
@@ -50769,7 +51582,7 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ScAddress: %s", err)
 		}
 		return n, nil
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvLedgerKeyContractInstance:
 		// Void
 		return n, nil
 	case ScValTypeScvLedgerKeyNonce:
@@ -50780,12 +51593,12 @@ func (u *ScVal) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ScNonceKey: %s", err)
 		}
 		return n, nil
-	case ScValTypeScvStorageType:
-		u.StorageType = new(ContractDataType)
-		nTmp, err = (*u.StorageType).DecodeFrom(d)
+	case ScValTypeScvContractInstance:
+		u.Instance = new(ScContractInstance)
+		nTmp, err = (*u.Instance).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding ContractDataType: %s", err)
+			return n, fmt.Errorf("decoding ScContractInstance: %s", err)
 		}
 		return n, nil
 	}
@@ -52135,20 +52948,30 @@ var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
 //	     VmMemWrite = 17,
 //	     // Cost of instantiation a VM from wasm bytes code.
 //	     VmInstantiation = 18,
+//	     // Cost of instantiation a VM from a cached state.
+//	     VmCachedInstantiation = 19,
 //	     // Roundtrip cost of invoking a VM function from the host.
-//	     InvokeVmFunction = 19,
+//	     InvokeVmFunction = 20,
 //	     // Cost of charging a value to the budgeting system.
-//	     ChargeBudget = 20,
+//	     ChargeBudget = 21,
 //	     // Cost of computing a keccak256 hash from bytes.
-//	     ComputeKeccak256Hash = 21,
+//	     ComputeKeccak256Hash = 22,
 //	     // Cost of computing an ECDSA secp256k1 pubkey from bytes.
-//	     ComputeEcdsaSecp256k1Key = 22,
+//	     ComputeEcdsaSecp256k1Key = 23,
 //	     // Cost of computing an ECDSA secp256k1 signature from bytes.
-//	     ComputeEcdsaSecp256k1Sig = 23,
-//	     // Cost of verifying an ECDSA secp256k1 signature.
-//	     VerifyEcdsaSecp256k1Sig = 24,
+//	     ComputeEcdsaSecp256k1Sig = 24,
 //	     // Cost of recovering an ECDSA secp256k1 key from a signature.
-//	     RecoverEcdsaSecp256k1Key = 25
+//	     RecoverEcdsaSecp256k1Key = 25,
+//	     // Cost of int256 addition (`+`) and subtraction (`-`) operations
+//	     Int256AddSub = 26,
+//	     // Cost of int256 multiplication (`*`) operation
+//	     Int256Mul = 27,
+//	     // Cost of int256 division (`/`) operation
+//	     Int256Div = 28,
+//	     // Cost of int256 power (`exp`) operation
+//	     Int256Pow = 29,
+//	     // Cost of int256 shift (`shl`, `shr`) operation
+//	     Int256Shift = 30
 //	 };
 type ContractCostType int32
 
@@ -52172,13 +52995,18 @@ const (
 	ContractCostTypeVmMemRead                ContractCostType = 16
 	ContractCostTypeVmMemWrite               ContractCostType = 17
 	ContractCostTypeVmInstantiation          ContractCostType = 18
-	ContractCostTypeInvokeVmFunction         ContractCostType = 19
-	ContractCostTypeChargeBudget             ContractCostType = 20
-	ContractCostTypeComputeKeccak256Hash     ContractCostType = 21
-	ContractCostTypeComputeEcdsaSecp256k1Key ContractCostType = 22
-	ContractCostTypeComputeEcdsaSecp256k1Sig ContractCostType = 23
-	ContractCostTypeVerifyEcdsaSecp256k1Sig  ContractCostType = 24
+	ContractCostTypeVmCachedInstantiation    ContractCostType = 19
+	ContractCostTypeInvokeVmFunction         ContractCostType = 20
+	ContractCostTypeChargeBudget             ContractCostType = 21
+	ContractCostTypeComputeKeccak256Hash     ContractCostType = 22
+	ContractCostTypeComputeEcdsaSecp256k1Key ContractCostType = 23
+	ContractCostTypeComputeEcdsaSecp256k1Sig ContractCostType = 24
 	ContractCostTypeRecoverEcdsaSecp256k1Key ContractCostType = 25
+	ContractCostTypeInt256AddSub             ContractCostType = 26
+	ContractCostTypeInt256Mul                ContractCostType = 27
+	ContractCostTypeInt256Div                ContractCostType = 28
+	ContractCostTypeInt256Pow                ContractCostType = 29
+	ContractCostTypeInt256Shift              ContractCostType = 30
 )
 
 var contractCostTypeMap = map[int32]string{
@@ -52201,13 +53029,18 @@ var contractCostTypeMap = map[int32]string{
 	16: "ContractCostTypeVmMemRead",
 	17: "ContractCostTypeVmMemWrite",
 	18: "ContractCostTypeVmInstantiation",
-	19: "ContractCostTypeInvokeVmFunction",
-	20: "ContractCostTypeChargeBudget",
-	21: "ContractCostTypeComputeKeccak256Hash",
-	22: "ContractCostTypeComputeEcdsaSecp256k1Key",
-	23: "ContractCostTypeComputeEcdsaSecp256k1Sig",
-	24: "ContractCostTypeVerifyEcdsaSecp256k1Sig",
+	19: "ContractCostTypeVmCachedInstantiation",
+	20: "ContractCostTypeInvokeVmFunction",
+	21: "ContractCostTypeChargeBudget",
+	22: "ContractCostTypeComputeKeccak256Hash",
+	23: "ContractCostTypeComputeEcdsaSecp256k1Key",
+	24: "ContractCostTypeComputeEcdsaSecp256k1Sig",
 	25: "ContractCostTypeRecoverEcdsaSecp256k1Key",
+	26: "ContractCostTypeInt256AddSub",
+	27: "ContractCostTypeInt256Mul",
+	28: "ContractCostTypeInt256Div",
+	29: "ContractCostTypeInt256Pow",
+	30: "ContractCostTypeInt256Shift",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -52355,129 +53188,37 @@ func (s ContractCostParamEntry) xdrType() {}
 
 var _ xdrType = (*ContractCostParamEntry)(nil)
 
-// StateExpirationSettingsExt is an XDR NestedUnion defines as:
-//
-//	union switch (int v)
-//	     {
-//	     case 0:
-//	         void;
-//	     }
-type StateExpirationSettingsExt struct {
-	V int32
-}
-
-// SwitchFieldName returns the field name in which this union's
-// discriminant is stored
-func (u StateExpirationSettingsExt) SwitchFieldName() string {
-	return "V"
-}
-
-// ArmForSwitch returns which field name should be used for storing
-// the value for an instance of StateExpirationSettingsExt
-func (u StateExpirationSettingsExt) ArmForSwitch(sw int32) (string, bool) {
-	switch int32(sw) {
-	case 0:
-		return "", true
-	}
-	return "-", false
-}
-
-// NewStateExpirationSettingsExt creates a new  StateExpirationSettingsExt.
-func NewStateExpirationSettingsExt(v int32, value interface{}) (result StateExpirationSettingsExt, err error) {
-	result.V = v
-	switch int32(v) {
-	case 0:
-		// void
-	}
-	return
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (u StateExpirationSettingsExt) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if _, err = e.EncodeInt(int32(u.V)); err != nil {
-		return err
-	}
-	switch int32(u.V) {
-	case 0:
-		// Void
-		return nil
-	}
-	return fmt.Errorf("V (int32) switch value '%d' is not valid for union StateExpirationSettingsExt", u.V)
-}
-
-var _ decoderFrom = (*StateExpirationSettingsExt)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (u *StateExpirationSettingsExt) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	u.V, nTmp, err = d.DecodeInt()
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Int: %s", err)
-	}
-	switch int32(u.V) {
-	case 0:
-		// Void
-		return n, nil
-	}
-	return n, fmt.Errorf("union StateExpirationSettingsExt has invalid V (int32) switch value '%d'", u.V)
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s StateExpirationSettingsExt) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *StateExpirationSettingsExt) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*StateExpirationSettingsExt)(nil)
-	_ encoding.BinaryUnmarshaler = (*StateExpirationSettingsExt)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s StateExpirationSettingsExt) xdrType() {}
-
-var _ xdrType = (*StateExpirationSettingsExt)(nil)
-
 // StateExpirationSettings is an XDR Struct defines as:
 //
 //	struct StateExpirationSettings {
 //	     uint32 maxEntryExpiration;
 //	     uint32 minTempEntryExpiration;
-//	     uint32 minRestorableEntryExpiration;
+//	     uint32 minPersistentEntryExpiration;
 //	     uint32 autoBumpLedgers;
 //
 //	     // rent_fee = wfee_rate_average / rent_rate_denominator_for_type
-//	     int64 restorableRentRateDenominator;
+//	     int64 persistentRentRateDenominator;
 //	     int64 tempRentRateDenominator;
 //
-//	     union switch (int v)
-//	     {
-//	     case 0:
-//	         void;
-//	     } ext;
+//	     // max number of entries that emit expiration meta in a single ledger
+//	     uint32 maxEntriesToExpire;
+//
+//	     // Number of snapshots to use when calculating average BucketList size
+//	     uint32 bucketListSizeWindowSampleSize;
+//
+//	     // Maximum number of bytes that we scan for eviction per ledger
+//	     uint64 evictionScanSize;
 //	 };
 type StateExpirationSettings struct {
-	MaxEntryExpiration            Uint32
-	MinTempEntryExpiration        Uint32
-	MinRestorableEntryExpiration  Uint32
-	AutoBumpLedgers               Uint32
-	RestorableRentRateDenominator Int64
-	TempRentRateDenominator       Int64
-	Ext                           StateExpirationSettingsExt
+	MaxEntryExpiration             Uint32
+	MinTempEntryExpiration         Uint32
+	MinPersistentEntryExpiration   Uint32
+	AutoBumpLedgers                Uint32
+	PersistentRentRateDenominator  Int64
+	TempRentRateDenominator        Int64
+	MaxEntriesToExpire             Uint32
+	BucketListSizeWindowSampleSize Uint32
+	EvictionScanSize               Uint64
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -52489,19 +53230,25 @@ func (s *StateExpirationSettings) EncodeTo(e *xdr.Encoder) error {
 	if err = s.MinTempEntryExpiration.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.MinRestorableEntryExpiration.EncodeTo(e); err != nil {
+	if err = s.MinPersistentEntryExpiration.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.AutoBumpLedgers.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.RestorableRentRateDenominator.EncodeTo(e); err != nil {
+	if err = s.PersistentRentRateDenominator.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.TempRentRateDenominator.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.Ext.EncodeTo(e); err != nil {
+	if err = s.MaxEntriesToExpire.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.BucketListSizeWindowSampleSize.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.EvictionScanSize.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -52523,7 +53270,7 @@ func (s *StateExpirationSettings) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.MinRestorableEntryExpiration.DecodeFrom(d)
+	nTmp, err = s.MinPersistentEntryExpiration.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -52533,7 +53280,7 @@ func (s *StateExpirationSettings) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.RestorableRentRateDenominator.DecodeFrom(d)
+	nTmp, err = s.PersistentRentRateDenominator.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -52543,10 +53290,20 @@ func (s *StateExpirationSettings) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
 	}
-	nTmp, err = s.Ext.DecodeFrom(d)
+	nTmp, err = s.MaxEntriesToExpire.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
-		return n, fmt.Errorf("decoding StateExpirationSettingsExt: %s", err)
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.BucketListSizeWindowSampleSize.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	nTmp, err = s.EvictionScanSize.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
 	return n, nil
 }
@@ -52678,7 +53435,8 @@ var _ xdrType = (*ContractCostParams)(nil)
 //	     CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES = 8,
 //	     CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES = 9,
 //	     CONFIG_SETTING_STATE_EXPIRATION = 10,
-//	     CONFIG_SETTING_CONTRACT_EXECUTION_LANES = 11
+//	     CONFIG_SETTING_CONTRACT_EXECUTION_LANES = 11,
+//	     CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW = 12
 //	 };
 type ConfigSettingId int32
 
@@ -52695,6 +53453,7 @@ const (
 	ConfigSettingIdConfigSettingContractDataEntrySizeBytes        ConfigSettingId = 9
 	ConfigSettingIdConfigSettingStateExpiration                   ConfigSettingId = 10
 	ConfigSettingIdConfigSettingContractExecutionLanes            ConfigSettingId = 11
+	ConfigSettingIdConfigSettingBucketlistSizeWindow              ConfigSettingId = 12
 )
 
 var configSettingIdMap = map[int32]string{
@@ -52710,6 +53469,7 @@ var configSettingIdMap = map[int32]string{
 	9:  "ConfigSettingIdConfigSettingContractDataEntrySizeBytes",
 	10: "ConfigSettingIdConfigSettingStateExpiration",
 	11: "ConfigSettingIdConfigSettingContractExecutionLanes",
+	12: "ConfigSettingIdConfigSettingBucketlistSizeWindow",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -52804,6 +53564,8 @@ var _ xdrType = (*ConfigSettingId)(nil)
 //	     StateExpirationSettings stateExpirationSettings;
 //	 case CONFIG_SETTING_CONTRACT_EXECUTION_LANES:
 //	     ConfigSettingContractExecutionLanesV0 contractExecutionLanes;
+//	 case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
+//	     uint64 bucketListSizeWindow<>;
 //	 };
 type ConfigSettingEntry struct {
 	ConfigSettingId            ConfigSettingId
@@ -52819,6 +53581,7 @@ type ConfigSettingEntry struct {
 	ContractDataEntrySizeBytes *Uint32
 	StateExpirationSettings    *StateExpirationSettings
 	ContractExecutionLanes     *ConfigSettingContractExecutionLanesV0
+	BucketListSizeWindow       *[]Uint64
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -52855,6 +53618,8 @@ func (u ConfigSettingEntry) ArmForSwitch(sw int32) (string, bool) {
 		return "StateExpirationSettings", true
 	case ConfigSettingIdConfigSettingContractExecutionLanes:
 		return "ContractExecutionLanes", true
+	case ConfigSettingIdConfigSettingBucketlistSizeWindow:
+		return "BucketListSizeWindow", true
 	}
 	return "-", false
 }
@@ -52947,6 +53712,13 @@ func NewConfigSettingEntry(configSettingId ConfigSettingId, value interface{}) (
 			return
 		}
 		result.ContractExecutionLanes = &tv
+	case ConfigSettingIdConfigSettingBucketlistSizeWindow:
+		tv, ok := value.([]Uint64)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be []Uint64")
+			return
+		}
+		result.BucketListSizeWindow = &tv
 	}
 	return
 }
@@ -53251,6 +54023,31 @@ func (u ConfigSettingEntry) GetContractExecutionLanes() (result ConfigSettingCon
 	return
 }
 
+// MustBucketListSizeWindow retrieves the BucketListSizeWindow value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustBucketListSizeWindow() []Uint64 {
+	val, ok := u.GetBucketListSizeWindow()
+
+	if !ok {
+		panic("arm BucketListSizeWindow is not set")
+	}
+
+	return val
+}
+
+// GetBucketListSizeWindow retrieves the BucketListSizeWindow value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetBucketListSizeWindow() (result []Uint64, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "BucketListSizeWindow" {
+		result = *u.BucketListSizeWindow
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -53316,6 +54113,16 @@ func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 	case ConfigSettingIdConfigSettingContractExecutionLanes:
 		if err = (*u.ContractExecutionLanes).EncodeTo(e); err != nil {
 			return err
+		}
+		return nil
+	case ConfigSettingIdConfigSettingBucketlistSizeWindow:
+		if _, err = e.EncodeUint(uint32(len((*u.BucketListSizeWindow)))); err != nil {
+			return err
+		}
+		for i := 0; i < len((*u.BucketListSizeWindow)); i++ {
+			if err = (*u.BucketListSizeWindow)[i].EncodeTo(e); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -53428,6 +54235,26 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ConfigSettingContractExecutionLanesV0: %s", err)
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingBucketlistSizeWindow:
+		u.BucketListSizeWindow = new([]Uint64)
+		var l uint32
+		l, nTmp, err = d.DecodeUint()
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding Uint64: %s", err)
+		}
+		(*u.BucketListSizeWindow) = nil
+		if l > 0 {
+			(*u.BucketListSizeWindow) = make([]Uint64, l)
+			for i := uint32(0); i < l; i++ {
+				nTmp, err = (*u.BucketListSizeWindow)[i].DecodeFrom(d)
+				n += nTmp
+				if err != nil {
+					return n, fmt.Errorf("decoding Uint64: %s", err)
+				}
+			}
 		}
 		return n, nil
 	}

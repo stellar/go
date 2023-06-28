@@ -50,6 +50,8 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsLiquidityPoolDeposit          int64
 	OperationsLiquidityPoolWithdraw         int64
 	OperationsInvokeHostFunction            int64
+	OperationsBumpFootprintExpiration       int64
+	OperationsRestoreFootprint              int64
 }
 
 func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
@@ -118,7 +120,10 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context
 			p.results.OperationsLiquidityPoolWithdraw++
 		case xdr.OperationTypeInvokeHostFunction:
 			p.results.OperationsInvokeHostFunction++
-			return nil
+		case xdr.OperationTypeBumpFootprintExpiration:
+			p.results.OperationsBumpFootprintExpiration++
+		case xdr.OperationTypeRestoreFootprint:
+			p.results.OperationsRestoreFootprint++
 		default:
 			panic(fmt.Sprintf("Unknown operation type: %d", op.Body.Type))
 		}

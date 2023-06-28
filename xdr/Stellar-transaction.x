@@ -62,7 +62,9 @@ enum OperationType
     SET_TRUST_LINE_FLAGS = 21,
     LIQUIDITY_POOL_DEPOSIT = 22,
     LIQUIDITY_POOL_WITHDRAW = 23,
-    INVOKE_HOST_FUNCTION = 24
+    INVOKE_HOST_FUNCTION = 24,
+    BUMP_FOOTPRINT_EXPIRATION = 25,
+    RESTORE_FOOTPRINT = 26
 };
 
 /* CreateAccount
@@ -498,7 +500,7 @@ case CONTRACT_ID_PREIMAGE_FROM_ASSET:
 struct CreateContractArgs
 {
     ContractIDPreimage contractIDPreimage;
-    SCContractExecutable executable;
+    ContractExecutable executable;
 };
 
 union HostFunction switch (HostFunctionType type)
@@ -541,7 +543,8 @@ struct SorobanAuthorizedInvocation
 struct SorobanAddressCredentials
 {
     SCAddress address;
-    uint64 nonce;
+    int64 nonce;
+    uint32 signatureExpirationLedger;    
     SCVec signatureArgs;
 };
 
@@ -570,12 +573,39 @@ struct SorobanAuthorizationEntry
     SorobanAuthorizedInvocation rootInvocation;
 };
 
+/* Upload WASM, create, and invoke contracts in Soroban.
+
+    Threshold: med
+    Result: InvokeHostFunctionResult
+*/
 struct InvokeHostFunctionOp
 {
     // Host function to invoke.
     HostFunction hostFunction;
     // Per-address authorizations for this host function.
     SorobanAuthorizationEntry auth<>;
+};
+
+/* Bump the expiration ledger of the entries specified in the readOnly footprint
+   so they'll expire at least ledgersToExpire ledgers from lcl.
+
+    Threshold: med
+    Result: BumpFootprintExpirationResult
+*/
+struct BumpFootprintExpirationOp
+{
+    ExtensionPoint ext;
+    uint32 ledgersToExpire;
+};
+
+/* Restore the expired or evicted entries specified in the readWrite footprint.
+
+    Threshold: med
+    Result: RestoreFootprintOp
+*/
+struct RestoreFootprintOp
+{
+    ExtensionPoint ext;
 };
 
 /* An operation is the lowest unit of work that a transaction does */
@@ -638,6 +668,10 @@ struct Operation
         LiquidityPoolWithdrawOp liquidityPoolWithdrawOp;
     case INVOKE_HOST_FUNCTION:
         InvokeHostFunctionOp invokeHostFunctionOp;
+    case BUMP_FOOTPRINT_EXPIRATION:
+        BumpFootprintExpirationOp bumpFootprintExpirationOp;
+    case RESTORE_FOOTPRINT:
+        RestoreFootprintOp restoreFootprintOp;
     }
     body;
 };
@@ -670,7 +704,8 @@ case ENVELOPE_TYPE_SOROBAN_AUTHORIZATION:
     struct
     {
         Hash networkID;
-        uint64 nonce;
+        int64 nonce;
+        uint32 signatureExpirationLedger;
         SorobanAuthorizedInvocation invocation;
     } sorobanAuthorization;
 };
@@ -1771,6 +1806,44 @@ case INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
     void;
 };
 
+enum BumpFootprintExpirationResultCode
+{
+    // codes considered as "success" for the operation
+    BUMP_FOOTPRINT_EXPIRATION_SUCCESS = 0,
+
+    // codes considered as "failure" for the operation
+    BUMP_FOOTPRINT_EXPIRATION_MALFORMED = -1,
+    BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED = -2
+};
+
+union BumpFootprintExpirationResult switch (BumpFootprintExpirationResultCode code)
+{
+case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
+    void;
+case BUMP_FOOTPRINT_EXPIRATION_MALFORMED:
+case BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+    void;
+};
+
+enum RestoreFootprintResultCode
+{
+    // codes considered as "success" for the operation
+    RESTORE_FOOTPRINT_SUCCESS = 0,
+
+    // codes considered as "failure" for the operation
+    RESTORE_FOOTPRINT_MALFORMED = -1,
+    RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED = -2
+};
+
+union RestoreFootprintResult switch (RestoreFootprintResultCode code)
+{
+case RESTORE_FOOTPRINT_SUCCESS:
+    void;
+case RESTORE_FOOTPRINT_MALFORMED:
+case RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+    void;
+};
+
 /* High level Operation Result */
 enum OperationResultCode
 {
@@ -1839,6 +1912,10 @@ case opINNER:
         LiquidityPoolWithdrawResult liquidityPoolWithdrawResult;
     case INVOKE_HOST_FUNCTION:
         InvokeHostFunctionResult invokeHostFunctionResult;
+    case BUMP_FOOTPRINT_EXPIRATION:
+        BumpFootprintExpirationResult bumpFootprintExpirationResult;
+    case RESTORE_FOOTPRINT:
+        RestoreFootprintResult restoreFootprintResult;
     }
     tr;
 case opBAD_AUTH:

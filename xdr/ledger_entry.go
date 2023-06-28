@@ -1,8 +1,6 @@
 package xdr
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // LedgerKey implements the `Keyer` interface
 func (entry *LedgerEntry) LedgerKey() LedgerKey {
@@ -45,8 +43,10 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 	case LedgerEntryTypeContractData:
 		contractData := entry.Data.MustContractData()
 		body = LedgerKeyContractData{
-			ContractId: contractData.ContractId,
+			Contract:   contractData.Contract,
 			Key:        contractData.Key,
+			Durability: contractData.Durability,
+			BodyType:   contractData.Body.BodyType,
 		}
 	case LedgerEntryTypeContractCode:
 		contractCode := entry.Data.MustContractCode()

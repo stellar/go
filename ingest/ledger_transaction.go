@@ -163,10 +163,21 @@ func (t *LedgerTransaction) GetOperationEvents(operationIndex uint32) ([]xdr.Dia
 	case 1, 2:
 		return nil, nil
 	case 3:
-		if operationIndex != 0 {
-			// Soroban only supports a single invokeHostfunction operation by itself
-			// in the transaction.
-			return nil, nil
+		var diagnosticEvents []xdr.DiagnosticEvent
+		var contractEvents []xdr.ContractEvent
+		if sorobanMeta := t.UnsafeMeta.MustV3().SorobanMeta; sorobanMeta != nil {
+			diagnosticEvents = sorobanMeta.DiagnosticEvents
+			if len(diagnosticEvents) > 0 {
+				// all contract events and diag events for a single operation(by it's index in the tx) were available
+				// in tx meta's DiagnosticEvents, no need to look anywhere else for events
+				return diagnosticEvents, nil
+			}
+
+			contractEvents = sorobanMeta.Events
+			if len(contractEvents) == 0 {
+				// no events were present in this tx meta
+				return nil, nil
+			}
 		}
 		sorobanMeta := t.UnsafeMeta.MustV3().SorobanMeta
 		if sorobanMeta == nil {

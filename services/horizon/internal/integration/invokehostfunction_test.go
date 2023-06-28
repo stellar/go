@@ -157,9 +157,10 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
-	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().ContractId
+	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	contractCodeLedgerKey := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0]
 
+	require.NotNil(t, contractID)
 	contractIdBytes := contractID[:]
 	contractIdParameter := xdr.ScVal{
 		Type:  xdr.ScValTypeScvBytes,
@@ -231,9 +232,13 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 					{
 						Type: xdr.LedgerEntryTypeContractData,
 						ContractData: &xdr.LedgerKeyContractData{
-							ContractId: contractID,
+							Contract: xdr.ScAddress{
+								Type:       xdr.ScAddressTypeScAddressTypeContract,
+								ContractId: contractID,
+							},
 							Key: xdr.ScVal{
-								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// Tsachi - This need to be updated.
+								// Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 								// symbolic: no value
 							},
 						},
@@ -314,9 +319,9 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	require.NoError(t, err)
 
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
-	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().ContractId
+	contractID := createContractOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	contractCodeLedgerKey := createContractOp.Ext.SorobanData.Resources.Footprint.ReadOnly[0]
-
+	require.NotNil(t, contractID)
 	contractIdBytes := contractID[:]
 	contractIdParameter := xdr.ScVal{
 		Type:  xdr.ScValTypeScvBytes,
@@ -346,9 +351,13 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 					{
 						Type: xdr.LedgerEntryTypeContractData,
 						ContractData: &xdr.LedgerKeyContractData{
-							ContractId: contractID,
+							Contract: xdr.ScAddress{
+								Type:       xdr.ScAddressTypeScAddressTypeContract,
+								ContractId: contractID,
+							},
 							Key: xdr.ScVal{
-								Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+								// Tsachi - This need to be updated.
+								// Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 								// symbolic: no value
 							},
 						},
@@ -359,7 +368,10 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 					{
 						Type: xdr.LedgerEntryTypeContractData,
 						ContractData: &xdr.LedgerKeyContractData{
-							ContractId: contractID,
+							Contract: xdr.ScAddress{
+								Type:       xdr.ScAddressTypeScAddressTypeContract,
+								ContractId: contractID,
+							},
 							Key: xdr.ScVal{
 								Type: xdr.ScValTypeScvSymbol,
 								Sym:  &contractStateFootprintSym,
@@ -492,14 +504,18 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 	}
 	xdrPreImageBytes, err := preImage.MarshalBinary()
 	require.NoError(t, err)
-	hashedContractID := sha256.Sum256(xdrPreImageBytes)
+	var hashedContractID xdr.Hash = sha256.Sum256(xdrPreImageBytes)
 
 	contractHash := xdr.Hash(sha256.Sum256(contract))
 
 	ledgerKey := xdr.LedgerKeyContractData{
-		ContractId: xdr.Hash(hashedContractID),
+		Contract: xdr.ScAddress{
+			Type:       xdr.ScAddressTypeScAddressTypeContract,
+			ContractId: &hashedContractID,
+		},
 		Key: xdr.ScVal{
-			Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
+			// Tsachi - This need to be updated.
+			//Type: xdr.ScValTypeScvLedgerKeyContractExecutable,
 			// symbolic: no value
 		},
 	}
@@ -518,9 +534,9 @@ func assembleCreateContractOp(t *testing.T, sourceAccount string, wasmFileName s
 						Salt: saltParameter,
 					},
 				},
-				Executable: xdr.ScContractExecutable{
-					Type:   xdr.ScContractExecutableTypeSccontractExecutableWasmRef,
-					WasmId: &contractHash,
+				Executable: xdr.ContractExecutable{
+					Type:     xdr.ContractExecutableTypeContractExecutableWasm,
+					WasmHash: &contractHash,
 				},
 			},
 		},
