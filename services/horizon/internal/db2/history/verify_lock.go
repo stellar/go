@@ -32,7 +32,7 @@ func (q *Q) TryStateVerificationLock(ctx context.Context) (bool, error) {
 		return false, errors.Wrap(err, "error acquiring advisory lock for state verification")
 	}
 	if len(acquired) != 1 {
-		return false, errors.Wrap(err, "invalid response from advisory lock")
+		return false, errors.New("invalid response from advisory lock")
 	}
 	return acquired[0], nil
 }

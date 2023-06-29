@@ -10,6 +10,32 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - Update XDR definitions for soroban usage ([4576](https://github.com/stellar/go/pull/4576))
 - Include InvokeHostFunction Details on Operation API resources ([4608](https://github.com/stellar/go/pull/4608))
 
+
+## 2.26.0
+### Changes
+- Improve error handling for when stellar-core crashes ([4893](https://github.com/stellar/go/pull/4893))
+- Suppress Core timeout error in log output such as `error ticking app: context deadline exceeded` when ingestion state machine is in build state. ([4860](https://github.com/stellar/go/pull/4860))
+
+
+### Breaking Changes
+- Modify the default value of `--captive-core-use-db` to true ([4856](https://github.com/stellar/go/issues/4856))
+  - This updates the default behavior of captive core to start in on-disk mode.
+  - To continue using the previous in-memory mode, explicitly set the `--captive-core-use-db` flag to false
+
+## 2.25.0
+
+### Changes
+
+- Running Horizon with remote captive core is now deprecated ([4826](https://github.com/stellar/go/pull/4826)).
+- Add two new configuration variables to control the behavior of state verification ([4821](https://github.com/stellar/go/pull/4821)):
+  - `--ingest-state-verification-frequency` which specifies the frequency in checkpoints for how often state verification is run
+  - `--ingest-state-verification-timeout` which specifies a timeout on how long state verification can run
+
+### Fixes
+
+* Fix crash in horizon ingestion when running horizon with a remote captive core ([4824](https://github.com/stellar/go/pull/4824)).
+
+
 ## 2.24.1
 
 ### Changes

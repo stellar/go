@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"io"
 	"os"
 
 	"github.com/segmentio/go-loggly"
@@ -78,6 +79,10 @@ func PushContext(parent context.Context, modFn func(*Entry) *Entry) context.Cont
 
 func SetLevel(level logrus.Level) {
 	DefaultLogger.SetLevel(level)
+}
+
+func SetOut(out io.Writer) {
+	DefaultLogger.entry.Logger.Out = out
 }
 
 func WithField(key string, value interface{}) *Entry {

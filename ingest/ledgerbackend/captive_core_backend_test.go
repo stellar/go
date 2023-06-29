@@ -1032,6 +1032,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	mockRunner.On("close").Return(nil).Run(func(args mock.Arguments) {
 		cancel()
 	}).Once()
+	mockRunner.On("getProcessExitError").Return(false, nil)
 
 	// even if the request to fetch the latest checkpoint succeeds, we should fail at creating the subprocess
 	mockArchive := &historyarchive.MockArchive{}
@@ -1217,17 +1218,19 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	mockRunner.AssertExpectations(t)
 }
 
-func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
+type GetLedgerTerminatedTestCase struct {
+	name               string
+	ctx                context.Context
+	ledgers            []metaResult
+	processExited      bool
+	processExitedError error
+	expectedError      string
+}
+
+func CaptiveGetLedgerTerminatedUnexpectedlyTestCases() []GetLedgerTerminatedTestCase {
 	ledger64 := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(64)})
 
-	for _, testCase := range []struct {
-		name               string
-		ctx                context.Context
-		ledgers            []metaResult
-		processExited      bool
-		processExitedError error
-		expectedError      string
-	}{
+	return []GetLedgerTerminatedTestCase{
 		{
 			"stellar core exited unexpectedly without error",
 			context.Background(),
@@ -1268,7 +1271,29 @@ func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
 			nil,
 			"meta pipe closed unexpectedly",
 		},
-	} {
+		{
+			"Parser error while reading from the pipe resulting in stellar-core exit",
+			context.Background(),
+			[]metaResult{{LedgerCloseMeta: &ledger64},
+				{LedgerCloseMeta: nil, err: errors.New("Parser error")}},
+			true,
+			nil,
+			"Parser error",
+		},
+		{
+			"stellar core exited unexpectedly with an error resulting in meta pipe closed",
+			context.Background(),
+			[]metaResult{{LedgerCloseMeta: &ledger64},
+				{LedgerCloseMeta: &ledger64, err: errors.New("EOF while decoding")}},
+			true,
+			fmt.Errorf("signal kill"),
+			"stellar core exited unexpectedly: signal kill",
+		},
+	}
+}
+
+func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
+	for _, testCase := range CaptiveGetLedgerTerminatedUnexpectedlyTestCases() {
 		t.Run(testCase.name, func(t *testing.T) {
 			metaChan := make(chan metaResult, 100)
 
