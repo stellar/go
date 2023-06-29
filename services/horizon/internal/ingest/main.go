@@ -412,12 +412,6 @@ func (s *system) GetCurrentState() State {
 	return s.currentState
 }
 
-func (s *system) GetCurrentState() State {
-	s.currentStateMutex.Lock()
-	defer s.currentStateMutex.Unlock()
-	return s.currentState
-}
-
 func (s *system) Metrics() Metrics {
 	return s.metrics
 }
