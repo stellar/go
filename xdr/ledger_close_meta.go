@@ -144,16 +144,16 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 	}
 }
 
-// EvictedTemporaryLedgerKeys     []LedgerKey
-// EvictedPersistentLedgerEntries []LedgerEntry
-// EvictedLedgerKeys returns the LedgerKeys for the EvictedTemporaryLedgerKeys
-// and EvictedPersistentLedgerEntrues for ledger.
+// EvictedLedgerKeys returns the LedgerKeys for both the
+// EvictedTemporaryLedgerKeys and and the EvictedPersistentLedgerEntries in a
+// ledger.
 func (l LedgerCloseMeta) EvictedLedgerKeys() []LedgerKey {
 	switch l.V {
 	case 0, 1:
 		return nil
 	case 2:
-		var keys []LedgerKey
+		v2 := l.MustV2()
+		keys := make([]LedgerKey, 0, len(v2.EvictedTemporaryLedgerKeys)+len(v2.EvictedPersistentLedgerEntries))
 		keys = append(keys, l.MustV2().EvictedTemporaryLedgerKeys...)
 		for _, entry := range l.MustV2().EvictedPersistentLedgerEntries {
 			keys = append(keys, entry.LedgerKey())
