@@ -251,7 +251,7 @@ func TestCurrentStateRaceCondition(t *testing.T) {
 	}
 
 	historyQ.On("GetTx").Return(nil)
-	historyQ.On("Begin").Return(nil)
+	historyQ.On("Begin", s.ctx).Return(nil)
 	historyQ.On("Rollback").Return(nil)
 	historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(1), nil)
 	historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil)
