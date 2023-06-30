@@ -192,3 +192,14 @@ func (data *LedgerEntryData) SetContractCode(entry *ContractCodeEntry) error {
 	}
 	return nil
 }
+
+func (data *LedgerEntryData) ExpirationLedgerSeq() (Uint32, bool) {
+	switch data.Type {
+	case LedgerEntryTypeContractData:
+		return data.ContractData.ExpirationLedgerSeq, true
+	case LedgerEntryTypeContractCode:
+		return data.ContractCode.ExpirationLedgerSeq, true
+	default:
+		return 0, false
+	}
+}
