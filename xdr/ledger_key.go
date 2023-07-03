@@ -188,55 +188,9 @@ func (key *LedgerKey) SetConfigSetting(configSettingID ConfigSettingId) error {
 
 // GetLedgerKeyFromData obtains a ledger key from LedgerEntryData
 //
-//nolint:gocyclo
+// deprecated: Use `LedgerEntryData.LedgerKey()`
 func GetLedgerKeyFromData(data LedgerEntryData) (LedgerKey, error) {
-	var key LedgerKey
-	switch data.Type {
-	case LedgerEntryTypeAccount:
-		if err := key.SetAccount(data.Account.AccountId); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeTrustline:
-		if err := key.SetTrustline(data.TrustLine.AccountId, data.TrustLine.Asset); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeContractData:
-		if err := key.SetContractData(
-			data.ContractData.Contract,
-			data.ContractData.Key,
-			data.ContractData.Durability,
-			data.ContractData.Body.BodyType); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeContractCode:
-		if err := key.SetContractCode(data.ContractCode.Hash); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeData:
-		if err := key.SetData(data.Data.AccountId, string(data.Data.DataName)); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeOffer:
-		if err := key.SetOffer(data.Offer.SellerId, uint64(data.Offer.OfferId)); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeLiquidityPool:
-		if err := key.SetLiquidityPool(data.LiquidityPool.LiquidityPoolId); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeClaimableBalance:
-		if err := key.SetClaimableBalance(data.ClaimableBalance.BalanceId); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeConfigSetting:
-		if err := key.SetConfigSetting(data.ConfigSetting.ConfigSettingId); err != nil {
-			return key, err
-		}
-	default:
-		return key, fmt.Errorf("unknown ledger entry type %d", data.Type)
-	}
-
-	return key, nil
+	return data.LedgerKey()
 }
 
 func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {

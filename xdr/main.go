@@ -25,7 +25,7 @@ var CommitHash string
 
 // Keyer represents a type that can be converted into a LedgerKey
 type Keyer interface {
-	LedgerKey() LedgerKey
+	LedgerKey() (LedgerKey, error)
 }
 
 var _ = LedgerEntry{}

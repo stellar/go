@@ -59,19 +59,3 @@ func TestLedgerKeyEqualsCoverage(t *testing.T) {
 		assert.True(t, ledgerKey.Equals(clonedLedgerKey))
 	}
 }
-
-func TestGetLedgerKeyFromDataCoverage(t *testing.T) {
-	gen := randxdr.NewGenerator()
-	for i := 0; i < 10000; i++ {
-		ledgerEntryData := LedgerEntryData{}
-
-		shape := &gxdr.XdrAnon_LedgerEntry_Data{}
-		gen.Next(
-			shape,
-			[]randxdr.Preset{},
-		)
-		assert.NoError(t, gxdr.Convert(shape, &ledgerEntryData))
-		_, err := GetLedgerKeyFromData(ledgerEntryData)
-		assert.NoError(t, err)
-	}
-}

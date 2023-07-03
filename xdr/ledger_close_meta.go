@@ -147,18 +147,22 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 // EvictedLedgerKeys returns the LedgerKeys for both the
 // EvictedTemporaryLedgerKeys and and the EvictedPersistentLedgerEntries in a
 // ledger.
-func (l LedgerCloseMeta) EvictedLedgerKeys() []LedgerKey {
+func (l LedgerCloseMeta) EvictedLedgerKeys() ([]LedgerKey, error) {
 	switch l.V {
 	case 0, 1:
-		return nil
+		return nil, nil
 	case 2:
 		v2 := l.MustV2()
 		keys := make([]LedgerKey, 0, len(v2.EvictedTemporaryLedgerKeys)+len(v2.EvictedPersistentLedgerEntries))
 		keys = append(keys, l.MustV2().EvictedTemporaryLedgerKeys...)
 		for _, entry := range l.MustV2().EvictedPersistentLedgerEntries {
-			keys = append(keys, entry.LedgerKey())
+			key, err := entry.LedgerKey()
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, key)
 		}
-		return keys
+		return keys, nil
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}

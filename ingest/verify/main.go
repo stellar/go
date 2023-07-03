@@ -87,7 +87,10 @@ func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 			}
 		}
 
-		ledgerKey := entry.LedgerKey()
+		ledgerKey, err := entry.LedgerKey()
+		if err != nil {
+			return entries, errors.Wrap(err, "Error marshalling ledgerKey")
+		}
 		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
 		if err != nil {
 			return entries, errors.Wrap(err, "Error marshalling ledgerKey")
@@ -117,17 +120,21 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	}
 
 	// safe, since we convert to string right away (causing a copy)
-	key, err := v.encodingBuffer.UnsafeMarshalBinary(actualEntry.LedgerKey())
+	key, err := actualEntry.LedgerKey()
 	if err != nil {
 		return errors.Wrap(err, "Error marshalling ledgerKey")
 	}
-	keyString := string(key)
+	keyBinary, err := v.encodingBuffer.UnsafeMarshalBinary(key)
+	if err != nil {
+		return errors.Wrap(err, "Error marshalling ledgerKey")
+	}
+	keyString := string(keyBinary)
 	expectedEntry, exist := v.currentEntries[keyString]
 	if !exist {
 		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
-			base64.StdEncoding.EncodeToString(key),
+			base64.StdEncoding.EncodeToString(keyBinary),
 		))
 	}
 	delete(v.currentEntries, keyString)
