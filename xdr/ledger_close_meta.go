@@ -93,9 +93,6 @@ func (l LedgerCloseMeta) TransactionResultPair(i int) TransactionResultPair {
 	case 1:
 		return l.MustV1().TxProcessing[i].Result
 	case 2:
-		if l.MustV2().TxProcessing[i].TxApplyProcessing.V != 3 {
-			panic("TransactionResult unavailable because LedgerCloseMeta.V = 2 and TransactionMeta.V != 3")
-		}
 		return l.MustV2().TxProcessing[i].Result
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
@@ -124,6 +121,9 @@ func (l LedgerCloseMeta) TxApplyProcessing(i int) TransactionMeta {
 	case 1:
 		return l.MustV1().TxProcessing[i].TxApplyProcessing
 	case 2:
+		if l.MustV2().TxProcessing[i].TxApplyProcessing.V != 3 {
+			panic("TransactionResult unavailable because LedgerCloseMeta.V = 2 and TransactionMeta.V != 3")
+		}
 		return l.MustV2().TxProcessing[i].TxApplyProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))

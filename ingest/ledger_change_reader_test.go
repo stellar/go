@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
@@ -83,31 +84,31 @@ type changePredicate func(*testing.T, int, Change)
 func isBalance(address string, balance int64) changePredicate {
 	return func(t *testing.T, idx int, change Change) {
 		msg := fmt.Sprintf("change %d", idx)
-		assert.NotNil(t, change.Post, msg)
+		require.NotNil(t, change.Post, msg)
 		assert.Equal(t, xdr.LedgerEntryTypeAccount.String(), change.Post.Data.Type.String(), msg)
 		assert.Equal(t, address, change.Post.Data.Account.AccountId.Address(), msg)
-		assert.Equal(t, balance, int64(change.Post.Data.Account.Balance), msg)
+		assert.EqualValues(t, balance, change.Post.Data.Account.Balance, msg)
 	}
 }
 
 func isContractDataExtension(contract xdr.ScAddress, key xdr.ScVal, extension uint32) changePredicate {
 	return func(t *testing.T, idx int, change Change) {
 		msg := fmt.Sprintf("change %d", idx)
-		assert.NotNil(t, change.Post, msg)
-		assert.NotNil(t, change.Pre, msg)
+		require.NotNil(t, change.Post, msg)
+		require.NotNil(t, change.Pre, msg)
 		assert.Equal(t, xdr.LedgerEntryTypeContractData.String(), change.Post.Data.Type.String(), msg)
 		assert.Equal(t, contract, change.Post.Data.ContractData.Contract, msg)
 		assert.Equal(t, key, change.Post.Data.ContractData.Key, msg)
 		newExpiry := change.Post.Data.ContractData.ExpirationLedgerSeq
 		oldExpiry := change.Pre.Data.ContractData.ExpirationLedgerSeq
-		assert.Equal(t, extension, uint32(newExpiry-oldExpiry), msg)
+		assert.EqualValues(t, extension, newExpiry-oldExpiry, msg)
 	}
 }
 
 func isContractDataEviction(contract xdr.ScAddress, key xdr.ScVal) changePredicate {
 	return func(t *testing.T, idx int, change Change) {
 		msg := fmt.Sprintf("change %d", idx)
-		assert.NotNil(t, change.Pre, msg)
+		require.NotNil(t, change.Pre, msg)
 		assert.Nil(t, change.Post, msg)
 		assert.Equal(t, xdr.LedgerEntryTypeContractData.String(), change.Pre.Data.Type.String(), msg)
 		assert.Equal(t, contract, change.Pre.Data.ContractData.Contract, msg)
@@ -388,13 +389,13 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 	tempKey := xdr.ScSymbol("TEMPKEY")
 	persistentKey := xdr.ScSymbol("TEMPVAL")
 	persistentVal := xdr.ScSymbol("PERSVAL")
-	contractIdBytes, err := hex.DecodeString("df06d62447fd25da07c0135eed7557e5a5497ee7d15b7fe345bd47e191d8f577")
+	contractIDBytes, err := hex.DecodeString("df06d62447fd25da07c0135eed7557e5a5497ee7d15b7fe345bd47e191d8f577")
 	assert.NoError(t, err)
-	var contractId xdr.Hash
-	copy(contractId[:], contractIdBytes)
+	var contractID xdr.Hash
+	copy(contractID[:], contractIDBytes)
 	contractAddress := xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
-		ContractId: &contractId,
+		ContractId: &contractID,
 	}
 	val := xdr.Uint32(123)
 	ledger := xdr.LedgerCloseMeta{
@@ -483,7 +484,7 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 													ContractData: &xdr.ContractDataEntry{
 														Contract: xdr.ScAddress{
 															Type:       xdr.ScAddressTypeScAddressTypeContract,
-															ContractId: &contractId,
+															ContractId: &contractID,
 														},
 														Key: xdr.ScVal{
 															Type: xdr.ScValTypeScvSymbol,

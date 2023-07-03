@@ -126,9 +126,10 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 		return r.Read()
 	case evictionChangesState:
 		// Get contract ledgerEntry evictions
-		changes := GetChangesFromLedgerEntryEvictions(
-			r.ledgerCloseMeta.EvictedLedgerKeys(),
-		)
+		changes, err := GetChangesFromLedgerEntryEvictions(r.ledgerCloseMeta.EvictedLedgerKeys())
+		if err != nil {
+			return Change{}, err
+		}
 		r.pending = append(r.pending, changes...)
 		r.state++
 		return r.Read()
