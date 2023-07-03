@@ -135,9 +135,9 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 			},
 		},
 	}
-	testOperationsMarshallingRoundtrip(t, []Operation{invokeHostFunctionOp}, false)
+	testOperationsMarshalingRoundtrip(t, []Operation{invokeHostFunctionOp}, false)
 
 	// with muxed accounts
 	invokeHostFunctionOp.SourceAccount = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK"
-	testOperationsMarshallingRoundtrip(t, []Operation{invokeHostFunctionOp}, true)
+	testOperationsMarshalingRoundtrip(t, []Operation{invokeHostFunctionOp}, true)
 }

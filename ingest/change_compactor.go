@@ -90,7 +90,7 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "error marshalling ledger key for new entry")
+		return errors.Wrap(err, "error marshaling ledger key for new entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -137,7 +137,7 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "error marshalling ledger key for updated entry")
+		return errors.Wrap(err, "error marshaling ledger key for updated entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -185,7 +185,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "error marshalling ledger key for removed entry")
+		return errors.Wrap(err, "error marshaling ledger key for removed entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)

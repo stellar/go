@@ -993,7 +993,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 
 	var txResult xdr.TransactionResult
 	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
-	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
+	assert.NoErrorf(t, err, "Unmarshaling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
 		"Transaction did not succeed: %d", txResult.Result.Code)
 }

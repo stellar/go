@@ -1020,7 +1020,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 		}
 	}
 	metaChan <- metaResult{
-		err: fmt.Errorf("unmarshalling error"),
+		err: fmt.Errorf("unmarshaling error"),
 	}
 
 	ctx := context.Background()
@@ -1060,7 +1060,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 
 	// try reading from an empty buffer
 	_, err = captiveBackend.GetLedger(ctx, 66)
-	tt.EqualError(err, "unmarshalling error")
+	tt.EqualError(err, "unmarshaling error")
 
 	// not closed even if there is an error getting ledger
 	tt.False(captiveBackend.closed)

@@ -89,11 +89,11 @@ func (v *StateVerifier) GetLedgerEntries(count int) ([]xdr.LedgerEntry, error) {
 
 		ledgerKey, err := entry.LedgerKey()
 		if err != nil {
-			return entries, errors.Wrap(err, "Error marshalling ledgerKey")
+			return entries, errors.Wrap(err, "Error marshaling ledgerKey")
 		}
 		key, err := v.encodingBuffer.MarshalBinary(ledgerKey)
 		if err != nil {
-			return entries, errors.Wrap(err, "Error marshalling ledgerKey")
+			return entries, errors.Wrap(err, "Error marshaling ledgerKey")
 		}
 
 		entry.Normalize()
@@ -122,11 +122,11 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	// safe, since we convert to string right away (causing a copy)
 	key, err := actualEntry.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error marshalling ledgerKey")
+		return errors.Wrap(err, "Error marshaling ledgerKey")
 	}
 	keyBinary, err := v.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "Error marshalling ledgerKey")
+		return errors.Wrap(err, "Error marshaling ledgerKey")
 	}
 	keyString := string(keyBinary)
 	expectedEntry, exist := v.currentEntries[keyString]
