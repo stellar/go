@@ -63,7 +63,8 @@ func (s *StateVerifierTestSuite) TestCurrentEntriesNotEmpty() {
 	entryBase64, err := xdr.MarshalBase64(entry)
 	s.Assert().NoError(err)
 
-	ledgerKey := entry.LedgerKey()
+	ledgerKey, err := entry.LedgerKey()
+	s.Assert().NoError(err)
 	ledgerKeyBase64, err := xdr.MarshalBase64(ledgerKey)
 	s.Assert().NoError(err)
 
@@ -125,7 +126,9 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 	s.Assert().NoError(err)
 
 	// Check currentEntries
-	ledgerKey, err := accountEntry.LedgerKey().MarshalBinary()
+	key, err := accountEntry.LedgerKey()
+	s.Assert().NoError(err)
+	ledgerKey, err := key.MarshalBinary()
 	s.Assert().NoError(err)
 
 	// Account entry transformed and offer entry ignored
@@ -164,7 +167,8 @@ func (s *StateVerifierTestSuite) TestWriteEntryNotExist() {
 	entryBase64, err := xdr.MarshalBase64(entry)
 	s.Assert().NoError(err)
 
-	ledgerKey := entry.LedgerKey()
+	ledgerKey, err := entry.LedgerKey()
+	s.Assert().NoError(err)
 	ledgerKeyBase64, err := xdr.MarshalBase64(ledgerKey)
 	s.Assert().NoError(err)
 
