@@ -191,7 +191,7 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 // change is unexpected.
 func (c *ChangeCompactor) addRemovedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
-	key, err := change.Post.LedgerKey()
+	key, err := change.Pre.LedgerKey()
 	if err != nil {
 		return errors.Wrap(err, "Error LedgerKey")
 	}
@@ -214,7 +214,7 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 		// Entry was created and is now removed in a single ledger.
 		delete(c.cache, ledgerKeyString)
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		key, err := change.Post.LedgerKey()
+		key, err := change.Pre.LedgerKey()
 		if err != nil {
 			return errors.Wrap(err, "Error LedgerKey")
 		}
