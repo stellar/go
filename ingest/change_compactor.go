@@ -86,11 +86,11 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
 	key, err := change.Post.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error LedgerKey")
+		return errors.Wrap(err, "error getting ledger key for new entry")
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinary")
+		return errors.Wrap(err, "error marshalling ledger key for new entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -115,10 +115,6 @@ func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 		// If existing type is removed it means that this entry does exist
 		// in a DB so we update entry change.
-		key, err := change.Post.LedgerKey()
-		if err != nil {
-			return errors.Wrap(err, "Error LedgerKey")
-		}
 		c.cache[ledgerKeyString] = Change{
 			Type: key.Type,
 			Pre:  existingChange.Pre,
@@ -137,11 +133,11 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
 	key, err := change.Post.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error LedgerKey")
+		return errors.Wrap(err, "error getting ledger key for updated entry")
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinary")
+		return errors.Wrap(err, "error marshalling ledger key for updated entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -156,20 +152,12 @@ func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
 		// If existing type is created it means that this entry does not
 		// exist in a DB so we update entry change.
-		key, err := change.Post.LedgerKey()
-		if err != nil {
-			return errors.Wrap(err, "Error LedgerKey")
-		}
 		c.cache[ledgerKeyString] = Change{
 			Type: key.Type,
 			Pre:  existingChange.Pre, // = nil
 			Post: change.Post,
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		key, err := change.Post.LedgerKey()
-		if err != nil {
-			return errors.Wrap(err, "Error LedgerKey")
-		}
 		c.cache[ledgerKeyString] = Change{
 			Type: key.Type,
 			Pre:  existingChange.Pre,
@@ -193,11 +181,11 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 	// safe, since we later cast to string (causing a copy)
 	key, err := change.Pre.LedgerKey()
 	if err != nil {
-		return errors.Wrap(err, "Error LedgerKey")
+		return errors.Wrap(err, "error getting ledger key for removed entry")
 	}
 	ledgerKey, err := c.encodingBuffer.UnsafeMarshalBinary(key)
 	if err != nil {
-		return errors.Wrap(err, "Error MarshalBinary")
+		return errors.Wrap(err, "error marshalling ledger key for removed entry")
 	}
 
 	ledgerKeyString := string(ledgerKey)
@@ -214,10 +202,6 @@ func (c *ChangeCompactor) addRemovedChange(change Change) error {
 		// Entry was created and is now removed in a single ledger.
 		delete(c.cache, ledgerKeyString)
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		key, err := change.Pre.LedgerKey()
-		if err != nil {
-			return errors.Wrap(err, "Error LedgerKey")
-		}
 		c.cache[ledgerKeyString] = Change{
 			Type: key.Type,
 			Pre:  existingChange.Pre,
