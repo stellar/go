@@ -27,7 +27,7 @@ func (change *LedgerEntryChange) LedgerKey() (LedgerKey, error) {
 		change := change.MustState()
 		return change.LedgerKey()
 	default:
-		return LedgerKey{}, fmt.Errorf("Unknown change type: %v", change.Type)
+		return LedgerKey{}, fmt.Errorf("unknown change type: %v", change.Type)
 	}
 }
 

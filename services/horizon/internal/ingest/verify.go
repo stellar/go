@@ -217,7 +217,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			case xdr.LedgerEntryTypeTrustline:
 				key, keyErr := entry.LedgerKey()
 				if keyErr != nil {
-					return errors.Wrap(keyErr, "entry.LedgerKey")
+					return errors.Wrap(keyErr, "TrustlineEntry.LedgerKey")
 				}
 				trustLines = append(trustLines, key.MustTrustLine())
 				totalByType["trust_lines"]++
