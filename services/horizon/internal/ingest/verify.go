@@ -205,9 +205,9 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				accounts = append(accounts, entry.Data.MustAccount().AccountId.Address())
 				totalByType["accounts"]++
 			case xdr.LedgerEntryTypeData:
-				key, err := entry.LedgerKey()
-				if err != nil {
-					return errors.Wrap(err, "entry.LedgerKey")
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "entry.LedgerKey")
 				}
 				data = append(data, *key.Data)
 				totalByType["data"]++
@@ -215,9 +215,9 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				offers = append(offers, int64(entry.Data.MustOffer().OfferId))
 				totalByType["offers"]++
 			case xdr.LedgerEntryTypeTrustline:
-				key, err := entry.LedgerKey()
-				if err != nil {
-					return errors.Wrap(err, "entry.LedgerKey")
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "entry.LedgerKey")
 				}
 				trustLines = append(trustLines, key.MustTrustLine())
 				totalByType["trust_lines"]++
