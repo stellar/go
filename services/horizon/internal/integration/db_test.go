@@ -162,11 +162,22 @@ func submitPaymentOps(itest *integration.Test, tt *assert.Assertions) (submitted
 }
 
 //lint:ignore U1000 Ignore unused function temporarily until fees/preflight are working in test
-func submitInvokeHostFunction(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+func submitSorobanOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
 	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), add_u64_contract)
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
 
-	return []txnbuild.Operation{installContractOp}, txResp.Ledger
+	bumpFootprintExpirationOp := &txnbuild.BumpFootprintExpiration{
+		LedgersToExpire: 100,
+		SourceAccount:   itest.Master().Address(),
+	}
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), bumpFootprintExpirationOp)
+
+	restoreFootprintOp := &txnbuild.RestoreFootprint{
+		SourceAccount: itest.Master().Address(),
+	}
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), restoreFootprintOp)
+
+	return []txnbuild.Operation{installContractOp, bumpFootprintExpirationOp, restoreFootprintOp}, txResp.Ledger
 }
 
 func submitSponsorshipOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
@@ -423,12 +434,14 @@ func initializeDBIntegrationTest(t *testing.T) (*integration.Test, int32) {
 		submitLiquidityPoolOps,
 	}
 
-	// TODO - re-enable invoke host function 'submitInvokeHostFunction' test
+	// TODO - re-enable invoke host function 'submitSorobanOps' test
 	// once fees/footprint from preflight are working in test
 	if false && integration.GetCoreMaxSupportedProtocol() > 19 {
-		submitters = append(submitters, submitInvokeHostFunction)
+		submitters = append(submitters, submitSorobanOps)
 	} else {
 		delete(allOpTypes, xdr.OperationTypeInvokeHostFunction)
+		delete(allOpTypes, xdr.OperationTypeBumpFootprintExpiration)
+		delete(allOpTypes, xdr.OperationTypeRestoreFootprint)
 	}
 
 	// Inflation is not supported
