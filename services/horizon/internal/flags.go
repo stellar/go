@@ -126,16 +126,8 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to stellar core binary (--remote-captive-core-url has higher precedence). If captive core is enabled, look for the stellar-core binary in $PATH by default.",
+			Usage:       "path to stellar core binary, look for the stellar-core binary in $PATH by default.",
 			ConfigKey:   &config.CaptiveCoreBinaryPath,
-		},
-		&support.ConfigOption{
-			Name:        "remote-captive-core-url",
-			OptType:     types.String,
-			FlagDefault: "",
-			Required:    false,
-			Usage:       "url to access the remote captive core server",
-			ConfigKey:   &config.RemoteCaptiveCoreURL,
 		},
 		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,
@@ -649,24 +641,21 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 					binaryPath = result
 					viper.Set(StellarCoreBinaryPathName, binaryPath)
 					config.CaptiveCoreBinaryPath = binaryPath
+				} else {
+					return fmt.Errorf("invalid config: captive core requires --%s. %s",
+						StellarCoreBinaryPathName, captiveCoreMigrationHint)
 				}
+			} else {
+				config.CaptiveCoreBinaryPath = binaryPath
 			}
 
-			// NOTE: If both of these are set (regardless of user- or PATH-supplied
-			//       defaults for the binary path), the Remote Captive Core URL
-			//       takes precedence.
-			if binaryPath == "" && config.RemoteCaptiveCoreURL == "" {
-				return fmt.Errorf("Invalid config: captive core requires that either --%s or --remote-captive-core-url is set. %s",
-					StellarCoreBinaryPathName, captiveCoreMigrationHint)
-			}
-
-			config.CaptiveCoreTomlParams.CoreBinaryPath = binaryPath
-			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
+			config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+			if config.CaptiveCoreConfigPath == "" {
 				if options.RequireCaptiveCoreConfig {
 					var err error
 					errorMessage := fmt.Errorf(
-						"Invalid config: captive core requires that both --%s and --%s are set. %s",
-						StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint,
+						"invalid config: captive core requires that --%s is set. %s",
+						CaptiveCoreConfigPathName, captiveCoreMigrationHint,
 					)
 
 					var configFileName string
@@ -707,7 +696,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 						return fmt.Errorf("Invalid captive core toml file %v", err)
 					}
 				}
-			} else if config.RemoteCaptiveCoreURL == "" {
+			} else {
 				var err error
 				config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
@@ -719,7 +708,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 			// If we don't supply an explicit core URL and we are running a local
 			// captive core process with the http port enabled, point to it.
-			if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreToml.HTTPPort != 0 {
+			if config.StellarCoreURL == "" && config.CaptiveCoreToml.HTTPPort != 0 {
 				config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreToml.HTTPPort)
 				viper.Set(StellarCoreURLFlagName, config.StellarCoreURL)
 			}
