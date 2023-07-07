@@ -7,6 +7,7 @@ import (
 
 type RestoreFootprint struct {
 	SourceAccount string
+	Ext           xdr.TransactionExt
 }
 
 func (f *RestoreFootprint) BuildXDR() (xdr.Operation, error) {
@@ -48,4 +49,8 @@ func (f *RestoreFootprint) Validate() error {
 
 func (f *RestoreFootprint) GetSourceAccount() string {
 	return f.SourceAccount
+}
+
+func (f *RestoreFootprint) BuildTransactionExt() (xdr.TransactionExt, error) {
+	return f.Ext, nil
 }

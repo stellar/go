@@ -8,6 +8,7 @@ import (
 type BumpFootprintExpiration struct {
 	LedgersToExpire uint32
 	SourceAccount   string
+	Ext             xdr.TransactionExt
 }
 
 func (f *BumpFootprintExpiration) BuildXDR() (xdr.Operation, error) {
@@ -51,4 +52,8 @@ func (f *BumpFootprintExpiration) Validate() error {
 
 func (f *BumpFootprintExpiration) GetSourceAccount() string {
 	return f.SourceAccount
+}
+
+func (f *BumpFootprintExpiration) BuildTransactionExt() (xdr.TransactionExt, error) {
+	return f.Ext, nil
 }
