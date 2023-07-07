@@ -6,6 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- The command line flag --remote-captive-core-url has been removed as remote captive core functionality is now deprecated  ([4940](https://github.com/stellar/go/pull/4940)).
 
 ## 2.26.0
 ### Changes
