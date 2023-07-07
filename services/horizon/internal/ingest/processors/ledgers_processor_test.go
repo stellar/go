@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
@@ -17,6 +18,7 @@ import (
 type LedgersProcessorTestSuiteLedger struct {
 	suite.Suite
 	processor     *LedgersProcessor
+	mockSession   *db.MockSession
 	mockQ         *history.MockQLedgers
 	header        xdr.LedgerHeaderHistoryEntry
 	successCount  int
@@ -85,7 +87,9 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 			LedgerSeq: xdr.Uint32(20),
 		},
 	}
+
 	s.processor = NewLedgerProcessor(
+		s.mockSession,
 		s.mockQ,
 		s.header,
 		s.ingestVersion,
@@ -109,16 +113,23 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 	ctx := context.Background()
-	s.mockQ.On(
-		"InsertLedger",
-		ctx,
+	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
+	s.mockQ.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
+
+	mockBatchInsertBuilder.On(
+		"Add",
 		s.header,
 		s.successCount,
 		s.failedCount,
 		s.opCount,
 		s.txSetOpCount,
 		s.ingestVersion,
-	).Return(int64(1), nil)
+	).Return(nil)
+	mockBatchInsertBuilder.On(
+		"Exec",
+		ctx,
+		s.mockSession,
+	).Return(nil)
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(ctx, tx)
@@ -130,37 +141,21 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
-	ctx := context.Background()
-	s.mockQ.On(
-		"InsertLedger",
-		ctx,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(int64(0), errors.New("transient error"))
+	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
+	s.mockQ.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
 
+	mockBatchInsertBuilder.On(
+		"Add",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(errors.New("transient error"))
+
+	ctx := context.Background()
 	err := s.processor.Commit(ctx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Could not insert ledger: transient error")
-}
-
-func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
-	ctx := context.Background()
-	s.mockQ.On(
-		"InsertLedger",
-		ctx,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(int64(0), nil)
-
-	err := s.processor.Commit(ctx)
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "0 rows affected when ingesting new ledger: 20")
 }

@@ -5,11 +5,13 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
 type LedgersProcessor struct {
+	session        db.SessionInterface
 	ledgersQ       history.QLedgers
 	ledger         xdr.LedgerHeaderHistoryEntry
 	ingestVersion  int
@@ -20,11 +22,13 @@ type LedgersProcessor struct {
 }
 
 func NewLedgerProcessor(
+	session db.SessionInterface,
 	ledgerQ history.QLedgers,
 	ledger xdr.LedgerHeaderHistoryEntry,
 	ingestVersion int,
 ) *LedgersProcessor {
 	return &LedgersProcessor{
+		session:       session,
 		ledger:        ledger,
 		ledgersQ:      ledgerQ,
 		ingestVersion: ingestVersion,
@@ -45,29 +49,14 @@ func (p *LedgersProcessor) ProcessTransaction(ctx context.Context, transaction i
 }
 
 func (p *LedgersProcessor) Commit(ctx context.Context) error {
-	rowsAffected, err := p.ledgersQ.InsertLedger(ctx,
-		p.ledger,
-		p.successTxCount,
-		p.failedTxCount,
-		p.opCount,
-		p.txSetOpCount,
-		p.ingestVersion,
-	)
-
+	batch := p.ledgersQ.NewLedgerBatchInsertBuilder()
+	err := batch.Add(p.ledger, p.successTxCount, p.failedTxCount, p.opCount, p.txSetOpCount, p.ingestVersion)
 	if err != nil {
 		return errors.Wrap(err, "Could not insert ledger")
 	}
 
-	sequence := uint32(p.ledger.Header.LedgerSeq)
-
-	if rowsAffected != 1 {
-		log.WithField("rowsAffected", rowsAffected).
-			WithField("sequence", sequence).
-			Error("Invalid number of rows affected when ingesting new ledger")
-		return errors.Errorf(
-			"0 rows affected when ingesting new ledger: %v",
-			sequence,
-		)
+	if err = batch.Exec(ctx, p.session); err != nil {
+		return errors.Wrap(err, "Could not commit ledger")
 	}
 
 	return nil
