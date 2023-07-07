@@ -2,6 +2,8 @@
 /vendor
 /dist
 /local-archive
+/services/horizon/captive-core
+/services/horizon/horizon
 .vscode
 .idea
 debug

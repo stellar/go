@@ -1,14 +1,106 @@
----
-title: Horizon Development Guide
----
-## Horizon Development Guide
+# **Horizon Development Guide**
 
 This document describes how to build Horizon from source, so that you can test and edit the code locally to develop bug fixes and new features.
 
-If you are just starting with Horizon and want to try it out, consider the [Quickstart Guide](quickstart.md) instead. For information about administrating a Horizon instance in production, check out the [Administration Guide](admin.md).
+# **Running Stellar with Docker**
 
-## Building Horizon
-Building Horizon requires the following developer tools:
+Files related to docker and docker-compose
+* `Dockerfile` and `Makefile` - used to build the official, package-based docker image for stellar-horizon
+* `Dockerfile.dev` - used with docker-compose
+
+## **Dependencies**
+
+The only dependency you will need to install is [Docker](https://www.docker.com/products/docker-desktop).
+
+## **Start script**
+
+[start.sh](./start.sh) will setup the env file and run docker-compose to start the Stellar docker containers. Feel free to use this script, otherwise continue with the next two steps.
+
+The script takes one optional parameter which configures the Stellar network used by the docker containers. If no parameter is supplied, the containers will run on the Stellar test network.
+
+`./start.sh pubnet` will run the containers on the Stellar public network.
+
+`./start.sh standalone` will run the containers on a private standalone Stellar network.
+
+## **Run docker-compose**
+
+Run the following command to start all the Stellar docker containers:
+
+```
+docker-compose up -d --build
+```
+
+Horizon will be exposed on port 8000. Stellar Core will be exposed on port 11626. The Stellar Core postgres instance will be exposed on port 5641.
+The Horizon postgres instance will be exposed on port 5432.
+
+## **Connecting to the Stellar Public Network**
+
+By default, the Docker Compose file configures Stellar Core to connect to the Stellar test network. If you would like to run the docker containers on the
+Stellar public network, run `docker-compose -f docker-compose.yml -f docker-compose.pubnet.yml up -d --build`. 
+
+To run the containers on a private stand-alone network, run `docker-compose -f docker-compose.yml -f docker-compose.standalone.yml up -d --build`.
+When you run Stellar Core on a private stand-alone network, an account will be created which will hold 100 billion Lumens.
+The seed for the account will be emitted in the Stellar Core logs:
+
+```
+2020-04-22T18:39:19.248 GD5KD [Ledger INFO] Root account seed: SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
+```
+
+When running Horizon on a private stand-alone network, Horizon will not start ingesting until Stellar Core creates its first history archive snapshot. Stellar Core creates snapshots every 64 ledgers, which means ingestion will be delayed until ledger 64.
+
+When you switch between different networks you will need to clear the Stellar Core and Stellar Horizon databases. You can wipe out the databases by running `docker-compose down --remove-orphans -v`.
+
+## **Using a specific version of Stellar Core**
+
+By default the Docker Compose file is configured to use version 18 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations. 
+
+PROTOCOL_VERSION=18                              // the Stellar Protocol version number
+CORE_IMAGE=stellar/stellar-core:18               // the docker hub image:tag 
+STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal  // the apt deb package version from apt.stellar.org
+
+Example:
+
+Runs Stellar Protocol and Core version 18, for any mode of testnet, standalone, pubnet
+```PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]```
+
+# **Installing and Developing Horizon**
+
+## **Docker Installation**
+
+The steps for a Horizon development/contributing cycle are as follows:
+
+1. Use the start.sh script to spin up the horizon-postgres and horizon containers. The horizon container will also have its own stellar-core running in it.
+    ```
+    ./start.sh testnet
+    ```
+
+2. Check `localhost:8000` to see if horizon is successfully running and exposed on the port.
+
+3. Now you can go ahead and make the required code changes. Make sure you have not broken anything by running the test suite from the `go/services/horizon` directory.
+    ```
+    go test ./...
+    ```
+
+4. Once all the tests are passing successfully, you need to stop and rebuild the horizon docker container for the changes to take effect. Go to `services/horizon/docker` and run the following commands:
+    ```
+    docker-compose down
+    ./start.sh testnet
+    ```
+Horizon will be recompiled and re-deployed with your code changes.
+
+Although this process works, it is pretty cumbersome since you need to stop and start the docker containers after each code change. The horizon docker container takes a lot of time to build and this hinders the use of a debugger.
+
+## **Local Installation (Recommended)**
+
+We will now configure a development environment to run Horizon locally without Docker.
+
+### **Building Stellar Core**
+
+Horizon requires a local instance of stellar-core called Captive Core. Since, we are doing this for dev purposes its a good idea to build it from scratch using the latest release of stellar-core. Head over to the [INSTALL.md](https://github.com/stellar/stellar-core/blob/master/INSTALL.md) file for the instructions.
+
+### **Building Horizon**
+
+The following developer tools are required:
 
 - A [Unix-like](https://en.wikipedia.org/wiki/Unix-like) operating system with the common core commands (cp, tar, mkdir, bash, etc.)
 - Go (this repository is officially supported on the last two releases of Go)
@@ -16,7 +108,7 @@ Building Horizon requires the following developer tools:
 - [mercurial](https://www.mercurial-scm.org/) (needed for `go-dep`)
 
 1. Set your [GOPATH](https://github.com/golang/go/wiki/GOPATH) environment variable, if you haven't already. The default `GOPATH` is `$HOME/go`. When building any Go package or application the binaries will be installed by default to `$GOPATH/bin`.
-2. Clone the code into any directory you prefer:
+2. Fork the repository and clone the fork into any directory you prefer:
    ```
    git clone https://github.com/stellar/go
    ```
@@ -31,77 +123,73 @@ Building Horizon requires the following developer tools:
 
 Open a new terminal. Confirm everything worked by running `horizon --help` successfully. You should see an informative message listing the command line options supported by Horizon.
 
-## Set up Horizon's database
-Horizon uses a Postgres database backend to store test fixtures and record information ingested from an associated Stellar Core. To set this up:
-1. Install [PostgreSQL](https://www.postgresql.org/).
-2. Run `createdb horizon_dev` to initialise an empty database for Horizon's use.
-3. Run `horizon db init --db-url postgres://localhost/horizon_dev` to install Horizon's database schema.
-
-### Database problems?
-1. Depending on your installation's defaults, you may need to configure a Postgres DB user with appropriate permissions for Horizon to access the database you created. Refer to the [Postgres documentation](https://www.postgresql.org/docs/current/sql-createuser.html) for details. Note: Remember to restart the Postgres server after making any changes to `pg_hba.conf` (the Postgres configuration file), or your changes won't take effect!
-2. Make sure you pass the appropriate database name and user (and port, if using something non-standard) to Horizon using `--db-url`. One way is to use a Postgres URI with the following form: `postgres://USERNAME:PASSWORD@localhost:PORT/DB_NAME`.
-3. If you get the error `connect failed: pq: SSL is not enabled on the server`, add `?sslmode=disable` to the end of the Postgres URI to allow connecting without SSL. 
-If you get the error `zsh: no matches found: postgres://localhost/horizon_dev?sslmode=disable`, wrap the url with single quotes `horizon db init --db-url 'postgres://localhost/horizon_dev?sslmode=disable'`
-4. If your server is responding strangely, and you've exhausted all other options, reboot the machine. On some systems `service postgresql restart` or equivalent may not fully reset the state of the server.
-
-## Run tests
+### **Run tests**
 At this point you should be able to run Horizon's unit tests:
-```bash
-cd $GOPATH/src/github.com/stellar/go/services/horizon
+```
+cd /go/services/horizon
 go test ./...
 ```
 
-## Set up Stellar Core
-Horizon provides an API to the Stellar network. It does this by ingesting data from an associated `stellar-core` instance. Thus, to run a full Horizon instance requires a `stellar-core` instance to be configured, up to date with the network state, and accessible to Horizon. Horizon accesses `stellar-core` through both an HTTP endpoint and by connecting directly to the `stellar-core` Postgres database.
+### **Database Setup**
 
-The simplest way to set up Stellar Core is using the [Stellar Quickstart Docker Image](https://github.com/stellar/docker-stellar-core-horizon). This is a Docker container that provides both `stellar-core` and `horizon`, pre-configured for testing.
+Horizon uses a Postgres database backend to store test fixtures and record information ingested from an associated Stellar Core. You can either set it up locally or use the docker container provided in `services/horizon/docker` container.
 
-1. Install [Docker](https://www.docker.com/get-started).
-2. Verify your Docker installation works: `docker run hello-world`
-3. Create a local directory that the container can use to record state. This is helpful because it can take a few minutes to sync a new `stellar-core` with enough data for testing, and because it allows you to inspect and modify the configuration if needed. Here, we create a directory called `stellar` to use as the persistent volume: `cd $HOME; mkdir stellar`
-4. Download and run the Stellar Quickstart container:
+#### **Local Setup**
+1. Install [PostgreSQL 9.6+](https://www.postgresql.org/).
+2. Run `createdb horizon` to initialise an empty database for Horizon's use.
+3. Run `horizon db init --db-url postgres://localhost/horizon` to install Horizon's database schema.
 
-```bash
-docker run --rm -it -p "8000:8000" -p "11626:11626" -p "11625:11625" -p"8002:5432" -v $HOME/stellar:/opt/stellar --name stellar stellar/quickstart --testnet
+Using this method, you may run into some potential database issues:
+
+- Depending on your installation's defaults, you may need to configure a Postgres DB user with appropriate permissions for Horizon to access the database you created. Refer to the [Postgres documentation](https://www.postgresql.org/docs/current/sql-createuser.html) for details. Note: Remember to restart the Postgres server after making any changes to `pg_hba.conf` (the Postgres configuration file), or your changes won't take effect!
+- Make sure you pass the appropriate database name and user (and port, if using something non-standard) to Horizon using `--db-url`. One way is to use a Postgres URI with the following form: `postgres://USERNAME:PASSWORD@localhost:PORT/DB_NAME`.
+- If you get the error `connect failed: pq: SSL is not enabled on the server`, add `?sslmode=disable` to the end of the Postgres URI to allow connecting without SSL. 
+If you get the error `zsh: no matches found: postgres://localhost/horizon_dev?sslmode=disable`, wrap the url with single quotes `horizon db init --db-url 'postgres://localhost/horizon_dev?sslmode=disable'`
+- If your server is responding strangely, and you've exhausted all other options, reboot the machine. On some systems `service postgresql restart` or equivalent may not fully reset the state of the server.
+
+#### **Docker Setup (Recommended)**
+This is a much easier and recommended way of setting up the Postgres db. Just spin up the `horizon-postgres` docker container:
 ```
-
-In this example we run the container in interactive mode. We map the container's Horizon HTTP port (`8000`), the `stellar-core` HTTP port (`11626`), and the `stellar-core` peer node port (`11625`) from the container to the corresponding ports on `localhost`. Importantly, we map the container's `postgresql` port (`5432`) to a custom port (`8002`) on `localhost`, so that it doesn't clash with our local Postgres install.
-The `-v` option mounts the `stellar` directory for use by the container. See the [Quickstart Image documentation](https://github.com/stellar/docker-stellar-core-horizon) for a detailed explanation of these options.
-
-5. The container is running both a `stellar-core` and a `horizon` instance. Log in to the container and stop Horizon:
-```bash
-docker exec -it stellar /bin/bash
-supervisorctl
-stop horizon
+docker-compose -f ./services/horizon/docker/docker-compose.yml up horizon-postgres
 ```
+This starts a Horizon Postgres docker container and exposes it on the port 5432.
 
-## Check Stellar Core status
-Stellar Core takes some time to synchronise with the rest of the network. The default configuration will pull roughly a couple of day's worth of ledgers, and may take 15 - 30 minutes to catch up. Logs are stored in the container at `/var/log/supervisor`. You can check the progress by monitoring logs with `supervisorctl`:
-```bash
-docker exec -it stellar /bin/bash
-supervisorctl tail -f stellar-core
+
+### **Setup Debug Configuration in IDE**
+
+Add a debug configuration in your IDE to attach a debugger to the local Horizon process and set breakpoints in your code. Here is an example configuration for VS Code:
+
 ```
-
-You can also check status by looking at the HTTP endpoint, e.g. by visiting http://localhost:11626 in your browser.
-
-## Connect Horizon to Stellar Core
-You can connect Horizon to `stellar-core` at any time, but Horizon will not begin ingesting data until `stellar-core` has completed its catch-up process.
-
-Now run your development version of Horizon (which is outside of the container), pointing it at the `stellar-core` running inside the container:
-
-```bash
-horizon --db-url="postgres://localhost/horizon_dev" --stellar-core-db-url="postgres://stellar:postgres@localhost:8002/core" --stellar-core-url="http://localhost:11626" --port 8001 --network-passphrase "Test SDF Network ; September 2015" --ingest
+    {
+        "name": "Horizon Debugger",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${workspaceRoot}/services/horizon/main.go",
+        "env": {
+            "DATABASE_URL": "postgres://postgres@localhost:5432/horizon?sslmode=disable",
+            "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
+            "CAPTIVE_CORE_CONFIG_APPEND_PATH": "${workspaceRoot}/services/horizon/docker/captive-core-testnet.cfg",
+            "HISTORY_ARCHIVE_URLS": "https://history.stellar.org/prd/core-testnet/core_testnet_001",
+            "INGEST": "true",
+            "PER_HOUR_RATE_LIMIT": "0"
+        },
+        "args": []
+    }
 ```
+If all is well, you should see ingest logs written to standard out.
 
-If all is well, you should see ingest logs written to standard out. You can test your Horizon instance with a query like: http://localhost:8001/transactions?limit=10&order=asc. Use the [Stellar Laboratory](https://www.stellar.org/laboratory/) to craft other queries to try out,
-and read about the available endpoints and see examples in the [Horizon API reference](https://www.stellar.org/developers/horizon/reference/).
+## **Testing Horizon API using Stellar Laboratory**
 
-## The development cycle
+You can test your Horizon instance with a query like: http://localhost:8001/transactions?limit=10&order=asc. However, its much easier to use the [Stellar Laboratory](https://www.stellar.org/laboratory/) to craft other queries to try out. Select `Custom` Horizon URL and enter `http://localhost:8000`.
+
+Read about the available endpoints and see examples in the [Horizon API reference](https://www.stellar.org/developers/horizon/reference/).
+
+## **Development Cycle**
 Congratulations! You can now run the full development cycle to build and test your code.
 1. Write code + tests
 2. Run tests
-3. Compile Horizon: `go install github.com/stellar/go/services/horizon`
-4. Run Horizon (pointing at your running `stellar-core`)
-5. Try Horizon queries
+3. Compile and Run Horizon: `go install /go/services/horizon && go build /go/services/horizon`. Tip: If you have setup the debug configuration as mentioned above, then it will always build and start Horizon so you do not need to compile it manually.
 
-Check out the [Stellar Contributing Guide](https://github.com/stellar/docs/blob/master/CONTRIBUTING.md) to see how to contribute your work to the Stellar repositories. Once you've got something that works, open a pull request, linking to the issue that you are resolving with your contribution. We'll get back to you as quickly as we can.
+
+Refer to our [Developer Notes](DEVELOPER_NOTES.md) for details on writing tests and logging.

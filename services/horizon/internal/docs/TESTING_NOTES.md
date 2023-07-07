@@ -1,13 +1,8 @@
-# Writing effective test coverage for Horizon packages
-
-Before discussing test development, just a brief mention of developer resoures:
-- [Quickstart Guide](internal/docs/quickstart.md) 
-- [Developer Guide](internal/docs/developing.md)
-- [Developer Notes](internal/docs/notes_for_developers.md)
+# **Writing effective test coverage for Horizon packages**
 
 Authoring tests to assert coverage is key importance, to facilitate best experience for writing tests within Horizon packages, there are some conventions to be aware of:
 
-## Best Practices
+## **Best Practices**
 * For unit tests:
   * Adhere to [idiomatic go testing](https://go.dev/doc/tutorial/add-a-test) for 
     baseline
@@ -27,7 +22,7 @@ Authoring tests to assert coverage is key importance, to facilitate best experie
   
 * For integration tests, they should be located in services/horizon/integration package. Tests located in this package will only run when `HORIZON_INTEGRATION_TESTS_ENABLED=true` is present in environment.
 
-## Leverage Scaffolding for Test Cases
+## **Leverage Scaffolding for Test Cases**
 * Mocked DB unit tests that avoid needing a live db connection: 
 
   * `db/mock_session.go` has pre-defined mocks of all standard SessionInterface. `services/horizon/internal/httpx/stream_handler_test.go` is good example of mocking out just low level db session interface where sql statements are executed.
