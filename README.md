@@ -80,6 +80,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more detai
 
 ### Developing
 
-See [DEVELOPING.md](DEVELOPING.md) for helpful instructions for getting started developing code in this repository.
+See [DEVELOPING_GUIDE.md](DEVELOPING_GUIDE.md) for helpful instructions for getting started developing code in this repository.
 
 [Stellar Development Foundation]: https://stellar.org

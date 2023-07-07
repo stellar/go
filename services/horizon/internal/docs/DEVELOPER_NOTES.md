@@ -1,6 +1,6 @@
 # **Notes for Developers**
 
-This document contains additional information related to the development of Horizon. For a detailed discussion of how to build and develop against Horizon, see the [Horizon development guide](developing.md).
+This document contains additional information related to the development of Horizon. For a detailed discussion of how to build and develop against Horizon, see the [Horizon development guide](DEVELOPING_GUIDE.md).
 
 - [Initial set up](#setup)
 - [Regenerating generated code](#regen)
@@ -12,7 +12,7 @@ This document contains additional information related to the development of Hori
 
 ---
 ## <a name="setup"></a> **Initial set up**
-Compile and install Horizon as described in the [Horizon development guide](DEVELOPING.md).
+Compile and install Horizon as described in the [Horizon development guide](DEVELOPING_GUIDE.md).
 
 ## <a name="regen"></a> **Regenerating generated code**
 

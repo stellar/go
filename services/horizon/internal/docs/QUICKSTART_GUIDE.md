@@ -3,7 +3,7 @@ This document describes how to quickly set up a **test** Stellar Core + Horizon 
 
 For detailed information about running Horizon and Stellar Core safely in production see the [Horizon Administration Guide](admin.md) and the [Stellar Core Administration Guide](https://www.stellar.org/developers/stellar-core/software/admin.html).
 
-If you're ready to roll up your sleeves and dig into the code, check out the [Developer Guide](developing.md).
+If you're ready to roll up your sleeves and dig into the code, check out the [Developer Guide](DEVELOPING_GUIDE.md).
 
 ### **Install and run the Quickstart Docker Image**
 The fastest way to get up and running is using the [Stellar Quickstart Docker Image](https://github.com/stellar/docker-stellar-core-horizon). This is a Docker container that provides both `stellar-core` and `horizon`, pre-configured for testing.
