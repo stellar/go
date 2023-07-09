@@ -3,7 +3,7 @@ package ledgerbackend
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -330,13 +330,19 @@ type CaptiveCoreTomlParams struct {
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
 // from the toml file located at `configPath` and the configuration provided by `params`.
 func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams) (*CaptiveCoreToml, error) {
-	var captiveCoreToml CaptiveCoreToml
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not load toml path")
 	}
+	return NewCaptiveCoreTomlFromData(data, params)
+}
 
-	if err = captiveCoreToml.unmarshal(data, params.Strict); err != nil {
+// NewCaptiveCoreTomlFromData constructs a new CaptiveCoreToml instance by merging configuration
+// from the toml data  and the configuration provided by `params`.
+func NewCaptiveCoreTomlFromData(data []byte, params CaptiveCoreTomlParams) (*CaptiveCoreToml, error) {
+	var captiveCoreToml CaptiveCoreToml
+
+	if err := captiveCoreToml.unmarshal(data, params.Strict); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
 	// disallow setting BUCKET_DIR_PATH through a file since it can cause multiple
@@ -345,14 +351,13 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
 	}
 
-	if err = captiveCoreToml.validate(params); err != nil {
+	if err := captiveCoreToml.validate(params); err != nil {
 		return nil, errors.Wrap(err, "invalid captive core toml")
 	}
 
 	if len(captiveCoreToml.HistoryEntries) > 0 {
 		log.Warnf(
-			"Configuring captive core with history archive from %s instead of %v",
-			configPath,
+			"Configuring captive core with history archive from %s",
 			params.HistoryArchiveURLs,
 		)
 	}

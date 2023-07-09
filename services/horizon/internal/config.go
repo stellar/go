@@ -114,4 +114,6 @@ type Config struct {
 	BehindAWSLoadBalancer bool
 	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
 	RoundingSlippageFilter int
+	// Stellar network: 'testnet' or 'pubnet'
+	Network string
 }
