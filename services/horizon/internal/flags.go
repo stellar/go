@@ -3,18 +3,17 @@ package horizon
 import (
 	_ "embed"
 	"fmt"
-	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/network"
 	"go/types"
 	stdLog "log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
+	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
@@ -582,9 +581,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 			Usage: fmt.Sprintf("stellar public network, either 'testnet' or 'pubnet'."+
-				" It automatically configures network settings, including %s, %s, and %s."+
-				" Please note that the default pubnet configuration may not be suitable for production environments,"+
-				" and manual selection of quorum sets is recommended.",
+				" It automatically configures network settings, including %s, %s, and %s.",
 				NetworkPassphraseFlagName, HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
 		},
 	}
@@ -620,7 +617,6 @@ type ApplyOptions struct {
 }
 
 type networkConfig struct {
-	configFileName     string
 	defaultConfig      []byte
 	historyArchiveURLs []string
 	networkPassphrase  string
@@ -633,13 +629,13 @@ var (
 	//go:embed configs/captive-core-testnet.cfg
 	TestnetDefaultConfig []byte
 
-	pubnetConf = networkConfig{configFileName: "captive-core-pubnet.cfg",
+	pubnetConf = networkConfig{
 		defaultConfig:      PubnetDefaultConfig,
 		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-live/core_live_001/"},
 		networkPassphrase:  network.PublicNetworkPassphrase,
 	}
 
-	testnetConf = networkConfig{configFileName: "captive-core-testnet.cfg",
+	testnetConf = networkConfig{
 		defaultConfig:      TestnetDefaultConfig,
 		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"},
 		networkPassphrase:  network.TestNetworkPassphrase,
@@ -654,21 +650,6 @@ func getCaptiveCoreBinaryPath() (string, error) {
 		return "", err
 	}
 	return result, nil
-}
-
-// getCaptiveCoreDefaultConfigPath retrieves the path for the default Captive Core configuration file
-// Returns the config file path or an error if it doesn't exist
-func getCaptiveCoreDefaultConfigPath(configFileName string) (string, error) {
-	executablePath, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-
-	configPath := filepath.Join(filepath.Dir(executablePath), configFileName)
-	if _, err = os.Stat(configPath); os.IsNotExist(err) {
-		return "", err
-	}
-	return configPath, nil
 }
 
 // loadDefaultCaptiveCoreToml loads the default Captive Core TOML based on the default config data.
@@ -714,12 +695,9 @@ func createCaptiveCoreDefaultConfig(config *Config) error {
 	}
 
 	var defaultNetworkConfig networkConfig
-	var usingDefaultPubnetConfig = false
-
 	switch config.Network {
 	case StellarPubnet:
 		defaultNetworkConfig = pubnetConf
-		usingDefaultPubnetConfig = true
 	case StellarTestnet:
 		defaultNetworkConfig = testnetConf
 	default:
@@ -728,14 +706,8 @@ func createCaptiveCoreDefaultConfig(config *Config) error {
 	config.NetworkPassphrase = defaultNetworkConfig.networkPassphrase
 	config.HistoryArchiveURLs = defaultNetworkConfig.historyArchiveURLs
 
-	var err error
 	if config.CaptiveCoreConfigPath == "" {
-		config.UsingDefaultPubnetConfig = usingDefaultPubnetConfig
-		config.CaptiveCoreConfigPath, err = getCaptiveCoreDefaultConfigPath(defaultNetworkConfig.configFileName)
-		// default config file not found, generate config from the embedded file
-		if err != nil {
-			return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
-		}
+		return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
 	}
 
 	return loadCaptiveCoreTomlFromFile(config)

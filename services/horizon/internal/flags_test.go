@@ -11,12 +11,11 @@ func Test_createCaptiveCoreDefaultNetworkConfig(t *testing.T) {
 	var errorMsgDefaultConfig = "error generating default captive core config. invalid config: %s not allowed with %s network"
 	var errorMsgConfig = "error generating captive core config. %s must be set"
 	tests := []struct {
-		name                     string
-		config                   Config
-		networkPassphrase        string
-		historyArchiveURLs       []string
-		usingDefaultPubnetConfig bool
-		errStr                   string
+		name               string
+		config             Config
+		networkPassphrase  string
+		historyArchiveURLs []string
+		errStr             string
 	}{
 		{
 			name:               "testnet default config",
@@ -25,11 +24,10 @@ func Test_createCaptiveCoreDefaultNetworkConfig(t *testing.T) {
 			historyArchiveURLs: testnetConf.historyArchiveURLs,
 		},
 		{
-			name:                     "pubnet default config",
-			config:                   Config{Network: StellarPubnet},
-			networkPassphrase:        pubnetConf.networkPassphrase,
-			historyArchiveURLs:       pubnetConf.historyArchiveURLs,
-			usingDefaultPubnetConfig: true,
+			name:               "pubnet default config",
+			config:             Config{Network: StellarPubnet},
+			networkPassphrase:  pubnetConf.networkPassphrase,
+			historyArchiveURLs: pubnetConf.historyArchiveURLs,
 		},
 		{
 			name: "testnet validation; history archive urls supplied",
@@ -99,7 +97,6 @@ func Test_createCaptiveCoreDefaultNetworkConfig(t *testing.T) {
 			e := setCaptiveCoreConfiguration(&tt.config)
 			if tt.errStr == "" {
 				assert.NoError(t, e)
-				assert.Equal(t, tt.usingDefaultPubnetConfig, tt.config.UsingDefaultPubnetConfig)
 				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
 				assert.Equal(t, tt.historyArchiveURLs, tt.config.HistoryArchiveURLs)
 			} else {
