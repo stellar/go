@@ -7,10 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_createCaptiveCoreDefaultNetworkConfig(t *testing.T) {
+func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 
-	var errorMsgDefaultConfig = "error generating default captive core config. invalid config: %s not allowed with %s network"
-	var errorMsgConfig = "error generating captive core config. %s must be set"
+	var errorMsgDefaultConfig = "invalid config: %s not allowed with %s network"
 	tests := []struct {
 		name               string
 		config             Config
@@ -66,9 +65,33 @@ func Test_createCaptiveCoreDefaultNetworkConfig(t *testing.T) {
 				NetworkPassphrase:  "",
 				HistoryArchiveURLs: []string{},
 			},
-			errStr: fmt.Sprintf("error generating default captive core config. " +
-				"no default configuration found for network unknown"),
+			errStr: "no default configuration found for network unknown",
 		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := createCaptiveCoreDefaultConfig(&tt.config)
+			if tt.errStr == "" {
+				assert.NoError(t, e)
+				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
+				assert.Equal(t, tt.historyArchiveURLs, tt.config.HistoryArchiveURLs)
+			} else {
+				assert.Equal(t, tt.errStr, e.Error())
+			}
+		})
+	}
+}
+
+func Test_createCaptiveCoreConfig(t *testing.T) {
+
+	var errorMsgConfig = "%s must be set"
+	tests := []struct {
+		name               string
+		config             Config
+		networkPassphrase  string
+		historyArchiveURLs []string
+		errStr             string
+	}{
 		{
 			name: "no network specified",
 			config: Config{
@@ -95,7 +118,7 @@ func Test_createCaptiveCoreDefaultNetworkConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := setCaptiveCoreConfiguration(&tt.config)
+			e := createCaptiveCoreConfig(&tt.config)
 			if tt.errStr == "" {
 				assert.NoError(t, e)
 				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
