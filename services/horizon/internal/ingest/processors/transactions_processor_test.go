@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+
 	"github.com/stretchr/testify/suite"
 )
 
@@ -15,6 +17,7 @@ type TransactionsProcessorTestSuiteLedger struct {
 	suite.Suite
 	ctx                    context.Context
 	processor              *TransactionProcessor
+	mockSession            *db.MockSession
 	mockQ                  *history.MockQTransactions
 	mockBatchInsertBuilder *history.MockTransactionsBatchInsertBuilder
 }
@@ -29,10 +32,10 @@ func (s *TransactionsProcessorTestSuiteLedger) SetupTest() {
 	s.mockBatchInsertBuilder = &history.MockTransactionsBatchInsertBuilder{}
 
 	s.mockQ.
-		On("NewTransactionBatchInsertBuilder", maxBatchSize).
+		On("NewTransactionBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = NewTransactionProcessor(s.mockQ, 20)
+	s.processor = NewTransactionProcessor(s.mockSession, s.mockQ, 20)
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TearDownTest() {
@@ -47,10 +50,10 @@ func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsSucceeds() {
 	secondTx := createTransaction(false, 3)
 	thirdTx := createTransaction(true, 4)
 
-	s.mockBatchInsertBuilder.On("Add", s.ctx, firstTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Add", s.ctx, secondTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Add", s.ctx, thirdTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", secondTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", thirdTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 
 	err := s.processor.ProcessTransaction(s.ctx, firstTx)
@@ -66,7 +69,7 @@ func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsSucceeds() {
 func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsFails() {
 	sequence := uint32(20)
 	firstTx := createTransaction(true, 1)
-	s.mockBatchInsertBuilder.On("Add", s.ctx, firstTx, sequence).
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).
 		Return(errors.New("transient error")).Once()
 
 	err := s.processor.ProcessTransaction(s.ctx, firstTx)
@@ -78,8 +81,8 @@ func (s *TransactionsProcessorTestSuiteLedger) TestExecFails() {
 	sequence := uint32(20)
 	firstTx := createTransaction(true, 1)
 
-	s.mockBatchInsertBuilder.On("Add", s.ctx, firstTx, sequence).Return(nil).Once()
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Add", firstTx, sequence).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(errors.New("transient error")).Once()
 
 	err := s.processor.ProcessTransaction(s.ctx, firstTx)
 	s.Assert().NoError(err)

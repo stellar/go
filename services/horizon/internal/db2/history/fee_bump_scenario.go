@@ -247,17 +247,19 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		hash:          "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
 	})
 	ctx := context.Background()
-	insertBuilder := q.NewTransactionBatchInsertBuilder(2)
-	prefilterInsertBuilder := q.NewTransactionFilteredTmpBatchInsertBuilder(2)
+	tt.Assert.NoError(q.Begin())
+
+	insertBuilder := q.NewTransactionBatchInsertBuilder()
+	prefilterInsertBuilder := q.NewTransactionFilteredTmpBatchInsertBuilder()
 	// include both fee bump and normal transaction in the same batch
 	// to make sure both kinds of transactions can be inserted using a single exec statement
-	tt.Assert.NoError(insertBuilder.Add(ctx, feeBumpTransaction, sequence))
-	tt.Assert.NoError(insertBuilder.Add(ctx, normalTransaction, sequence))
-	tt.Assert.NoError(insertBuilder.Exec(ctx))
+	tt.Assert.NoError(insertBuilder.Add(feeBumpTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Add(normalTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Exec(ctx, q))
 
-	tt.Assert.NoError(prefilterInsertBuilder.Add(ctx, feeBumpTransaction, sequence))
-	tt.Assert.NoError(prefilterInsertBuilder.Add(ctx, normalTransaction, sequence))
-	tt.Assert.NoError(prefilterInsertBuilder.Exec(ctx))
+	tt.Assert.NoError(prefilterInsertBuilder.Add(feeBumpTransaction, sequence))
+	tt.Assert.NoError(prefilterInsertBuilder.Add(normalTransaction, sequence))
+	tt.Assert.NoError(prefilterInsertBuilder.Exec(ctx, q))
 
 	account := fixture.Envelope.SourceAccount().ToAccountId()
 	feeBumpAccount := fixture.Envelope.FeeBumpAccount().ToAccountId()
@@ -298,6 +300,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.NoError(effectBuilder.Exec(ctx))
+
+	tt.Assert.NoError(q.Commit())
 
 	fixture.Transaction = Transaction{
 		TransactionWithoutLedger: TransactionWithoutLedger{

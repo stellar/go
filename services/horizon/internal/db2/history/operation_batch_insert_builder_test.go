@@ -16,7 +16,9 @@ func TestAddOperation(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	txBatch := q.NewTransactionBatchInsertBuilder(0)
+	tt.Assert.NoError(q.Begin())
+
+	txBatch := q.NewTransactionBatchInsertBuilder()
 
 	builder := q.NewOperationBatchInsertBuilder(1)
 
@@ -35,8 +37,8 @@ func TestAddOperation(t *testing.T) {
 	)
 
 	sequence := int32(56)
-	tt.Assert.NoError(txBatch.Add(tt.Ctx, transaction, uint32(sequence)))
-	tt.Assert.NoError(txBatch.Exec(tt.Ctx))
+	tt.Assert.NoError(txBatch.Add(transaction, uint32(sequence)))
+	tt.Assert.NoError(txBatch.Exec(tt.Ctx, q))
 
 	details, err := json.Marshal(map[string]string{
 		"to":         "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
@@ -61,6 +63,8 @@ func TestAddOperation(t *testing.T) {
 
 	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
+
+	tt.Assert.NoError(q.Commit())
 
 	ops := []Operation{}
 	err = q.Select(tt.Ctx, &ops, selectOperation)

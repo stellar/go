@@ -149,7 +149,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewOperationProcessor(s.historyQ, sequence),
 		tradeProcessor,
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
-		processors.NewTransactionProcessor(s.historyQ, sequence),
+		processors.NewTransactionProcessor(s.session, s.historyQ, sequence),
 		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
 		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
 	})
@@ -168,7 +168,7 @@ func (s *ProcessorRunner) buildFilteredOutProcessor(ledger xdr.LedgerHeaderHisto
 	// when in online mode, the submission result processor must always run (regardless of filtering)
 	var p []horizonTransactionProcessor
 	if s.config.EnableIngestionFiltering {
-		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ, uint32(ledger.Header.LedgerSeq))
+		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.session, s.historyQ, uint32(ledger.Header.LedgerSeq))
 		p = append(p, txSubProc)
 	}
 
