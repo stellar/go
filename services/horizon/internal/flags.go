@@ -18,6 +18,7 @@ import (
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/throttled"
 )
@@ -575,14 +576,16 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: func(co *support.ConfigOption) error {
 				val := viper.GetString(co.Name)
 				if val != "" && val != StellarPubnet && val != StellarTestnet {
-					return fmt.Errorf("invalid network %s. Use 'pubnet' or 'testnet'", val)
+					return fmt.Errorf("invalid network %s. Use '%s' or '%s'",
+						val, StellarPubnet, StellarTestnet)
 				}
 				*co.ConfigKey.(*string) = val
 				return nil
 			},
-			Usage: fmt.Sprintf("stellar public network, either 'testnet' or 'pubnet'."+
+			Usage: fmt.Sprintf("stellar public network, either '%s' or '%s'."+
 				" It automatically configures network settings, including %s, %s, and %s.",
-				NetworkPassphraseFlagName, HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
+				StellarPubnet, StellarTestnet, NetworkPassphraseFlagName,
+				HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
 		},
 	}
 
@@ -662,7 +665,7 @@ func loadDefaultCaptiveCoreToml(config *Config, defaultConfigData []byte) error 
 	var err error
 	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultConfigData, config.CaptiveCoreTomlParams)
 	if err != nil {
-		return fmt.Errorf("invalid captive core toml: %v", err)
+		return errors.Wrap(err, "invalid captive core toml")
 	}
 	return nil
 }
@@ -677,7 +680,7 @@ func loadCaptiveCoreTomlFromFile(config *Config) error {
 
 	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
 	if err != nil {
-		return fmt.Errorf("invalid captive core toml file: %v", err)
+		return errors.Wrap(err, "invalid captive core toml file")
 	}
 	return nil
 }
@@ -731,7 +734,7 @@ func createCaptiveCoreConfig(config *Config) error {
 		var err error
 		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
 		if err != nil {
-			return fmt.Errorf("invalid captive core toml file %v", err)
+			return errors.Wrap(err, "invalid captive core toml file")
 		}
 	}
 
@@ -754,12 +757,12 @@ func setCaptiveCoreConfiguration(config *Config) error {
 	if config.Network != "" {
 		err := createCaptiveCoreDefaultConfig(config)
 		if err != nil {
-			return fmt.Errorf("error generating default captive core config. %v", err)
+			return errors.Wrap(err, "error generating default captive core config.")
 		}
 	} else {
 		err := createCaptiveCoreConfig(config)
 		if err != nil {
-			return fmt.Errorf("error generating captive core config. %v", err)
+			return errors.Wrap(err, "error generating captive core config.")
 		}
 	}
 
@@ -809,7 +812,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		if config.EnableCaptiveCoreIngestion {
 			err := setCaptiveCoreConfiguration(config)
 			if err != nil {
-				return fmt.Errorf("error generating captive core configuration. %v", err)
+				return errors.Wrap(err, "error generating captive core configuration")
 			}
 		}
 	} else {

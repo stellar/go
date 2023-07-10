@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
@@ -124,6 +125,7 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
 				assert.Equal(t, tt.historyArchiveURLs, tt.config.HistoryArchiveURLs)
 			} else {
+				require.Error(t, e)
 				assert.Equal(t, tt.errStr, e.Error())
 			}
 		})
