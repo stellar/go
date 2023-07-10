@@ -1,7 +1,7 @@
 package horizon
 
 import (
-	"embed"
+	_ "embed"
 	"fmt"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
@@ -9,6 +9,7 @@ import (
 	stdLog "log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -259,15 +260,19 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "stellar-core to connect with (for http commands). If unset and the local Captive core is enabled, it will use http://localhost:<stellar_captive_core_http_port>",
 		},
 		&support.ConfigOption{
-			Name:        HistoryArchiveURLsFlagName,
-			ConfigKey:   &config.HistoryArchiveURLs,
-			OptType:     types.String,
-			Required:    false,
-			FlagDefault: "",
+			Name:      HistoryArchiveURLsFlagName,
+			ConfigKey: &config.HistoryArchiveURLs,
+			OptType:   types.String,
+			Required:  false,
 			CustomSetValue: func(co *support.ConfigOption) error {
 				stringOfUrls := viper.GetString(co.Name)
 				urlStrings := strings.Split(stringOfUrls, ",")
-				*(co.ConfigKey.(*[]string)) = urlStrings
+				//urlStrings contains a single empty value when stringOfUrls is empty
+				if len(urlStrings) == 1 && urlStrings[0] == "" {
+					*(co.ConfigKey.(*[]string)) = []string{}
+				} else {
+					*(co.ConfigKey.(*[]string)) = urlStrings
+				}
 				return nil
 			},
 			Usage: "comma-separated list of stellar history archives to connect with",
@@ -577,7 +582,9 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 			Usage: fmt.Sprintf("stellar public network, either 'testnet' or 'pubnet'."+
-				" Auto-configures network settings including %s, %s, %s",
+				" It automatically configures network settings, including %s, %s, and %s."+
+				" Please note that the default pubnet configuration may not be suitable for production environments,"+
+				" and manual selection of quorum sets is recommended.",
 				NetworkPassphraseFlagName, HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
 		},
 	}
@@ -612,6 +619,35 @@ type ApplyOptions struct {
 	RequireCaptiveCoreConfig bool
 }
 
+type networkConfig struct {
+	configFileName     string
+	defaultConfig      []byte
+	historyArchiveURLs []string
+	networkPassphrase  string
+}
+
+var (
+	//go:embed configs/captive-core-pubnet.cfg
+	PubnetDefaultConfig []byte
+
+	//go:embed configs/captive-core-testnet.cfg
+	TestnetDefaultConfig []byte
+
+	pubnetConf = networkConfig{configFileName: "captive-core-pubnet.cfg",
+		defaultConfig:      PubnetDefaultConfig,
+		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-live/core_live_001/"},
+		networkPassphrase:  network.PublicNetworkPassphrase,
+	}
+
+	testnetConf = networkConfig{configFileName: "captive-core-testnet.cfg",
+		defaultConfig:      TestnetDefaultConfig,
+		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"},
+		networkPassphrase:  network.TestNetworkPassphrase,
+	}
+)
+
+// getCaptiveCoreBinaryPath retrieves the path of the Captive Core binary
+// Returns the path or an error if the binary is not found
 func getCaptiveCoreBinaryPath() (string, error) {
 	result, err := exec.LookPath("stellar-core")
 	if err != nil {
@@ -620,107 +656,107 @@ func getCaptiveCoreBinaryPath() (string, error) {
 	return result, nil
 }
 
-type networkConfig struct {
-	configFileName     string
-	historyArchiveURLs []string
-	networkPassphrase  string
+// getCaptiveCoreDefaultConfigPath retrieves the path for the default Captive Core configuration file
+// Returns the config file path or an error if it doesn't exist
+func getCaptiveCoreDefaultConfigPath(configFileName string) (string, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	configPath := filepath.Join(filepath.Dir(executablePath), configFileName)
+	if _, err = os.Stat(configPath); os.IsNotExist(err) {
+		return "", err
+	}
+	return configPath, nil
 }
 
-var (
-	//go:embed configs/captive-core-pubnet.cfg
-	//go:embed configs/captive-core-testnet.cfg
-	networkConfigFile embed.FS
-
-	pubnetConf = networkConfig{configFileName: "configs/captive-core-pubnet.cfg",
-		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-live/core_live_001/"},
-		networkPassphrase:  network.PublicNetworkPassphrase,
-	}
-
-	testnetConf = networkConfig{configFileName: "configs/captive-core-testnet.cfg",
-		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"},
-		networkPassphrase:  network.TestNetworkPassphrase,
-	}
-)
-
-// setDefaultNetworkConfig sets the default network configuration based on the specified network in config
-func setDefaultNetworkConfig(config *Config) error {
-	var defaultConfig networkConfig
-
-	switch config.Network {
-	case StellarPubnet:
-		defaultConfig = pubnetConf
-	case StellarTestnet:
-		defaultConfig = testnetConf
-	default:
-		return fmt.Errorf("no default configuration found for network %s", config.Network)
-	}
-
-	config.NetworkPassphrase = defaultConfig.networkPassphrase
-	config.HistoryArchiveURLs = defaultConfig.historyArchiveURLs
-
-	if config.CaptiveCoreConfigPath == "" {
-		config.CaptiveCoreConfigPath = defaultConfig.configFileName
-	}
-	return nil
-}
-
-// createCaptiveCoreDefaultNetworkConfig creates the Captive Core configuration for stellar 'pubnet' and 'testnet' networks
-func createCaptiveCoreDefaultNetworkConfig(config *Config) error {
-
-	if config.NetworkPassphrase != "" {
-		return fmt.Errorf("invalid config: %s not allowed with %s network", NetworkPassphraseFlagName, config.Network)
-	}
-
-	// config.HistoryArchiveURLs contains a single empty value when empty
-	if len(config.HistoryArchiveURLs) == 1 && config.HistoryArchiveURLs[0] != "" {
-		return fmt.Errorf("invalid config: %s not allowed with %s network", HistoryArchiveURLsFlagName, config.Network)
-	}
-
-	err := setDefaultNetworkConfig(config)
-	if err != nil {
-		return fmt.Errorf("error configuring default settings for network %s. %v", config.Network, err)
-	}
-
-	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-
-	data, err := networkConfigFile.ReadFile(config.CaptiveCoreConfigPath)
-	if err != nil {
-		return fmt.Errorf("error reading captive core default config file %s. %v", config.CaptiveCoreConfigPath, err)
-	}
-
-	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(data, config.CaptiveCoreTomlParams)
-	if err != nil {
-		return fmt.Errorf("invalid captive core toml file %v", err)
-	}
-
-	return nil
-}
-
-// createCaptiveCoreConfig creates the Captive Core configuration with the specified settings
-func createCaptiveCoreConfig(config *Config) error {
-	if config.NetworkPassphrase == "" {
-		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
-	}
-
-	// config.HistoryArchiveURLs contains a single empty value when empty
-	if len(config.HistoryArchiveURLs) == 1 && config.HistoryArchiveURLs[0] == "" {
-		return fmt.Errorf(" %s must be set", HistoryArchiveURLsFlagName)
-	}
+// loadDefaultCaptiveCoreToml loads the default Captive Core TOML based on the default config data.
+func loadDefaultCaptiveCoreToml(config *Config, defaultConfigData []byte) error {
 
 	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
 	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 
 	var err error
-	if config.CaptiveCoreConfigPath != "" {
-		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath,
-			config.CaptiveCoreTomlParams)
+	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultConfigData, config.CaptiveCoreTomlParams)
+	if err != nil {
+		return fmt.Errorf("invalid captive core toml: %v", err)
+	}
+	return nil
+}
+
+// loadCaptiveCoreTomlFromFile loads the Captive Core TOML file from the specified path provided config.
+func loadCaptiveCoreTomlFromFile(config *Config) error {
+	var err error
+
+	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+
+	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
+	if err != nil {
+		return fmt.Errorf("invalid captive core toml file: %v", err)
+	}
+	return nil
+}
+
+// createCaptiveCoreDefaultConfig generates the default Captive Core configuration.
+// validates the configuration settings, sets default values, and loads the Captive Core TOML file.
+func createCaptiveCoreDefaultConfig(config *Config) error {
+
+	if config.NetworkPassphrase != "" {
+		return fmt.Errorf("invalid config: %s not allowed with %s network", NetworkPassphraseFlagName, config.Network)
+	}
+
+	if len(config.HistoryArchiveURLs) > 0 {
+		return fmt.Errorf("invalid config: %s not allowed with %s network", HistoryArchiveURLsFlagName, config.Network)
+	}
+
+	var defaultNetworkConfig networkConfig
+	var usingDefaultPubnetConfig = false
+
+	switch config.Network {
+	case StellarPubnet:
+		defaultNetworkConfig = pubnetConf
+		usingDefaultPubnetConfig = true
+	case StellarTestnet:
+		defaultNetworkConfig = testnetConf
+	default:
+		return fmt.Errorf("no default configuration found for network %s", config.Network)
+	}
+	config.NetworkPassphrase = defaultNetworkConfig.networkPassphrase
+	config.HistoryArchiveURLs = defaultNetworkConfig.historyArchiveURLs
+
+	var err error
+	if config.CaptiveCoreConfigPath == "" {
+		config.UsingDefaultPubnetConfig = usingDefaultPubnetConfig
+		config.CaptiveCoreConfigPath, err = getCaptiveCoreDefaultConfigPath(defaultNetworkConfig.configFileName)
+		// default config file not found, generate config from the embedded file
 		if err != nil {
-			return fmt.Errorf("invalid captive core toml file %v", err)
+			return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
 		}
+	}
+
+	return loadCaptiveCoreTomlFromFile(config)
+}
+
+// createCaptiveCoreConfig generates the Captive Core configuration.
+// validates the configuration settings, sets necessary values, and loads the Captive Core TOML file.
+func createCaptiveCoreConfig(config *Config) error {
+
+	if config.NetworkPassphrase == "" {
+		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
+	}
+
+	if len(config.HistoryArchiveURLs) == 0 {
+		return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
+	}
+
+	if config.CaptiveCoreConfigPath != "" {
+		return loadCaptiveCoreTomlFromFile(config)
 	} else {
+		var err error
 		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
 		if err != nil {
 			return fmt.Errorf("invalid captive core toml file %v", err)
@@ -730,7 +766,7 @@ func createCaptiveCoreConfig(config *Config) error {
 	return nil
 }
 
-// setCaptiveCoreConfiguration prepares configuration for Captive Core
+// setCaptiveCoreConfiguration prepares configuration for the Captive Core
 func setCaptiveCoreConfiguration(config *Config) error {
 	stdLog.Println("Preparing captive core...")
 
@@ -744,14 +780,14 @@ func setCaptiveCoreConfiguration(config *Config) error {
 	}
 
 	if config.Network != "" {
-		err := createCaptiveCoreDefaultNetworkConfig(config)
+		err := createCaptiveCoreDefaultConfig(config)
 		if err != nil {
-			return err
+			return fmt.Errorf("error generating default captive core config. %v", err)
 		}
 	} else {
 		err := createCaptiveCoreConfig(config)
 		if err != nil {
-			return err
+			return fmt.Errorf("error generating captive core config. %v", err)
 		}
 	}
 
