@@ -13,6 +13,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -21,6 +22,7 @@ type OperationsProcessorTestSuiteLedger struct {
 	suite.Suite
 	ctx                    context.Context
 	processor              *OperationProcessor
+	mockSession            *db.MockSession
 	mockQ                  *history.MockQOperations
 	mockBatchInsertBuilder *history.MockOperationsBatchInsertBuilder
 }
@@ -34,10 +36,11 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQOperations{}
 	s.mockBatchInsertBuilder = &history.MockOperationsBatchInsertBuilder{}
 	s.mockQ.
-		On("NewOperationBatchInsertBuilder", maxBatchSize).
+		On("NewOperationBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.processor = NewOperationProcessor(
+		s.mockSession,
 		s.mockQ,
 		56,
 	)
@@ -74,7 +77,6 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 			}
 			s.mockBatchInsertBuilder.On(
 				"Add",
-				s.ctx,
 				expected.ID(),
 				expected.TransactionID(),
 				expected.Order(),
@@ -122,7 +124,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 
 	err = s.mockBatchInsertAdds(txs, uint32(56))
 	s.Assert().NoError(err)
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 
 	for _, tx := range txs {
@@ -136,7 +138,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 
 	s.mockBatchInsertBuilder.
 		On(
-			"Add", s.ctx,
+			"Add",
 			mock.Anything,
 			mock.Anything,
 			mock.Anything,
@@ -152,7 +154,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(errors.New("transient error")).Once()
 	err := s.processor.Commit(s.ctx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "transient error")

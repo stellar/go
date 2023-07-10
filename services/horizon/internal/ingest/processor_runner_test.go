@@ -239,7 +239,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
 
-	q.MockQOperations.On("NewOperationBatchInsertBuilder", maxBatchSize).
+	q.MockQOperations.On("NewOperationBatchInsertBuilder").
 		Return(&history.MockOperationsBatchInsertBuilder{}).Twice() // Twice = with/without failed
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder").
 		Return(&history.MockTransactionsBatchInsertBuilder{}).Twice()
@@ -298,8 +298,8 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 
 	mockOperationsBatchInsertBuilder := &history.MockOperationsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockOperationsBatchInsertBuilder)
-	mockOperationsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOperations.On("NewOperationBatchInsertBuilder", maxBatchSize).
+	mockOperationsBatchInsertBuilder.On("Exec", ctx, mockSession).Return(nil).Once()
+	q.MockQOperations.On("NewOperationBatchInsertBuilder").
 		Return(mockOperationsBatchInsertBuilder).Twice()
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
@@ -371,8 +371,8 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	mockOperationsBatchInsertBuilder := &history.MockOperationsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockOperationsBatchInsertBuilder)
-	mockOperationsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQOperations.On("NewOperationBatchInsertBuilder", maxBatchSize).
+	mockOperationsBatchInsertBuilder.On("Exec", ctx, mockSession).Return(nil).Once()
+	q.MockQOperations.On("NewOperationBatchInsertBuilder").
 		Return(mockOperationsBatchInsertBuilder).Twice()
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}

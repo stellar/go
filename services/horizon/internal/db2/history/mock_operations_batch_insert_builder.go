@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -14,7 +15,7 @@ type MockOperationsBatchInsertBuilder struct {
 }
 
 // Add mock
-func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
+func (m *MockOperationsBatchInsertBuilder) Add(
 	id int64,
 	transactionID int64,
 	applicationOrder uint32,
@@ -23,7 +24,7 @@ func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 	sourceAccount string,
 	sourceAccountMuxed null.String,
 ) error {
-	a := m.Called(ctx,
+	a := m.Called(
 		id,
 		transactionID,
 		applicationOrder,
@@ -36,7 +37,7 @@ func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 }
 
 // Exec mock
-func (m *MockOperationsBatchInsertBuilder) Exec(ctx context.Context) error {
-	a := m.Called(ctx)
+func (m *MockOperationsBatchInsertBuilder) Exec(ctx context.Context, session db.SessionInterface) error {
+	a := m.Called(ctx, session)
 	return a.Error(0)
 }

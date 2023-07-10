@@ -95,9 +95,8 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	// Insert a two phony operations
-	operationBuilder := q.NewOperationBatchInsertBuilder(2)
+	operationBuilder := q.NewOperationBatchInsertBuilder()
 	err = operationBuilder.Add(
-		tt.Ctx,
 		opID1,
 		txID,
 		1,
@@ -107,11 +106,8 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		null.String{},
 	)
 	tt.Assert.NoError(err)
-	err = operationBuilder.Exec(tt.Ctx)
-	tt.Assert.NoError(err)
 
 	err = operationBuilder.Add(
-		tt.Ctx,
 		opID2,
 		txID,
 		1,
@@ -121,7 +117,7 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		null.String{},
 	)
 	tt.Assert.NoError(err)
-	err = operationBuilder.Exec(tt.Ctx)
+	err = operationBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	// Insert Liquidity Pool history

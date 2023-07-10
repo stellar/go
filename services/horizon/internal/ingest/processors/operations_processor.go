@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -18,17 +19,19 @@ import (
 
 // OperationProcessor operations processor
 type OperationProcessor struct {
+	session     db.SessionInterface
 	operationsQ history.QOperations
 
 	sequence uint32
 	batch    history.OperationBatchInsertBuilder
 }
 
-func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *OperationProcessor {
+func NewOperationProcessor(session db.SessionInterface, operationsQ history.QOperations, sequence uint32) *OperationProcessor {
 	return &OperationProcessor{
+		session:     session,
 		operationsQ: operationsQ,
 		sequence:    sequence,
-		batch:       operationsQ.NewOperationBatchInsertBuilder(maxBatchSize),
+		batch:       operationsQ.NewOperationBatchInsertBuilder(),
 	}
 }
 
@@ -57,7 +60,7 @@ func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction
 		if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 			sourceAccountMuxed = null.StringFrom(source.Address())
 		}
-		if err := p.batch.Add(ctx,
+		if err := p.batch.Add(
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
@@ -74,7 +77,7 @@ func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction
 }
 
 func (p *OperationProcessor) Commit(ctx context.Context) error {
-	return p.batch.Exec(ctx)
+	return p.batch.Exec(ctx, p.session)
 }
 
 // transactionOperationWrapper represents the data for a single operation within a transaction
