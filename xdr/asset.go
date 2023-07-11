@@ -440,10 +440,13 @@ func (a *Asset) LessThan(b Asset) bool {
 func (a Asset) ContractID(passphrase string) ([32]byte, error) {
 	networkId := Hash(sha256.Sum256([]byte(passphrase)))
 	preImage := HashIdPreimage{
-		Type: EnvelopeTypeEnvelopeTypeContractIdFromAsset,
-		FromAsset: &HashIdPreimageFromAsset{
+		Type: EnvelopeTypeEnvelopeTypeContractId,
+		ContractId: &HashIdPreimageContractId{
 			NetworkId: networkId,
-			Asset:     a,
+			ContractIdPreimage: ContractIdPreimage{
+				Type:      ContractIdPreimageTypeContractIdPreimageFromAsset,
+				FromAsset: &a,
+			},
 		},
 	}
 	xdrPreImageBytes, err := preImage.MarshalBinary()

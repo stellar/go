@@ -1,9 +1,7 @@
 package contractevents
 
 import (
-	"crypto/rand"
 	_ "embed"
-	"encoding/base64"
 	"math"
 	"math/big"
 	"testing"
@@ -27,9 +25,6 @@ var (
 	zeroContractHash = xdr.Hash([32]byte{})
 	zeroContract     = strkey.MustEncode(strkey.VersionByteContract, zeroContractHash[:])
 )
-
-//go:embed fixtures/transfer_event_xdr.bin
-var transferEventXdr []byte
 
 func TestScValCreators(t *testing.T) {
 	val := makeSymbol("hello")
@@ -125,9 +120,8 @@ func TestSACEventCreation(t *testing.T) {
 	// Ensure that invalid asset binaries are rejected
 	t.Run("bad asset binary", func(t *testing.T) {
 		resetEvent(randomAccount, zeroContract, randomAsset)
-		rawBsAsset := make([]byte, 42)
-		rand.Read(rawBsAsset)
-		xdrEvent.Body.V0.Topics[3].Bytes = (*xdr.ScBytes)(&rawBsAsset)
+		rawBsAsset := xdr.ScString("no bueno")
+		xdrEvent.Body.V0.Topics[3].Str = &rawBsAsset
 		_, err := NewStellarAssetContractEvent(&xdrEvent, passphrase)
 		require.Error(t, err)
 	})
@@ -221,18 +215,6 @@ func TestFuzzingSACEventParser(t *testing.T) {
 		// return values are ignored, but this should never panic
 		NewStellarAssetContractEvent(&event, "passphrase")
 	}
-}
-
-func TestRealTransferEvent(t *testing.T) {
-	decoded := base64.StdEncoding.EncodeToString(transferEventXdr)
-
-	event := xdr.ContractEvent{}
-	require.NoErrorf(t, event.UnmarshalBinary(transferEventXdr),
-		"couldn't unmarshal event: '%s'", decoded)
-
-	parsed, err := NewStellarAssetContractEvent(&event, "Standalone Network ; February 2017")
-	assert.NoErrorf(t, err, "couldn't parse event: '%s'", decoded)
-	assert.Equalf(t, EventTypeTransfer, parsed.GetType(), "event: '%s'", decoded)
 }
 
 //

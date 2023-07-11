@@ -7,13 +7,27 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const (
+	scDecimalPrecision = 7
+)
+
 var (
 	// https://github.com/stellar/rs-soroban-env/blob/v0.0.16/soroban-env-host/src/native_contract/token/public_types.rs#L22
 	nativeAssetSym = xdr.ScSymbol("Native")
 	// these are storage DataKey enum
 	// https://github.com/stellar/rs-soroban-env/blob/v0.0.16/soroban-env-host/src/native_contract/token/storage_types.rs#L23
 	balanceMetadataSym = xdr.ScSymbol("Balance")
+	metadataSym        = xdr.ScSymbol("METADATA")
+	metadataNameSym    = xdr.ScSymbol("name")
+	metadataSymbolSym  = xdr.ScSymbol("symbol")
+	adminSym           = xdr.ScSymbol("Admin")
+	issuerSym          = xdr.ScSymbol("issuer")
+	assetCodeSym       = xdr.ScSymbol("asset_code")
+	alphaNum4Sym       = xdr.ScSymbol("AlphaNum4")
+	alphaNum12Sym      = xdr.ScSymbol("AlphaNum12")
+	decimalSym         = xdr.ScSymbol("decimal")
 	assetInfoSym       = xdr.ScSymbol("AssetInfo")
+	decimalVal         = xdr.Uint32(scDecimalPrecision)
 	assetInfoVec       = &xdr.ScVec{
 		xdr.ScVal{
 			Type: xdr.ScValTypeScvSymbol,
@@ -43,7 +57,9 @@ var (
 // https://github.com/stellar/rs-soroban-env/blob/v0.0.16/soroban-env-host/src/native_contract/token/asset_info.rs#L6
 // https://github.com/stellar/rs-soroban-env/blob/v0.0.16/soroban-env-host/src/native_contract/token/contract.rs#L115
 //
-// The `ContractData` entry takes the following form:
+// The asset info in `ContractData` entry takes the following form:
+//
+//   - Instance storage - it's part of contract instance data storage
 //
 //   - Key: a vector with one element, which is the symbol "AssetInfo"
 //
@@ -52,7 +68,7 @@ var (
 //   - Value: a map with two key-value pairs: code and issuer
 //
 //     ScVal{ Map: ScMap(
-//     { ScVal{ Sym: ScSymbol("asset_code") } -> ScVal{ Bytes: ScBytes(...) } },
+//     { ScVal{ Sym: ScSymbol("asset_code") } -> ScVal{ Str: ScString(...) } },
 //     { ScVal{ Sym: ScSymbol("issuer") } -> ScVal{ Bytes: ScBytes(...) } }
 //     )}
 func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.Asset {
@@ -60,18 +76,43 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if !ok {
 		return nil
 	}
+	if contractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance ||
+		contractData.Body.BodyType != xdr.ContractEntryBodyTypeDataEntry {
+		return nil
+	}
+	contractInstanceData, ok := contractData.Body.Data.Val.GetInstance()
+	if !ok || contractInstanceData.Storage == nil {
+		return nil
+	}
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	if err != nil || contractData.ContractId == nativeAssetContractID {
+	if err != nil || (contractData.Contract.ContractId != nil && (*contractData.Contract.ContractId) == nativeAssetContractID) {
 		return nil
 	}
 
-	if !contractData.Key.Equals(assetInfoKey) {
+	var assetInfo *xdr.ScVal
+	for _, mapEntry := range *contractInstanceData.Storage {
+		if mapEntry.Key.Equals(assetInfoKey) {
+			// clone the map entry to avoid reference to loop iterator
+			mapValXdr, cloneErr := mapEntry.Val.MarshalBinary()
+			if cloneErr != nil {
+				return nil
+			}
+			assetInfo = &xdr.ScVal{}
+			cloneErr = assetInfo.UnmarshalBinary(mapValXdr)
+			if cloneErr != nil {
+				return nil
+			}
+			break
+		}
+	}
+
+	if assetInfo == nil {
 		return nil
 	}
 
-	vecPtr, ok := contractData.Val.GetVec()
+	vecPtr, ok := assetInfo.GetVec()
 	if !ok || vecPtr == nil || len(*vecPtr) != 2 {
 		return nil
 	}
@@ -96,23 +137,25 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	assetMap := *assetMapPtr
 
 	assetCodeEntry, assetIssuerEntry := assetMap[0], assetMap[1]
-	if sym, ok = assetCodeEntry.Key.GetSym(); !ok || sym != "asset_code" {
+	if sym, ok = assetCodeEntry.Key.GetSym(); !ok || sym != assetCodeSym {
 		return nil
 	}
-	bin, ok := assetCodeEntry.Val.GetBytes()
-	if !ok || bin == nil {
+	assetCodeSc, ok := assetCodeEntry.Val.GetStr()
+	if !ok {
 		return nil
 	}
-	assetCode = string(bin)
+	if assetCode = string(assetCodeSc); assetCode == "" {
+		return nil
+	}
 
-	if sym, ok = assetIssuerEntry.Key.GetSym(); !ok || sym != "issuer" {
+	if sym, ok = assetIssuerEntry.Key.GetSym(); !ok || sym != issuerSym {
 		return nil
 	}
-	bin, ok = assetIssuerEntry.Val.GetBytes()
-	if !ok || bin == nil {
+	assetIssuerSc, ok := assetIssuerEntry.Val.GetBytes()
+	if !ok {
 		return nil
 	}
-	assetIssuer, err = strkey.Encode(strkey.VersionByteAccountID, bin)
+	assetIssuer, err = strkey.Encode(strkey.VersionByteAccountID, assetIssuerSc)
 	if err != nil {
 		return nil
 	}
@@ -126,7 +169,7 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if err != nil {
 		return nil
 	}
-	if expectedID != contractData.ContractId {
+	if contractData.Contract.ContractId == nil || expectedID != *(contractData.Contract.ContractId) {
 		return nil
 	}
 
@@ -148,7 +191,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 
 	// we don't support asset stats for lumens
 	nativeAssetContractID, err := xdr.MustNewNativeAsset().ContractID(passphrase)
-	if err != nil || contractData.ContractId == nativeAssetContractID {
+	if err != nil || (contractData.Contract.ContractId != nil && *contractData.Contract.ContractId == nativeAssetContractID) {
 		return [32]byte{}, nil, false
 	}
 
@@ -176,7 +219,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 
-	balanceMapPtr, ok := contractData.Val.GetMap()
+	balanceMapPtr, ok := contractData.Body.Data.Val.GetMap()
 	if !ok || balanceMapPtr == nil {
 		return [32]byte{}, nil, false
 	}
@@ -212,88 +255,205 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 	return holder, amt, true
 }
 
-func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScVec, error) {
+func metadataObjFromAsset(isNative bool, code, issuer string) (*xdr.ScMap, error) {
+	assetInfoVecKey := &xdr.ScVec{
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &assetInfoSym,
+		},
+	}
+
 	if isNative {
-		return &xdr.ScVec{
+		nativeVec := &xdr.ScVec{
 			xdr.ScVal{
 				Type: xdr.ScValTypeScvSymbol,
 				Sym:  &nativeAssetSym,
 			},
+		}
+		return &xdr.ScMap{
+			xdr.ScMapEntry{
+				Key: xdr.ScVal{
+					Type: xdr.ScValTypeScvVec,
+					Vec:  &assetInfoVecKey,
+				},
+				Val: xdr.ScVal{
+					Type: xdr.ScValTypeScvVec,
+					Vec:  &nativeVec,
+				},
+			},
 		}, nil
 	}
 
-	var assetCodeLength int
-	var symbol xdr.ScSymbol
-	if len(code) <= 4 {
-		symbol = "AlphaNum4"
-		assetCodeLength = 4
-	} else {
-		symbol = "AlphaNum12"
-		assetCodeLength = 12
+	nameVal := xdr.ScString(code + ":" + issuer)
+	symbolVal := xdr.ScString(code)
+	metaDataMap := &xdr.ScMap{
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &decimalSym,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvU32,
+				U32:  &decimalVal,
+			},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &metadataNameSym,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvString,
+				Str:  &nameVal,
+			},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &metadataSymbolSym,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvString,
+				Str:  &symbolVal,
+			},
+		},
 	}
 
-	assetCodeSymbol := xdr.ScSymbol("asset_code")
-	assetCodeBytes := make([]byte, assetCodeLength)
-	copy(assetCodeBytes, code)
+	adminVec := &xdr.ScVec{
+		xdr.ScVal{
+			Type: xdr.ScValTypeScvSymbol,
+			Sym:  &adminSym,
+		},
+	}
 
-	issuerSymbol := xdr.ScSymbol("issuer")
+	adminAccountId := xdr.MustAddress(issuer)
+	assetCodeVal := xdr.ScString(code)
 	issuerBytes, err := strkey.Decode(strkey.VersionByteAccountID, issuer)
 	if err != nil {
 		return nil, err
 	}
 
-	mapObj := &xdr.ScMap{
+	assetIssuerBytes := xdr.ScBytes(issuerBytes)
+	assetInfoMap := &xdr.ScMap{
 		xdr.ScMapEntry{
 			Key: xdr.ScVal{
 				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &assetCodeSymbol,
+				Sym:  &assetCodeSym,
 			},
 			Val: xdr.ScVal{
-				Type:  xdr.ScValTypeScvBytes,
-				Bytes: (*xdr.ScBytes)(&assetCodeBytes),
+				Type: xdr.ScValTypeScvString,
+				Str:  &assetCodeVal,
 			},
 		},
 		xdr.ScMapEntry{
 			Key: xdr.ScVal{
 				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &issuerSymbol,
+				Sym:  &issuerSym,
 			},
 			Val: xdr.ScVal{
 				Type:  xdr.ScValTypeScvBytes,
-				Bytes: (*xdr.ScBytes)(&issuerBytes),
+				Bytes: &assetIssuerBytes,
 			},
 		},
 	}
 
-	return &xdr.ScVec{
+	alphaNumSym := alphaNum4Sym
+	if len(code) > 4 {
+		alphaNumSym = alphaNum12Sym
+	}
+	assetInfoVecVal := &xdr.ScVec{
 		xdr.ScVal{
 			Type: xdr.ScValTypeScvSymbol,
-			Sym:  &symbol,
+			Sym:  &alphaNumSym,
 		},
 		xdr.ScVal{
 			Type: xdr.ScValTypeScvMap,
-			Map:  &mapObj,
+			Map:  &assetInfoMap,
 		},
-	}, nil
+	}
+
+	storageMap := &xdr.ScMap{
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &metadataSym,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvMap,
+				Map:  &metaDataMap,
+			},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &adminVec,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvAddress,
+				Address: &xdr.ScAddress{
+					AccountId: &adminAccountId,
+				},
+			},
+		},
+		xdr.ScMapEntry{
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &assetInfoVecKey,
+			},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvVec,
+				Vec:  &assetInfoVecVal,
+			},
+		},
+	}
+
+	return storageMap, nil
 }
 
 // AssetToContractData is the inverse of AssetFromContractData. It creates a
 // ledger entry containing the asset info entry written to contract storage by the
 // Stellar Asset Contract.
+//
+// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
 func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte) (xdr.LedgerEntryData, error) {
-	vec, err := metadataObjFromAsset(isNative, code, issuer)
+	storageMap, err := metadataObjFromAsset(isNative, code, issuer)
 	if err != nil {
 		return xdr.LedgerEntryData{}, err
 	}
+	var ContractIDHash xdr.Hash = contractID
+
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			ContractId: contractID,
-			Key:        assetInfoKey,
-			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvVec,
-				Vec:  &vec,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				AccountId:  nil,
+				ContractId: &ContractIDHash,
 			},
+			Key: xdr.ScVal{
+				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
+			},
+			Durability: xdr.ContractDataDurabilityPersistent,
+			Body: xdr.ContractDataEntryBody{
+				BodyType: xdr.ContractEntryBodyTypeDataEntry,
+				Data: &xdr.ContractDataEntryData{
+					Val: xdr.ScVal{
+						Type: xdr.ScValTypeScvContractInstance,
+						Instance: &xdr.ScContractInstance{
+							Executable: xdr.ContractExecutable{
+								Type: xdr.ContractExecutableTypeContractExecutableToken,
+							},
+							Storage: storageMap,
+						},
+					},
+					// No flags written by the contract:
+					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/asset_info.rs#L12
+					Flags: 0,
+				},
+			},
+			// Not realistic, but doesn't matter since this is only used in tests.
+			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
+			ExpirationLedgerSeq: 0,
 		},
 	}, nil
 }
@@ -301,6 +461,8 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 // BalanceToContractData is the inverse of ContractBalanceFromContractData. It
 // creates a ledger entry containing the asset balance of a contract holder
 // written to contract storage by the Stellar Asset Contract.
+//
+// Warning: Only for use in tests. This does not set a realistic expirationLedgerSeq
 func BalanceToContractData(assetContractId, holderID [32]byte, amt uint64) xdr.LedgerEntryData {
 	return balanceToContractData(assetContractId, holderID, xdr.Int128Parts{
 		Lo: xdr.Uint64(amt),
@@ -356,18 +518,34 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 		},
 	}
 
+	var contractIDHash xdr.Hash = assetContractId
 	return xdr.LedgerEntryData{
 		Type: xdr.LedgerEntryTypeContractData,
 		ContractData: &xdr.ContractDataEntry{
-			ContractId: assetContractId,
+			Contract: xdr.ScAddress{
+				Type:       xdr.ScAddressTypeScAddressTypeContract,
+				ContractId: &contractIDHash,
+			},
 			Key: xdr.ScVal{
 				Type: xdr.ScValTypeScvVec,
 				Vec:  &keyVec,
 			},
-			Val: xdr.ScVal{
-				Type: xdr.ScValTypeScvMap,
-				Map:  &dataMap,
+			Durability: xdr.ContractDataDurabilityPersistent,
+			Body: xdr.ContractDataEntryBody{
+				BodyType: xdr.ContractEntryBodyTypeDataEntry,
+				Data: &xdr.ContractDataEntryData{
+					Val: xdr.ScVal{
+						Type: xdr.ScValTypeScvMap,
+						Map:  &dataMap,
+					},
+					// No flags written by the contract:
+					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/balance.rs#L60
+					Flags: 0,
+				},
 			},
+			// Not realistic, but doesn't matter since this is only used in tests.
+			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
+			ExpirationLedgerSeq: 0,
 		},
 	}
 }

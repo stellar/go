@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -66,6 +67,45 @@ func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges)
 	}
 
 	return changes
+}
+
+// GetChangesFromLedgerEntryEvictions transforms evicted LedgerKeys to []Change.
+// The generated changes always remove the entries.
+func GetChangesFromLedgerEntryEvictions(keys []xdr.LedgerKey) ([]Change, error) {
+	changes := []Change{}
+
+	for _, key := range keys {
+		state := xdr.LedgerEntry{}
+		switch key.Type {
+		case xdr.LedgerEntryTypeContractData:
+			err := state.Data.SetContractData(&xdr.ContractDataEntry{
+				Contract:   key.ContractData.Contract,
+				Key:        key.ContractData.Key,
+				Durability: key.ContractData.Durability,
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "error setting ContractDataEntry")
+			}
+		case xdr.LedgerEntryTypeContractCode:
+			err := state.Data.SetContractCode(&xdr.ContractCodeEntry{
+				Hash: key.ContractCode.Hash,
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "error setting ContractCodeEntry")
+			}
+		default:
+			// Currently only contractData and contractCode are evicted by core, so
+			// we only need to handle those two.
+			return nil, fmt.Errorf("invalid LedgerEntry eviction type: %s", key.Type)
+		}
+		changes = append(changes, Change{
+			Type: key.Type,
+			Pre:  &state,
+			Post: nil,
+		})
+	}
+
+	return changes, nil
 }
 
 // LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.

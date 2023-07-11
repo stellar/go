@@ -93,13 +93,7 @@ func (l LedgerCloseMeta) TransactionResultPair(i int) TransactionResultPair {
 	case 1:
 		return l.MustV1().TxProcessing[i].Result
 	case 2:
-		if l.MustV2().TxProcessing[i].TxApplyProcessing.V != 3 {
-			panic("TransactionResult unavailable because LedgerCloseMeta.V = 2 and TransactionMeta.V != 3")
-		}
-		return TransactionResultPair{
-			TransactionHash: l.TransactionHash(i),
-			Result:          l.MustV2().TxProcessing[i].TxApplyProcessing.MustV3().TxResult,
-		}
+		return l.MustV2().TxProcessing[i].Result
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}
@@ -127,6 +121,9 @@ func (l LedgerCloseMeta) TxApplyProcessing(i int) TransactionMeta {
 	case 1:
 		return l.MustV1().TxProcessing[i].TxApplyProcessing
 	case 2:
+		if l.MustV2().TxProcessing[i].TxApplyProcessing.V != 3 {
+			panic("TransactionResult unavailable because LedgerCloseMeta.V = 2 and TransactionMeta.V != 3")
+		}
 		return l.MustV2().TxProcessing[i].TxApplyProcessing
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
@@ -142,6 +139,30 @@ func (l LedgerCloseMeta) UpgradesProcessing() []UpgradeEntryMeta {
 		return l.MustV1().UpgradesProcessing
 	case 2:
 		return l.MustV2().UpgradesProcessing
+	default:
+		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
+	}
+}
+
+// EvictedLedgerKeys returns the LedgerKeys for both the
+// EvictedTemporaryLedgerKeys and and the EvictedPersistentLedgerEntries in a
+// ledger.
+func (l LedgerCloseMeta) EvictedLedgerKeys() ([]LedgerKey, error) {
+	switch l.V {
+	case 0, 1:
+		return nil, nil
+	case 2:
+		v2 := l.MustV2()
+		keys := make([]LedgerKey, 0, len(v2.EvictedTemporaryLedgerKeys)+len(v2.EvictedPersistentLedgerEntries))
+		keys = append(keys, l.MustV2().EvictedTemporaryLedgerKeys...)
+		for _, entry := range l.MustV2().EvictedPersistentLedgerEntries {
+			key, err := entry.LedgerKey()
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, key)
+		}
+		return keys, nil
 	default:
 		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
 	}

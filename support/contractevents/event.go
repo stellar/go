@@ -1,8 +1,8 @@
 package contractevents
 
 import (
-	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -93,17 +93,17 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	//
 	// To check that, ensure that the contract ID of the event matches the
 	// contract ID that *would* represent the asset the event is claiming to
-	// be.
+	// be as included as the last topic in canonical asset encoding.
 	//
 	// For all parsing errors, we just continue, since it's not a real error,
 	// just an event non-complaint with SAC events.
 	rawAsset := topics[len(topics)-1]
-	assetBytes, ok := rawAsset.GetBytes()
-	if !ok || assetBytes == nil {
+	assetSc, ok := rawAsset.GetStr()
+	if !ok || assetSc == "" {
 		return evt, ErrNotStellarAssetContract
 	}
 
-	asset, err := parseAssetBytes(assetBytes)
+	asset, err := parseCanonicalAsset(string(assetSc))
 	if err != nil {
 		return evt, errors.Wrap(ErrNotStellarAssetContract, err.Error())
 	}
@@ -144,33 +144,33 @@ func NewStellarAssetContractEvent(event *Event, networkPassphrase string) (Stell
 	}
 }
 
-func parseAssetBytes(b []byte) (*xdr.Asset, error) {
-	// The asset is SORT OF in canonical SEP-11 form:
+func parseCanonicalAsset(assetStr string) (*xdr.Asset, error) {
+	// The asset is in canonical SEP-11 form:
 	//  https://stellar.org/protocol/sep-11#alphanum4-alphanum12
-	// namely, its split into code and issuer by a colon, but the issuer is a
-	// raw public key rather than strkey ascii bytes, and the code is padded to
-	// exactly 4 or 12 bytes.
+	// namely, its split by colon, first part is asset code padded to
+	// exactly 4 or 12 bytes. and second part is issuer encoded
+	// as strkey
 	asset := xdr.Asset{
 		Type: xdr.AssetTypeAssetTypeNative,
 	}
 
-	if string(b) == "native" {
+	if assetStr == "native" {
 		return &asset, nil
 	}
 
-	parts := bytes.SplitN(b, []byte{':'}, 2)
+	parts := strings.Split(assetStr, ":")
 	if len(parts) != 2 {
-		return nil, errors.New("invalid asset byte format (expected <code>:<issuer>)")
+		return nil, errors.New("invalid asset byte format (expected canonical <code>:<issuer>)")
 	}
 	rawCode, rawIssuerKey := parts[0], parts[1]
 
-	issuerKey := xdr.Uint256{}
-	if err := issuerKey.UnmarshalBinary(rawIssuerKey); err != nil {
-		return nil, errors.Wrap(err, "asset issuer not a public key")
+	issuerKey, err := xdr.AddressToAccountId(rawIssuerKey)
+	if err != nil {
+		return nil, errors.New("invalid asset byte format (expected canonical <code>:<issuer>)")
 	}
 	accountId := xdr.AccountId(xdr.PublicKey{
 		Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
-		Ed25519: &issuerKey,
+		Ed25519: issuerKey.Ed25519,
 	})
 
 	if len(rawCode) == 4 {

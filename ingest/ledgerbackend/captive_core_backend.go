@@ -683,25 +683,26 @@ func (c *CaptiveStellarCore) handleMetaPipeResult(sequence uint32, result metaRe
 }
 
 func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) error {
-	// There are 3 types of errors we check for:
+	// There are 4 error scenarios we check for:
 	// 1. User initiated shutdown by canceling the parent context or calling Close().
-	// 2. The stellar core process exited unexpectedly.
+	// 2. The stellar core process exited unexpectedly with an error message.
 	// 3. Some error was encountered while consuming the ledgers emitted by captive core (e.g. parsing invalid xdr)
+	// 4. The stellar core process exited unexpectedly without an error message
 	if err := c.stellarCoreRunner.context().Err(); err != nil {
 		// Case 1 - User initiated shutdown by canceling the parent context or calling Close()
 		return err
 	}
 	if !ok || result.err != nil {
-		if result.err != nil {
+		exited, err := c.stellarCoreRunner.getProcessExitError()
+		if exited && err != nil {
+			// Case 2 - The stellar core process exited unexpectedly with an error message
+			return errors.Wrap(err, "stellar core exited unexpectedly")
+		} else if result.err != nil {
 			// Case 3 - Some error was encountered while consuming the ledger stream emitted by captive core.
 			return result.err
-		} else if exited, err := c.stellarCoreRunner.getProcessExitError(); exited {
-			// Case 2 - The stellar core process exited unexpectedly
-			if err == nil {
-				return errors.Errorf("stellar core exited unexpectedly")
-			} else {
-				return errors.Wrap(err, "stellar core exited unexpectedly")
-			}
+		} else if exited {
+			// case 4 - The stellar core process exited unexpectedly without an error message
+			return errors.Errorf("stellar core exited unexpectedly")
 		} else if !ok {
 			// This case should never happen because the ledger buffer channel can only be closed
 			// if and only if the process exits or the context is canceled.

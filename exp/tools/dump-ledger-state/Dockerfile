@@ -1,6 +1,6 @@
 FROM ubuntu:20.04
 
-ENV STELLAR_CORE_VERSION=19.10.0-1275.bff2c2b37.focal
+ENV STELLAR_CORE_VERSION=19.11.0-1323.7fb6d5e88.focal
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils

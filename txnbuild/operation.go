@@ -77,7 +77,11 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 	case xdr.OperationTypeLiquidityPoolWithdraw:
 		newOp = &LiquidityPoolWithdraw{}
 	case xdr.OperationTypeInvokeHostFunction:
-		newOp = &InvokeHostFunctions{}
+		newOp = &InvokeHostFunction{}
+	case xdr.OperationTypeBumpFootprintExpiration:
+		newOp = &BumpFootprintExpiration{}
+	case xdr.OperationTypeRestoreFootprint:
+		newOp = &RestoreFootprint{}
 	default:
 		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}

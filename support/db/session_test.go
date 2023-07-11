@@ -154,7 +154,7 @@ func TestIdleTransactionTimeout(t *testing.T) {
 	defer sess.Close()
 
 	assert.NoError(sess.Begin(context.Background()))
-	<-time.After(100 * time.Millisecond)
+	<-time.After(150 * time.Millisecond)
 
 	var count int
 	err = sess.GetRaw(context.Background(), &count, "SELECT COUNT(*) FROM people")

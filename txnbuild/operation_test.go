@@ -448,7 +448,7 @@ func TestBumpSequenceFromXDR(t *testing.T) {
 	}
 }
 
-func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation, withMuxedAccounts bool) {
+func testOperationsMarshalingRoundtrip(t *testing.T, operations []Operation, withMuxedAccounts bool) {
 	kp1 := newKeypair1()
 	accountID := xdr.MustAddress(kp1.Address())
 	mx := xdr.MuxedAccount{

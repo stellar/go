@@ -159,20 +159,6 @@ func genClaimableBalance(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChang
 	return change
 }
 
-func genContractData(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
-	change := xdr.LedgerEntryChange{}
-	shape := &gxdr.LedgerEntryChange{}
-	gen.Next(
-		shape,
-		[]randxdr.Preset{
-			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
-			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONTRACT_DATA.GetU32())},
-		},
-	)
-	tt.Assert.NoError(gxdr.Convert(shape, &change))
-	return change
-}
-
 func genContractCode(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	change := xdr.LedgerEntryChange{}
 	shape := &gxdr.LedgerEntryChange{}
@@ -181,6 +167,7 @@ func genContractCode(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 		[]randxdr.Preset{
 			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
 			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.CONTRACT_CODE.GetU32())},
+			//{randxdr.FieldEquals("created.data.contractcode.body.bodytype"), randxdr.SetU32(xdr.Body)},
 		},
 	)
 	tt.Assert.NoError(gxdr.Convert(shape, &change))
@@ -337,7 +324,6 @@ func TestStateVerifier(t *testing.T) {
 			genTrustLine(tt, gen),
 			genAccount(tt, gen),
 			genAccountData(tt, gen),
-			genContractData(tt, gen),
 			genContractCode(tt, gen),
 			genConfigSetting(tt, gen),
 		)

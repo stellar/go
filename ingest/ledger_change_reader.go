@@ -25,9 +25,11 @@ type ledgerChangeReaderState int
 const (
 	// feeChangesState is active when LedgerChangeReader is reading fee changes.
 	feeChangesState ledgerChangeReaderState = iota
-	// feeChangesState is active when LedgerChangeReader is reading transaction meta changes.
+	// metaChangesState is active when LedgerChangeReader is reading transaction meta changes.
 	metaChangesState
-	// feeChangesState is active when LedgerChangeReader is reading upgrade changes.
+	// evictionChangesState is active when LedgerChangeReader is reading ledger entry evictions.
+	evictionChangesState
+	// upgradeChanges is active when LedgerChangeReader is reading upgrade changes.
 	upgradeChangesState
 )
 
@@ -121,6 +123,19 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 			}
 			r.pending = append(r.pending, metaChanges...)
 		}
+		return r.Read()
+	case evictionChangesState:
+		// Get contract ledgerEntry evictions
+		keys, err := r.ledgerCloseMeta.EvictedLedgerKeys()
+		if err != nil {
+			return Change{}, err
+		}
+		changes, err := GetChangesFromLedgerEntryEvictions(keys)
+		if err != nil {
+			return Change{}, err
+		}
+		r.pending = append(r.pending, changes...)
+		r.state++
 		return r.Read()
 	case upgradeChangesState:
 		// Get upgrade changes

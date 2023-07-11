@@ -29,49 +29,22 @@ func (address ScAddress) String() (string, error) {
 	return result, nil
 }
 
-func (s ScContractExecutable) Equals(o ScContractExecutable) bool {
+func (s ContractExecutable) Equals(o ContractExecutable) bool {
 	if s.Type != o.Type {
 		return false
 	}
 	switch s.Type {
-	case ScContractExecutableTypeSccontractExecutableToken:
+	case ContractExecutableTypeContractExecutableToken:
 		return true
-	case ScContractExecutableTypeSccontractExecutableWasmRef:
-		return s.MustWasmId().Equals(o.MustWasmId())
+	case ContractExecutableTypeContractExecutableWasm:
+		return s.MustWasmHash().Equals(o.MustWasmHash())
 	default:
 		panic("unknown ScContractExecutable type: " + s.Type.String())
 	}
 }
 
-func (s ScStatus) Equals(o ScStatus) bool {
-	if s.Type != o.Type {
-		return false
-	}
-
-	switch s.Type {
-	case ScStatusTypeSstContractError:
-		return s.MustContractCode() == o.MustContractCode()
-	case ScStatusTypeSstHostFunctionError:
-		return s.MustFnCode() == o.MustFnCode()
-	case ScStatusTypeSstHostObjectError:
-		return s.MustObjCode() == o.MustObjCode()
-	case ScStatusTypeSstHostContextError:
-		return s.MustContextCode() == o.MustContextCode()
-	case ScStatusTypeSstHostStorageError:
-		return s.MustStorageCode() == o.MustStorageCode()
-	case ScStatusTypeSstHostValueError:
-		return s.MustValCode() == o.MustValCode()
-	case ScStatusTypeSstOk:
-		return true
-	case ScStatusTypeSstVmError:
-		return s.MustVmCode() == o.MustVmCode()
-	case ScStatusTypeSstUnknownError:
-		return s.MustUnknownCode() == o.MustUnknownCode()
-	case ScStatusTypeSstHostAuthError:
-		return s.MustAuthCode() == o.MustAuthCode()
-	default:
-		panic("unknown ScStatus type: " + s.Type.String())
-	}
+func (s ScError) Equals(o ScError) bool {
+	return s.Type == o.Type && s.Code == o.Code
 }
 
 func (s ScVal) Equals(o ScVal) bool {
@@ -84,7 +57,7 @@ func (s ScVal) Equals(o ScVal) bool {
 		return s.MustB() == o.MustB()
 	case ScValTypeScvVoid:
 		return true
-	case ScValTypeScvStatus:
+	case ScValTypeScvError:
 		return s.MustError().Equals(o.MustError())
 	case ScValTypeScvU32:
 		return s.MustU32() == o.MustU32()
@@ -116,14 +89,15 @@ func (s ScVal) Equals(o ScVal) bool {
 		return s.MustVec().Equals(o.MustVec())
 	case ScValTypeScvMap:
 		return s.MustMap().Equals(o.MustMap())
-	case ScValTypeScvContractExecutable:
-		return s.MustExec().Equals(o.MustExec())
 	case ScValTypeScvAddress:
 		return s.MustAddress().Equals(o.MustAddress())
-	case ScValTypeScvLedgerKeyContractExecutable:
+	case ScValTypeScvContractInstance:
+		return s.MustInstance().Executable.Equals(o.MustInstance().Executable) && s.MustInstance().Storage.Equals(o.MustInstance().Storage)
+	case ScValTypeScvLedgerKeyContractInstance:
 		return true
 	case ScValTypeScvLedgerKeyNonce:
 		return s.MustNonceKey().Equals(o.MustNonceKey())
+
 	default:
 		panic("unknown ScVal type: " + s.Type.String())
 	}
@@ -195,5 +169,5 @@ func (s ScMapEntry) Equals(o ScMapEntry) bool {
 }
 
 func (s ScNonceKey) Equals(o ScNonceKey) bool {
-	return s.NonceAddress.Equals(o.NonceAddress)
+	return s.Nonce == o.Nonce
 }

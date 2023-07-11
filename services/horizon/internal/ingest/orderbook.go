@@ -233,11 +233,11 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context, offers []xdr.Offe
 			offerRowXDR := offerToXDR(offerRow)
 			offerEntryBase64, err := o.encodingBuffer.MarshalBase64(&offerEntry)
 			if err != nil {
-				return false, errors.Wrap(err, "Error from marshalling offerEntry")
+				return false, errors.Wrap(err, "Error from marshaling offerEntry")
 			}
 			offerRowBase64, err := o.encodingBuffer.MarshalBase64(&offerRowXDR)
 			if err != nil {
-				return false, errors.Wrap(err, "Error from marshalling offerRowXDR")
+				return false, errors.Wrap(err, "Error from marshaling offerRowXDR")
 			}
 			if offerEntryBase64 != offerRowBase64 {
 				mismatch = true
@@ -290,11 +290,11 @@ func (o *OrderBookStream) verifyAllLiquidityPools(ctx context.Context, liquidity
 			}
 			liquidityPoolEntryBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolEntry)
 			if err != nil {
-				return false, errors.Wrap(err, "Error from marshalling liquidityPoolEntry")
+				return false, errors.Wrap(err, "Error from marshaling liquidityPoolEntry")
 			}
 			liquidityPoolRowBase64, err = o.encodingBuffer.MarshalBase64(&liquidityPoolRowXDR)
 			if err != nil {
-				return false, errors.Wrap(err, "Error from marshalling liquidityPoolRowXDR")
+				return false, errors.Wrap(err, "Error from marshaling liquidityPoolRowXDR")
 			}
 			if liquidityPoolEntryBase64 != liquidityPoolRowBase64 {
 				mismatch = true

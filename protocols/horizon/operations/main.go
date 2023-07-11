@@ -39,6 +39,8 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeLiquidityPoolDeposit:          "liquidity_pool_deposit",
 	xdr.OperationTypeLiquidityPoolWithdraw:         "liquidity_pool_withdraw",
 	xdr.OperationTypeInvokeHostFunction:            "invoke_host_function",
+	xdr.OperationTypeBumpFootprintExpiration:       "bump_footprint_expiration",
+	xdr.OperationTypeRestoreFootprint:              "restore_footprint",
 }
 
 // Base represents the common attributes of an operation resource
@@ -347,7 +349,7 @@ type LiquidityPoolWithdraw struct {
 
 // InvokeHostFunction is the json resource representing a single InvokeHostFunctionOp.
 // The model for InvokeHostFunction assimilates InvokeHostFunctionOp, but is simplified.
-// Functions            - list of contract function invocations performed.
+// HostFunction         - contract function invocation to be performed.
 // AssetBalanceChanges  - array of asset balance changed records related to contract invocations in this host invocation.
 //
 //	The asset balance change record is captured at ingestion time from the asset contract
@@ -357,19 +359,30 @@ type LiquidityPoolWithdraw struct {
 //	as there is no explicit model in horizon for contract addresses yet.
 type InvokeHostFunction struct {
 	Base
-	HostFunctions       []HostFunction               `json:"host_functions"`
+	Function            string                       `json:"function"`
+	Parameters          []HostFunctionParameter      `json:"parameters"`
+	Address             string                       `json:"address"`
+	Salt                string                       `json:"salt"`
 	AssetBalanceChanges []AssetContractBalanceChange `json:"asset_balance_changes"`
 }
 
-// HostFunction has the values specific to a single host function invocation
-// Type                - the type of host function, invoke_contract, create_contract, upload_wasm
-// Parameters          - array of key,value tuples for each function parameter.
-//
-//	one key that will always be incluced is 'type' which will be one of:
-//	xdr.ScValTypeScv's ( Sym, I32, U32, U64, Bytes, B ) or 'n/a' or 'string'
-type HostFunction struct {
-	Type       string              `json:"type"`
-	Parameters []map[string]string `json:"parameters"`
+// InvokeHostFunction parameter model, intentionally simplified, Value
+// just contains a base64 encoded string of the ScVal xdr serialization.
+type HostFunctionParameter struct {
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
+// BumpFootprintExpiration is the json resource representing a single BumpFootprintExpirationOp.
+// The model for BumpFootprintExpiration assimilates BumpFootprintExpirationOp, but is simplified.
+type BumpFootprintExpiration struct {
+	Base
+	LedgersToExpire string `json:"ledgers_to_expire"`
+}
+
+// RestoreFootprint is the json resource representing a single RestoreFootprint.
+type RestoreFootprint struct {
+	Base
 }
 
 // Type   - refers to the source SAC Event
@@ -625,6 +638,18 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeInvokeHostFunction:
 		var op InvokeHostFunction
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeBumpFootprintExpiration:
+		var op BumpFootprintExpiration
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeRestoreFootprint:
+		var op RestoreFootprint
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

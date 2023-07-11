@@ -531,25 +531,31 @@ func (i *Test) waitForSorobanRPC() {
 	i.t.Fatal("SorobanRPC unhealthy after 30s")
 }
 
+type RPCSimulateHostFunctionResult struct {
+	Auth []string `json:"auth"`
+	XDR  string   `json:"xdr"`
+}
+
+type RPCSimulateTxResponse struct {
+	Error           string                          `json:"error,omitempty"`
+	TransactionData string                          `json:"transactionData"`
+	Results         []RPCSimulateHostFunctionResult `json:"results"`
+	MinResourceFee  int64                           `json:"minResourceFee,string"`
+}
+
 // Wait for SorobanRPC to be up
-func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, functions txnbuild.InvokeHostFunctions) (txnbuild.InvokeHostFunctions, int64) {
+func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction) (txnbuild.InvokeHostFunction, int64) {
 	// TODO: soroban-tools should be exporting a proper Go client
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
-	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, &functions)
+	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, &function)
 	txParams.IncrementSequenceNum = false
 	tx, err := txnbuild.NewTransaction(txParams)
 	assert.NoError(i.t, err)
 	base64, err := tx.Base64()
 	assert.NoError(i.t, err)
-	var result struct {
-		Error           string `json:"error,omitempty"`
-		TransactionData string `json:"transactionData"`
-		Results         []struct {
-			Auth []string `json:"auth"`
-		} `json:"results,omitempty"`
-		MinResourceFee int64 `json:"minResourceFee,string"`
-	}
+	result := RPCSimulateTxResponse{}
+	fmt.Printf("Preflight TX:\n\n%v \n\n", base64)
 	err = sorobanRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
 		Transaction string `json:"transaction"`
 	}{base64}, &result)
@@ -559,23 +565,23 @@ func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, functions 
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
 	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
-	functions.Ext = xdr.TransactionExt{
+	function.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
-	for index, result := range result.Results {
-		var funAuth []xdr.ContractAuth
-		for _, authBase64 := range result.Auth {
-			var contractAuth xdr.ContractAuth
-			err = xdr.SafeUnmarshalBase64(authBase64, &contractAuth)
+	var funAuth []xdr.SorobanAuthorizationEntry
+	for _, authElement := range result.Results {
+		for _, authBase64 := range authElement.Auth {
+			var authEntry xdr.SorobanAuthorizationEntry
+			err = xdr.SafeUnmarshalBase64(authBase64, &authEntry)
 			assert.NoError(i.t, err)
-			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(contractAuth))
-			funAuth = append(funAuth, contractAuth)
+			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
+			funAuth = append(funAuth, authEntry)
 		}
-		functions.Functions[index].Auth = funAuth
 	}
+	function.Auth = funAuth
 
-	return functions, result.MinResourceFee
+	return function, result.MinResourceFee
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
@@ -997,7 +1003,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 
 	var txResult xdr.TransactionResult
 	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
-	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
+	assert.NoErrorf(t, err, "Unmarshaling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
 		"Transaction did not succeed: %d", txResult.Result.Code)
 }

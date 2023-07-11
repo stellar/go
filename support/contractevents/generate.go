@@ -174,38 +174,24 @@ func makeAsset(asset xdr.Asset) xdr.ScVal {
 		if err != nil {
 			panic(err)
 		}
-		pubkey, ok := asset.AlphaNum4.Issuer.GetEd25519()
-		if !ok {
-			panic("issuer not a public key")
-		}
 		buffer.WriteString(":")
-		_, err = xdr.Marshal(buffer, pubkey)
-		if err != nil {
-			panic(err)
-		}
+		buffer.WriteString(asset.AlphaNum4.Issuer.Address())
 
 	case xdr.AssetTypeAssetTypeCreditAlphanum12:
 		_, err := xdr.Marshal(buffer, asset.AlphaNum12.AssetCode)
 		if err != nil {
 			panic(err)
 		}
-		pubkey, ok := asset.AlphaNum12.Issuer.GetEd25519()
-		if !ok {
-			panic("issuer not a public key")
-		}
 		buffer.WriteString(":")
-		_, err = xdr.Marshal(buffer, pubkey)
-		if err != nil {
-			panic(err)
-		}
+		buffer.WriteString(asset.AlphaNum12.Issuer.Address())
 
 	default:
 		panic("unexpected asset type")
 	}
 
-	slice := xdr.ScBytes(buffer.Bytes())
+	assetScStr := xdr.ScString(buffer.String())
 	return xdr.ScVal{
-		Type:  xdr.ScValTypeScvBytes,
-		Bytes: &slice,
+		Type: xdr.ScValTypeScvString,
+		Str:  &assetScStr,
 	}
 }

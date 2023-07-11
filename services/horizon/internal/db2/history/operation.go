@@ -49,7 +49,7 @@ func preprocessDetails(details string) ([]byte, error) {
 	for k, v := range dest {
 		if strings.HasSuffix(k, "_muxed_id") {
 			if vNumber, ok := v.(json.Number); ok {
-				// transform it into a string so that _muxed_id unmarshalling works with `,string` tags
+				// transform it into a string so that _muxed_id unmarshaling works with `,string` tags
 				// see https://github.com/stellar/go/pull/3716#issuecomment-867057436
 				dest[k] = vNumber.String()
 			}

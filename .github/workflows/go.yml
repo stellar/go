@@ -9,7 +9,7 @@ jobs:
   complete:
     if: always()
     needs: [check, build, test]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
       run: exit 1
@@ -17,9 +17,8 @@ jobs:
   check:
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        # lmao semvers aren't floats never 4get
-        go: ["1.19.6", "1.20.1"]
+        os: [ubuntu-22.04]
+        go: ["1.20"]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -38,8 +37,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        go: ["1.19.6", "1.20.1"]
+        os: [ubuntu-22.04]
+        go: ["1.19", "1.20"]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -56,8 +55,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        go: ["1.19.6", "1.20.1"]
+        os: [ubuntu-22.04]
+        go: ["1.19", "1.20"]
         pg: [9.6.5, 10]
     runs-on: ${{ matrix.os }}
     services:

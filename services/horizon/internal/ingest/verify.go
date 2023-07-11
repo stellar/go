@@ -205,13 +205,21 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				accounts = append(accounts, entry.Data.MustAccount().AccountId.Address())
 				totalByType["accounts"]++
 			case xdr.LedgerEntryTypeData:
-				data = append(data, *entry.LedgerKey().Data)
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "entry.LedgerKey")
+				}
+				data = append(data, *key.Data)
 				totalByType["data"]++
 			case xdr.LedgerEntryTypeOffer:
 				offers = append(offers, int64(entry.Data.MustOffer().OfferId))
 				totalByType["offers"]++
 			case xdr.LedgerEntryTypeTrustline:
-				trustLines = append(trustLines, entry.LedgerKey().MustTrustLine())
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "TrustlineEntry.LedgerKey")
+				}
+				trustLines = append(trustLines, key.MustTrustLine())
 				totalByType["trust_lines"]++
 			case xdr.LedgerEntryTypeClaimableBalance:
 				cBalances = append(cBalances, entry.Data.MustClaimableBalance().BalanceId)

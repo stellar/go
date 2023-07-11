@@ -44,7 +44,7 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 	case LedgerEntryTypeContractData:
 		l := key.MustContractData()
 		r := other.MustContractData()
-		return l.ContractId == r.ContractId && l.Key.Equals(r.Key)
+		return l.Contract.Equals(r.Contract) && l.Key.Equals(r.Key) && l.Durability == r.Durability && l.BodyType == r.BodyType
 	case LedgerEntryTypeContractCode:
 		l := key.MustContractCode()
 		r := other.MustContractCode()
@@ -137,10 +137,15 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 
 // SetContractData mutates `key` such that it represents the identity of a
 // contract data entry.
-func (key *LedgerKey) SetContractData(contractID Hash, keyVal ScVal) error {
+func (key *LedgerKey) SetContractData(contract ScAddress,
+	keyVal ScVal,
+	keyDurability ContractDataDurability,
+	keyBodyType ContractEntryBodyType) error {
 	data := LedgerKeyContractData{
-		ContractId: contractID,
+		Contract:   contract,
 		Key:        keyVal,
+		Durability: keyDurability,
+		BodyType:   keyBodyType,
 	}
 	nkey, err := NewLedgerKey(LedgerEntryTypeContractData, data)
 	if err != nil {
@@ -183,51 +188,9 @@ func (key *LedgerKey) SetConfigSetting(configSettingID ConfigSettingId) error {
 
 // GetLedgerKeyFromData obtains a ledger key from LedgerEntryData
 //
-//nolint:gocyclo
+// deprecated: Use `LedgerEntryData.LedgerKey()`
 func GetLedgerKeyFromData(data LedgerEntryData) (LedgerKey, error) {
-	var key LedgerKey
-	switch data.Type {
-	case LedgerEntryTypeAccount:
-		if err := key.SetAccount(data.Account.AccountId); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeTrustline:
-		if err := key.SetTrustline(data.TrustLine.AccountId, data.TrustLine.Asset); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeContractData:
-		if err := key.SetContractData(data.ContractData.ContractId, data.ContractData.Key); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeContractCode:
-		if err := key.SetContractCode(data.ContractCode.Hash); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeData:
-		if err := key.SetData(data.Data.AccountId, string(data.Data.DataName)); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeOffer:
-		if err := key.SetOffer(data.Offer.SellerId, uint64(data.Offer.OfferId)); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeLiquidityPool:
-		if err := key.SetLiquidityPool(data.LiquidityPool.LiquidityPoolId); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeClaimableBalance:
-		if err := key.SetClaimableBalance(data.ClaimableBalance.BalanceId); err != nil {
-			return key, err
-		}
-	case LedgerEntryTypeConfigSetting:
-		if err := key.SetConfigSetting(data.ConfigSetting.ConfigSettingId); err != nil {
-			return key, err
-		}
-	default:
-		return key, fmt.Errorf("unknown ledger entry type %d", data.Type)
-	}
-
-	return key, nil
+	return data.LedgerKey()
 }
 
 func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
@@ -260,10 +223,24 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		_, err := e.xdrEncoderBuf.Write(key.LiquidityPool.LiquidityPoolId[:])
 		return err
 	case LedgerEntryTypeContractData:
-		if _, err := e.xdrEncoderBuf.Write(key.ContractData.ContractId[:]); err != nil {
+		// contract
+		if contractBytes, err := key.ContractData.Contract.MarshalBinary(); err != nil {
+			return err
+		} else {
+			if _, err := e.xdrEncoderBuf.Write(contractBytes[:]); err != nil {
+				return err
+			}
+		}
+		// key
+		if err := key.ContractData.Key.EncodeTo(e.encoder); err != nil {
 			return err
 		}
-		return key.ContractData.Key.EncodeTo(e.encoder)
+		// type
+		if err := e.xdrEncoderBuf.WriteByte(byte(key.ContractData.Durability)); err != nil {
+			return err
+		}
+		// letype
+		return e.xdrEncoderBuf.WriteByte(byte(key.ContractData.BodyType))
 	case LedgerEntryTypeContractCode:
 		_, err := e.xdrEncoderBuf.Write(key.ContractCode.Hash[:])
 		return err

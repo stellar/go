@@ -25,7 +25,7 @@ var CommitHash string
 
 // Keyer represents a type that can be converted into a LedgerKey
 type Keyer interface {
-	LedgerKey() LedgerKey
+	LedgerKey() (LedgerKey, error)
 }
 
 var _ = LedgerEntry{}
@@ -72,7 +72,7 @@ func SafeUnmarshalHex(data string, dest interface{}) error {
 }
 
 // SafeUnmarshal decodes the provided reader into the destination and verifies
-// that provided bytes are all consumed by the unmarshalling process.
+// that provided bytes are all consumed by the unmarshaling process.
 func SafeUnmarshal(data []byte, dest interface{}) error {
 	r := bytes.NewReader(data)
 	n, err := Unmarshal(r, dest)
@@ -166,7 +166,7 @@ func NewEncodingBuffer() *EncodingBuffer {
 // UnsafeMarshalBinary marshals the input XDR binary, returning
 // a slice pointing to the internal buffer. Handled with care this improveds
 // performance since copying is not required.
-// Subsequent calls to marshalling methods will overwrite the returned buffer.
+// Subsequent calls to marshaling methods will overwrite the returned buffer.
 func (e *EncodingBuffer) UnsafeMarshalBinary(encodable EncoderTo) ([]byte, error) {
 	e.xdrEncoderBuf.Reset()
 	if err := encodable.EncodeTo(e.encoder); err != nil {
@@ -273,7 +273,7 @@ func MarshalFramed(w io.Writer, v interface{}) error {
 func ReadFrameLength(d *xdr.Decoder) (uint32, error) {
 	frameLen, n, e := d.DecodeUint()
 	if e != nil {
-		return 0, errors.Wrap(e, "unmarshalling XDR frame header")
+		return 0, errors.Wrap(e, "unmarshaling XDR frame header")
 	}
 	if n != 4 {
 		return 0, errors.New("bad length of XDR frame header")
