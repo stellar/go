@@ -16,6 +16,11 @@ import (
 	"github.com/stellar/go/support/strutils"
 )
 
+const (
+	HorizonCmdUsageString            = "horizon"
+	EnableIngestionFilteringFlagName = "exp-enable-ingestion-filtering"
+)
+
 // ConfigOptions is a group of ConfigOptions that can be for convenience
 // initialized and set at the same time.
 type ConfigOptions []*ConfigOption
@@ -25,6 +30,13 @@ func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 	for _, co := range cos {
 		err := co.Init(cmd)
 		if err != nil {
+			return err
+		}
+	}
+
+	// Hide the ingestion filtering flag from the --help output.
+	if cmd.Use == HorizonCmdUsageString {
+		if err := cmd.PersistentFlags().MarkHidden("exp-enable-ingestion-filtering"); err != nil {
 			return err
 		}
 	}

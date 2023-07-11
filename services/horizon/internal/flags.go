@@ -39,7 +39,8 @@ const (
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
 	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
-	CaptiveCoreConfigUseDB = "captive-core-use-db"
+	CaptiveCoreConfigUseDB       = "captive-core-use-db"
+	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
@@ -194,12 +195,21 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        "exp-enable-ingestion-filtering",
+			Name:        EnableIngestionFilteringFlag,
 			OptType:     types.Bool,
 			FlagDefault: true,
 			Required:    false,
-			Usage:       "causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
 			ConfigKey:   &config.EnableIngestionFiltering,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+				if val := viper.GetString(opt.Name); val != "" {
+					stdLog.Printf(
+						"DEPRECATED - %s causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter. "+
+							"Ingestion filtering is now enabled by default and this flag will soon be removed.",
+						EnableIngestionFilteringFlag,
+					)
+				}
+				return nil
+			},
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-http-port",
@@ -607,6 +617,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if options.AlwaysIngest {
 		config.Ingest = true
 	}
+
+	// Ingestion filtering enabled by default
+	config.EnableIngestionFiltering = true
 
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
