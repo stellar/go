@@ -45,7 +45,8 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 
 	// Insert a phony ledger
 	ledgerCloseTime := time.Now().Unix()
-	_, err := q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
+	ledgerBatch := q.NewLedgerBatchInsertBuilder()
+	err := ledgerBatch.Add(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: xdr.Uint32(sequence),
 			ScpValue: xdr.StellarValue{
@@ -54,6 +55,9 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 		},
 	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.Begin())
+	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
+	tt.Assert.NoError(q.Commit())
 
 	// Insert a phony transaction
 	transactionBuilder := q.NewTransactionBatchInsertBuilder(2)

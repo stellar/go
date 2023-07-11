@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
 
@@ -316,13 +317,23 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	q.On("DeleteTransactionsFilteredTmpOlderThan", ctx, mock.AnythingOfType("uint64")).
 		Return(int64(0), nil)
 
-	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
-		Return(int64(1), nil).Once()
+	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
+	q.MockQLedgers.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
+	mockBatchInsertBuilder.On(
+		"Add",
+		ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).Return(nil)
+	mockSession := &db.MockSession{}
+	mockBatchInsertBuilder.On(
+		"Exec",
+		ctx,
+		mockSession,
+	).Return(nil)
 
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		config:   config,
 		historyQ: q,
+		session:  mockSession,
 		filters:  &MockFilters{},
 	}
 
@@ -372,13 +383,23 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQClaimableBalances.On("NewClaimableBalanceClaimantBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockClaimableBalanceClaimantBatchInsertBuilder{}).Once()
 
-	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
-		Return(int64(1), nil).Once()
+	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
+	q.MockQLedgers.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
+	mockBatchInsertBuilder.On(
+		"Add",
+		ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).Return(nil)
+	mockSession := &db.MockSession{}
+	mockBatchInsertBuilder.On(
+		"Exec",
+		ctx,
+		mockSession,
+	).Return(nil)
 
 	runner := ProcessorRunner{
 		ctx:      ctx,
 		config:   config,
 		historyQ: q,
+		session:  mockSession,
 		filters:  &MockFilters{},
 	}
 

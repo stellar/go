@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -88,6 +89,7 @@ type ProcessorRunner struct {
 
 	ctx                   context.Context
 	historyQ              history.IngestionQ
+	session               db.SessionInterface
 	historyAdapter        historyArchiveAdapterInterface
 	logMemoryStats        bool
 	filters               filters.Filters
@@ -143,7 +145,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	return newGroupTransactionProcessors([]horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
-		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
+		processors.NewLedgerProcessor(s.session, s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.historyQ, sequence),
 		tradeProcessor,
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
