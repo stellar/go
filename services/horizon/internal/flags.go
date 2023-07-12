@@ -39,16 +39,20 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
-	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	// CaptiveCoreConfigUseDB captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
 	CaptiveCoreConfigUseDB = "captive-core-use-db"
+	// NetworkPassphraseFlagName is the command line flag for specifying the network passphrase
+	NetworkPassphraseFlagName = "network-passphrase"
+	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
+	HistoryArchiveURLsFlagName = "history-archive-urls"
+	// NetworkFlagName is the command line flag for specifying the "network"
+	NetworkFlagName = "network"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
-
-	StellarPubnet              = "pubnet"
-	StellarTestnet             = "testnet"
-	NetworkPassphraseFlagName  = "network-passphrase"
-	HistoryArchiveURLsFlagName = "history-archive-urls"
-	NetworkFlagName            = "network"
+	// StellarPubnet is a constant representing the Stellar public network
+	StellarPubnet = "pubnet"
+	// StellarTestnet is a constant representing the Stellar test network
+	StellarTestnet = "testnet"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -633,15 +637,19 @@ var (
 	TestnetDefaultConfig []byte
 
 	pubnetConf = networkConfig{
-		defaultConfig:      PubnetDefaultConfig,
-		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-live/core_live_001/"},
-		networkPassphrase:  network.PublicNetworkPassphrase,
+		defaultConfig: PubnetDefaultConfig,
+		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-live/core_live_001/",
+			"https://history.stellar.org/prd/core-live/core_live_002/",
+			"https://history.stellar.org/prd/core-live/core_live_003/"},
+		networkPassphrase: network.PublicNetworkPassphrase,
 	}
 
 	testnetConf = networkConfig{
-		defaultConfig:      TestnetDefaultConfig,
-		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"},
-		networkPassphrase:  network.TestNetworkPassphrase,
+		defaultConfig: TestnetDefaultConfig,
+		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/",
+			"https://history.stellar.org/prd/core-testnet/core_testnet_002/",
+			"https://history.stellar.org/prd/core-testnet/core_testnet_003"},
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 )
 
