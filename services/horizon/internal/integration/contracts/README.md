@@ -1,3 +1,18 @@
+### Contract integration tests use rpc preflight
+The contract integration tests depend on soroban rpc for preflight requests, two additional environment variables must be set to enable soroban rpc server to be launced in a separate docker container:
+```
+HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG=stellar/soroban-rpc
+HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC=true
+```
+
+The `stellar/soroban-rpc` refers to an image built from soroban-tools/cmd/soroban-rpc/docker/Dockerfile and published on public `docker.io` so it is referrable in any build environment. Images are published to `docker.io/stellar/soroban-rpc` on a release basis, if you need more recent build, can build interim images from soroban-tools/cmd/soroban-rpc/docker/Dockerfile, example:
+
+```
+docker build --platform linux/amd64 --build-arg STELLAR_CORE_VERSION=19.11.1-1373.875f47e24.focal~soroban -t stellar-soroban-rpc:test -f cmd/soroban-rpc/docker/Dockerfile .
+```
+
+`STELLAR_CORE_VERSION` should be set to a debian package version for `stellar-core`.
+
 ### Contract test fixture source code
 
 The existing integeration tests refer to .wasm files from the `testdata/` directory location.
