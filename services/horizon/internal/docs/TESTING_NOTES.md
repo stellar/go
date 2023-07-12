@@ -1,4 +1,27 @@
-# **Writing effective test coverage for Horizon packages**
+# **Testing with Horizon**
+
+Run all the Go monorepo unit tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
+
+```bash
+go test ./...
+```
+
+or run individual Horizon tests like so, providing the expected arguments:
+
+```bash
+go test github.com/stellar/go/services/horizon/...
+```
+
+To run the integration tests, move to top folder of working copy of `go` repo to run all integration tests
+or /services/horizon to run just Horizon integration tests:
+```
+HORIZON_INTEGRATION_TESTS_ENABLED=true go test -race -timeout 35m -v ./...
+```
+
+To run just one specific integration test, e.g. like `TestTxSub`:
+```
+HORIZON_INTEGRATION_TESTS_ENABLED=true go test -run TestTxsub -race -timeout 5m -v ./...
+```
 
 Authoring tests to assert coverage is key importance, to facilitate best experience for writing tests within Horizon packages, there are some conventions to be aware of:
 
