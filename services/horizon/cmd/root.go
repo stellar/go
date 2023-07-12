@@ -8,6 +8,10 @@ import (
 	horizon "github.com/stellar/go/services/horizon/internal"
 )
 
+const (
+	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
+)
+
 var (
 	config, flags = horizon.Flags()
 
@@ -45,6 +49,12 @@ func (e ErrExitCode) Error() string {
 
 func init() {
 	err := flags.Init(RootCmd)
+	if err != nil {
+		stdLog.Fatal(err.Error())
+	}
+
+	// Hide the ingestion filtering flag from --help output.
+	err = flags.HideFlag(RootCmd, EnableIngestionFilteringFlag)
 	if err != nil {
 		stdLog.Fatal(err.Error())
 	}
