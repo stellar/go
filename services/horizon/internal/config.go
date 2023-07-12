@@ -21,7 +21,6 @@ type Config struct {
 
 	EnableCaptiveCoreIngestion  bool
 	EnableIngestionFiltering    bool
-	UsingDefaultPubnetConfig    bool
 	CaptiveCoreBinaryPath       string
 	RemoteCaptiveCoreURL        string
 	CaptiveCoreConfigPath       string
