@@ -203,8 +203,10 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: func(opt *support.ConfigOption) error {
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
-						"DEPRECATED - %s causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter. "+
-							"Ingestion filtering is now enabled by default and this flag will soon be removed. If you do not want any filtering, you need to remove any filters you might have set, instead of passing the flag.",
+						"DEPRECATED - %s causes Horizon to enable the experimental Ingestion Filtering and the "+
+							"ingestion admin HTTP endpoint at /ingestion/filter. Ingestion filtering is now enabled by "+
+							"default and this flag will soon be removed. If you do not want any filtering, you need to "+
+							"remove any filters you might have set, instead of passing the flag.",
 						EnableIngestionFilteringFlag,
 					)
 				}

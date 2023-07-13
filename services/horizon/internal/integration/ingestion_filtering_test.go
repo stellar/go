@@ -222,7 +222,7 @@ func TestFilteringAccountWhiteListWithFalseIngestionFilteringFlag(t *testing.T) 
 	tt.Equal(expectedAccountFilter.Enabled, accountFilter.Enabled)
 
 	// Ensure the latest filter configs are reloaded by the ingestion state machine processor
-	time.Sleep(time.Duration(filters.GetFilterConfigCheckIntervalSeconds()) * time.Second)
+	time.Sleep(filters.GetFilterConfigCheckIntervalSeconds() * time.Second)
 
 	// Make sure that when using a non-whitelisted account, the transaction is not stored
 	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
