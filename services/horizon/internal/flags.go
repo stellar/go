@@ -39,7 +39,8 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
-	// CaptiveCoreConfigUseDB captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	// CaptiveCoreConfigUseDB is the command line flag for enabling captive core runtime to use an external db url
+	// connection rather than RAM for ledger states
 	CaptiveCoreConfigUseDB = "captive-core-use-db"
 	// NetworkPassphraseFlagName is the command line flag for specifying the network passphrase
 	NetworkPassphraseFlagName = "network-passphrase"
