@@ -327,6 +327,14 @@ type ContractDebited struct {
 	Amount   string `json:"amount"`
 }
 
+type BumpFootprintExpiration struct {
+	Base
+}
+
+type RestoreFootprint struct {
+	Base
+}
+
 type AccountThresholdsUpdated struct {
 	Base
 	LowThreshold  int32 `json:"low_threshold"`
