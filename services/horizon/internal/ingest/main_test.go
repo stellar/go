@@ -413,13 +413,13 @@ func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) error {
 
 // Methods from interfaces duplicating methods:
 
-func (m *mockDBQ) NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) history.TransactionParticipantsBatchInsertBuilder {
-	args := m.Called(maxBatchSize)
+func (m *mockDBQ) NewTransactionParticipantsBatchInsertBuilder() history.TransactionParticipantsBatchInsertBuilder {
+	args := m.Called()
 	return args.Get(0).(history.TransactionParticipantsBatchInsertBuilder)
 }
 
-func (m *mockDBQ) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) history.OperationParticipantBatchInsertBuilder {
-	args := m.Called(maxBatchSize)
+func (m *mockDBQ) NewOperationParticipantBatchInsertBuilder() history.OperationParticipantBatchInsertBuilder {
+	args := m.Called()
 	return args.Get(0).(history.TransactionParticipantsBatchInsertBuilder)
 }
 

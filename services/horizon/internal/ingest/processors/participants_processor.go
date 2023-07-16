@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	set "github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -16,13 +17,15 @@ import (
 // ParticipantsProcessor is a processor which ingests various participants
 // from different sources (transactions, operations, etc)
 type ParticipantsProcessor struct {
+	session        db.SessionInterface
 	participantsQ  history.QParticipants
 	sequence       uint32
 	participantSet map[string]participant
 }
 
-func NewParticipantsProcessor(participantsQ history.QParticipants, sequence uint32) *ParticipantsProcessor {
+func NewParticipantsProcessor(session db.SessionInterface, participantsQ history.QParticipants, sequence uint32) *ParticipantsProcessor {
 	return &ParticipantsProcessor{
+		session:        session,
 		participantsQ:  participantsQ,
 		sequence:       sequence,
 		participantSet: map[string]participant{},
@@ -187,34 +190,34 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 }
 
 func (p *ParticipantsProcessor) insertDBTransactionParticipants(ctx context.Context, participantSet map[string]participant) error {
-	batch := p.participantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
+	batch := p.participantsQ.NewTransactionParticipantsBatchInsertBuilder()
 
 	for _, entry := range participantSet {
 		for transactionID := range entry.transactionSet {
-			if err := batch.Add(ctx, transactionID, entry.accountID); err != nil {
+			if err := batch.Add(transactionID, entry.accountID); err != nil {
 				return errors.Wrap(err, "Could not insert transaction participant in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "Could not flush transaction participants to db")
 	}
 	return nil
 }
 
 func (p *ParticipantsProcessor) insertDBOperationsParticipants(ctx context.Context, participantSet map[string]participant) error {
-	batch := p.participantsQ.NewOperationParticipantBatchInsertBuilder(maxBatchSize)
+	batch := p.participantsQ.NewOperationParticipantBatchInsertBuilder()
 
 	for _, entry := range participantSet {
 		for operationID := range entry.operationSet {
-			if err := batch.Add(ctx, operationID, entry.accountID); err != nil {
+			if err := batch.Add(operationID, entry.accountID); err != nil {
 				return errors.Wrap(err, "could not insert operation participant in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "could not flush operation participants to db")
 	}
 	return nil
