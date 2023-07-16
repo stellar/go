@@ -150,7 +150,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		tradeProcessor,
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.session, s.historyQ, sequence),
-		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
+		processors.NewClaimableBalancesTransactionProcessor(s.session, s.historyQ, sequence),
 		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
 	})
 }
