@@ -67,7 +67,7 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectContractCredited:                   "contract_credited",
 	history.EffectContractDebited:                    "contract_debited",
 	history.EffectBumpFootprintExpiration:            "bump_footprint_expiration",
-	history.EffectRestoreFootprint:                   "restore_footprint_expiration",
+	history.EffectRestoreFootprint:                   "restore_footprint",
 }
 
 // NewEffect creates a new effect resource from the provided database representation
