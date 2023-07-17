@@ -16,8 +16,9 @@ type LedgerTransaction struct {
 	// you know what you are doing.
 	// Use LedgerTransaction.GetChanges() for higher level access to ledger
 	// entry changes.
-	FeeChanges xdr.LedgerEntryChanges
-	UnsafeMeta xdr.TransactionMeta
+	FeeChanges    xdr.LedgerEntryChanges
+	UnsafeMeta    xdr.TransactionMeta
+	LedgerVersion uint32
 }
 
 func (t *LedgerTransaction) txInternalError() bool {
@@ -47,7 +48,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 		changes = append(changes, txChanges...)
 
 		// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-		if t.txInternalError() {
+		if t.txInternalError() && t.LedgerVersion <= 12 {
 			return changes, nil
 		}
 
@@ -83,7 +84,7 @@ func (t *LedgerTransaction) GetChanges() ([]Change, error) {
 
 		// Ignore operations meta and txChangesAfter if txInternalError
 		// https://github.com/stellar/go/issues/2111
-		if t.txInternalError() {
+		if t.txInternalError() && t.LedgerVersion <= 12 {
 			return changes, nil
 		}
 
@@ -122,7 +123,7 @@ func (t *LedgerTransaction) GetOperationChanges(operationIndex uint32) ([]Change
 	}
 
 	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-	if t.txInternalError() {
+	if t.txInternalError() && t.LedgerVersion <= 12 {
 		return changes, nil
 	}
 
@@ -155,7 +156,7 @@ func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
 	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-	if t.txInternalError() {
+	if t.txInternalError() && t.LedgerVersion <= 12 {
 		return nil, nil
 	}
 
