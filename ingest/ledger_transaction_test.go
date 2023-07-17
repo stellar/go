@@ -255,6 +255,7 @@ func TestGetDiagnosticEventsMultiple(t *testing.T) {
 
 func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	tx := LedgerTransaction{
+		LedgerVersion: 12,
 		FeeChanges: xdr.LedgerEntryChanges{
 			xdr.LedgerEntryChange{
 				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
@@ -344,6 +345,21 @@ func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 	operationChanges, err = tx.GetOperationChanges(0)
 	assert.NoError(t, err)
 	assert.Len(t, operationChanges, 0)
+
+	// Starting from protocol 13, we no longer need to ignore txInternalError
+	tx.LedgerVersion = 13
+
+	metaChanges, err = tx.GetChanges()
+	assert.NoError(t, err)
+	assert.Len(t, metaChanges, 1)
+	assert.Equal(t, metaChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, metaChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
+
+	operationChanges, err = tx.GetOperationChanges(0)
+	assert.NoError(t, err)
+	assert.Len(t, operationChanges, 1)
+	assert.Equal(t, operationChanges[0].Pre.Data.MustAccount().Balance, xdr.Int64(300))
+	assert.Equal(t, operationChanges[0].Post.Data.MustAccount().Balance, xdr.Int64(400))
 }
 
 func TestFailedTransactionOperationChangesMeta(t *testing.T) {
