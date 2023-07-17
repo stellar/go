@@ -155,11 +155,6 @@ func operationChanges(ops []xdr.OperationMeta, index uint32) []Change {
 
 // GetDiagnosticEvents returns all contract events emitted by a given operation.
 func (t *LedgerTransaction) GetDiagnosticEvents() ([]xdr.DiagnosticEvent, error) {
-	// Ignore operations meta if txInternalError https://github.com/stellar/go/issues/2111
-	if t.txInternalError() {
-		return nil, nil
-	}
-
 	switch t.UnsafeMeta.V {
 	case 1:
 		return nil, nil
