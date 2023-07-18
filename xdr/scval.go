@@ -50,7 +50,8 @@ func (s ScError) Equals(o ScError) bool {
 	switch s.Type {
 	case ScErrorTypeSceContract:
 		return *s.ContractCode == *o.ContractCode
-	case ScErrorTypeSceWasmVm, ScErrorTypeSceContext, ScErrorTypeSceStorage, ScErrorTypeSceObject, ScErrorTypeSceCrypto, ScErrorTypeSceEvents, ScErrorTypeSceBudget, ScErrorTypeSceValue, ScErrorTypeSceAuth:
+	case ScErrorTypeSceWasmVm, ScErrorTypeSceContext, ScErrorTypeSceStorage, ScErrorTypeSceObject,
+		ScErrorTypeSceCrypto, ScErrorTypeSceEvents, ScErrorTypeSceBudget, ScErrorTypeSceValue, ScErrorTypeSceAuth:
 		return *s.Code == *o.Code
 	default:
 		panic("unknown ScError type: " + s.Type.String())
