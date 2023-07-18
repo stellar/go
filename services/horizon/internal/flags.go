@@ -47,7 +47,7 @@ const (
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
 	HistoryArchiveURLsFlagName = "history-archive-urls"
 	// NetworkFlagName is the command line flag for specifying the "network"
-	NetworkFlagName = "network"
+	NetworkFlagName              = "network"
 	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
