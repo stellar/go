@@ -77,8 +77,10 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	opID1 := toid.New(sequence, txIndex, 1).ToInt64()
 	opID2 := toid.New(sequence, txIndex, 2).ToInt64()
 
+	tt.Assert.NoError(q.Begin())
+
 	// Insert a phony transaction
-	transactionBuilder := q.NewTransactionBatchInsertBuilder(2)
+	transactionBuilder := q.NewTransactionBatchInsertBuilder()
 	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         uint32(txIndex),
 		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
@@ -87,9 +89,9 @@ func TestOperationByLiquidityPool(t *testing.T) {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
 	})
-	err := transactionBuilder.Add(tt.Ctx, firstTransaction, uint32(sequence))
+	err := transactionBuilder.Add(firstTransaction, uint32(sequence))
 	tt.Assert.NoError(err)
-	err = transactionBuilder.Exec(tt.Ctx)
+	err = transactionBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	// Insert a two phony operations
@@ -136,6 +138,8 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(err)
 	err = lpOperationBuilder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
+
+	tt.Assert.NoError(q.Commit())
 
 	// Check ascending order
 	pq := db2.PageQuery{

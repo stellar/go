@@ -55,12 +55,13 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 		},
 	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
+
 	tt.Assert.NoError(q.Begin())
+
 	tt.Assert.NoError(ledgerBatch.Exec(tt.Ctx, q.SessionInterface))
-	tt.Assert.NoError(q.Commit())
 
 	// Insert a phony transaction
-	transactionBuilder := q.NewTransactionBatchInsertBuilder(2)
+	transactionBuilder := q.NewTransactionBatchInsertBuilder()
 	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         uint32(txIndex),
 		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAAAAAAAAAAABAAAAAAAAAAsBF1IbAABX4QAAAAAAAAAA",
@@ -69,9 +70,9 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          "19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
 	})
-	err = transactionBuilder.Add(tt.Ctx, firstTransaction, uint32(sequence))
+	err = transactionBuilder.Add(firstTransaction, uint32(sequence))
 	tt.Assert.NoError(err)
-	err = transactionBuilder.Exec(tt.Ctx)
+	err = transactionBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	// Insert Liquidity Pool history
@@ -86,6 +87,8 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 	tt.Assert.NoError(err)
 	err = lpTransactionBuilder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
+
+	tt.Assert.NoError(q.Commit())
 
 	var records []Transaction
 	err = q.Transactions().ForLiquidityPool(tt.Ctx, liquidityPoolID).Select(tt.Ctx, &records)
@@ -210,8 +213,10 @@ func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	tt.Assert.NoError(q.Begin())
+
 	sequence := uint32(123)
-	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
+	insertBuilder := q.NewTransactionBatchInsertBuilder()
 
 	firstTransaction := buildLedgerTransaction(tt.T, testTransaction{
 		index:         1,
@@ -230,16 +235,18 @@ func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 		hash:          "7e2def20d5a21a56be2a457b648f702ee1af889d3df65790e92a05081e9fabf1",
 	})
 
-	tt.Assert.NoError(insertBuilder.Add(tt.Ctx, firstTransaction, sequence))
-	tt.Assert.NoError(insertBuilder.Exec(tt.Ctx))
+	tt.Assert.NoError(insertBuilder.Add(firstTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Exec(tt.Ctx, q))
+	tt.Assert.NoError(q.Commit())
 
-	tt.Assert.NoError(insertBuilder.Add(tt.Ctx, secondTransaction, sequence))
+	tt.Assert.NoError(q.Begin())
+	insertBuilder = q.NewTransactionBatchInsertBuilder()
+	tt.Assert.NoError(insertBuilder.Add(secondTransaction, sequence))
 	tt.Assert.EqualError(
-		insertBuilder.Exec(tt.Ctx),
-		"error adding values while inserting to history_transactions: "+
-			"exec failed: pq: duplicate key value violates unique constraint "+
-			"\"hs_transaction_by_id\"",
+		insertBuilder.Exec(tt.Ctx, q),
+		"pq: duplicate key value violates unique constraint \"hs_transaction_by_id\"",
 	)
+	tt.Assert.NoError(q.Rollback())
 
 	ledger := Ledger{
 		Sequence:                   int32(sequence),
@@ -304,8 +311,6 @@ func TestInsertTransaction(t *testing.T) {
 	*ledger.FailedTransactionCount = 3
 	_, err := q.Exec(tt.Ctx, sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
-
-	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
 
 	success := true
 
@@ -826,8 +831,11 @@ func TestInsertTransaction(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			tt.Assert.NoError(insertBuilder.Add(tt.Ctx, testCase.toInsert, sequence))
-			tt.Assert.NoError(insertBuilder.Exec(tt.Ctx))
+			insertBuilder := q.NewTransactionBatchInsertBuilder()
+			tt.Assert.NoError(q.Begin())
+			tt.Assert.NoError(insertBuilder.Add(testCase.toInsert, sequence))
+			tt.Assert.NoError(insertBuilder.Exec(tt.Ctx, q))
+			tt.Assert.NoError(q.Commit())
 
 			var transactions []Transaction
 			tt.Assert.NoError(q.Transactions().IncludeFailed().Select(tt.Ctx, &transactions))

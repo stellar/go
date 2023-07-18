@@ -5,33 +5,37 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
 
 type TransactionProcessor struct {
+	session       db.SessionInterface
 	transactionsQ history.QTransactions
 	sequence      uint32
 	batch         history.TransactionBatchInsertBuilder
 }
 
-func NewTransactionFilteredTmpProcessor(transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
+func NewTransactionFilteredTmpProcessor(session db.SessionInterface, transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
 	return &TransactionProcessor{
+		session:       session,
 		transactionsQ: transactionsQ,
 		sequence:      sequence,
-		batch:         transactionsQ.NewTransactionFilteredTmpBatchInsertBuilder(maxBatchSize),
+		batch:         transactionsQ.NewTransactionFilteredTmpBatchInsertBuilder(),
 	}
 }
 
-func NewTransactionProcessor(transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
+func NewTransactionProcessor(session db.SessionInterface, transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
 	return &TransactionProcessor{
+		session:       session,
 		transactionsQ: transactionsQ,
 		sequence:      sequence,
-		batch:         transactionsQ.NewTransactionBatchInsertBuilder(maxBatchSize),
+		batch:         transactionsQ.NewTransactionBatchInsertBuilder(),
 	}
 }
 
 func (p *TransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
-	if err := p.batch.Add(ctx, transaction, p.sequence); err != nil {
+	if err := p.batch.Add(transaction, p.sequence); err != nil {
 		return errors.Wrap(err, "Error batch inserting transaction rows")
 	}
 
@@ -39,7 +43,7 @@ func (p *TransactionProcessor) ProcessTransaction(ctx context.Context, transacti
 }
 
 func (p *TransactionProcessor) Commit(ctx context.Context) error {
-	if err := p.batch.Exec(ctx); err != nil {
+	if err := p.batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "Error flushing transaction batch")
 	}
 

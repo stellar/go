@@ -241,7 +241,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 
 	q.MockQOperations.On("NewOperationBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockOperationsBatchInsertBuilder{}).Twice() // Twice = with/without failed
-	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
+	q.MockQTransactions.On("NewTransactionBatchInsertBuilder").
 		Return(&history.MockTransactionsBatchInsertBuilder{}).Twice()
 	q.MockQClaimableBalances.On("NewClaimableBalanceClaimantBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockClaimableBalanceClaimantBatchInsertBuilder{}).Twice()
@@ -277,6 +277,7 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	}
 
 	q := &mockDBQ{}
+	mockSession := &db.MockSession{}
 	defer mock.AssertExpectationsForObjects(t, q)
 
 	ledger := xdr.LedgerCloseMeta{
@@ -303,12 +304,12 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
-	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Twice()
+	mockTransactionsBatchInsertBuilder.On("Exec", ctx, mockSession).Return(nil).Twice()
 
-	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
+	q.MockQTransactions.On("NewTransactionBatchInsertBuilder").
 		Return(mockTransactionsBatchInsertBuilder)
 
-	q.MockQTransactions.On("NewTransactionFilteredTmpBatchInsertBuilder", maxBatchSize).
+	q.MockQTransactions.On("NewTransactionFilteredTmpBatchInsertBuilder").
 		Return(mockTransactionsBatchInsertBuilder)
 
 	q.MockQClaimableBalances.On("NewClaimableBalanceClaimantBatchInsertBuilder", maxBatchSize).
@@ -322,7 +323,6 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	mockBatchInsertBuilder.On(
 		"Add",
 		ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).Return(nil)
-	mockSession := &db.MockSession{}
 	mockBatchInsertBuilder.On(
 		"Exec",
 		ctx,
@@ -349,6 +349,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		NetworkPassphrase: network.PublicNetworkPassphrase,
 	}
 
+	mockSession := &db.MockSession{}
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
 
@@ -376,8 +377,8 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
-	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
-	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
+	mockTransactionsBatchInsertBuilder.On("Exec", ctx, mockSession).Return(nil).Once()
+	q.MockQTransactions.On("NewTransactionBatchInsertBuilder").
 		Return(mockTransactionsBatchInsertBuilder).Twice()
 
 	q.MockQClaimableBalances.On("NewClaimableBalanceClaimantBatchInsertBuilder", maxBatchSize).
@@ -388,7 +389,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	mockBatchInsertBuilder.On(
 		"Add",
 		ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).Return(nil)
-	mockSession := &db.MockSession{}
 	mockBatchInsertBuilder.On(
 		"Exec",
 		ctx,
