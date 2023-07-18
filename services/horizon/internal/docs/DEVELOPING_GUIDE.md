@@ -45,16 +45,19 @@ When you switch between different networks you will need to clear the Stellar Co
 
 ## **Using a specific version of Stellar Core**
 
-By default the Docker Compose file is configured to use version 18 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations. 
-
-PROTOCOL_VERSION=18                              // the Stellar Protocol version number
-CORE_IMAGE=stellar/stellar-core:18               // the docker hub image:tag 
-STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal  // the apt deb package version from apt.stellar.org
+By default, the Docker Compose file is configured to use version 18 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations. 
+```bash
+export PROTOCOL_VERSION="18"
+eport CORE_IMAGE="stellar/stellar-core:18" 
+export STELLAR_CORE_VERSION="18.1.1-779.ef0f44b44.focal"
+```
 
 Example:
 
 Runs Stellar Protocol and Core version 18, for any mode of testnet, standalone, pubnet
-```PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]```
+```bash
+PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]
+```
 
 # **Installing and Developing Horizon**
 
@@ -62,20 +65,20 @@ Runs Stellar Protocol and Core version 18, for any mode of testnet, standalone, 
 
 The steps for a Horizon development/contributing cycle are as follows:
 
-1. Use the start.sh script to spin up the horizon-postgres and horizon containers. The horizon container will also start an instance of stellar-core to be used as the captive core process for ingestion.
-    ```
+1. Use the `start.sh` script to spin up the horizon-postgres and horizon containers. The horizon container will also start an instance of stellar-core to be used as the captive core process for ingestion.
+    ```bash
     ./start.sh testnet
     ```
 
 2. Check `localhost:8000` to see if horizon is successfully running and exposed on the port.
 
 3. Now you can proceed with edit-build-run cycles locally. Make sure you have not broken anything first by running the test suite from the `go/services/horizon` directory.
-    ```
+    ```bash
     go test ./...
     ```
 
 4. Once all the tests are passing successfully, you need to stop and rebuild the horizon docker container for the changes to take effect. Go to `services/horizon/docker` and run the following commands:
-    ```
+    ```bash
     docker-compose down
     ./start.sh testnet
     ```
@@ -101,58 +104,99 @@ The following developer tools are required:
 - [mercurial](https://www.mercurial-scm.org/) (needed for `go-dep`)
 
 1. Fork the repository and clone the fork into any directory you prefer:
+   ```bash
+   git clone https://github.com/<your-github-username>/go
    ```
-   git clone https://github.com/stellar/go
-   ```
-2. Change to the directory where the repository is checked out. e.g. `cd go`.
-3. Compile the Horizon binary: `go install ./services/horizon`. You should see the resulting `horizon` executable in `go/services/horizon`.
-4. Add the horizon binaries to your PATH in your `bashrc` or equivalent, for easy access: `export PATH=${GOPATH//://bin:}/bin:$PATH`
+2. Change to the directory where the repository is checked out. e.g. `cd go/services/horizon/`.
+3. Compile the Horizon binary: `go build -o stellar-horizon && go install`. You should see the resulting `stellar-horizon` executable in `go/services/horizon`.
+4. Add the executable to your PATH in your `~/.bashrc` or equivalent, for easy access: `export PATH=$PATH:{absolute-path-to-horizon-folder}`
 
-Open a new terminal. Confirm everything worked by running `horizon --help` successfully. You should see an informative message listing the command line options supported by Horizon.
+Open a new terminal. Confirm everything worked by running `stellar-horizon --help` successfully. You should see an informative message listing the command line options supported by Horizon.
 
 ### **Run tests**
 At this point you should be able to run Horizon's unit tests:
-```
-cd /go/services/horizon
+```bash
+cd /go/services/horizon/
 go test ./...
 ```
 
+To run the integration tests, you need to set some environment variables:
+
+```bash
+export HORIZON_INTEGRATION_TESTS_ENABLED=true 
+export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=19
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:latest
+go test -race -timeout 25m -v ./services/horizon/internal/integration/...
+```
+This will also require a Postgres instance running on port 5432 either locally or exposed through a docker container. Also note that the ``POSTGRES_HOST_AUTH_METHOD`` has been enabled.
+
 ### **Database Setup**
 
-Horizon uses a Postgres database backend to record information ingested from an associated Stellar Core. You can either install the server locally or run any type of docker container that hosts the database server, here is one example:
+Horizon uses a Postgres database backend to record information ingested from an associated Stellar Core. The unit and integration tests will also attempt to reference a Postgres db server at ``localhost:5432`` with trust auth method enabled by default for postgres user.  You can either install the server locally or run any type of docker container that hosts the database server. Here is one example:
+```bash
+docker run --platform linux/amd64 -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:12-alpine
 ```
-docker run --platform linux/amd64 -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:9.6.5-alpine
+
+Or use the ``docker-compose.yml`` file in the ``docker`` container:
+```bash
+docker compose -f ./docker/docker-compose.yml up horizon-postgres
 ```
 This starts a Horizon Postgres docker container and exposes it on the port 5432.
 
 
 ### **Setup Debug Configuration in IDE**
 
+#### **Code Debug**
 Add a debug configuration in your IDE to attach a debugger to the local Horizon process and set breakpoints in your code. Here is an example configuration for VS Code:
 
-```
-    {
-        "name": "Horizon Debugger",
-        "type": "go",
-        "request": "launch",
-        "mode": "debug",
-        "program": "${workspaceRoot}/services/horizon/main.go",
-        "env": {
-            "DATABASE_URL": "postgres://postgres@localhost:5432/horizon?sslmode=disable",
-            "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
-            "CAPTIVE_CORE_CONFIG_APPEND_PATH": "${workspaceRoot}/services/horizon/docker/captive-core-testnet.cfg",
-            "HISTORY_ARCHIVE_URLS": "https://history.stellar.org/prd/core-testnet/core_testnet_001",
-            "INGEST": "true",
-            "PER_HOUR_RATE_LIMIT": "0"
-        },
-        "args": []
-    }
+```json
+ {
+     "name": "Horizon Debugger",
+     "type": "go",
+     "request": "launch",
+     "mode": "debug",
+     "program": "${workspaceRoot}/services/horizon/main.go",
+     "env": {
+         "DATABASE_URL": "postgres://postgres@localhost:5432/horizon?sslmode=disable",
+         "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
+         "CAPTIVE_CORE_CONFIG_APPEND_PATH": "${workspaceRoot}/services/horizon/docker/captive-core-testnet.cfg",
+         "HISTORY_ARCHIVE_URLS": "https://history.stellar.org/prd/core-testnet/core_testnet_001",
+         "INGEST": "true",
+         "PER_HOUR_RATE_LIMIT": "0"
+     },
+     "args": []
+ }
 ```
 If all is well, you should see ingest logs written to standard out.
 
+#### **Test Debug**
+You can also use a similar configuration to debug the integration and unit tests. For e.g. here is a configuration for debugging the ```TestFilteringAccountWhiteList``` integration test.
+```json
+{
+   "name": "Debug Test Function",
+   "type": "go",
+   "request": "launch",
+   "mode": "test",
+   "program": "${workspaceRoot}/services/horizon/internal/integration",
+   "env": {
+       "HORIZON_INTEGRATION_TESTS_ENABLED": "true",
+       "HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL": "19",
+       "HORIZON_INTEGRATION_TESTS_DOCKER_IMG": "stellar/stellar-core:latest"
+   },
+   "args": [
+       "-test.run",
+       "TestFilteringAccountWhiteList",
+       "-test.timeout",
+       "5m",
+       "./..."
+   ],
+   "showLog": true
+}
+```
+
 ## **Testing Horizon API using Stellar Laboratory**
 
-You can test your Horizon instance with a query like: http://localhost:8001/transactions?limit=10&order=asc. However, its much easier to use the [Stellar Laboratory](https://www.stellar.org/laboratory/) to craft other queries to try out. Select `Custom` Horizon URL and enter `http://localhost:8000`.
+You can test your Horizon instance with a query like: `http://localhost:8001/transactions?limit=10&order=asc`. However, it's much easier to use the [Stellar Laboratory](https://www.stellar.org/laboratory/) to craft other queries to try out. Select `Custom` Horizon URL and enter `http://localhost:8000`.
 
 Read about the available endpoints and see examples in the [Horizon API reference](https://www.stellar.org/developers/horizon/reference/).
 
@@ -168,26 +212,26 @@ This section contains additional information related to the development of Horiz
 
 ## <a name="regen"></a> **Regenerating generated code**
 
-Horizon uses two Go tools you'll need to install:
-1. [go-bindata](github.com/kevinburke/go-bindata) is used to bundle test data
-
-After the above are installed, run `go generate github.com/stellar/go/services/horizon/...`.
+You can run the following terminal snippet:
+```bash
+cd go
+./gogenerate.sh
+```
 
 ## <a name="logging"></a> **Logging**
 
-All logging infrastructure is in the `github.com/stellar/go/tree/master/services/horizon/internal/log` package.  This package provides "level-based" logging:  Each logging statement has a severity, one of "Debug", "Info", "Warn", "Error" or "Panic".  The Horizon server has a configured level "filter", specified either using the `--log-level` command line flag or the `LOG_LEVEL` environment variable.  When a logging statement is executed, the statements declared severity is checked against the filter and will only be emitted if the severity of the statement is equal or higher severity than the filter.
+All logging infrastructure is in the `go/services/horizon/internal/log` package.  This package provides "level-based" logging:  Each logging statement has a severity, one of "Debug", "Info", "Warn", "Error" or "Panic".  The Horizon server has a configured level "filter", specified either using the `--log-level` command line flag or the `LOG_LEVEL` environment variable.  When a logging statement is executed, the statements declared severity is checked against the filter and will only be emitted if the severity of the statement is equal or higher severity than the filter.
 
 In addition, the logging subsystem has support for fields: Arbitrary key-value pairs that will be associated with an entry to allow for filtering and additional contextual information.
 
 ### **Making logging statements**
 
-Assuming that you've imports the log package, making a simple logging call is just:
+Assuming that you've imported the log package, making a simple logging call is just:
 
 ```go
 
 log.Info("my log line")
 log.Infof("I take a %s", "format string")
-
 ```
 
 Adding fields to a statement happens with a call to `WithField` or `WithFields`
@@ -225,28 +269,8 @@ log.Ctx(ctx).Info("This statement will use the sub logger")
 
 ```
 
-### **Logging Best Practices**
-
-It's recommended that you try to avoid contextual information in your logging messages.  Instead, use fields to establish context and use a static string for your message.  This practice allows Horizon operators to more easily filter log lines to provide better insight into the health of the server.  Lets take an example:
-
-```go
-// BAD
-log.Infof("running initializer: %s", i.Name)
-
-//GOOD
-log.WithField("init_name", i.Name).Info("running initializer")
-```
-
-With the "bad" form of the logging example above, an operator can filter on both the message as well as the initializer name independently.  This gets more powerful when multiple fields are combined, allowing for all sorts of slicing and dicing.
-
-
-### **Enabling TLS on your local workstation**
-
-Horizon support HTTP/2 when served using TLS.  To enable TLS on your local workstation, you must generate a certificate and configure Horizon to use it.  We've written a helper script at `tls/regen.sh` to make this simple.  Run the script from your terminal, and simply choose all the default options.  This will create two files: `tls/server.crt` and `tls/server.key`.
-
-Now you must configure Horizon to use them: You can simply add `--tls-cert tls/server.crt --tls-key tls/server.key` to your command line invocations of Horizon, or you may specify `TLS_CERT` and `TLS_KEY` environment variables.
 
 ### **Adding migrations**
-1. Add your migration to `services/horizon/internal/db2/schema/migrations/` using the same name nomenclature as other migrations.
-2. After creating you migration, run `bash services/horizon/internal/scripts/rebuild_schema.bash` this script will create all the autogenerated code for migrations.
+1. Add your migration to `go/services/horizon/internal/db2/schema/migrations/` using the same name nomenclature as other migrations.
+2. After creating you migration, run `./gogenerate.sh` from the root folder to regenerate the code.
 
