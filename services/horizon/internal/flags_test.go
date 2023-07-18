@@ -71,7 +71,7 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := createCaptiveCoreDefaultConfig(&tt.config)
+			e := createCaptiveCoreConfigFromNetwork(&tt.config)
 			if tt.errStr == "" {
 				assert.NoError(t, e)
 				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)
@@ -119,7 +119,7 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := createCaptiveCoreConfig(&tt.config)
+			e := createCaptiveCoreConfigFromParameters(&tt.config)
 			if tt.errStr == "" {
 				assert.NoError(t, e)
 				assert.Equal(t, tt.networkPassphrase, tt.config.NetworkPassphrase)

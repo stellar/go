@@ -638,19 +638,15 @@ var (
 	TestnetDefaultConfig []byte
 
 	pubnetConf = networkConfig{
-		defaultConfig: PubnetDefaultConfig,
-		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-live/core_live_001/",
-			"https://history.stellar.org/prd/core-live/core_live_002/",
-			"https://history.stellar.org/prd/core-live/core_live_003/"},
-		networkPassphrase: network.PublicNetworkPassphrase,
+		defaultConfig:      PubnetDefaultConfig,
+		historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
+		networkPassphrase:  network.PublicNetworkPassphrase,
 	}
 
 	testnetConf = networkConfig{
-		defaultConfig: TestnetDefaultConfig,
-		historyArchiveURLs: []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/",
-			"https://history.stellar.org/prd/core-testnet/core_testnet_002/",
-			"https://history.stellar.org/prd/core-testnet/core_testnet_003"},
-		networkPassphrase: network.TestNetworkPassphrase,
+		defaultConfig:      TestnetDefaultConfig,
+		historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
+		networkPassphrase:  network.TestNetworkPassphrase,
 	}
 )
 
@@ -694,9 +690,9 @@ func loadCaptiveCoreTomlFromFile(config *Config) error {
 	return nil
 }
 
-// createCaptiveCoreDefaultConfig generates the default Captive Core configuration.
+// createCaptiveCoreConfigFromNetwork generates the default Captive Core configuration.
 // validates the configuration settings, sets default values, and loads the Captive Core TOML file.
-func createCaptiveCoreDefaultConfig(config *Config) error {
+func createCaptiveCoreConfigFromNetwork(config *Config) error {
 
 	if config.NetworkPassphrase != "" {
 		return fmt.Errorf("invalid config: %s not allowed with %s network", NetworkPassphraseFlagName, config.Network)
@@ -725,9 +721,9 @@ func createCaptiveCoreDefaultConfig(config *Config) error {
 	return loadCaptiveCoreTomlFromFile(config)
 }
 
-// createCaptiveCoreConfig generates the Captive Core configuration.
+// createCaptiveCoreConfigFromParameters generates the Captive Core configuration.
 // validates the configuration settings, sets necessary values, and loads the Captive Core TOML file.
-func createCaptiveCoreConfig(config *Config) error {
+func createCaptiveCoreConfigFromParameters(config *Config) error {
 
 	if config.NetworkPassphrase == "" {
 		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
@@ -764,12 +760,12 @@ func setCaptiveCoreConfiguration(config *Config) error {
 	}
 
 	if config.Network != "" {
-		err := createCaptiveCoreDefaultConfig(config)
+		err := createCaptiveCoreConfigFromNetwork(config)
 		if err != nil {
 			return errors.Wrap(err, "error generating default captive core config.")
 		}
 	} else {
-		err := createCaptiveCoreConfig(config)
+		err := createCaptiveCoreConfigFromParameters(config)
 		if err != nil {
 			return errors.Wrap(err, "error generating captive core config.")
 		}
