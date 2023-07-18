@@ -100,7 +100,11 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 	sourceAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
 	source := xdr.MustMuxedAddress(sourceAddress)
 
-	contractParamVal1 := xdr.ScSymbol("func1")
+	contractParamVal0 := xdr.ScSymbol("func1")
+	contractParamVal1 := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &xdr.Hash{0x1, 0x2},
+	}
 	contractParamVal2 := xdr.Int32(-5)
 	contractParamVal3 := xdr.Uint32(6)
 	contractParamVal4 := xdr.Uint64(3)
@@ -127,34 +131,34 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
 						HostFunction: xdr.HostFunction{
 							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-							InvokeContract: &xdr.ScVec{
-								{
-									Type: xdr.ScValTypeScvSymbol,
-									Sym:  &contractParamVal1,
-								},
-								{
-									Type: xdr.ScValTypeScvI32,
-									I32:  &contractParamVal2,
-								},
-								{
-									Type: xdr.ScValTypeScvU32,
-									U32:  &contractParamVal3,
-								},
-								{
-									Type: xdr.ScValTypeScvU64,
-									U64:  &contractParamVal4,
-								},
-								{
-									Type:  xdr.ScValTypeScvBytes,
-									Bytes: &contractParamVal5,
-								},
-								{
-									Type: xdr.ScValTypeScvBool,
-									B:    &contractParamVal6,
-								},
-								{
-									// invalid ScVal
-									Type: 5555,
+							InvokeContract: &xdr.InvokeContractArgs{
+								ContractAddress: contractParamVal1,
+								FunctionName:    contractParamVal0,
+								Args: xdr.ScVec{
+									{
+										Type: xdr.ScValTypeScvI32,
+										I32:  &contractParamVal2,
+									},
+									{
+										Type: xdr.ScValTypeScvU32,
+										U32:  &contractParamVal3,
+									},
+									{
+										Type: xdr.ScValTypeScvU64,
+										U64:  &contractParamVal4,
+									},
+									{
+										Type:  xdr.ScValTypeScvBytes,
+										Bytes: &contractParamVal5,
+									},
+									{
+										Type: xdr.ScValTypeScvBool,
+										B:    &contractParamVal6,
+									},
+									{
+										// invalid ScVal
+										Type: 5555,
+									},
 								},
 							},
 						},
@@ -166,16 +170,27 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		details, err := wrapper.Details()
 		s.Assert().NoError(err)
 
-		var hostFnArgs []xdr.ScVal = *(wrapper.operation.Body.InvokeHostFunctionOp.HostFunction.InvokeContract)
+		args := []xdr.ScVal{
+			{
+				Type:    xdr.ScValTypeScvAddress,
+				Address: &contractParamVal1,
+			},
+			{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &contractParamVal0,
+			},
+		}
+		args = append(args, wrapper.operation.Body.InvokeHostFunctionOp.HostFunction.InvokeContract.Args...)
 		detailsFunctionParams := details["parameters"].([]map[string]string)
 		s.Assert().Equal(details["function"], "HostFunctionTypeHostFunctionTypeInvokeContract")
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 0, "Sym", hostFnArgs[0])
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 1, "I32", hostFnArgs[1])
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 2, "U32", hostFnArgs[2])
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 3, "U64", hostFnArgs[3])
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 4, "Bytes", hostFnArgs[4])
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 5, "B", hostFnArgs[5])
-		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 6, "n/a", hostFnArgs[6])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 0, "Address", args[0])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 1, "Sym", args[1])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 2, "I32", args[2])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 3, "U32", args[3])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 4, "U64", args[4])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 5, "Bytes", args[5])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 6, "B", args[6])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 7, "n/a", args[7])
 	})
 
 	s.T().Run("CreateContractFromAsset", func(t *testing.T) {
@@ -314,8 +329,15 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 					Type: xdr.OperationTypeInvokeHostFunction,
 					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
 						HostFunction: xdr.HostFunction{
-							Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-							InvokeContract: &xdr.ScVec{},
+							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeContract: &xdr.InvokeContractArgs{
+								ContractAddress: xdr.ScAddress{
+									Type:       xdr.ScAddressTypeScAddressTypeContract,
+									ContractId: &xdr.Hash{0x1, 0x2},
+								},
+								FunctionName: "foo",
+								Args:         xdr.ScVec{},
+							},
 						},
 					},
 				},

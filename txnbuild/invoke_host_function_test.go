@@ -15,7 +15,7 @@ func TestCreateInvokeHostFunctionValid(t *testing.T) {
 	invokeHostFunctionOp := InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{},
+			InvokeContract: &xdr.InvokeContractArgs{},
 		},
 		Auth:          []xdr.SorobanAuthorizationEntry{},
 		SourceAccount: sourceAccount.AccountID,
@@ -28,7 +28,7 @@ func TestCreateInvokeHostFunctionInvalid(t *testing.T) {
 	invokeHostFunctionOp := InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type:           xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{},
+			InvokeContract: &xdr.InvokeContractArgs{},
 		},
 		Auth:          []xdr.SorobanAuthorizationEntry{},
 		SourceAccount: "invalid account value",
@@ -45,10 +45,17 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 	invokeHostFunctionOp := &InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				xdr.ScVal{
-					Type: xdr.ScValTypeScvI32,
-					I32:  &val,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: xdr.ScAddress{
+					Type:       xdr.ScAddressTypeScAddressTypeContract,
+					ContractId: &xdr.Hash{0x1, 0x2},
+				},
+				FunctionName: "foo",
+				Args: xdr.ScVec{
+					xdr.ScVal{
+						Type: xdr.ScValTypeScvI32,
+						I32:  &val,
+					},
 				},
 			},
 		},
@@ -61,20 +68,29 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 							Type:      xdr.ScAddressTypeScAddressTypeAccount,
 							AccountId: &accountId,
 						},
-						Nonce:         0,
-						SignatureArgs: nil,
+						Nonce:                     0,
+						SignatureExpirationLedger: 0,
+						Signature: xdr.ScVal{
+							Type: xdr.ScValTypeScvI64,
+							I64:  &i64,
+						},
 					},
 				},
 				RootInvocation: xdr.SorobanAuthorizedInvocation{
 					Function: xdr.SorobanAuthorizedFunction{
 						Type: xdr.SorobanAuthorizedFunctionTypeSorobanAuthorizedFunctionTypeContractFn,
-						ContractFn: &xdr.SorobanAuthorizedContractFunction{
+						ContractFn: &xdr.InvokeContractArgs{
 							ContractAddress: xdr.ScAddress{
-								Type:      xdr.ScAddressTypeScAddressTypeAccount,
-								AccountId: &accountId,
+								Type:       xdr.ScAddressTypeScAddressTypeContract,
+								ContractId: &xdr.Hash{0x1, 0x2},
 							},
 							FunctionName: "foo",
-							Args:         nil,
+							Args: xdr.ScVec{
+								xdr.ScVal{
+									Type: xdr.ScValTypeScvI32,
+									I32:  &val,
+								},
+							},
 						},
 					},
 					SubInvocations: nil,
