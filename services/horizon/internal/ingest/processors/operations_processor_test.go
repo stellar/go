@@ -100,11 +100,11 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 	sourceAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
 	source := xdr.MustMuxedAddress(sourceAddress)
 
-	contractParamVal0 := xdr.ScSymbol("func1")
-	contractParamVal1 := xdr.ScAddress{
+	contractParamVal0 := xdr.ScAddress{
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
 		ContractId: &xdr.Hash{0x1, 0x2},
 	}
+	contractParamVal1 := xdr.ScSymbol("func1")
 	contractParamVal2 := xdr.Int32(-5)
 	contractParamVal3 := xdr.Uint32(6)
 	contractParamVal4 := xdr.Uint64(3)
@@ -132,8 +132,8 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 						HostFunction: xdr.HostFunction{
 							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
 							InvokeContract: &xdr.InvokeContractArgs{
-								ContractAddress: contractParamVal1,
-								FunctionName:    contractParamVal0,
+								ContractAddress: contractParamVal0,
+								FunctionName:    contractParamVal1,
 								Args: xdr.ScVec{
 									{
 										Type: xdr.ScValTypeScvI32,
@@ -173,11 +173,11 @@ func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunction
 		args := []xdr.ScVal{
 			{
 				Type:    xdr.ScValTypeScvAddress,
-				Address: &contractParamVal1,
+				Address: &contractParamVal0,
 			},
 			{
 				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &contractParamVal0,
+				Sym:  &contractParamVal1,
 			},
 		}
 		args = append(args, wrapper.operation.Body.InvokeHostFunctionOp.HostFunction.InvokeContract.Args...)
