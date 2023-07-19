@@ -126,7 +126,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:   types.String,
 			Required:  true,
 			Usage:     "horizon postgres database to connect with",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:      "ro-database-url",
@@ -134,7 +133,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:   types.String,
 			Required:  false,
 			Usage:     "horizon postgres read-replica to connect with, when set it will return stale history error when replica is behind primary",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:        StellarCoreBinaryPathName,
@@ -143,7 +141,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "path to stellar core binary, look for the stellar-core binary in $PATH by default.",
 			ConfigKey:   &config.CaptiveCoreBinaryPath,
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,
@@ -167,7 +164,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			IsHidden: false,
 		},
 		&support.ConfigOption{
 			Name:        CaptiveCoreConfigPathName,
@@ -182,7 +178,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			IsHidden: false,
 		},
 		&support.ConfigOption{
 			Name:        CaptiveCoreConfigUseDB,
@@ -202,7 +197,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 			ConfigKey: &config.CaptiveCoreConfigUseDB,
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
@@ -211,7 +205,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "causes Horizon to ingest from a Captive Stellar Core process instead of a persistent Stellar Core database",
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        EnableIngestionFilteringFlag,
@@ -246,7 +239,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    uint(0),
 			Usage:          "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
 			ConfigKey:      &config.CaptiveCoreTomlParams.HTTPPort,
-			IsHidden:       false,
 		},
 		&support.ConfigOption{
 			Name:    "captive-core-storage-path",
@@ -266,7 +258,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:  false,
 			Usage:     "Storage location for Captive Core bucket data. If not set, the current working directory is used as the default location.",
 			ConfigKey: &config.CaptiveCoreStoragePath,
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
@@ -276,7 +267,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:       false,
 			Usage:          "port for Captive Core to bind to for connecting to the Stellar swarm (0 uses Stellar Core's default)",
 			ConfigKey:      &config.CaptiveCoreTomlParams.PeerPort,
-			IsHidden:       false,
 		},
 		&support.ConfigOption{
 			Name:      StellarCoreDBURLFlagName,
@@ -285,14 +275,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:   types.String,
 			Required:  false,
 			Usage:     "stellar-core postgres database to connect with",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:      StellarCoreURLFlagName,
 			ConfigKey: &config.StellarCoreURL,
 			OptType:   types.String,
 			Usage:     "stellar-core to connect with (for http commands). If unset and the local Captive core is enabled, it will use http://localhost:<stellar_captive_core_http_port>",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:      HistoryArchiveURLsFlagName,
@@ -310,8 +298,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			Usage:    "comma-separated list of stellar history archives to connect with",
-			IsHidden: false,
+			Usage: "comma-separated list of stellar history archives to connect with",
 		},
 		&support.ConfigOption{
 			Name:        "port",
@@ -319,7 +306,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: uint(8000),
 			Usage:       "tcp port to listen on for http requests",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "admin-port",
@@ -327,7 +313,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: uint(0),
 			Usage:       "WARNING: this should not be accessible from the Internet and does not use TLS, tcp port to listen on for admin http requests, 0 (default) disables the admin server",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "max-db-connections",
@@ -335,7 +320,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Int,
 			FlagDefault: 0,
 			Usage:       "when set has a priority over horizon-db-max-open-connections, horizon-db-max-idle-connections. max horizon database open connections may need to be increased when responses are slow but DB CPU is normal",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "horizon-db-max-open-connections",
@@ -343,7 +327,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Int,
 			FlagDefault: 20,
 			Usage:       "max horizon database open connections. may need to be increased when responses are slow but DB CPU is normal",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "horizon-db-max-idle-connections",
@@ -351,7 +334,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Int,
 			FlagDefault: 20,
 			Usage:       "max horizon database idle connections. may need to be set to the same value as horizon-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:           "sse-update-frequency",
@@ -360,7 +342,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    5,
 			CustomSetValue: support.SetDuration,
 			Usage:          "defines how often streams should check if there's a new ledger (in seconds), may need to increase in case of big number of streams",
-			IsHidden:       false,
 		},
 		&support.ConfigOption{
 			Name:           "connection-timeout",
@@ -369,7 +350,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    55,
 			CustomSetValue: support.SetDuration,
 			Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout, does not apply to POST /transactions",
-			IsHidden:       false,
 		},
 		&support.ConfigOption{
 			Name:        "per-hour-rate-limit",
@@ -388,8 +368,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			Usage:    "max count of requests allowed in a one hour period, by remote ip address",
-			IsHidden: false,
+			Usage: "max count of requests allowed in a one hour period, by remote ip address",
 		},
 		&support.ConfigOption{
 			Name:           "friendbot-url",
@@ -397,7 +376,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:        types.String,
 			CustomSetValue: support.SetURL,
 			Usage:          "friendbot service to redirect to",
-			IsHidden:       false,
 		},
 		&support.ConfigOption{
 			Name:        "log-level",
@@ -412,15 +390,13 @@ func Flags() (*Config, support.ConfigOptions) {
 				*(co.ConfigKey.(*logrus.Level)) = ll
 				return nil
 			},
-			Usage:    "minimum log severity (debug, info, warn, error) to log",
-			IsHidden: false,
+			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
 		&support.ConfigOption{
 			Name:      "log-file",
 			ConfigKey: &config.LogFile,
 			OptType:   types.String,
 			Usage:     "name of the file where logs will be saved (leave empty to send logs to stdout)",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-log-path",
@@ -429,7 +405,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: support.SetOptionalString,
 			Required:       false,
 			Usage:          "name of the path for Core logs (leave empty to log w/ Horizon only)",
-			IsHidden:       false,
 		},
 		&support.ConfigOption{
 			Name:        "max-path-length",
@@ -437,7 +412,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: uint(3),
 			Usage:       "the maximum number of assets on the path in `/paths` endpoint, warning: increasing this value will increase /paths response time",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "max-assets-per-path-request",
@@ -445,7 +419,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Int,
 			FlagDefault: int(15),
 			Usage:       "the maximum number of assets in '/paths/strict-send' and '/paths/strict-receive' endpoints",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "disable-pool-path-finding",
@@ -454,7 +427,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "excludes liquidity pools from consideration in the `/paths` endpoint",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "disable-path-finding",
@@ -463,7 +435,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "disables the path finding endpoints",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "max-path-finding-requests",
@@ -473,7 +444,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage: "The maximum number of path finding requests per second horizon will allow." +
 				" A value of zero (the default) disables the limit.",
-			IsHidden: false,
 		},
 		&support.ConfigOption{
 			Name:      NetworkPassphraseFlagName,
@@ -481,21 +451,18 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:   types.String,
 			Required:  false,
 			Usage:     "Override the network passphrase",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:      "sentry-dsn",
 			ConfigKey: &config.SentryDSN,
 			OptType:   types.String,
 			Usage:     "Sentry URL to which panics and errors should be reported",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:      "loggly-token",
 			ConfigKey: &config.LogglyToken,
 			OptType:   types.String,
 			Usage:     "Loggly token, used to configure log forwarding to loggly",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:        "loggly-tag",
@@ -503,21 +470,18 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "horizon",
 			Usage:       "Tag to be added to every loggly log event",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:      "tls-cert",
 			ConfigKey: &config.TLSCert,
 			OptType:   types.String,
 			Usage:     "TLS certificate file to use for securing connections to horizon",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:      "tls-key",
 			ConfigKey: &config.TLSKey,
 			OptType:   types.String,
 			Usage:     "TLS private key file to use for securing connections to horizon",
-			IsHidden:  false,
 		},
 		&support.ConfigOption{
 			Name:        IngestFlagName,
@@ -525,7 +489,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: true,
 			Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "cursor-name",
@@ -534,7 +497,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "HORIZON",
 			Usage:       "ingestor cursor used by horizon to ingest from stellar core. must be uppercase and unique for each horizon instance ingesting from that core instance.",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "history-retention-count",
@@ -542,7 +504,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: uint(0),
 			Usage:       "the minimum number of ledgers to maintain within horizon's history tables.  0 signifies an unlimited number of ledgers will be retained",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "history-stale-threshold",
@@ -550,7 +511,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint,
 			FlagDefault: uint(0),
 			Usage:       "the maximum number of ledgers the history db is allowed to be out of date from the connected stellar-core db before horizon considers history stale",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "skip-cursor-update",
@@ -558,7 +518,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Usage:       "causes the ingester to skip reporting the last imported ledger state to stellar-core",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "ingest-disable-state-verification",
@@ -566,7 +525,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Usage:       "ingestion system runs a verification routing to compare state in local database with history buckets, this can be disabled however it's not recommended",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "ingest-state-verification-checkpoint-frequency",
@@ -576,7 +534,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage: "the frequency in units per checkpoint for how often state verification is executed. " +
 				"A value of 1 implies running state verification on every checkpoint. " +
 				"A value of 2 implies running state verification on every second checkpoint.",
-			IsHidden: false,
 		},
 		&support.ConfigOption{
 			Name:           "ingest-state-verification-timeout",
@@ -586,7 +543,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: support.SetDurationMinutes,
 			Usage: "defines an upper bound in minutes for on how long state verification is allowed to run. " +
 				"A value of 0 disables the timeout.",
-			IsHidden: false,
 		},
 		&support.ConfigOption{
 			Name:        "ingest-enable-extended-log-ledger-stats",
@@ -594,7 +550,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Usage:       "enables extended ledger stats in the log (ledger entry changes and operations stats)",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "apply-migrations",
@@ -603,7 +558,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "applies pending migrations before starting horizon",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "checkpoint-frequency",
@@ -612,7 +566,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: uint32(64),
 			Required:    false,
 			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "behind-cloudflare",
@@ -621,7 +574,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "determines if Horizon instance is behind Cloudflare, in such case client IP in the logs will be replaced with Cloudflare header (cannot be used with --behind-aws-load-balancer)",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "behind-aws-load-balancer",
@@ -630,7 +582,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: false,
 			Required:    false,
 			Usage:       "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:        "rounding-slippage-filter",
@@ -639,7 +590,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: 1000,
 			Required:    false,
 			Usage:       "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
-			IsHidden:    false,
 		},
 		&support.ConfigOption{
 			Name:      NetworkFlagName,
@@ -659,7 +609,6 @@ func Flags() (*Config, support.ConfigOptions) {
 				" It automatically configures network settings, including %s, %s, and %s.",
 				StellarPubnet, StellarTestnet, NetworkPassphraseFlagName,
 				HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
-			IsHidden: false,
 		},
 	}
 

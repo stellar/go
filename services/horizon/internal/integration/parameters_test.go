@@ -191,6 +191,21 @@ func TestMaxPathFindingRequests(t *testing.T) {
 	})
 }
 
+//func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
+//	cmd := exec.Command("go", "build", "-o", "stellar-horizon", "../../", "&&", "go", "install", "../../")
+//	stdout, err := cmd.StdoutPipe()
+//	assert.NoError(t, err)
+
+//cmd = exec.Command("../../stellar-horizon", "-h")
+//stdout, err := cmd.StdoutPipe()
+//assert.NoError(t, err)
+//
+//output, err := io.ReadAll(stdout)
+//assert.NoError(t, err)
+//
+//assert.NotContains(t, string(output), "--exp-enable-ingestion-filtering")
+//}
+
 func TestDisablePathFinding(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{})
