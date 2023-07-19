@@ -27,13 +27,10 @@ func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
 
-func (cos ConfigOptions) HideFlag(cmd *cobra.Command, flagName string) error {
-	if err := cmd.PersistentFlags().MarkHidden(flagName); err != nil {
-		return err
+		if err = co.SetHidden(cmd); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -76,6 +73,7 @@ type ConfigOption struct {
 	CustomSetValue func(*ConfigOption) error // Optional function for custom validation/transformation
 	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
 	flag           *pflag.Flag               // The persistent flag that the config option is attached to
+	IsHidden       bool                      // A flag which indicates whether to hide the flag from --help output
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -87,6 +85,16 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 	}
 	// Initialise and bind the persistent flags
 	return co.setFlag(cmd)
+}
+
+// SetHidden Hides the flag from --help output
+func (co *ConfigOption) SetHidden(cmd *cobra.Command) error {
+	if co.IsHidden {
+		if err := cmd.PersistentFlags().MarkHidden(co.Name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Bind binds the config option to viper.

@@ -223,8 +223,8 @@ type FatalTestCase struct {
 	suite.Suite
 }
 
-func (t *FatalTestCase) Exits(subprocess func()) {
-	testName := t.T().Name()
+func (suite *FatalTestCase) Exits(subprocess func()) {
+	testName := suite.T().Name()
 	if os.Getenv("ASSERT_EXISTS_"+testName) == "1" {
 		subprocess()
 		return
@@ -234,12 +234,12 @@ func (t *FatalTestCase) Exits(subprocess func()) {
 	cmd.Env = append(os.Environ(), "ASSERT_EXISTS_"+testName+"=1")
 	err := cmd.Run()
 
-	t.T().Log("Result:", err)
+	suite.T().Log("Result:", err)
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
 		return
 	}
 
-	t.Fail("expecting unsuccessful exit, got", err)
+	suite.Fail("expecting unsuccessful exit, got", err)
 }
 
 // validateNoBucketDirPath ensures the Stellar Core auto-generated configuration
