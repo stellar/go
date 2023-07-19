@@ -48,14 +48,17 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	liquidityPoolID := "abcde"
 	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
 	tt.Assert.NoError(err)
-	operationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder(2)
+
+	tt.Assert.NoError(q.Begin())
+	operationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(err)
 	internalID, ok := toInternalID[liquidityPoolID]
 	tt.Assert.True(ok)
-	err = operationBuilder.Add(tt.Ctx, opID, internalID)
+	err = operationBuilder.Add(opID, internalID)
 	tt.Assert.NoError(err)
-	err = operationBuilder.Exec(tt.Ctx)
+	err = operationBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.Commit())
 
 	var result []Effect
 	err = q.Effects().ForLiquidityPool(tt.Ctx, db2.PageQuery{

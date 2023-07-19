@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	set "github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -32,13 +33,15 @@ func (b *liquidityPool) addOperationID(id int64) {
 }
 
 type LiquidityPoolsTransactionProcessor struct {
+	session          db.SessionInterface
 	sequence         uint32
 	liquidityPoolSet map[string]liquidityPool
 	qLiquidityPools  history.QHistoryLiquidityPools
 }
 
-func NewLiquidityPoolsTransactionProcessor(Q history.QHistoryLiquidityPools, sequence uint32) *LiquidityPoolsTransactionProcessor {
+func NewLiquidityPoolsTransactionProcessor(session db.SessionInterface, Q history.QHistoryLiquidityPools, sequence uint32) *LiquidityPoolsTransactionProcessor {
 	return &LiquidityPoolsTransactionProcessor{
+		session:          session,
 		qLiquidityPools:  Q,
 		sequence:         sequence,
 		liquidityPoolSet: map[string]liquidityPool{},
@@ -218,34 +221,34 @@ func (p *LiquidityPoolsTransactionProcessor) loadLiquidityPoolIDs(ctx context.Co
 }
 
 func (p LiquidityPoolsTransactionProcessor) insertDBTransactionLiquidityPools(ctx context.Context, liquidityPoolSet map[string]liquidityPool) error {
-	batch := p.qLiquidityPools.NewTransactionLiquidityPoolBatchInsertBuilder(maxBatchSize)
+	batch := p.qLiquidityPools.NewTransactionLiquidityPoolBatchInsertBuilder()
 
 	for _, entry := range liquidityPoolSet {
 		for transactionID := range entry.transactionSet {
-			if err := batch.Add(ctx, transactionID, entry.internalID); err != nil {
+			if err := batch.Add(transactionID, entry.internalID); err != nil {
 				return errors.Wrap(err, "could not insert transaction liquidity pool in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "could not flush transaction liquidity pools to db")
 	}
 	return nil
 }
 
 func (p LiquidityPoolsTransactionProcessor) insertDBOperationsLiquidityPools(ctx context.Context, liquidityPoolSet map[string]liquidityPool) error {
-	batch := p.qLiquidityPools.NewOperationLiquidityPoolBatchInsertBuilder(maxBatchSize)
+	batch := p.qLiquidityPools.NewOperationLiquidityPoolBatchInsertBuilder()
 
 	for _, entry := range liquidityPoolSet {
 		for operationID := range entry.operationSet {
-			if err := batch.Add(ctx, operationID, entry.internalID); err != nil {
+			if err := batch.Add(operationID, entry.internalID); err != nil {
 				return errors.Wrap(err, "could not insert operation liquidity pool in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "could not flush operation liquidity pools to db")
 	}
 	return nil

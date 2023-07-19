@@ -11,6 +11,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -20,6 +21,7 @@ type ParticipantsProcessorTestSuiteLedger struct {
 	suite.Suite
 	ctx                              context.Context
 	processor                        *ParticipantsProcessor
+	mockSession                      *db.MockSession
 	mockQ                            *history.MockQParticipants
 	mockBatchInsertBuilder           *history.MockTransactionParticipantsBatchInsertBuilder
 	mockOperationsBatchInsertBuilder *history.MockOperationParticipantBatchInsertBuilder
@@ -83,6 +85,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	}
 
 	s.processor = NewParticipantsProcessor(
+		s.mockSession,
 		s.mockQ,
 		sequence,
 	)
@@ -102,33 +105,33 @@ func (s *ParticipantsProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulTransactionBatchAdds() {
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.firstTxID, s.addressToID[s.addresses[0]],
+		"Add", s.firstTxID, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[1]],
+		"Add", s.secondTxID, s.addressToID[s.addresses[1]],
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[2]],
+		"Add", s.secondTxID, s.addressToID[s.addresses[2]],
 	).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.thirdTxID, s.addressToID[s.addresses[0]],
+		"Add", s.thirdTxID, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulOperationBatchAdds() {
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.firstTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.firstTxID+1, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[1]],
+		"Add", s.secondTxID+1, s.addressToID[s.addresses[1]],
 	).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[2]],
+		"Add", s.secondTxID+1, s.addressToID[s.addresses[2]],
 	).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.thirdTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.thirdTxID+1, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 }
 func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
@@ -179,20 +182,20 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
 				arg,
 			)
 		}).Return(addressToID, nil).Once()
-	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
-	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder").
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, feeBumpTxID, addressToID[addresses[0]],
+		"Add", feeBumpTxID, addressToID[addresses[0]],
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, feeBumpTxID, addressToID[addresses[1]],
+		"Add", feeBumpTxID, addressToID[addresses[1]],
 	).Return(nil).Once()
 
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	s.Assert().NoError(s.processor.ProcessTransaction(s.ctx, feeBumpTx))
 	s.Assert().NoError(s.processor.Commit(s.ctx))
@@ -207,16 +210,16 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 				arg,
 			)
 		}).Return(s.addressToID, nil).Once()
-	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
-	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder").
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
 	s.mockSuccessfulTransactionBatchAdds()
 	s.mockSuccessfulOperationBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(s.ctx, tx)
@@ -246,22 +249,22 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 				arg,
 			)
 		}).Return(s.addressToID, nil).Once()
-	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.firstTxID, s.addressToID[s.addresses[0]],
+		"Add", s.firstTxID, s.addressToID[s.addresses[0]],
 	).Return(errors.New("transient error")).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[1]],
+		"Add", s.secondTxID, s.addressToID[s.addresses[1]],
 	).Return(nil).Maybe()
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[2]],
+		"Add", s.secondTxID, s.addressToID[s.addresses[2]],
 	).Return(nil).Maybe()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx, s.thirdTxID, s.addressToID[s.addresses[0]],
+		"Add", s.thirdTxID, s.addressToID[s.addresses[0]],
 	).Return(nil).Maybe()
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(s.ctx, tx)
@@ -280,27 +283,27 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 				arg,
 			)
 		}).Return(s.addressToID, nil).Once()
-	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
-	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder").
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
 	s.mockSuccessfulTransactionBatchAdds()
 
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.firstTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.firstTxID+1, s.addressToID[s.addresses[0]],
 	).Return(errors.New("transient error")).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[1]],
+		"Add", s.secondTxID+1, s.addressToID[s.addresses[1]],
 	).Return(nil).Maybe()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[2]],
+		"Add", s.secondTxID+1, s.addressToID[s.addresses[2]],
 	).Return(nil).Maybe()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.ctx, s.thirdTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.thirdTxID+1, s.addressToID[s.addresses[0]],
 	).Return(nil).Maybe()
 
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(s.ctx, tx)
@@ -319,12 +322,12 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 				arg,
 			)
 		}).Return(s.addressToID, nil).Once()
-	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockSuccessfulTransactionBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(errors.New("transient error")).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(s.ctx, tx)
@@ -343,16 +346,16 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() 
 				arg,
 			)
 		}).Return(s.addressToID, nil).Once()
-	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
-	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder").
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
 	s.mockSuccessfulTransactionBatchAdds()
 	s.mockSuccessfulOperationBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(errors.New("transient error")).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(s.ctx, tx)

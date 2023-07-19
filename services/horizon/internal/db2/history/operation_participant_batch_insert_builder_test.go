@@ -13,12 +13,14 @@ func TestAddOperationParticipants(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	builder := q.NewOperationParticipantBatchInsertBuilder(1)
-	err := builder.Add(tt.Ctx, 240518172673, 1)
+	tt.Assert.NoError(q.Begin())
+	builder := q.NewOperationParticipantBatchInsertBuilder()
+	err := builder.Add(240518172673, 1)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec(tt.Ctx)
+	err = builder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(q.Commit())
 
 	type hop struct {
 		OperationID int64 `db:"history_operation_id"`

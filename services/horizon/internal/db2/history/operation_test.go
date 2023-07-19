@@ -124,15 +124,15 @@ func TestOperationByLiquidityPool(t *testing.T) {
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
 	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
 	tt.Assert.NoError(err)
-	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder(3)
+	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
 	tt.Assert.NoError(err)
 	internalID, ok := toInternalID[liquidityPoolID]
 	tt.Assert.True(ok)
-	err = lpOperationBuilder.Add(tt.Ctx, opID1, internalID)
+	err = lpOperationBuilder.Add(opID1, internalID)
 	tt.Assert.NoError(err)
-	err = lpOperationBuilder.Add(tt.Ctx, opID2, internalID)
+	err = lpOperationBuilder.Add(opID2, internalID)
 	tt.Assert.NoError(err)
-	err = lpOperationBuilder.Exec(tt.Ctx)
+	err = lpOperationBuilder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(q.Commit())

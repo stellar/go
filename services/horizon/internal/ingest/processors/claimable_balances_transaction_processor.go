@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	set "github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -32,13 +33,15 @@ func (b *claimableBalance) addOperationID(id int64) {
 }
 
 type ClaimableBalancesTransactionProcessor struct {
+	session             db.SessionInterface
 	sequence            uint32
 	claimableBalanceSet map[string]claimableBalance
 	qClaimableBalances  history.QHistoryClaimableBalances
 }
 
-func NewClaimableBalancesTransactionProcessor(Q history.QHistoryClaimableBalances, sequence uint32) *ClaimableBalancesTransactionProcessor {
+func NewClaimableBalancesTransactionProcessor(session db.SessionInterface, Q history.QHistoryClaimableBalances, sequence uint32) *ClaimableBalancesTransactionProcessor {
 	return &ClaimableBalancesTransactionProcessor{
+		session:             session,
 		qClaimableBalances:  Q,
 		sequence:            sequence,
 		claimableBalanceSet: map[string]claimableBalance{},
@@ -223,34 +226,34 @@ func (p *ClaimableBalancesTransactionProcessor) loadClaimableBalanceIDs(ctx cont
 }
 
 func (p ClaimableBalancesTransactionProcessor) insertDBTransactionClaimableBalances(ctx context.Context, claimableBalanceSet map[string]claimableBalance) error {
-	batch := p.qClaimableBalances.NewTransactionClaimableBalanceBatchInsertBuilder(maxBatchSize)
+	batch := p.qClaimableBalances.NewTransactionClaimableBalanceBatchInsertBuilder()
 
 	for _, entry := range claimableBalanceSet {
 		for transactionID := range entry.transactionSet {
-			if err := batch.Add(ctx, transactionID, entry.internalID); err != nil {
+			if err := batch.Add(transactionID, entry.internalID); err != nil {
 				return errors.Wrap(err, "could not insert transaction claimable balance in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "could not flush transaction claimable balances to db")
 	}
 	return nil
 }
 
 func (p ClaimableBalancesTransactionProcessor) insertDBOperationsClaimableBalances(ctx context.Context, claimableBalanceSet map[string]claimableBalance) error {
-	batch := p.qClaimableBalances.NewOperationClaimableBalanceBatchInsertBuilder(maxBatchSize)
+	batch := p.qClaimableBalances.NewOperationClaimableBalanceBatchInsertBuilder()
 
 	for _, entry := range claimableBalanceSet {
 		for operationID := range entry.operationSet {
-			if err := batch.Add(ctx, operationID, entry.internalID); err != nil {
+			if err := batch.Add(operationID, entry.internalID); err != nil {
 				return errors.Wrap(err, "could not insert operation claimable balance in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "could not flush operation claimable balances to db")
 	}
 	return nil

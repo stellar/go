@@ -32,18 +32,20 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	batch := q.NewTransactionParticipantsBatchInsertBuilder(0)
+	tt.Assert.NoError(q.Begin())
+	batch := q.NewTransactionParticipantsBatchInsertBuilder()
 
 	transactionID := int64(1)
 	otherTransactionID := int64(2)
 	accountID := int64(100)
 
 	for i := int64(0); i < 3; i++ {
-		tt.Assert.NoError(batch.Add(tt.Ctx, transactionID, accountID+i))
+		tt.Assert.NoError(batch.Add(transactionID, accountID+i))
 	}
 
-	tt.Assert.NoError(batch.Add(tt.Ctx, otherTransactionID, accountID))
-	tt.Assert.NoError(batch.Exec(tt.Ctx))
+	tt.Assert.NoError(batch.Add(otherTransactionID, accountID))
+	tt.Assert.NoError(batch.Exec(tt.Ctx, q))
+	tt.Assert.NoError(q.Commit())
 
 	participants := getTransactionParticipants(tt, q)
 	tt.Assert.Equal(

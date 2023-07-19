@@ -148,10 +148,10 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewLedgerProcessor(s.session, s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.session, s.historyQ, sequence),
 		tradeProcessor,
-		processors.NewParticipantsProcessor(s.historyQ, sequence),
+		processors.NewParticipantsProcessor(s.session, s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.session, s.historyQ, sequence),
-		processors.NewClaimableBalancesTransactionProcessor(s.historyQ, sequence),
-		processors.NewLiquidityPoolsTransactionProcessor(s.historyQ, sequence),
+		processors.NewClaimableBalancesTransactionProcessor(s.session, s.historyQ, sequence),
+		processors.NewLiquidityPoolsTransactionProcessor(s.session, s.historyQ, sequence),
 	})
 }
 

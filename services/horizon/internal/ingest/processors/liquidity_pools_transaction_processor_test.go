@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 )
@@ -18,6 +19,7 @@ type LiquidityPoolsTransactionProcessorTestSuiteLedger struct {
 	suite.Suite
 	ctx                               context.Context
 	processor                         *LiquidityPoolsTransactionProcessor
+	mockSession                       *db.MockSession
 	mockQ                             *history.MockQHistoryLiquidityPools
 	mockTransactionBatchInsertBuilder *history.MockTransactionLiquidityPoolBatchInsertBuilder
 	mockOperationBatchInsertBuilder   *history.MockOperationLiquidityPoolBatchInsertBuilder
@@ -37,6 +39,7 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) SetupTest() {
 	s.sequence = 20
 
 	s.processor = NewLiquidityPoolsTransactionProcessor(
+		s.mockSession,
 		s.mockQ,
 		s.sequence,
 	)
@@ -49,11 +52,11 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) mockTransactionBatchAdd(transactionID, internalID int64, err error) {
-	s.mockTransactionBatchInsertBuilder.On("Add", s.ctx, transactionID, internalID).Return(err).Once()
+	s.mockTransactionBatchInsertBuilder.On("Add", transactionID, internalID).Return(err).Once()
 }
 
 func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) mockOperationBatchAdd(operationID, internalID int64, err error) {
-	s.mockOperationBatchInsertBuilder.On("Add", s.ctx, operationID, internalID).Return(err).Once()
+	s.mockOperationBatchInsertBuilder.On("Add", operationID, internalID).Return(err).Once()
 }
 
 func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) TestEmptyLiquidityPools() {
@@ -123,16 +126,16 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) testOperationInserts
 	}, nil).Once()
 
 	// Prepare to process transactions successfully
-	s.mockQ.On("NewTransactionLiquidityPoolBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTransactionLiquidityPoolBatchInsertBuilder").
 		Return(s.mockTransactionBatchInsertBuilder).Once()
 	s.mockTransactionBatchAdd(txnID, internalID, nil)
-	s.mockTransactionBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockTransactionBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	// Prepare to process operations successfully
-	s.mockQ.On("NewOperationLiquidityPoolBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewOperationLiquidityPoolBatchInsertBuilder").
 		Return(s.mockOperationBatchInsertBuilder).Once()
 	s.mockOperationBatchAdd(opID, internalID, nil)
-	s.mockOperationBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockOperationBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	// Process the transaction
 	err := s.processor.ProcessTransaction(s.ctx, txn)

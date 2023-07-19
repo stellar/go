@@ -255,8 +255,8 @@ type IngestionQ interface {
 	// QParticipants
 	// Copy the small interfaces with shared methods directly, otherwise error:
 	// duplicate method CreateAccounts
-	NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) TransactionParticipantsBatchInsertBuilder
-	NewOperationParticipantBatchInsertBuilder(maxBatchSize int) OperationParticipantBatchInsertBuilder
+	NewTransactionParticipantsBatchInsertBuilder() TransactionParticipantsBatchInsertBuilder
+	NewOperationParticipantBatchInsertBuilder() OperationParticipantBatchInsertBuilder
 	QSigners
 	//QTrades
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
