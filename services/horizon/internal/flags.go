@@ -229,6 +229,7 @@ func Flags() (*Config, support.ConfigOptions) {
 							"the Horizon Admin API to achieve the same no-filtering result. Remove usage of this flag in all cases.",
 					)
 
+					// This ensures ingestion filtering is always enabled even if a user passes "false" flag.
 					if val == "false" {
 						config.EnableIngestionFiltering = true
 					}

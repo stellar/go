@@ -23,14 +23,10 @@ type ConfigOptions []*ConfigOption
 // Init calls Init on each ConfigOption passing on the cobra.Command.
 func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 	for _, co := range cos {
-		err := co.Init(cmd)
-		if err != nil {
+		if err := co.Init(cmd); err != nil {
 			return err
 		}
-
-		if err = co.SetHidden(cmd); err != nil {
-			return err
-		}
+		co.SetHidden(cmd)
 	}
 	return nil
 }
@@ -88,13 +84,10 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 }
 
 // SetHidden Hides the flag from --help output
-func (co *ConfigOption) SetHidden(cmd *cobra.Command) error {
+func (co *ConfigOption) SetHidden(cmd *cobra.Command) {
 	if co.IsHidden {
-		if err := cmd.PersistentFlags().MarkHidden(co.Name); err != nil {
-			return err
-		}
+		co.flag.Hidden = true
 	}
-	return nil
 }
 
 // Bind binds the config option to viper.
