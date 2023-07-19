@@ -264,14 +264,13 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	account := fixture.Envelope.SourceAccount().ToAccountId()
 	feeBumpAccount := fixture.Envelope.FeeBumpAccount().ToAccountId()
 
-	opBuilder := q.NewOperationBatchInsertBuilder(1)
+	opBuilder := q.NewOperationBatchInsertBuilder()
 	details, err := json.Marshal(map[string]string{
 		"bump_to": "98",
 	})
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(opBuilder.Add(
-		ctx,
 		toid.New(fixture.Ledger.Sequence, 1, 1).ToInt64(),
 		toid.New(fixture.Ledger.Sequence, 1, 0).ToInt64(),
 		1,
@@ -280,7 +279,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		account.Address(),
 		null.String{},
 	))
-	tt.Assert.NoError(opBuilder.Exec(ctx))
+	tt.Assert.NoError(opBuilder.Exec(ctx, q))
 
 	effectBuilder := q.NewEffectBatchInsertBuilder(2)
 	details, err = json.Marshal(map[string]interface{}{"new_seq": 98})

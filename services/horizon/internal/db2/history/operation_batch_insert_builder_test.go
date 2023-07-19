@@ -20,7 +20,7 @@ func TestAddOperation(t *testing.T) {
 
 	txBatch := q.NewTransactionBatchInsertBuilder()
 
-	builder := q.NewOperationBatchInsertBuilder(1)
+	builder := q.NewOperationBatchInsertBuilder()
 
 	transactionHash := "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c"
 	transactionResult := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
@@ -50,7 +50,7 @@ func TestAddOperation(t *testing.T) {
 
 	sourceAccount := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	sourceAccountMuxed := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	err = builder.Add(tt.Ctx,
+	err = builder.Add(
 		toid.New(sequence, 1, 1).ToInt64(),
 		toid.New(sequence, 1, 0).ToInt64(),
 		1,
@@ -61,7 +61,7 @@ func TestAddOperation(t *testing.T) {
 	)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec(tt.Ctx)
+	err = builder.Exec(tt.Ctx, q)
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(q.Commit())

@@ -379,7 +379,7 @@ func validateTransactionForOperation(transaction Transaction, operation Operatio
 
 // QOperations defines history_operation related queries.
 type QOperations interface {
-	NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInsertBuilder
+	NewOperationBatchInsertBuilder() OperationBatchInsertBuilder
 }
 
 var selectOperation = sq.Select(
