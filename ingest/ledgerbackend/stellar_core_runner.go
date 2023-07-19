@@ -261,6 +261,7 @@ func (r *stellarCoreRunner) createCmd(params ...string) (cmdI, error) {
 		return nil, err
 	}
 
+	conf, err := r.writeConf()
 	if conf, err := r.writeConf(); err != nil {
 		return nil, errors.Wrap(err, "error writing configuration")
 	} else {
@@ -268,6 +269,9 @@ func (r *stellarCoreRunner) createCmd(params ...string) (cmdI, error) {
 	}
 
 	allParams := append([]string{"--conf", r.getConfFileName(), "--console"}, params...)
+	fmt.Print(allParams)
+	fmt.Print(conf)
+
 	cmd := r.systemCaller.command(r.executablePath, allParams...)
 	cmd.setDir(r.storagePath)
 	cmd.setStdout(r.getLogLineWriter())
