@@ -213,6 +213,10 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			ConfigKey:   &config.EnableIngestionFiltering,
 			CustomSetValue: func(opt *support.ConfigOption) error {
+
+				// Always enable ingestion filtering by default.
+				config.EnableIngestionFiltering = true
+
 				if val := viper.GetString(opt.Name); val != "" {
 					stdLog.Printf(
 						"DEPRECATED - No ingestion filter rules are defined by default, which equates to no filtering " +
@@ -221,11 +225,6 @@ func Flags() (*Config, support.ConfigOptions) {
 							"disabled with --exp-enable-ingestion-filtering=false, then you should now delete the filter rules using " +
 							"the Horizon Admin API to achieve the same no-filtering result. Remove usage of this flag in all cases.",
 					)
-
-					// This ensures ingestion filtering is always enabled even if a user passes "false" flag.
-					if val == "false" {
-						config.EnableIngestionFiltering = true
-					}
 				}
 				return nil
 			},
@@ -816,6 +815,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if options.AlwaysIngest {
 		config.Ingest = true
 	}
+
+	config.EnableIngestionFiltering = true
 
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check

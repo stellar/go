@@ -2,6 +2,10 @@
 package integration
 
 import (
+	"bytes"
+	"fmt"
+	"github.com/spf13/cobra"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -191,21 +195,6 @@ func TestMaxPathFindingRequests(t *testing.T) {
 	})
 }
 
-//func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
-//	cmd := exec.Command("go", "build", "-o", "stellar-horizon", "../../", "&&", "go", "install", "../../")
-//	stdout, err := cmd.StdoutPipe()
-//	assert.NoError(t, err)
-
-//cmd = exec.Command("../../stellar-horizon", "-h")
-//stdout, err := cmd.StdoutPipe()
-//assert.NoError(t, err)
-//
-//output, err := io.ReadAll(stdout)
-//assert.NoError(t, err)
-//
-//assert.NotContains(t, string(output), "--exp-enable-ingestion-filtering")
-//}
-
 func TestDisablePathFinding(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{})
@@ -225,6 +214,47 @@ func TestDisablePathFinding(t *testing.T) {
 		assert.Nil(t, test.HorizonIngest().Paths())
 		test.Shutdown()
 	})
+}
+
+func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
+	t.Run("ingestion filtering flag set to default value", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		assert.Equal(t, test.HorizonIngest().Config().EnableIngestionFiltering, true)
+	})
+	t.Run("ingestion filtering flag set to false", func(t *testing.T) {
+		test := NewParameterTest(t, map[string]string{"exp-enable-ingestion-filtering": "false"})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		assert.Equal(t, test.HorizonIngest().Config().EnableIngestionFiltering, true)
+	})
+}
+
+func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
+	_, flags := horizon.Flags()
+
+	horizonCmd := &cobra.Command{
+		Use:           "horizon",
+		Short:         "client-facing api server for the Stellar network",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Long:          "Client-facing API server for the Stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+	}
+
+	var writer io.Writer = &bytes.Buffer{}
+	horizonCmd.SetOutput(writer)
+
+	horizonCmd.SetArgs([]string{"-h"})
+	if err := flags.Init(horizonCmd); err != nil {
+		fmt.Println(err)
+	}
+	if err := horizonCmd.Execute(); err != nil {
+		fmt.Println(err)
+	}
+
+	output := writer.(*bytes.Buffer).String()
+	assert.NotContains(t, output, "--exp-enable-ingestion-filtering")
 }
 
 // Pattern taken from testify issue:
