@@ -229,7 +229,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				}
 				return nil
 			},
-			IsHidden: true,
+			Hidden: true,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-http-port",
