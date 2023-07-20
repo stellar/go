@@ -232,7 +232,7 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 }
 
 func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
-	_, flags := horizon.Flags()
+	config, flags := horizon.Flags()
 
 	horizonCmd := &cobra.Command{
 		Use:           "horizon",
@@ -240,6 +240,13 @@ func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Long:          "Client-facing API server for the Stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, err := horizon.NewAppFromFlags(config, flags)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
 	}
 
 	var writer io.Writer = &bytes.Buffer{}
