@@ -9,7 +9,9 @@ import (
 	"io"
 	stdLog "log"
 	"os"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
@@ -38,10 +40,22 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 		t.Fatalf("Failed to start Horizon: %v", innerErr)
 	}
 
-	if err := w.Close(); err != nil {
-		t.Fatalf("Failed to close Stdout")
-	}
+	// Use a wait group to wait for the goroutine to finish before proceeding
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := w.Close(); err != nil {
+			t.Fatalf("Failed to close Stdout")
+		}
+	}()
+
+	// Give some time for the goroutine to start
+	time.Sleep(time.Millisecond)
+
 	outputBytes, _ := io.ReadAll(r)
+	wg.Wait() // Wait for the goroutine to finish before proceeding
+
 	os.Stdout = storeStdout
 
 	assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
