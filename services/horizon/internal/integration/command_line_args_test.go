@@ -46,7 +46,8 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		if err := w.Close(); err != nil {
-			t.Fatalf("Failed to close Stdout")
+			t.Errorf("Failed to close Stdout")
+			return
 		}
 	}()
 
