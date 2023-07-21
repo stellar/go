@@ -26,7 +26,7 @@ func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 		if err := co.Init(cmd); err != nil {
 			return err
 		}
-		co.SetHidden(cmd)
+		co.SetDeprecated(cmd)
 	}
 	return nil
 }
@@ -83,8 +83,8 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 	return co.setFlag(cmd)
 }
 
-// SetHidden Hides the flag from --help output
-func (co *ConfigOption) SetHidden(cmd *cobra.Command) {
+// SetDeprecated Hides the deprecated flag from --help output
+func (co *ConfigOption) SetDeprecated(cmd *cobra.Command) {
 	if co.Hidden {
 		co.flag.Hidden = true
 	}

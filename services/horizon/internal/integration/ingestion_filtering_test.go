@@ -23,17 +23,14 @@ func TestFilteringWithNoFilters(t *testing.T) {
 	})
 
 	fullKeys, accounts := itest.CreateAccounts(2, "10000")
-	whitelistedAccount := accounts[0]
-	whitelistedAccountKey := fullKeys[0]
 	nonWhitelistedAccount := accounts[1]
 	nonWhitelistedAccountKey := fullKeys[1]
 
 	// all assets are allowed by default because the asset filter config is empty.
 	defaultAllowedAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: itest.Master().Address()}
-	itest.MustEstablishTrustline(whitelistedAccountKey, whitelistedAccount, defaultAllowedAsset)
 	itest.MustEstablishTrustline(nonWhitelistedAccountKey, nonWhitelistedAccount, defaultAllowedAsset)
 
-	// assert that by system default, filters with no rules yet, allow all first.
+	// Assert that by default, the system allows all the accounts.
 	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
 		&txnbuild.Payment{
 			Destination: nonWhitelistedAccount.GetAccountID(),
@@ -42,17 +39,6 @@ func TestFilteringWithNoFilters(t *testing.T) {
 		},
 	)
 	txResp, err := itest.Client().TransactionDetail(txResp.Hash)
-	tt.NoError(err)
-
-	// Make sure that when using a whitelisted account, that transaction is also allowed.
-	txResp = itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
-		&txnbuild.Payment{
-			Destination: whitelistedAccount.GetAccountID(),
-			Amount:      "10",
-			Asset:       defaultAllowedAsset,
-		},
-	)
-	_, err = itest.Client().TransactionDetail(txResp.Hash)
 	tt.NoError(err)
 }
 
