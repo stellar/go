@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
@@ -21,6 +22,7 @@ import (
 type TradeProcessorTestSuiteLedger struct {
 	suite.Suite
 	processor              *TradeProcessor
+	mockSession            *db.MockSession
 	mockQ                  *history.MockQTrades
 	mockBatchInsertBuilder *history.MockTradeBatchInsertBuilder
 
@@ -198,6 +200,7 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 	}
 
 	s.processor = NewTradeProcessor(
+		s.mockSession,
 		s.mockQ,
 		xdr.LedgerHeaderHistoryEntry{
 			Header: xdr.LedgerHeader{
@@ -709,7 +712,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		tx,
 	}
 
-	s.mockQ.On("NewTradeBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewTradeBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
 	return inserts
@@ -747,12 +750,12 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 	s.mockCreateHistoryLiquidityPools(ctx)
 
 	for _, insert := range inserts {
-		s.mockBatchInsertBuilder.On("Add", ctx, []history.InsertTrade{
+		s.mockBatchInsertBuilder.On("Add", []history.InsertTrade{
 			insert,
 		}).Return(nil).Once()
 	}
 
-	s.mockBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", ctx, s.mockSession).Return(nil).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(ctx, tx)
@@ -892,7 +895,7 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
 
 	s.mockCreateHistoryLiquidityPools(ctx)
 
-	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
+	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
 		Return(fmt.Errorf("batch add error")).Once()
 
 	for _, tx := range s.txs {
@@ -914,9 +917,9 @@ func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
 
 	s.mockCreateHistoryLiquidityPools(ctx)
 
-	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
+	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
-	s.mockBatchInsertBuilder.On("Exec", ctx).Return(fmt.Errorf("exec error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", ctx, s.mockSession).Return(fmt.Errorf("exec error")).Once()
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
@@ -935,9 +938,9 @@ func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
 	s.mockCreateAssets(ctx)
 
 	s.mockCreateHistoryLiquidityPools(ctx)
-	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
+	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
-	s.mockBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", ctx, s.mockSession).Return(nil).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(ctx, tx)
