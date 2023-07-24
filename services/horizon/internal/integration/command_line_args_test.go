@@ -32,9 +32,10 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 }
 
 func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
+	originalStderr := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
-	stdLog.SetOutput(os.Stdout)
+	os.Stderr = w
+	stdLog.SetOutput(os.Stderr)
 
 	test := NewParameterTest(t, map[string]string{"exp-enable-ingestion-filtering": "false"})
 	if innerErr := test.StartHorizon(); innerErr != nil {
@@ -57,6 +58,8 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 
 	outputBytes, _ := io.ReadAll(r)
 	wg.Wait() // Wait for the goroutine to finish before proceeding
+	_ = r.Close()
+	os.Stderr = originalStderr
 
 	assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
 		"no filtering of historical data. If you have never added filter rules to this deployment, then nothing further needed. "+
