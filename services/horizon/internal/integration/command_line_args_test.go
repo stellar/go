@@ -20,12 +20,14 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		assert.Equal(t, test.HorizonIngest().Config().EnableIngestionFiltering, true)
+		test.Shutdown()
 	})
 	t.Run("ingestion filtering flag set to false", func(t *testing.T) {
 		test := NewParameterTest(t, map[string]string{"exp-enable-ingestion-filtering": "false"})
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		assert.Equal(t, test.HorizonIngest().Config().EnableIngestionFiltering, true)
+		test.Shutdown()
 	})
 }
 
