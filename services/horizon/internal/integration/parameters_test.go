@@ -59,6 +59,20 @@ const (
 		QUALITY="MEDIUM"`
 )
 
+func NewParameterTestSkipContainerCreation(t *testing.T, params map[string]string) *integration.Test {
+	return NewParameterTestWithEnvSkipContainerCreation(t, params, map[string]string{})
+}
+
+func NewParameterTestWithEnvSkipContainerCreation(t *testing.T, params, envvars map[string]string) *integration.Test {
+	config := integration.Config{
+		ProtocolVersion:         17,
+		SkipHorizonStart:        true,
+		SkipContainerCreation:   true,
+		HorizonIngestParameters: params,
+		HorizonEnvironment:      envvars}
+	return integration.NewTest(t, config)
+}
+
 func NewParameterTest(t *testing.T, params map[string]string) *integration.Test {
 	return NewParameterTestWithEnv(t, params, map[string]string{})
 }
@@ -148,6 +162,11 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 // - History archive URLs are not configured.
 // - The captive-core TOML config file is invalid.
 // The test will also fail if an invalid parameter is specified.
+//
+// Typically during integration tests, we initiate Horizon in standalone mode and simultaneously start the
+// stellar-core container in standalone mode as well. We wait for Horizon to begin ingesting to verify the test's
+// success. However, in the case of "pubnet" or "testnet," waiting for Horizon to start ingesting is not practical.
+// So we don't start stellar-core containers.
 func TestNetworkParameter(t *testing.T) {
 	if !integration.RunWithCaptiveCore {
 		t.Skip()
@@ -157,7 +176,7 @@ func TestNetworkParameter(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName: horizon.StellarPubnet,
 		})
-		test := NewParameterTest(t, localParams)
+		test := NewParameterTestSkipContainerCreation(t, localParams)
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
@@ -169,7 +188,7 @@ func TestNetworkParameter(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName: horizon.StellarTestnet,
 		})
-		test := NewParameterTest(t, localParams)
+		test := NewParameterTestSkipContainerCreation(t, localParams)
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
@@ -186,6 +205,11 @@ func TestNetworkParameter(t *testing.T) {
 // - History archive URLs are not configured.
 // - The captive-core TOML config file is invalid.
 // The test will also fail if an invalid parameter is specified.
+//
+// Typically during integration tests, we initiate Horizon in standalone mode and simultaneously start the
+// stellar-core container in standalone mode as well. We wait for Horizon to begin ingesting to verify the test's
+// success. However, in the case of "pubnet" or "testnet," waiting for Horizon to start ingesting is not practical.
+// So we don't start stellar-core containers.
 func TestNetworkEnvironmentVariable(t *testing.T) {
 	if !integration.RunWithCaptiveCore {
 		t.Skip()
@@ -201,7 +225,7 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 	}()
 
 	t.Run("NETWORK environment variable pubnet", func(t *testing.T) {
-		test := NewParameterTestWithEnv(t, networkParamArgs,
+		test := NewParameterTestWithEnvSkipContainerCreation(t, networkParamArgs,
 			map[string]string{"NETWORK": horizon.StellarPubnet})
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
@@ -211,7 +235,7 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 	})
 
 	t.Run("NETWORK environment variable testnet", func(t *testing.T) {
-		test := NewParameterTestWithEnv(t, networkParamArgs,
+		test := NewParameterTestWithEnvSkipContainerCreation(t, networkParamArgs,
 			map[string]string{"NETWORK": horizon.StellarTestnet})
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)

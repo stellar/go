@@ -119,23 +119,32 @@ func NewTest(t *testing.T, config Config) *Test {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
 	}
-
-	composePath := findDockerComposePath()
-	i := &Test{
-		t:           t,
-		config:      config,
-		composePath: composePath,
-		passPhrase:  StandaloneNetworkPassphrase,
-		environment: NewEnvironmentManager(),
+	var i *Test
+	if !config.SkipContainerCreation {
+		composePath := findDockerComposePath()
+		i = &Test{
+			t:           t,
+			config:      config,
+			composePath: composePath,
+			passPhrase:  StandaloneNetworkPassphrase,
+			environment: NewEnvironmentManager(),
+		}
+		i.configureCaptiveCore()
+		// Only run Stellar Core container and its dependencies.
+		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+	} else {
+		i = &Test{
+			t:           t,
+			config:      config,
+			environment: NewEnvironmentManager(),
+		}
 	}
 
-	i.configureCaptiveCore()
-
-	// Only run Stellar Core container and its dependencies.
-	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
-	i.waitForCore()
+	if !config.SkipContainerCreation {
+		i.waitForCore()
+	}
 
 	if !config.SkipHorizonStart {
 		if innerErr := i.StartHorizon(); innerErr != nil {
@@ -224,8 +233,10 @@ func (i *Test) prepareShutdownHandlers() {
 			if i.ingestNode != nil {
 				i.ingestNode.Close()
 			}
-			i.runComposeCommand("rm", "-fvs", "core")
-			i.runComposeCommand("rm", "-fvs", "core-postgres")
+			if !i.config.SkipContainerCreation {
+				i.runComposeCommand("rm", "-fvs", "core")
+				i.runComposeCommand("rm", "-fvs", "core-postgres")
+			}
 		},
 		i.environment.Restore,
 	)
