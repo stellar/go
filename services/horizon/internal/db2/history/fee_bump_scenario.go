@@ -281,7 +281,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	))
 	tt.Assert.NoError(opBuilder.Exec(ctx, q))
 
-	effectBuilder := q.NewEffectBatchInsertBuilder(2)
+	effectBuilder := q.NewEffectBatchInsertBuilder()
 	details, err = json.Marshal(map[string]interface{}{"new_seq": 98})
 	tt.Assert.NoError(err)
 
@@ -289,7 +289,6 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(err)
 
 	err = effectBuilder.Add(
-		ctx,
 		accounIDs[account.Address()],
 		null.String{},
 		toid.New(fixture.Ledger.Sequence, 1, 1).ToInt64(),
@@ -298,7 +297,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		details,
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(effectBuilder.Exec(ctx))
+	tt.Assert.NoError(effectBuilder.Exec(ctx, q))
 
 	tt.Assert.NoError(q.Commit())
 
