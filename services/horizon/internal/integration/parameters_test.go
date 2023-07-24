@@ -36,7 +36,7 @@ var defaultCaptiveCoreParameters = map[string]string{
 var networkParamArgs = map[string]string{
 	horizon.EnableCaptiveCoreIngestionFlagName: "true",
 	horizon.CaptiveCoreConfigPathName:          "",
-	horizon.CaptiveCoreHttpPortFlagName:        "",
+	horizon.CaptiveCoreHTTPPortFlagName:        "",
 	horizon.StellarCoreBinaryPathName:          "",
 	horizon.StellarCoreURLFlagName:             "",
 	horizon.HistoryArchiveURLsFlagName:         "",
