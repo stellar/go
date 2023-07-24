@@ -47,7 +47,8 @@ const (
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
 	HistoryArchiveURLsFlagName = "history-archive-urls"
 	// NetworkFlagName is the command line flag for specifying the "network"
-	NetworkFlagName = "network"
+	NetworkFlagName              = "network"
+	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 	// StellarPubnet is a constant representing the Stellar public network
@@ -206,12 +207,28 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        "exp-enable-ingestion-filtering",
+			Name:        EnableIngestionFilteringFlag,
 			OptType:     types.Bool,
-			FlagDefault: false,
+			FlagDefault: true,
 			Required:    false,
-			Usage:       "causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
 			ConfigKey:   &config.EnableIngestionFiltering,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+
+				// Always enable ingestion filtering by default.
+				config.EnableIngestionFiltering = true
+
+				if val := viper.GetString(opt.Name); val != "" {
+					stdLog.Printf(
+						"DEPRECATED - No ingestion filter rules are defined by default, which equates to no filtering " +
+							"of historical data. If you have never added filter rules to this deployment, then nothing further needed. " +
+							"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag " +
+							"disabled with --exp-enable-ingestion-filtering=false, then you should now delete the filter rules using " +
+							"the Horizon Admin API to achieve the same no-filtering result. Remove usage of this flag in all cases.",
+					)
+				}
+				return nil
+			},
+			Hidden: true,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-http-port",
@@ -798,6 +815,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if options.AlwaysIngest {
 		config.Ingest = true
 	}
+
+	config.EnableIngestionFiltering = true
 
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
