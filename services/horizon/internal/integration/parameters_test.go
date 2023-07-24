@@ -32,6 +32,16 @@ var defaultCaptiveCoreParameters = map[string]string{
 	horizon.StellarCoreDBURLFlagName:  "",
 }
 
+var networkParamArgs = map[string]string{
+	horizon.EnableCaptiveCoreIngestionFlagName: "true",
+	horizon.CaptiveCoreConfigPathName:          "",
+	horizon.CaptiveCoreHttpPortFlagName:        "",
+	horizon.StellarCoreBinaryPathName:          "",
+	horizon.StellarCoreURLFlagName:             "",
+	horizon.HistoryArchiveURLsFlagName:         "",
+	horizon.NetworkPassphraseFlagName:          "",
+}
+
 const (
 	SIMPLE_CAPTIVE_CORE_TOML = `
 		PEER_PORT=11725
@@ -99,11 +109,14 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 	t := suite.T()
 
 	// Note that we ALSO need to make sure we don't modify parent env state.
-	if value, isSet := os.LookupEnv("CAPTIVE_CORE_CONFIG_PATH"); isSet {
-		defer func() {
+	value, isSet := os.LookupEnv("CAPTIVE_CORE_CONFIG_PATH")
+	defer func() {
+		if isSet {
 			os.Setenv("CAPTIVE_CORE_CONFIG_PATH", value)
-		}()
-	}
+		} else {
+			os.Unsetenv("CAPTIVE_CORE_CONFIG_PATH")
+		}
+	}()
 
 	err := os.Setenv("CAPTIVE_CORE_CONFIG_PATH", "original value")
 	assert.NoError(t, err)
@@ -125,6 +138,70 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 
 	envValue = os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
 	assert.Equal(t, "original value", envValue)
+}
+
+// TestNetworkParameter the main objective of this test is to ensure that Horizon successfully starts
+// the captive-core subprocess using the default configuration when --network [testnet|pubnet] parameter
+// is specified The test will fail for scenarios with an invalid static configuration, such as:
+// - The default passphrase in Horizon is different from the one specified in the captive-core config.
+// - History archive URLs are not configured.
+// - The captive-core TOML config file is invalid.
+// The test will also fail if an invalid parameter is specified.
+func TestNetworkParameter(t *testing.T) {
+	t.Run("network parameter pubnet", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName: horizon.StellarPubnet,
+		})
+		test := NewParameterTest(t, localParams)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.StopHorizon()
+	})
+
+	t.Run("network parameter testnet", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName: horizon.StellarTestnet,
+		})
+		test := NewParameterTest(t, localParams)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.StopHorizon()
+	})
+}
+
+// TestNetworkEnvironmentVariable the main objective of this test is to ensure that Horizon successfully
+// starts the captive-core subprocess using the default configuration when the NETWORK environment variable
+// is set to either pubnet or testnet.
+// The test will fail for scenarios with an invalid configuration, such as:
+// - The default passphrase in Horizon is different from the one specified in the captive-core config.
+// - History archive URLs are not configured.
+// - The captive-core TOML config file is invalid.
+// The test will also fail if an invalid parameter is specified.
+func TestNetworkEnvironmentVariable(t *testing.T) {
+	value, isSet := os.LookupEnv("NETWORK")
+	defer func() {
+		if isSet {
+			os.Setenv("NETWORK", value)
+		} else {
+			os.Unsetenv("NETWORK")
+		}
+	}()
+
+	t.Run("NETWORK environment variable pubnet", func(t *testing.T) {
+		test := NewParameterTestWithEnv(t, networkParamArgs,
+			map[string]string{"NETWORK": horizon.StellarPubnet})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.StopHorizon()
+	})
+
+	t.Run("NETWORK environment variable testnet", func(t *testing.T) {
+		test := NewParameterTestWithEnv(t, networkParamArgs,
+			map[string]string{"NETWORK": horizon.StellarTestnet})
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.StopHorizon()
+	})
 }
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.

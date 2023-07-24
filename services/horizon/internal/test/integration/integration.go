@@ -360,7 +360,8 @@ func (i *Test) StartHorizon() error {
 	ingestArgs := mapToFlags(mergedIngest)
 
 	// initialize core arguments
-	i.t.Log("Horizon command line:", webArgs)
+	i.t.Log("Horizon command line webArgs:", webArgs)
+	i.t.Log("Horizon command line ingestArgs:", ingestArgs)
 	var env strings.Builder
 	for key, value := range i.config.HorizonEnvironment {
 		env.WriteString(fmt.Sprintf("%s=%s ", key, value))

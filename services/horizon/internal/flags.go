@@ -42,6 +42,10 @@ const (
 	// CaptiveCoreConfigUseDB is the command line flag for enabling captive core runtime to use an external db url
 	// connection rather than RAM for ledger states
 	CaptiveCoreConfigUseDB = "captive-core-use-db"
+	// CaptiveCoreHttpPortFlagName is the commandline flag for specifying captive core HTTP port
+	CaptiveCoreHttpPortFlagName = "captive-core-http-port"
+	// EnableCaptiveCoreIngestionFlagName is the commandline flag for enabling captive core ingestion
+	EnableCaptiveCoreIngestionFlagName = "enable-captive-core-ingestion"
 	// NetworkPassphraseFlagName is the command line flag for specifying the network passphrase
 	NetworkPassphraseFlagName = "network-passphrase"
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
