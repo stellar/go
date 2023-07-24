@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -18,14 +19,16 @@ import (
 
 // TradeProcessor operations processor
 type TradeProcessor struct {
+	session db.SessionInterface
 	tradesQ history.QTrades
 	ledger  xdr.LedgerHeaderHistoryEntry
 	trades  []ingestTrade
 	stats   TradeStats
 }
 
-func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
+func NewTradeProcessor(session db.SessionInterface, tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
 	return &TradeProcessor{
+		session: session,
 		tradesQ: tradesQ,
 		ledger:  ledger,
 	}
@@ -65,7 +68,7 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 		return nil
 	}
 
-	batch := p.tradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
+	batch := p.tradesQ.NewTradeBatchInsertBuilder()
 	var poolIDs, accounts []string
 	var assets []xdr.Asset
 	for _, trade := range p.trades {
@@ -133,12 +136,12 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 			}
 		}
 
-		if err = batch.Add(ctx, row); err != nil {
+		if err = batch.Add(row); err != nil {
 			return errors.Wrap(err, "Error adding trade to batch")
 		}
 	}
 
-	if err = batch.Exec(ctx); err != nil {
+	if err = batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "Error flushing operation batch")
 	}
 	return nil

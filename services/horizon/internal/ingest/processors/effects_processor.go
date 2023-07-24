@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -22,12 +23,14 @@ import (
 // EffectProcessor process effects
 type EffectProcessor struct {
 	effects  []effect
+	session  db.SessionInterface
 	effectsQ history.QEffects
 	sequence uint32
 }
 
-func NewEffectProcessor(effectsQ history.QEffects, sequence uint32) *EffectProcessor {
+func NewEffectProcessor(session db.SessionInterface, effectsQ history.QEffects, sequence uint32) *EffectProcessor {
 	return &EffectProcessor{
+		session:  session,
 		effectsQ: effectsQ,
 		sequence: sequence,
 	}
@@ -78,7 +81,7 @@ func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([
 }
 
 func (p *EffectProcessor) insertDBOperationsEffects(ctx context.Context, effects []effect, accountSet map[string]int64) error {
-	batch := p.effectsQ.NewEffectBatchInsertBuilder(maxBatchSize)
+	batch := p.effectsQ.NewEffectBatchInsertBuilder()
 
 	for _, effect := range effects {
 		accountID, found := accountSet[effect.address]
@@ -94,7 +97,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(ctx context.Context, effects
 			return errors.Wrapf(err, "Error marshaling details for operation effect %v", effect.operationID)
 		}
 
-		if err := batch.Add(ctx,
+		if err := batch.Add(
 			accountID,
 			effect.addressMuxed,
 			effect.operationID,
@@ -106,7 +109,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(ctx context.Context, effects
 		}
 	}
 
-	if err := batch.Exec(ctx); err != nil {
+	if err := batch.Exec(ctx, p.session); err != nil {
 		return errors.Wrap(err, "could not flush operation effects to db")
 	}
 	return nil

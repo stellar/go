@@ -140,11 +140,11 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
 		StatsLedgerTransactionProcessor: ledgerTransactionStats,
 	}
-	*tradeProcessor = *processors.NewTradeProcessor(s.historyQ, ledger)
+	*tradeProcessor = *processors.NewTradeProcessor(s.session, s.historyQ, ledger)
 	sequence := uint32(ledger.Header.LedgerSeq)
 	return newGroupTransactionProcessors([]horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
-		processors.NewEffectProcessor(s.historyQ, sequence),
+		processors.NewEffectProcessor(s.session, s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.session, s.historyQ, ledger, CurrentVersion),
 		processors.NewOperationProcessor(s.session, s.historyQ, sequence),
 		tradeProcessor,

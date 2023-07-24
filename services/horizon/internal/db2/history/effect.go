@@ -246,7 +246,7 @@ func (q *EffectsQ) Select(ctx context.Context, dest interface{}) error {
 // QEffects defines history_effects related queries.
 type QEffects interface {
 	QCreateAccountsHistory
-	NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuilder
+	NewEffectBatchInsertBuilder() EffectBatchInsertBuilder
 }
 
 var selectEffect = sq.Select("heff.*, hacc.address").

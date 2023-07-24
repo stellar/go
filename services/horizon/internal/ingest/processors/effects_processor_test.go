@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
@@ -25,6 +26,7 @@ type EffectsProcessorTestSuiteLedger struct {
 	suite.Suite
 	ctx                    context.Context
 	processor              *EffectProcessor
+	mockSession            *db.MockSession
 	mockQ                  *history.MockQEffects
 	mockBatchInsertBuilder *history.MockEffectBatchInsertBuilder
 
@@ -119,6 +121,7 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 	}
 
 	s.processor = NewEffectProcessor(
+		s.mockSession,
 		s.mockQ,
 		20,
 	)
@@ -137,7 +140,6 @@ func (s *EffectsProcessorTestSuiteLedger) TearDownTest() {
 func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.ctx,
 		s.addressToID[s.addresses[2]],
 		null.String{},
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
@@ -147,7 +149,6 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.ctx,
 		s.addressToID[s.addresses[2]],
 		null.String{},
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
@@ -157,7 +158,6 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.ctx,
 		s.addressToID[s.addresses[1]],
 		null.String{},
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
@@ -167,7 +167,6 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.ctx,
 		s.addressToID[s.addresses[2]],
 		null.String{},
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
@@ -178,7 +177,6 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.ctx,
 		s.addressToID[s.addresses[0]],
 		null.String{},
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
@@ -189,7 +187,6 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
-		s.ctx,
 		s.addressToID[s.addresses[0]],
 		null.String{},
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
@@ -218,12 +215,12 @@ func (s *EffectsProcessorTestSuiteLedger) TestEmptyEffects() {
 
 func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 	s.mockSuccessfulCreateAccounts()
-	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewEffectBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockSuccessfulEffectBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	for _, tx := range s.txs {
 		err := s.processor.ProcessTransaction(s.ctx, tx)
@@ -247,11 +244,11 @@ func (s *EffectsProcessorTestSuiteLedger) TestCreateAccountsFails() {
 
 func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 	s.mockSuccessfulCreateAccounts()
-	s.mockQ.On("NewEffectBatchInsertBuilder", maxBatchSize).
+	s.mockQ.On("NewEffectBatchInsertBuilder").
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.ctx,
+		"Add",
 		s.addressToID[s.addresses[2]],
 		null.String{},
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),

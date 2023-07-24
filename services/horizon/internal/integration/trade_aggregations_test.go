@@ -277,9 +277,9 @@ func TestTradeAggregations(t *testing.T) {
 				assert.NoError(t, historyQ.Rollback())
 			}()
 
-			batch := historyQ.NewTradeBatchInsertBuilder(1000)
-			batch.Add(ctx, scenario.trades...)
-			assert.NoError(t, batch.Exec(ctx))
+			batch := historyQ.NewTradeBatchInsertBuilder()
+			assert.NoError(t, batch.Add(scenario.trades...))
+			assert.NoError(t, batch.Exec(ctx, historyQ))
 
 			// Rebuild the aggregates.
 			for _, trade := range scenario.trades {
