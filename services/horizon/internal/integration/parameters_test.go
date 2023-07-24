@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -112,9 +113,9 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 	value, isSet := os.LookupEnv("CAPTIVE_CORE_CONFIG_PATH")
 	defer func() {
 		if isSet {
-			os.Setenv("CAPTIVE_CORE_CONFIG_PATH", value)
+			_ = os.Setenv("CAPTIVE_CORE_CONFIG_PATH", value)
 		} else {
-			os.Unsetenv("CAPTIVE_CORE_CONFIG_PATH")
+			_ = os.Unsetenv("CAPTIVE_CORE_CONFIG_PATH")
 		}
 	}()
 
@@ -148,14 +149,20 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 // - The captive-core TOML config file is invalid.
 // The test will also fail if an invalid parameter is specified.
 func TestNetworkParameter(t *testing.T) {
+	if !integration.RunWithCaptiveCore {
+		t.Skip()
+	}
+
 	t.Run("network parameter pubnet", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName: horizon.StellarPubnet,
 		})
 		test := NewParameterTest(t, localParams)
 		err := test.StartHorizon()
+		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
+		test.Shutdown()
 	})
 
 	t.Run("network parameter testnet", func(t *testing.T) {
@@ -164,8 +171,10 @@ func TestNetworkParameter(t *testing.T) {
 		})
 		test := NewParameterTest(t, localParams)
 		err := test.StartHorizon()
+		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
+		test.Shutdown()
 	})
 }
 
@@ -178,12 +187,16 @@ func TestNetworkParameter(t *testing.T) {
 // - The captive-core TOML config file is invalid.
 // The test will also fail if an invalid parameter is specified.
 func TestNetworkEnvironmentVariable(t *testing.T) {
+	if !integration.RunWithCaptiveCore {
+		t.Skip()
+	}
+
 	value, isSet := os.LookupEnv("NETWORK")
 	defer func() {
 		if isSet {
-			os.Setenv("NETWORK", value)
+			_ = os.Setenv("NETWORK", value)
 		} else {
-			os.Unsetenv("NETWORK")
+			_ = os.Unsetenv("NETWORK")
 		}
 	}()
 
@@ -191,16 +204,20 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 		test := NewParameterTestWithEnv(t, networkParamArgs,
 			map[string]string{"NETWORK": horizon.StellarPubnet})
 		err := test.StartHorizon()
+		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
+		test.Shutdown()
 	})
 
 	t.Run("NETWORK environment variable testnet", func(t *testing.T) {
 		test := NewParameterTestWithEnv(t, networkParamArgs,
 			map[string]string{"NETWORK": horizon.StellarTestnet})
 		err := test.StartHorizon()
+		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
+		test.Shutdown()
 	})
 }
 
