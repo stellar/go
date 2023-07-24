@@ -31,6 +31,8 @@ The following ports will be exposed:
 - Stellar-Core (If `standalone` specified): **11626**
 - Stellar-Core-Postgres: **5641**
 
+Note that when you switch between different networks you will need to clear the Stellar Core and Stellar Horizon databases. You can wipe out the databases by running `docker-compose down --remove-orphans -v`.
+
 This script is helpful to spin up the services quickly and play around with them. However, for code development it's important to build and install everything locally 
 
 ## Local Horizon Installation
@@ -147,8 +149,6 @@ The seed for the account will be emitted in the Stellar Core logs:
 ```
 
 When running Horizon on a private stand-alone network, Horizon will not start ingesting until Stellar Core creates its first history archive snapshot. Stellar Core creates snapshots every 64 ledgers, which means ingestion will be delayed until ledger 64.
-
-When you switch between different networks you will need to clear the Stellar Core and Stellar Horizon databases. You can wipe out the databases by running `docker-compose down --remove-orphans -v`.
 
 ## Using a specific version of Stellar Core
 
