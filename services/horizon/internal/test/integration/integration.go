@@ -98,6 +98,17 @@ type Test struct {
 	passPhrase    string
 }
 
+// GetTestConfig returns the default test Config required to run NewTest.
+func GetTestConfig() *Config {
+	return &Config{
+		ProtocolVersion:         17,
+		SkipHorizonStart:        true,
+		SkipContainerCreation:   false,
+		HorizonIngestParameters: map[string]string{},
+		HorizonEnvironment:      map[string]string{},
+	}
+}
+
 // NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //

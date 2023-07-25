@@ -34,7 +34,7 @@ var defaultCaptiveCoreParameters = map[string]string{
 }
 
 var networkParamArgs = map[string]string{
-	horizon.EnableCaptiveCoreIngestionFlagName: "true",
+	horizon.EnableCaptiveCoreIngestionFlagName: "",
 	horizon.CaptiveCoreConfigPathName:          "",
 	horizon.CaptiveCoreHTTPPortFlagName:        "",
 	horizon.StellarCoreBinaryPathName:          "",
@@ -59,34 +59,6 @@ const (
 		QUALITY="MEDIUM"`
 )
 
-func NewParameterTestSkipContainerCreation(t *testing.T, params map[string]string) *integration.Test {
-	return NewParameterTestWithEnvSkipContainerCreation(t, params, map[string]string{})
-}
-
-func NewParameterTestWithEnvSkipContainerCreation(t *testing.T, params, envvars map[string]string) *integration.Test {
-	config := integration.Config{
-		ProtocolVersion:         17,
-		SkipHorizonStart:        true,
-		SkipContainerCreation:   true,
-		HorizonIngestParameters: params,
-		HorizonEnvironment:      envvars}
-	return integration.NewTest(t, config)
-}
-
-func NewParameterTest(t *testing.T, params map[string]string) *integration.Test {
-	return NewParameterTestWithEnv(t, params, map[string]string{})
-}
-
-func NewParameterTestWithEnv(t *testing.T, params, envvars map[string]string) *integration.Test {
-	config := integration.Config{
-		ProtocolVersion:         17,
-		SkipHorizonStart:        true,
-		HorizonIngestParameters: params,
-		HorizonEnvironment:      envvars,
-	}
-	return integration.NewTest(t, config)
-}
-
 func TestFatalScenarios(t *testing.T) {
 	suite.Run(t, new(FatalTestCase))
 }
@@ -107,11 +79,12 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 
 	confName, _, cleanup := createCaptiveCoreConfig(config)
 	defer cleanup()
-
-	test := NewParameterTest(suite.T(), map[string]string{
+	testConfig := integration.GetTestConfig()
+	testConfig.HorizonIngestParameters = map[string]string{
 		horizon.CaptiveCoreConfigPathName: confName,
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
-	})
+	}
+	test := integration.NewTest(suite.T(), *testConfig)
 
 	suite.Exits(func() { test.StartHorizon() })
 }
@@ -138,9 +111,10 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 
 	confName, _, cleanup := createCaptiveCoreConfig(SIMPLE_CAPTIVE_CORE_TOML)
 	defer cleanup()
-	test := NewParameterTestWithEnv(t, map[string]string{}, map[string]string{
-		"CAPTIVE_CORE_CONFIG_PATH": confName,
-	})
+	testConfig := integration.GetTestConfig()
+	testConfig.HorizonEnvironment = map[string]string{"CAPTIVE_CORE_CONFIG_PATH": confName,
+	}
+	test := integration.NewTest(t, *testConfig)
 
 	err = test.StartHorizon()
 	assert.NoError(t, err)
@@ -176,7 +150,10 @@ func TestNetworkParameter(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName: horizon.StellarPubnet,
 		})
-		test := NewParameterTestSkipContainerCreation(t, localParams)
+		testConfig := integration.GetTestConfig()
+		testConfig.SkipContainerCreation = true
+		testConfig.HorizonIngestParameters = localParams
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
@@ -188,7 +165,10 @@ func TestNetworkParameter(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName: horizon.StellarTestnet,
 		})
-		test := NewParameterTestSkipContainerCreation(t, localParams)
+		testConfig := integration.GetTestConfig()
+		testConfig.SkipContainerCreation = true
+		testConfig.HorizonIngestParameters = localParams
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
@@ -225,8 +205,11 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 	}()
 
 	t.Run("NETWORK environment variable pubnet", func(t *testing.T) {
-		test := NewParameterTestWithEnvSkipContainerCreation(t, networkParamArgs,
-			map[string]string{"NETWORK": horizon.StellarPubnet})
+		testConfig := integration.GetTestConfig()
+		testConfig.SkipContainerCreation = true
+		testConfig.HorizonIngestParameters = networkParamArgs
+		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarPubnet}
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
@@ -235,8 +218,11 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 	})
 
 	t.Run("NETWORK environment variable testnet", func(t *testing.T) {
-		test := NewParameterTestWithEnvSkipContainerCreation(t, networkParamArgs,
-			map[string]string{"NETWORK": horizon.StellarTestnet})
+		testConfig := integration.GetTestConfig()
+		testConfig.SkipContainerCreation = true
+		testConfig.HorizonIngestParameters = networkParamArgs
+		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarTestnet}
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		time.Sleep(10 * time.Second)
 		assert.NoError(t, err)
@@ -258,7 +244,9 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 		"captive-core-storage-path":       storagePath,
 		horizon.CaptiveCoreConfigPathName: confName,
 	})
-	test := NewParameterTest(t, localParams)
+	testConfig := integration.GetTestConfig()
+	testConfig.HorizonIngestParameters = localParams
+	test := integration.NewTest(t, *testConfig)
 
 	err := test.StartHorizon()
 	assert.NoError(t, err)
@@ -275,7 +263,7 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 
 func TestMaxAssetsForPathRequests(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{})
+		test := integration.NewTest(t, *integration.GetTestConfig())
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -283,7 +271,9 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("set to 2", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{"max-assets-per-path-request": "2"})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"max-assets-per-path-request": "2"}
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -294,7 +284,7 @@ func TestMaxAssetsForPathRequests(t *testing.T) {
 
 func TestMaxPathFindingRequests(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{})
+		test := integration.NewTest(t, *integration.GetTestConfig())
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -304,7 +294,9 @@ func TestMaxPathFindingRequests(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("set to 5", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{"max-path-finding-requests": "5"})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"max-path-finding-requests": "5"}
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -318,7 +310,7 @@ func TestMaxPathFindingRequests(t *testing.T) {
 
 func TestDisablePathFinding(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{})
+		test := integration.NewTest(t, *integration.GetTestConfig())
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -328,7 +320,9 @@ func TestDisablePathFinding(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("set to true", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{"disable-path-finding": "true"})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"disable-path-finding": "true"}
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
