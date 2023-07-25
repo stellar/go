@@ -47,8 +47,9 @@ const (
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
 	HistoryArchiveURLsFlagName = "history-archive-urls"
 	// NetworkFlagName is the command line flag for specifying the "network"
-	NetworkFlagName              = "network"
-	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
+	NetworkFlagName                  = "network"
+	EnableIngestionFilteringFlagName = "exp-enable-ingestion-filtering"
+	DisableTxSubFlagName             = "disable-tx-sub"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 	// StellarPubnet is a constant representing the Stellar public network
@@ -143,6 +144,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.CaptiveCoreBinaryPath,
 		},
 		&support.ConfigOption{
+			Name:        DisableTxSubFlagName,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "disables the transaction submission functionality of Horizon.",
+			ConfigKey:   &config.DisableTxSub,
+		},
+		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,
 			OptType:     types.String,
 			FlagDefault: "",
@@ -207,7 +216,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        EnableIngestionFilteringFlag,
+			Name:        EnableIngestionFilteringFlagName,
 			OptType:     types.Bool,
 			FlagDefault: true,
 			Required:    false,
@@ -815,8 +824,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	if options.AlwaysIngest {
 		config.Ingest = true
 	}
-
-	config.EnableIngestionFiltering = true
 
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check

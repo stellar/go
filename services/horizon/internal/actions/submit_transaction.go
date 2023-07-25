@@ -24,6 +24,7 @@ type NetworkSubmitter interface {
 type SubmitTransactionHandler struct {
 	Submitter         NetworkSubmitter
 	NetworkPassphrase string
+	DisableTxSub      bool
 	CoreStateGetter
 }
 
@@ -153,6 +154,19 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 	coreState := handler.GetCoreState()
 	if !coreState.Synced {
 		return nil, hProblem.StaleHistory
+	}
+
+	if handler.DisableTxSub {
+		return nil, &problem.P{
+			Type:   "transaction_submission_disabled",
+			Title:  "Transaction Submission Disabled",
+			Status: http.StatusMethodNotAllowed,
+			Detail: "Transaction submission has been disabled for Horizon. " +
+				"To enable it again, set env variable DISABLE_TX_SUB to false.",
+			Extras: map[string]interface{}{
+				"envelope_xdr": raw,
+			},
+		}
 	}
 
 	submission := handler.Submitter.Submit(r.Context(), info.raw, info.parsed, info.hash)

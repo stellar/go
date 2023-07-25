@@ -48,6 +48,7 @@ type RouterConfig struct {
 	FriendbotURL             *url.URL
 	HealthCheck              http.Handler
 	EnableIngestionFiltering bool
+	DisableTxSub             bool
 }
 
 type Router struct {
@@ -319,6 +320,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Method(http.MethodPost, "/transactions", ObjectActionHandler{actions.SubmitTransactionHandler{
 		Submitter:         config.TxSubmitter,
 		NetworkPassphrase: config.NetworkPassphrase,
+		DisableTxSub:      config.DisableTxSub,
 		CoreStateGetter:   config.CoreGetter,
 	}})
 
