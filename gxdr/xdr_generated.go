@@ -939,12 +939,13 @@ in ascending order
 type LedgerUpgradeType int32
 
 const (
-	LEDGER_UPGRADE_VERSION         LedgerUpgradeType = 1
-	LEDGER_UPGRADE_BASE_FEE        LedgerUpgradeType = 2
-	LEDGER_UPGRADE_MAX_TX_SET_SIZE LedgerUpgradeType = 3
-	LEDGER_UPGRADE_BASE_RESERVE    LedgerUpgradeType = 4
-	LEDGER_UPGRADE_FLAGS           LedgerUpgradeType = 5
-	LEDGER_UPGRADE_CONFIG          LedgerUpgradeType = 6
+	LEDGER_UPGRADE_VERSION                 LedgerUpgradeType = 1
+	LEDGER_UPGRADE_BASE_FEE                LedgerUpgradeType = 2
+	LEDGER_UPGRADE_MAX_TX_SET_SIZE         LedgerUpgradeType = 3
+	LEDGER_UPGRADE_BASE_RESERVE            LedgerUpgradeType = 4
+	LEDGER_UPGRADE_FLAGS                   LedgerUpgradeType = 5
+	LEDGER_UPGRADE_CONFIG                  LedgerUpgradeType = 6
+	LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE LedgerUpgradeType = 7
 )
 
 type ConfigUpgradeSetKey struct {
@@ -966,6 +967,8 @@ type LedgerUpgrade struct {
 	//      NewFlags() *Uint32
 	//   LEDGER_UPGRADE_CONFIG:
 	//      NewConfig() *ConfigUpgradeSetKey
+	//   LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
+	//      NewMaxSorobanTxSetSize() *Uint32
 	Type LedgerUpgradeType
 	_u   interface{}
 }
@@ -1216,7 +1219,7 @@ type XdrAnon_ContractEvent_Body struct {
 	_u interface{}
 }
 type XdrAnon_ContractEvent_Body_V0 struct {
-	Topics SCVec
+	Topics []SCVal
 	Data   SCVal
 }
 
@@ -2126,10 +2129,16 @@ type CreateContractArgs struct {
 	Executable         ContractExecutable
 }
 
+type InvokeContractArgs struct {
+	ContractAddress SCAddress
+	FunctionName    SCSymbol
+	Args            []SCVal
+}
+
 type HostFunction struct {
 	// The union discriminant Type selects among the following arms:
 	//   HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
-	//      InvokeContract() *SCVec
+	//      InvokeContract() *InvokeContractArgs
 	//   HOST_FUNCTION_TYPE_CREATE_CONTRACT:
 	//      CreateContract() *CreateContractArgs
 	//   HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
@@ -2145,16 +2154,10 @@ const (
 	SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN SorobanAuthorizedFunctionType = 1
 )
 
-type SorobanAuthorizedContractFunction struct {
-	ContractAddress SCAddress
-	FunctionName    SCSymbol
-	Args            SCVec
-}
-
 type SorobanAuthorizedFunction struct {
 	// The union discriminant Type selects among the following arms:
 	//   SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN:
-	//      ContractFn() *SorobanAuthorizedContractFunction
+	//      ContractFn() *InvokeContractArgs
 	//   SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 	//      CreateContractHostFn() *CreateContractArgs
 	Type SorobanAuthorizedFunctionType
@@ -2170,7 +2173,7 @@ type SorobanAddressCredentials struct {
 	Address                   SCAddress
 	Nonce                     Int64
 	SignatureExpirationLedger Uint32
-	SignatureArgs             SCVec
+	Signature                 SCVal
 }
 
 type SorobanCredentialsType int32
@@ -2444,7 +2447,7 @@ type SorobanResources struct {
 	// The maximum number of bytes this transaction can write to ledger
 	WriteBytes Uint32
 	// Maximum size of dynamic metadata produced by this contract (
-	// currently only includes the events).
+	// bytes read from ledger + bytes written to ledger + event bytes written to meta).
 	ExtendedMetaDataSizeBytes Uint32
 }
 
@@ -3351,13 +3354,14 @@ const (
 	INVOKE_HOST_FUNCTION_MALFORMED               InvokeHostFunctionResultCode = -1
 	INVOKE_HOST_FUNCTION_TRAPPED                 InvokeHostFunctionResultCode = -2
 	INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED InvokeHostFunctionResultCode = -3
+	INVOKE_HOST_FUNCTION_ENTRY_EXPIRED           InvokeHostFunctionResultCode = -4
 )
 
 type InvokeHostFunctionResult struct {
 	// The union discriminant Code selects among the following arms:
 	//   INVOKE_HOST_FUNCTION_SUCCESS:
 	//      Success() *Hash
-	//   INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
+	//   INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
 	//      void
 	Code InvokeHostFunctionResultCode
 	_u   interface{}
@@ -4031,8 +4035,13 @@ const (
 )
 
 type SCError struct {
+	// The union discriminant Type selects among the following arms:
+	//   SCE_CONTRACT:
+	//      ContractCode() *Uint32
+	//   SCE_WASM_VM, SCE_CONTEXT, SCE_STORAGE, SCE_OBJECT, SCE_CRYPTO, SCE_EVENTS, SCE_BUDGET, SCE_VALUE, SCE_AUTH:
+	//      Code() *SCErrorCode
 	Type SCErrorType
-	Code SCErrorCode
+	_u   interface{}
 }
 
 type UInt128Parts struct {
@@ -4252,16 +4261,15 @@ type ConfigSettingContractLedgerCostV0 struct {
 	FeeWriteLedgerEntry Int64
 	// Fee for reading 1KB
 	FeeRead1KB Int64
-	// Fee for writing 1KB
-	FeeWrite1KB Int64
-	// Bucket list fees grow slowly up to that size
-	BucketListSizeBytes Int64
-	// Fee rate in stroops when the bucket list is empty
-	BucketListFeeRateLow Int64
-	// Fee rate in stroops when the bucket list reached bucketListSizeBytes
-	BucketListFeeRateHigh Int64
-	// Rate multiplier for any additional data past the first bucketListSizeBytes
-	BucketListGrowthFactor Uint32
+	// The following parameters determine the write fee per 1KB.
+	// Write fee grows linearly until bucket list reaches this size
+	BucketListTargetSizeBytes Int64
+	// Fee per 1KB write when the bucket list is empty
+	WriteFee1KBBucketListLow Int64
+	// Fee per 1KB write when the bucket list has reached `bucketListTargetSizeBytes`
+	WriteFee1KBBucketListHigh Int64
+	// Write fee multiplier for any additional data past the first `bucketListTargetSizeBytes`
+	BucketListWriteFeeGrowthFactor Uint32
 }
 
 // Historical data (pushed to core archives) settings for contracts.
@@ -9607,20 +9615,22 @@ func (v *LedgerHeader) XdrRecurse(x XDR, name string) {
 func XDR_LedgerHeader(v *LedgerHeader) *LedgerHeader { return v }
 
 var _XdrNames_LedgerUpgradeType = map[int32]string{
-	int32(LEDGER_UPGRADE_VERSION):         "LEDGER_UPGRADE_VERSION",
-	int32(LEDGER_UPGRADE_BASE_FEE):        "LEDGER_UPGRADE_BASE_FEE",
-	int32(LEDGER_UPGRADE_MAX_TX_SET_SIZE): "LEDGER_UPGRADE_MAX_TX_SET_SIZE",
-	int32(LEDGER_UPGRADE_BASE_RESERVE):    "LEDGER_UPGRADE_BASE_RESERVE",
-	int32(LEDGER_UPGRADE_FLAGS):           "LEDGER_UPGRADE_FLAGS",
-	int32(LEDGER_UPGRADE_CONFIG):          "LEDGER_UPGRADE_CONFIG",
+	int32(LEDGER_UPGRADE_VERSION):                 "LEDGER_UPGRADE_VERSION",
+	int32(LEDGER_UPGRADE_BASE_FEE):                "LEDGER_UPGRADE_BASE_FEE",
+	int32(LEDGER_UPGRADE_MAX_TX_SET_SIZE):         "LEDGER_UPGRADE_MAX_TX_SET_SIZE",
+	int32(LEDGER_UPGRADE_BASE_RESERVE):            "LEDGER_UPGRADE_BASE_RESERVE",
+	int32(LEDGER_UPGRADE_FLAGS):                   "LEDGER_UPGRADE_FLAGS",
+	int32(LEDGER_UPGRADE_CONFIG):                  "LEDGER_UPGRADE_CONFIG",
+	int32(LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE): "LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE",
 }
 var _XdrValues_LedgerUpgradeType = map[string]int32{
-	"LEDGER_UPGRADE_VERSION":         int32(LEDGER_UPGRADE_VERSION),
-	"LEDGER_UPGRADE_BASE_FEE":        int32(LEDGER_UPGRADE_BASE_FEE),
-	"LEDGER_UPGRADE_MAX_TX_SET_SIZE": int32(LEDGER_UPGRADE_MAX_TX_SET_SIZE),
-	"LEDGER_UPGRADE_BASE_RESERVE":    int32(LEDGER_UPGRADE_BASE_RESERVE),
-	"LEDGER_UPGRADE_FLAGS":           int32(LEDGER_UPGRADE_FLAGS),
-	"LEDGER_UPGRADE_CONFIG":          int32(LEDGER_UPGRADE_CONFIG),
+	"LEDGER_UPGRADE_VERSION":                 int32(LEDGER_UPGRADE_VERSION),
+	"LEDGER_UPGRADE_BASE_FEE":                int32(LEDGER_UPGRADE_BASE_FEE),
+	"LEDGER_UPGRADE_MAX_TX_SET_SIZE":         int32(LEDGER_UPGRADE_MAX_TX_SET_SIZE),
+	"LEDGER_UPGRADE_BASE_RESERVE":            int32(LEDGER_UPGRADE_BASE_RESERVE),
+	"LEDGER_UPGRADE_FLAGS":                   int32(LEDGER_UPGRADE_FLAGS),
+	"LEDGER_UPGRADE_CONFIG":                  int32(LEDGER_UPGRADE_CONFIG),
+	"LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE": int32(LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE),
 }
 
 func (LedgerUpgradeType) XdrEnumNames() map[int32]string {
@@ -9660,7 +9670,7 @@ type XdrType_LedgerUpgradeType = *LedgerUpgradeType
 func XDR_LedgerUpgradeType(v *LedgerUpgradeType) *LedgerUpgradeType { return v }
 func (v *LedgerUpgradeType) XdrInitialize() {
 	switch LedgerUpgradeType(0) {
-	case LEDGER_UPGRADE_VERSION, LEDGER_UPGRADE_BASE_FEE, LEDGER_UPGRADE_MAX_TX_SET_SIZE, LEDGER_UPGRADE_BASE_RESERVE, LEDGER_UPGRADE_FLAGS, LEDGER_UPGRADE_CONFIG:
+	case LEDGER_UPGRADE_VERSION, LEDGER_UPGRADE_BASE_FEE, LEDGER_UPGRADE_MAX_TX_SET_SIZE, LEDGER_UPGRADE_BASE_RESERVE, LEDGER_UPGRADE_FLAGS, LEDGER_UPGRADE_CONFIG, LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
 	default:
 		if *v == LedgerUpgradeType(0) {
 			*v = LEDGER_UPGRADE_VERSION
@@ -9684,12 +9694,13 @@ func (v *ConfigUpgradeSetKey) XdrRecurse(x XDR, name string) {
 func XDR_ConfigUpgradeSetKey(v *ConfigUpgradeSetKey) *ConfigUpgradeSetKey { return v }
 
 var _XdrTags_LedgerUpgrade = map[int32]bool{
-	XdrToI32(LEDGER_UPGRADE_VERSION):         true,
-	XdrToI32(LEDGER_UPGRADE_BASE_FEE):        true,
-	XdrToI32(LEDGER_UPGRADE_MAX_TX_SET_SIZE): true,
-	XdrToI32(LEDGER_UPGRADE_BASE_RESERVE):    true,
-	XdrToI32(LEDGER_UPGRADE_FLAGS):           true,
-	XdrToI32(LEDGER_UPGRADE_CONFIG):          true,
+	XdrToI32(LEDGER_UPGRADE_VERSION):                 true,
+	XdrToI32(LEDGER_UPGRADE_BASE_FEE):                true,
+	XdrToI32(LEDGER_UPGRADE_MAX_TX_SET_SIZE):         true,
+	XdrToI32(LEDGER_UPGRADE_BASE_RESERVE):            true,
+	XdrToI32(LEDGER_UPGRADE_FLAGS):                   true,
+	XdrToI32(LEDGER_UPGRADE_CONFIG):                  true,
+	XdrToI32(LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE): true,
 }
 
 func (_ LedgerUpgrade) XdrValidTags() map[int32]bool {
@@ -9780,6 +9791,8 @@ func (u *LedgerUpgrade) NewFlags() *Uint32 {
 		return nil
 	}
 }
+
+// Update arbitray `ConfigSetting` entries identified by the key.
 func (u *LedgerUpgrade) NewConfig() *ConfigUpgradeSetKey {
 	switch u.Type {
 	case LEDGER_UPGRADE_CONFIG:
@@ -9795,9 +9808,27 @@ func (u *LedgerUpgrade) NewConfig() *ConfigUpgradeSetKey {
 		return nil
 	}
 }
+
+// Update ConfigSettingContractExecutionLanesV0.ledgerMaxTxCount without
+// using `LEDGER_UPGRADE_CONFIG`.
+func (u *LedgerUpgrade) NewMaxSorobanTxSetSize() *Uint32 {
+	switch u.Type {
+	case LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
+		if v, ok := u._u.(*Uint32); ok {
+			return v
+		} else {
+			var zero Uint32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerUpgrade.NewMaxSorobanTxSetSize accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u LedgerUpgrade) XdrValid() bool {
 	switch u.Type {
-	case LEDGER_UPGRADE_VERSION, LEDGER_UPGRADE_BASE_FEE, LEDGER_UPGRADE_MAX_TX_SET_SIZE, LEDGER_UPGRADE_BASE_RESERVE, LEDGER_UPGRADE_FLAGS, LEDGER_UPGRADE_CONFIG:
+	case LEDGER_UPGRADE_VERSION, LEDGER_UPGRADE_BASE_FEE, LEDGER_UPGRADE_MAX_TX_SET_SIZE, LEDGER_UPGRADE_BASE_RESERVE, LEDGER_UPGRADE_FLAGS, LEDGER_UPGRADE_CONFIG, LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
 		return true
 	}
 	return false
@@ -9822,6 +9853,8 @@ func (u *LedgerUpgrade) XdrUnionBody() XdrType {
 		return XDR_Uint32(u.NewFlags())
 	case LEDGER_UPGRADE_CONFIG:
 		return XDR_ConfigUpgradeSetKey(u.NewConfig())
+	case LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
+		return XDR_Uint32(u.NewMaxSorobanTxSetSize())
 	}
 	return nil
 }
@@ -9839,6 +9872,8 @@ func (u *LedgerUpgrade) XdrUnionBodyName() string {
 		return "NewFlags"
 	case LEDGER_UPGRADE_CONFIG:
 		return "NewConfig"
+	case LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
+		return "NewMaxSorobanTxSetSize"
 	}
 	return ""
 }
@@ -9873,13 +9908,16 @@ func (u *LedgerUpgrade) XdrRecurse(x XDR, name string) {
 	case LEDGER_UPGRADE_CONFIG:
 		x.Marshal(x.Sprintf("%snewConfig", name), XDR_ConfigUpgradeSetKey(u.NewConfig()))
 		return
+	case LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
+		x.Marshal(x.Sprintf("%snewMaxSorobanTxSetSize", name), XDR_Uint32(u.NewMaxSorobanTxSetSize()))
+		return
 	}
 	XdrPanic("invalid Type (%v) in LedgerUpgrade", u.Type)
 }
 func (v *LedgerUpgrade) XdrInitialize() {
 	var zero LedgerUpgradeType
 	switch zero {
-	case LEDGER_UPGRADE_VERSION, LEDGER_UPGRADE_BASE_FEE, LEDGER_UPGRADE_MAX_TX_SET_SIZE, LEDGER_UPGRADE_BASE_RESERVE, LEDGER_UPGRADE_FLAGS, LEDGER_UPGRADE_CONFIG:
+	case LEDGER_UPGRADE_VERSION, LEDGER_UPGRADE_BASE_FEE, LEDGER_UPGRADE_MAX_TX_SET_SIZE, LEDGER_UPGRADE_BASE_RESERVE, LEDGER_UPGRADE_FLAGS, LEDGER_UPGRADE_CONFIG, LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
 	default:
 		if v.Type == zero {
 			v.Type = LEDGER_UPGRADE_VERSION
@@ -11696,6 +11734,63 @@ type XdrType_ContractEventType = *ContractEventType
 
 func XDR_ContractEventType(v *ContractEventType) *ContractEventType { return v }
 
+type _XdrVec_unbounded_SCVal []SCVal
+
+func (_XdrVec_unbounded_SCVal) XdrBound() uint32 {
+	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
+	return bound
+}
+func (_XdrVec_unbounded_SCVal) XdrCheckLen(length uint32) {
+	if length > uint32(4294967295) {
+		XdrPanic("_XdrVec_unbounded_SCVal length %d exceeds bound 4294967295", length)
+	} else if int(length) < 0 {
+		XdrPanic("_XdrVec_unbounded_SCVal length %d exceeds max int", length)
+	}
+}
+func (v _XdrVec_unbounded_SCVal) GetVecLen() uint32 { return uint32(len(v)) }
+func (v *_XdrVec_unbounded_SCVal) SetVecLen(length uint32) {
+	v.XdrCheckLen(length)
+	if int(length) <= cap(*v) {
+		if int(length) != len(*v) {
+			*v = (*v)[:int(length)]
+		}
+		return
+	}
+	newcap := 2 * cap(*v)
+	if newcap < int(length) { // also catches overflow where 2*cap < 0
+		newcap = int(length)
+	} else if bound := uint(4294967295); uint(newcap) > bound {
+		if int(bound) < 0 {
+			bound = ^uint(0) >> 1
+		}
+		newcap = int(bound)
+	}
+	nv := make([]SCVal, int(length), newcap)
+	copy(nv, *v)
+	*v = nv
+}
+func (v *_XdrVec_unbounded_SCVal) XdrMarshalN(x XDR, name string, n uint32) {
+	v.XdrCheckLen(n)
+	for i := 0; i < int(n); i++ {
+		if i >= len(*v) {
+			v.SetVecLen(uint32(i + 1))
+		}
+		XDR_SCVal(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
+	}
+	if int(n) < len(*v) {
+		*v = (*v)[:int(n)]
+	}
+}
+func (v *_XdrVec_unbounded_SCVal) XdrRecurse(x XDR, name string) {
+	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
+	x.Marshal(name, &size)
+	v.XdrMarshalN(x, name, size.Size)
+}
+func (_XdrVec_unbounded_SCVal) XdrTypeName() string              { return "SCVal<>" }
+func (v *_XdrVec_unbounded_SCVal) XdrPointer() interface{}       { return (*[]SCVal)(v) }
+func (v _XdrVec_unbounded_SCVal) XdrValue() interface{}          { return ([]SCVal)(v) }
+func (v *_XdrVec_unbounded_SCVal) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
 type XdrType_XdrAnon_ContractEvent_Body_V0 = *XdrAnon_ContractEvent_Body_V0
 
 func (v *XdrAnon_ContractEvent_Body_V0) XdrPointer() interface{}       { return v }
@@ -11706,7 +11801,7 @@ func (v *XdrAnon_ContractEvent_Body_V0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%stopics", name), XDR_SCVec(&v.Topics))
+	x.Marshal(x.Sprintf("%stopics", name), (*_XdrVec_unbounded_SCVal)(&v.Topics))
 	x.Marshal(x.Sprintf("%sdata", name), XDR_SCVal(&v.Data))
 }
 func XDR_XdrAnon_ContractEvent_Body_V0(v *XdrAnon_ContractEvent_Body_V0) *XdrAnon_ContractEvent_Body_V0 {
@@ -15812,6 +15907,22 @@ func (v *CreateContractArgs) XdrRecurse(x XDR, name string) {
 }
 func XDR_CreateContractArgs(v *CreateContractArgs) *CreateContractArgs { return v }
 
+type XdrType_InvokeContractArgs = *InvokeContractArgs
+
+func (v *InvokeContractArgs) XdrPointer() interface{}       { return v }
+func (InvokeContractArgs) XdrTypeName() string              { return "InvokeContractArgs" }
+func (v InvokeContractArgs) XdrValue() interface{}          { return v }
+func (v *InvokeContractArgs) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *InvokeContractArgs) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%scontractAddress", name), XDR_SCAddress(&v.ContractAddress))
+	x.Marshal(x.Sprintf("%sfunctionName", name), XDR_SCSymbol(&v.FunctionName))
+	x.Marshal(x.Sprintf("%sargs", name), (*_XdrVec_unbounded_SCVal)(&v.Args))
+}
+func XDR_InvokeContractArgs(v *InvokeContractArgs) *InvokeContractArgs { return v }
+
 var _XdrTags_HostFunction = map[int32]bool{
 	XdrToI32(HOST_FUNCTION_TYPE_INVOKE_CONTRACT):      true,
 	XdrToI32(HOST_FUNCTION_TYPE_CREATE_CONTRACT):      true,
@@ -15821,13 +15932,13 @@ var _XdrTags_HostFunction = map[int32]bool{
 func (_ HostFunction) XdrValidTags() map[int32]bool {
 	return _XdrTags_HostFunction
 }
-func (u *HostFunction) InvokeContract() *SCVec {
+func (u *HostFunction) InvokeContract() *InvokeContractArgs {
 	switch u.Type {
 	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
-		if v, ok := u._u.(*SCVec); ok {
+		if v, ok := u._u.(*InvokeContractArgs); ok {
 			return v
 		} else {
-			var zero SCVec
+			var zero InvokeContractArgs
 			u._u = &zero
 			return &zero
 		}
@@ -15882,7 +15993,7 @@ func (u *HostFunction) XdrUnionTagName() string {
 func (u *HostFunction) XdrUnionBody() XdrType {
 	switch u.Type {
 	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
-		return XDR_SCVec(u.InvokeContract())
+		return XDR_InvokeContractArgs(u.InvokeContract())
 	case HOST_FUNCTION_TYPE_CREATE_CONTRACT:
 		return XDR_CreateContractArgs(u.CreateContract())
 	case HOST_FUNCTION_TYPE_UPLOAD_CONTRACT_WASM:
@@ -15915,7 +16026,7 @@ func (u *HostFunction) XdrRecurse(x XDR, name string) {
 	XDR_HostFunctionType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
 	case HOST_FUNCTION_TYPE_INVOKE_CONTRACT:
-		x.Marshal(x.Sprintf("%sinvokeContract", name), XDR_SCVec(u.InvokeContract()))
+		x.Marshal(x.Sprintf("%sinvokeContract", name), XDR_InvokeContractArgs(u.InvokeContract()))
 		return
 	case HOST_FUNCTION_TYPE_CREATE_CONTRACT:
 		x.Marshal(x.Sprintf("%screateContract", name), XDR_CreateContractArgs(u.CreateContract()))
@@ -15975,26 +16086,6 @@ func XDR_SorobanAuthorizedFunctionType(v *SorobanAuthorizedFunctionType) *Soroba
 	return v
 }
 
-type XdrType_SorobanAuthorizedContractFunction = *SorobanAuthorizedContractFunction
-
-func (v *SorobanAuthorizedContractFunction) XdrPointer() interface{} { return v }
-func (SorobanAuthorizedContractFunction) XdrTypeName() string {
-	return "SorobanAuthorizedContractFunction"
-}
-func (v SorobanAuthorizedContractFunction) XdrValue() interface{}          { return v }
-func (v *SorobanAuthorizedContractFunction) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *SorobanAuthorizedContractFunction) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%scontractAddress", name), XDR_SCAddress(&v.ContractAddress))
-	x.Marshal(x.Sprintf("%sfunctionName", name), XDR_SCSymbol(&v.FunctionName))
-	x.Marshal(x.Sprintf("%sargs", name), XDR_SCVec(&v.Args))
-}
-func XDR_SorobanAuthorizedContractFunction(v *SorobanAuthorizedContractFunction) *SorobanAuthorizedContractFunction {
-	return v
-}
-
 var _XdrTags_SorobanAuthorizedFunction = map[int32]bool{
 	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN):             true,
 	XdrToI32(SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN): true,
@@ -16003,13 +16094,13 @@ var _XdrTags_SorobanAuthorizedFunction = map[int32]bool{
 func (_ SorobanAuthorizedFunction) XdrValidTags() map[int32]bool {
 	return _XdrTags_SorobanAuthorizedFunction
 }
-func (u *SorobanAuthorizedFunction) ContractFn() *SorobanAuthorizedContractFunction {
+func (u *SorobanAuthorizedFunction) ContractFn() *InvokeContractArgs {
 	switch u.Type {
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN:
-		if v, ok := u._u.(*SorobanAuthorizedContractFunction); ok {
+		if v, ok := u._u.(*InvokeContractArgs); ok {
 			return v
 		} else {
-			var zero SorobanAuthorizedContractFunction
+			var zero InvokeContractArgs
 			u._u = &zero
 			return &zero
 		}
@@ -16049,7 +16140,7 @@ func (u *SorobanAuthorizedFunction) XdrUnionTagName() string {
 func (u *SorobanAuthorizedFunction) XdrUnionBody() XdrType {
 	switch u.Type {
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN:
-		return XDR_SorobanAuthorizedContractFunction(u.ContractFn())
+		return XDR_InvokeContractArgs(u.ContractFn())
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 		return XDR_CreateContractArgs(u.CreateContractHostFn())
 	}
@@ -16078,7 +16169,7 @@ func (u *SorobanAuthorizedFunction) XdrRecurse(x XDR, name string) {
 	XDR_SorobanAuthorizedFunctionType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
 	switch u.Type {
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CONTRACT_FN:
-		x.Marshal(x.Sprintf("%scontractFn", name), XDR_SorobanAuthorizedContractFunction(u.ContractFn()))
+		x.Marshal(x.Sprintf("%scontractFn", name), XDR_InvokeContractArgs(u.ContractFn()))
 		return
 	case SOROBAN_AUTHORIZED_FUNCTION_TYPE_CREATE_CONTRACT_HOST_FN:
 		x.Marshal(x.Sprintf("%screateContractHostFn", name), XDR_CreateContractArgs(u.CreateContractHostFn()))
@@ -16183,7 +16274,7 @@ func (v *SorobanAddressCredentials) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%saddress", name), XDR_SCAddress(&v.Address))
 	x.Marshal(x.Sprintf("%snonce", name), XDR_Int64(&v.Nonce))
 	x.Marshal(x.Sprintf("%ssignatureExpirationLedger", name), XDR_Uint32(&v.SignatureExpirationLedger))
-	x.Marshal(x.Sprintf("%ssignatureArgs", name), XDR_SCVec(&v.SignatureArgs))
+	x.Marshal(x.Sprintf("%ssignature", name), XDR_SCVal(&v.Signature))
 }
 func XDR_SorobanAddressCredentials(v *SorobanAddressCredentials) *SorobanAddressCredentials { return v }
 
@@ -22709,12 +22800,14 @@ var _XdrNames_InvokeHostFunctionResultCode = map[int32]string{
 	int32(INVOKE_HOST_FUNCTION_MALFORMED):               "INVOKE_HOST_FUNCTION_MALFORMED",
 	int32(INVOKE_HOST_FUNCTION_TRAPPED):                 "INVOKE_HOST_FUNCTION_TRAPPED",
 	int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED): "INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED",
+	int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):           "INVOKE_HOST_FUNCTION_ENTRY_EXPIRED",
 }
 var _XdrValues_InvokeHostFunctionResultCode = map[string]int32{
 	"INVOKE_HOST_FUNCTION_SUCCESS":                 int32(INVOKE_HOST_FUNCTION_SUCCESS),
 	"INVOKE_HOST_FUNCTION_MALFORMED":               int32(INVOKE_HOST_FUNCTION_MALFORMED),
 	"INVOKE_HOST_FUNCTION_TRAPPED":                 int32(INVOKE_HOST_FUNCTION_TRAPPED),
 	"INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED": int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED),
+	"INVOKE_HOST_FUNCTION_ENTRY_EXPIRED":           int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED),
 }
 
 func (InvokeHostFunctionResultCode) XdrEnumNames() map[int32]string {
@@ -22769,6 +22862,7 @@ var _XdrTags_InvokeHostFunctionResult = map[int32]bool{
 	XdrToI32(INVOKE_HOST_FUNCTION_MALFORMED):               true,
 	XdrToI32(INVOKE_HOST_FUNCTION_TRAPPED):                 true,
 	XdrToI32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED): true,
+	XdrToI32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):           true,
 }
 
 func (_ InvokeHostFunctionResult) XdrValidTags() map[int32]bool {
@@ -22793,7 +22887,7 @@ func (u *InvokeHostFunctionResult) Success() *Hash {
 }
 func (u InvokeHostFunctionResult) XdrValid() bool {
 	switch u.Code {
-	case INVOKE_HOST_FUNCTION_SUCCESS, INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
+	case INVOKE_HOST_FUNCTION_SUCCESS, INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
 		return true
 	}
 	return false
@@ -22808,7 +22902,7 @@ func (u *InvokeHostFunctionResult) XdrUnionBody() XdrType {
 	switch u.Code {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		return XDR_Hash(u.Success())
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
 		return nil
 	}
 	return nil
@@ -22817,7 +22911,7 @@ func (u *InvokeHostFunctionResult) XdrUnionBodyName() string {
 	switch u.Code {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		return "Success"
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
 		return ""
 	}
 	return ""
@@ -22838,7 +22932,7 @@ func (u *InvokeHostFunctionResult) XdrRecurse(x XDR, name string) {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		x.Marshal(x.Sprintf("%ssuccess", name), XDR_Hash(u.Success()))
 		return
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
 		return
 	}
 	XdrPanic("invalid Code (%v) in InvokeHostFunctionResult", u.Code)
@@ -26978,18 +27072,104 @@ func (e SCErrorCode) XdrEnumComments() map[int32]string {
 	return _XdrComments_SCErrorCode
 }
 
+var _XdrTags_SCError = map[int32]bool{
+	XdrToI32(SCE_CONTRACT): true,
+	XdrToI32(SCE_WASM_VM):  true,
+	XdrToI32(SCE_CONTEXT):  true,
+	XdrToI32(SCE_STORAGE):  true,
+	XdrToI32(SCE_OBJECT):   true,
+	XdrToI32(SCE_CRYPTO):   true,
+	XdrToI32(SCE_EVENTS):   true,
+	XdrToI32(SCE_BUDGET):   true,
+	XdrToI32(SCE_VALUE):    true,
+	XdrToI32(SCE_AUTH):     true,
+}
+
+func (_ SCError) XdrValidTags() map[int32]bool {
+	return _XdrTags_SCError
+}
+func (u *SCError) ContractCode() *Uint32 {
+	switch u.Type {
+	case SCE_CONTRACT:
+		if v, ok := u._u.(*Uint32); ok {
+			return v
+		} else {
+			var zero Uint32
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCError.ContractCode accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *SCError) Code() *SCErrorCode {
+	switch u.Type {
+	case SCE_WASM_VM, SCE_CONTEXT, SCE_STORAGE, SCE_OBJECT, SCE_CRYPTO, SCE_EVENTS, SCE_BUDGET, SCE_VALUE, SCE_AUTH:
+		if v, ok := u._u.(*SCErrorCode); ok {
+			return v
+		} else {
+			var zero SCErrorCode
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("SCError.Code accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u SCError) XdrValid() bool {
+	switch u.Type {
+	case SCE_CONTRACT, SCE_WASM_VM, SCE_CONTEXT, SCE_STORAGE, SCE_OBJECT, SCE_CRYPTO, SCE_EVENTS, SCE_BUDGET, SCE_VALUE, SCE_AUTH:
+		return true
+	}
+	return false
+}
+func (u *SCError) XdrUnionTag() XdrNum32 {
+	return XDR_SCErrorType(&u.Type)
+}
+func (u *SCError) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *SCError) XdrUnionBody() XdrType {
+	switch u.Type {
+	case SCE_CONTRACT:
+		return XDR_Uint32(u.ContractCode())
+	case SCE_WASM_VM, SCE_CONTEXT, SCE_STORAGE, SCE_OBJECT, SCE_CRYPTO, SCE_EVENTS, SCE_BUDGET, SCE_VALUE, SCE_AUTH:
+		return XDR_SCErrorCode(u.Code())
+	}
+	return nil
+}
+func (u *SCError) XdrUnionBodyName() string {
+	switch u.Type {
+	case SCE_CONTRACT:
+		return "ContractCode"
+	case SCE_WASM_VM, SCE_CONTEXT, SCE_STORAGE, SCE_OBJECT, SCE_CRYPTO, SCE_EVENTS, SCE_BUDGET, SCE_VALUE, SCE_AUTH:
+		return "Code"
+	}
+	return ""
+}
+
 type XdrType_SCError = *SCError
 
 func (v *SCError) XdrPointer() interface{}       { return v }
 func (SCError) XdrTypeName() string              { return "SCError" }
 func (v SCError) XdrValue() interface{}          { return v }
 func (v *SCError) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *SCError) XdrRecurse(x XDR, name string) {
+func (u *SCError) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%stype", name), XDR_SCErrorType(&v.Type))
-	x.Marshal(x.Sprintf("%scode", name), XDR_SCErrorCode(&v.Code))
+	XDR_SCErrorType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case SCE_CONTRACT:
+		x.Marshal(x.Sprintf("%scontractCode", name), XDR_Uint32(u.ContractCode()))
+		return
+	case SCE_WASM_VM, SCE_CONTEXT, SCE_STORAGE, SCE_OBJECT, SCE_CRYPTO, SCE_EVENTS, SCE_BUDGET, SCE_VALUE, SCE_AUTH:
+		x.Marshal(x.Sprintf("%scode", name), XDR_SCErrorCode(u.Code()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in SCError", u.Type)
 }
 func XDR_SCError(v *SCError) *SCError { return v }
 
@@ -27316,63 +27496,6 @@ func (u *SCAddress) XdrRecurse(x XDR, name string) {
 	XdrPanic("invalid Type (%v) in SCAddress", u.Type)
 }
 func XDR_SCAddress(v *SCAddress) *SCAddress { return v }
-
-type _XdrVec_unbounded_SCVal []SCVal
-
-func (_XdrVec_unbounded_SCVal) XdrBound() uint32 {
-	const bound uint32 = 4294967295 // Force error if not const or doesn't fit
-	return bound
-}
-func (_XdrVec_unbounded_SCVal) XdrCheckLen(length uint32) {
-	if length > uint32(4294967295) {
-		XdrPanic("_XdrVec_unbounded_SCVal length %d exceeds bound 4294967295", length)
-	} else if int(length) < 0 {
-		XdrPanic("_XdrVec_unbounded_SCVal length %d exceeds max int", length)
-	}
-}
-func (v _XdrVec_unbounded_SCVal) GetVecLen() uint32 { return uint32(len(v)) }
-func (v *_XdrVec_unbounded_SCVal) SetVecLen(length uint32) {
-	v.XdrCheckLen(length)
-	if int(length) <= cap(*v) {
-		if int(length) != len(*v) {
-			*v = (*v)[:int(length)]
-		}
-		return
-	}
-	newcap := 2 * cap(*v)
-	if newcap < int(length) { // also catches overflow where 2*cap < 0
-		newcap = int(length)
-	} else if bound := uint(4294967295); uint(newcap) > bound {
-		if int(bound) < 0 {
-			bound = ^uint(0) >> 1
-		}
-		newcap = int(bound)
-	}
-	nv := make([]SCVal, int(length), newcap)
-	copy(nv, *v)
-	*v = nv
-}
-func (v *_XdrVec_unbounded_SCVal) XdrMarshalN(x XDR, name string, n uint32) {
-	v.XdrCheckLen(n)
-	for i := 0; i < int(n); i++ {
-		if i >= len(*v) {
-			v.SetVecLen(uint32(i + 1))
-		}
-		XDR_SCVal(&(*v)[i]).XdrMarshal(x, x.Sprintf("%s[%d]", name, i))
-	}
-	if int(n) < len(*v) {
-		*v = (*v)[:int(n)]
-	}
-}
-func (v *_XdrVec_unbounded_SCVal) XdrRecurse(x XDR, name string) {
-	size := XdrSize{Size: uint32(len(*v)), Bound: 4294967295}
-	x.Marshal(name, &size)
-	v.XdrMarshalN(x, name, size.Size)
-}
-func (_XdrVec_unbounded_SCVal) XdrTypeName() string              { return "SCVal<>" }
-func (v *_XdrVec_unbounded_SCVal) XdrPointer() interface{}       { return (*[]SCVal)(v) }
-func (v _XdrVec_unbounded_SCVal) XdrValue() interface{}          { return ([]SCVal)(v) }
-func (v *_XdrVec_unbounded_SCVal) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 type XdrType_SCVec struct {
 	*_XdrVec_unbounded_SCVal
@@ -28530,11 +28653,10 @@ func (v *ConfigSettingContractLedgerCostV0) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sfeeReadLedgerEntry", name), XDR_Int64(&v.FeeReadLedgerEntry))
 	x.Marshal(x.Sprintf("%sfeeWriteLedgerEntry", name), XDR_Int64(&v.FeeWriteLedgerEntry))
 	x.Marshal(x.Sprintf("%sfeeRead1KB", name), XDR_Int64(&v.FeeRead1KB))
-	x.Marshal(x.Sprintf("%sfeeWrite1KB", name), XDR_Int64(&v.FeeWrite1KB))
-	x.Marshal(x.Sprintf("%sbucketListSizeBytes", name), XDR_Int64(&v.BucketListSizeBytes))
-	x.Marshal(x.Sprintf("%sbucketListFeeRateLow", name), XDR_Int64(&v.BucketListFeeRateLow))
-	x.Marshal(x.Sprintf("%sbucketListFeeRateHigh", name), XDR_Int64(&v.BucketListFeeRateHigh))
-	x.Marshal(x.Sprintf("%sbucketListGrowthFactor", name), XDR_Uint32(&v.BucketListGrowthFactor))
+	x.Marshal(x.Sprintf("%sbucketListTargetSizeBytes", name), XDR_Int64(&v.BucketListTargetSizeBytes))
+	x.Marshal(x.Sprintf("%swriteFee1KBBucketListLow", name), XDR_Int64(&v.WriteFee1KBBucketListLow))
+	x.Marshal(x.Sprintf("%swriteFee1KBBucketListHigh", name), XDR_Int64(&v.WriteFee1KBBucketListHigh))
+	x.Marshal(x.Sprintf("%sbucketListWriteFeeGrowthFactor", name), XDR_Uint32(&v.BucketListWriteFeeGrowthFactor))
 }
 func XDR_ConfigSettingContractLedgerCostV0(v *ConfigSettingContractLedgerCostV0) *ConfigSettingContractLedgerCostV0 {
 	return v

@@ -4,6 +4,7 @@ package codes
 
 import (
 	"github.com/go-errors/errors"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -501,7 +502,8 @@ func String(code interface{}) (string, error) {
 			return "function_trapped", nil
 		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded:
 			return "resource_limit_exceeded", nil
-
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
+			return "entry_expired", nil
 		}
 	case xdr.BumpFootprintExpirationResultCode:
 		switch code {

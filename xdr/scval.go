@@ -44,7 +44,18 @@ func (s ContractExecutable) Equals(o ContractExecutable) bool {
 }
 
 func (s ScError) Equals(o ScError) bool {
-	return s.Type == o.Type && s.Code == o.Code
+	if s.Type != o.Type {
+		return false
+	}
+	switch s.Type {
+	case ScErrorTypeSceContract:
+		return *s.ContractCode == *o.ContractCode
+	case ScErrorTypeSceWasmVm, ScErrorTypeSceContext, ScErrorTypeSceStorage, ScErrorTypeSceObject,
+		ScErrorTypeSceCrypto, ScErrorTypeSceEvents, ScErrorTypeSceBudget, ScErrorTypeSceValue, ScErrorTypeSceAuth:
+		return *s.Code == *o.Code
+	default:
+		panic("unknown ScError type: " + s.Type.String())
+	}
 }
 
 func (s ScVal) Equals(o ScVal) bool {

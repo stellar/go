@@ -834,21 +834,10 @@ func assertEventPayments(itest *integration.Test, txHash string, asset xdr.Asset
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Asset.Issuer, asset.GetIssuer())
 }
 
-func functionNameParam(name string) xdr.ScVal {
-	contractFnParameterSym := xdr.ScSymbol(name)
-	return xdr.ScVal{
-		Type: xdr.ScValTypeScvSymbol,
-		Sym:  &contractFnParameterSym,
-	}
-}
-
-func contractIDParam(contractID xdr.Hash) xdr.ScVal {
-	return xdr.ScVal{
-		Type: xdr.ScValTypeScvAddress,
-		Address: &xdr.ScAddress{
-			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: &contractID,
-		},
+func contractIDParam(contractID xdr.Hash) xdr.ScAddress {
+	return xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &contractID,
 	}
 }
 
@@ -914,11 +903,13 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest, asset)),
-				functionNameParam("mint"),
-				recipient,
-				assetAmount,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(stellarAssetContractID(itest, asset)),
+				FunctionName:    "mint",
+				Args: xdr.ScVec{
+					recipient,
+					assetAmount,
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -928,13 +919,19 @@ func mintWithAmt(itest *integration.Test, sourceAccount string, asset xdr.Asset,
 }
 
 func initAssetContract(itest *integration.Test, sourceAccount string, asset xdr.Asset, sacTestcontractID, sacTestcontractHash xdr.Hash) *txnbuild.InvokeHostFunction {
+	targetContract := contractIDParam(stellarAssetContractID(itest, asset))
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(sacTestcontractID),
-				functionNameParam("init"),
-				contractIDParam(stellarAssetContractID(itest, asset)),
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(sacTestcontractID),
+				FunctionName:    "init",
+				Args: xdr.ScVec{
+					{
+						Type:    xdr.ScValTypeScvAddress,
+						Address: &targetContract,
+					},
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -947,11 +944,13 @@ func clawback(itest *integration.Test, sourceAccount string, asset xdr.Asset, as
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest, asset)),
-				functionNameParam("clawback"),
-				recipient,
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(stellarAssetContractID(itest, asset)),
+				FunctionName:    "clawback",
+				Args: xdr.ScVec{
+					recipient,
+					i128Param(0, uint64(amount.MustParse(assetAmount))),
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -964,10 +963,10 @@ func contractBalance(itest *integration.Test, sourceAccount string, asset xdr.As
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest, asset)),
-				functionNameParam("balance"),
-				contractAddressParam(sacTestcontractID),
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(stellarAssetContractID(itest, asset)),
+				FunctionName:    "balance",
+				Args:            xdr.ScVec{contractAddressParam(sacTestcontractID)},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -984,12 +983,14 @@ func transferWithAmount(itest *integration.Test, sourceAccount string, asset xdr
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest, asset)),
-				functionNameParam("transfer"),
-				accountAddressParam(sourceAccount),
-				recipient,
-				assetAmount,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(stellarAssetContractID(itest, asset)),
+				FunctionName:    "transfer",
+				Args: xdr.ScVec{
+					accountAddressParam(sourceAccount),
+					recipient,
+					assetAmount,
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -1002,11 +1003,13 @@ func transferFromContract(itest *integration.Test, sourceAccount string, asset x
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(sacTestcontractID),
-				functionNameParam("transfer"),
-				recipient,
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(sacTestcontractID),
+				FunctionName:    "transfer",
+				Args: xdr.ScVec{
+					recipient,
+					i128Param(0, uint64(amount.MustParse(assetAmount))),
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -1020,10 +1023,12 @@ func burnSelf(itest *integration.Test, sourceAccount string, asset xdr.Asset, sa
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(sacTestcontractID),
-				functionNameParam("burn_self"),
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(sacTestcontractID),
+				FunctionName:    "burn_self",
+				Args: xdr.ScVec{
+					i128Param(0, uint64(amount.MustParse(assetAmount))),
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -1036,11 +1041,13 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 	invokeHostFn := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIDParam(stellarAssetContractID(itest, asset)),
-				functionNameParam("burn"),
-				accountAddressParam(sourceAccount),
-				i128Param(0, uint64(amount.MustParse(assetAmount))),
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDParam(stellarAssetContractID(itest, asset)),
+				FunctionName:    "burn",
+				Args: xdr.ScVec{
+					accountAddressParam(sourceAccount),
+					i128Param(0, uint64(amount.MustParse(assetAmount))),
+				},
 			},
 		},
 		SourceAccount: sourceAccount,
@@ -1053,7 +1060,7 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	acc := itest.MustGetAccount(signer)
 
 	preFlightOp, minFee := itest.PreflightHostFunctions(&acc, *op)
-	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+1000, &preFlightOp)
+	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(itest.CurrentTest(), err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)

@@ -155,20 +155,11 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
 	contractID := preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	require.NotNil(t, contractID)
-	contractIdParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvAddress,
-		Address: &xdr.ScAddress{
-			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: contractID,
-		},
-	}
 
-	contractFnParameterSym := xdr.ScSymbol("add")
-	contractFnParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvSymbol,
-		Sym:  &contractFnParameterSym,
+	contractIDAddress := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: contractID,
 	}
-
 	firstParamValue := xdr.Uint64(4)
 	secondParamValue := xdr.Uint64(5)
 
@@ -184,11 +175,13 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	invokeHostFunctionOp := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIdParameter,
-				contractFnParameter,
-				firstParamScVal,
-				secondParamScVal,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDAddress,
+				FunctionName:    "add",
+				Args: xdr.ScVec{
+					firstParamScVal,
+					secondParamScVal,
+				},
 			},
 		},
 		SourceAccount: sourceAccount.AccountID,
@@ -229,7 +222,7 @@ func TestContractInvokeHostFunctionInvokeStatelessContractFn(t *testing.T) {
 	assert.True(t, ok)
 	assert.Len(t, invokeHostFunctionOpJson.Parameters, 4)
 	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
-	addressParam, err := xdr.MarshalBase64(contractIdParameter)
+	addressParam, err := xdr.MarshalBase64(xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: &contractIDAddress})
 	require.NoError(t, err)
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Value, addressParam)
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Type, "Address")
@@ -272,26 +265,18 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	// contract has been deployed, now invoke a simple 'add' fn on the contract
 	contractID := preFlightOp.Ext.SorobanData.Resources.Footprint.ReadWrite[0].MustContractData().Contract.ContractId
 	require.NotNil(t, contractID)
-	contractIdParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvAddress,
-		Address: &xdr.ScAddress{
-			Type:       xdr.ScAddressTypeScAddressTypeContract,
-			ContractId: contractID,
-		},
-	}
-
-	contractFnParameterSym := xdr.ScSymbol("increment")
-	contractFnParameter := xdr.ScVal{
-		Type: xdr.ScValTypeScvSymbol,
-		Sym:  &contractFnParameterSym,
+	contractIDAddress := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: contractID,
 	}
 
 	invokeHostFunctionOp := &txnbuild.InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
-			InvokeContract: &xdr.ScVec{
-				contractIdParameter,
-				contractFnParameter,
+			InvokeContract: &xdr.InvokeContractArgs{
+				ContractAddress: contractIDAddress,
+				FunctionName:    "increment",
+				Args:            nil,
 			},
 		},
 		SourceAccount: sourceAccount.AccountID,
@@ -332,7 +317,7 @@ func TestContractInvokeHostFunctionInvokeStatefulContractFn(t *testing.T) {
 	assert.True(t, ok)
 	assert.Len(t, invokeHostFunctionOpJson.Parameters, 2)
 	assert.Equal(t, invokeHostFunctionOpJson.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
-	addressParam, err := xdr.MarshalBase64(contractIdParameter)
+	addressParam, err := xdr.MarshalBase64(xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: &contractIDAddress})
 	require.NoError(t, err)
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Value, addressParam)
 	assert.Equal(t, invokeHostFunctionOpJson.Parameters[0].Type, "Address")

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/protocols/horizon/base"
@@ -639,7 +640,11 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 
 		switch op.HostFunction.Type {
 		case xdr.HostFunctionTypeHostFunctionTypeInvokeContract:
-			args := op.HostFunction.MustInvokeContract()
+			invokeArgs := op.HostFunction.MustInvokeContract()
+			args := make([]xdr.ScVal, 0, len(invokeArgs.Args)+2)
+			args = append(args, xdr.ScVal{Type: xdr.ScValTypeScvAddress, Address: &invokeArgs.ContractAddress})
+			args = append(args, xdr.ScVal{Type: xdr.ScValTypeScvSymbol, Sym: &invokeArgs.FunctionName})
+			args = append(args, invokeArgs.Args...)
 			params := make([]map[string]string, 0, len(args))
 
 			for _, param := range args {
