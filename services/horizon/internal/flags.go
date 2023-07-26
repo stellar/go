@@ -150,7 +150,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "disables the transaction submission functionality of Horizon.",
 			ConfigKey:   &config.DisableTxSub,
-			Hidden:      true,
 		},
 		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,
@@ -824,14 +823,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 	if options.AlwaysIngest {
 		config.Ingest = true
-	}
-
-	if !config.DisableTxSub {
-		if config.Network == "" && (config.NetworkPassphrase == "" || len(config.HistoryArchiveURLs) == 0) {
-			return fmt.Errorf("invalid config: --%s set to false but no --%s flag or "+
-				"ingestion parameters set (--%s and --%s)", DisableTxSubFlagName, NetworkFlagName,
-				NetworkPassphraseFlagName, HistoryArchiveURLsFlagName)
-		}
 	}
 
 	if config.Ingest {

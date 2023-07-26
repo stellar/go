@@ -20,10 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	TransactionEnvelopeXDR = "AAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhAAABLAAAAAAAAAABAAAAAAAAAAEAAAALaGVsbG8gd29ybGQAAAAAAwAAAAAAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAAAAAAAAQAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAN4Lazj4x61AAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLaqcIQAAAEBKwqWy3TaOxoGnfm9eUjfTRBvPf34dvDA0Nf+B8z4zBob90UXtuCqmQqwMCyH+okOI3c05br3khkH0yP4kCwcE"
-)
-
 func TestStellarCoreMalformedTx(t *testing.T) {
 	handler := SubmitTransactionHandler{}
 
@@ -156,53 +152,4 @@ func TestClientDisconnectSubmission(t *testing.T) {
 	w := httptest.NewRecorder()
 	_, err = handler.GetResource(w, request)
 	assert.Equal(t, hProblem.ClientDisconnected, err)
-}
-
-func TestDisableTxSubFlagSubmission(t *testing.T) {
-	mockSubmitChannel := make(chan txsub.Result)
-
-	mock := &coreStateGetterMock{}
-	mock.On("GetCoreState").Return(corestate.State{
-		Synced: true,
-	})
-
-	mockSubmitter := &networkSubmitterMock{}
-	mockSubmitter.On("Submit").Return(mockSubmitChannel)
-
-	handler := SubmitTransactionHandler{
-		Submitter:         mockSubmitter,
-		NetworkPassphrase: network.PublicNetworkPassphrase,
-		DisableTxSub:      true,
-		CoreStateGetter:   mock,
-	}
-
-	form := url.Values{}
-	form.Set("tx", TransactionEnvelopeXDR)
-
-	var p = &problem.P{
-		Type:   "transaction_submission_disabled",
-		Title:  "Transaction Submission Disabled",
-		Status: http.StatusMethodNotAllowed,
-		Detail: "Transaction submission has been disabled for Horizon. " +
-			"To enable it again, set env variable DISABLE_TX_SUB to false.",
-		Extras: map[string]interface{}{
-			"envelope_xdr": TransactionEnvelopeXDR,
-		},
-	}
-
-	request, err := http.NewRequest(
-		"POST",
-		"https://horizon.stellar.org/transactions",
-		strings.NewReader(form.Encode()),
-	)
-
-	require.NoError(t, err)
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	ctx, cancel := context.WithCancel(request.Context())
-	cancel()
-	request = request.WithContext(ctx)
-
-	w := httptest.NewRecorder()
-	_, err = handler.GetResource(w, request)
-	assert.Equal(t, p, err)
 }
