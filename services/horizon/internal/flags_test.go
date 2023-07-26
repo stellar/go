@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	support "github.com/stellar/go/support/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -128,6 +129,37 @@ func Test_createCaptiveCoreConfig(t *testing.T) {
 				require.Error(t, e)
 				assert.Equal(t, tt.errStr, e.Error())
 			}
+		})
+	}
+}
+
+func TestInvalidConfigOutputFromApplyFlags(t *testing.T) {
+	_, flags := Flags()
+
+	tests := []struct {
+		name    string
+		config  Config
+		flags   support.ConfigOptions
+		options ApplyOptions
+		errStr  string
+	}{
+		{
+			name: "disable-tx-sub set to false and no network and ingestion params set",
+			config: Config{
+				NetworkPassphrase:  "",
+				HistoryArchiveURLs: []string{},
+				DisableTxSub:       false,
+			},
+			flags:   flags,
+			options: ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false},
+			errStr: "invalid config: --disable-tx-sub set to false but no --network flag " +
+				"or ingestion parameters set (--network-passphrase and --history-archive-urls)",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := ApplyFlags(&tt.config, tt.flags, tt.options)
+			assert.Error(t, e, tt.errStr)
 		})
 	}
 }
