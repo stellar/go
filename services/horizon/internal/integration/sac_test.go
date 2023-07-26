@@ -1060,7 +1060,7 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	acc := itest.MustGetAccount(signer)
 
 	preFlightOp, minFee := itest.PreflightHostFunctions(&acc, *op)
-	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+1000, &preFlightOp)
+	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(itest.CurrentTest(), err)
 
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
