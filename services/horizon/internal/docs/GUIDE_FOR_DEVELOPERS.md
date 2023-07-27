@@ -15,7 +15,7 @@ All the code for Horizon resides in our Go monorepo. Fork the repository and clo
 git clone https://github.com/<your-github-username>/go.git
 ```
 
-## The Start script
+## Getting Started with Running Horizon
 The [start.sh](/services/horizon/docker/start.sh) script builds horizon from current source, and then runs docker-compose to start the docker containers with runtime configs for horizon, postgres, and optionally core if the optional `standalone` network parameter was included. 
 The script takes one optional parameter which configures the Stellar network used by the docker containers. If no parameter is supplied, the containers will run on the Stellar test network.
 
@@ -35,7 +35,7 @@ Note that when you switch between different networks you will need to clear the 
 
 This script is helpful to spin up the services quickly and play around with them. However, for code development it's important to build and install everything locally 
 
-## Local Horizon Installation
+## Developing Horizon Locally
 We will now configure a development environment to run Horizon locally without Docker.
 
 ### Building Stellar Core
@@ -51,12 +51,7 @@ Open a new terminal. Confirm everything worked by running `stellar-horizon --hel
 
 ### Database Setup
 
-Horizon uses a Postgres database backend to record information ingested from an associated Stellar Core. The unit and integration tests will also attempt to reference a Postgres db server at ``localhost:5432`` with trust auth method enabled by default for ``postgres`` user.  You can either install the server locally or run any type of docker container that hosts the database server. Here is one example:
-```bash
-docker run --platform linux/amd64 -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:12-alpine
-```
-
-Or use the ``docker-compose.yml`` file in the ``docker`` container:
+Horizon uses a Postgres database backend to record information ingested from an associated Stellar Core. The unit and integration tests will also attempt to reference a Postgres db server at ``localhost:5432`` with trust auth method enabled by default for ``postgres`` user.  You can either install the server locally or run any type of docker container that hosts the database server. We recommend using the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) file in the ``docker`` folder:
 ```bash
 docker compose -f ./docker/docker-compose.yml up horizon-postgres
 ```
@@ -138,14 +133,13 @@ This section contains additional information related to the development of Horiz
 
 ## Configuring a Standalone Stellar-Core
 
-By default, the Docker Compose file configures Stellar Core to connect to the Stellar test network.
+By default, the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) will configure Horizon with captive core ingestion to use [Stellar Testnet](https://developers.stellar.org/docs/fundamentals-and-concepts/testnet-and-pubnet#testnet) network.
 
 To run the containers on a private stand-alone network, run `./start.sh standalone`.
-When you run Stellar Core on a private stand-alone network, an account will be created which will hold 100 billion Lumens.
-The seed for the account will be emitted in the Stellar Core logs:
-
+When you run Stellar Core on a stand-alone network with passphrase of `Standalone Network ; February 2017`, the root account will be created by default with a balance of 100 billion Lumens and a key pair of:
 ```
-2020-04-22T18:39:19.248 GD5KD [Ledger INFO] Root account seed: SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
+Root Public Key: GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI
+Root Secret Key: SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
 ```
 
 When running Horizon on a private stand-alone network, Horizon will not start ingesting until Stellar Core creates its first history archive snapshot. Stellar Core creates snapshots every 64 ledgers, which means ingestion will be delayed until ledger 64.
@@ -164,14 +158,6 @@ Example:
 Runs Stellar Protocol and Core version 18, for any mode of testnet, standalone, pubnet
 ```bash
 PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]
-```
-
-## <a name="regen"></a> **Regenerating generated code**
-
-You can run the following terminal snippet:
-```bash
-cd go
-./gogenerate.sh
 ```
 
 ## <a name="logging"></a> **Logging**

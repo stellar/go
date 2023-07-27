@@ -5,7 +5,7 @@ Horizon is the client facing API server for the [Stellar ecosystem](https://deve
 
 Check out the following resources to get started:
 - [Horizon Development Guide](internal/docs/GUIDE_FOR_DEVELOPERS.md): Instructions for building and developing Horizon. Covers setup, building, testing, and contributing. Also contains some helpful notes and context for Horizon developers.
-- [Quickstart Guide](internal/docs/QUICKSTART_GUIDE.md): A guide on setting up your own test Stellar Core + Horizon node using the quickstart Docker image.
+- [Quickstart Guide](https://github.com/stellar/quickstart): An external tool provided from a separate repository. It builds a docker image which can be used for running the stellar stack including Horizon locally for evaluation and testing situations. A great way to observe a reference runtime deployment, to see how everything fits together.
 - [Horizon Testing Guide](internal/docs/TESTING_NOTES.md): Details on how to test Horizon, including unit tests, integration tests, and end-to-end tests.
 - [Horizon SDK and API Guide](internal/docs/SDK_API_GUIDE.md): Documentation on the Horizon SDKs, APIs, resources, and examples. Useful for developers building on top of Horizon.
 
