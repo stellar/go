@@ -7,6 +7,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 
+## 2.26.1
+
+### Fixes
+- Ingestion will not halt if liquidity pool overflows are detected.
+
+
 ## 2.26.0
 ### Changes
 - Improve error handling for when stellar-core crashes ([4893](https://github.com/stellar/go/pull/4893))
@@ -478,7 +484,7 @@ This is a minor release with no DB Schema migrations nor explicit state rebuild.
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
-* Add new command `horizon db detect-gaps`, which detects ingestion gaps in the database. The command prints out the `db reingest` commands to run in order to fill the gaps found ([3672](https://github.com/stellar/go/pull/3672)). 
+* Add new command `horizon db detect-gaps`, which detects ingestion gaps in the database. The command prints out the `db reingest` commands to run in order to fill the gaps found ([3672](https://github.com/stellar/go/pull/3672)).
 * Performance improvement: Captive Core now reuses bucket files whenever it finds existing ones in the corresponding `--captive-core-storage-path` (introduced in [v2.1.0](#v2.1.0) rather than generating a one-time temporary sub-directory ([3670](https://github.com/stellar/go/pull/3670)). **This feature requires Stellar-Core version 17.1 or later.**
 * Horizon now monitors the Stellar Core binary on disk (pointed to by `--stellar-core-binary-path`/`STELLAR_CORE_BINARY_PATH`) and restarts its Captive Core subprocess if it detects changes (i.e a more recent file timestamp for the Stellar Core binary) ([3687](https://github.com/stellar/go/pull/3687)).
 * `POST /transactions` return `503 Service Unavailable` instead of `504 Gateway Timeout` if connected Stellar-Core is out of sync ([3653](https://github.com/stellar/go/pull/3653)).
@@ -504,13 +510,13 @@ This is a minor release with no DB Schema migrations nor explicit state rebuild.
 
 ### DB State Migration
 
-* This release comes with a small DB schema change (new multiplexed-account-related columns are incorporated). It should not take more than five minutes to run due to new columns being NULL-able. 
+* This release comes with a small DB schema change (new multiplexed-account-related columns are incorporated). It should not take more than five minutes to run due to new columns being NULL-able.
 
 ### Deprecations
 
 * Deprecate `--captive-core-config-append-path` in favor of `--captive-core-config-path`. The difference between the two flags is that `--captive-core-config-path` will validate the configuration file to reject any fields which are not supported by captive core ([3629](https://github.com/stellar/go/pull/3629)).
 
-### New features 
+### New features
 
 * Add more in-depth Prometheus metrics (count & duration) for db queries. ([3597](https://github.com/stellar/go/pull/3597), [3605](https://github.com/stellar/go/pull/3605))
 
@@ -768,7 +774,7 @@ To solve this it's now possible to start a [`captivecore`](https://github.com/st
 
 This patch release fixes a regression introduced in 1.7.0, breaking the
  `/offers` endpoint. Thus, we recommend upgrading as soon as possible.
- 
+
 ### Changes
 * Fix path parameter mismatch in `/offers` endpoint
   [#2927](https://github.com/stellar/go/pull/2927).
@@ -795,7 +801,7 @@ This patch release fixes a regression introduced in 1.7.0, breaking the
 
 * Add `--parallel-workers` and `--parallel-job-size` to `horizon db reingest range`. `--parallel-workers` will parallelize reingestion using the supplied number of workers. ([#2724](https://github.com/stellar/go/pull/2724))
 * Remove Stellar Core's database dependency for non-ingesting instances of Horizon.  ([#2759](https://github.com/stellar/go/pull/2759))
-  Horizon doesn't require access to a Stellar Core database if it is only serving HTTP request, this allows the separation of front-end and ingesting instances. 
+  Horizon doesn't require access to a Stellar Core database if it is only serving HTTP request, this allows the separation of front-end and ingesting instances.
   The following config parameters were removed:
   - `core-db-max-open-connections`
   - `core-db-max-idle-connections`
