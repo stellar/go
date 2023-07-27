@@ -76,7 +76,7 @@ jobs:
         # Workaround for https://github.com/actions/virtual-environments/issues/5245,
         # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
         # message about why the installation fails)
-        sudo apt-get remove -y libc++1-10 libc++abi1-10 || true
+        sudo apt-get remove -y libc++1-12 libc++abi1-12 || true
 
         sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
         sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
