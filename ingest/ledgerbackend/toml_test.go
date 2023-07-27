@@ -301,6 +301,13 @@ func TestGenerateConfig(t *testing.T) {
 			peerPort:     newUint(12345),
 			logPath:      nil,
 		},
+		{
+			name:         "offline config with minimum persistent entry in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "appendix-with-minimum-persistent-entry.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-online-with-appendix-minimum-persistent-entry.cfg"),
+			logPath:      nil,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var err error
