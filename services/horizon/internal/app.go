@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -196,6 +197,13 @@ func (a *App) Paths() paths.Finder {
 	return a.paths
 }
 
+func isLocalAddress(url string, port uint) bool {
+	localHostURL := fmt.Sprintf("http://localhost:%d", port)
+	localIPURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+
+	return strings.HasPrefix(url, localHostURL) || strings.HasPrefix(url, localIPURL)
+}
+
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
 // This is done separately from Horizon ledger state update to prevent issues
 // in case Stellar-Core query timeout.
@@ -205,7 +213,7 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 	// #4446 If the ingestion state machine is in the build state, the query can time out
 	// because the captive-core buffer may be full. In this case, skip the check.
 	if a.config.CaptiveCoreToml != nil &&
-		a.config.StellarCoreURL == fmt.Sprintf("http://localhost:%d", a.config.CaptiveCoreToml.HTTPPort) &&
+		isLocalAddress(a.config.StellarCoreURL, a.config.CaptiveCoreToml.HTTPPort) &&
 		a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
 		return
 	}
