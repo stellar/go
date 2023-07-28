@@ -58,35 +58,6 @@ func (c *Client) Upgrade(ctx context.Context, version int) error {
 	return nil
 }
 
-// Preflight submits a preflight request to the stellar core instance. The response will contain the footprint
-// of the invoke host function operation among other information.
-func (c *Client) Preflight(ctx context.Context, sourceAccount string, invokeHostFunctionOp xdr.InvokeHostFunctionOp) (proto.PreflightResponse, error) {
-	b64, err := xdr.MarshalBase64(invokeHostFunctionOp)
-	if err != nil {
-		return proto.PreflightResponse{}, errors.Wrap(err, "failed to marshal invoke host function op")
-	}
-	q := url.Values{}
-	q.Set("blob", b64)
-	q.Set("source_account", sourceAccount)
-
-	req, err := c.simpleGet(ctx, "preflight", q)
-	if err != nil {
-		return proto.PreflightResponse{}, errors.Wrap(err, "failed to create request")
-	}
-
-	hresp, err := c.http().Do(req)
-	if err != nil {
-		return proto.PreflightResponse{}, errors.Wrap(err, "http request errored")
-	}
-	defer hresp.Body.Close()
-
-	var response proto.PreflightResponse
-	if err = json.NewDecoder(hresp.Body).Decode(&response); err != nil {
-		return proto.PreflightResponse{}, errors.Wrap(err, "json decode failed")
-	}
-	return response, nil
-}
-
 // GetLedgerEntry submits a request to the stellar core instance to get the latest
 // state of a given ledger entry.
 func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (proto.GetLedgerEntryResponse, error) {
