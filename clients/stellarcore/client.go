@@ -46,13 +46,17 @@ func (c *Client) Upgrade(ctx context.Context, version int) error {
 	if err != nil {
 		return errors.Wrap(err, "http request errored")
 	}
-	defer hresp.Body.Close()
+	defer func() {
+		// drain the remaining of the Body
+		_, err = io.Copy(ioutil.Discard, hresp.Body)
+		hresp.Body.Close()
+	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		return errors.New("http request failed with non-200 status code")
 	}
 
-	return nil
+	return err
 }
 
 // Preflight submits a preflight request to the stellar core instance. The response will contain the footprint
@@ -104,6 +108,11 @@ func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (p
 		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "http request errored")
 	}
 	defer hresp.Body.Close()
+
+	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+		return proto.GetLedgerEntryResponse{}, errors.New("http request failed with non-200 status code")
+	}
+
 	responseBytes, err := io.ReadAll(hresp.Body)
 	if err != nil {
 		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "could not read response")
@@ -113,6 +122,7 @@ func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (p
 	if err = json.NewDecoder(bytes.NewReader(responseBytes)).Decode(&response); err != nil {
 		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "json decode failed: "+string(responseBytes))
 	}
+
 	return response, nil
 }
 
@@ -131,7 +141,14 @@ func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error)
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
-	defer hresp.Body.Close()
+	defer func() {
+		// drain the remaining of the Body
+		_, err = io.Copy(ioutil.Discard, hresp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "unable to read excess data from response")
+		}
+		hresp.Body.Close()
+	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
@@ -139,7 +156,6 @@ func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error)
 	}
 
 	err = json.NewDecoder(hresp.Body).Decode(&resp)
-
 	if err != nil {
 		err = errors.Wrap(err, "json decode failed")
 		return
@@ -163,7 +179,19 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
 	if err != nil {
 		return errors.Wrap(err, "http request errored")
 	}
-	defer hresp.Body.Close()
+	defer func() {
+		// drain the remaining of the Body
+		_, err = io.Copy(ioutil.Discard, hresp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "unable to read excess data from response")
+		}
+		hresp.Body.Close()
+	}()
+
+	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+		err = errors.New("http request failed with non-200 status code")
+		return err
+	}
 
 	raw, err := ioutil.ReadAll(hresp.Body)
 	if err != nil {
@@ -195,7 +223,19 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
-	defer hresp.Body.Close()
+	defer func() {
+		// drain the remaining of the Body
+		_, err = io.Copy(ioutil.Discard, hresp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "unable to read excess data from response")
+		}
+		hresp.Body.Close()
+	}()
+
+	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+		err = errors.New("http request failed with non-200 status code")
+		return
+	}
 
 	err = json.NewDecoder(hresp.Body).Decode(&resp)
 
@@ -248,7 +288,14 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
-	defer hresp.Body.Close()
+	defer func() {
+		// drain the remaining of the Body
+		_, err = io.Copy(ioutil.Discard, hresp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "unable to read excess data from response")
+		}
+		hresp.Body.Close()
+	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
@@ -296,10 +343,10 @@ func (c *Client) simpleGet(
 	}
 	newURL := u.String()
 
-	req, err := http.NewRequest(http.MethodGet, newURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, newURL, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create request")
 	}
 
-	return req.WithContext(ctx), nil
+	return req, nil
 }
