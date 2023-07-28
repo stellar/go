@@ -1,7 +1,6 @@
 package stellarcore
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -56,7 +55,7 @@ func (c *Client) Upgrade(ctx context.Context, version int) error {
 		return errors.New("http request failed with non-200 status code")
 	}
 
-	return err
+	return nil
 }
 
 // Preflight submits a preflight request to the stellar core instance. The response will contain the footprint
@@ -119,7 +118,7 @@ func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (p
 	}
 
 	var response proto.GetLedgerEntryResponse
-	if err = json.NewDecoder(bytes.NewReader(responseBytes)).Decode(&response); err != nil {
+	if err = json.Unmarshal(responseBytes, &response); err != nil {
 		return proto.GetLedgerEntryResponse{}, errors.Wrap(err, "json decode failed: "+string(responseBytes))
 	}
 
