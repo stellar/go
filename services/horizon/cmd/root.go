@@ -36,7 +36,7 @@ func (e ErrUsage) Error() string {
 	return e.cmd.UsageString()
 }
 
-// Indicates we want to exit with a specific error code without printing an error.
+// ErrExitCode Indicates we want to exit with a specific error code without printing an error.
 type ErrExitCode int
 
 func (e ErrExitCode) Error() string {
