@@ -80,6 +80,12 @@ func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (p
 	defer hresp.Body.Close()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+		// drain the remaining of the Body
+		_, err = io.Copy(ioutil.Discard, hresp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "unable to read excess data from response")
+			return proto.GetLedgerEntryResponse{}, err
+		}
 		return proto.GetLedgerEntryResponse{}, errors.New("http request failed with non-200 status code")
 	}
 
@@ -99,25 +105,29 @@ func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (p
 // Info calls the `info` command on the connected stellar core and returns the
 // provided response
 func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error) {
-
-	req, err := c.simpleGet(ctx, "info", nil)
+	var req *http.Request
+	req, err = c.simpleGet(ctx, "info", nil)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create request")
 		return
 	}
 
-	hresp, err := c.http().Do(req)
+	var hresp *http.Response
+	hresp, err = c.http().Do(req)
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
 	defer func() {
 		// drain the remaining of the Body
-		_, err = io.Copy(ioutil.Discard, hresp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "unable to read excess data from response")
+		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to read excess data from response")
 		}
-		hresp.Body.Close()
+		err2 = hresp.Body.Close()
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to close response body")
+		}
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -135,8 +145,9 @@ func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error)
 }
 
 // SetCursor calls the `setcursor` command on the connected stellar core
-func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
-	req, err := c.simpleGet(ctx, "setcursor", url.Values{
+func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err error) {
+	var req *http.Request
+	req, err = c.simpleGet(ctx, "setcursor", url.Values{
 		"id":     []string{id},
 		"cursor": []string{fmt.Sprintf("%d", cursor)},
 	})
@@ -145,17 +156,21 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
 		return errors.Wrap(err, "failed to create request")
 	}
 
-	hresp, err := c.http().Do(req)
+	var hresp *http.Response
+	hresp, err = c.http().Do(req)
 	if err != nil {
 		return errors.Wrap(err, "http request errored")
 	}
 	defer func() {
 		// drain the remaining of the Body
-		_, err = io.Copy(ioutil.Discard, hresp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "unable to read excess data from response")
+		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to read excess data from response")
 		}
-		hresp.Body.Close()
+		err2 = hresp.Body.Close()
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to close response body")
+		}
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -163,7 +178,8 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) error {
 		return err
 	}
 
-	raw, err := ioutil.ReadAll(hresp.Body)
+	var raw []byte
+	raw, err = ioutil.ReadAll(hresp.Body)
 	if err != nil {
 		return err
 	}
@@ -182,24 +198,29 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 	q := url.Values{}
 	q.Set("blob", envelope)
 
-	req, err := c.simpleGet(ctx, "tx", q)
+	var req *http.Request
+	req, err = c.simpleGet(ctx, "tx", q)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create request")
 		return
 	}
 
-	hresp, err := c.http().Do(req)
+	var hresp *http.Response
+	hresp, err = c.http().Do(req)
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
 	defer func() {
 		// drain the remaining of the Body
-		_, err = io.Copy(ioutil.Discard, hresp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "unable to read excess data from response")
+		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to read excess data from response")
 		}
-		hresp.Body.Close()
+		err2 = hresp.Body.Close()
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to close response body")
+		}
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -247,24 +268,29 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 
 	q := url.Values{}
 
-	req, err := c.simpleGet(ctx, "manualclose", q)
+	var req *http.Request
+	req, err = c.simpleGet(ctx, "manualclose", q)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create request")
 		return
 	}
 
-	hresp, err := c.http().Do(req)
+	var hresp *http.Response
+	hresp, err = c.http().Do(req)
 	if err != nil {
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
 	defer func() {
 		// drain the remaining of the Body
-		_, err = io.Copy(ioutil.Discard, hresp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "unable to read excess data from response")
+		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to read excess data from response")
 		}
-		hresp.Body.Close()
+		err2 = hresp.Body.Close()
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to close response body")
+		}
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -276,6 +302,7 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 		Exception string `json:"exception"`
 	}{}
 	if decErr := json.NewDecoder(hresp.Body).Decode(&resp); decErr != nil {
+		err = decErr
 		return
 	}
 	if resp.Exception != "" {
@@ -313,7 +340,8 @@ func (c *Client) simpleGet(
 	}
 	newURL := u.String()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, newURL, nil)
+	var req *http.Request
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, newURL, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create request")
 	}
