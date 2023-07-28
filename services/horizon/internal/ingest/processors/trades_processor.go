@@ -245,8 +245,8 @@ func (p *TradeProcessor) roundingSlippage(
 		)
 		if !ok {
 			// Temporary workaround for https://github.com/stellar/go/issues/4203
-			// Give strict receives that would underflow here, maximum slippage so
-			// they get excluded.
+			// Given strict receives that would underflow here, set maximum
+			// slippage so they get excluded.
 			roundingSlippageBips = xdr.Int64(math.MaxInt64)
 		}
 		return null.IntFrom(int64(roundingSlippageBips)), nil
@@ -260,7 +260,10 @@ func (p *TradeProcessor) roundingSlippage(
 			true,
 		)
 		if !ok {
-			return null.Int{}, errors.New("Liquidity pool overflows from this exchange")
+			// Temporary workaround for https://github.com/stellar/go/issues/4203
+			// Given strict sends that would overflow here, set maximum slippage
+			// so they get excluded.
+			roundingSlippageBips = xdr.Int64(math.MaxInt64)
 		}
 		return null.IntFrom(int64(roundingSlippageBips)), nil
 	default:
