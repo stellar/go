@@ -4,7 +4,6 @@ package integration
 import (
 	"bytes"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 	stdLog "log"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
