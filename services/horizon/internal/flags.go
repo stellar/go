@@ -1,12 +1,12 @@
 package horizon
 
 import (
+	_ "embed"
 	"fmt"
 	"go/types"
 	stdLog "log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -18,6 +18,7 @@ import (
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/throttled"
 )
@@ -38,10 +39,22 @@ const (
 	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
-	// captive-core-use-db is the command line flag for enabling captive core runtime to use an external db url connection rather than RAM for ledger states
+	// CaptiveCoreConfigUseDB is the command line flag for enabling captive core runtime to use an external db url
+	// connection rather than RAM for ledger states
 	CaptiveCoreConfigUseDB = "captive-core-use-db"
+	// NetworkPassphraseFlagName is the command line flag for specifying the network passphrase
+	NetworkPassphraseFlagName = "network-passphrase"
+	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
+	HistoryArchiveURLsFlagName = "history-archive-urls"
+	// NetworkFlagName is the command line flag for specifying the "network"
+	NetworkFlagName              = "network"
+	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
+	// StellarPubnet is a constant representing the Stellar public network
+	StellarPubnet = "pubnet"
+	// StellarTestnet is a constant representing the Stellar test network
+	StellarTestnet = "testnet"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -194,12 +207,28 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        "exp-enable-ingestion-filtering",
+			Name:        EnableIngestionFilteringFlag,
 			OptType:     types.Bool,
-			FlagDefault: false,
+			FlagDefault: true,
 			Required:    false,
-			Usage:       "causes Horizon to enable the experimental Ingestion Filtering and the ingestion admin HTTP endpoint at /ingestion/filter",
 			ConfigKey:   &config.EnableIngestionFiltering,
+			CustomSetValue: func(opt *support.ConfigOption) error {
+
+				// Always enable ingestion filtering by default.
+				config.EnableIngestionFiltering = true
+
+				if val := viper.GetString(opt.Name); val != "" {
+					stdLog.Printf(
+						"DEPRECATED - No ingestion filter rules are defined by default, which equates to no filtering " +
+							"of historical data. If you have never added filter rules to this deployment, then nothing further needed. " +
+							"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag " +
+							"disabled with --exp-enable-ingestion-filtering=false, then you should now delete the filter rules using " +
+							"the Horizon Admin API to achieve the same no-filtering result. Remove usage of this flag in all cases.",
+					)
+				}
+				return nil
+			},
+			Hidden: true,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-http-port",
@@ -226,7 +255,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				return nil
 			},
 			Required:  false,
-			Usage:     "Storage location for Captive Core bucket data",
+			Usage:     "Storage location for Captive Core bucket data. If not set, the current working directory is used as the default location.",
 			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
@@ -253,15 +282,19 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "stellar-core to connect with (for http commands). If unset and the local Captive core is enabled, it will use http://localhost:<stellar_captive_core_http_port>",
 		},
 		&support.ConfigOption{
-			Name:        "history-archive-urls",
-			ConfigKey:   &config.HistoryArchiveURLs,
-			OptType:     types.String,
-			Required:    false,
-			FlagDefault: "",
+			Name:      HistoryArchiveURLsFlagName,
+			ConfigKey: &config.HistoryArchiveURLs,
+			OptType:   types.String,
+			Required:  false,
 			CustomSetValue: func(co *support.ConfigOption) error {
 				stringOfUrls := viper.GetString(co.Name)
 				urlStrings := strings.Split(stringOfUrls, ",")
-				*(co.ConfigKey.(*[]string)) = urlStrings
+				//urlStrings contains a single empty value when stringOfUrls is empty
+				if len(urlStrings) == 1 && urlStrings[0] == "" {
+					*(co.ConfigKey.(*[]string)) = []string{}
+				} else {
+					*(co.ConfigKey.(*[]string)) = urlStrings
+				}
 				return nil
 			},
 			Usage: "comma-separated list of stellar history archives to connect with",
@@ -412,10 +445,10 @@ func Flags() (*Config, support.ConfigOptions) {
 				" A value of zero (the default) disables the limit.",
 		},
 		&support.ConfigOption{
-			Name:      "network-passphrase",
+			Name:      NetworkPassphraseFlagName,
 			ConfigKey: &config.NetworkPassphrase,
 			OptType:   types.String,
-			Required:  true,
+			Required:  false,
 			Usage:     "Override the network passphrase",
 		},
 		&support.ConfigOption{
@@ -557,6 +590,25 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "excludes trades from /trade_aggregations unless their rounding slippage is <x bps",
 		},
+		&support.ConfigOption{
+			Name:      NetworkFlagName,
+			ConfigKey: &config.Network,
+			OptType:   types.String,
+			Required:  false,
+			CustomSetValue: func(co *support.ConfigOption) error {
+				val := viper.GetString(co.Name)
+				if val != "" && val != StellarPubnet && val != StellarTestnet {
+					return fmt.Errorf("invalid network %s. Use '%s' or '%s'",
+						val, StellarPubnet, StellarTestnet)
+				}
+				*co.ConfigKey.(*string) = val
+				return nil
+			},
+			Usage: fmt.Sprintf("stellar public network, either '%s' or '%s'."+
+				" It automatically configures network settings, including %s, %s, and %s.",
+				StellarPubnet, StellarTestnet, NetworkPassphraseFlagName,
+				HistoryArchiveURLsFlagName, CaptiveCoreConfigPathName),
+		},
 	}
 
 	return config, flags
@@ -589,6 +641,162 @@ type ApplyOptions struct {
 	RequireCaptiveCoreConfig bool
 }
 
+type networkConfig struct {
+	defaultConfig      []byte
+	historyArchiveURLs []string
+	networkPassphrase  string
+}
+
+var (
+	//go:embed configs/captive-core-pubnet.cfg
+	PubnetDefaultConfig []byte
+
+	//go:embed configs/captive-core-testnet.cfg
+	TestnetDefaultConfig []byte
+
+	pubnetConf = networkConfig{
+		defaultConfig:      PubnetDefaultConfig,
+		historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
+		networkPassphrase:  network.PublicNetworkPassphrase,
+	}
+
+	testnetConf = networkConfig{
+		defaultConfig:      TestnetDefaultConfig,
+		historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
+		networkPassphrase:  network.TestNetworkPassphrase,
+	}
+)
+
+// getCaptiveCoreBinaryPath retrieves the path of the Captive Core binary
+// Returns the path or an error if the binary is not found
+func getCaptiveCoreBinaryPath() (string, error) {
+	result, err := exec.LookPath("stellar-core")
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+// loadDefaultCaptiveCoreToml loads the default Captive Core TOML based on the default config data.
+func loadDefaultCaptiveCoreToml(config *Config, defaultConfigData []byte) error {
+
+	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+
+	var err error
+	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromData(defaultConfigData, config.CaptiveCoreTomlParams)
+	if err != nil {
+		return errors.Wrap(err, "invalid captive core toml")
+	}
+	return nil
+}
+
+// loadCaptiveCoreTomlFromFile loads the Captive Core TOML file from the specified path provided config.
+func loadCaptiveCoreTomlFromFile(config *Config) error {
+	var err error
+
+	config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
+	config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+	config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+
+	config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
+	if err != nil {
+		return errors.Wrap(err, "invalid captive core toml file")
+	}
+	return nil
+}
+
+// createCaptiveCoreConfigFromNetwork generates the default Captive Core configuration.
+// validates the configuration settings, sets default values, and loads the Captive Core TOML file.
+func createCaptiveCoreConfigFromNetwork(config *Config) error {
+
+	if config.NetworkPassphrase != "" {
+		return fmt.Errorf("invalid config: %s not allowed with %s network", NetworkPassphraseFlagName, config.Network)
+	}
+
+	if len(config.HistoryArchiveURLs) > 0 {
+		return fmt.Errorf("invalid config: %s not allowed with %s network", HistoryArchiveURLsFlagName, config.Network)
+	}
+
+	var defaultNetworkConfig networkConfig
+	switch config.Network {
+	case StellarPubnet:
+		defaultNetworkConfig = pubnetConf
+	case StellarTestnet:
+		defaultNetworkConfig = testnetConf
+	default:
+		return fmt.Errorf("no default configuration found for network %s", config.Network)
+	}
+	config.NetworkPassphrase = defaultNetworkConfig.networkPassphrase
+	config.HistoryArchiveURLs = defaultNetworkConfig.historyArchiveURLs
+
+	if config.CaptiveCoreConfigPath == "" {
+		return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
+	}
+
+	return loadCaptiveCoreTomlFromFile(config)
+}
+
+// createCaptiveCoreConfigFromParameters generates the Captive Core configuration.
+// validates the configuration settings, sets necessary values, and loads the Captive Core TOML file.
+func createCaptiveCoreConfigFromParameters(config *Config) error {
+
+	if config.NetworkPassphrase == "" {
+		return fmt.Errorf("%s must be set", NetworkPassphraseFlagName)
+	}
+
+	if len(config.HistoryArchiveURLs) == 0 {
+		return fmt.Errorf("%s must be set", HistoryArchiveURLsFlagName)
+	}
+
+	if config.CaptiveCoreConfigPath != "" {
+		return loadCaptiveCoreTomlFromFile(config)
+	} else {
+		var err error
+		config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
+		if err != nil {
+			return errors.Wrap(err, "invalid captive core toml file")
+		}
+	}
+
+	return nil
+}
+
+// setCaptiveCoreConfiguration prepares configuration for the Captive Core
+func setCaptiveCoreConfiguration(config *Config) error {
+	stdLog.Println("Preparing captive core...")
+
+	// If the user didn't specify a Stellar Core binary, we can check the
+	// $PATH and possibly fill it in for them.
+	if config.CaptiveCoreBinaryPath == "" {
+		var err error
+		if config.CaptiveCoreBinaryPath, err = getCaptiveCoreBinaryPath(); err != nil {
+			return fmt.Errorf("captive core requires %s", StellarCoreBinaryPathName)
+		}
+	}
+
+	if config.Network != "" {
+		err := createCaptiveCoreConfigFromNetwork(config)
+		if err != nil {
+			return errors.Wrap(err, "error generating default captive core config.")
+		}
+	} else {
+		err := createCaptiveCoreConfigFromParameters(config)
+		if err != nil {
+			return errors.Wrap(err, "error generating captive core config.")
+		}
+	}
+
+	// If we don't supply an explicit core URL and running captive core process with the http port enabled,
+	// point to it.
+	if config.StellarCoreURL == "" && config.CaptiveCoreToml.HTTPPort != 0 {
+		config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreToml.HTTPPort)
+	}
+
+	return nil
+}
+
 // ApplyFlags applies the command line flags on the given Config instance
 func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) error {
 	// Verify required options and load the config struct
@@ -608,6 +816,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		config.Ingest = true
 	}
 
+	config.EnableIngestionFiltering = true
+
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
 		// only on ingesting instances which are required to have write-access
@@ -623,94 +833,10 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			return err
 		}
 
-		// config.HistoryArchiveURLs contains a single empty value when empty so using
-		// viper.GetString is easier.
-		if len(config.HistoryArchiveURLs) == 1 && config.HistoryArchiveURLs[0] == "" {
-			return fmt.Errorf("--history-archive-urls must be set when --ingest is set")
-		}
-
 		if config.EnableCaptiveCoreIngestion {
-			stdLog.Println("Preparing captive core...")
-
-			binaryPath := viper.GetString(StellarCoreBinaryPathName)
-
-			// If the user didn't specify a Stellar Core binary, we can check the
-			// $PATH and possibly fill it in for them.
-			if binaryPath == "" {
-				if result, err := exec.LookPath("stellar-core"); err == nil {
-					binaryPath = result
-					viper.Set(StellarCoreBinaryPathName, binaryPath)
-					config.CaptiveCoreBinaryPath = binaryPath
-				} else {
-					return fmt.Errorf("invalid config: captive core requires --%s. %s",
-						StellarCoreBinaryPathName, captiveCoreMigrationHint)
-				}
-			} else {
-				config.CaptiveCoreBinaryPath = binaryPath
-			}
-
-			config.CaptiveCoreTomlParams.CoreBinaryPath = config.CaptiveCoreBinaryPath
-			if config.CaptiveCoreConfigPath == "" {
-				if options.RequireCaptiveCoreConfig {
-					var err error
-					errorMessage := fmt.Errorf(
-						"invalid config: captive core requires that --%s is set. %s",
-						CaptiveCoreConfigPathName, captiveCoreMigrationHint,
-					)
-
-					var configFileName string
-					// Default config files will be located along the binary in the release archive.
-					switch config.NetworkPassphrase {
-					case network.TestNetworkPassphrase:
-						configFileName = "captive-core-testnet.cfg"
-						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"}
-					case network.PublicNetworkPassphrase:
-						configFileName = "captive-core-pubnet.cfg"
-						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-live/core_live_001/"}
-						config.UsingDefaultPubnetConfig = true
-					default:
-						return errorMessage
-					}
-
-					executablePath, err := os.Executable()
-					if err != nil {
-						return errorMessage
-					}
-
-					config.CaptiveCoreConfigPath = filepath.Join(filepath.Dir(executablePath), configFileName)
-					if _, err = os.Stat(config.CaptiveCoreConfigPath); os.IsNotExist(err) {
-						return errorMessage
-					}
-
-					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
-					if err != nil {
-						return fmt.Errorf("Invalid captive core toml file %v", err)
-					}
-				} else {
-					var err error
-					config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
-					if err != nil {
-						return fmt.Errorf("Invalid captive core toml file %v", err)
-					}
-				}
-			} else {
-				var err error
-				config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
-				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
-				config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
-				if err != nil {
-					return fmt.Errorf("Invalid captive core toml file %v", err)
-				}
-			}
-
-			// If we don't supply an explicit core URL and we are running a local
-			// captive core process with the http port enabled, point to it.
-			if config.StellarCoreURL == "" && config.CaptiveCoreToml.HTTPPort != 0 {
-				config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreToml.HTTPPort)
-				viper.Set(StellarCoreURLFlagName, config.StellarCoreURL)
+			err := setCaptiveCoreConfiguration(config)
+			if err != nil {
+				return errors.Wrap(err, "error generating captive core configuration")
 			}
 		}
 	} else {
