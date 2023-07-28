@@ -40,9 +40,9 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 	stdLog.SetOutput(os.Stderr)
 
 	test := NewParameterTest(t, map[string]string{"exp-enable-ingestion-filtering": "false"})
-	if innerErr := test.StartHorizon(); innerErr != nil {
-		t.Fatalf("Failed to start Horizon: %v", innerErr)
-	}
+	err := test.StartHorizon()
+	assert.NoError(t, err)
+	test.WaitForHorizon()
 
 	// Use a wait group to wait for the goroutine to finish before proceeding
 	var wg sync.WaitGroup
@@ -62,7 +62,7 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 	wg.Wait() // Wait for the goroutine to finish before proceeding
 	_ = r.Close()
 	os.Stderr = originalStderr
-
+	
 	assert.Contains(t, string(outputBytes), "DEPRECATED - No ingestion filter rules are defined by default, which equates to "+
 		"no filtering of historical data. If you have never added filter rules to this deployment, then nothing further needed. "+
 		"If you have defined ingestion filter rules prior but disabled filtering overall by setting this flag disabled with "+
