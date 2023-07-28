@@ -13,41 +13,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFilteringWithNoFilters(t *testing.T) {
-	tt := assert.New(t)
-	const adminPort uint16 = 6000
-	itest := integration.NewTest(t, integration.Config{
-		HorizonIngestParameters: map[string]string{
-			"admin-port": strconv.Itoa(int(adminPort)),
-		},
-	})
-
-	fullKeys, accounts := itest.CreateAccounts(2, "10000")
-	nonWhitelistedAccount := accounts[1]
-	nonWhitelistedAccountKey := fullKeys[1]
-
-	// all assets are allowed by default because the asset filter config is empty.
-	defaultAllowedAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: itest.Master().Address()}
-	itest.MustEstablishTrustline(nonWhitelistedAccountKey, nonWhitelistedAccount, defaultAllowedAsset)
-
-	// Assert that by default, the system allows all the accounts.
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
-		&txnbuild.Payment{
-			Destination: nonWhitelistedAccount.GetAccountID(),
-			Amount:      "10",
-			Asset:       defaultAllowedAsset,
-		},
-	)
-	txResp, err := itest.Client().TransactionDetail(txResp.Hash)
-	tt.NoError(err)
-}
-
 func TestFilteringAccountWhiteList(t *testing.T) {
 	tt := assert.New(t)
 	const adminPort uint16 = 6000
 	itest := integration.NewTest(t, integration.Config{
 		HorizonIngestParameters: map[string]string{
-			"admin-port": strconv.Itoa(int(adminPort)),
+			"admin-port":                     strconv.Itoa(int(adminPort)),
+			"exp-enable-ingestion-filtering": "true",
 		},
 	})
 
@@ -63,6 +35,18 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 	itest.MustEstablishTrustline(whitelistedAccountKey, whitelistedAccount, defaultAllowedAsset)
 	itest.MustEstablishTrustline(nonWhitelistedAccountKey, nonWhitelistedAccount, defaultAllowedAsset)
 
+	// assert that by system default, filters with no rules yet, allow all first
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+		&txnbuild.Payment{
+			Destination: nonWhitelistedAccount.GetAccountID(),
+			Amount:      "10",
+			Asset:       defaultAllowedAsset,
+		},
+	)
+
+	txResp, err := itest.Client().TransactionDetail(txResp.Hash)
+	tt.NoError(err)
+
 	// Setup a whitelisted account rule, force refresh of filter configs to be quick
 	filters.SetFilterConfigCheckIntervalSeconds(1)
 
@@ -70,7 +54,7 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 		Whitelist: []string{whitelistedAccount.GetAccountID()},
 		Enabled:   &enabled,
 	}
-	err := itest.AdminClient().SetIngestionAccountFilter(expectedAccountFilter)
+	err = itest.AdminClient().SetIngestionAccountFilter(expectedAccountFilter)
 	tt.NoError(err)
 
 	accountFilter, err := itest.AdminClient().GetIngestionAccountFilter()
@@ -83,7 +67,7 @@ func TestFilteringAccountWhiteList(t *testing.T) {
 	time.Sleep(time.Duration(filters.GetFilterConfigCheckIntervalSeconds()) * time.Second)
 
 	// Make sure that when using a non-whitelisted account, the transaction is not stored
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+	txResp = itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
 		&txnbuild.Payment{
 			Destination: nonWhitelistedAccount.GetAccountID(),
 			Amount:      "10",
@@ -110,7 +94,8 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	const adminPort uint16 = 6000
 	itest := integration.NewTest(t, integration.Config{
 		HorizonIngestParameters: map[string]string{
-			"admin-port": strconv.Itoa(int(adminPort)),
+			"admin-port":                     strconv.Itoa(int(adminPort)),
+			"exp-enable-ingestion-filtering": "true",
 		},
 	})
 
@@ -124,6 +109,18 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	nonWhitelistedAsset := txnbuild.CreditAsset{Code: "SEK", Issuer: itest.Master().Address()}
 	itest.MustEstablishTrustline(defaultAllowedAccountKey, defaultAllowedAccount, nonWhitelistedAsset)
 	enabled := true
+
+	// assert that by system default, filters with no rules yet, allow all first
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+		&txnbuild.Payment{
+			Destination: defaultAllowedAccount.GetAccountID(),
+			Amount:      "10",
+			Asset:       nonWhitelistedAsset,
+		},
+	)
+
+	_, err := itest.Client().TransactionDetail(txResp.Hash)
+	tt.NoError(err)
 
 	// Setup a whitelisted asset rule, force refresh of filters to be quick
 	filters.SetFilterConfigCheckIntervalSeconds(1)
@@ -147,7 +144,7 @@ func TestFilteringAssetWhiteList(t *testing.T) {
 	time.Sleep(time.Duration(filters.GetFilterConfigCheckIntervalSeconds()) * time.Second)
 
 	// Make sure that when using a non-whitelisted asset, the transaction is not stored
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
+	txResp = itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(),
 		&txnbuild.Payment{
 			Destination: defaultAllowedAccount.GetAccountID(),
 			Amount:      "10",

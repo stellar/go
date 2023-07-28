@@ -121,7 +121,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
-			return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set")
+			return fmt.Errorf("`--to` must be a checkpoint ledger when `--verify-state` is set.")
 		}
 
 		ingestConfig := ingest.Config{
@@ -276,7 +276,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
-		historyQ := &history.Q{SessionInterface: horizonSession}
+		historyQ := &history.Q{horizonSession}
 		if err := historyQ.UpdateIngestVersion(ctx, 0); err != nil {
 			return fmt.Errorf("cannot trigger state rebuild: %v", err)
 		}
@@ -300,7 +300,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
-		historyQ := &history.Q{SessionInterface: horizonSession}
+		historyQ := &history.Q{horizonSession}
 
 		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(ctx)
 		if err != nil {
@@ -372,7 +372,7 @@ var ingestBuildStateCmd = &cobra.Command{
 			return fmt.Errorf("cannot open Horizon DB: %v", err)
 		}
 
-		historyQ := &history.Q{SessionInterface: horizonSession}
+		historyQ := &history.Q{horizonSession}
 
 		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(context.Background())
 		if err != nil {

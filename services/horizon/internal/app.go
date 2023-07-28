@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -119,6 +118,22 @@ func (a *App) Serve() error {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	if a.config.UsingDefaultPubnetConfig {
+		const warnMsg = "Horizon started using the default pubnet configuration. " +
+			"This is not safe! Please provide a custom --captive-core-config-path."
+		log.Warn(warnMsg)
+		go func() {
+			for {
+				select {
+				case <-time.After(time.Hour):
+					log.Warn(warnMsg)
+				case <-a.done:
+					return
+				}
+			}
+		}()
+	}
+
 	go func() {
 		select {
 		case <-signalChan:
@@ -197,13 +212,6 @@ func (a *App) Paths() paths.Finder {
 	return a.paths
 }
 
-func isLocalAddress(url string, port uint) bool {
-	localHostURL := fmt.Sprintf("http://localhost:%d", port)
-	localIPURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-
-	return strings.HasPrefix(url, localHostURL) || strings.HasPrefix(url, localIPURL)
-}
-
 // UpdateCoreLedgerState triggers a refresh of Stellar-Core ledger state.
 // This is done separately from Horizon ledger state update to prevent issues
 // in case Stellar-Core query timeout.
@@ -213,7 +221,7 @@ func (a *App) UpdateCoreLedgerState(ctx context.Context) {
 	// #4446 If the ingestion state machine is in the build state, the query can time out
 	// because the captive-core buffer may be full. In this case, skip the check.
 	if a.config.CaptiveCoreToml != nil &&
-		isLocalAddress(a.config.StellarCoreURL, a.config.CaptiveCoreToml.HTTPPort) &&
+		a.config.StellarCoreURL == fmt.Sprintf("http://localhost:%d", a.config.CaptiveCoreToml.HTTPPort) &&
 		a.ingester != nil && a.ingester.GetCurrentState() == ingest.Build {
 		return
 	}
