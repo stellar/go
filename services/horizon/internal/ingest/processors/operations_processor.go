@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/guregu/null"
 
@@ -692,11 +693,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeBumpFootprintExpiration:
 		op := operation.operation.Body.MustBumpFootprintExpirationOp()
-		details["type"] = "bump_footprint_expiration"
-		details["ledgers_to_expire"] = op.LedgersToExpire
+		details["ledgers_to_expire"] = strconv.FormatUint(uint64(op.LedgersToExpire), 10)
 	case xdr.OperationTypeRestoreFootprint:
-		details["type"] = "restore_footprint"
-
 	default:
 		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
 	}

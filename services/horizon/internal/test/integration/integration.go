@@ -569,6 +569,35 @@ func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, function t
 	return function, result.MinResourceFee
 }
 
+func (i *Test) PreflightBumpFootprintExpiration(sourceAccount txnbuild.Account, bumpFootprint txnbuild.BumpFootprintExpiration) (txnbuild.BumpFootprintExpiration, int64) {
+	// TODO: soroban-tools should be exporting a proper Go client
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	sorobanRPCClient := jrpc2.NewClient(ch, nil)
+	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, &bumpFootprint)
+	txParams.IncrementSequenceNum = false
+	tx, err := txnbuild.NewTransaction(txParams)
+	assert.NoError(i.t, err)
+	base64, err := tx.Base64()
+	assert.NoError(i.t, err)
+	result := RPCSimulateTxResponse{}
+	fmt.Printf("Preflight TX:\n\n%v \n\n", base64)
+	err = sorobanRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
+		Transaction string `json:"transaction"`
+	}{base64}, &result)
+	assert.NoError(i.t, err)
+	assert.Empty(i.t, result.Error)
+	var transactionData xdr.SorobanTransactionData
+	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
+	assert.NoError(i.t, err)
+	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
+	bumpFootprint.Ext = xdr.TransactionExt{
+		V:           1,
+		SorobanData: &transactionData,
+	}
+
+	return bumpFootprint, result.MinResourceFee
+}
+
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
 func (i *Test) UpgradeProtocol(version uint32) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
