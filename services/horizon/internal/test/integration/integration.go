@@ -46,9 +46,9 @@ var (
 )
 
 type Config struct {
-	ProtocolVersion       uint32
-	SkipContainerCreation bool
-	CoreDockerImage       string
+	ProtocolVersion           uint32
+	SkipCoreContainerCreation bool
+	CoreDockerImage           string
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -101,11 +101,11 @@ type Test struct {
 // GetTestConfig returns the default test Config required to run NewTest.
 func GetTestConfig() *Config {
 	return &Config{
-		ProtocolVersion:         17,
-		SkipHorizonStart:        true,
-		SkipContainerCreation:   false,
-		HorizonIngestParameters: map[string]string{},
-		HorizonEnvironment:      map[string]string{},
+		ProtocolVersion:           17,
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: false,
+		HorizonIngestParameters:   map[string]string{},
+		HorizonEnvironment:        map[string]string{},
 	}
 }
 
@@ -131,7 +131,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		}
 	}
 	var i *Test
-	if !config.SkipContainerCreation {
+	if !config.SkipCoreContainerCreation {
 		composePath := findDockerComposePath()
 		i = &Test{
 			t:           t,
@@ -153,7 +153,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
-	if !config.SkipContainerCreation {
+	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
 	}
 
@@ -244,7 +244,7 @@ func (i *Test) prepareShutdownHandlers() {
 			if i.ingestNode != nil {
 				i.ingestNode.Close()
 			}
-			if !i.config.SkipContainerCreation {
+			if !i.config.SkipCoreContainerCreation {
 				i.runComposeCommand("rm", "-fvs", "core")
 				i.runComposeCommand("rm", "-fvs", "core-postgres")
 			}

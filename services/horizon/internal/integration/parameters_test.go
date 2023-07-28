@@ -150,11 +150,11 @@ func TestNetworkParameter(t *testing.T) {
 			horizon.NetworkFlagName: horizon.StellarPubnet,
 		})
 		testConfig := integration.GetTestConfig()
-		testConfig.SkipContainerCreation = true
+		testConfig.SkipCoreContainerCreation = true
 		testConfig.HorizonIngestParameters = localParams
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
@@ -165,11 +165,11 @@ func TestNetworkParameter(t *testing.T) {
 			horizon.NetworkFlagName: horizon.StellarTestnet,
 		})
 		testConfig := integration.GetTestConfig()
-		testConfig.SkipContainerCreation = true
+		testConfig.SkipCoreContainerCreation = true
 		testConfig.HorizonIngestParameters = localParams
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
@@ -205,12 +205,12 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 	t.Run("NETWORK environment variable pubnet", func(t *testing.T) {
 		testConfig := integration.GetTestConfig()
-		testConfig.SkipContainerCreation = true
+		testConfig.SkipCoreContainerCreation = true
 		testConfig.HorizonIngestParameters = networkParamArgs
 		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarPubnet}
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
@@ -218,12 +218,12 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 
 	t.Run("NETWORK environment variable testnet", func(t *testing.T) {
 		testConfig := integration.GetTestConfig()
-		testConfig.SkipContainerCreation = true
+		testConfig.SkipCoreContainerCreation = true
 		testConfig.HorizonIngestParameters = networkParamArgs
 		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarTestnet}
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
