@@ -21,7 +21,6 @@ type Config struct {
 
 	EnableCaptiveCoreIngestion  bool
 	EnableIngestionFiltering    bool
-	UsingDefaultPubnetConfig    bool
 	CaptiveCoreBinaryPath       string
 	RemoteCaptiveCoreURL        string
 	CaptiveCoreConfigPath       string
@@ -114,4 +113,6 @@ type Config struct {
 	BehindAWSLoadBalancer bool
 	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
 	RoundingSlippageFilter int
+	// Stellar network: 'testnet' or 'pubnet'
+	Network string
 }

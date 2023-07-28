@@ -105,21 +105,6 @@ type Test struct {
 	passPhrase    string
 }
 
-func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string, masterKey *keypair.Full) *Test {
-	adminClient, err := sdk.NewAdminClient(0, "", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &Test{
-		t:                  t,
-		horizonClient:      &sdk.Client{HorizonURL: horizonURL},
-		horizonAdminClient: adminClient,
-		masterKey:          masterKey,
-		passPhrase:         passPhrase,
-	}
-}
-
 // NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //
