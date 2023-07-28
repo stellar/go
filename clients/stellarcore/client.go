@@ -63,8 +63,7 @@ func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 		err = errors.New("http request failed with non-200 status code")
 		return
 	}
-
-	return
+	return nil
 }
 
 // GetLedgerEntry submits a request to the stellar core instance to get the latest
