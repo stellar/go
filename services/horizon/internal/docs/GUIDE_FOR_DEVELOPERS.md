@@ -88,13 +88,15 @@ Add a debug configuration in your IDE to attach a debugger to the local Horizon 
      "program": "${workspaceRoot}/services/horizon/main.go",
      "env": {
          "DATABASE_URL": "postgres://postgres@localhost:5432/horizon?sslmode=disable",
-         "NETWORK":  "testnet",
+         "CAPTIVE_CORE_CONFIG_APPEND_PATH": "./services/horizon/internal/configs/captive-core-testnet.cfg",
+         "HISTORY_ARCHIVE_URLS": "https://history.stellar.org/prd/core-testnet/core_testnet_001,https://history.stellar.org/prd/core-testnet/core_testnet_002",
+         "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
          "PER_HOUR_RATE_LIMIT": "0"
      },
      "args": []
  }
 ```
-If all is well, you should see ingest logs written to standard out.
+If all is well, you should see ingest logs written to standard out. You can read more about configuring the different environment variables in [Configuring](https://developers.stellar.org/docs/run-api-server/configuring) section of our public documentation.
 
 #### Test Debug
 You can also use a similar configuration to debug the integration and unit tests. For e.g. here is a configuration for debugging the ```TestFilteringAccountWhiteList``` integration test.
