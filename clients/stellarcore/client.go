@@ -30,32 +30,41 @@ type Client struct {
 }
 
 // Upgrade upgrades the protocol version running on the stellar core instance
-func (c *Client) Upgrade(ctx context.Context, version int) error {
+func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 	queryParams := url.Values{}
 	queryParams.Add("mode", "set")
 	queryParams.Add("upgradetime", "1970-01-01T00:00:00Z")
 	queryParams.Add("protocolversion", strconv.Itoa(version))
 
-	req, err := c.simpleGet(ctx, "upgrades", queryParams)
+	var req *http.Request
+	req, err = c.simpleGet(ctx, "upgrades", queryParams)
 	if err != nil {
 		return errors.Wrap(err, "failed to create request")
 	}
 
-	hresp, err := c.http().Do(req)
+	var hresp *http.Response
+	hresp, err = c.http().Do(req)
 	if err != nil {
 		return errors.Wrap(err, "http request errored")
 	}
 	defer func() {
 		// drain the remaining of the Body
-		_, err = io.Copy(ioutil.Discard, hresp.Body)
-		hresp.Body.Close()
+		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to read excess data from response")
+		}
+		err2 = hresp.Body.Close()
+		if err == nil && err2 != nil {
+			err = errors.Wrap(err2, "unable to close response body")
+		}
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
-		return errors.New("http request failed with non-200 status code")
+		err = errors.New("http request failed with non-200 status code")
+		return
 	}
 
-	return nil
+	return
 }
 
 // GetLedgerEntry submits a request to the stellar core instance to get the latest
