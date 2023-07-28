@@ -21,18 +21,6 @@ const (
 	FutureNetworkPassphrase = "Test SDF Future Network ; October 2022"
 )
 
-var (
-	// PublicNetworkhistoryArchiveURLs is a list of history archive URLs for stellar 'pubnet'
-	PublicNetworkhistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-live/core_live_001/",
-		"https://history.stellar.org/prd/core-live/core_live_002/",
-		"https://history.stellar.org/prd/core-live/core_live_003/"}
-
-	// TestNetworkhistoryArchiveURLs is a list of history archive URLs for stellar 'testnet'
-	TestNetworkhistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/",
-		"https://history.stellar.org/prd/core-testnet/core_testnet_002/",
-		"https://history.stellar.org/prd/core-testnet/core_testnet_003"}
-)
-
 // ID returns the network ID derived from the provided passphrase.  This value
 // also happens to be the raw (i.e. not strkey encoded) secret key for the root
 // account of the network.
