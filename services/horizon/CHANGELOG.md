@@ -6,6 +6,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- The command line flag --remote-captive-core-url has been removed as remote captive core functionality is now deprecated  ([4940](https://github.com/stellar/go/pull/4940)).
+- Added new command-line flag --network to specify the Stellar network (pubnet or testnet), aiming at simplifying the configuration process by automatically configuring the following parameters based on the chosen network: --history-archive-urls, --network-passphrase, --captive-core-config-path. ([4949](https://github.com/stellar/go/pull/4949)).
 
 ## 2.26.1
 

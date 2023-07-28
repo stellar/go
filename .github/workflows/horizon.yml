@@ -11,8 +11,8 @@ jobs:
     name: Integration tests
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        go: [1.19.6, 1.20.1]
+        os: [ubuntu-20.04, ubuntu-22.04]
+        go: ["1.19", "1.20"]
         pg: [9.6.5]
         ingestion-backend: [db, captive-core, captive-core-remote-storage]
         protocol-version: [19]
@@ -34,8 +34,8 @@ jobs:
     env:
       HORIZON_INTEGRATION_TESTS_ENABLED: true
       HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL: ${{ matrix.protocol-version }}
-      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.11.0-1323.7fb6d5e88.focal
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
+      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.12.0-1378.2109a168a.focal
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.12.0-1378.2109a168a.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -76,7 +76,8 @@ jobs:
         # Workaround for https://github.com/actions/virtual-environments/issues/5245,
         # libc++1-8 won't be installed if another version is installed (but apt won't give you a helpul
         # message about why the installation fails)
-        sudo apt-get remove -y libc++1-10 libc++abi1-10 || true
+        sudo apt list --installed | grep libc++
+        sudo apt-get remove -y libc++1-* libc++abi1-* || true
 
         sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
         sudo bash -c 'echo "deb https://apt.stellar.org focal unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
@@ -106,9 +107,9 @@ jobs:
 
   verify-range:
     name: Test (and push) verify-range image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
-      STELLAR_CORE_VERSION: 19.11.0-1323.7fb6d5e88.focal
+      STELLAR_CORE_VERSION: 19.12.0-1378.2109a168a.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
     - uses: actions/checkout@v3
