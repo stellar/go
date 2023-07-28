@@ -332,7 +332,7 @@ func TestDisablePathFinding(t *testing.T) {
 
 func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 	t.Run("ingestion filtering flag set to default value", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{})
+		test := integration.NewTest(t, *integration.GetTestConfig())
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -340,7 +340,9 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("ingestion filtering flag set to false", func(t *testing.T) {
-		test := NewParameterTest(t, map[string]string{"exp-enable-ingestion-filtering": "false"})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
+		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
 		assert.NoError(t, err)
 		test.WaitForHorizon()
@@ -355,7 +357,9 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 	os.Stderr = w
 	stdLog.SetOutput(os.Stderr)
 
-	test := NewParameterTest(t, map[string]string{"exp-enable-ingestion-filtering": "false"})
+	testConfig := integration.GetTestConfig()
+	testConfig.HorizonIngestParameters = map[string]string{"exp-enable-ingestion-filtering": "false"}
+	test := integration.NewTest(t, *testConfig)
 	err := test.StartHorizon()
 	assert.NoError(t, err)
 	test.WaitForHorizon()
