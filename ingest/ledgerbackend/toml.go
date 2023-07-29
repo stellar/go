@@ -89,7 +89,7 @@ type captiveCoreTomlValues struct {
 	UseBucketListDB                       bool                 `toml:"EXPERIMENTAL_BUCKETLIST_DB,omitempty"`
 	BucketListDBPageSizeExp               *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT,omitempty"`
 	BucketListDBCutoff                    *uint                `toml:"EXPERIMENTAL_BUCKETLIST_DB_INDEX_CUTOFF,omitempty"`
-	EnableSorobanDiagnosticEvents         bool                 `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
+	EnableSorobanDiagnosticEvents         *bool                `toml:"ENABLE_SOROBAN_DIAGNOSTIC_EVENTS,omitempty"`
 	TestingMinimumPersistentEntryLifetime *uint                `toml:"TESTING_MINIMUM_PERSISTENT_ENTRY_LIFETIME,omitempty"`
 }
 
@@ -327,6 +327,8 @@ type CaptiveCoreTomlParams struct {
 	UseDB bool
 	// the path to the core binary, used to introspect core at runtie, determine some toml capabilities
 	CoreBinaryPath string
+	// Enforce EnableSorobanDiagnosticEvents when not disabled explicitly
+	EnforceSorobanDiagnosticEvents bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -498,6 +500,18 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 			c.HistoryEntries[c.tablePlaceholders.newPlaceholder(name)] = History{
 				Get: fmt.Sprintf("curl -sf %s/{0} -o {1}", val),
 			}
+		}
+	}
+	if params.EnforceSorobanDiagnosticEvents {
+		if c.EnableSorobanDiagnosticEvents == nil {
+			// We are generating the file from scratch or the user didn't explicitly oppose to diagnostic events in the config file.
+			// Enforce it.
+			t := true
+			c.EnableSorobanDiagnosticEvents = &t
+		}
+		if !*c.EnableSorobanDiagnosticEvents {
+			// The user opposed to diagnostic events in the config file, but there is no need to pass on the option
+			c.EnableSorobanDiagnosticEvents = nil
 		}
 	}
 }
