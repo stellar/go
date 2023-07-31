@@ -529,11 +529,36 @@ type RPCSimulateTxResponse struct {
 }
 
 // Wait for SorobanRPC to be up
-func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction) (txnbuild.InvokeHostFunction, int64) {
+func (i *Test) PreflightHostFunctions(
+	sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction,
+) (txnbuild.InvokeHostFunction, int64) {
+	result, transactionData := i.simulateTransaction(sourceAccount, &function)
+	function.Ext = xdr.TransactionExt{
+		V:           1,
+		SorobanData: &transactionData,
+	}
+	var funAuth []xdr.SorobanAuthorizationEntry
+	for _, authElement := range result.Results {
+		for _, authBase64 := range authElement.Auth {
+			var authEntry xdr.SorobanAuthorizationEntry
+			err := xdr.SafeUnmarshalBase64(authBase64, &authEntry)
+			assert.NoError(i.t, err)
+			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
+			funAuth = append(funAuth, authEntry)
+		}
+	}
+	function.Auth = funAuth
+
+	return function, result.MinResourceFee
+}
+
+func (i *Test) simulateTransaction(
+	sourceAccount txnbuild.Account, op txnbuild.Operation,
+) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
 	// TODO: soroban-tools should be exporting a proper Go client
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
-	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, &function)
+	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, op)
 	txParams.IncrementSequenceNum = false
 	tx, err := txnbuild.NewTransaction(txParams)
 	assert.NoError(i.t, err)
@@ -550,23 +575,19 @@ func (i *Test) PreflightHostFunctions(sourceAccount txnbuild.Account, function t
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
 	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
-	function.Ext = xdr.TransactionExt{
+	return result, transactionData
+}
+
+func (i *Test) PreflightBumpFootprintExpiration(
+	sourceAccount txnbuild.Account, bumpFootprint txnbuild.BumpFootprintExpiration,
+) (txnbuild.BumpFootprintExpiration, int64) {
+	result, transactionData := i.simulateTransaction(sourceAccount, &bumpFootprint)
+	bumpFootprint.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
-	var funAuth []xdr.SorobanAuthorizationEntry
-	for _, authElement := range result.Results {
-		for _, authBase64 := range authElement.Auth {
-			var authEntry xdr.SorobanAuthorizationEntry
-			err = xdr.SafeUnmarshalBase64(authBase64, &authEntry)
-			assert.NoError(i.t, err)
-			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
-			funAuth = append(funAuth, authEntry)
-		}
-	}
-	function.Auth = funAuth
 
-	return function, result.MinResourceFee
+	return bumpFootprint, result.MinResourceFee
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
