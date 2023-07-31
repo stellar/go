@@ -63,5 +63,5 @@ func TestBumpFootPrintExpiration(t *testing.T) {
 	require.Len(t, ops.Embedded.Records, 1)
 
 	op := ops.Embedded.Records[0].(operations.BumpFootprintExpiration)
-	require.Equal(t, int64(10000), op.LedgersToExpire)
+	require.Equal(t, uint32(10000), op.LedgersToExpire)
 }

@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
-
 	"github.com/guregu/null"
 
 	"github.com/stellar/go/amount"
@@ -693,7 +691,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeBumpFootprintExpiration:
 		op := operation.operation.Body.MustBumpFootprintExpirationOp()
-		details["ledgers_to_expire"] = strconv.FormatUint(uint64(op.LedgersToExpire), 10)
+		details["ledgers_to_expire"] = op.LedgersToExpire
 	case xdr.OperationTypeRestoreFootprint:
 	default:
 		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
