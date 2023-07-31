@@ -502,7 +502,8 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 			}
 		}
 	}
-	if params.EnforceSorobanDiagnosticEvents {
+
+	if params.EnforceSorobanDiagnosticEvents && checkTestingAboveProtocol19() {
 		if c.EnableSorobanDiagnosticEvents == nil {
 			// We are generating the file from scratch or the user didn't explicitly oppose to diagnostic events in the config file.
 			// Enforce it.
@@ -514,6 +515,22 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 			c.EnableSorobanDiagnosticEvents = nil
 		}
 	}
+}
+
+// checkTestingWithProtocol19 is a temporary workaround that would let us keep conducting the
+// horizon testings against an older core version without brakage. Note that at this point, we
+// don't know if the core would support the new flags - so we're defering this to an env variable.
+// post release, we should just remove this test.
+func checkTestingAboveProtocol19() bool {
+	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
+	if str == "" {
+		return false
+	}
+	version, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return false
+	}
+	return uint32(version) > 19
 }
 
 func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
