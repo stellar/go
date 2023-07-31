@@ -4,7 +4,6 @@ package integration
 import (
 	"bytes"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 	stdLog "log"
@@ -14,7 +13,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
@@ -259,9 +259,6 @@ func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 			return
 		}
 	}()
-
-	// Give some time for the goroutine to start
-	time.Sleep(time.Millisecond)
 
 	outputBytes, _ := io.ReadAll(r)
 	wg.Wait() // Wait for the goroutine to finish before proceeding
