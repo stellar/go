@@ -1,7 +1,7 @@
 version: '3'
 services:
   core-postgres:
-    image: circleci/postgres:12-bullseye
+    image: postgres:9.6.17-alpine
     restart: on-failure
     environment:
       - POSTGRES_PASSWORD=mysecretpassword

@@ -12,15 +12,22 @@ or run individual Horizon tests like so, providing the expected arguments:
 go test github.com/stellar/go/services/horizon/...
 ```
 
-To run the integration tests, move to top folder of working copy of `go` repo to run all integration tests
-or /services/horizon to run just Horizon integration tests:
+Before running integration tests, you also need to set some environment variables:
+```bash
+export HORIZON_INTEGRATION_TESTS_ENABLED=true
+export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=19
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
 ```
-HORIZON_INTEGRATION_TESTS_ENABLED=true go test -race -timeout 35m -v ./...
+Make sure to check [horizon.yml](/.github/workflows/horizon.yml) for the latest core image version.
+
+And then use the following command to run the Horizon integration tests:
+```bash
+go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 ```
 
 To run just one specific integration test, e.g. like `TestTxSub`:
-```
-HORIZON_INTEGRATION_TESTS_ENABLED=true go test -run TestTxsub -race -timeout 5m -v ./...
+```bash
+go test -run TestTxsub -race -timeout 5m -v ./...
 ```
 
 Authoring tests to assert coverage is key importance, to facilitate best experience for writing tests within Horizon packages, there are some conventions to be aware of:

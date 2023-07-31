@@ -69,7 +69,7 @@ To run the integration tests, you need to set some environment variables:
 ```bash
 export HORIZON_INTEGRATION_TESTS_ENABLED=true 
 export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=19
-export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:latest
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
 go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 ```
 Note that this will also require a Postgres instance running on port 5432 either locally or exposed through a docker container. Also note that the ``POSTGRES_HOST_AUTH_METHOD`` has been enabled.
@@ -110,7 +110,7 @@ You can also use a similar configuration to debug the integration and unit tests
    "env": {
        "HORIZON_INTEGRATION_TESTS_ENABLED": "true",
        "HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL": "19",
-       "HORIZON_INTEGRATION_TESTS_DOCKER_IMG": "stellar/stellar-core:latest"
+       "HORIZON_INTEGRATION_TESTS_DOCKER_IMG": "stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal"
    },
    "args": [
        "-test.run",
@@ -148,18 +148,18 @@ When running Horizon on a private stand-alone network, Horizon will not start in
 
 ## Using a specific version of Stellar Core
 
-By default, the Docker Compose file is configured to use version 18 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations.
+By default, the Docker Compose file is configured to use version 19 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations.
 ```bash
-export PROTOCOL_VERSION="18"
-export CORE_IMAGE="stellar/stellar-core:18" 
-export STELLAR_CORE_VERSION="18.1.1-779.ef0f44b44.focal"
+export PROTOCOL_VERSION="19"
+export CORE_IMAGE="stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal" 
+export STELLAR_CORE_VERSION="19.11.0-1323.7fb6d5e88.focal"
 ```
 
 Example:
 
-Runs Stellar Protocol and Core version 18, for any mode of testnet, standalone, pubnet
+Runs Stellar Protocol and Core version 19, for any mode of testnet, standalone, pubnet
 ```bash
-PROTOCOL_VERSION=18 CORE_IMAGE=stellar/stellar-core:18 STELLAR_CORE_VERSION=18.1.1-779.ef0f44b44.focal ./start.sh [standalone|pubnet]
+PROTOCOL_VERSION=19 CORE_IMAGE=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal STELLAR_CORE_VERSION=19.11.0-1323.7fb6d5e88.focal ./start.sh [standalone|pubnet]
 ```
 
 ## <a name="logging"></a> **Logging**
@@ -208,11 +208,16 @@ ctx := log.Set(context.Background(), sub)
 
 log.Info("no fields on this statement")
 log.Ctx(ctx).Info("This statement will use the sub logger")
-
 ```
-
 
 ### **Adding migrations**
 1. Add your migration to `go/services/horizon/internal/db2/schema/migrations/` using the same name nomenclature as other migrations.
 2. After creating you migration, run `./gogenerate.sh` from the root folder to regenerate the code.
 
+### **Code Format**
+Some basic code formatting is required for contributions. Run the following scripts included in this repo to perform these tasks. Some of this formatting can be done automatically by IDE's also:
+```bash
+./gofmt.sh
+./govet.sh
+./staticcheck.sh
+```
