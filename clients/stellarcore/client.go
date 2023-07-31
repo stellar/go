@@ -33,7 +33,7 @@ type Client struct {
 // response object and optionally close the stream. It would also update the
 // error but only as long as there wasn't an error before - this would allow
 // the various methods to report the first error that took place.
-// in case an error was encounted during either the draining or closing of the
+// in case an error was encountered during either the draining or closing of the
 // stream, that error would be returned.
 func drainReponse(hresp *http.Response, close bool, err *error) (outerror error) {
 	_, err2 := io.Copy(ioutil.Discard, hresp.Body)
@@ -74,7 +74,7 @@ func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 		return errors.Wrap(err, "http request errored")
 	}
 	defer func() {
-		drainReponse(hresp, true, &err)
+		drainReponse(hresp, true, &err) //nolint:errcheck
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -142,7 +142,7 @@ func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error)
 		return
 	}
 	defer func() {
-		drainReponse(hresp, true, &err)
+		drainReponse(hresp, true, &err) //nolint:errcheck
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -177,7 +177,7 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err er
 		return errors.Wrap(err, "http request errored")
 	}
 	defer func() {
-		drainReponse(hresp, true, &err)
+		drainReponse(hresp, true, &err) //nolint:errcheck
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -219,7 +219,7 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 		return
 	}
 	defer func() {
-		drainReponse(hresp, true, &err)
+		drainReponse(hresp, true, &err) //nolint:errcheck
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -281,7 +281,7 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 		return
 	}
 	defer func() {
-		drainReponse(hresp, true, &err)
+		drainReponse(hresp, true, &err) //nolint:errcheck
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
