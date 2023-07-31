@@ -143,8 +143,20 @@ When you run Stellar Core on a stand-alone network with passphrase of `Standalon
 Root Public Key: GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI
 Root Secret Key: SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
 ```
-
 When running Horizon on a private stand-alone network, Horizon will not start ingesting until Stellar Core creates its first history archive snapshot. Stellar Core creates snapshots every 64 ledgers, which means ingestion will be delayed until ledger 64.
+
+### Accelerated network for testing
+
+You can increase the speed of tests by adding `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true` in the [captive-core-standalone.cfg](/services/horizon/docker/captive-core-standalone.cfg).
+
+And finally setting the checkpoint frequency for horizon:
+```bash
+export CHECKPOINT_FREQUENCY=8
+```
+
+This modification causes the standalone network to close ledgers every 1 second and create a checkpoint once every 8 ledgers, 
+deviating from the default timing of ledger closing after 5 seconds and creating a checkpoint once every 64 ledgers. Please note that 
+this customization is only applicable when running a standalone network, as it requires changes to the captive-core configuration.
 
 ## Using a specific version of Stellar Core
 
@@ -214,7 +226,7 @@ log.Ctx(ctx).Info("This statement will use the sub logger")
 1. Add your migration to `go/services/horizon/internal/db2/schema/migrations/` using the same name nomenclature as other migrations.
 2. After creating you migration, run `./gogenerate.sh` from the root folder to regenerate the code.
 
-### **Code Format**
+### **Code Formatting**
 Some basic code formatting is required for contributions. Run the following scripts included in this repo to perform these tasks. Some of this formatting can be done automatically by IDE's also:
 ```bash
 ./gofmt.sh
