@@ -37,14 +37,18 @@ type Client struct {
 // stream, that error would be returned.
 func drainReponse(hresp *http.Response, close bool, err *error) (outerror error) {
 	_, err2 := io.Copy(ioutil.Discard, hresp.Body)
-	if err != nil && *err == nil && err2 != nil {
-		*err = errors.Wrap(err2, "unable to read excess data from response")
+	if err2 != nil {
+		if err != nil && *err == nil {
+			*err = errors.Wrap(err2, "unable to read excess data from response")
+		}
 		outerror = err2
 	}
 	if close {
 		err2 = hresp.Body.Close()
-		if err != nil && *err == nil && err2 != nil {
-			*err = errors.Wrap(err2, "unable to close response body")
+		if err2 != nil {
+			if err != nil && *err == nil {
+				*err = errors.Wrap(err2, "unable to close response body")
+			}
 			outerror = err2
 		}
 	}
