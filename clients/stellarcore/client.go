@@ -29,6 +29,28 @@ type Client struct {
 	URL string
 }
 
+// drainReponse is a helper method for draining the body stream off the http
+// response object and optionally close the stream. It would also update the
+// error but only as long as there wasn't an error before - this would allow
+// the various methods to report the first error that took place.
+// in case an error was encounted during either the draining or closing of the
+// stream, that error would be returned.
+func drainReponse(hresp *http.Response, close bool, err *error) (outerror error) {
+	_, err2 := io.Copy(ioutil.Discard, hresp.Body)
+	if err != nil && *err == nil && err2 != nil {
+		*err = errors.Wrap(err2, "unable to read excess data from response")
+		outerror = err2
+	}
+	if close {
+		err2 = hresp.Body.Close()
+		if err != nil && *err == nil && err2 != nil {
+			*err = errors.Wrap(err2, "unable to close response body")
+			outerror = err2
+		}
+	}
+	return
+}
+
 // Upgrade upgrades the protocol version running on the stellar core instance
 func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 	queryParams := url.Values{}
@@ -48,15 +70,7 @@ func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 		return errors.Wrap(err, "http request errored")
 	}
 	defer func() {
-		// drain the remaining of the Body
-		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to read excess data from response")
-		}
-		err2 = hresp.Body.Close()
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to close response body")
-		}
+		drainReponse(hresp, true, &err)
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -88,10 +102,7 @@ func (c *Client) GetLedgerEntry(ctx context.Context, ledgerKey xdr.LedgerKey) (p
 	defer hresp.Body.Close()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
-		// drain the remaining of the Body
-		_, err = io.Copy(ioutil.Discard, hresp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "unable to read excess data from response")
+		if drainReponse(hresp, false, &err) != nil {
 			return proto.GetLedgerEntryResponse{}, err
 		}
 		return proto.GetLedgerEntryResponse{}, errors.New("http request failed with non-200 status code")
@@ -127,15 +138,7 @@ func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error)
 		return
 	}
 	defer func() {
-		// drain the remaining of the Body
-		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to read excess data from response")
-		}
-		err2 = hresp.Body.Close()
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to close response body")
-		}
+		drainReponse(hresp, true, &err)
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -170,15 +173,7 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err er
 		return errors.Wrap(err, "http request errored")
 	}
 	defer func() {
-		// drain the remaining of the Body
-		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to read excess data from response")
-		}
-		err2 = hresp.Body.Close()
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to close response body")
-		}
+		drainReponse(hresp, true, &err)
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -220,15 +215,7 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 		return
 	}
 	defer func() {
-		// drain the remaining of the Body
-		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to read excess data from response")
-		}
-		err2 = hresp.Body.Close()
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to close response body")
-		}
+		drainReponse(hresp, true, &err)
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
@@ -290,15 +277,7 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 		return
 	}
 	defer func() {
-		// drain the remaining of the Body
-		_, err2 := io.Copy(ioutil.Discard, hresp.Body)
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to read excess data from response")
-		}
-		err2 = hresp.Body.Close()
-		if err == nil && err2 != nil {
-			err = errors.Wrap(err2, "unable to close response body")
-		}
+		drainReponse(hresp, true, &err)
 	}()
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
