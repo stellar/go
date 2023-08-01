@@ -305,6 +305,39 @@ func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
 	assert.NotContains(t, output, "--exp-enable-ingestion-filtering")
 }
 
+func TestHelpOutputForNoDisableTxSubFlag(t *testing.T) {
+	config, flags := horizon.Flags()
+
+	horizonCmd := &cobra.Command{
+		Use:           "horizon",
+		Short:         "Client-facing api server for the Stellar network",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Long:          "Client-facing API server for the Stellar network.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, err := horizon.NewAppFromFlags(config, flags)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
+	var writer io.Writer = &bytes.Buffer{}
+	horizonCmd.SetOutput(writer)
+
+	horizonCmd.SetArgs([]string{"-h"})
+	if err := flags.Init(horizonCmd); err != nil {
+		fmt.Println(err)
+	}
+	if err := horizonCmd.Execute(); err != nil {
+		fmt.Println(err)
+	}
+
+	output := writer.(*bytes.Buffer).String()
+	assert.NotContains(t, output, "--disable-tx-sub")
+}
+
 // Pattern taken from testify issue:
 // https://github.com/stretchr/testify/issues/858#issuecomment-600491003
 //
