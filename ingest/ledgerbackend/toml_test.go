@@ -218,7 +218,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 }
 
 func TestGenerateConfig(t *testing.T) {
-	testCases := []struct {
+	for _, testCase := range []struct {
 		name                           string
 		appendPath                     string
 		mode                           stellarCoreRunnerMode
@@ -301,55 +301,40 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
-		}}
-	if checkTestingAboveProtocol19() {
-		testCases = append(testCases, []struct {
-			name                           string
-			appendPath                     string
-			mode                           stellarCoreRunnerMode
-			expectedPath                   string
-			httpPort                       *uint
-			peerPort                       *uint
-			logPath                        *string
-			useDB                          bool
-			enforceSorobanDiagnosticEvents bool
-		}{
-			{
-				name:                           "offline config with enforce diagnostic events",
-				mode:                           stellarCoreRunnerModeOffline,
-				expectedPath:                   filepath.Join("testdata", "expected-offline-enforce-diagnostic-events.cfg"),
-				logPath:                        nil,
-				enforceSorobanDiagnosticEvents: true,
-			},
-			{
-				name:                           "offline config disabling enforced diagnostic events",
-				mode:                           stellarCoreRunnerModeOffline,
-				expectedPath:                   filepath.Join("testdata", "expected-offline-enforce-disabled-diagnostic-events.cfg"),
-				appendPath:                     filepath.Join("testdata", "appendix-disable-diagnostic-events.cfg"),
-				logPath:                        nil,
-				enforceSorobanDiagnosticEvents: true,
-			},
-			{
-				name:                           "online config with enforce diagnostic events",
-				mode:                           stellarCoreRunnerModeOnline,
-				appendPath:                     filepath.Join("testdata", "sample-appendix.cfg"),
-				expectedPath:                   filepath.Join("testdata", "expected-online-with-no-http-port-diag-events.cfg"),
-				httpPort:                       nil,
-				peerPort:                       newUint(12345),
-				logPath:                        nil,
-				enforceSorobanDiagnosticEvents: true,
-			},
-			{
-				name:         "offline config with minimum persistent entry in appendix",
-				mode:         stellarCoreRunnerModeOnline,
-				appendPath:   filepath.Join("testdata", "appendix-with-minimum-persistent-entry.cfg"),
-				expectedPath: filepath.Join("testdata", "expected-online-with-appendix-minimum-persistent-entry.cfg"),
-				logPath:      nil,
-			},
-		}...)
-	}
-
-	for _, testCase := range testCases {
+		},
+		{
+			name:                           "offline config with enforce diagnostic events",
+			mode:                           stellarCoreRunnerModeOffline,
+			expectedPath:                   filepath.Join("testdata", "expected-offline-enforce-diagnostic-events.cfg"),
+			logPath:                        nil,
+			enforceSorobanDiagnosticEvents: true,
+		},
+		{
+			name:                           "offline config disabling enforced diagnostic events",
+			mode:                           stellarCoreRunnerModeOffline,
+			expectedPath:                   filepath.Join("testdata", "expected-offline-enforce-disabled-diagnostic-events.cfg"),
+			appendPath:                     filepath.Join("testdata", "appendix-disable-diagnostic-events.cfg"),
+			logPath:                        nil,
+			enforceSorobanDiagnosticEvents: true,
+		},
+		{
+			name:                           "online config with enforce diagnostic events",
+			mode:                           stellarCoreRunnerModeOnline,
+			appendPath:                     filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath:                   filepath.Join("testdata", "expected-online-with-no-http-port-diag-events.cfg"),
+			httpPort:                       nil,
+			peerPort:                       newUint(12345),
+			logPath:                        nil,
+			enforceSorobanDiagnosticEvents: true,
+		},
+		{
+			name:         "offline config with minimum persistent entry in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "appendix-with-minimum-persistent-entry.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-online-with-appendix-minimum-persistent-entry.cfg"),
+			logPath:      nil,
+		},
+	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var err error
 			var captiveCoreToml *CaptiveCoreToml
