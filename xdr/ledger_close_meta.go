@@ -1,5 +1,18 @@
 package xdr
 
+import "fmt"
+
+func (l LedgerCloseMeta) LedgerHeaderHistoryEntry() LedgerHeaderHistoryEntry {
+	switch l.V {
+	case 0:
+		return l.MustV0().LedgerHeader
+	case 1:
+		return l.MustV1().LedgerHeader
+	default:
+		panic(fmt.Sprintf("Unsupported LedgerCloseMeta.V: %d", l.V))
+	}
+}
+
 func (l LedgerCloseMeta) LedgerSequence() uint32 {
 	return uint32(l.MustV0().LedgerHeader.Header.LedgerSeq)
 }
