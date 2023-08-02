@@ -257,7 +257,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				if existingValue == "" || existingValue == "." {
 					cwd, err := os.Getwd()
 					if err != nil {
-						return fmt.Errorf("Unable to determine the current directory: %s", err)
+						return fmt.Errorf("unable to determine the current directory: %s", err)
 					}
 					existingValue = cwd
 				}
@@ -394,7 +394,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: func(co *support.ConfigOption) error {
 				ll, err := logrus.ParseLevel(viper.GetString(co.Name))
 				if err != nil {
-					return fmt.Errorf("Could not parse log-level: %v", viper.GetString(co.Name))
+					return fmt.Errorf("could not parse log-level: %v", viper.GetString(co.Name))
 				}
 				*(co.ConfigKey.(*logrus.Level)) = ll
 				return nil
@@ -827,6 +827,10 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	}
 
 	if !config.DisableTxSub {
+		if !config.Ingest {
+			return fmt.Errorf("invalid config: --%s set to false but ingestion has been disabled."+
+				"Set INGEST=true to enable transaction submission functionality", DisableTxSubFlagName)
+		}
 		if config.Network == "" && (config.NetworkPassphrase == "" || len(config.HistoryArchiveURLs) == 0) {
 			return fmt.Errorf("invalid config: --%s set to false but no --%s flag or "+
 				"ingestion parameters set (--%s and --%s)", DisableTxSubFlagName, NetworkFlagName,
@@ -861,11 +865,12 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			if viper.GetString(CaptiveCoreConfigPathName) != "" {
 				captiveCoreConfigFlag = CaptiveCoreConfigPathName
 			}
-			return fmt.Errorf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
+			return fmt.Errorf("invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set"+captiveCoreMigrationHint,
 				StellarCoreBinaryPathName, captiveCoreConfigFlag)
 		}
 		if config.StellarCoreDatabaseURL != "" {
-			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+			return fmt.Errorf("invalid config: --%s passed but --ingest not setcccccbgkvrnudnhglgvtnbcnunfghkgkjrdvrcekflli"+
+				"", StellarCoreDBURLFlagName)
 		}
 	}
 
@@ -875,7 +880,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		if err == nil {
 			log.DefaultLogger.SetOutput(logFile)
 		} else {
-			return fmt.Errorf("Failed to open file to log: %s", err)
+			return fmt.Errorf("failed to open file to log: %s", err)
 		}
 	}
 
@@ -890,7 +895,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	}
 
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
-		return fmt.Errorf("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
+		return fmt.Errorf("invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only")
 	}
 
 	return nil

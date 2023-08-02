@@ -152,6 +152,16 @@ func TestInvalidConfigOutputFromApplyFlags(t *testing.T) {
 			},
 			flags:   flags,
 			options: ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false},
+			errStr: "invalid config: --disable-tx-sub set to false but ingestion has been disabled." +
+				"Set INGEST=true to enable transaction submission functionality",
+		},
+		{
+			name: "disable-tx-sub set to false but INGEST=false",
+			config: Config{
+				Ingest: false,
+			},
+			flags:   flags,
+			options: ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false},
 			errStr: "invalid config: --disable-tx-sub set to false but no --network flag " +
 				"or ingestion parameters set (--network-passphrase and --history-archive-urls)",
 		},
