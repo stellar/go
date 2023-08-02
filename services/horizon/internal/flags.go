@@ -826,8 +826,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		config.Ingest = true
 	}
 
+	integrationTestsEnabled := os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "true"
 	if !config.DisableTxSub {
-		if !config.Ingest {
+		if !config.Ingest && !integrationTestsEnabled {
 			return fmt.Errorf("invalid config: --%s set to false but ingestion has been disabled."+
 				"Set INGEST=true to enable transaction submission functionality", DisableTxSubFlagName)
 		}

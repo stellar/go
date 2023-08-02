@@ -323,7 +323,6 @@ func (i *Test) StartHorizon() error {
 
 	defaultArgs := map[string]string{
 		"ingest":                        "false",
-		"disable-tx-sub":                "true",
 		"history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
 		"db-url":                        postgres.RO_DSN,
 		"stellar-core-url":              i.coreClient.URL,
