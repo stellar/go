@@ -154,7 +154,9 @@ func TestNetworkParameter(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(1 * time.Second)
+		// Adding sleep here as a workaround for the race condition in the ingestion system.
+		// More details can be found at https://github.com/stellar/go/issues/5005
+		time.Sleep(2 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
@@ -169,7 +171,9 @@ func TestNetworkParameter(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(1 * time.Second)
+		// Adding sleep here as a workaround for the race condition in the ingestion system.
+		// More details can be found at https://github.com/stellar/go/issues/5005
+		time.Sleep(2 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
@@ -210,7 +214,9 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarPubnet}
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(1 * time.Second)
+		// Adding sleep here as a workaround for the race condition in the ingestion system.
+		// More details can be found at https://github.com/stellar/go/issues/5005
+		time.Sleep(2 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
@@ -223,7 +229,9 @@ func TestNetworkEnvironmentVariable(t *testing.T) {
 		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarTestnet}
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		time.Sleep(1 * time.Second)
+		// Adding sleep here as a workaround for the race condition in the ingestion system.
+		// More details can be found at https://github.com/stellar/go/issues/5005
+		time.Sleep(2 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
 		test.Shutdown()
