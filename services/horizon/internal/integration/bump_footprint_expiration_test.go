@@ -18,7 +18,8 @@ func TestBumpFootPrintExpiration(t *testing.T) {
 	}
 
 	itest := integration.NewTest(t, integration.Config{
-		ProtocolVersion: 20,
+		ProtocolVersion:  20,
+		EnableSorobanRPC: true,
 	})
 
 	// establish which account will be contract owner, and load it's current seq

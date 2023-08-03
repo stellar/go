@@ -12,7 +12,7 @@ services:
       - ENDPOINT=:8080
       - NETWORK_PASSPHRASE=Standalone Network ; February 2017
       - CAPTIVE_CORE_CONFIG_PATH=/captive-core.cfg
-      - HISTORY_ARCHIVE_URLS=http://host.docker.internal:1570
+      - HISTORY_ARCHIVE_URLS=http://core:1570
       - CHECKPOINT_FREQUENCY=8
       - LOG_LEVEL=debug
     volumes:

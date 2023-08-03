@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -53,6 +54,7 @@ var (
 
 type Config struct {
 	ProtocolVersion       uint32
+	EnableSorobanRPC      bool
 	SkipContainerCreation bool
 	CoreDockerImage       string
 	SorobanRPCDockerImage string
@@ -143,7 +145,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
-	if RunWithSorobanRPC {
+	if RunWithSorobanRPC && i.config.EnableSorobanRPC {
 		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
 		i.waitForSorobanRPC()
 	}
@@ -165,7 +167,11 @@ func (i *Test) configureCaptiveCore() {
 	if RunWithCaptiveCore {
 		composePath := findDockerComposePath()
 		i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+		coreConfigFile := "captive-core-classic-integration-tests.cfg"
+		if i.config.ProtocolVersion >= ledgerbackend.MinimalSorobanProtocolSupport {
+			coreConfigFile = "captive-core-integration-tests.cfg"
+		}
+		i.coreConfig.configPath = filepath.Join(composePath, coreConfigFile)
 		i.coreConfig.storagePath = i.CurrentTest().TempDir()
 		if RunWithCaptiveCoreUseDB {
 			i.coreConfig.useDB = true
@@ -235,8 +241,10 @@ func (i *Test) runComposeCommand(args ...string) {
 	}
 	i.t.Log("Running", cmd.Env, cmd.Args)
 	out, innerErr := cmd.Output()
-	if exitErr, ok := innerErr.(*exec.ExitError); ok {
+	if len(out) > 0 {
 		fmt.Printf("stdout:\n%s\n", string(out))
+	}
+	if exitErr, ok := innerErr.(*exec.ExitError); ok {
 		fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
 	}
 
@@ -257,6 +265,7 @@ func (i *Test) prepareShutdownHandlers() {
 			i.runComposeCommand("rm", "-fvs", "core")
 			i.runComposeCommand("rm", "-fvs", "core-postgres")
 			if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != "" {
+				i.runComposeCommand("logs", "soroban-rpc")
 				i.runComposeCommand("rm", "-fvs", "soroban-rpc")
 			}
 		},
@@ -461,16 +470,25 @@ func (i *Test) StartHorizon() error {
 	return nil
 }
 
+const maxWaitForCoreStartup = 30 * time.Second
+const maxWaitForCoreUpgrade = 5 * time.Second
+const coreStartupPingInterval = time.Second
+
 // Wait for core to be up and manually close the first ledger
 func (i *Test) waitForCore() {
 	i.t.Log("Waiting for core to be up...")
-	for t := 30 * time.Second; t >= 0; t -= time.Second {
+	startTime := time.Now()
+	for time.Since(startTime) < maxWaitForCoreStartup {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		infoTime := time.Now()
 		_, err := i.coreClient.Info(ctx)
 		cancel()
 		if err != nil {
 			i.t.Logf("could not obtain info response: %v", err)
-			time.Sleep(time.Second)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
+				time.Sleep(coreStartupPingInterval - durationSince)
+			}
 			continue
 		}
 		break
@@ -478,42 +496,55 @@ func (i *Test) waitForCore() {
 
 	i.UpgradeProtocol(i.config.ProtocolVersion)
 
-	for t := 0; t < 5; t++ {
+	startTime = time.Now()
+	for time.Since(startTime) < maxWaitForCoreUpgrade {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		infoTime := time.Now()
 		info, err := i.coreClient.Info(ctx)
 		cancel()
 		if err != nil || !info.IsSynced() {
 			i.t.Logf("Core is still not synced: %v %v", err, info)
-			time.Sleep(time.Second)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
+				time.Sleep(coreStartupPingInterval - durationSince)
+			}
 			continue
 		}
 		i.t.Log("Core is up.")
 		return
 	}
-	i.t.Fatal("Core could not sync after 30s")
+	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
+
+const sorobanRPCInitTime = 20 * time.Second
+const sorobanRPCHealthCheckInterval = time.Second
 
 // Wait for SorobanRPC to be up
 func (i *Test) waitForSorobanRPC() {
 	i.t.Log("Waiting for Soroban RPC to be up...")
 
-	for t := 30 * time.Second; t >= 0; t -= time.Second {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	start := time.Now()
+	for time.Since(start) < sorobanRPCInitTime {
+		ctx, cancel := context.WithTimeout(context.Background(), sorobanRPCHealthCheckInterval)
 		// TODO: soroban-tools should be exporting a proper Go client
 		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		callTime := time.Now()
 		_, err := sorobanRPCClient.Call(ctx, "getHealth", nil)
 		cancel()
 		if err != nil {
 			i.t.Logf("SorobanRPC is unhealthy: %v", err)
-			time.Sleep(time.Second)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(callTime); durationSince < sorobanRPCHealthCheckInterval {
+				time.Sleep(sorobanRPCHealthCheckInterval - durationSince)
+			}
 			continue
 		}
 		i.t.Log("SorobanRPC is up.")
 		return
 	}
 
-	i.t.Fatal("SorobanRPC unhealthy after 30s")
+	i.t.Fatalf("SorobanRPC unhealthy after %v", time.Since(start))
 }
 
 type RPCSimulateHostFunctionResult struct {
