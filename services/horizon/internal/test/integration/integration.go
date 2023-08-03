@@ -516,7 +516,7 @@ func (i *Test) waitForCore() {
 	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
 }
 
-const sorobanRPCInitTime = 90 * time.Second
+const sorobanRPCInitTime = 20 * time.Second
 const sorobanRPCHealthCheckInterval = time.Second
 
 // Wait for SorobanRPC to be up
