@@ -4,6 +4,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -519,9 +520,33 @@ func (i *Test) waitForCore() {
 const sorobanRPCInitTime = 90 * time.Second
 const sorobanRPCHealthCheckInterval = time.Second
 
+func (i *Test) printPipeContent(pipe io.ReadCloser) {
+	var dockerBytesOutput []byte
+	for {
+		var buffer [1024]byte
+		n, err := pipe.Read(buffer[:])
+		if n >= 0 {
+			dockerBytesOutput = append(dockerBytesOutput, buffer[:n]...)
+		}
+		if err != io.EOF {
+			continue
+		}
+		break
+	}
+	if len(dockerBytesOutput) > 0 {
+		i.t.Logf("%s", string(dockerBytesOutput))
+	}
+}
+
 // Wait for SorobanRPC to be up
 func (i *Test) waitForSorobanRPC() {
 	i.t.Log("Waiting for Soroban RPC to be up...")
+
+	cmd := exec.Command("docker", "attach", "docker-soroban-rpc-1")
+	err := cmd.Start()
+	if err != nil {
+		i.t.Logf("Unable to attach to soroban-rpc docker container, no soroban-rpc logs would be provided :  %v", err)
+	}
 
 	start := time.Now()
 	for time.Since(start) < sorobanRPCInitTime {
@@ -537,6 +562,12 @@ func (i *Test) waitForSorobanRPC() {
 			// sleep up to a second between consecutive calls.
 			if durationSince := time.Since(callTime); durationSince < sorobanRPCHealthCheckInterval {
 				time.Sleep(sorobanRPCHealthCheckInterval - durationSince)
+			}
+			if dockerOutput, err := cmd.StdoutPipe(); err == nil {
+				i.printPipeContent(dockerOutput)
+			}
+			if dockerErrOutput, err := cmd.StderrPipe(); err == nil {
+				i.printPipeContent(dockerErrOutput)
 			}
 			continue
 		}
