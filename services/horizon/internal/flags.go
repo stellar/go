@@ -826,12 +826,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		config.Ingest = true
 	}
 
-	integrationTestsEnabled := os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLED") == "true"
 	if !config.DisableTxSub {
-		if !config.Ingest && !integrationTestsEnabled {
-			return fmt.Errorf("invalid config: --%s set to false but ingestion has been disabled."+
-				"Set INGEST=true to enable transaction submission functionality", DisableTxSubFlagName)
-		}
 		if config.Network == "" && (config.NetworkPassphrase == "" || len(config.HistoryArchiveURLs) == 0) {
 			return fmt.Errorf("invalid config: --%s set to false but no --%s flag or "+
 				"ingestion parameters set (--%s and --%s)", DisableTxSubFlagName, NetworkFlagName,
@@ -896,7 +891,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	}
 
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
-		return fmt.Errorf("invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only")
+		return fmt.Errorf("invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed." +
+			" If Horizon is behind both, use --behind-cloudflare only")
 	}
 
 	return nil
