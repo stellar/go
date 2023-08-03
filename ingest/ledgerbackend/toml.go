@@ -325,7 +325,7 @@ type CaptiveCoreTomlParams struct {
 	Strict bool
 	// If true, specifies that captive core should be invoked with on-disk rather than in-memory option for ledger state
 	UseDB bool
-	// the path to the core binary, used to introspect core at runtie, determine some toml capabilities
+	// the path to the core binary, used to introspect core at runtime, determine some toml capabilities
 	CoreBinaryPath string
 	// Enforce EnableSorobanDiagnosticEvents when not disabled explicitly
 	EnforceSorobanDiagnosticEvents bool
@@ -426,43 +426,100 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 	return offline, nil
 }
 
-func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) bool {
+// coreVersion helper struct identify a core version and provides the
+// utilities to compare the version ( i.e. minor + major pair ) to a predefined
+// version.
+type coreVersion struct {
+	major                 int
+	minor                 int
+	ledgerProtocolVersion int
+}
+
+// IsEqualOrAbove compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c *coreVersion) IsEqualOrAbove(major, minor int) bool {
+	if c.major == 0 && c.minor == 0 {
+		return false
+	}
+	return (c.major == major && c.minor >= minor) || (c.major > major)
+}
+
+// IsEqualOrAbove compares the core version to a version specific. If unable
+// to make the decision, the result is always "false", leaning toward the
+// common denominator.
+func (c *coreVersion) IsProtocolVersionEqualOrAbove(protocolVer int) bool {
+	if c.ledgerProtocolVersion == 0 {
+		return false
+	}
+	return c.ledgerProtocolVersion >= protocolVer
+}
+
+func (c *CaptiveCoreToml) checkCoreVersion(coreBinaryPath string) coreVersion {
 	if coreBinaryPath == "" {
-		return false
+		return coreVersion{}
 	}
 
-	versionRaw, err := exec.Command(coreBinaryPath, "version").Output()
+	versionBytes, err := exec.Command(coreBinaryPath, "version").Output()
 	if err != nil {
-		return false
+		return coreVersion{}
 	}
 
-	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
-	versionStr := re.FindStringSubmatch(string(versionRaw))
-	if err != nil || len(versionStr) != 3 {
-		return false
-	}
+	// starting soroban, we want to use only the first row for the version.
+	versionRows := strings.Split(string(versionBytes), "\n")
+	versionRaw := versionRows[0]
 
 	var version [2]int
-	for i := 1; i < len(versionStr); i++ {
-		val, err := strconv.Atoi((versionStr[i]))
-		if err != nil {
-			return false
-		}
 
-		version[i-1] = val
+	re := regexp.MustCompile(`\D*(\d*)\.(\d*).*`)
+	versionStr := re.FindStringSubmatch(versionRaw)
+	if err == nil && len(versionStr) == 3 {
+		for i := 1; i < len(versionStr); i++ {
+			val, err := strconv.Atoi((versionStr[i]))
+			if err != nil {
+				break
+			}
+			version[i-1] = val
+		}
 	}
 
-	// Supports version 19.6 and above
-	return version[0] > 19 || (version[0] == 19 && version[1] >= 6)
+	re = regexp.MustCompile(`^\s*ledger protocol version: (\d*)`)
+	var ledgerProtocol int
+	var ledgerProtocolStrings []string
+	for _, line := range versionRows {
+		ledgerProtocolStrings = re.FindStringSubmatch(line)
+		if len(ledgerProtocolStrings) > 0 {
+			break
+		}
+	}
+	if len(ledgerProtocolStrings) == 2 {
+		if val, err := strconv.Atoi(ledgerProtocolStrings[1]); err == nil {
+			ledgerProtocol = val
+		}
+	}
+
+	return coreVersion{
+		major:                 version[0],
+		minor:                 version[1],
+		ledgerProtocolVersion: ledgerProtocol,
+	}
 }
+
+const MinimalBucketListDBCoreSupportVersionMajor = 19
+const MinimalBucketListDBCoreSupportVersionMinor = 6
+const MinimalSorobanProtocolSupport = 20
 
 func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if params.UseDB && !c.tree.Has("DATABASE") {
 		c.Database = "sqlite3://stellar.db"
 	}
 
-	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB && c.checkCoreVersion(params.CoreBinaryPath) {
-		c.UseBucketListDB = true
+	coreVersion := c.checkCoreVersion(params.CoreBinaryPath)
+	if def := c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB"); !def && params.UseDB {
+		// Supports version 19.6 and above
+		if coreVersion.IsEqualOrAbove(MinimalBucketListDBCoreSupportVersionMajor, MinimalBucketListDBCoreSupportVersionMinor) {
+			c.UseBucketListDB = true
+		}
 	}
 
 	if c.UseBucketListDB && !c.tree.Has("EXPERIMENTAL_BUCKETLIST_DB_INDEX_PAGE_SIZE_EXPONENT") {
@@ -502,7 +559,9 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 			}
 		}
 	}
-	if params.EnforceSorobanDiagnosticEvents {
+
+	// starting version 20, we have dignostics events.
+	if params.EnforceSorobanDiagnosticEvents && coreVersion.IsProtocolVersionEqualOrAbove(MinimalSorobanProtocolSupport) {
 		if c.EnableSorobanDiagnosticEvents == nil {
 			// We are generating the file from scratch or the user didn't explicitly oppose to diagnostic events in the config file.
 			// Enforce it.
