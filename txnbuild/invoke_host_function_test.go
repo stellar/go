@@ -42,7 +42,7 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 	wasmId := xdr.Hash{1, 2, 3, 4}
 	i64 := xdr.Int64(45)
 	accountId := xdr.MustAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
-	invokeHostFunctionOp := &InvokeHostFunction{
+	var invokeHostFunctionOp = &InvokeHostFunction{
 		HostFunction: xdr.HostFunction{
 			Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
 			InvokeContract: &xdr.InvokeContractArgs{
@@ -139,10 +139,10 @@ func TestInvokeHostFunctionRoundTrip(t *testing.T) {
 							},
 						},
 					},
-					Instructions:              0,
-					ReadBytes:                 0,
-					WriteBytes:                0,
-					ExtendedMetaDataSizeBytes: 0,
+					Instructions:            0,
+					ReadBytes:               0,
+					WriteBytes:              0,
+					ContractEventsSizeBytes: 0,
 				},
 				RefundableFee: 1,
 				Ext: xdr.ExtensionPoint{
