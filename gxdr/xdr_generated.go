@@ -2446,9 +2446,9 @@ type SorobanResources struct {
 	ReadBytes Uint32
 	// The maximum number of bytes this transaction can write to ledger
 	WriteBytes Uint32
-	// Maximum size of dynamic metadata produced by this contract (
-	// bytes read from ledger + bytes written to ledger + event bytes written to meta).
-	ExtendedMetaDataSizeBytes Uint32
+	// Maximum size of the contract events (serialized to XDR) this transaction
+	// can emit.
+	ContractEventsSizeBytes Uint32
 }
 
 // The transaction extension for Soroban.
@@ -3964,8 +3964,7 @@ const (
 	SCV_DURATION  SCValType = 8
 	// 128 bits is naturally supported by Rust and we use it for Soroban
 	// fixed-point arithmetic prices / balances / similar "quantities". These
-	// are represented in XDR as a pair of 2 u64s, unlike {u,i}256 which is
-	// represented as an array of 32 bytes.
+	// are represented in XDR as a pair of 2 u64s.
 	SCV_U128 SCValType = 9
 	SCV_I128 SCValType = 10
 	// 256 bits is the size of sha256 output, ed25519 keys, and the EVM machine
@@ -4278,22 +4277,24 @@ type ConfigSettingContractHistoricalDataV0 struct {
 	FeeHistorical1KB Int64
 }
 
-// Meta data (pushed to downstream systems) settings for contracts.
-type ConfigSettingContractMetaDataV0 struct {
-	// Maximum size of extended meta data produced by a transaction
-	TxMaxExtendedMetaDataSizeBytes Uint32
-	// Fee for generating 1KB of extended meta data
-	FeeExtendedMetaData1KB Int64
+// Contract event-related settings.
+type ConfigSettingContractEventsV0 struct {
+	// Maximum size of events that a contract call can emit.
+	TxMaxContractEventsSizeBytes Uint32
+	// Fee for generating 1KB of contract events.
+	FeeContractEvents1KB Int64
 }
 
-// Bandwidth related data settings for contracts
+// Bandwidth related data settings for contracts.
+// We consider bandwidth to only be consumed by the transaction envelopes, hence
+// this concerns only transaction sizes.
 type ConfigSettingContractBandwidthV0 struct {
-	// Maximum size in bytes to propagate per ledger
-	LedgerMaxPropagateSizeBytes Uint32
+	// Maximum sum of all transaction sizes in the ledger in bytes
+	LedgerMaxTxsSizeBytes Uint32
 	// Maximum size in bytes for a transaction
 	TxMaxSizeBytes Uint32
-	// Fee for propagating 1KB of data
-	FeePropagateData1KB Int64
+	// Fee for 1 KB of transaction size
+	FeeTxSize1KB Int64
 }
 
 type ContractCostType int32
@@ -4402,7 +4403,7 @@ const (
 	CONFIG_SETTING_CONTRACT_COMPUTE_V0                   ConfigSettingID = 1
 	CONFIG_SETTING_CONTRACT_LEDGER_COST_V0               ConfigSettingID = 2
 	CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0           ConfigSettingID = 3
-	CONFIG_SETTING_CONTRACT_META_DATA_V0                 ConfigSettingID = 4
+	CONFIG_SETTING_CONTRACT_EVENTS_V0                    ConfigSettingID = 4
 	CONFIG_SETTING_CONTRACT_BANDWIDTH_V0                 ConfigSettingID = 5
 	CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS ConfigSettingID = 6
 	CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES     ConfigSettingID = 7
@@ -4423,8 +4424,8 @@ type ConfigSettingEntry struct {
 	//      ContractLedgerCost() *ConfigSettingContractLedgerCostV0
 	//   CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
 	//      ContractHistoricalData() *ConfigSettingContractHistoricalDataV0
-	//   CONFIG_SETTING_CONTRACT_META_DATA_V0:
-	//      ContractMetaData() *ConfigSettingContractMetaDataV0
+	//   CONFIG_SETTING_CONTRACT_EVENTS_V0:
+	//      ContractEvents() *ConfigSettingContractEventsV0
 	//   CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
 	//      ContractBandwidth() *ConfigSettingContractBandwidthV0
 	//   CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS:
@@ -18181,7 +18182,7 @@ func (v *SorobanResources) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sinstructions", name), XDR_Uint32(&v.Instructions))
 	x.Marshal(x.Sprintf("%sreadBytes", name), XDR_Uint32(&v.ReadBytes))
 	x.Marshal(x.Sprintf("%swriteBytes", name), XDR_Uint32(&v.WriteBytes))
-	x.Marshal(x.Sprintf("%sextendedMetaDataSizeBytes", name), XDR_Uint32(&v.ExtendedMetaDataSizeBytes))
+	x.Marshal(x.Sprintf("%scontractEventsSizeBytes", name), XDR_Uint32(&v.ContractEventsSizeBytes))
 }
 func XDR_SorobanResources(v *SorobanResources) *SorobanResources { return v }
 
@@ -26920,7 +26921,7 @@ var _XdrComments_SCValType = map[int32]string{
 	int32(SCV_U32):                          "32 bits is the smallest type in WASM or XDR; no need for u8/u16.",
 	int32(SCV_U64):                          "64 bits is naturally supported by both WASM and XDR also.",
 	int32(SCV_TIMEPOINT):                    "Time-related u64 subtypes with their own functions and formatting.",
-	int32(SCV_U128):                         "128 bits is naturally supported by Rust and we use it for Soroban fixed-point arithmetic prices / balances / similar \"quantities\". These are represented in XDR as a pair of 2 u64s, unlike {u,i}256 which is represented as an array of 32 bytes.",
+	int32(SCV_U128):                         "128 bits is naturally supported by Rust and we use it for Soroban fixed-point arithmetic prices / balances / similar \"quantities\". These are represented in XDR as a pair of 2 u64s.",
 	int32(SCV_U256):                         "256 bits is the size of sha256 output, ed25519 keys, and the EVM machine word, so for interop use we include this even though it requires a small amount of Rust guest and/or host library code.",
 	int32(SCV_BYTES):                        "Bytes come in 3 flavors, 2 of which have meaningfully different formatting and validity-checking / domain-restriction.",
 	int32(SCV_VEC):                          "Vecs and maps are just polymorphic containers of other ScVals.",
@@ -28680,20 +28681,20 @@ func XDR_ConfigSettingContractHistoricalDataV0(v *ConfigSettingContractHistorica
 	return v
 }
 
-type XdrType_ConfigSettingContractMetaDataV0 = *ConfigSettingContractMetaDataV0
+type XdrType_ConfigSettingContractEventsV0 = *ConfigSettingContractEventsV0
 
-func (v *ConfigSettingContractMetaDataV0) XdrPointer() interface{}       { return v }
-func (ConfigSettingContractMetaDataV0) XdrTypeName() string              { return "ConfigSettingContractMetaDataV0" }
-func (v ConfigSettingContractMetaDataV0) XdrValue() interface{}          { return v }
-func (v *ConfigSettingContractMetaDataV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *ConfigSettingContractMetaDataV0) XdrRecurse(x XDR, name string) {
+func (v *ConfigSettingContractEventsV0) XdrPointer() interface{}       { return v }
+func (ConfigSettingContractEventsV0) XdrTypeName() string              { return "ConfigSettingContractEventsV0" }
+func (v ConfigSettingContractEventsV0) XdrValue() interface{}          { return v }
+func (v *ConfigSettingContractEventsV0) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ConfigSettingContractEventsV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%stxMaxExtendedMetaDataSizeBytes", name), XDR_Uint32(&v.TxMaxExtendedMetaDataSizeBytes))
-	x.Marshal(x.Sprintf("%sfeeExtendedMetaData1KB", name), XDR_Int64(&v.FeeExtendedMetaData1KB))
+	x.Marshal(x.Sprintf("%stxMaxContractEventsSizeBytes", name), XDR_Uint32(&v.TxMaxContractEventsSizeBytes))
+	x.Marshal(x.Sprintf("%sfeeContractEvents1KB", name), XDR_Int64(&v.FeeContractEvents1KB))
 }
-func XDR_ConfigSettingContractMetaDataV0(v *ConfigSettingContractMetaDataV0) *ConfigSettingContractMetaDataV0 {
+func XDR_ConfigSettingContractEventsV0(v *ConfigSettingContractEventsV0) *ConfigSettingContractEventsV0 {
 	return v
 }
 
@@ -28709,9 +28710,9 @@ func (v *ConfigSettingContractBandwidthV0) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	x.Marshal(x.Sprintf("%sledgerMaxPropagateSizeBytes", name), XDR_Uint32(&v.LedgerMaxPropagateSizeBytes))
+	x.Marshal(x.Sprintf("%sledgerMaxTxsSizeBytes", name), XDR_Uint32(&v.LedgerMaxTxsSizeBytes))
 	x.Marshal(x.Sprintf("%stxMaxSizeBytes", name), XDR_Uint32(&v.TxMaxSizeBytes))
-	x.Marshal(x.Sprintf("%sfeePropagateData1KB", name), XDR_Int64(&v.FeePropagateData1KB))
+	x.Marshal(x.Sprintf("%sfeeTxSize1KB", name), XDR_Int64(&v.FeeTxSize1KB))
 }
 func XDR_ConfigSettingContractBandwidthV0(v *ConfigSettingContractBandwidthV0) *ConfigSettingContractBandwidthV0 {
 	return v
@@ -28972,7 +28973,7 @@ var _XdrNames_ConfigSettingID = map[int32]string{
 	int32(CONFIG_SETTING_CONTRACT_COMPUTE_V0):                   "CONFIG_SETTING_CONTRACT_COMPUTE_V0",
 	int32(CONFIG_SETTING_CONTRACT_LEDGER_COST_V0):               "CONFIG_SETTING_CONTRACT_LEDGER_COST_V0",
 	int32(CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0):           "CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0",
-	int32(CONFIG_SETTING_CONTRACT_META_DATA_V0):                 "CONFIG_SETTING_CONTRACT_META_DATA_V0",
+	int32(CONFIG_SETTING_CONTRACT_EVENTS_V0):                    "CONFIG_SETTING_CONTRACT_EVENTS_V0",
 	int32(CONFIG_SETTING_CONTRACT_BANDWIDTH_V0):                 "CONFIG_SETTING_CONTRACT_BANDWIDTH_V0",
 	int32(CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS): "CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS",
 	int32(CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES):     "CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES",
@@ -28987,7 +28988,7 @@ var _XdrValues_ConfigSettingID = map[string]int32{
 	"CONFIG_SETTING_CONTRACT_COMPUTE_V0":                   int32(CONFIG_SETTING_CONTRACT_COMPUTE_V0),
 	"CONFIG_SETTING_CONTRACT_LEDGER_COST_V0":               int32(CONFIG_SETTING_CONTRACT_LEDGER_COST_V0),
 	"CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0":           int32(CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0),
-	"CONFIG_SETTING_CONTRACT_META_DATA_V0":                 int32(CONFIG_SETTING_CONTRACT_META_DATA_V0),
+	"CONFIG_SETTING_CONTRACT_EVENTS_V0":                    int32(CONFIG_SETTING_CONTRACT_EVENTS_V0),
 	"CONFIG_SETTING_CONTRACT_BANDWIDTH_V0":                 int32(CONFIG_SETTING_CONTRACT_BANDWIDTH_V0),
 	"CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS": int32(CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS),
 	"CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES":     int32(CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES),
@@ -29096,7 +29097,7 @@ var _XdrTags_ConfigSettingEntry = map[int32]bool{
 	XdrToI32(CONFIG_SETTING_CONTRACT_COMPUTE_V0):                   true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_LEDGER_COST_V0):               true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0):           true,
-	XdrToI32(CONFIG_SETTING_CONTRACT_META_DATA_V0):                 true,
+	XdrToI32(CONFIG_SETTING_CONTRACT_EVENTS_V0):                    true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_BANDWIDTH_V0):                 true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS): true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES):     true,
@@ -29170,18 +29171,18 @@ func (u *ConfigSettingEntry) ContractHistoricalData() *ConfigSettingContractHist
 		return nil
 	}
 }
-func (u *ConfigSettingEntry) ContractMetaData() *ConfigSettingContractMetaDataV0 {
+func (u *ConfigSettingEntry) ContractEvents() *ConfigSettingContractEventsV0 {
 	switch u.ConfigSettingID {
-	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
-		if v, ok := u._u.(*ConfigSettingContractMetaDataV0); ok {
+	case CONFIG_SETTING_CONTRACT_EVENTS_V0:
+		if v, ok := u._u.(*ConfigSettingContractEventsV0); ok {
 			return v
 		} else {
-			var zero ConfigSettingContractMetaDataV0
+			var zero ConfigSettingContractEventsV0
 			u._u = &zero
 			return &zero
 		}
 	default:
-		XdrPanic("ConfigSettingEntry.ContractMetaData accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		XdrPanic("ConfigSettingEntry.ContractEvents accessed when ConfigSettingID == %v", u.ConfigSettingID)
 		return nil
 	}
 }
@@ -29307,7 +29308,7 @@ func (u *ConfigSettingEntry) BucketListSizeWindow() *[]Uint64 {
 }
 func (u ConfigSettingEntry) XdrValid() bool {
 	switch u.ConfigSettingID {
-	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_META_DATA_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_EXPIRATION, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_EXPIRATION, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
 		return true
 	}
 	return false
@@ -29328,8 +29329,8 @@ func (u *ConfigSettingEntry) XdrUnionBody() XdrType {
 		return XDR_ConfigSettingContractLedgerCostV0(u.ContractLedgerCost())
 	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
 		return XDR_ConfigSettingContractHistoricalDataV0(u.ContractHistoricalData())
-	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
-		return XDR_ConfigSettingContractMetaDataV0(u.ContractMetaData())
+	case CONFIG_SETTING_CONTRACT_EVENTS_V0:
+		return XDR_ConfigSettingContractEventsV0(u.ContractEvents())
 	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
 		return XDR_ConfigSettingContractBandwidthV0(u.ContractBandwidth())
 	case CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS:
@@ -29359,8 +29360,8 @@ func (u *ConfigSettingEntry) XdrUnionBodyName() string {
 		return "ContractLedgerCost"
 	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
 		return "ContractHistoricalData"
-	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
-		return "ContractMetaData"
+	case CONFIG_SETTING_CONTRACT_EVENTS_V0:
+		return "ContractEvents"
 	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
 		return "ContractBandwidth"
 	case CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS:
@@ -29405,8 +29406,8 @@ func (u *ConfigSettingEntry) XdrRecurse(x XDR, name string) {
 	case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
 		x.Marshal(x.Sprintf("%scontractHistoricalData", name), XDR_ConfigSettingContractHistoricalDataV0(u.ContractHistoricalData()))
 		return
-	case CONFIG_SETTING_CONTRACT_META_DATA_V0:
-		x.Marshal(x.Sprintf("%scontractMetaData", name), XDR_ConfigSettingContractMetaDataV0(u.ContractMetaData()))
+	case CONFIG_SETTING_CONTRACT_EVENTS_V0:
+		x.Marshal(x.Sprintf("%scontractEvents", name), XDR_ConfigSettingContractEventsV0(u.ContractEvents()))
 		return
 	case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
 		x.Marshal(x.Sprintf("%scontractBandwidth", name), XDR_ConfigSettingContractBandwidthV0(u.ContractBandwidth()))
