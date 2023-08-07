@@ -4,6 +4,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -588,6 +589,13 @@ func (i *Test) PreflightHostFunctions(
 func (i *Test) simulateTransaction(
 	sourceAccount txnbuild.Account, op txnbuild.Operation,
 ) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
+	// Before preflighting, make sure soroban-rpc is in sync with Horizon
+	// Unfortunately, syncing with soroban-rpc is not enough to remove the time.Sleep()
+	// hack in sac_test.go
+	root, err := i.horizonClient.Root()
+	require.NoError(i.t, err)
+	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
+
 	// TODO: soroban-tools should be exporting a proper Go client
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
@@ -610,7 +618,7 @@ func (i *Test) simulateTransaction(
 	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
 	return result, transactionData
 }
-func (i *Test) SyncWithSorobanRPC(ledgerToWaitFor uint32) {
+func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 	for j := 0; j < 10; j++ {
 		result := struct {
 			Sequence uint32 `json:"sequence"`
