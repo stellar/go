@@ -559,10 +559,12 @@ type RPCSimulateTxResponse struct {
 	MinResourceFee  int64                           `json:"minResourceFee,string"`
 }
 
-// Wait for SorobanRPC to be up
 func (i *Test) PreflightHostFunctions(
 	sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction,
 ) (txnbuild.InvokeHostFunction, int64) {
+	if function.HostFunction.Type == xdr.HostFunctionTypeHostFunctionTypeInvokeContract {
+		fmt.Printf("Preflighting function call to: %s\n", string(function.HostFunction.InvokeContract.FunctionName))
+	}
 	result, transactionData := i.simulateTransaction(sourceAccount, &function)
 	function.Ext = xdr.TransactionExt{
 		V:           1,
@@ -605,7 +607,7 @@ func (i *Test) simulateTransaction(
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
-	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
+	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
 	return result, transactionData
 }
 

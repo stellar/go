@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1067,7 +1068,10 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 
 func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, op *txnbuild.InvokeHostFunction) (*xdr.ScVal, string, *txnbuild.InvokeHostFunction) {
 	acc := itest.MustGetAccount(signer)
-
+	// Hack: this seems to be necessary either for soroban-rpc to sync, or for to
+	//       prior transaction to have been executed. Otherwise we get "insufficient resources" errors.
+	//       At least in the case of the balance calls there is a variability in the number of instructions when we wait.
+	time.Sleep(2 * time.Second)
 	preFlightOp, minFee := itest.PreflightHostFunctions(&acc, *op)
 	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(itest.CurrentTest(), err)
