@@ -590,8 +590,6 @@ func (i *Test) simulateTransaction(
 	sourceAccount txnbuild.Account, op txnbuild.Operation,
 ) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
 	// Before preflighting, make sure soroban-rpc is in sync with Horizon
-	// Unfortunately, syncing with soroban-rpc is not enough to remove the time.Sleep()
-	// hack in sac_test.go
 	root, err := i.horizonClient.Root()
 	require.NoError(i.t, err)
 	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
@@ -627,7 +625,9 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
 		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
 		assert.NoError(i.t, err)
-		if result.Sequence >= ledgerToWaitFor {
+		// FIXME: why does soroban-rpc need to be one ledger ahead?
+		//        it should be fine if it were at the same ledger i.e. result.Sequence >= ledgerToWaitFor
+		if result.Sequence > ledgerToWaitFor {
 			return
 		}
 		time.Sleep(1 * time.Second)
