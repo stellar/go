@@ -160,7 +160,7 @@ this customization is only applicable when running a standalone network, as it r
 
 ## Using a specific version of Stellar Core
 
-By default, the Docker Compose file is configured to use version 19 of Protocol and Stellar Core. You want the Core version to be at same level as the version horizon repo expects for ingestion. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations.
+By default, the Docker Compose file is configured to use version 19 of Protocol and Stellar Core. You can specify optional environment variables from the command shell for stating version overrides for either the docker-compose or start.sh invocations.
 ```bash
 export PROTOCOL_VERSION="19"
 export CORE_IMAGE="stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal" 
