@@ -138,7 +138,7 @@ This section contains additional information related to the development of Horiz
 By default, the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) will configure Horizon with captive core ingestion to use [Stellar Testnet](https://developers.stellar.org/docs/fundamentals-and-concepts/testnet-and-pubnet#testnet) network.
 
 To run the containers on a private stand-alone network, run `./start.sh standalone`.
-When you run Stellar Core on a stand-alone network with passphrase of `Standalone Network ; February 2017`, the root account will be created by default with a balance of 100 billion Lumens and a key pair of:
+When you run Stellar Core on a stand-alone network, a root account will be created by default. It will have a balance of 100 billion Lumens and the following key pair:
 ```
 Root Public Key: GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI
 Root Secret Key: SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
