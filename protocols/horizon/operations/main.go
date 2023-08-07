@@ -377,7 +377,7 @@ type HostFunctionParameter struct {
 // The model for BumpFootprintExpiration assimilates BumpFootprintExpirationOp, but is simplified.
 type BumpFootprintExpiration struct {
 	Base
-	LedgersToExpire string `json:"ledgers_to_expire"`
+	LedgersToExpire uint32 `json:"ledgers_to_expire"`
 }
 
 // RestoreFootprint is the json resource representing a single RestoreFootprint.

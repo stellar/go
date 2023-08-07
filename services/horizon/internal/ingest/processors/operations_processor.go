@@ -687,11 +687,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeBumpFootprintExpiration:
 		op := operation.operation.Body.MustBumpFootprintExpirationOp()
-		details["type"] = "bump_footprint_expiration"
 		details["ledgers_to_expire"] = op.LedgersToExpire
 	case xdr.OperationTypeRestoreFootprint:
-		details["type"] = "restore_footprint"
-
 	default:
 		panic(fmt.Errorf("unknown operation type: %s", operation.OperationType()))
 	}
