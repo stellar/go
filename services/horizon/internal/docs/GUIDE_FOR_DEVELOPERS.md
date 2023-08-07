@@ -4,7 +4,7 @@ This document describes how to build Horizon from source, so that you can test a
 
 ## Dependencies
 - A [Unix-like](https://en.wikipedia.org/wiki/Unix-like) operating system with the common core commands (cp, tar, mkdir, bash, etc.)
-- Go (this repository is officially supported on the last two releases of Go)
+- Go (this repository is officially supported on the last [two releases of Go](https://go.dev/doc/devel/release))
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) (to check out Horizon's source code)
 - [mercurial](https://www.mercurial-scm.org/) (needed for `go-dep`)
 - [Docker](https://www.docker.com/products/docker-desktop)
@@ -17,7 +17,7 @@ git clone https://github.com/<your-github-username>/go.git
 
 ## Getting Started with Running Horizon
 The [start.sh](/services/horizon/docker/start.sh) script builds horizon from current source, and then runs docker-compose to start the docker containers with runtime configs for horizon, postgres, and optionally core if the optional `standalone` network parameter was included. 
-The script takes one optional parameter which configures the Stellar network used by the docker containers. If no parameter is supplied, the containers will run on the Stellar test network.
+The script takes one optional parameter which configures the Stellar network used by the docker containers. If no parameter is supplied, the containers will run on the Stellar test network. Read more about the public and private networks in the [public documentation](https://developers.stellar.org/docs/fundamentals-and-concepts/testnet-and-pubnet#testnet)
 
 `./start.sh pubnet` will run the containers on the Stellar public network.
 
@@ -29,14 +29,14 @@ The following ports will be exposed:
 - Horizon: **8000**
 - Horizon-Postgres: **5432**
 - Stellar-Core (If `standalone` specified): **11626**
-- Stellar-Core-Postgres: **5641**
+- Stellar-Core-Postgres (If `standalone` specified): **5641**
 
-Note that when you switch between different networks you will need to clear the Stellar Core and Stellar Horizon databases. You can wipe out the databases by running `docker-compose down --remove-orphans -v`.
+Note that when you switch between different networks you will need to clear the Stellar Core and Stellar Horizon databases. You can wipe out the databases by running `docker-compose down --remove-orphans -v`. 
 
 This script is helpful to spin up the services quickly and play around with them. However, for code development it's important to build and install everything locally 
 
 ## Developing Horizon Locally
-We will now configure a development environment to run Horizon locally without Docker.
+We will now configure a development environment to run Horizon service locally without Docker.
 
 ### Building Stellar Core
 Horizon requires a local instance of stellar-core called Captive Core. Since, we are doing this for dev purposes it's a good idea to build it from scratch using the latest release of stellar-core. Head over to the [INSTALL.md](https://github.com/stellar/stellar-core/blob/master/INSTALL.md) file for the instructions.
@@ -53,14 +53,14 @@ Open a new terminal. Confirm everything worked by running `stellar-horizon --hel
 
 Horizon uses a Postgres database backend to record information ingested from an associated Stellar Core. The unit and integration tests will also attempt to reference a Postgres db server at ``localhost:5432`` with trust auth method enabled by default for ``postgres`` user.  You can either install the server locally or run any type of docker container that hosts the database server. We recommend using the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) file in the ``docker`` folder:
 ```bash
-docker compose -f ./docker/docker-compose.yml up horizon-postgres
+docker-compose -f ./docker/docker-compose.yml up horizon-postgres
 ```
-This starts a Horizon Postgres docker container and exposes it on the port 5432.
+This starts a Horizon Postgres docker container and exposes it on the port 5432. Note that while Horizon will run locally, it's PostgresQL db will run in docker.
 
 ### Run tests
 At this point you should be able to run Horizon's unit tests:
 ```bash
-cd /go/services/horizon/
+cd go/services/horizon/
 go test ./...
 ```
 
@@ -135,7 +135,7 @@ This section contains additional information related to the development of Horiz
 
 ## Configuring a Standalone Stellar-Core
 
-By default, the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) will configure Horizon with captive core ingestion to use [Stellar Testnet](https://developers.stellar.org/docs/fundamentals-and-concepts/testnet-and-pubnet#testnet) network.
+By default, the [docker-compose.yml](/services/horizon/docker/docker-compose.yml) will configure Horizon with captive core ingestion to use the test network.
 
 To run the containers on a private stand-alone network, run `./start.sh standalone`.
 When you run Stellar Core on a stand-alone network, a root account will be created by default. It will have a balance of 100 billion Lumens and the following key pair:
