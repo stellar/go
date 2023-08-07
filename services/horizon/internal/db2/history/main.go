@@ -228,17 +228,6 @@ const (
 	// from SAC events involving transfers, mints, and burns.
 	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
 	EffectContractDebited EffectType = 97
-
-	// EffectBumpFootprintExpiration effects occur when a user bumps the
-	// expiration_ledger_seq of some ledger entries via the BumpFootprintExpiration.
-	//
-	// TODO: Should we emit this when they bump the ledger seq via the contract
-	// as well? Maybe rename it to `EffectContractEntryExpirationBumped`?
-	EffectBumpFootprintExpiration EffectType = 98
-
-	// EffectRestoreFootprint effects occur when a user attempts to restore a ledger entry
-	// via the RestoreFootprint.
-	EffectRestoreFootprint EffectType = 99
 )
 
 // Account is a row of data from the `history_accounts` table

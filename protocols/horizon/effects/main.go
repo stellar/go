@@ -209,14 +209,6 @@ const (
 	// from SAC events involving transfers, mints, and burns.
 	// https://github.com/stellar/rs-soroban-env/blob/5695440da452837555d8f7f259cc33341fdf07b0/soroban-env-host/src/native_contract/token/contract.rs#L51-L63
 	EffectContractDebited EffectType = 97
-
-	// EffectBumpFootprintExpiration effects occur when a user bumps the
-	// expiration_ledger_seq of some ledger entries via the BumpFootprintExpiration.
-	EffectBumpFootprintExpiration EffectType = 98
-
-	// EffectRestoreFootprint effects occur when a user attempts to restore a ledger entry
-	// via the RestoreFootprint.
-	EffectRestoreFootprint EffectType = 99
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -279,8 +271,6 @@ var EffectTypeNames = map[EffectType]string{
 	EffectLiquidityPoolRevoked:               "liquidity_pool_revoked",
 	EffectContractCredited:                   "contract_credited",
 	EffectContractDebited:                    "contract_debited",
-	EffectBumpFootprintExpiration:            "bump_footprint_expiration",
-	EffectRestoreFootprint:                   "restore_footprint",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -335,14 +325,6 @@ type ContractDebited struct {
 	base.Asset
 	Contract string `json:"contract"`
 	Amount   string `json:"amount"`
-}
-
-type BumpFootprintExpiration struct {
-	Base
-}
-
-type RestoreFootprint struct {
-	Base
 }
 
 type AccountThresholdsUpdated struct {
