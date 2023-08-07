@@ -66,8 +66,6 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectLiquidityPoolRevoked:               "liquidity_pool_revoked",
 	history.EffectContractCredited:                   "contract_credited",
 	history.EffectContractDebited:                    "contract_debited",
-	history.EffectBumpFootprintExpiration:            "bump_footprint_expiration",
-	history.EffectRestoreFootprint:                   "restore_footprint",
 }
 
 // NewEffect creates a new effect resource from the provided database representation
@@ -291,14 +289,6 @@ func NewEffect(
 		result = e
 	case history.EffectContractDebited:
 		e := effects.ContractDebited{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case history.EffectBumpFootprintExpiration:
-		e := effects.BumpFootprintExpiration{Base: basev}
-		err = row.UnmarshalDetails(&e)
-		result = e
-	case history.EffectRestoreFootprint:
-		e := effects.RestoreFootprint{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectAccountRemoved:
