@@ -617,7 +617,7 @@ func (i *Test) simulateTransaction(
 	return result, transactionData
 }
 func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
-	for j := 0; j < 10; j++ {
+	for j := 0; j < 20; j++ {
 		result := struct {
 			Sequence uint32 `json:"sequence"`
 		}{}
@@ -630,7 +630,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 		if result.Sequence > ledgerToWaitFor {
 			return
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 	i.t.Fatal("Soroban RPC out of sync")
 }
