@@ -610,6 +610,22 @@ func (i *Test) simulateTransaction(
 	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
 	return result, transactionData
 }
+func (i *Test) SyncWithSorobanRPC(ledgerToWaitFor uint32) {
+	for j := 0; j < 10; j++ {
+		result := struct {
+			Sequence uint32 `json:"sequence"`
+		}{}
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
+		assert.NoError(i.t, err)
+		if result.Sequence >= ledgerToWaitFor {
+			return
+		}
+		time.Sleep(1 * time.Second)
+	}
+	i.t.Fatal("Soroban RPC out of sync")
+}
 
 func (i *Test) PreflightBumpFootprintExpiration(
 	sourceAccount txnbuild.Account, bumpFootprint txnbuild.BumpFootprintExpiration,

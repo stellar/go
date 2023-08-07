@@ -1079,6 +1079,9 @@ func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, o
 	clientTx, err := itest.Client().TransactionDetail(tx.Hash)
 	require.NoError(itest.CurrentTest(), err)
 
+	// Unfortunately, syncing with soroban-rpc is not enough to remove the hack above
+	itest.SyncWithSorobanRPC(uint32(clientTx.Ledger))
+
 	assert.Equal(itest.CurrentTest(), tx.Hash, clientTx.Hash)
 	var txResult xdr.TransactionResult
 	err = xdr.SafeUnmarshalBase64(clientTx.ResultXdr, &txResult)
