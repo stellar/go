@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	stdLog "log"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 	"sync"
@@ -24,7 +23,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 var defaultCaptiveCoreParameters = map[string]string{
@@ -59,19 +57,19 @@ const (
 		QUALITY="MEDIUM"`
 )
 
-func TestFatalScenarios(t *testing.T) {
-	suite.Run(t, new(FatalTestCase))
-}
+var (
+	CaptiveCoreConfigErrMsg = "error generating captive core configuration: invalid config: "
+)
 
 // Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
-func (suite *FatalTestCase) TestBucketDirDisallowed() {
+func TestBucketDirDisallowed(t *testing.T) {
 	// This is a bit of a hacky workaround.
 	//
 	// In CI, we run our integration tests twice: once with Captive Core
 	// enabled, and once without. *These* tests only run with Captive Core
 	// configured properly (specifically, w/ the CAPTIVE_CORE_BIN envvar set).
 	if !integration.RunWithCaptiveCore {
-		suite.T().Skip()
+		t.Skip()
 	}
 
 	config := `BUCKET_DIR_PATH="/tmp"
@@ -84,17 +82,21 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 		horizon.CaptiveCoreConfigPathName: confName,
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	}
-	test := integration.NewTest(suite.T(), *testConfig)
-
-	suite.Exits(func() { test.StartHorizon() })
+	test := integration.NewTest(t, *testConfig)
+	err := test.StartHorizon()
+	assert.Equal(t, err.Error(), integration.HorizonInitErrStr+": error generating captive core configuration:"+
+		" invalid captive core toml file: could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed"+
+		" for Captive Core, use CAPTIVE_CORE_STORAGE_PATH instead")
+	time.Sleep(1 * time.Second)
+	test.StopHorizon()
+	test.Shutdown()
 }
 
-func (suite *FatalTestCase) TestEnvironmentPreserved() {
+func TestEnvironmentPreserved(t *testing.T) {
 	// Who tests the tests? This test.
 	//
 	// It ensures that the global OS environmental variables are preserved after
 	// running an integration test.
-	t := suite.T()
 
 	// Note that we ALSO need to make sure we don't modify parent env state.
 	value, isSet := os.LookupEnv("CAPTIVE_CORE_CONFIG_PATH")
@@ -128,13 +130,60 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 	assert.Equal(t, "original value", envValue)
 }
 
-// TestNetworkParameter the main objective of this test is to ensure that Horizon successfully starts
-// the captive-core subprocess using the default configuration when --network [testnet|pubnet] parameter
-// is specified The test will fail for scenarios with an invalid static configuration, such as:
-// - The default passphrase in Horizon is different from the one specified in the captive-core config.
-// - History archive URLs are not configured.
-// - The captive-core TOML config file is invalid.
-// The test will also fail if an invalid parameter is specified.
+// TestInvalidNetworkParameters Ensure that Horizon returns an error when
+// using NETWORK environment variables, history archive urls or network passphrase
+// parameters are also set.
+func TestInvalidNetworkParameters(t *testing.T) {
+	if !integration.RunWithCaptiveCore {
+		t.Skip()
+	}
+
+	errMsg := "history-archive-urls parameter not allowed with the network parameter"
+	t.Run("history archive urls validation", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName:                    horizon.StellarPubnet,
+			horizon.EnableCaptiveCoreIngestionFlagName: "true",
+			horizon.HistoryArchiveURLsFlagName:         "HISTORY_ARCHIVE_URLS",
+		})
+		testConfig := integration.GetTestConfig()
+		testConfig.SkipCoreContainerCreation = true
+		testConfig.HorizonIngestParameters = localParams
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.Equal(t, err.Error(), integration.HorizonInitErrStr+
+			": "+CaptiveCoreConfigErrMsg+errMsg)
+		// Adding sleep as a workaround for the race condition in the ingestion system.
+		// https://github.com/stellar/go/issues/5005
+		time.Sleep(2 * time.Second)
+		test.StopHorizon()
+		test.Shutdown()
+	})
+
+	errMsg = "network-passphrase parameter not allowed with the network parameter"
+	t.Run("network-passphrase validation", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName:                    horizon.StellarTestnet,
+			horizon.EnableCaptiveCoreIngestionFlagName: "true",
+			horizon.NetworkPassphraseFlagName:          "NETWORK_PASSPHRASE",
+		})
+		testConfig := integration.GetTestConfig()
+		testConfig.SkipCoreContainerCreation = true
+		testConfig.HorizonIngestParameters = localParams
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.Equal(t, err.Error(), integration.HorizonInitErrStr+
+			": "+CaptiveCoreConfigErrMsg+errMsg)
+		// Adding sleep as a workaround for the race condition in the ingestion system.
+		// https://github.com/stellar/go/issues/5005
+		time.Sleep(2 * time.Second)
+		test.StopHorizon()
+		test.Shutdown()
+	})
+}
+
+// TestNetworkParameter Ensure that Horizon successfully starts the captive-core
+// subprocess using the default configuration when --network [testnet|pubnet]
+// commandline parameter.
 //
 // Typically during integration tests, we initiate Horizon in standalone mode and simultaneously start the
 // stellar-core container in standalone mode as well. We wait for Horizon to begin ingesting to verify the test's
@@ -154,8 +203,8 @@ func TestNetworkParameter(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		// Adding sleep here as a workaround for the race condition in the ingestion system.
-		// More details can be found at https://github.com/stellar/go/issues/5005
+		// Adding sleep as a workaround for the race condition in the ingestion system.
+		// https://github.com/stellar/go/issues/5005
 		time.Sleep(2 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
@@ -171,8 +220,8 @@ func TestNetworkParameter(t *testing.T) {
 		testConfig.HorizonIngestParameters = localParams
 		test := integration.NewTest(t, *testConfig)
 		err := test.StartHorizon()
-		// Adding sleep here as a workaround for the race condition in the ingestion system.
-		// More details can be found at https://github.com/stellar/go/issues/5005
+		// Adding sleep as a workaround for the race condition in the ingestion system.
+		// https://github.com/stellar/go/issues/5005
 		time.Sleep(2 * time.Second)
 		assert.NoError(t, err)
 		test.StopHorizon()
@@ -180,14 +229,9 @@ func TestNetworkParameter(t *testing.T) {
 	})
 }
 
-// TestNetworkEnvironmentVariable the main objective of this test is to ensure that Horizon successfully
-// starts the captive-core subprocess using the default configuration when the NETWORK environment variable
-// is set to either pubnet or testnet.
-// The test will fail for scenarios with an invalid configuration, such as:
-// - The default passphrase in Horizon is different from the one specified in the captive-core config.
-// - History archive URLs are not configured.
-// - The captive-core TOML config file is invalid.
-// The test will also fail if an invalid parameter is specified.
+// TestNetworkEnvironmentVariable Ensure that Horizon successfully starts the captive-core
+// subprocess using the default configuration when the NETWORK environment variable is set
+// to either pubnet or testnet.
 //
 // Typically during integration tests, we initiate Horizon in standalone mode and simultaneously start the
 // stellar-core container in standalone mode as well. We wait for Horizon to begin ingesting to verify the test's
@@ -426,36 +470,6 @@ func TestHelpOutputForNoIngestionFilteringFlag(t *testing.T) {
 
 	output := writer.(*bytes.Buffer).String()
 	assert.NotContains(t, output, "--exp-enable-ingestion-filtering")
-}
-
-// Pattern taken from testify issue:
-// https://github.com/stretchr/testify/issues/858#issuecomment-600491003
-//
-// This lets us run test cases that are *expected* to fail from a fatal error.
-//
-// For our purposes, if you *want* `StartHorizon()` to fail, you should wrap it
-// in a lambda and pass it to `suite.Exits(...)`.
-type FatalTestCase struct {
-	suite.Suite
-}
-
-func (suite *FatalTestCase) Exits(subprocess func()) {
-	testName := suite.T().Name()
-	if os.Getenv("ASSERT_EXISTS_"+testName) == "1" {
-		subprocess()
-		return
-	}
-
-	cmd := exec.Command(os.Args[0], "-test.run="+testName)
-	cmd.Env = append(os.Environ(), "ASSERT_EXISTS_"+testName+"=1")
-	err := cmd.Run()
-
-	suite.T().Log("Result:", err)
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		return
-	}
-
-	suite.Fail("expecting unsuccessful exit, got", err)
 }
 
 // validateNoBucketDirPath ensures the Stellar Core auto-generated configuration

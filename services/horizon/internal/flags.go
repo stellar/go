@@ -716,11 +716,11 @@ func loadCaptiveCoreTomlFromFile(config *Config) error {
 func createCaptiveCoreConfigFromNetwork(config *Config) error {
 
 	if config.NetworkPassphrase != "" {
-		return fmt.Errorf("invalid config: %s not allowed with %s network", NetworkPassphraseFlagName, config.Network)
+		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", NetworkPassphraseFlagName, NetworkFlagName)
 	}
 
 	if len(config.HistoryArchiveURLs) > 0 {
-		return fmt.Errorf("invalid config: %s not allowed with %s network", HistoryArchiveURLsFlagName, config.Network)
+		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", HistoryArchiveURLsFlagName, NetworkFlagName)
 	}
 
 	var defaultNetworkConfig networkConfig
@@ -783,12 +783,12 @@ func setCaptiveCoreConfiguration(config *Config) error {
 	if config.Network != "" {
 		err := createCaptiveCoreConfigFromNetwork(config)
 		if err != nil {
-			return errors.Wrap(err, "error generating default captive core config.")
+			return err
 		}
 	} else {
 		err := createCaptiveCoreConfigFromParameters(config)
 		if err != nil {
-			return errors.Wrap(err, "error generating captive core config.")
+			return err
 		}
 	}
 

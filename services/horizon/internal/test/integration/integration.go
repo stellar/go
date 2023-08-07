@@ -41,6 +41,7 @@ const (
 )
 
 var (
+	HorizonInitErrStr       = "cannot initialize Horizon"
 	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
 	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
@@ -321,14 +322,13 @@ func (i *Test) StartHorizon() error {
 		Use:   "horizon",
 		Short: "Ingest of Stellar network",
 		Long:  "Ingest of Stellar network.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			i.ingestNode, err = horizon.NewAppFromFlags(ingestConfig, ingestConfigOpts)
 			if err != nil {
-				// Explicitly exit here as that's how these tests are structured for now.
 				fmt.Println(err)
-				os.Exit(1)
 			}
+			return err
 		},
 	}
 
@@ -411,11 +411,11 @@ func (i *Test) StartHorizon() error {
 	}
 
 	if err = ingestCmd.Execute(); err != nil {
-		return errors.Wrap(err, "cannot initialize Horizon")
+		return errors.Wrap(err, HorizonInitErrStr)
 	}
 
 	if err = webCmd.Execute(); err != nil {
-		return errors.Wrap(err, "cannot initialize Horizon")
+		return errors.Wrap(err, HorizonInitErrStr)
 	}
 
 	horizonPort := "8000"
@@ -568,8 +568,9 @@ func (i *Test) StopHorizon() {
 	}
 
 	// Wait for Horizon to shut down completely.
-	i.appStopped.Wait()
-
+	if i.appStopped != nil {
+		i.appStopped.Wait()
+	}
 	i.webNode = nil
 	i.ingestNode = nil
 }
