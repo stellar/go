@@ -39,7 +39,7 @@ This script is helpful to spin up the services quickly and play around with them
 We will now configure a development environment to run Horizon service locally without Docker.
 
 ### Building Stellar Core
-Horizon requires a local instance of stellar-core called Captive Core. Since, we are doing this for dev purposes it's a good idea to build it from scratch using the latest release of stellar-core. Head over to the [INSTALL.md](https://github.com/stellar/stellar-core/blob/master/INSTALL.md) file for the instructions.
+Horizon requires an instance of stellar-core binary on the same host. This is referred to as the `Captive Core`. Since, we are running horizon for dev purposes, we recommend considering two approaches to get the stellar-core binary, if saving time is top priority and your development machine is on a linux debian o/s, then consider installing the debian package, otherwise the next option available is to compile the core source directly to binary on your machine, refer to [INSTALL.md](https://github.com/stellar/stellar-core/blob/master/INSTALL.md) file for the instructions on both approaches.
 
 ### Building Horizon
 
