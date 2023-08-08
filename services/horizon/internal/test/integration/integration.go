@@ -571,10 +571,14 @@ func (i *Test) PreflightHostFunctions(
 		SorobanData: &transactionData,
 	}
 	var funAuth []xdr.SorobanAuthorizationEntry
-	for _, authElement := range result.Results {
-		for _, authBase64 := range authElement.Auth {
+	for _, res := range result.Results {
+		var decodedRes xdr.ScVal
+		err := xdr.SafeUnmarshalBase64(res.XDR, &decodedRes)
+		assert.NoError(i.t, err)
+		fmt.Printf("Result:\n\n%# +v\n\n", pretty.Formatter(decodedRes))
+		for _, authBase64 := range res.Auth {
 			var authEntry xdr.SorobanAuthorizationEntry
-			err := xdr.SafeUnmarshalBase64(authBase64, &authEntry)
+			err = xdr.SafeUnmarshalBase64(authBase64, &authEntry)
 			assert.NoError(i.t, err)
 			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
 			funAuth = append(funAuth, authEntry)
@@ -631,7 +635,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	i.t.Fatal("Soroban RPC out of sync")
+	i.t.Fatal("Time out waiting for soroban-rpc to sync")
 }
 
 func (i *Test) PreflightBumpFootprintExpiration(
