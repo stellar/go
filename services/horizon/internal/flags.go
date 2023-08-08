@@ -647,8 +647,8 @@ type ApplyOptions struct {
 
 type networkConfig struct {
 	defaultConfig      []byte
-	historyArchiveURLs []string
-	networkPassphrase  string
+	HistoryArchiveURLs []string
+	NetworkPassphrase  string
 }
 
 var (
@@ -658,16 +658,16 @@ var (
 	//go:embed configs/captive-core-testnet.cfg
 	TestnetDefaultConfig []byte
 
-	pubnetConf = networkConfig{
+	PubnetConf = networkConfig{
 		defaultConfig:      PubnetDefaultConfig,
-		historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
-		networkPassphrase:  network.PublicNetworkPassphrase,
+		HistoryArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
+		NetworkPassphrase:  network.PublicNetworkPassphrase,
 	}
 
-	testnetConf = networkConfig{
+	TestnetConf = networkConfig{
 		defaultConfig:      TestnetDefaultConfig,
-		historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
-		networkPassphrase:  network.TestNetworkPassphrase,
+		HistoryArchiveURLs: network.TestNetworkhistoryArchiveURLs,
+		NetworkPassphrase:  network.TestNetworkPassphrase,
 	}
 )
 
@@ -726,14 +726,14 @@ func createCaptiveCoreConfigFromNetwork(config *Config) error {
 	var defaultNetworkConfig networkConfig
 	switch config.Network {
 	case StellarPubnet:
-		defaultNetworkConfig = pubnetConf
+		defaultNetworkConfig = PubnetConf
 	case StellarTestnet:
-		defaultNetworkConfig = testnetConf
+		defaultNetworkConfig = TestnetConf
 	default:
 		return fmt.Errorf("no default configuration found for network %s", config.Network)
 	}
-	config.NetworkPassphrase = defaultNetworkConfig.networkPassphrase
-	config.HistoryArchiveURLs = defaultNetworkConfig.historyArchiveURLs
+	config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
+	config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
 
 	if config.CaptiveCoreConfigPath == "" {
 		return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)

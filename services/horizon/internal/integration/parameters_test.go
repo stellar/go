@@ -195,16 +195,26 @@ func TestNetworkParameter(t *testing.T) {
 	if !integration.RunWithCaptiveCore {
 		t.Skip()
 	}
-
-	testCases := []string{
-		horizon.StellarPubnet,
-		horizon.StellarTestnet,
+	testCases := []struct {
+		networkValue       string
+		networkPassphrase  string
+		historyArchiveURLs []string
+	}{
+		{
+			networkValue:       horizon.StellarTestnet,
+			networkPassphrase:  horizon.TestnetConf.NetworkPassphrase,
+			historyArchiveURLs: horizon.TestnetConf.HistoryArchiveURLs,
+		},
+		{
+			networkValue:       horizon.StellarPubnet,
+			networkPassphrase:  horizon.PubnetConf.NetworkPassphrase,
+			historyArchiveURLs: horizon.PubnetConf.HistoryArchiveURLs,
+		},
 	}
-
-	for _, networkValue := range testCases {
-		t.Run(fmt.Sprintf("NETWORK parameter %s", networkValue), func(t *testing.T) {
+	for _, tt := range testCases {
+		t.Run(fmt.Sprintf("NETWORK parameter %s", tt.networkValue), func(t *testing.T) {
 			localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-				horizon.NetworkFlagName: networkValue,
+				horizon.NetworkFlagName: tt.networkValue,
 			})
 			testConfig := integration.GetTestConfig()
 			testConfig.SkipCoreContainerCreation = true
@@ -215,6 +225,9 @@ func TestNetworkParameter(t *testing.T) {
 			// https://github.com/stellar/go/issues/5005
 			time.Sleep(2 * time.Second)
 			assert.NoError(t, err)
+			assert.Equal(t, test.GetHorizonIngestConfig().HistoryArchiveURLs, tt.historyArchiveURLs)
+			assert.Equal(t, test.GetHorizonIngestConfig().NetworkPassphrase, tt.networkPassphrase)
+
 			test.Shutdown()
 		})
 	}

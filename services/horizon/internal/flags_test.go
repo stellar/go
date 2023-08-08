@@ -21,14 +21,14 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 		{
 			name:               "testnet default config",
 			config:             Config{Network: StellarTestnet},
-			networkPassphrase:  testnetConf.networkPassphrase,
-			historyArchiveURLs: testnetConf.historyArchiveURLs,
+			networkPassphrase:  TestnetConf.NetworkPassphrase,
+			historyArchiveURLs: TestnetConf.HistoryArchiveURLs,
 		},
 		{
 			name:               "pubnet default config",
 			config:             Config{Network: StellarPubnet},
-			networkPassphrase:  pubnetConf.networkPassphrase,
-			historyArchiveURLs: pubnetConf.historyArchiveURLs,
+			networkPassphrase:  PubnetConf.NetworkPassphrase,
+			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
 		},
 		{
 			name: "testnet validation; history archive urls supplied",
