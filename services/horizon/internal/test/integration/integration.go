@@ -628,9 +628,7 @@ func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
 		sorobanRPCClient := jrpc2.NewClient(ch, nil)
 		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
 		assert.NoError(i.t, err)
-		// FIXME: why does soroban-rpc need to be one ledger ahead?
-		//        it should be fine if it were at the same ledger i.e. result.Sequence >= ledgerToWaitFor
-		if result.Sequence > ledgerToWaitFor {
+		if result.Sequence >= ledgerToWaitFor {
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
