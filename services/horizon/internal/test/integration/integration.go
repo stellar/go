@@ -4,7 +4,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -22,15 +21,15 @@ import (
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stretchr/testify/require"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
