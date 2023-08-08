@@ -138,148 +138,129 @@ func TestInvalidNetworkParameters(t *testing.T) {
 		t.Skip()
 	}
 
-	errMsg := "history-archive-urls parameter not allowed with the network parameter"
-	t.Run("history archive urls validation", func(t *testing.T) {
-		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName:                    horizon.StellarPubnet,
-			horizon.EnableCaptiveCoreIngestionFlagName: "true",
-			horizon.HistoryArchiveURLsFlagName:         "HISTORY_ARCHIVE_URLS",
-		})
-		testConfig := integration.GetTestConfig()
-		testConfig.SkipCoreContainerCreation = true
-		testConfig.HorizonIngestParameters = localParams
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		assert.Equal(t, err.Error(), integration.HorizonInitErrStr+
-			": "+CaptiveCoreConfigErrMsg+errMsg)
-		// Adding sleep as a workaround for the race condition in the ingestion system.
-		// https://github.com/stellar/go/issues/5005
-		time.Sleep(2 * time.Second)
-		test.StopHorizon()
-		test.Shutdown()
-	})
+	var captiveCoreConfigErrMsg = integration.HorizonInitErrStr + ": error generating captive " +
+		"core configuration: invalid config: %s parameter not allowed with the %s parameter"
+	testCases := []struct {
+		name         string
+		errMsg       string
+		networkValue string
+		param        string
+	}{
+		{
+			name: "history archive urls validation",
+			errMsg: fmt.Sprintf(captiveCoreConfigErrMsg, horizon.HistoryArchiveURLsFlagName,
+				horizon.NetworkFlagName),
+			networkValue: horizon.StellarPubnet,
+			param:        horizon.HistoryArchiveURLsFlagName,
+		},
+		{
+			name: "network-passphrase validation",
+			errMsg: fmt.Sprintf(captiveCoreConfigErrMsg, horizon.NetworkPassphraseFlagName,
+				horizon.NetworkFlagName),
+			networkValue: horizon.StellarTestnet,
+			param:        horizon.NetworkPassphraseFlagName,
+		},
+	}
 
-	errMsg = "network-passphrase parameter not allowed with the network parameter"
-	t.Run("network-passphrase validation", func(t *testing.T) {
-		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName:                    horizon.StellarTestnet,
-			horizon.EnableCaptiveCoreIngestionFlagName: "true",
-			horizon.NetworkPassphraseFlagName:          "NETWORK_PASSPHRASE",
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+				horizon.NetworkFlagName:                    testCase.networkValue,
+				horizon.EnableCaptiveCoreIngestionFlagName: "true",
+				testCase.param:                             "NETWORK_PARAM",
+			})
+			testConfig := integration.GetTestConfig()
+			testConfig.SkipCoreContainerCreation = true
+			testConfig.HorizonIngestParameters = localParams
+			test := integration.NewTest(t, *testConfig)
+			err := test.StartHorizon()
+			// Adding sleep as a workaround for the race condition in the ingestion system.
+			// https://github.com/stellar/go/issues/5005
+			time.Sleep(2 * time.Second)
+			assert.Equal(t, testCase.errMsg, err.Error())
+			test.Shutdown()
 		})
-		testConfig := integration.GetTestConfig()
-		testConfig.SkipCoreContainerCreation = true
-		testConfig.HorizonIngestParameters = localParams
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		assert.Equal(t, err.Error(), integration.HorizonInitErrStr+
-			": "+CaptiveCoreConfigErrMsg+errMsg)
-		// Adding sleep as a workaround for the race condition in the ingestion system.
-		// https://github.com/stellar/go/issues/5005
-		time.Sleep(2 * time.Second)
-		test.StopHorizon()
-		test.Shutdown()
-	})
+	}
 }
 
 // TestNetworkParameter Ensure that Horizon successfully starts the captive-core
 // subprocess using the default configuration when --network [testnet|pubnet]
 // commandline parameter.
 //
-// Typically during integration tests, we initiate Horizon in standalone mode and simultaneously start the
-// stellar-core container in standalone mode as well. We wait for Horizon to begin ingesting to verify the test's
-// success. However, in the case of "pubnet" or "testnet," waiting for Horizon to start ingesting is not practical.
-// So we don't start stellar-core containers.
+// In integration tests, we start Horizon and stellar-core containers in standalone mode
+// simultaneously. We usually wait for Horizon to begin ingesting to verify the test's
+// success. However, for "pubnet" or "testnet," we can not wait for Horizon to catch up,
+// so we skip starting stellar-core containers.
 func TestNetworkParameter(t *testing.T) {
 	if !integration.RunWithCaptiveCore {
 		t.Skip()
 	}
 
-	t.Run("network parameter pubnet", func(t *testing.T) {
-		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName: horizon.StellarPubnet,
-		})
-		testConfig := integration.GetTestConfig()
-		testConfig.SkipCoreContainerCreation = true
-		testConfig.HorizonIngestParameters = localParams
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		// Adding sleep as a workaround for the race condition in the ingestion system.
-		// https://github.com/stellar/go/issues/5005
-		time.Sleep(2 * time.Second)
-		assert.NoError(t, err)
-		test.StopHorizon()
-		test.Shutdown()
-	})
+	testCases := []string{
+		horizon.StellarPubnet,
+		horizon.StellarTestnet,
+	}
 
-	t.Run("network parameter testnet", func(t *testing.T) {
-		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName: horizon.StellarTestnet,
+	for _, networkValue := range testCases {
+		t.Run(fmt.Sprintf("NETWORK parameter %s", networkValue), func(t *testing.T) {
+			localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+				horizon.NetworkFlagName: networkValue,
+			})
+			testConfig := integration.GetTestConfig()
+			testConfig.SkipCoreContainerCreation = true
+			testConfig.HorizonIngestParameters = localParams
+			test := integration.NewTest(t, *testConfig)
+			err := test.StartHorizon()
+			// Adding sleep as a workaround for the race condition in the ingestion system.
+			// https://github.com/stellar/go/issues/5005
+			time.Sleep(2 * time.Second)
+			assert.NoError(t, err)
+			test.Shutdown()
 		})
-		testConfig := integration.GetTestConfig()
-		testConfig.SkipCoreContainerCreation = true
-		testConfig.HorizonIngestParameters = localParams
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		// Adding sleep as a workaround for the race condition in the ingestion system.
-		// https://github.com/stellar/go/issues/5005
-		time.Sleep(2 * time.Second)
-		assert.NoError(t, err)
-		test.StopHorizon()
-		test.Shutdown()
-	})
+	}
 }
 
 // TestNetworkEnvironmentVariable Ensure that Horizon successfully starts the captive-core
 // subprocess using the default configuration when the NETWORK environment variable is set
 // to either pubnet or testnet.
 //
-// Typically during integration tests, we initiate Horizon in standalone mode and simultaneously start the
-// stellar-core container in standalone mode as well. We wait for Horizon to begin ingesting to verify the test's
-// success. However, in the case of "pubnet" or "testnet," waiting for Horizon to start ingesting is not practical.
-// So we don't start stellar-core containers.
+// In integration tests, we start Horizon and stellar-core containers in standalone mode
+// simultaneously. We usually wait for Horizon to begin ingesting to verify the test's
+// success. However, for "pubnet" or "testnet," we can not wait for Horizon to catch up,
+// so we skip starting stellar-core containers.
 func TestNetworkEnvironmentVariable(t *testing.T) {
 	if !integration.RunWithCaptiveCore {
 		t.Skip()
 	}
+	testCases := []string{
+		horizon.StellarPubnet,
+		horizon.StellarTestnet,
+	}
 
-	value, isSet := os.LookupEnv("NETWORK")
-	defer func() {
-		if isSet {
-			_ = os.Setenv("NETWORK", value)
-		} else {
-			_ = os.Unsetenv("NETWORK")
-		}
-	}()
+	for _, networkValue := range testCases {
+		t.Run(fmt.Sprintf("NETWORK environment variable %s", networkValue), func(t *testing.T) {
+			value, isSet := os.LookupEnv("NETWORK")
+			defer func() {
+				if isSet {
+					_ = os.Setenv("NETWORK", value)
+				} else {
+					_ = os.Unsetenv("NETWORK")
+				}
+			}()
 
-	t.Run("NETWORK environment variable pubnet", func(t *testing.T) {
-		testConfig := integration.GetTestConfig()
-		testConfig.SkipCoreContainerCreation = true
-		testConfig.HorizonIngestParameters = networkParamArgs
-		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarPubnet}
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		// Adding sleep here as a workaround for the race condition in the ingestion system.
-		// More details can be found at https://github.com/stellar/go/issues/5005
-		time.Sleep(2 * time.Second)
-		assert.NoError(t, err)
-		test.StopHorizon()
-		test.Shutdown()
-	})
-
-	t.Run("NETWORK environment variable testnet", func(t *testing.T) {
-		testConfig := integration.GetTestConfig()
-		testConfig.SkipCoreContainerCreation = true
-		testConfig.HorizonIngestParameters = networkParamArgs
-		testConfig.HorizonEnvironment = map[string]string{"NETWORK": horizon.StellarTestnet}
-		test := integration.NewTest(t, *testConfig)
-		err := test.StartHorizon()
-		// Adding sleep here as a workaround for the race condition in the ingestion system.
-		// More details can be found at https://github.com/stellar/go/issues/5005
-		time.Sleep(2 * time.Second)
-		assert.NoError(t, err)
-		test.StopHorizon()
-		test.Shutdown()
-	})
+			testConfig := integration.GetTestConfig()
+			testConfig.SkipCoreContainerCreation = true
+			testConfig.HorizonIngestParameters = networkParamArgs
+			testConfig.HorizonEnvironment = map[string]string{"NETWORK": networkValue}
+			test := integration.NewTest(t, *testConfig)
+			err := test.StartHorizon()
+			// Adding sleep here as a workaround for the race condition in the ingestion system.
+			// More details can be found at https://github.com/stellar/go/issues/5005
+			time.Sleep(2 * time.Second)
+			assert.NoError(t, err)
+			test.Shutdown()
+		})
+	}
 }
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
