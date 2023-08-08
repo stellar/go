@@ -167,7 +167,7 @@ func TestInvalidNetworkParameters(t *testing.T) {
 			localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 				horizon.NetworkFlagName:                    testCase.networkValue,
 				horizon.EnableCaptiveCoreIngestionFlagName: "true",
-				testCase.param:                             "NETWORK_PARAM",
+				testCase.param:                             testCase.param, // set any value
 			})
 			testConfig := integration.GetTestConfig()
 			testConfig.SkipCoreContainerCreation = true
