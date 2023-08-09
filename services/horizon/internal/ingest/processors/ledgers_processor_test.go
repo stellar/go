@@ -189,7 +189,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 
 	s.Assert().EqualError(s.processor.Commit(
 		context.Background(), s.mockSession),
-		"transient error",
+		"error adding ledger 20 to batch: transient error",
 	)
 }
 
@@ -220,6 +220,6 @@ func (s *LedgersProcessorTestSuiteLedger) TestExecFails() {
 
 	s.Assert().EqualError(s.processor.Commit(
 		context.Background(), s.mockSession),
-		"transient exec error",
+		"error committing ledgers 20 - 20: transient exec error",
 	)
 }

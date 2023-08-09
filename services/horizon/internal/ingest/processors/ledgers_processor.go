@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -52,7 +53,11 @@ func (p *LedgersProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transacti
 }
 
 func (p *LedgersProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
-	for _, entry := range p.ledgers {
+	if len(p.ledgers) == 0 {
+		return nil
+	}
+	var min, max uint32
+	for ledger, entry := range p.ledgers {
 		err := p.batch.Add(
 			entry.header,
 			entry.successTxCount,
@@ -62,12 +67,18 @@ func (p *LedgersProcessor) Commit(ctx context.Context, session db.SessionInterfa
 			p.ingestVersion,
 		)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "error adding ledger %d to batch", ledger)
+		}
+		if min == 0 || ledger < min {
+			min = ledger
+		}
+		if max == 0 || ledger > max {
+			max = ledger
 		}
 	}
 
 	if err := p.batch.Exec(ctx, session); err != nil {
-		return err
+		return errors.Wrapf(err, "error committing ledgers %d - %d", min, max)
 	}
 
 	return nil
