@@ -21,15 +21,15 @@ import (
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stretchr/testify/require"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
@@ -559,20 +559,26 @@ type RPCSimulateTxResponse struct {
 	MinResourceFee  int64                           `json:"minResourceFee,string"`
 }
 
-// Wait for SorobanRPC to be up
 func (i *Test) PreflightHostFunctions(
 	sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction,
 ) (txnbuild.InvokeHostFunction, int64) {
+	if function.HostFunction.Type == xdr.HostFunctionTypeHostFunctionTypeInvokeContract {
+		fmt.Printf("Preflighting function call to: %s\n", string(function.HostFunction.InvokeContract.FunctionName))
+	}
 	result, transactionData := i.simulateTransaction(sourceAccount, &function)
 	function.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
 	var funAuth []xdr.SorobanAuthorizationEntry
-	for _, authElement := range result.Results {
-		for _, authBase64 := range authElement.Auth {
+	for _, res := range result.Results {
+		var decodedRes xdr.ScVal
+		err := xdr.SafeUnmarshalBase64(res.XDR, &decodedRes)
+		assert.NoError(i.t, err)
+		fmt.Printf("Result:\n\n%# +v\n\n", pretty.Formatter(decodedRes))
+		for _, authBase64 := range res.Auth {
 			var authEntry xdr.SorobanAuthorizationEntry
-			err := xdr.SafeUnmarshalBase64(authBase64, &authEntry)
+			err = xdr.SafeUnmarshalBase64(authBase64, &authEntry)
 			assert.NoError(i.t, err)
 			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
 			funAuth = append(funAuth, authEntry)
@@ -586,6 +592,11 @@ func (i *Test) PreflightHostFunctions(
 func (i *Test) simulateTransaction(
 	sourceAccount txnbuild.Account, op txnbuild.Operation,
 ) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
+	// Before preflighting, make sure soroban-rpc is in sync with Horizon
+	root, err := i.horizonClient.Root()
+	require.NoError(i.t, err)
+	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
+
 	// TODO: soroban-tools should be exporting a proper Go client
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
@@ -605,8 +616,24 @@ func (i *Test) simulateTransaction(
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
-	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
+	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
 	return result, transactionData
+}
+func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
+	for j := 0; j < 20; j++ {
+		result := struct {
+			Sequence uint32 `json:"sequence"`
+		}{}
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
+		assert.NoError(i.t, err)
+		if result.Sequence >= ledgerToWaitFor {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	i.t.Fatal("Time out waiting for soroban-rpc to sync")
 }
 
 func (i *Test) PreflightBumpFootprintExpiration(

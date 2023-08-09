@@ -31,16 +31,16 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "c8750a8ef0db66d4dd2e56f263c6b33ccaf0111128fdcf875e63efed9effe0a5",
+	"xdr/Stellar-contract-config-setting.x": "2f4916a76b81499ec554f524c38ddd80ec65d0bd97090a28fa7376a10b470d6c",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "739e2480ba197aa859f122632a93172668cb0dbe93e30a54c192b96878af207a",
-	"xdr/Stellar-contract.x":                "b00ea4057101f92e61851a79ba10812138ace1243b1a2f5ce65931210190f84a",
+	"xdr/Stellar-contract.x":                "6d89a51015b272d26c132f5d9316710792f2aeec8ba9ee5fba7ec7e1ade029f9",
 	"xdr/Stellar-internal.x":                "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
 	"xdr/Stellar-ledger-entries.x":          "3d1714508129ca3cf7bfd0fa0cb7b3e3bbd2f9496b7f766dda8fbb1d9c46a0ca",
 	"xdr/Stellar-ledger.x":                  "59077cbb5a1517fdaaaf7b1f0f750cf02f84984ed024441dc37b7f974866fa58",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "50460419c6dce766685db1898f5e8b554ac04d481200a57e1ea66b7f80e48cf3",
+	"xdr/Stellar-transaction.x":             "236ae9631757a957d0057d6cbfa8a5e5f2c7219986d3b9e6d0844571865dd6fc",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -29739,16 +29739,16 @@ var _ xdrType = (*LedgerFootprint)(nil)
 //	     // The maximum number of bytes this transaction can write to ledger
 //	     uint32 writeBytes;
 //
-//	     // Maximum size of dynamic metadata produced by this contract (
-//	     // bytes read from ledger + bytes written to ledger + event bytes written to meta).
-//	     uint32 extendedMetaDataSizeBytes;
+//	     // Maximum size of the contract events (serialized to XDR) this transaction
+//	     // can emit.
+//	     uint32 contractEventsSizeBytes;
 //	 };
 type SorobanResources struct {
-	Footprint                 LedgerFootprint
-	Instructions              Uint32
-	ReadBytes                 Uint32
-	WriteBytes                Uint32
-	ExtendedMetaDataSizeBytes Uint32
+	Footprint               LedgerFootprint
+	Instructions            Uint32
+	ReadBytes               Uint32
+	WriteBytes              Uint32
+	ContractEventsSizeBytes Uint32
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -29766,7 +29766,7 @@ func (s *SorobanResources) EncodeTo(e *xdr.Encoder) error {
 	if err = s.WriteBytes.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.ExtendedMetaDataSizeBytes.EncodeTo(e); err != nil {
+	if err = s.ContractEventsSizeBytes.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -29798,7 +29798,7 @@ func (s *SorobanResources) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.ExtendedMetaDataSizeBytes.DecodeFrom(d)
+	nTmp, err = s.ContractEventsSizeBytes.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -48867,8 +48867,7 @@ var _ xdrType = (*ScSpecEntry)(nil)
 //
 //	     // 128 bits is naturally supported by Rust and we use it for Soroban
 //	     // fixed-point arithmetic prices / balances / similar "quantities". These
-//	     // are represented in XDR as a pair of 2 u64s, unlike {u,i}256 which is
-//	     // represented as an array of 32 bytes.
+//	     // are represented in XDR as a pair of 2 u64s.
 //	     SCV_U128 = 9,
 //	     SCV_I128 = 10,
 //
@@ -53141,44 +53140,44 @@ func (s ConfigSettingContractHistoricalDataV0) xdrType() {}
 
 var _ xdrType = (*ConfigSettingContractHistoricalDataV0)(nil)
 
-// ConfigSettingContractMetaDataV0 is an XDR Struct defines as:
+// ConfigSettingContractEventsV0 is an XDR Struct defines as:
 //
-//	struct ConfigSettingContractMetaDataV0
+//	struct ConfigSettingContractEventsV0
 //	 {
-//	     // Maximum size of extended meta data produced by a transaction
-//	     uint32 txMaxExtendedMetaDataSizeBytes;
-//	     // Fee for generating 1KB of extended meta data
-//	     int64 feeExtendedMetaData1KB;
+//	     // Maximum size of events that a contract call can emit.
+//	     uint32 txMaxContractEventsSizeBytes;
+//	     // Fee for generating 1KB of contract events.
+//	     int64 feeContractEvents1KB;
 //	 };
-type ConfigSettingContractMetaDataV0 struct {
-	TxMaxExtendedMetaDataSizeBytes Uint32
-	FeeExtendedMetaData1Kb         Int64
+type ConfigSettingContractEventsV0 struct {
+	TxMaxContractEventsSizeBytes Uint32
+	FeeContractEvents1Kb         Int64
 }
 
 // EncodeTo encodes this value using the Encoder.
-func (s *ConfigSettingContractMetaDataV0) EncodeTo(e *xdr.Encoder) error {
+func (s *ConfigSettingContractEventsV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.TxMaxExtendedMetaDataSizeBytes.EncodeTo(e); err != nil {
+	if err = s.TxMaxContractEventsSizeBytes.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.FeeExtendedMetaData1Kb.EncodeTo(e); err != nil {
+	if err = s.FeeContractEvents1Kb.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
 }
 
-var _ decoderFrom = (*ConfigSettingContractMetaDataV0)(nil)
+var _ decoderFrom = (*ConfigSettingContractEventsV0)(nil)
 
 // DecodeFrom decodes this value using the Decoder.
-func (s *ConfigSettingContractMetaDataV0) DecodeFrom(d *xdr.Decoder) (int, error) {
+func (s *ConfigSettingContractEventsV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.TxMaxExtendedMetaDataSizeBytes.DecodeFrom(d)
+	nTmp, err = s.TxMaxContractEventsSizeBytes.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.FeeExtendedMetaData1Kb.DecodeFrom(d)
+	nTmp, err = s.FeeContractEvents1Kb.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -53187,7 +53186,7 @@ func (s *ConfigSettingContractMetaDataV0) DecodeFrom(d *xdr.Decoder) (int, error
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ConfigSettingContractMetaDataV0) MarshalBinary() ([]byte, error) {
+func (s ConfigSettingContractEventsV0) MarshalBinary() ([]byte, error) {
 	b := bytes.Buffer{}
 	e := xdr.NewEncoder(&b)
 	err := s.EncodeTo(e)
@@ -53195,7 +53194,7 @@ func (s ConfigSettingContractMetaDataV0) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ConfigSettingContractMetaDataV0) UnmarshalBinary(inp []byte) error {
+func (s *ConfigSettingContractEventsV0) UnmarshalBinary(inp []byte) error {
 	r := bytes.NewReader(inp)
 	d := xdr.NewDecoder(r)
 	_, err := s.DecodeFrom(d)
@@ -53203,44 +53202,44 @@ func (s *ConfigSettingContractMetaDataV0) UnmarshalBinary(inp []byte) error {
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ConfigSettingContractMetaDataV0)(nil)
-	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractMetaDataV0)(nil)
+	_ encoding.BinaryMarshaler   = (*ConfigSettingContractEventsV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*ConfigSettingContractEventsV0)(nil)
 )
 
 // xdrType signals that this type is an type representing
 // representing XDR values defined by this package.
-func (s ConfigSettingContractMetaDataV0) xdrType() {}
+func (s ConfigSettingContractEventsV0) xdrType() {}
 
-var _ xdrType = (*ConfigSettingContractMetaDataV0)(nil)
+var _ xdrType = (*ConfigSettingContractEventsV0)(nil)
 
 // ConfigSettingContractBandwidthV0 is an XDR Struct defines as:
 //
 //	struct ConfigSettingContractBandwidthV0
 //	 {
-//	     // Maximum size in bytes to propagate per ledger
-//	     uint32 ledgerMaxPropagateSizeBytes;
+//	     // Maximum sum of all transaction sizes in the ledger in bytes
+//	     uint32 ledgerMaxTxsSizeBytes;
 //	     // Maximum size in bytes for a transaction
 //	     uint32 txMaxSizeBytes;
 //
-//	     // Fee for propagating 1KB of data
-//	     int64 feePropagateData1KB;
+//	     // Fee for 1 KB of transaction size
+//	     int64 feeTxSize1KB;
 //	 };
 type ConfigSettingContractBandwidthV0 struct {
-	LedgerMaxPropagateSizeBytes Uint32
-	TxMaxSizeBytes              Uint32
-	FeePropagateData1Kb         Int64
+	LedgerMaxTxsSizeBytes Uint32
+	TxMaxSizeBytes        Uint32
+	FeeTxSize1Kb          Int64
 }
 
 // EncodeTo encodes this value using the Encoder.
 func (s *ConfigSettingContractBandwidthV0) EncodeTo(e *xdr.Encoder) error {
 	var err error
-	if err = s.LedgerMaxPropagateSizeBytes.EncodeTo(e); err != nil {
+	if err = s.LedgerMaxTxsSizeBytes.EncodeTo(e); err != nil {
 		return err
 	}
 	if err = s.TxMaxSizeBytes.EncodeTo(e); err != nil {
 		return err
 	}
-	if err = s.FeePropagateData1Kb.EncodeTo(e); err != nil {
+	if err = s.FeeTxSize1Kb.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -53252,7 +53251,7 @@ var _ decoderFrom = (*ConfigSettingContractBandwidthV0)(nil)
 func (s *ConfigSettingContractBandwidthV0) DecodeFrom(d *xdr.Decoder) (int, error) {
 	var err error
 	var n, nTmp int
-	nTmp, err = s.LedgerMaxPropagateSizeBytes.DecodeFrom(d)
+	nTmp, err = s.LedgerMaxTxsSizeBytes.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -53262,7 +53261,7 @@ func (s *ConfigSettingContractBandwidthV0) DecodeFrom(d *xdr.Decoder) (int, erro
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
-	nTmp, err = s.FeePropagateData1Kb.DecodeFrom(d)
+	nTmp, err = s.FeeTxSize1Kb.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Int64: %s", err)
@@ -53821,7 +53820,7 @@ var _ xdrType = (*ContractCostParams)(nil)
 //	     CONFIG_SETTING_CONTRACT_COMPUTE_V0 = 1,
 //	     CONFIG_SETTING_CONTRACT_LEDGER_COST_V0 = 2,
 //	     CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0 = 3,
-//	     CONFIG_SETTING_CONTRACT_META_DATA_V0 = 4,
+//	     CONFIG_SETTING_CONTRACT_EVENTS_V0 = 4,
 //	     CONFIG_SETTING_CONTRACT_BANDWIDTH_V0 = 5,
 //	     CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS = 6,
 //	     CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES = 7,
@@ -53838,7 +53837,7 @@ const (
 	ConfigSettingIdConfigSettingContractComputeV0                 ConfigSettingId = 1
 	ConfigSettingIdConfigSettingContractLedgerCostV0              ConfigSettingId = 2
 	ConfigSettingIdConfigSettingContractHistoricalDataV0          ConfigSettingId = 3
-	ConfigSettingIdConfigSettingContractMetaDataV0                ConfigSettingId = 4
+	ConfigSettingIdConfigSettingContractEventsV0                  ConfigSettingId = 4
 	ConfigSettingIdConfigSettingContractBandwidthV0               ConfigSettingId = 5
 	ConfigSettingIdConfigSettingContractCostParamsCpuInstructions ConfigSettingId = 6
 	ConfigSettingIdConfigSettingContractCostParamsMemoryBytes     ConfigSettingId = 7
@@ -53854,7 +53853,7 @@ var configSettingIdMap = map[int32]string{
 	1:  "ConfigSettingIdConfigSettingContractComputeV0",
 	2:  "ConfigSettingIdConfigSettingContractLedgerCostV0",
 	3:  "ConfigSettingIdConfigSettingContractHistoricalDataV0",
-	4:  "ConfigSettingIdConfigSettingContractMetaDataV0",
+	4:  "ConfigSettingIdConfigSettingContractEventsV0",
 	5:  "ConfigSettingIdConfigSettingContractBandwidthV0",
 	6:  "ConfigSettingIdConfigSettingContractCostParamsCpuInstructions",
 	7:  "ConfigSettingIdConfigSettingContractCostParamsMemoryBytes",
@@ -53941,8 +53940,8 @@ var _ xdrType = (*ConfigSettingId)(nil)
 //	     ConfigSettingContractLedgerCostV0 contractLedgerCost;
 //	 case CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0:
 //	     ConfigSettingContractHistoricalDataV0 contractHistoricalData;
-//	 case CONFIG_SETTING_CONTRACT_META_DATA_V0:
-//	     ConfigSettingContractMetaDataV0 contractMetaData;
+//	 case CONFIG_SETTING_CONTRACT_EVENTS_V0:
+//	     ConfigSettingContractEventsV0 contractEvents;
 //	 case CONFIG_SETTING_CONTRACT_BANDWIDTH_V0:
 //	     ConfigSettingContractBandwidthV0 contractBandwidth;
 //	 case CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS:
@@ -53966,7 +53965,7 @@ type ConfigSettingEntry struct {
 	ContractCompute            *ConfigSettingContractComputeV0
 	ContractLedgerCost         *ConfigSettingContractLedgerCostV0
 	ContractHistoricalData     *ConfigSettingContractHistoricalDataV0
-	ContractMetaData           *ConfigSettingContractMetaDataV0
+	ContractEvents             *ConfigSettingContractEventsV0
 	ContractBandwidth          *ConfigSettingContractBandwidthV0
 	ContractCostParamsCpuInsns *ContractCostParams
 	ContractCostParamsMemBytes *ContractCostParams
@@ -53995,8 +53994,8 @@ func (u ConfigSettingEntry) ArmForSwitch(sw int32) (string, bool) {
 		return "ContractLedgerCost", true
 	case ConfigSettingIdConfigSettingContractHistoricalDataV0:
 		return "ContractHistoricalData", true
-	case ConfigSettingIdConfigSettingContractMetaDataV0:
-		return "ContractMetaData", true
+	case ConfigSettingIdConfigSettingContractEventsV0:
+		return "ContractEvents", true
 	case ConfigSettingIdConfigSettingContractBandwidthV0:
 		return "ContractBandwidth", true
 	case ConfigSettingIdConfigSettingContractCostParamsCpuInstructions:
@@ -54049,13 +54048,13 @@ func NewConfigSettingEntry(configSettingId ConfigSettingId, value interface{}) (
 			return
 		}
 		result.ContractHistoricalData = &tv
-	case ConfigSettingIdConfigSettingContractMetaDataV0:
-		tv, ok := value.(ConfigSettingContractMetaDataV0)
+	case ConfigSettingIdConfigSettingContractEventsV0:
+		tv, ok := value.(ConfigSettingContractEventsV0)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ConfigSettingContractMetaDataV0")
+			err = fmt.Errorf("invalid value, must be ConfigSettingContractEventsV0")
 			return
 		}
-		result.ContractMetaData = &tv
+		result.ContractEvents = &tv
 	case ConfigSettingIdConfigSettingContractBandwidthV0:
 		tv, ok := value.(ConfigSettingContractBandwidthV0)
 		if !ok {
@@ -54216,25 +54215,25 @@ func (u ConfigSettingEntry) GetContractHistoricalData() (result ConfigSettingCon
 	return
 }
 
-// MustContractMetaData retrieves the ContractMetaData value from the union,
+// MustContractEvents retrieves the ContractEvents value from the union,
 // panicing if the value is not set.
-func (u ConfigSettingEntry) MustContractMetaData() ConfigSettingContractMetaDataV0 {
-	val, ok := u.GetContractMetaData()
+func (u ConfigSettingEntry) MustContractEvents() ConfigSettingContractEventsV0 {
+	val, ok := u.GetContractEvents()
 
 	if !ok {
-		panic("arm ContractMetaData is not set")
+		panic("arm ContractEvents is not set")
 	}
 
 	return val
 }
 
-// GetContractMetaData retrieves the ContractMetaData value from the union,
+// GetContractEvents retrieves the ContractEvents value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ConfigSettingEntry) GetContractMetaData() (result ConfigSettingContractMetaDataV0, ok bool) {
+func (u ConfigSettingEntry) GetContractEvents() (result ConfigSettingContractEventsV0, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
 
-	if armName == "ContractMetaData" {
-		result = *u.ContractMetaData
+	if armName == "ContractEvents" {
+		result = *u.ContractEvents
 		ok = true
 	}
 
@@ -54468,8 +54467,8 @@ func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case ConfigSettingIdConfigSettingContractMetaDataV0:
-		if err = (*u.ContractMetaData).EncodeTo(e); err != nil {
+	case ConfigSettingIdConfigSettingContractEventsV0:
+		if err = (*u.ContractEvents).EncodeTo(e); err != nil {
 			return err
 		}
 		return nil
@@ -54566,12 +54565,12 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 			return n, fmt.Errorf("decoding ConfigSettingContractHistoricalDataV0: %s", err)
 		}
 		return n, nil
-	case ConfigSettingIdConfigSettingContractMetaDataV0:
-		u.ContractMetaData = new(ConfigSettingContractMetaDataV0)
-		nTmp, err = (*u.ContractMetaData).DecodeFrom(d)
+	case ConfigSettingIdConfigSettingContractEventsV0:
+		u.ContractEvents = new(ConfigSettingContractEventsV0)
+		nTmp, err = (*u.ContractEvents).DecodeFrom(d)
 		n += nTmp
 		if err != nil {
-			return n, fmt.Errorf("decoding ConfigSettingContractMetaDataV0: %s", err)
+			return n, fmt.Errorf("decoding ConfigSettingContractEventsV0: %s", err)
 		}
 		return n, nil
 	case ConfigSettingIdConfigSettingContractBandwidthV0:
