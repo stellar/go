@@ -61,7 +61,7 @@ func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsSucceeds() {
 	lcm.V0.LedgerHeader.Header.LedgerSeq++
 	s.Assert().NoError(s.processor.ProcessTransaction(lcm, thirdTx))
 
-	s.Assert().NoError(s.processor.Commit(s.ctx, s.mockSession))
+	s.Assert().NoError(s.processor.Flush(s.ctx, s.mockSession))
 }
 
 func (s *TransactionsProcessorTestSuiteLedger) TestAddTransactionsFails() {
@@ -102,7 +102,7 @@ func (s *TransactionsProcessorTestSuiteLedger) TestExecFails() {
 
 	s.Assert().NoError(s.processor.ProcessTransaction(lcm, firstTx))
 
-	err := s.processor.Commit(s.ctx, s.mockSession)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "transient error")
 }

@@ -70,7 +70,7 @@ func (p *OperationProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transac
 	return nil
 }
 
-func (p *OperationProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
+func (p *OperationProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	return p.batch.Exec(ctx, session)
 }
 

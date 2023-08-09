@@ -52,7 +52,7 @@ func (p *LedgersProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transacti
 	return nil
 }
 
-func (p *LedgersProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
+func (p *LedgersProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	if len(p.ledgers) == 0 {
 		return nil
 	}

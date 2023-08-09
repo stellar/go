@@ -34,6 +34,6 @@ func (p *TransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, trans
 	return nil
 }
 
-func (p *TransactionProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
+func (p *TransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	return p.batch.Exec(ctx, session)
 }

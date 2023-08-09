@@ -133,7 +133,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 		err = s.processor.ProcessTransaction(lcm, tx)
 		s.Assert().NoError(err)
 	}
-	s.Assert().NoError(s.processor.Commit(s.ctx, s.mockSession))
+	s.Assert().NoError(s.processor.Flush(s.ctx, s.mockSession))
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
@@ -193,7 +193,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
 	s.Assert().NoError(s.processor.ProcessTransaction(lcm, tx))
 
 	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(errors.New("transient error")).Once()
-	err := s.processor.Commit(s.ctx, s.mockSession)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "transient error")
 }
