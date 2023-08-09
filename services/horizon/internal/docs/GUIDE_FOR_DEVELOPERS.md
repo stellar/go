@@ -10,10 +10,11 @@ This document describes how to build Horizon from source, so that you can test a
 - [Docker](https://www.docker.com/products/docker-desktop)
 
 ## The Go Monorepo
-All the code for Horizon resides in our Go monorepo. Fork the repository and clone the fork into your local machine.
+All the code for Horizon resides in our Go monorepo.
 ```bash
-git clone https://github.com/<your-github-username>/go.git
+git clone https://github.com/go.git
 ```
+If you want to contribute to the project, consider forking the repository and cloning the fork instead.
 
 ## Getting Started with Running Horizon
 The [start.sh](/services/horizon/docker/start.sh) script builds horizon from current source, and then runs docker-compose to start the docker containers with runtime configs for horizon, postgres, and optionally core if the optional `standalone` network parameter was included. 
@@ -56,6 +57,11 @@ Horizon uses a Postgres database backend to record information ingested from an 
 docker-compose -f ./docker/docker-compose.yml up horizon-postgres
 ```
 This starts a Horizon Postgres docker container and exposes it on the port 5432. Note that while Horizon will run locally, it's PostgresQL db will run in docker.
+
+To shut down all docker containers and free up resources, run the following command:
+```bash
+docker-compose -f ./docker/docker-compose.yml down
+```
 
 ### Run tests
 At this point you should be able to run Horizon's unit tests:
@@ -176,7 +182,7 @@ PROTOCOL_VERSION=19 CORE_IMAGE=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
 
 ## <a name="logging"></a> **Logging**
 
-All logging infrastructure is in the `go/services/horizon/internal/log` package.  This package provides "level-based" logging:  Each logging statement has a severity, one of "Debug", "Info", "Warn", "Error" or "Panic".  The Horizon server has a configured level "filter", specified either using the `--log-level` command line flag or the `LOG_LEVEL` environment variable.  When a logging statement is executed, the statements declared severity is checked against the filter and will only be emitted if the severity of the statement is equal or higher severity than the filter.
+All logging infrastructure is implemented using the `go/support/log` package.  This package provides "level-based" logging:  Each logging statement has a severity, one of "Debug", "Info", "Warn", "Error" or "Panic".  The Horizon server has a configured level "filter", specified either using the `--log-level` command line flag or the `LOG_LEVEL` environment variable.  When a logging statement is executed, the statements declared severity is checked against the filter and will only be emitted if the severity of the statement is equal or higher severity than the filter.
 
 In addition, the logging subsystem has support for fields: Arbitrary key-value pairs that will be associated with an entry to allow for filtering and additional contextual information.
 
