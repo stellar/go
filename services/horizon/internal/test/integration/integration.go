@@ -41,14 +41,15 @@ const (
 )
 
 var (
+	HorizonInitErrStr       = "cannot initialize Horizon"
 	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
 	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
-	ProtocolVersion       uint32
-	SkipContainerCreation bool
-	CoreDockerImage       string
+	ProtocolVersion           uint32
+	SkipCoreContainerCreation bool
+	CoreDockerImage           string
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -98,6 +99,17 @@ type Test struct {
 	passPhrase    string
 }
 
+// GetTestConfig returns the default test Config required to run NewTest.
+func GetTestConfig() *Config {
+	return &Config{
+		ProtocolVersion:           17,
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: false,
+		HorizonIngestParameters:   map[string]string{},
+		HorizonEnvironment:        map[string]string{},
+	}
+}
+
 // NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //
@@ -119,23 +131,32 @@ func NewTest(t *testing.T, config Config) *Test {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
 	}
-
-	composePath := findDockerComposePath()
-	i := &Test{
-		t:           t,
-		config:      config,
-		composePath: composePath,
-		passPhrase:  StandaloneNetworkPassphrase,
-		environment: NewEnvironmentManager(),
+	var i *Test
+	if !config.SkipCoreContainerCreation {
+		composePath := findDockerComposePath()
+		i = &Test{
+			t:           t,
+			config:      config,
+			composePath: composePath,
+			passPhrase:  StandaloneNetworkPassphrase,
+			environment: NewEnvironmentManager(),
+		}
+		i.configureCaptiveCore()
+		// Only run Stellar Core container and its dependencies.
+		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+	} else {
+		i = &Test{
+			t:           t,
+			config:      config,
+			environment: NewEnvironmentManager(),
+		}
 	}
 
-	i.configureCaptiveCore()
-
-	// Only run Stellar Core container and its dependencies.
-	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
-	i.waitForCore()
+	if !config.SkipCoreContainerCreation {
+		i.waitForCore()
+	}
 
 	if !config.SkipHorizonStart {
 		if innerErr := i.StartHorizon(); innerErr != nil {
@@ -224,8 +245,10 @@ func (i *Test) prepareShutdownHandlers() {
 			if i.ingestNode != nil {
 				i.ingestNode.Close()
 			}
-			i.runComposeCommand("rm", "-fvs", "core")
-			i.runComposeCommand("rm", "-fvs", "core-postgres")
+			if !i.config.SkipCoreContainerCreation {
+				i.runComposeCommand("rm", "-fvs", "core")
+				i.runComposeCommand("rm", "-fvs", "core-postgres")
+			}
 		},
 		i.environment.Restore,
 	)
@@ -299,14 +322,13 @@ func (i *Test) StartHorizon() error {
 		Use:   "horizon",
 		Short: "Ingest of Stellar network",
 		Long:  "Ingest of Stellar network.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			i.ingestNode, err = horizon.NewAppFromFlags(ingestConfig, ingestConfigOpts)
 			if err != nil {
-				// Explicitly exit here as that's how these tests are structured for now.
 				fmt.Println(err)
-				os.Exit(1)
 			}
+			return err
 		},
 	}
 
@@ -360,7 +382,8 @@ func (i *Test) StartHorizon() error {
 	ingestArgs := mapToFlags(mergedIngest)
 
 	// initialize core arguments
-	i.t.Log("Horizon command line:", webArgs)
+	i.t.Log("Horizon command line webArgs:", webArgs)
+	i.t.Log("Horizon command line ingestArgs:", ingestArgs)
 	var env strings.Builder
 	for key, value := range i.config.HorizonEnvironment {
 		env.WriteString(fmt.Sprintf("%s=%s ", key, value))
@@ -388,11 +411,11 @@ func (i *Test) StartHorizon() error {
 	}
 
 	if err = ingestCmd.Execute(); err != nil {
-		return errors.Wrap(err, "cannot initialize Horizon")
+		return errors.Wrap(err, HorizonInitErrStr)
 	}
 
 	if err = webCmd.Execute(); err != nil {
-		return errors.Wrap(err, "cannot initialize Horizon")
+		return errors.Wrap(err, HorizonInitErrStr)
 	}
 
 	horizonPort := "8000"
@@ -545,8 +568,9 @@ func (i *Test) StopHorizon() {
 	}
 
 	// Wait for Horizon to shut down completely.
-	i.appStopped.Wait()
-
+	if i.appStopped != nil {
+		i.appStopped.Wait()
+	}
 	i.webNode = nil
 	i.ingestNode = nil
 }
