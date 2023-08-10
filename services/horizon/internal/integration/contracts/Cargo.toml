@@ -25,4 +25,4 @@ lto = true
 # TODO: Does a new version need to be released to update to 8a7d2c3c8c5bc1664ab38f977ff947cc2a26d694
 version = "0.9.1"
 git = "https://github.com/stellar/rs-soroban-sdk"
-rev = "5943aa66baf85ebb70d946c37e297abc80d13a78"
+rev = "df9334d4e3a1a2c2e0034cfabb643972d4d7f717"
