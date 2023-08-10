@@ -11,7 +11,7 @@ import (
 
 func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 
-	var errorMsgDefaultConfig = "invalid config: %s not allowed with %s network"
+	var errorMsgDefaultConfig = "invalid config: %s parameter not allowed with the network parameter"
 	tests := []struct {
 		name               string
 		config             Config
@@ -22,28 +22,28 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 		{
 			name:               "testnet default config",
 			config:             Config{Network: StellarTestnet},
-			networkPassphrase:  testnetConf.networkPassphrase,
-			historyArchiveURLs: testnetConf.historyArchiveURLs,
+			networkPassphrase:  TestnetConf.NetworkPassphrase,
+			historyArchiveURLs: TestnetConf.HistoryArchiveURLs,
 		},
 		{
 			name:               "pubnet default config",
 			config:             Config{Network: StellarPubnet},
-			networkPassphrase:  pubnetConf.networkPassphrase,
-			historyArchiveURLs: pubnetConf.historyArchiveURLs,
+			networkPassphrase:  PubnetConf.NetworkPassphrase,
+			historyArchiveURLs: PubnetConf.HistoryArchiveURLs,
 		},
 		{
 			name: "testnet validation; history archive urls supplied",
 			config: Config{Network: StellarTestnet,
 				HistoryArchiveURLs: []string{"network history archive urls supplied"},
 			},
-			errStr: fmt.Sprintf(errorMsgDefaultConfig, HistoryArchiveURLsFlagName, StellarTestnet),
+			errStr: fmt.Sprintf(errorMsgDefaultConfig, HistoryArchiveURLsFlagName),
 		},
 		{
 			name: "pubnet validation; history archive urls supplied",
 			config: Config{Network: StellarPubnet,
 				HistoryArchiveURLs: []string{"network history archive urls supplied"},
 			},
-			errStr: fmt.Sprintf(errorMsgDefaultConfig, HistoryArchiveURLsFlagName, StellarPubnet),
+			errStr: fmt.Sprintf(errorMsgDefaultConfig, HistoryArchiveURLsFlagName),
 		},
 		{
 			name: "testnet validation; network passphrase supplied",
@@ -51,7 +51,7 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 				NetworkPassphrase:  "network passphrase supplied",
 				HistoryArchiveURLs: []string{},
 			},
-			errStr: fmt.Sprintf(errorMsgDefaultConfig, NetworkPassphraseFlagName, StellarTestnet),
+			errStr: fmt.Sprintf(errorMsgDefaultConfig, NetworkPassphraseFlagName),
 		},
 		{
 			name: "pubnet validation; network passphrase supplied",
@@ -59,7 +59,7 @@ func Test_createCaptiveCoreDefaultConfig(t *testing.T) {
 				NetworkPassphrase:  "pubnet network passphrase supplied",
 				HistoryArchiveURLs: []string{},
 			},
-			errStr: fmt.Sprintf(errorMsgDefaultConfig, NetworkPassphraseFlagName, StellarPubnet),
+			errStr: fmt.Sprintf(errorMsgDefaultConfig, NetworkPassphraseFlagName),
 		},
 		{
 			name: "unknown network specified",
