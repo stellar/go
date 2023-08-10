@@ -80,6 +80,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more detai
 
 ### Developing
 
-See [DEVELOPING.md](DEVELOPING.md) for helpful instructions for getting started developing code in this repository.
+See [GUIDE_FOR_DEVELOPERS.md](/services/horizon/internal/docs/GUIDE_FOR_DEVELOPERS.md) for helpful instructions for getting started developing code in this repository.
 
 [Stellar Development Foundation]: https://stellar.org
