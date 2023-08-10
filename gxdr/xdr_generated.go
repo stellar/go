@@ -4310,61 +4310,56 @@ const (
 	HostMemCpy ContractCostType = 3
 	// Cost of comparing two slices of host memory
 	HostMemCmp ContractCostType = 4
-	// Cost of a host function invocation, not including the actual work done by the function
-	InvokeHostFunction ContractCostType = 5
-	// Cost of visiting a host object from the host object storage
-	// Only thing to make sure is the guest can't visitObject repeatly without incurring some charges elsewhere.
+	// Cost of a host function dispatch, not including the actual work done by
+	// the function nor the cost of VM invocation machinary
+	DispatchHostFunction ContractCostType = 5
+	// Cost of visiting a host object from the host object storage. Exists to
+	// make sure some baseline cost coverage, i.e. repeatly visiting objects
+	// by the guest will always incur some charges.
 	VisitObject ContractCostType = 6
-	// Tracks a single Val (RawVal or primative Object like U64) <=> ScVal
-	// conversion cost. Most of these Val counterparts in ScVal (except e.g.
-	// Symbol) consumes a single int64 and therefore is a constant overhead.
-	ValXdrConv ContractCostType = 7
 	// Cost of serializing an xdr object to bytes
-	ValSer ContractCostType = 8
+	ValSer ContractCostType = 7
 	// Cost of deserializing an xdr object from bytes
-	ValDeser ContractCostType = 9
+	ValDeser ContractCostType = 8
 	// Cost of computing the sha256 hash from bytes
-	ComputeSha256Hash ContractCostType = 10
+	ComputeSha256Hash ContractCostType = 9
 	// Cost of computing the ed25519 pubkey from bytes
-	ComputeEd25519PubKey ContractCostType = 11
+	ComputeEd25519PubKey ContractCostType = 10
 	// Cost of accessing an entry in a Map.
-	MapEntry ContractCostType = 12
+	MapEntry ContractCostType = 11
 	// Cost of accessing an entry in a Vec
-	VecEntry ContractCostType = 13
-	// Cost of guarding a frame, which involves pushing and poping a frame and capturing a rollback point.
-	GuardFrame ContractCostType = 14
+	VecEntry ContractCostType = 12
 	// Cost of verifying ed25519 signature of a payload.
-	VerifyEd25519Sig ContractCostType = 15
+	VerifyEd25519Sig ContractCostType = 13
 	// Cost of reading a slice of vm linear memory
-	VmMemRead ContractCostType = 16
+	VmMemRead ContractCostType = 14
 	// Cost of writing to a slice of vm linear memory
-	VmMemWrite ContractCostType = 17
+	VmMemWrite ContractCostType = 15
 	// Cost of instantiation a VM from wasm bytes code.
-	VmInstantiation ContractCostType = 18
+	VmInstantiation ContractCostType = 16
 	// Cost of instantiation a VM from a cached state.
-	VmCachedInstantiation ContractCostType = 19
-	// Roundtrip cost of invoking a VM function from the host.
-	InvokeVmFunction ContractCostType = 20
-	// Cost of charging a value to the budgeting system.
-	ChargeBudget ContractCostType = 21
+	VmCachedInstantiation ContractCostType = 17
+	// Cost of invoking a function on the VM. If the function is a host function,
+	// additional cost will be covered by `DispatchHostFunction`.
+	InvokeVmFunction ContractCostType = 18
 	// Cost of computing a keccak256 hash from bytes.
-	ComputeKeccak256Hash ContractCostType = 22
+	ComputeKeccak256Hash ContractCostType = 19
 	// Cost of computing an ECDSA secp256k1 pubkey from bytes.
-	ComputeEcdsaSecp256k1Key ContractCostType = 23
+	ComputeEcdsaSecp256k1Key ContractCostType = 20
 	// Cost of computing an ECDSA secp256k1 signature from bytes.
-	ComputeEcdsaSecp256k1Sig ContractCostType = 24
+	ComputeEcdsaSecp256k1Sig ContractCostType = 21
 	// Cost of recovering an ECDSA secp256k1 key from a signature.
-	RecoverEcdsaSecp256k1Key ContractCostType = 25
+	RecoverEcdsaSecp256k1Key ContractCostType = 22
 	// Cost of int256 addition (`+`) and subtraction (`-`) operations
-	Int256AddSub ContractCostType = 26
+	Int256AddSub ContractCostType = 23
 	// Cost of int256 multiplication (`*`) operation
-	Int256Mul ContractCostType = 27
+	Int256Mul ContractCostType = 24
 	// Cost of int256 division (`/`) operation
-	Int256Div ContractCostType = 28
+	Int256Div ContractCostType = 25
 	// Cost of int256 power (`exp`) operation
-	Int256Pow ContractCostType = 29
+	Int256Pow ContractCostType = 26
 	// Cost of int256 shift (`shl`, `shr`) operation
-	Int256Shift ContractCostType = 30
+	Int256Shift ContractCostType = 27
 )
 
 type ContractCostParamEntry struct {
@@ -4388,6 +4383,14 @@ type StateExpirationSettings struct {
 	BucketListSizeWindowSampleSize Uint32
 	// Maximum number of bytes that we scan for eviction per ledger
 	EvictionScanSize Uint64
+	// Lowest BucketList level to be scanned to evict entries
+	StartingEvictionScanLevel Uint32
+}
+
+type EvictionIterator struct {
+	BucketListLevel  Uint32
+	IsCurrBucket     bool
+	BucketFileOffset Uint64
 }
 
 // limits the ContractCostParams size to 20kB
@@ -4412,6 +4415,7 @@ const (
 	CONFIG_SETTING_STATE_EXPIRATION                      ConfigSettingID = 10
 	CONFIG_SETTING_CONTRACT_EXECUTION_LANES              ConfigSettingID = 11
 	CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW                ConfigSettingID = 12
+	CONFIG_SETTING_EVICTION_ITERATOR                     ConfigSettingID = 13
 )
 
 type ConfigSettingEntry struct {
@@ -4442,6 +4446,8 @@ type ConfigSettingEntry struct {
 	//      ContractExecutionLanes() *ConfigSettingContractExecutionLanesV0
 	//   CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
 	//      BucketListSizeWindow() *[]Uint64
+	//   CONFIG_SETTING_EVICTION_ITERATOR:
+	//      EvictionIterator() *EvictionIterator
 	ConfigSettingID ConfigSettingID
 	_u              interface{}
 }
@@ -28724,23 +28730,20 @@ var _XdrNames_ContractCostType = map[int32]string{
 	int32(HostMemAlloc):             "HostMemAlloc",
 	int32(HostMemCpy):               "HostMemCpy",
 	int32(HostMemCmp):               "HostMemCmp",
-	int32(InvokeHostFunction):       "InvokeHostFunction",
+	int32(DispatchHostFunction):     "DispatchHostFunction",
 	int32(VisitObject):              "VisitObject",
-	int32(ValXdrConv):               "ValXdrConv",
 	int32(ValSer):                   "ValSer",
 	int32(ValDeser):                 "ValDeser",
 	int32(ComputeSha256Hash):        "ComputeSha256Hash",
 	int32(ComputeEd25519PubKey):     "ComputeEd25519PubKey",
 	int32(MapEntry):                 "MapEntry",
 	int32(VecEntry):                 "VecEntry",
-	int32(GuardFrame):               "GuardFrame",
 	int32(VerifyEd25519Sig):         "VerifyEd25519Sig",
 	int32(VmMemRead):                "VmMemRead",
 	int32(VmMemWrite):               "VmMemWrite",
 	int32(VmInstantiation):          "VmInstantiation",
 	int32(VmCachedInstantiation):    "VmCachedInstantiation",
 	int32(InvokeVmFunction):         "InvokeVmFunction",
-	int32(ChargeBudget):             "ChargeBudget",
 	int32(ComputeKeccak256Hash):     "ComputeKeccak256Hash",
 	int32(ComputeEcdsaSecp256k1Key): "ComputeEcdsaSecp256k1Key",
 	int32(ComputeEcdsaSecp256k1Sig): "ComputeEcdsaSecp256k1Sig",
@@ -28757,23 +28760,20 @@ var _XdrValues_ContractCostType = map[string]int32{
 	"HostMemAlloc":             int32(HostMemAlloc),
 	"HostMemCpy":               int32(HostMemCpy),
 	"HostMemCmp":               int32(HostMemCmp),
-	"InvokeHostFunction":       int32(InvokeHostFunction),
+	"DispatchHostFunction":     int32(DispatchHostFunction),
 	"VisitObject":              int32(VisitObject),
-	"ValXdrConv":               int32(ValXdrConv),
 	"ValSer":                   int32(ValSer),
 	"ValDeser":                 int32(ValDeser),
 	"ComputeSha256Hash":        int32(ComputeSha256Hash),
 	"ComputeEd25519PubKey":     int32(ComputeEd25519PubKey),
 	"MapEntry":                 int32(MapEntry),
 	"VecEntry":                 int32(VecEntry),
-	"GuardFrame":               int32(GuardFrame),
 	"VerifyEd25519Sig":         int32(VerifyEd25519Sig),
 	"VmMemRead":                int32(VmMemRead),
 	"VmMemWrite":               int32(VmMemWrite),
 	"VmInstantiation":          int32(VmInstantiation),
 	"VmCachedInstantiation":    int32(VmCachedInstantiation),
 	"InvokeVmFunction":         int32(InvokeVmFunction),
-	"ChargeBudget":             int32(ChargeBudget),
 	"ComputeKeccak256Hash":     int32(ComputeKeccak256Hash),
 	"ComputeEcdsaSecp256k1Key": int32(ComputeEcdsaSecp256k1Key),
 	"ComputeEcdsaSecp256k1Sig": int32(ComputeEcdsaSecp256k1Sig),
@@ -28827,23 +28827,20 @@ var _XdrComments_ContractCostType = map[int32]string{
 	int32(HostMemAlloc):             "Cost of allocating a chuck of host memory (in bytes)",
 	int32(HostMemCpy):               "Cost of copying a chuck of bytes into a pre-allocated host memory",
 	int32(HostMemCmp):               "Cost of comparing two slices of host memory",
-	int32(InvokeHostFunction):       "Cost of a host function invocation, not including the actual work done by the function",
-	int32(VisitObject):              "Cost of visiting a host object from the host object storage Only thing to make sure is the guest can't visitObject repeatly without incurring some charges elsewhere.",
-	int32(ValXdrConv):               "Tracks a single Val (RawVal or primative Object like U64) <=> ScVal conversion cost. Most of these Val counterparts in ScVal (except e.g. Symbol) consumes a single int64 and therefore is a constant overhead.",
+	int32(DispatchHostFunction):     "Cost of a host function dispatch, not including the actual work done by the function nor the cost of VM invocation machinary",
+	int32(VisitObject):              "Cost of visiting a host object from the host object storage. Exists to make sure some baseline cost coverage, i.e. repeatly visiting objects by the guest will always incur some charges.",
 	int32(ValSer):                   "Cost of serializing an xdr object to bytes",
 	int32(ValDeser):                 "Cost of deserializing an xdr object from bytes",
 	int32(ComputeSha256Hash):        "Cost of computing the sha256 hash from bytes",
 	int32(ComputeEd25519PubKey):     "Cost of computing the ed25519 pubkey from bytes",
 	int32(MapEntry):                 "Cost of accessing an entry in a Map.",
 	int32(VecEntry):                 "Cost of accessing an entry in a Vec",
-	int32(GuardFrame):               "Cost of guarding a frame, which involves pushing and poping a frame and capturing a rollback point.",
 	int32(VerifyEd25519Sig):         "Cost of verifying ed25519 signature of a payload.",
 	int32(VmMemRead):                "Cost of reading a slice of vm linear memory",
 	int32(VmMemWrite):               "Cost of writing to a slice of vm linear memory",
 	int32(VmInstantiation):          "Cost of instantiation a VM from wasm bytes code.",
 	int32(VmCachedInstantiation):    "Cost of instantiation a VM from a cached state.",
-	int32(InvokeVmFunction):         "Roundtrip cost of invoking a VM function from the host.",
-	int32(ChargeBudget):             "Cost of charging a value to the budgeting system.",
+	int32(InvokeVmFunction):         "Cost of invoking a function on the VM. If the function is a host function, additional cost will be covered by `DispatchHostFunction`.",
 	int32(ComputeKeccak256Hash):     "Cost of computing a keccak256 hash from bytes.",
 	int32(ComputeEcdsaSecp256k1Key): "Cost of computing an ECDSA secp256k1 pubkey from bytes.",
 	int32(ComputeEcdsaSecp256k1Sig): "Cost of computing an ECDSA secp256k1 signature from bytes.",
@@ -28894,8 +28891,25 @@ func (v *StateExpirationSettings) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%smaxEntriesToExpire", name), XDR_Uint32(&v.MaxEntriesToExpire))
 	x.Marshal(x.Sprintf("%sbucketListSizeWindowSampleSize", name), XDR_Uint32(&v.BucketListSizeWindowSampleSize))
 	x.Marshal(x.Sprintf("%sevictionScanSize", name), XDR_Uint64(&v.EvictionScanSize))
+	x.Marshal(x.Sprintf("%sstartingEvictionScanLevel", name), XDR_Uint32(&v.StartingEvictionScanLevel))
 }
 func XDR_StateExpirationSettings(v *StateExpirationSettings) *StateExpirationSettings { return v }
+
+type XdrType_EvictionIterator = *EvictionIterator
+
+func (v *EvictionIterator) XdrPointer() interface{}       { return v }
+func (EvictionIterator) XdrTypeName() string              { return "EvictionIterator" }
+func (v EvictionIterator) XdrValue() interface{}          { return v }
+func (v *EvictionIterator) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *EvictionIterator) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sbucketListLevel", name), XDR_Uint32(&v.BucketListLevel))
+	x.Marshal(x.Sprintf("%sisCurrBucket", name), XDR_bool(&v.IsCurrBucket))
+	x.Marshal(x.Sprintf("%sbucketFileOffset", name), XDR_Uint64(&v.BucketFileOffset))
+}
+func XDR_EvictionIterator(v *EvictionIterator) *EvictionIterator { return v }
 
 type _XdrVec_1024_ContractCostParamEntry []ContractCostParamEntry
 
@@ -28982,6 +28996,7 @@ var _XdrNames_ConfigSettingID = map[int32]string{
 	int32(CONFIG_SETTING_STATE_EXPIRATION):                      "CONFIG_SETTING_STATE_EXPIRATION",
 	int32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES):              "CONFIG_SETTING_CONTRACT_EXECUTION_LANES",
 	int32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW):                "CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW",
+	int32(CONFIG_SETTING_EVICTION_ITERATOR):                     "CONFIG_SETTING_EVICTION_ITERATOR",
 }
 var _XdrValues_ConfigSettingID = map[string]int32{
 	"CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES":               int32(CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES),
@@ -28997,6 +29012,7 @@ var _XdrValues_ConfigSettingID = map[string]int32{
 	"CONFIG_SETTING_STATE_EXPIRATION":                      int32(CONFIG_SETTING_STATE_EXPIRATION),
 	"CONFIG_SETTING_CONTRACT_EXECUTION_LANES":              int32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES),
 	"CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW":                int32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW),
+	"CONFIG_SETTING_EVICTION_ITERATOR":                     int32(CONFIG_SETTING_EVICTION_ITERATOR),
 }
 
 func (ConfigSettingID) XdrEnumNames() map[int32]string {
@@ -29106,6 +29122,7 @@ var _XdrTags_ConfigSettingEntry = map[int32]bool{
 	XdrToI32(CONFIG_SETTING_STATE_EXPIRATION):                      true,
 	XdrToI32(CONFIG_SETTING_CONTRACT_EXECUTION_LANES):              true,
 	XdrToI32(CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW):                true,
+	XdrToI32(CONFIG_SETTING_EVICTION_ITERATOR):                     true,
 }
 
 func (_ ConfigSettingEntry) XdrValidTags() map[int32]bool {
@@ -29306,9 +29323,24 @@ func (u *ConfigSettingEntry) BucketListSizeWindow() *[]Uint64 {
 		return nil
 	}
 }
+func (u *ConfigSettingEntry) EvictionIterator() *EvictionIterator {
+	switch u.ConfigSettingID {
+	case CONFIG_SETTING_EVICTION_ITERATOR:
+		if v, ok := u._u.(*EvictionIterator); ok {
+			return v
+		} else {
+			var zero EvictionIterator
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("ConfigSettingEntry.EvictionIterator accessed when ConfigSettingID == %v", u.ConfigSettingID)
+		return nil
+	}
+}
 func (u ConfigSettingEntry) XdrValid() bool {
 	switch u.ConfigSettingID {
-	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_EXPIRATION, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
+	case CONFIG_SETTING_CONTRACT_MAX_SIZE_BYTES, CONFIG_SETTING_CONTRACT_COMPUTE_V0, CONFIG_SETTING_CONTRACT_LEDGER_COST_V0, CONFIG_SETTING_CONTRACT_HISTORICAL_DATA_V0, CONFIG_SETTING_CONTRACT_EVENTS_V0, CONFIG_SETTING_CONTRACT_BANDWIDTH_V0, CONFIG_SETTING_CONTRACT_COST_PARAMS_CPU_INSTRUCTIONS, CONFIG_SETTING_CONTRACT_COST_PARAMS_MEMORY_BYTES, CONFIG_SETTING_CONTRACT_DATA_KEY_SIZE_BYTES, CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES, CONFIG_SETTING_STATE_EXPIRATION, CONFIG_SETTING_CONTRACT_EXECUTION_LANES, CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW, CONFIG_SETTING_EVICTION_ITERATOR:
 		return true
 	}
 	return false
@@ -29347,6 +29379,8 @@ func (u *ConfigSettingEntry) XdrUnionBody() XdrType {
 		return XDR_ConfigSettingContractExecutionLanesV0(u.ContractExecutionLanes())
 	case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
 		return (*_XdrVec_unbounded_Uint64)(u.BucketListSizeWindow())
+	case CONFIG_SETTING_EVICTION_ITERATOR:
+		return XDR_EvictionIterator(u.EvictionIterator())
 	}
 	return nil
 }
@@ -29378,6 +29412,8 @@ func (u *ConfigSettingEntry) XdrUnionBodyName() string {
 		return "ContractExecutionLanes"
 	case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
 		return "BucketListSizeWindow"
+	case CONFIG_SETTING_EVICTION_ITERATOR:
+		return "EvictionIterator"
 	}
 	return ""
 }
@@ -29432,6 +29468,9 @@ func (u *ConfigSettingEntry) XdrRecurse(x XDR, name string) {
 		return
 	case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
 		x.Marshal(x.Sprintf("%sbucketListSizeWindow", name), (*_XdrVec_unbounded_Uint64)(u.BucketListSizeWindow()))
+		return
+	case CONFIG_SETTING_EVICTION_ITERATOR:
+		x.Marshal(x.Sprintf("%sevictionIterator", name), XDR_EvictionIterator(u.EvictionIterator()))
 		return
 	}
 	XdrPanic("invalid ConfigSettingID (%v) in ConfigSettingEntry", u.ConfigSettingID)

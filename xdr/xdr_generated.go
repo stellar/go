@@ -31,7 +31,7 @@ import (
 // XdrFilesSHA256 is the SHA256 hashes of source files.
 var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-SCP.x":                     "8f32b04d008f8bc33b8843d075e69837231a673691ee41d8b821ca229a6e802a",
-	"xdr/Stellar-contract-config-setting.x": "2f4916a76b81499ec554f524c38ddd80ec65d0bd97090a28fa7376a10b470d6c",
+	"xdr/Stellar-contract-config-setting.x": "10b2da88dd4148151ebddd41e4ad412d9d3aace3db35bf33e863d2a16493eaa8",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
 	"xdr/Stellar-contract-spec.x":           "739e2480ba197aa859f122632a93172668cb0dbe93e30a54c192b96878af207a",
@@ -53309,61 +53309,56 @@ var _ xdrType = (*ConfigSettingContractBandwidthV0)(nil)
 //	     HostMemCpy = 3,
 //	     // Cost of comparing two slices of host memory
 //	     HostMemCmp = 4,
-//	     // Cost of a host function invocation, not including the actual work done by the function
-//	     InvokeHostFunction = 5,
-//	     // Cost of visiting a host object from the host object storage
-//	     // Only thing to make sure is the guest can't visitObject repeatly without incurring some charges elsewhere.
+//	     // Cost of a host function dispatch, not including the actual work done by
+//	     // the function nor the cost of VM invocation machinary
+//	     DispatchHostFunction = 5,
+//	     // Cost of visiting a host object from the host object storage. Exists to
+//	     // make sure some baseline cost coverage, i.e. repeatly visiting objects
+//	     // by the guest will always incur some charges.
 //	     VisitObject = 6,
-//	     // Tracks a single Val (RawVal or primative Object like U64) <=> ScVal
-//	     // conversion cost. Most of these Val counterparts in ScVal (except e.g.
-//	     // Symbol) consumes a single int64 and therefore is a constant overhead.
-//	     ValXdrConv = 7,
 //	     // Cost of serializing an xdr object to bytes
-//	     ValSer = 8,
+//	     ValSer = 7,
 //	     // Cost of deserializing an xdr object from bytes
-//	     ValDeser = 9,
+//	     ValDeser = 8,
 //	     // Cost of computing the sha256 hash from bytes
-//	     ComputeSha256Hash = 10,
+//	     ComputeSha256Hash = 9,
 //	     // Cost of computing the ed25519 pubkey from bytes
-//	     ComputeEd25519PubKey = 11,
+//	     ComputeEd25519PubKey = 10,
 //	     // Cost of accessing an entry in a Map.
-//	     MapEntry = 12,
+//	     MapEntry = 11,
 //	     // Cost of accessing an entry in a Vec
-//	     VecEntry = 13,
-//	     // Cost of guarding a frame, which involves pushing and poping a frame and capturing a rollback point.
-//	     GuardFrame = 14,
+//	     VecEntry = 12,
 //	     // Cost of verifying ed25519 signature of a payload.
-//	     VerifyEd25519Sig = 15,
+//	     VerifyEd25519Sig = 13,
 //	     // Cost of reading a slice of vm linear memory
-//	     VmMemRead = 16,
+//	     VmMemRead = 14,
 //	     // Cost of writing to a slice of vm linear memory
-//	     VmMemWrite = 17,
+//	     VmMemWrite = 15,
 //	     // Cost of instantiation a VM from wasm bytes code.
-//	     VmInstantiation = 18,
+//	     VmInstantiation = 16,
 //	     // Cost of instantiation a VM from a cached state.
-//	     VmCachedInstantiation = 19,
-//	     // Roundtrip cost of invoking a VM function from the host.
-//	     InvokeVmFunction = 20,
-//	     // Cost of charging a value to the budgeting system.
-//	     ChargeBudget = 21,
+//	     VmCachedInstantiation = 17,
+//	     // Cost of invoking a function on the VM. If the function is a host function,
+//	     // additional cost will be covered by `DispatchHostFunction`.
+//	     InvokeVmFunction = 18,
 //	     // Cost of computing a keccak256 hash from bytes.
-//	     ComputeKeccak256Hash = 22,
+//	     ComputeKeccak256Hash = 19,
 //	     // Cost of computing an ECDSA secp256k1 pubkey from bytes.
-//	     ComputeEcdsaSecp256k1Key = 23,
+//	     ComputeEcdsaSecp256k1Key = 20,
 //	     // Cost of computing an ECDSA secp256k1 signature from bytes.
-//	     ComputeEcdsaSecp256k1Sig = 24,
+//	     ComputeEcdsaSecp256k1Sig = 21,
 //	     // Cost of recovering an ECDSA secp256k1 key from a signature.
-//	     RecoverEcdsaSecp256k1Key = 25,
+//	     RecoverEcdsaSecp256k1Key = 22,
 //	     // Cost of int256 addition (`+`) and subtraction (`-`) operations
-//	     Int256AddSub = 26,
+//	     Int256AddSub = 23,
 //	     // Cost of int256 multiplication (`*`) operation
-//	     Int256Mul = 27,
+//	     Int256Mul = 24,
 //	     // Cost of int256 division (`/`) operation
-//	     Int256Div = 28,
+//	     Int256Div = 25,
 //	     // Cost of int256 power (`exp`) operation
-//	     Int256Pow = 29,
+//	     Int256Pow = 26,
 //	     // Cost of int256 shift (`shl`, `shr`) operation
-//	     Int256Shift = 30
+//	     Int256Shift = 27
 //	 };
 type ContractCostType int32
 
@@ -53373,32 +53368,29 @@ const (
 	ContractCostTypeHostMemAlloc             ContractCostType = 2
 	ContractCostTypeHostMemCpy               ContractCostType = 3
 	ContractCostTypeHostMemCmp               ContractCostType = 4
-	ContractCostTypeInvokeHostFunction       ContractCostType = 5
+	ContractCostTypeDispatchHostFunction     ContractCostType = 5
 	ContractCostTypeVisitObject              ContractCostType = 6
-	ContractCostTypeValXdrConv               ContractCostType = 7
-	ContractCostTypeValSer                   ContractCostType = 8
-	ContractCostTypeValDeser                 ContractCostType = 9
-	ContractCostTypeComputeSha256Hash        ContractCostType = 10
-	ContractCostTypeComputeEd25519PubKey     ContractCostType = 11
-	ContractCostTypeMapEntry                 ContractCostType = 12
-	ContractCostTypeVecEntry                 ContractCostType = 13
-	ContractCostTypeGuardFrame               ContractCostType = 14
-	ContractCostTypeVerifyEd25519Sig         ContractCostType = 15
-	ContractCostTypeVmMemRead                ContractCostType = 16
-	ContractCostTypeVmMemWrite               ContractCostType = 17
-	ContractCostTypeVmInstantiation          ContractCostType = 18
-	ContractCostTypeVmCachedInstantiation    ContractCostType = 19
-	ContractCostTypeInvokeVmFunction         ContractCostType = 20
-	ContractCostTypeChargeBudget             ContractCostType = 21
-	ContractCostTypeComputeKeccak256Hash     ContractCostType = 22
-	ContractCostTypeComputeEcdsaSecp256k1Key ContractCostType = 23
-	ContractCostTypeComputeEcdsaSecp256k1Sig ContractCostType = 24
-	ContractCostTypeRecoverEcdsaSecp256k1Key ContractCostType = 25
-	ContractCostTypeInt256AddSub             ContractCostType = 26
-	ContractCostTypeInt256Mul                ContractCostType = 27
-	ContractCostTypeInt256Div                ContractCostType = 28
-	ContractCostTypeInt256Pow                ContractCostType = 29
-	ContractCostTypeInt256Shift              ContractCostType = 30
+	ContractCostTypeValSer                   ContractCostType = 7
+	ContractCostTypeValDeser                 ContractCostType = 8
+	ContractCostTypeComputeSha256Hash        ContractCostType = 9
+	ContractCostTypeComputeEd25519PubKey     ContractCostType = 10
+	ContractCostTypeMapEntry                 ContractCostType = 11
+	ContractCostTypeVecEntry                 ContractCostType = 12
+	ContractCostTypeVerifyEd25519Sig         ContractCostType = 13
+	ContractCostTypeVmMemRead                ContractCostType = 14
+	ContractCostTypeVmMemWrite               ContractCostType = 15
+	ContractCostTypeVmInstantiation          ContractCostType = 16
+	ContractCostTypeVmCachedInstantiation    ContractCostType = 17
+	ContractCostTypeInvokeVmFunction         ContractCostType = 18
+	ContractCostTypeComputeKeccak256Hash     ContractCostType = 19
+	ContractCostTypeComputeEcdsaSecp256k1Key ContractCostType = 20
+	ContractCostTypeComputeEcdsaSecp256k1Sig ContractCostType = 21
+	ContractCostTypeRecoverEcdsaSecp256k1Key ContractCostType = 22
+	ContractCostTypeInt256AddSub             ContractCostType = 23
+	ContractCostTypeInt256Mul                ContractCostType = 24
+	ContractCostTypeInt256Div                ContractCostType = 25
+	ContractCostTypeInt256Pow                ContractCostType = 26
+	ContractCostTypeInt256Shift              ContractCostType = 27
 )
 
 var contractCostTypeMap = map[int32]string{
@@ -53407,32 +53399,29 @@ var contractCostTypeMap = map[int32]string{
 	2:  "ContractCostTypeHostMemAlloc",
 	3:  "ContractCostTypeHostMemCpy",
 	4:  "ContractCostTypeHostMemCmp",
-	5:  "ContractCostTypeInvokeHostFunction",
+	5:  "ContractCostTypeDispatchHostFunction",
 	6:  "ContractCostTypeVisitObject",
-	7:  "ContractCostTypeValXdrConv",
-	8:  "ContractCostTypeValSer",
-	9:  "ContractCostTypeValDeser",
-	10: "ContractCostTypeComputeSha256Hash",
-	11: "ContractCostTypeComputeEd25519PubKey",
-	12: "ContractCostTypeMapEntry",
-	13: "ContractCostTypeVecEntry",
-	14: "ContractCostTypeGuardFrame",
-	15: "ContractCostTypeVerifyEd25519Sig",
-	16: "ContractCostTypeVmMemRead",
-	17: "ContractCostTypeVmMemWrite",
-	18: "ContractCostTypeVmInstantiation",
-	19: "ContractCostTypeVmCachedInstantiation",
-	20: "ContractCostTypeInvokeVmFunction",
-	21: "ContractCostTypeChargeBudget",
-	22: "ContractCostTypeComputeKeccak256Hash",
-	23: "ContractCostTypeComputeEcdsaSecp256k1Key",
-	24: "ContractCostTypeComputeEcdsaSecp256k1Sig",
-	25: "ContractCostTypeRecoverEcdsaSecp256k1Key",
-	26: "ContractCostTypeInt256AddSub",
-	27: "ContractCostTypeInt256Mul",
-	28: "ContractCostTypeInt256Div",
-	29: "ContractCostTypeInt256Pow",
-	30: "ContractCostTypeInt256Shift",
+	7:  "ContractCostTypeValSer",
+	8:  "ContractCostTypeValDeser",
+	9:  "ContractCostTypeComputeSha256Hash",
+	10: "ContractCostTypeComputeEd25519PubKey",
+	11: "ContractCostTypeMapEntry",
+	12: "ContractCostTypeVecEntry",
+	13: "ContractCostTypeVerifyEd25519Sig",
+	14: "ContractCostTypeVmMemRead",
+	15: "ContractCostTypeVmMemWrite",
+	16: "ContractCostTypeVmInstantiation",
+	17: "ContractCostTypeVmCachedInstantiation",
+	18: "ContractCostTypeInvokeVmFunction",
+	19: "ContractCostTypeComputeKeccak256Hash",
+	20: "ContractCostTypeComputeEcdsaSecp256k1Key",
+	21: "ContractCostTypeComputeEcdsaSecp256k1Sig",
+	22: "ContractCostTypeRecoverEcdsaSecp256k1Key",
+	23: "ContractCostTypeInt256AddSub",
+	24: "ContractCostTypeInt256Mul",
+	25: "ContractCostTypeInt256Div",
+	26: "ContractCostTypeInt256Pow",
+	27: "ContractCostTypeInt256Shift",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -53600,6 +53589,9 @@ var _ xdrType = (*ContractCostParamEntry)(nil)
 //
 //	     // Maximum number of bytes that we scan for eviction per ledger
 //	     uint64 evictionScanSize;
+//
+//	     // Lowest BucketList level to be scanned to evict entries
+//	     uint32 startingEvictionScanLevel;
 //	 };
 type StateExpirationSettings struct {
 	MaxEntryExpiration             Uint32
@@ -53611,6 +53603,7 @@ type StateExpirationSettings struct {
 	MaxEntriesToExpire             Uint32
 	BucketListSizeWindowSampleSize Uint32
 	EvictionScanSize               Uint64
+	StartingEvictionScanLevel      Uint32
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -53641,6 +53634,9 @@ func (s *StateExpirationSettings) EncodeTo(e *xdr.Encoder) error {
 		return err
 	}
 	if err = s.EvictionScanSize.EncodeTo(e); err != nil {
+		return err
+	}
+	if err = s.StartingEvictionScanLevel.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -53697,6 +53693,11 @@ func (s *StateExpirationSettings) DecodeFrom(d *xdr.Decoder) (int, error) {
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint64: %s", err)
 	}
+	nTmp, err = s.StartingEvictionScanLevel.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
 	return n, nil
 }
 
@@ -53726,6 +53727,85 @@ var (
 func (s StateExpirationSettings) xdrType() {}
 
 var _ xdrType = (*StateExpirationSettings)(nil)
+
+// EvictionIterator is an XDR Struct defines as:
+//
+//	struct EvictionIterator {
+//	     uint32 bucketListLevel;
+//	     bool isCurrBucket;
+//	     uint64 bucketFileOffset;
+//	 };
+type EvictionIterator struct {
+	BucketListLevel  Uint32
+	IsCurrBucket     bool
+	BucketFileOffset Uint64
+}
+
+// EncodeTo encodes this value using the Encoder.
+func (s *EvictionIterator) EncodeTo(e *xdr.Encoder) error {
+	var err error
+	if err = s.BucketListLevel.EncodeTo(e); err != nil {
+		return err
+	}
+	if _, err = e.EncodeBool(bool(s.IsCurrBucket)); err != nil {
+		return err
+	}
+	if err = s.BucketFileOffset.EncodeTo(e); err != nil {
+		return err
+	}
+	return nil
+}
+
+var _ decoderFrom = (*EvictionIterator)(nil)
+
+// DecodeFrom decodes this value using the Decoder.
+func (s *EvictionIterator) DecodeFrom(d *xdr.Decoder) (int, error) {
+	var err error
+	var n, nTmp int
+	nTmp, err = s.BucketListLevel.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint32: %s", err)
+	}
+	s.IsCurrBucket, nTmp, err = d.DecodeBool()
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Bool: %s", err)
+	}
+	nTmp, err = s.BucketFileOffset.DecodeFrom(d)
+	n += nTmp
+	if err != nil {
+		return n, fmt.Errorf("decoding Uint64: %s", err)
+	}
+	return n, nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s EvictionIterator) MarshalBinary() ([]byte, error) {
+	b := bytes.Buffer{}
+	e := xdr.NewEncoder(&b)
+	err := s.EncodeTo(e)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *EvictionIterator) UnmarshalBinary(inp []byte) error {
+	r := bytes.NewReader(inp)
+	d := xdr.NewDecoder(r)
+	_, err := s.DecodeFrom(d)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*EvictionIterator)(nil)
+	_ encoding.BinaryUnmarshaler = (*EvictionIterator)(nil)
+)
+
+// xdrType signals that this type is an type representing
+// representing XDR values defined by this package.
+func (s EvictionIterator) xdrType() {}
+
+var _ xdrType = (*EvictionIterator)(nil)
 
 // ContractCostCountLimit is an XDR Const defines as:
 //
@@ -53828,7 +53908,8 @@ var _ xdrType = (*ContractCostParams)(nil)
 //	     CONFIG_SETTING_CONTRACT_DATA_ENTRY_SIZE_BYTES = 9,
 //	     CONFIG_SETTING_STATE_EXPIRATION = 10,
 //	     CONFIG_SETTING_CONTRACT_EXECUTION_LANES = 11,
-//	     CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW = 12
+//	     CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW = 12,
+//	     CONFIG_SETTING_EVICTION_ITERATOR = 13
 //	 };
 type ConfigSettingId int32
 
@@ -53846,6 +53927,7 @@ const (
 	ConfigSettingIdConfigSettingStateExpiration                   ConfigSettingId = 10
 	ConfigSettingIdConfigSettingContractExecutionLanes            ConfigSettingId = 11
 	ConfigSettingIdConfigSettingBucketlistSizeWindow              ConfigSettingId = 12
+	ConfigSettingIdConfigSettingEvictionIterator                  ConfigSettingId = 13
 )
 
 var configSettingIdMap = map[int32]string{
@@ -53862,6 +53944,7 @@ var configSettingIdMap = map[int32]string{
 	10: "ConfigSettingIdConfigSettingStateExpiration",
 	11: "ConfigSettingIdConfigSettingContractExecutionLanes",
 	12: "ConfigSettingIdConfigSettingBucketlistSizeWindow",
+	13: "ConfigSettingIdConfigSettingEvictionIterator",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -53958,6 +54041,8 @@ var _ xdrType = (*ConfigSettingId)(nil)
 //	     ConfigSettingContractExecutionLanesV0 contractExecutionLanes;
 //	 case CONFIG_SETTING_BUCKETLIST_SIZE_WINDOW:
 //	     uint64 bucketListSizeWindow<>;
+//	 case CONFIG_SETTING_EVICTION_ITERATOR:
+//	     EvictionIterator evictionIterator;
 //	 };
 type ConfigSettingEntry struct {
 	ConfigSettingId            ConfigSettingId
@@ -53974,6 +54059,7 @@ type ConfigSettingEntry struct {
 	StateExpirationSettings    *StateExpirationSettings
 	ContractExecutionLanes     *ConfigSettingContractExecutionLanesV0
 	BucketListSizeWindow       *[]Uint64
+	EvictionIterator           *EvictionIterator
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -54012,6 +54098,8 @@ func (u ConfigSettingEntry) ArmForSwitch(sw int32) (string, bool) {
 		return "ContractExecutionLanes", true
 	case ConfigSettingIdConfigSettingBucketlistSizeWindow:
 		return "BucketListSizeWindow", true
+	case ConfigSettingIdConfigSettingEvictionIterator:
+		return "EvictionIterator", true
 	}
 	return "-", false
 }
@@ -54111,6 +54199,13 @@ func NewConfigSettingEntry(configSettingId ConfigSettingId, value interface{}) (
 			return
 		}
 		result.BucketListSizeWindow = &tv
+	case ConfigSettingIdConfigSettingEvictionIterator:
+		tv, ok := value.(EvictionIterator)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be EvictionIterator")
+			return
+		}
+		result.EvictionIterator = &tv
 	}
 	return
 }
@@ -54440,6 +54535,31 @@ func (u ConfigSettingEntry) GetBucketListSizeWindow() (result []Uint64, ok bool)
 	return
 }
 
+// MustEvictionIterator retrieves the EvictionIterator value from the union,
+// panicing if the value is not set.
+func (u ConfigSettingEntry) MustEvictionIterator() EvictionIterator {
+	val, ok := u.GetEvictionIterator()
+
+	if !ok {
+		panic("arm EvictionIterator is not set")
+	}
+
+	return val
+}
+
+// GetEvictionIterator retrieves the EvictionIterator value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ConfigSettingEntry) GetEvictionIterator() (result EvictionIterator, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.ConfigSettingId))
+
+	if armName == "EvictionIterator" {
+		result = *u.EvictionIterator
+		ok = true
+	}
+
+	return
+}
+
 // EncodeTo encodes this value using the Encoder.
 func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 	var err error
@@ -54515,6 +54635,11 @@ func (u ConfigSettingEntry) EncodeTo(e *xdr.Encoder) error {
 			if err = (*u.BucketListSizeWindow)[i].EncodeTo(e); err != nil {
 				return err
 			}
+		}
+		return nil
+	case ConfigSettingIdConfigSettingEvictionIterator:
+		if err = (*u.EvictionIterator).EncodeTo(e); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -54647,6 +54772,14 @@ func (u *ConfigSettingEntry) DecodeFrom(d *xdr.Decoder) (int, error) {
 					return n, fmt.Errorf("decoding Uint64: %s", err)
 				}
 			}
+		}
+		return n, nil
+	case ConfigSettingIdConfigSettingEvictionIterator:
+		u.EvictionIterator = new(EvictionIterator)
+		nTmp, err = (*u.EvictionIterator).DecodeFrom(d)
+		n += nTmp
+		if err != nil {
+			return n, fmt.Errorf("decoding EvictionIterator: %s", err)
 		}
 		return n, nil
 	}
