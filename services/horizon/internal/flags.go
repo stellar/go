@@ -42,6 +42,10 @@ const (
 	// CaptiveCoreConfigUseDB is the command line flag for enabling captive core runtime to use an external db url
 	// connection rather than RAM for ledger states
 	CaptiveCoreConfigUseDB = "captive-core-use-db"
+	// CaptiveCoreHTTPPortFlagName is the commandline flag for specifying captive core HTTP port
+	CaptiveCoreHTTPPortFlagName = "captive-core-http-port"
+	// EnableCaptiveCoreIngestionFlagName is the commandline flag for enabling captive core ingestion
+	EnableCaptiveCoreIngestionFlagName = "enable-captive-core-ingestion"
 	// NetworkPassphraseFlagName is the command line flag for specifying the network passphrase
 	NetworkPassphraseFlagName = "network-passphrase"
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
@@ -643,8 +647,8 @@ type ApplyOptions struct {
 
 type networkConfig struct {
 	defaultConfig      []byte
-	historyArchiveURLs []string
-	networkPassphrase  string
+	HistoryArchiveURLs []string
+	NetworkPassphrase  string
 }
 
 var (
@@ -654,16 +658,16 @@ var (
 	//go:embed configs/captive-core-testnet.cfg
 	TestnetDefaultConfig []byte
 
-	pubnetConf = networkConfig{
+	PubnetConf = networkConfig{
 		defaultConfig:      PubnetDefaultConfig,
-		historyArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
-		networkPassphrase:  network.PublicNetworkPassphrase,
+		HistoryArchiveURLs: network.PublicNetworkhistoryArchiveURLs,
+		NetworkPassphrase:  network.PublicNetworkPassphrase,
 	}
 
-	testnetConf = networkConfig{
+	TestnetConf = networkConfig{
 		defaultConfig:      TestnetDefaultConfig,
-		historyArchiveURLs: network.TestNetworkhistoryArchiveURLs,
-		networkPassphrase:  network.TestNetworkPassphrase,
+		HistoryArchiveURLs: network.TestNetworkhistoryArchiveURLs,
+		NetworkPassphrase:  network.TestNetworkPassphrase,
 	}
 )
 
@@ -712,24 +716,24 @@ func loadCaptiveCoreTomlFromFile(config *Config) error {
 func createCaptiveCoreConfigFromNetwork(config *Config) error {
 
 	if config.NetworkPassphrase != "" {
-		return fmt.Errorf("invalid config: %s not allowed with %s network", NetworkPassphraseFlagName, config.Network)
+		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", NetworkPassphraseFlagName, NetworkFlagName)
 	}
 
 	if len(config.HistoryArchiveURLs) > 0 {
-		return fmt.Errorf("invalid config: %s not allowed with %s network", HistoryArchiveURLsFlagName, config.Network)
+		return fmt.Errorf("invalid config: %s parameter not allowed with the %s parameter", HistoryArchiveURLsFlagName, NetworkFlagName)
 	}
 
 	var defaultNetworkConfig networkConfig
 	switch config.Network {
 	case StellarPubnet:
-		defaultNetworkConfig = pubnetConf
+		defaultNetworkConfig = PubnetConf
 	case StellarTestnet:
-		defaultNetworkConfig = testnetConf
+		defaultNetworkConfig = TestnetConf
 	default:
 		return fmt.Errorf("no default configuration found for network %s", config.Network)
 	}
-	config.NetworkPassphrase = defaultNetworkConfig.networkPassphrase
-	config.HistoryArchiveURLs = defaultNetworkConfig.historyArchiveURLs
+	config.NetworkPassphrase = defaultNetworkConfig.NetworkPassphrase
+	config.HistoryArchiveURLs = defaultNetworkConfig.HistoryArchiveURLs
 
 	if config.CaptiveCoreConfigPath == "" {
 		return loadDefaultCaptiveCoreToml(config, defaultNetworkConfig.defaultConfig)
@@ -779,12 +783,12 @@ func setCaptiveCoreConfiguration(config *Config) error {
 	if config.Network != "" {
 		err := createCaptiveCoreConfigFromNetwork(config)
 		if err != nil {
-			return errors.Wrap(err, "error generating default captive core config.")
+			return err
 		}
 	} else {
 		err := createCaptiveCoreConfigFromParameters(config)
 		if err != nil {
-			return errors.Wrap(err, "error generating captive core config.")
+			return err
 		}
 	}
 
