@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stretchr/testify/assert"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -25,6 +24,7 @@ import (
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
@@ -224,7 +224,7 @@ func (i *Test) runComposeCommand(args ...string) {
 			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
 		)
 	}
-	i.t.Log("Running", cmd.Env, cmd.Args)
+	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
 	if exitErr, ok := innerErr.(*exec.ExitError); ok {
 		fmt.Printf("stdout:\n%s\n", string(out))
