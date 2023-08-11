@@ -17,16 +17,16 @@ import (
 
 type LedgersProcessorTestSuiteLedger struct {
 	suite.Suite
-	processor     *LedgersProcessor
-	mockSession   *db.MockSession
-	mockQ         *history.MockQLedgers
-	header        xdr.LedgerHeaderHistoryEntry
-	successCount  int
-	failedCount   int
-	opCount       int
-	ingestVersion int
-	txs           []ingest.LedgerTransaction
-	txSetOpCount  int
+	processor              *LedgersProcessor
+	mockSession            *db.MockSession
+	mockBatchInsertBuilder *history.MockLedgersBatchInsertBuilder
+	header                 xdr.LedgerHeaderHistoryEntry
+	successCount           int
+	failedCount            int
+	opCount                int
+	ingestVersion          int
+	txs                    []ingest.LedgerTransaction
+	txSetOpCount           int
 }
 
 func TestLedgersProcessorTestSuiteLedger(t *testing.T) {
@@ -80,7 +80,7 @@ func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
 }
 
 func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
-	s.mockQ = &history.MockQLedgers{}
+	s.mockBatchInsertBuilder = &history.MockLedgersBatchInsertBuilder{}
 	s.ingestVersion = 100
 	s.header = xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
@@ -89,9 +89,7 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	}
 
 	s.processor = NewLedgerProcessor(
-		s.mockSession,
-		s.mockQ,
-		s.header,
+		s.mockBatchInsertBuilder,
 		s.ingestVersion,
 	)
 
@@ -108,15 +106,40 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
-	s.mockQ.AssertExpectations(s.T())
+	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 	ctx := context.Background()
-	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
-	s.mockQ.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
 
-	mockBatchInsertBuilder.On(
+	for _, tx := range s.txs {
+		err := s.processor.ProcessTransaction(xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: s.header,
+			},
+		}, tx)
+		s.Assert().NoError(err)
+	}
+
+	nextHeader := xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: xdr.Uint32(21),
+		},
+	}
+	nextTransactions := []ingest.LedgerTransaction{
+		createTransaction(true, 1),
+		createTransaction(false, 2),
+	}
+	for _, tx := range nextTransactions {
+		err := s.processor.ProcessTransaction(xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: nextHeader,
+			},
+		}, tx)
+		s.Assert().NoError(err)
+	}
+
+	s.mockBatchInsertBuilder.On(
 		"Add",
 		s.header,
 		s.successCount,
@@ -125,26 +148,29 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 		s.txSetOpCount,
 		s.ingestVersion,
 	).Return(nil)
-	mockBatchInsertBuilder.On(
+
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		nextHeader,
+		1,
+		1,
+		1,
+		3,
+		s.ingestVersion,
+	).Return(nil)
+
+	s.mockBatchInsertBuilder.On(
 		"Exec",
 		ctx,
 		s.mockSession,
 	).Return(nil)
 
-	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(ctx, tx)
-		s.Assert().NoError(err)
-	}
-
-	err := s.processor.Commit(ctx)
+	err := s.processor.Flush(ctx, s.mockSession)
 	s.Assert().NoError(err)
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
-	mockBatchInsertBuilder := &history.MockLedgersBatchInsertBuilder{}
-	s.mockQ.On("NewLedgerBatchInsertBuilder").Return(mockBatchInsertBuilder)
-
-	mockBatchInsertBuilder.On(
+	s.mockBatchInsertBuilder.On(
 		"Add",
 		mock.Anything,
 		mock.Anything,
@@ -154,8 +180,46 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 		mock.Anything,
 	).Return(errors.New("transient error"))
 
+	err := s.processor.ProcessTransaction(xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: s.header,
+		},
+	}, s.txs[0])
+	s.Assert().NoError(err)
+
+	s.Assert().EqualError(s.processor.Flush(
+		context.Background(), s.mockSession),
+		"error adding ledger 20 to batch: transient error",
+	)
+}
+
+func (s *LedgersProcessorTestSuiteLedger) TestExecFails() {
 	ctx := context.Background()
-	err := s.processor.Commit(ctx)
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Could not insert ledger: transient error")
+	s.mockBatchInsertBuilder.On(
+		"Add",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(nil)
+
+	s.mockBatchInsertBuilder.On(
+		"Exec",
+		ctx,
+		s.mockSession,
+	).Return(errors.New("transient exec error"))
+
+	err := s.processor.ProcessTransaction(xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: s.header,
+		},
+	}, s.txs[0])
+	s.Assert().NoError(err)
+
+	s.Assert().EqualError(s.processor.Flush(
+		context.Background(), s.mockSession),
+		"error committing ledgers 20 - 20: transient exec error",
+	)
 }

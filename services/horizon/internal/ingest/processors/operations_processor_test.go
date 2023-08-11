@@ -23,7 +23,6 @@ type OperationsProcessorTestSuiteLedger struct {
 	ctx                    context.Context
 	processor              *OperationProcessor
 	mockSession            *db.MockSession
-	mockQ                  *history.MockQOperations
 	mockBatchInsertBuilder *history.MockOperationsBatchInsertBuilder
 }
 
@@ -33,21 +32,14 @@ func TestOperationProcessorTestSuiteLedger(t *testing.T) {
 
 func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
-	s.mockQ = &history.MockQOperations{}
 	s.mockBatchInsertBuilder = &history.MockOperationsBatchInsertBuilder{}
-	s.mockQ.
-		On("NewOperationBatchInsertBuilder").
-		Return(s.mockBatchInsertBuilder).Once()
 
 	s.processor = NewOperationProcessor(
-		s.mockSession,
-		s.mockQ,
-		56,
+		s.mockBatchInsertBuilder,
 	)
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
-	s.mockQ.AssertExpectations(s.T())
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
 
@@ -92,6 +84,17 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
+	sequence := uint32(56)
+	lcm := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(sequence),
+				},
+			},
+		},
+	}
+
 	unmuxed := xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 	muxed := xdr.MuxedAccount{
 		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
@@ -122,18 +125,28 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 
 	var err error
 
-	err = s.mockBatchInsertAdds(txs, uint32(56))
+	err = s.mockBatchInsertAdds(txs, sequence)
 	s.Assert().NoError(err)
 	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit(s.ctx))
 
 	for _, tx := range txs {
-		err = s.processor.ProcessTransaction(s.ctx, tx)
+		err = s.processor.ProcessTransaction(lcm, tx)
 		s.Assert().NoError(err)
 	}
+	s.Assert().NoError(s.processor.Flush(s.ctx, s.mockSession))
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
+	sequence := uint32(56)
+	lcm := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(sequence),
+				},
+			},
+		},
+	}
 	tx := createTransaction(true, 1)
 
 	s.mockBatchInsertBuilder.
@@ -148,14 +161,39 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 			mock.Anything,
 		).Return(errors.New("transient error")).Once()
 
-	err := s.processor.ProcessTransaction(s.ctx, tx)
+	err := s.processor.ProcessTransaction(lcm, tx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error batch inserting operation rows: transient error")
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
+	sequence := uint32(56)
+	lcm := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(sequence),
+				},
+			},
+		},
+	}
+	tx := createTransaction(true, 1)
+
+	s.mockBatchInsertBuilder.
+		On(
+			"Add",
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+		).Return(nil).Once()
+	s.Assert().NoError(s.processor.ProcessTransaction(lcm, tx))
+
 	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(errors.New("transient error")).Once()
-	err := s.processor.Commit(s.ctx)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "transient error")
 }

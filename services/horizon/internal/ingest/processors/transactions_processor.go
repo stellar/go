@@ -7,45 +7,33 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 type TransactionProcessor struct {
-	session       db.SessionInterface
-	transactionsQ history.QTransactions
-	sequence      uint32
-	batch         history.TransactionBatchInsertBuilder
+	batch history.TransactionBatchInsertBuilder
 }
 
-func NewTransactionFilteredTmpProcessor(session db.SessionInterface, transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
+func NewTransactionFilteredTmpProcessor(batch history.TransactionBatchInsertBuilder) *TransactionProcessor {
 	return &TransactionProcessor{
-		session:       session,
-		transactionsQ: transactionsQ,
-		sequence:      sequence,
-		batch:         transactionsQ.NewTransactionFilteredTmpBatchInsertBuilder(),
+		batch: batch,
 	}
 }
 
-func NewTransactionProcessor(session db.SessionInterface, transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
+func NewTransactionProcessor(batch history.TransactionBatchInsertBuilder) *TransactionProcessor {
 	return &TransactionProcessor{
-		session:       session,
-		transactionsQ: transactionsQ,
-		sequence:      sequence,
-		batch:         transactionsQ.NewTransactionBatchInsertBuilder(),
+		batch: batch,
 	}
 }
 
-func (p *TransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
-	if err := p.batch.Add(transaction, p.sequence); err != nil {
+func (p *TransactionProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) error {
+	if err := p.batch.Add(transaction, lcm.LedgerSequence()); err != nil {
 		return errors.Wrap(err, "Error batch inserting transaction rows")
 	}
 
 	return nil
 }
 
-func (p *TransactionProcessor) Commit(ctx context.Context) error {
-	if err := p.batch.Exec(ctx, p.session); err != nil {
-		return errors.Wrap(err, "Error flushing transaction batch")
-	}
-
-	return nil
+func (p *TransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
+	return p.batch.Exec(ctx, session)
 }
