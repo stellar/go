@@ -73,9 +73,7 @@ func (c *Client) Upgrade(ctx context.Context, version int) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "http request errored")
 	}
-	defer func() {
-		drainReponse(hresp, true, &err) //nolint:errcheck
-	}()
+	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
@@ -141,9 +139,7 @@ func (c *Client) Info(ctx context.Context) (resp *proto.InfoResponse, err error)
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
-	defer func() {
-		drainReponse(hresp, true, &err) //nolint:errcheck
-	}()
+	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
@@ -176,9 +172,7 @@ func (c *Client) SetCursor(ctx context.Context, id string, cursor int32) (err er
 	if err != nil {
 		return errors.Wrap(err, "http request errored")
 	}
-	defer func() {
-		drainReponse(hresp, true, &err) //nolint:errcheck
-	}()
+	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
@@ -218,9 +212,7 @@ func (c *Client) SubmitTransaction(ctx context.Context, envelope string) (resp *
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
-	defer func() {
-		drainReponse(hresp, true, &err) //nolint:errcheck
-	}()
+	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
@@ -280,9 +272,7 @@ func (c *Client) ManualClose(ctx context.Context) (err error) {
 		err = errors.Wrap(err, "http request errored")
 		return
 	}
-	defer func() {
-		drainReponse(hresp, true, &err) //nolint:errcheck
-	}()
+	defer drainReponse(hresp, true, &err) //nolint:errcheck
 
 	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
 		err = errors.New("http request failed with non-200 status code")
