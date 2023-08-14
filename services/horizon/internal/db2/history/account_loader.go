@@ -19,14 +19,14 @@ import (
 // the AccountLoader.
 type FutureAccountID struct {
 	address string
-	loader  AccountLoader
+	loader  *AccountLoader
 }
 
 const loaderLookupBatchSize = 50000
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAccountID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.address)
+	return a.loader.GetNow(a.address), nil
 }
 
 // AccountLoader will map account addresses to their history
@@ -34,22 +34,30 @@ func (a FutureAccountID) Value() (driver.Value, error) {
 // the AccountLoader will insert into the history_accounts table to
 // establish a mapping.
 type AccountLoader struct {
-	set map[string]interface{}
-	ids map[string]int64
+	sealed bool
+	set    map[string]interface{}
+	ids    map[string]int64
 }
 
+var errSealed = errors.New("cannot register more entries to loader after calling Exec()")
+
 // NewAccountLoader will construct a new AccountLoader instance.
-func NewAccountLoader() AccountLoader {
-	return AccountLoader{
-		set: map[string]interface{}{},
-		ids: map[string]int64{},
+func NewAccountLoader() *AccountLoader {
+	return &AccountLoader{
+		sealed: false,
+		set:    map[string]interface{}{},
+		ids:    map[string]int64{},
 	}
 }
 
 // GetFuture registers the given account address into the loader and
 // returns a FutureAccountID which will hold the history account id for
 // the address after Exec() is called.
-func (a AccountLoader) GetFuture(address string) FutureAccountID {
+func (a *AccountLoader) GetFuture(address string) FutureAccountID {
+	if a.sealed {
+		panic(errSealed)
+	}
+
 	a.set[address] = nil
 	return FutureAccountID{
 		address: address,
@@ -61,15 +69,15 @@ func (a AccountLoader) GetFuture(address string) FutureAccountID {
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a AccountLoader) GetNow(address string) (int64, error) {
+func (a *AccountLoader) GetNow(address string) int64 {
 	if id, ok := a.ids[address]; !ok {
-		return 0, fmt.Errorf("address %v not present", address)
+		panic(fmt.Errorf("address %v not present", address))
 	} else {
-		return id, nil
+		return id
 	}
 }
 
-func (a AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
+func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
 	for i := 0; i < len(addresses); i += loaderLookupBatchSize {
 		end := i + loaderLookupBatchSize
 		if end > len(addresses) {
@@ -91,7 +99,8 @@ func (a AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string)
 // Exec will look up all the history account ids for the addresses registered in the loader.
 // If there are no history account ids for a given set of addresses, Exec will insert rows
 // into the history_accounts table to establish a mapping between address and history account id.
-func (a AccountLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+	a.sealed = true
 	if len(a.set) == 0 {
 		return nil
 	}

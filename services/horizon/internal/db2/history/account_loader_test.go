@@ -26,19 +26,23 @@ func TestAccountLoader(t *testing.T) {
 	for _, address := range addresses {
 		future := loader.GetFuture(address)
 		futures = append(futures, future)
-		_, err := loader.GetNow(address)
-		assert.Error(t, err)
-		_, err = future.Value()
-		assert.Error(t, err)
+		assert.Panics(t, func() {
+			loader.GetNow(address)
+		})
+		assert.Panics(t, func() {
+			future.Value()
+		})
 	}
 
 	assert.NoError(t, loader.Exec(context.Background(), session))
+	assert.Panics(t, func() {
+		loader.GetFuture(keypair.MustRandom().Address())
+	})
 
 	q := &Q{session}
 	for i, address := range addresses {
 		future := futures[i]
-		id, err := loader.GetNow(address)
-		assert.NoError(t, err)
+		id := loader.GetNow(address)
 		val, err := future.Value()
 		assert.NoError(t, err)
 		assert.Equal(t, id, val)
