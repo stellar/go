@@ -21,15 +21,15 @@ import (
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/services/horizon/internal/ingest"
+	"github.com/stretchr/testify/require"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
@@ -47,17 +47,18 @@ const (
 )
 
 var (
+	HorizonInitErrStr       = "cannot initialize Horizon"
 	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
 	RunWithSorobanRPC       = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != ""
 	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
-	ProtocolVersion       uint32
-	EnableSorobanRPC      bool
-	SkipContainerCreation bool
-	CoreDockerImage       string
-	SorobanRPCDockerImage string
+	ProtocolVersion           uint32
+	EnableSorobanRPC          bool
+	SkipCoreContainerCreation bool
+	CoreDockerImage           string
+	SorobanRPCDockerImage     string
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -107,6 +108,17 @@ type Test struct {
 	passPhrase    string
 }
 
+// GetTestConfig returns the default test Config required to run NewTest.
+func GetTestConfig() *Config {
+	return &Config{
+		ProtocolVersion:           17,
+		SkipHorizonStart:          true,
+		SkipCoreContainerCreation: false,
+		HorizonIngestParameters:   map[string]string{},
+		HorizonEnvironment:        map[string]string{},
+	}
+}
+
 // NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //
@@ -128,26 +140,35 @@ func NewTest(t *testing.T, config Config) *Test {
 			config.ProtocolVersion = maxSupportedCoreProtocolFromEnv
 		}
 	}
-
-	composePath := findDockerComposePath()
-	i := &Test{
-		t:           t,
-		config:      config,
-		composePath: composePath,
-		passPhrase:  StandaloneNetworkPassphrase,
-		environment: NewEnvironmentManager(),
+	var i *Test
+	if !config.SkipCoreContainerCreation {
+		composePath := findDockerComposePath()
+		i = &Test{
+			t:           t,
+			config:      config,
+			composePath: composePath,
+			passPhrase:  StandaloneNetworkPassphrase,
+			environment: NewEnvironmentManager(),
+		}
+		i.configureCaptiveCore()
+		// Only run Stellar Core container and its dependencies.
+		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+	} else {
+		i = &Test{
+			t:           t,
+			config:      config,
+			environment: NewEnvironmentManager(),
+		}
 	}
 
-	i.configureCaptiveCore()
-
-	// Only run Stellar Core container and its dependencies.
-	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
-	i.waitForCore()
-	if RunWithSorobanRPC && i.config.EnableSorobanRPC {
-		i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
-		i.waitForSorobanRPC()
+	if !config.SkipCoreContainerCreation {
+		i.waitForCore()
+		if RunWithSorobanRPC && i.config.EnableSorobanRPC {
+			i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
+			i.waitForSorobanRPC()
+		}
 	}
 
 	if !config.SkipHorizonStart {
@@ -239,7 +260,7 @@ func (i *Test) runComposeCommand(args ...string) {
 			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
 		)
 	}
-	i.t.Log("Running", cmd.Env, cmd.Args)
+	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
 	if len(out) > 0 {
 		fmt.Printf("stdout:\n%s\n", string(out))
@@ -262,11 +283,13 @@ func (i *Test) prepareShutdownHandlers() {
 			if i.ingestNode != nil {
 				i.ingestNode.Close()
 			}
-			i.runComposeCommand("rm", "-fvs", "core")
-			i.runComposeCommand("rm", "-fvs", "core-postgres")
-			if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != "" {
-				i.runComposeCommand("logs", "soroban-rpc")
-				i.runComposeCommand("rm", "-fvs", "soroban-rpc")
+			if !i.config.SkipCoreContainerCreation {
+				i.runComposeCommand("rm", "-fvs", "core")
+				i.runComposeCommand("rm", "-fvs", "core-postgres")
+				if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != "" {
+					i.runComposeCommand("logs", "soroban-rpc")
+					i.runComposeCommand("rm", "-fvs", "soroban-rpc")
+				}
 			}
 		},
 		i.environment.Restore,
@@ -341,14 +364,13 @@ func (i *Test) StartHorizon() error {
 		Use:   "horizon",
 		Short: "Ingest of Stellar network",
 		Long:  "Ingest of Stellar network.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			i.ingestNode, err = horizon.NewAppFromFlags(ingestConfig, ingestConfigOpts)
 			if err != nil {
-				// Explicitly exit here as that's how these tests are structured for now.
 				fmt.Println(err)
-				os.Exit(1)
 			}
+			return err
 		},
 	}
 
@@ -402,7 +424,8 @@ func (i *Test) StartHorizon() error {
 	ingestArgs := mapToFlags(mergedIngest)
 
 	// initialize core arguments
-	i.t.Log("Horizon command line:", webArgs)
+	i.t.Log("Horizon command line webArgs:", webArgs)
+	i.t.Log("Horizon command line ingestArgs:", ingestArgs)
 	var env strings.Builder
 	for key, value := range i.config.HorizonEnvironment {
 		env.WriteString(fmt.Sprintf("%s=%s ", key, value))
@@ -430,11 +453,11 @@ func (i *Test) StartHorizon() error {
 	}
 
 	if err = ingestCmd.Execute(); err != nil {
-		return errors.Wrap(err, "cannot initialize Horizon")
+		return errors.Wrap(err, HorizonInitErrStr)
 	}
 
 	if err = webCmd.Execute(); err != nil {
-		return errors.Wrap(err, "cannot initialize Horizon")
+		return errors.Wrap(err, HorizonInitErrStr)
 	}
 
 	horizonPort := "8000"
@@ -559,20 +582,26 @@ type RPCSimulateTxResponse struct {
 	MinResourceFee  int64                           `json:"minResourceFee,string"`
 }
 
-// Wait for SorobanRPC to be up
 func (i *Test) PreflightHostFunctions(
 	sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction,
 ) (txnbuild.InvokeHostFunction, int64) {
+	if function.HostFunction.Type == xdr.HostFunctionTypeHostFunctionTypeInvokeContract {
+		fmt.Printf("Preflighting function call to: %s\n", string(function.HostFunction.InvokeContract.FunctionName))
+	}
 	result, transactionData := i.simulateTransaction(sourceAccount, &function)
 	function.Ext = xdr.TransactionExt{
 		V:           1,
 		SorobanData: &transactionData,
 	}
 	var funAuth []xdr.SorobanAuthorizationEntry
-	for _, authElement := range result.Results {
-		for _, authBase64 := range authElement.Auth {
+	for _, res := range result.Results {
+		var decodedRes xdr.ScVal
+		err := xdr.SafeUnmarshalBase64(res.XDR, &decodedRes)
+		assert.NoError(i.t, err)
+		fmt.Printf("Result:\n\n%# +v\n\n", pretty.Formatter(decodedRes))
+		for _, authBase64 := range res.Auth {
 			var authEntry xdr.SorobanAuthorizationEntry
-			err := xdr.SafeUnmarshalBase64(authBase64, &authEntry)
+			err = xdr.SafeUnmarshalBase64(authBase64, &authEntry)
 			assert.NoError(i.t, err)
 			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
 			funAuth = append(funAuth, authEntry)
@@ -586,6 +615,11 @@ func (i *Test) PreflightHostFunctions(
 func (i *Test) simulateTransaction(
 	sourceAccount txnbuild.Account, op txnbuild.Operation,
 ) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
+	// Before preflighting, make sure soroban-rpc is in sync with Horizon
+	root, err := i.horizonClient.Root()
+	require.NoError(i.t, err)
+	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
+
 	// TODO: soroban-tools should be exporting a proper Go client
 	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
 	sorobanRPCClient := jrpc2.NewClient(ch, nil)
@@ -605,8 +639,24 @@ func (i *Test) simulateTransaction(
 	var transactionData xdr.SorobanTransactionData
 	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
 	assert.NoError(i.t, err)
-	fmt.Printf("FootPrint:\n\n%# +v\n\n", pretty.Formatter(transactionData.Resources.Footprint))
+	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
 	return result, transactionData
+}
+func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
+	for j := 0; j < 20; j++ {
+		result := struct {
+			Sequence uint32 `json:"sequence"`
+		}{}
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
+		assert.NoError(i.t, err)
+		if result.Sequence >= ledgerToWaitFor {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	i.t.Fatal("Time out waiting for soroban-rpc to sync")
 }
 
 func (i *Test) PreflightBumpFootprintExpiration(
@@ -711,8 +761,9 @@ func (i *Test) StopHorizon() {
 	}
 
 	// Wait for Horizon to shut down completely.
-	i.appStopped.Wait()
-
+	if i.appStopped != nil {
+		i.appStopped.Wait()
+	}
 	i.webNode = nil
 	i.ingestNode = nil
 }

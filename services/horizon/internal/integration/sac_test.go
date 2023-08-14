@@ -1067,7 +1067,6 @@ func burn(itest *integration.Test, sourceAccount string, asset xdr.Asset, assetA
 
 func assertInvokeHostFnSucceeds(itest *integration.Test, signer *keypair.Full, op *txnbuild.InvokeHostFunction) (*xdr.ScVal, string, *txnbuild.InvokeHostFunction) {
 	acc := itest.MustGetAccount(signer)
-
 	preFlightOp, minFee := itest.PreflightHostFunctions(&acc, *op)
 	tx, err := itest.SubmitOperationsWithFee(&acc, signer, minFee+txnbuild.MinBaseFee, &preFlightOp)
 	require.NoError(itest.CurrentTest(), err)

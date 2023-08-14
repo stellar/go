@@ -15,7 +15,7 @@ xdr/Stellar-internal.x \
 xdr/Stellar-contract-config-setting.x
 
 XDRGEN_COMMIT=80e38ef2a96489f6b501d4db3a350406e5aa3bab
-XDRNEXT_COMMIT=34241a1eb81a715cc75777ca1ed028ea1456645b
+XDRNEXT_COMMIT=1894f0909caa0adb00437564f8e01ec33a5b5ed2
 
 .PHONY: xdr xdr-clean xdr-update
 
@@ -27,6 +27,9 @@ ticker:
 
 friendbot:
 	$(MAKE) -C services/friendbot/ docker-build
+
+horizon:
+	$(MAKE) -C services/horizon/ binary-build
 
 webauth:
 	$(MAKE) -C exp/services/webauth/ docker-build
