@@ -1,13 +1,38 @@
-# Writing effective test coverage for Horizon packages
+# **Testing with Horizon**
 
-Before discussing test development, just a brief mention of developer resoures:
-- [Quickstart Guide](internal/docs/quickstart.md) 
-- [Developer Guide](internal/docs/developing.md)
-- [Developer Notes](internal/docs/notes_for_developers.md)
+Run all the Go monorepo unit tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
+
+```bash
+go test ./...
+```
+
+or run individual Horizon tests like so, providing the expected arguments:
+
+```bash
+go test github.com/stellar/go/services/horizon/...
+```
+
+Before running integration tests, you also need to set some environment variables:
+```bash
+export HORIZON_INTEGRATION_TESTS_ENABLED=true
+export HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL=19
+export HORIZON_INTEGRATION_TESTS_DOCKER_IMG=stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
+```
+Make sure to check [horizon.yml](/.github/workflows/horizon.yml) for the latest core image version.
+
+And then use the following command to run the Horizon integration tests:
+```bash
+go test -race -timeout 25m -v ./services/horizon/internal/integration/...
+```
+
+To run just one specific integration test, e.g. like `TestTxSub`:
+```bash
+go test -run TestTxsub -race -timeout 5m -v ./...
+```
 
 Authoring tests to assert coverage is key importance, to facilitate best experience for writing tests within Horizon packages, there are some conventions to be aware of:
 
-## Best Practices
+## **Best Practices**
 * For unit tests:
   * Adhere to [idiomatic go testing](https://go.dev/doc/tutorial/add-a-test) for 
     baseline
@@ -27,7 +52,7 @@ Authoring tests to assert coverage is key importance, to facilitate best experie
   
 * For integration tests, they should be located in services/horizon/integration package. Tests located in this package will only run when `HORIZON_INTEGRATION_TESTS_ENABLED=true` is present in environment.
 
-## Leverage Scaffolding for Test Cases
+## **Leverage Scaffolding for Test Cases**
 * Mocked DB unit tests that avoid needing a live db connection: 
 
   * `db/mock_session.go` has pre-defined mocks of all standard SessionInterface. `services/horizon/internal/httpx/stream_handler_test.go` is good example of mocking out just low level db session interface where sql statements are executed.
