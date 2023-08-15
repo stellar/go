@@ -51,9 +51,11 @@ const (
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
 	HistoryArchiveURLsFlagName = "history-archive-urls"
 	// NetworkFlagName is the command line flag for specifying the "network"
-	NetworkFlagName                  = "network"
+	NetworkFlagName = "network"
+	// EnableIngestionFilteringFlagName is the command line flag for enabling the experimental ingestion filtering feature (now enabled by default)
 	EnableIngestionFilteringFlagName = "exp-enable-ingestion-filtering"
-	DisableTxSubFlagName             = "disable-tx-sub"
+	// DisableTxSubFlagName is the command line flag for disabling transaction submission feature of Horizon
+	DisableTxSubFlagName = "disable-tx-sub"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 	// StellarPubnet is a constant representing the Stellar public network
@@ -806,14 +808,6 @@ func setCaptiveCoreConfiguration(config *Config) error {
 	// point to it.
 	if config.StellarCoreURL == "" && config.CaptiveCoreToml.HTTPPort != 0 {
 		config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreToml.HTTPPort)
-	}
-
-	if !config.DisableTxSub {
-		if config.Network == "" && (config.NetworkPassphrase == "" || len(config.HistoryArchiveURLs) == 0) {
-			return fmt.Errorf("invalid config: --%s set to false but no --%s flag or "+
-				"ingestion parameters set (--%s and --%s)", DisableTxSubFlagName, NetworkFlagName,
-				NetworkPassphraseFlagName, HistoryArchiveURLsFlagName)
-		}
 	}
 
 	return nil
