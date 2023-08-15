@@ -36,8 +36,8 @@ jobs:
       PROTOCOL_20_CORE_DEBIAN_PKG_VERSION: 19.13.1-1434.35170ec6c.focal~soroban
       PROTOCOL_20_CORE_DOCKER_IMG: 2opremio/stellar-core:19.13.1-1434.35170ec6c.focal-soroban
       PROTOCOL_20_SOROBAN_RPC_DOCKER_IMG: 2opremio/soroban-rpc:abeb155963d1669be70d5686cf175ca47faad3ed
-      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.11.0-1323.7fb6d5e88.focal
-      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.11.0-1323.7fb6d5e88.focal
+      PROTOCOL_19_CORE_DEBIAN_PKG_VERSION: 19.12.0-1378.2109a168a.focal
+      PROTOCOL_19_CORE_DOCKER_IMG: stellar/stellar-core:19.12.0-1378.2109a168a.focal
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
@@ -132,7 +132,7 @@ jobs:
     name: Test (and push) verify-range image
     runs-on: ubuntu-22.04
     env:
-      STELLAR_CORE_VERSION: 19.11.0-1323.7fb6d5e88.focal
+      STELLAR_CORE_VERSION: 19.12.0-1378.2109a168a.focal
       CAPTIVE_CORE_STORAGE_PATH: /tmp
     steps:
       - uses: actions/checkout@v3
