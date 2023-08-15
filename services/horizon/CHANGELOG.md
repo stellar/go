@@ -16,6 +16,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 - The same slippage calculation from the [`v2.26.1`](#2261) hotfix now properly excludes spikes for smoother trade aggregation plots ([4999](https://github.com/stellar/go/pull/4999)).
 
 
+## 2.26.1
+
+### Fixes
+- Ingestion will not halt if liquidity pool overflows are detected.
+
+
 ## 2.26.0
 ### Changes
 - Improve error handling for when stellar-core crashes ([4893](https://github.com/stellar/go/pull/4893))
