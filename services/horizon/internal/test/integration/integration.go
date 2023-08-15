@@ -16,11 +16,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/2opremio/pretty"
+	"github.com/creachadair/jrpc2"
+	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
@@ -38,18 +43,22 @@ const (
 	stellarCorePort             = 11626
 	stellarCorePostgresPort     = 5641
 	historyArchivePort          = 1570
+	sorobanRPCPort              = 8080
 )
 
 var (
 	HorizonInitErrStr       = "cannot initialize Horizon"
 	RunWithCaptiveCore      = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_CAPTIVE_CORE") != ""
+	RunWithSorobanRPC       = os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != ""
 	RunWithCaptiveCoreUseDB = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_USE_DB") != ""
 )
 
 type Config struct {
 	ProtocolVersion           uint32
+	EnableSorobanRPC          bool
 	SkipCoreContainerCreation bool
 	CoreDockerImage           string
+	SorobanRPCDockerImage     string
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
@@ -156,6 +165,10 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	if !config.SkipCoreContainerCreation {
 		i.waitForCore()
+		if RunWithSorobanRPC && i.config.EnableSorobanRPC {
+			i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "soroban-rpc")
+			i.waitForSorobanRPC()
+		}
 	}
 
 	if !config.SkipHorizonStart {
@@ -175,7 +188,11 @@ func (i *Test) configureCaptiveCore() {
 	if RunWithCaptiveCore {
 		composePath := findDockerComposePath()
 		i.coreConfig.binaryPath = os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
-		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+		coreConfigFile := "captive-core-classic-integration-tests.cfg"
+		if i.config.ProtocolVersion >= ledgerbackend.MinimalSorobanProtocolSupport {
+			coreConfigFile = "captive-core-integration-tests.cfg"
+		}
+		i.coreConfig.configPath = filepath.Join(composePath, coreConfigFile)
 		i.coreConfig.storagePath = i.CurrentTest().TempDir()
 		if RunWithCaptiveCoreUseDB {
 			i.coreConfig.useDB = true
@@ -209,8 +226,13 @@ func (i *Test) getIngestParameter(argName, envName string) string {
 // Runs a docker-compose command applied to the above configs
 func (i *Test) runComposeCommand(args ...string) {
 	integrationYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.yml")
+	integrationSorobanRPCYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.soroban-rpc.yml")
 
-	cmdline := append([]string{"-f", integrationYaml}, args...)
+	cmdline := args
+	if RunWithSorobanRPC {
+		cmdline = append([]string{"-f", integrationSorobanRPCYaml}, cmdline...)
+	}
+	cmdline = append([]string{"-f", integrationYaml}, cmdline...)
 	cmd := exec.Command("docker-compose", cmdline...)
 	coreImageOverride := ""
 	if i.config.CoreDockerImage != "" {
@@ -218,16 +240,32 @@ func (i *Test) runComposeCommand(args ...string) {
 	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_DOCKER_IMG"); img != "" {
 		coreImageOverride = img
 	}
+
+	cmd.Env = os.Environ()
 	if coreImageOverride != "" {
 		cmd.Env = append(
-			os.Environ(),
+			cmd.Environ(),
 			fmt.Sprintf("CORE_IMAGE=%s", coreImageOverride),
+		)
+	}
+	sorobanRPCOverride := ""
+	if i.config.SorobanRPCDockerImage != "" {
+		sorobanRPCOverride = i.config.CoreDockerImage
+	} else if img := os.Getenv("HORIZON_INTEGRATION_TESTS_SOROBAN_RPC_DOCKER_IMG"); img != "" {
+		sorobanRPCOverride = img
+	}
+	if sorobanRPCOverride != "" {
+		cmd.Env = append(
+			cmd.Environ(),
+			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
 		)
 	}
 	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
-	if exitErr, ok := innerErr.(*exec.ExitError); ok {
+	if len(out) > 0 {
 		fmt.Printf("stdout:\n%s\n", string(out))
+	}
+	if exitErr, ok := innerErr.(*exec.ExitError); ok {
 		fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
 	}
 
@@ -248,6 +286,10 @@ func (i *Test) prepareShutdownHandlers() {
 			if !i.config.SkipCoreContainerCreation {
 				i.runComposeCommand("rm", "-fvs", "core")
 				i.runComposeCommand("rm", "-fvs", "core-postgres")
+				if os.Getenv("HORIZON_INTEGRATION_TESTS_ENABLE_SOROBAN_RPC") != "" {
+					i.runComposeCommand("logs", "soroban-rpc")
+					i.runComposeCommand("rm", "-fvs", "soroban-rpc")
+				}
 			}
 		},
 		i.environment.Restore,
@@ -451,16 +493,25 @@ func (i *Test) StartHorizon() error {
 	return nil
 }
 
+const maxWaitForCoreStartup = 30 * time.Second
+const maxWaitForCoreUpgrade = 5 * time.Second
+const coreStartupPingInterval = time.Second
+
 // Wait for core to be up and manually close the first ledger
 func (i *Test) waitForCore() {
 	i.t.Log("Waiting for core to be up...")
-	for t := 30 * time.Second; t >= 0; t -= time.Second {
+	startTime := time.Now()
+	for time.Since(startTime) < maxWaitForCoreStartup {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		infoTime := time.Now()
 		_, err := i.coreClient.Info(ctx)
 		cancel()
 		if err != nil {
 			i.t.Logf("could not obtain info response: %v", err)
-			time.Sleep(time.Second)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
+				time.Sleep(coreStartupPingInterval - durationSince)
+			}
 			continue
 		}
 		break
@@ -468,19 +519,156 @@ func (i *Test) waitForCore() {
 
 	i.UpgradeProtocol(i.config.ProtocolVersion)
 
-	for t := 0; t < 5; t++ {
+	startTime = time.Now()
+	for time.Since(startTime) < maxWaitForCoreUpgrade {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		infoTime := time.Now()
 		info, err := i.coreClient.Info(ctx)
 		cancel()
 		if err != nil || !info.IsSynced() {
 			i.t.Logf("Core is still not synced: %v %v", err, info)
-			time.Sleep(time.Second)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(infoTime); durationSince < coreStartupPingInterval {
+				time.Sleep(coreStartupPingInterval - durationSince)
+			}
 			continue
 		}
 		i.t.Log("Core is up.")
 		return
 	}
-	i.t.Fatal("Core could not sync after 30s")
+	i.t.Fatalf("Core could not sync after %v + %v", maxWaitForCoreStartup, maxWaitForCoreUpgrade)
+}
+
+const sorobanRPCInitTime = 20 * time.Second
+const sorobanRPCHealthCheckInterval = time.Second
+
+// Wait for SorobanRPC to be up
+func (i *Test) waitForSorobanRPC() {
+	i.t.Log("Waiting for Soroban RPC to be up...")
+
+	start := time.Now()
+	for time.Since(start) < sorobanRPCInitTime {
+		ctx, cancel := context.WithTimeout(context.Background(), sorobanRPCHealthCheckInterval)
+		// TODO: soroban-tools should be exporting a proper Go client
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		callTime := time.Now()
+		_, err := sorobanRPCClient.Call(ctx, "getHealth", nil)
+		cancel()
+		if err != nil {
+			i.t.Logf("SorobanRPC is unhealthy: %v", err)
+			// sleep up to a second between consecutive calls.
+			if durationSince := time.Since(callTime); durationSince < sorobanRPCHealthCheckInterval {
+				time.Sleep(sorobanRPCHealthCheckInterval - durationSince)
+			}
+			continue
+		}
+		i.t.Log("SorobanRPC is up.")
+		return
+	}
+
+	i.t.Fatalf("SorobanRPC unhealthy after %v", time.Since(start))
+}
+
+type RPCSimulateHostFunctionResult struct {
+	Auth []string `json:"auth"`
+	XDR  string   `json:"xdr"`
+}
+
+type RPCSimulateTxResponse struct {
+	Error           string                          `json:"error,omitempty"`
+	TransactionData string                          `json:"transactionData"`
+	Results         []RPCSimulateHostFunctionResult `json:"results"`
+	MinResourceFee  int64                           `json:"minResourceFee,string"`
+}
+
+func (i *Test) PreflightHostFunctions(
+	sourceAccount txnbuild.Account, function txnbuild.InvokeHostFunction,
+) (txnbuild.InvokeHostFunction, int64) {
+	if function.HostFunction.Type == xdr.HostFunctionTypeHostFunctionTypeInvokeContract {
+		fmt.Printf("Preflighting function call to: %s\n", string(function.HostFunction.InvokeContract.FunctionName))
+	}
+	result, transactionData := i.simulateTransaction(sourceAccount, &function)
+	function.Ext = xdr.TransactionExt{
+		V:           1,
+		SorobanData: &transactionData,
+	}
+	var funAuth []xdr.SorobanAuthorizationEntry
+	for _, res := range result.Results {
+		var decodedRes xdr.ScVal
+		err := xdr.SafeUnmarshalBase64(res.XDR, &decodedRes)
+		assert.NoError(i.t, err)
+		fmt.Printf("Result:\n\n%# +v\n\n", pretty.Formatter(decodedRes))
+		for _, authBase64 := range res.Auth {
+			var authEntry xdr.SorobanAuthorizationEntry
+			err = xdr.SafeUnmarshalBase64(authBase64, &authEntry)
+			assert.NoError(i.t, err)
+			fmt.Printf("Auth:\n\n%# +v\n\n", pretty.Formatter(authEntry))
+			funAuth = append(funAuth, authEntry)
+		}
+	}
+	function.Auth = funAuth
+
+	return function, result.MinResourceFee
+}
+
+func (i *Test) simulateTransaction(
+	sourceAccount txnbuild.Account, op txnbuild.Operation,
+) (RPCSimulateTxResponse, xdr.SorobanTransactionData) {
+	// Before preflighting, make sure soroban-rpc is in sync with Horizon
+	root, err := i.horizonClient.Root()
+	require.NoError(i.t, err)
+	i.syncWithSorobanRPC(uint32(root.HorizonSequence))
+
+	// TODO: soroban-tools should be exporting a proper Go client
+	ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+	sorobanRPCClient := jrpc2.NewClient(ch, nil)
+	txParams := GetBaseTransactionParamsWithFee(sourceAccount, txnbuild.MinBaseFee, op)
+	txParams.IncrementSequenceNum = false
+	tx, err := txnbuild.NewTransaction(txParams)
+	assert.NoError(i.t, err)
+	base64, err := tx.Base64()
+	assert.NoError(i.t, err)
+	result := RPCSimulateTxResponse{}
+	fmt.Printf("Preflight TX:\n\n%v \n\n", base64)
+	err = sorobanRPCClient.CallResult(context.Background(), "simulateTransaction", struct {
+		Transaction string `json:"transaction"`
+	}{base64}, &result)
+	assert.NoError(i.t, err)
+	assert.Empty(i.t, result.Error)
+	var transactionData xdr.SorobanTransactionData
+	err = xdr.SafeUnmarshalBase64(result.TransactionData, &transactionData)
+	assert.NoError(i.t, err)
+	fmt.Printf("Transaction Data:\n\n%# +v\n\n", pretty.Formatter(transactionData))
+	return result, transactionData
+}
+func (i *Test) syncWithSorobanRPC(ledgerToWaitFor uint32) {
+	for j := 0; j < 20; j++ {
+		result := struct {
+			Sequence uint32 `json:"sequence"`
+		}{}
+		ch := jhttp.NewChannel("http://localhost:"+strconv.Itoa(sorobanRPCPort), nil)
+		sorobanRPCClient := jrpc2.NewClient(ch, nil)
+		err := sorobanRPCClient.CallResult(context.Background(), "getLatestLedger", nil, &result)
+		assert.NoError(i.t, err)
+		if result.Sequence >= ledgerToWaitFor {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	i.t.Fatal("Time out waiting for soroban-rpc to sync")
+}
+
+func (i *Test) PreflightBumpFootprintExpiration(
+	sourceAccount txnbuild.Account, bumpFootprint txnbuild.BumpFootprintExpiration,
+) (txnbuild.BumpFootprintExpiration, int64) {
+	result, transactionData := i.simulateTransaction(sourceAccount, &bumpFootprint)
+	bumpFootprint.Ext = xdr.TransactionExt{
+		V:           1,
+		SorobanData: &transactionData,
+	}
+
+	return bumpFootprint, result.MinResourceFee
 }
 
 // UpgradeProtocol arms Core with upgrade and blocks until protocol is upgraded.
@@ -539,17 +727,22 @@ func (i *Test) WaitForHorizon() {
 	i.t.Fatal("Horizon not ingesting...")
 }
 
+// CoreClient returns a stellar core client connected to the Stellar Core instance.
+func (i *Test) CoreClient() *stellarcore.Client {
+	return i.coreClient
+}
+
 // Client returns horizon.Client connected to started Horizon instance.
 func (i *Test) Client() *sdk.Client {
 	return i.horizonClient
 }
 
-// Client returns horizon.Client connected to started Horizon instance.
+// AdminClient returns horizon.Client connected to started Horizon instance.
 func (i *Test) AdminClient() *sdk.AdminClient {
 	return i.horizonAdminClient
 }
 
-// Horizon returns the horizon.App instance for the current integration test
+// HorizonWeb returns the horizon.App instance for the current integration test
 func (i *Test) HorizonWeb() *horizon.App {
 	return i.webNode
 }
@@ -667,6 +860,12 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 	return pairs, accounts
 }
 
+// CreateAccount creates a new account via the master account.
+func (i *Test) CreateAccount(initialBalance string) (*keypair.Full, txnbuild.Account) {
+	kps, accts := i.CreateAccounts(1, initialBalance)
+	return kps[0], accts[0]
+}
+
 // Panics on any error establishing a trustline.
 func (i *Test) MustEstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
@@ -744,7 +943,13 @@ func (i *Test) MustGetAccount(source *keypair.Full) proto.Account {
 func (i *Test) MustSubmitOperations(
 	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
 ) proto.Transaction {
-	tx, err := i.SubmitOperations(source, signer, ops...)
+	return i.MustSubmitOperationsWithFee(source, signer, txnbuild.MinBaseFee, ops...)
+}
+
+func (i *Test) MustSubmitOperationsWithFee(
+	source txnbuild.Account, signer *keypair.Full, fee int64, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitOperationsWithFee(source, signer, fee, ops...)
 	panicIf(err)
 	return tx
 }
@@ -758,7 +963,19 @@ func (i *Test) SubmitOperations(
 func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
-	tx, err := i.CreateSignedTransactionFromOps(source, signers, ops...)
+	return i.SubmitMultiSigOperationsWithFee(source, signers, txnbuild.MinBaseFee, ops...)
+}
+
+func (i *Test) SubmitOperationsWithFee(
+	source txnbuild.Account, signer *keypair.Full, fee int64, ops ...txnbuild.Operation,
+) (proto.Transaction, error) {
+	return i.SubmitMultiSigOperationsWithFee(source, []*keypair.Full{signer}, fee, ops...)
+}
+
+func (i *Test) SubmitMultiSigOperationsWithFee(
+	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
+) (proto.Transaction, error) {
+	tx, err := i.CreateSignedTransactionFromOpsWithFee(source, signers, fee, ops...)
 	if err != nil {
 		return proto.Transaction{}, err
 	}
@@ -824,15 +1041,31 @@ func (i *Test) CreateSignedTransaction(signers []*keypair.Full, txParams txnbuil
 func (i *Test) CreateSignedTransactionFromOps(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (*txnbuild.Transaction, error) {
-	txParams := txnbuild.TransactionParams{
+	return i.CreateSignedTransactionFromOpsWithFee(source, signers, txnbuild.MinBaseFee, ops...)
+}
+
+func (i *Test) CreateSignedTransactionFromOpsWithFee(
+	source txnbuild.Account, signers []*keypair.Full, fee int64, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
+	txParams := GetBaseTransactionParamsWithFee(source, fee, ops...)
+	return i.CreateSignedTransaction(signers, txParams)
+}
+
+func GetBaseTransactionParamsWithFee(source txnbuild.Account, fee int64, ops ...txnbuild.Operation) txnbuild.TransactionParams {
+	return txnbuild.TransactionParams{
 		SourceAccount:        source,
 		Operations:           ops,
-		BaseFee:              txnbuild.MinBaseFee,
+		BaseFee:              fee,
 		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewInfiniteTimeout()},
 		IncrementSequenceNum: true,
 	}
+}
 
-	return i.CreateSignedTransaction(signers, txParams)
+func (i *Test) CreateUnsignedTransaction(
+	source txnbuild.Account, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
+	txParams := GetBaseTransactionParamsWithFee(source, txnbuild.MinBaseFee, ops...)
+	return txnbuild.NewTransaction(txParams)
 }
 
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
@@ -858,7 +1091,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 
 	var txResult xdr.TransactionResult
 	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
-	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
+	assert.NoErrorf(t, err, "Unmarshaling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
 		"Transaction did not succeed: %d", txResult.Result.Code)
 }

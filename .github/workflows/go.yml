@@ -82,7 +82,7 @@ jobs:
           --health-retries 5
         ports:
         - 6379:6379
-    env: 
+    env:
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres

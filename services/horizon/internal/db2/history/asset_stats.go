@@ -21,6 +21,7 @@ func assetStatToMap(assetStat ExpAssetStat) map[string]interface{} {
 		"balances":     assetStat.Balances,
 		"amount":       assetStat.Amount,
 		"num_accounts": assetStat.NumAccounts,
+		"contract_id":  assetStat.ContractID,
 	}
 }
 
@@ -104,6 +105,25 @@ func (q *Q) GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode
 	var assetStat ExpAssetStat
 	err := q.Get(ctx, &assetStat, sql)
 	return assetStat, err
+}
+
+func (q *Q) GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error) {
+	sql := selectAssetStats.Where("contract_id = ?", contractID[:])
+	var assetStat ExpAssetStat
+	err := q.Get(ctx, &assetStat, sql)
+	return assetStat, err
+}
+
+func (q *Q) GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error) {
+	contractIDBytes := make([][]byte, len(contractIDs))
+	for i := range contractIDs {
+		contractIDBytes[i] = contractIDs[i][:]
+	}
+	sql := selectAssetStats.Where(map[string]interface{}{"contract_id": contractIDBytes})
+
+	var assetStats []ExpAssetStat
+	err := q.Select(ctx, &assetStats, sql)
+	return assetStats, err
 }
 
 func parseAssetStatsCursor(cursor string) (string, string, error) {

@@ -6,9 +6,16 @@ xdr/Stellar-ledger-entries.x \
 xdr/Stellar-ledger.x \
 xdr/Stellar-overlay.x \
 xdr/Stellar-transaction.x \
-xdr/Stellar-types.x
+xdr/Stellar-types.x \
+xdr/Stellar-contract-env-meta.x \
+xdr/Stellar-contract-meta.x \
+xdr/Stellar-contract-spec.x \
+xdr/Stellar-contract.x \
+xdr/Stellar-internal.x \
+xdr/Stellar-contract-config-setting.x
 
-XDRGEN_COMMIT=9fccddf09dc8888d3b48be61404f0ab60149619e
+XDRGEN_COMMIT=80e38ef2a96489f6b501d4db3a350406e5aa3bab
+XDRNEXT_COMMIT=1894f0909caa0adb00437564f8e01ec33a5b5ed2
 
 .PHONY: xdr xdr-clean xdr-update
 
@@ -38,17 +45,20 @@ gxdr/xdr_generated.go: $(XDRS)
 	gofmt -s -w $@
 
 xdr/%.x:
-	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-core/master/src/protocol-curr/$@
+	printf "%s" ${XDRNEXT_COMMIT} > xdr/xdr_commit_generated.txt
+	curl -Lsf -o $@ https://raw.githubusercontent.com/stellar/stellar-xdr/$(XDRNEXT_COMMIT)/$(@F)
 
 xdr/xdr_generated.go: $(XDRS)
 	docker run -it --rm -v $$PWD:/wd -w /wd ruby /bin/bash -c '\
-		gem install specific_install -v 0.3.7 && \
+		gem install specific_install -v 0.3.8 && \
 		gem specific_install https://github.com/stellar/xdrgen.git -b $(XDRGEN_COMMIT) && \
 		xdrgen \
 			--language go \
 			--namespace xdr \
 			--output xdr/ \
 			$(XDRS)'
+	# No, you're not reading the following wrong. Apperantly, running gofmt twice required to complete it's formatting.
+	gofmt -s -w $@
 	gofmt -s -w $@
 
 xdr: gxdr/xdr_generated.go xdr/xdr_generated.go

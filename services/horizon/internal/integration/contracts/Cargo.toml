@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "sac_test",
+    "increment",
+    "add_u64",
+]
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+[workspace.dependencies.soroban-sdk]
+# TODO: Does a new version need to be released to update to 8a7d2c3c8c5bc1664ab38f977ff947cc2a26d694
+version = "0.9.1"
+git = "https://github.com/stellar/rs-soroban-sdk"
+rev = "df9334d4e3a1a2c2e0034cfabb643972d4d7f717"

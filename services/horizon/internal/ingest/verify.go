@@ -29,7 +29,7 @@ const assetStatsBatchSize = 500
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 16
+const stateVerifierExpectedIngestionVersion = 17
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -62,7 +62,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	historyQ := s.historyQ.CloneIngestionQ()
 	defer historyQ.Rollback()
-	err := historyQ.BeginTx(&sql.TxOptions{
+	err := historyQ.BeginTx(s.ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
@@ -168,18 +168,28 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 	defer stateReader.Close()
 
-	verifier := verify.NewStateVerifier(stateReader, nil)
-
-	assetStats := processors.AssetStatSet{}
-	total := int64(0)
-	for {
-		var keys []xdr.LedgerKey
-		keys, err = verifier.GetLedgerKeys(verifyBatchSize)
-		if err != nil {
-			return errors.Wrap(err, "verifier.GetLedgerKeys")
+	verifier := verify.NewStateVerifier(stateReader, func(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
+		entryType := entry.Data.Type
+		// Won't be persisting protocol 20 ContractData ledger entries (except for Stellar Asset Contract
+		// ledger entries) to the history db, therefore must not allow it
+		// to be counted in history state-verifier accumulators.
+		if entryType == xdr.LedgerEntryTypeConfigSetting || entryType == xdr.LedgerEntryTypeContractCode {
+			return true, entry
 		}
 
-		if len(keys) == 0 {
+		return false, entry
+	})
+
+	assetStats := processors.NewAssetStatSet(s.config.NetworkPassphrase)
+	total := int64(0)
+	for {
+		var entries []xdr.LedgerEntry
+		entries, err = verifier.GetLedgerEntries(verifyBatchSize)
+		if err != nil {
+			return errors.Wrap(err, "verifier.GetLedgerEntries")
+		}
+
+		if len(entries) == 0 {
 			break
 		}
 
@@ -189,28 +199,52 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
 		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
 		lPools := make([]xdr.PoolId, 0, verifyBatchSize)
-		for _, key := range keys {
-			switch key.Type {
+		for _, entry := range entries {
+			switch entry.Data.Type {
 			case xdr.LedgerEntryTypeAccount:
-				accounts = append(accounts, key.Account.AccountId.Address())
+				accounts = append(accounts, entry.Data.MustAccount().AccountId.Address())
 				totalByType["accounts"]++
 			case xdr.LedgerEntryTypeData:
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "entry.LedgerKey")
+				}
 				data = append(data, *key.Data)
 				totalByType["data"]++
 			case xdr.LedgerEntryTypeOffer:
-				offers = append(offers, int64(key.Offer.OfferId))
+				offers = append(offers, int64(entry.Data.MustOffer().OfferId))
 				totalByType["offers"]++
 			case xdr.LedgerEntryTypeTrustline:
-				trustLines = append(trustLines, *key.TrustLine)
+				key, keyErr := entry.LedgerKey()
+				if keyErr != nil {
+					return errors.Wrap(keyErr, "TrustlineEntry.LedgerKey")
+				}
+				trustLines = append(trustLines, key.MustTrustLine())
 				totalByType["trust_lines"]++
 			case xdr.LedgerEntryTypeClaimableBalance:
-				cBalances = append(cBalances, key.ClaimableBalance.BalanceId)
+				cBalances = append(cBalances, entry.Data.MustClaimableBalance().BalanceId)
 				totalByType["claimable_balances"]++
 			case xdr.LedgerEntryTypeLiquidityPool:
-				lPools = append(lPools, key.LiquidityPool.LiquidityPoolId)
+				lPools = append(lPools, entry.Data.MustLiquidityPool().LiquidityPoolId)
 				totalByType["liquidity_pools"]++
+			case xdr.LedgerEntryTypeContractData:
+				// contract data is a special case.
+				// we don't store contract data entries in the db,
+				// however, we ingest contract data entries for asset stats.
+
+				if err = verifier.Write(entry); err != nil {
+					return err
+				}
+				err = assetStats.AddContractData(ingest.Change{
+					Type: xdr.LedgerEntryTypeContractData,
+					Post: &entry,
+				})
+				if err != nil {
+					return errors.Wrap(err, "Error running assetStats.AddContractData")
+				}
+				totalByType["contract_data"]++
 			default:
-				return errors.New("GetLedgerKeys return unexpected type")
+				return errors.New("GetLedgerEntries return unexpected type")
 			}
 		}
 
@@ -244,7 +278,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			return errors.Wrap(err, "addLiquidityPoolsToStateVerifier failed")
 		}
 
-		total += int64(len(keys))
+		total += int64(len(entries))
 		localLog.WithField("total", total).Info("Batch added to StateVerifier")
 	}
 
@@ -280,7 +314,10 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running historyQ.CountLiquidityPools")
 	}
 
-	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances + countLiquidityPools)
+	err = verifier.Verify(
+		countAccounts + countData + countOffers + countTrustLines + countClaimableBalances +
+			countLiquidityPools + int(totalByType["contract_data"]),
+	)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
@@ -301,6 +338,17 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 		Limit: assetStatsBatchSize,
 	}
 
+	assetStats, err := set.AllFromSnapshot()
+	if err != nil {
+		return errors.Wrap(err, "could not fetch asset stats from asset stat set")
+	}
+	all := map[string]history.ExpAssetStat{}
+	for _, assetStat := range assetStats {
+		// no need to handle the native asset because asset stats only
+		// include non-native assets.
+		all[assetStat.AssetCode+":"+assetStat.AssetIssuer] = assetStat
+	}
+
 	for {
 		assetStats, err := q.GetAssetStats(ctx, "", "", page)
 		if err != nil {
@@ -311,8 +359,9 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 		}
 
 		for _, assetStat := range assetStats {
-			fromSet, removed := set.Remove(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
-			if !removed {
+			key := assetStat.AssetCode + ":" + assetStat.AssetIssuer
+			fromSet, ok := all[key]
+			if !ok {
 				return ingest.NewStateError(
 					fmt.Errorf(
 						"db contains asset stat with code %s issuer %s which is missing from HAS",
@@ -320,8 +369,9 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 					),
 				)
 			}
+			delete(all, key)
 
-			if fromSet != assetStat {
+			if !fromSet.Equals(assetStat) {
 				return ingest.NewStateError(
 					fmt.Errorf(
 						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",
@@ -334,11 +384,11 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 		page.Cursor = assetStats[len(assetStats)-1].PagingToken()
 	}
 
-	if len(set) > 0 {
+	if len(all) > 0 {
 		return ingest.NewStateError(
 			fmt.Errorf(
 				"HAS contains %d more asset stats than db",
-				len(set),
+				len(all),
 			),
 		)
 	}
