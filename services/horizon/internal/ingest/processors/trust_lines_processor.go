@@ -56,7 +56,7 @@ func trustLineLedgerKey(trustLineEntry xdr.TrustLineEntry) (string, error) {
 	}
 	ledgerKeyString, err = ledgerKey.MarshalBinaryBase64()
 	if err != nil {
-		return "", errors.Wrap(err, "Error marshalling ledger key")
+		return "", errors.Wrap(err, "Error marshaling ledger key")
 	}
 	return ledgerKeyString, nil
 }

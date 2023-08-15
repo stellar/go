@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stellar/go/xdr"
 )
@@ -37,6 +38,18 @@ type StatsChangeProcessorResults struct {
 	LiquidityPoolsCreated int64
 	LiquidityPoolsUpdated int64
 	LiquidityPoolsRemoved int64
+
+	ContractDataCreated int64
+	ContractDataUpdated int64
+	ContractDataRemoved int64
+
+	ContractCodeCreated int64
+	ContractCodeUpdated int64
+	ContractCodeRemoved int64
+
+	ConfigSettingsCreated int64
+	ConfigSettingsUpdated int64
+	ConfigSettingsRemoved int64
 }
 
 func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change) error {
@@ -95,6 +108,35 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			p.results.LiquidityPoolsRemoved++
 		}
+	case xdr.LedgerEntryTypeContractData:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.ContractDataCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.ContractDataUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.ContractDataRemoved++
+		}
+	case xdr.LedgerEntryTypeContractCode:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.ContractCodeCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.ContractCodeUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.ContractCodeRemoved++
+		}
+	case xdr.LedgerEntryTypeConfigSetting:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.ConfigSettingsCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.ConfigSettingsUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.ConfigSettingsRemoved++
+		}
+	default:
+		return fmt.Errorf("unsupported ledger entry type: %s", change.Type.String())
 	}
 
 	return nil

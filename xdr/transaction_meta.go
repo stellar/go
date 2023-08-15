@@ -10,6 +10,8 @@ func (transactionMeta *TransactionMeta) OperationsMeta() []OperationMeta {
 		return transactionMeta.MustV1().Operations
 	case 2:
 		return transactionMeta.MustV2().Operations
+	case 3:
+		return transactionMeta.MustV3().Operations
 	default:
 		panic("Unsupported TransactionMeta version")
 	}

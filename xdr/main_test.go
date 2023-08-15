@@ -7,9 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stellar/go/gxdr"
+	"github.com/stellar/go/randxdr"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ExampleUnmarshal shows the lowest-level process to decode a base64
@@ -184,10 +188,40 @@ func TestLedgerKeyBinaryCompress(t *testing.T) {
 			},
 			expectedOut: []byte{0x5, 0xca, 0xfe, 0xba, 0xbe, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 		},
+		{
+			key: LedgerKey{
+				Type: LedgerEntryTypeConfigSetting,
+				ConfigSetting: &LedgerKeyConfigSetting{
+					ConfigSettingId: ConfigSettingIdConfigSettingContractMaxSizeBytes,
+				},
+			},
+			expectedOut: []byte{0x8, 0x0, 0x0, 0x0, 0x0},
+		},
 	} {
 		b, err := e.LedgerKeyUnsafeMarshalBinaryCompress(tc.key)
 		assert.NoError(t, err)
 		assert.Equal(t, tc.expectedOut, b)
 	}
+}
 
+func TestLedgerKeyBinaryCompressCoverage(t *testing.T) {
+	e := NewEncodingBuffer()
+	gen := randxdr.NewGenerator()
+	for i := 0; i < 10000; i++ {
+		ledgerKey := LedgerKey{}
+
+		shape := &gxdr.LedgerKey{}
+		gen.Next(
+			shape,
+			[]randxdr.Preset{},
+		)
+		assert.NoError(t, gxdr.Convert(shape, &ledgerKey))
+
+		_, err := e.LedgerKeyUnsafeMarshalBinaryCompress(ledgerKey)
+		assert.NoError(t, err)
+	}
+}
+
+func TestCommitHashLength(t *testing.T) {
+	require.Equal(t, 40, len(CommitHash))
 }

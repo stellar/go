@@ -56,7 +56,7 @@ func txResultFromHistory(tx history.Transaction) (history.Transaction, error) {
 // because the first query occurs when the tx is not yet ingested and the second query occurs when the tx
 // is ingested.
 func checkTxAlreadyExists(ctx context.Context, db HorizonDB, hash, sourceAddress string) (history.Transaction, uint64, error) {
-	err := db.BeginTx(&sql.TxOptions{
+	err := db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})

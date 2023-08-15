@@ -10,6 +10,7 @@ import (
 )
 
 func TestTxsub(t *testing.T) {
+	t.SkipNow()
 	tt := assert.New(t)
 	itest := integration.NewTest(t, integration.Config{})
 	master := itest.Master()

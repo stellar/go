@@ -357,11 +357,18 @@ LoopBucketEntry:
 
 				// Generate a key
 				var key xdr.LedgerKey
+				var err error
 
 				switch entry.Type {
 				case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 					liveEntry := entry.MustLiveEntry()
-					key = liveEntry.LedgerKey()
+					key, err = liveEntry.LedgerKey()
+					if err != nil {
+						r.readChan <- r.error(
+							errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()),
+						)
+						return false
+					}
 				case xdr.BucketEntryTypeDeadentry:
 					key = entry.MustDeadEntry()
 				default:
@@ -396,6 +403,7 @@ LoopBucketEntry:
 		n++
 
 		var key xdr.LedgerKey
+		var err error
 
 		switch entry.Type {
 		case xdr.BucketEntryTypeMetaentry:
@@ -414,7 +422,13 @@ LoopBucketEntry:
 			continue LoopBucketEntry
 		case xdr.BucketEntryTypeLiveentry, xdr.BucketEntryTypeInitentry:
 			liveEntry := entry.MustLiveEntry()
-			key = liveEntry.LedgerKey()
+			key, err = liveEntry.LedgerKey()
+			if err != nil {
+				r.readChan <- r.error(
+					errors.Wrapf(err, "Error generating ledger key for XDR record %d of hash '%s'", n, hash.String()),
+				)
+				return false
+			}
 		case xdr.BucketEntryTypeDeadentry:
 			key = entry.MustDeadEntry()
 		default:
@@ -523,8 +537,12 @@ func (r *CheckpointChangeReader) Read() (Change, error) {
 	if result.e != nil {
 		return Change{}, errors.Wrap(result.e, "Error while reading from buckets")
 	}
+	entryType, err := result.entryChange.EntryType()
+	if err != nil {
+		return Change{}, errors.Wrap(err, "Error getting entry type")
+	}
 	return Change{
-		Type: result.entryChange.EntryType(),
+		Type: entryType,
 		Post: result.entryChange.State,
 	}, nil
 }

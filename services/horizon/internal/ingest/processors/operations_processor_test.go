@@ -4,7 +4,9 @@ package processors
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"testing"
 
 	"github.com/guregu/null"
@@ -12,7 +14,10 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/support/contractevents"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -40,6 +45,7 @@ func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
 	s.processor = NewOperationProcessor(
 		s.mockQ,
 		56,
+		"test network",
 	)
 }
 
@@ -82,11 +88,309 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 				detailsJSON,
 				acID.Address(),
 				muxedAccount,
+				mock.Anything,
 			).Return(nil).Once()
 		}
 	}
 
 	return nil
+}
+
+func (s *OperationsProcessorTestSuiteLedger) TestOperationTypeInvokeHostFunctionDetails() {
+	sourceAddress := "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"
+	source := xdr.MustMuxedAddress(sourceAddress)
+
+	contractParamVal0 := xdr.ScAddress{
+		Type:       xdr.ScAddressTypeScAddressTypeContract,
+		ContractId: &xdr.Hash{0x1, 0x2},
+	}
+	contractParamVal1 := xdr.ScSymbol("func1")
+	contractParamVal2 := xdr.Int32(-5)
+	contractParamVal3 := xdr.Uint32(6)
+	contractParamVal4 := xdr.Uint64(3)
+	contractParamVal5 := xdr.ScBytes([]byte{0, 1, 2})
+	contractParamVal6 := true
+
+	accountId := xdr.MustAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+	wasm := []byte("Some contract code")
+
+	tx := ingest.LedgerTransaction{
+		UnsafeMeta: xdr.TransactionMeta{
+			V:  2,
+			V2: &xdr.TransactionMetaV2{},
+		},
+	}
+
+	s.T().Run("InvokeContract", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeContract: &xdr.InvokeContractArgs{
+								ContractAddress: contractParamVal0,
+								FunctionName:    contractParamVal1,
+								Args: xdr.ScVec{
+									{
+										Type: xdr.ScValTypeScvI32,
+										I32:  &contractParamVal2,
+									},
+									{
+										Type: xdr.ScValTypeScvU32,
+										U32:  &contractParamVal3,
+									},
+									{
+										Type: xdr.ScValTypeScvU64,
+										U64:  &contractParamVal4,
+									},
+									{
+										Type:  xdr.ScValTypeScvBytes,
+										Bytes: &contractParamVal5,
+									},
+									{
+										Type: xdr.ScValTypeScvBool,
+										B:    &contractParamVal6,
+									},
+									{
+										// invalid ScVal
+										Type: 5555,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+
+		args := []xdr.ScVal{
+			{
+				Type:    xdr.ScValTypeScvAddress,
+				Address: &contractParamVal0,
+			},
+			{
+				Type: xdr.ScValTypeScvSymbol,
+				Sym:  &contractParamVal1,
+			},
+		}
+		args = append(args, wrapper.operation.Body.InvokeHostFunctionOp.HostFunction.InvokeContract.Args...)
+		detailsFunctionParams := details["parameters"].([]map[string]string)
+		s.Assert().Equal(details["function"], "HostFunctionTypeHostFunctionTypeInvokeContract")
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 0, "Address", args[0])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 1, "Sym", args[1])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 2, "I32", args[2])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 3, "U32", args[3])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 4, "U64", args[4])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 5, "Bytes", args[5])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 6, "B", args[6])
+		s.assertInvokeHostFunctionParameter(detailsFunctionParams, 7, "n/a", args[7])
+	})
+
+	s.T().Run("CreateContractFromAsset", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+							CreateContract: &xdr.CreateContractArgs{
+								ContractIdPreimage: xdr.ContractIdPreimage{
+									Type: xdr.ContractIdPreimageTypeContractIdPreimageFromAsset,
+									FromAsset: &xdr.Asset{
+										Type: 1,
+										AlphaNum4: &xdr.AlphaNum4{
+											AssetCode: xdr.AssetCode4{65, 82, 83, 0},
+											Issuer:    xdr.MustAddress("GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF"),
+										},
+									},
+								},
+								Executable: xdr.ContractExecutable{
+									Type: xdr.ContractExecutableTypeContractExecutableToken,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+
+		s.Assert().Equal(details["function"], "HostFunctionTypeHostFunctionTypeCreateContract")
+		s.Assert().Equal(details["from"], "asset")
+		s.Assert().Equal(details["asset"], "ARS:GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF")
+	})
+
+	s.T().Run("CreateContractFromAddress", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeCreateContract,
+							CreateContract: &xdr.CreateContractArgs{
+								ContractIdPreimage: xdr.ContractIdPreimage{
+									Type: xdr.ContractIdPreimageTypeContractIdPreimageFromAddress,
+									FromAddress: &xdr.ContractIdPreimageFromAddress{
+										Address: xdr.ScAddress{
+											Type:      xdr.ScAddressTypeScAddressTypeAccount,
+											AccountId: &accountId,
+										},
+										Salt: xdr.Uint256{1},
+									},
+								},
+								Executable: xdr.ContractExecutable{},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+
+		s.Assert().Equal(details["function"], "HostFunctionTypeHostFunctionTypeCreateContract")
+		s.Assert().Equal(details["from"], "address")
+		s.Assert().Equal(details["address"], "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
+		s.Assert().Equal(details["salt"], xdr.Uint256{1}.String())
+	})
+
+	s.T().Run("UploadContractWasm", func(t *testing.T) {
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
+							Wasm: &wasm,
+						},
+					},
+				},
+			},
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+		s.Assert().Equal(details["function"], "HostFunctionTypeHostFunctionTypeUploadContractWasm")
+	})
+
+	s.T().Run("InvokeContractWithSACEventsInDetails", func(t *testing.T) {
+		randomIssuer := keypair.MustRandom()
+		randomAsset := xdr.MustNewCreditAsset("TESTING", randomIssuer.Address())
+		passphrase := "passphrase"
+		randomAccount := keypair.MustRandom().Address()
+		contractId := [32]byte{}
+		zeroContractStrKey, err := strkey.Encode(strkey.VersionByteContract, contractId[:])
+		s.Assert().NoError(err)
+
+		transferContractEvent := contractevents.GenerateEvent(contractevents.EventTypeTransfer, randomAccount, zeroContractStrKey, "", randomAsset, big.NewInt(10000000), passphrase)
+		burnContractEvent := contractevents.GenerateEvent(contractevents.EventTypeBurn, zeroContractStrKey, "", "", randomAsset, big.NewInt(10000000), passphrase)
+		mintContractEvent := contractevents.GenerateEvent(contractevents.EventTypeMint, "", zeroContractStrKey, randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+		clawbackContractEvent := contractevents.GenerateEvent(contractevents.EventTypeClawback, zeroContractStrKey, "", randomAccount, randomAsset, big.NewInt(10000000), passphrase)
+
+		tx = ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V: 3,
+				V3: &xdr.TransactionMetaV3{
+					SorobanMeta: &xdr.SorobanTransactionMeta{
+						Events: []xdr.ContractEvent{
+							transferContractEvent,
+							burnContractEvent,
+							mintContractEvent,
+							clawbackContractEvent,
+						},
+					},
+				},
+			},
+		}
+		wrapper := transactionOperationWrapper{
+			transaction: tx,
+			operation: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeInvokeHostFunction,
+					InvokeHostFunctionOp: &xdr.InvokeHostFunctionOp{
+						HostFunction: xdr.HostFunction{
+							Type: xdr.HostFunctionTypeHostFunctionTypeInvokeContract,
+							InvokeContract: &xdr.InvokeContractArgs{
+								ContractAddress: xdr.ScAddress{
+									Type:       xdr.ScAddressTypeScAddressTypeContract,
+									ContractId: &xdr.Hash{0x1, 0x2},
+								},
+								FunctionName: "foo",
+								Args:         xdr.ScVec{},
+							},
+						},
+					},
+				},
+			},
+			network: passphrase,
+		}
+
+		details, err := wrapper.Details()
+		s.Assert().NoError(err)
+		s.Assert().Len(details["asset_balance_changes"], 4)
+
+		found := 0
+		for _, assetBalanceChanged := range details["asset_balance_changes"].([]map[string]interface{}) {
+			if assetBalanceChanged["type"] == "transfer" {
+				s.Assert().Equal(assetBalanceChanged["from"], randomAccount)
+				s.Assert().Equal(assetBalanceChanged["to"], zeroContractStrKey)
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+
+			if assetBalanceChanged["type"] == "burn" {
+				s.Assert().Equal(assetBalanceChanged["from"], zeroContractStrKey)
+				s.Assert().NotContains(assetBalanceChanged, "to")
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+
+			if assetBalanceChanged["type"] == "mint" {
+				s.Assert().NotContains(assetBalanceChanged, "from")
+				s.Assert().Equal(assetBalanceChanged["to"], zeroContractStrKey)
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+
+			if assetBalanceChanged["type"] == "clawback" {
+				s.Assert().Equal(assetBalanceChanged["from"], zeroContractStrKey)
+				s.Assert().NotContains(assetBalanceChanged, "to")
+				s.Assert().Equal(assetBalanceChanged["amount"], "1.0000000")
+				found++
+			}
+		}
+		s.Assert().Equal(found, 4, "should have one balance changed record for each of mint, burn, clawback, transfer")
+	})
+}
+
+func (s *OperationsProcessorTestSuiteLedger) assertInvokeHostFunctionParameter(parameters []map[string]string, paramPosition int, expectedType string, expectedVal xdr.ScVal) {
+	serializedParam := parameters[paramPosition]
+	s.Assert().Equal(serializedParam["type"], expectedType)
+	if expectedSerializedXdr, err := expectedVal.MarshalBinary(); err == nil {
+		s.Assert().Equal(serializedParam["value"], base64.StdEncoding.EncodeToString(expectedSerializedXdr))
+	} else {
+		s.Assert().Equal(serializedParam["value"], "n/a")
+	}
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
@@ -137,6 +441,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 	s.mockBatchInsertBuilder.
 		On(
 			"Add", s.ctx,
+			mock.Anything,
 			mock.Anything,
 			mock.Anything,
 			mock.Anything,
