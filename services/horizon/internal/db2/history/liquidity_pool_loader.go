@@ -3,10 +3,9 @@ package history
 import (
 	"context"
 	"database/sql/driver"
-	"fmt"
 	"sort"
 
-	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -29,116 +28,51 @@ func (a FutureLiquidityPoolID) Value() (driver.Value, error) {
 // the LiquidityPoolLoader will insert into the history_liquidity_pools table to
 // establish a mapping.
 type LiquidityPoolLoader struct {
-	sealed bool
-	set    map[string]interface{}
-	ids    map[string]int64
+	loader[string, FutureLiquidityPoolID]
 }
 
 // NewLiquidityPoolLoader will construct a new LiquidityPoolLoader instance.
 func NewLiquidityPoolLoader() *LiquidityPoolLoader {
-	return &LiquidityPoolLoader{
-		sealed: false,
-		set:    map[string]interface{}{},
-		ids:    map[string]int64{},
+	l := &LiquidityPoolLoader{
+		loader: loader[string, FutureLiquidityPoolID]{
+			sealed: false,
+			set:    set.Set[string]{},
+			ids:    map[string]int64{},
+			sort:   sort.Strings,
+			insert: func(ctx context.Context, q *Q, keys []string) error {
+				return bulkInsert(
+					ctx,
+					q,
+					"history_liquidity_pools",
+					[]string{"liquidity_pool_id"},
+					[]bulkInsertField{
+						{
+							name:    "liquidity_pool_id",
+							dbType:  "text",
+							objects: keys,
+						},
+					},
+				)
+			},
+		},
 	}
-}
-
-// GetFuture registers the given liquidity pool into the loader and
-// returns a FutureLiquidityPoolID which will hold the internal history id for
-// the liquidity pool after Exec() is called.
-func (a *LiquidityPoolLoader) GetFuture(id string) FutureLiquidityPoolID {
-	if a.sealed {
-		panic(errSealed)
-	}
-
-	a.set[id] = nil
-	return FutureLiquidityPoolID{
-		id:     id,
-		loader: a,
-	}
-}
-
-// GetNow returns the internal history id for the given liquidity pool.
-// GetNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any GetNow
-// call can succeed.
-func (a *LiquidityPoolLoader) GetNow(id string) int64 {
-	if id, ok := a.ids[id]; !ok {
-		panic(fmt.Errorf("id %v not present", id))
-	} else {
-		return id
-	}
-}
-
-func (a *LiquidityPoolLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
-	for i := 0; i < len(ids); i += loaderLookupBatchSize {
-		end := i + loaderLookupBatchSize
-		if end > len(ids) {
-			end = len(ids)
-		}
-
-		lps, err := q.LiquidityPoolsByIDs(ctx, ids[i:end])
+	l.fetchAndUpdate = func(ctx context.Context, q *Q, keys []string) error {
+		lps, err := q.LiquidityPoolsByIDs(ctx, keys)
 		if err != nil {
 			return errors.Wrap(err, "could not select accounts")
 		}
 
 		for _, lp := range lps {
-			a.ids[lp.PoolID] = lp.InternalID
+			l.ids[lp.PoolID] = lp.InternalID
 		}
-	}
-	return nil
-}
-
-// Exec will look up all the internal history ids for the liquidity pools registered in the loader.
-// If there are no internal history ids for a given set of liquidity pools, Exec will insert rows
-// into the history_liquidity_pools table.
-func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterface) error {
-	a.sealed = true
-	if len(a.set) == 0 {
 		return nil
 	}
-	q := &Q{session}
-	ids := make([]string, 0, len(a.set))
-	for id := range a.set {
-		ids = append(ids, id)
-	}
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Strings(ids)
-
-	if err := a.lookupKeys(ctx, q, ids); err != nil {
-		return err
-	}
-
-	insert := 0
-	for _, id := range ids {
-		if _, ok := a.ids[id]; ok {
-			continue
+	l.newFuture = func(key string) FutureLiquidityPoolID {
+		return FutureLiquidityPoolID{
+			id:     key,
+			loader: l,
 		}
-		ids[insert] = id
-		insert++
-	}
-	if insert == 0 {
-		return nil
-	}
-	ids = ids[:insert]
-
-	err := bulkInsert(
-		ctx,
-		q,
-		"history_liquidity_pools",
-		[]string{"liquidity_pool_id"},
-		[]bulkInsertField{
-			{
-				name:    "liquidity_pool_id",
-				dbType:  "text",
-				objects: ids,
-			},
-		},
-	)
-	if err != nil {
-		return err
 	}
 
-	return a.lookupKeys(ctx, q, ids)
+	return l
 }
