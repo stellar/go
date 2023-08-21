@@ -9,8 +9,10 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/ordered"
 )
 
 // FutureAccountID represents a future history account.
@@ -35,7 +37,7 @@ func (a FutureAccountID) Value() (driver.Value, error) {
 // establish a mapping.
 type AccountLoader struct {
 	sealed bool
-	set    map[string]interface{}
+	set    set.Set[string]
 	ids    map[string]int64
 }
 
@@ -45,7 +47,7 @@ var errSealed = errors.New("cannot register more entries to loader after calling
 func NewAccountLoader() *AccountLoader {
 	return &AccountLoader{
 		sealed: false,
-		set:    map[string]interface{}{},
+		set:    set.Set[string]{},
 		ids:    map[string]int64{},
 	}
 }
@@ -58,7 +60,7 @@ func (a *AccountLoader) GetFuture(address string) FutureAccountID {
 		panic(errSealed)
 	}
 
-	a.set[address] = nil
+	a.set.Add(address)
 	return FutureAccountID{
 		address: address,
 		loader:  a,
@@ -79,10 +81,7 @@ func (a *AccountLoader) GetNow(address string) int64 {
 
 func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
 	for i := 0; i < len(addresses); i += loaderLookupBatchSize {
-		end := i + loaderLookupBatchSize
-		if end > len(addresses) {
-			end = len(addresses)
-		}
+		end := ordered.Min(len(addresses), i+loaderLookupBatchSize)
 
 		var accounts []Account
 		if err := q.AccountsByAddresses(ctx, &accounts, addresses[i:end]); err != nil {

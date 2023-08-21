@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/ordered"
 )
 
 // FutureClaimableBalanceID represents a future history claimable balance.
@@ -30,7 +32,7 @@ func (a FutureClaimableBalanceID) Value() (driver.Value, error) {
 // establish a mapping.
 type ClaimableBalanceLoader struct {
 	sealed bool
-	set    map[string]interface{}
+	set    set.Set[string]
 	ids    map[string]int64
 }
 
@@ -38,7 +40,7 @@ type ClaimableBalanceLoader struct {
 func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
 	return &ClaimableBalanceLoader{
 		sealed: false,
-		set:    map[string]interface{}{},
+		set:    set.Set[string]{},
 		ids:    map[string]int64{},
 	}
 }
@@ -51,7 +53,7 @@ func (a *ClaimableBalanceLoader) GetFuture(id string) FutureClaimableBalanceID {
 		panic(errSealed)
 	}
 
-	a.set[id] = nil
+	a.set.Add(id)
 	return FutureClaimableBalanceID{
 		id:     id,
 		loader: a,
@@ -72,10 +74,7 @@ func (a *ClaimableBalanceLoader) GetNow(id string) int64 {
 
 func (a *ClaimableBalanceLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
 	for i := 0; i < len(ids); i += loaderLookupBatchSize {
-		end := i + loaderLookupBatchSize
-		if end > len(ids) {
-			end = len(ids)
-		}
+		end := ordered.Min(len(ids), i+loaderLookupBatchSize)
 
 		cbs, err := q.ClaimableBalancesByIDs(ctx, ids[i:end])
 		if err != nil {

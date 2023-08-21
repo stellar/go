@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/ordered"
 )
 
 // FutureLiquidityPoolID represents a future history liquidity pool.
@@ -30,7 +32,7 @@ func (a FutureLiquidityPoolID) Value() (driver.Value, error) {
 // establish a mapping.
 type LiquidityPoolLoader struct {
 	sealed bool
-	set    map[string]interface{}
+	set    set.Set[string]
 	ids    map[string]int64
 }
 
@@ -38,7 +40,7 @@ type LiquidityPoolLoader struct {
 func NewLiquidityPoolLoader() *LiquidityPoolLoader {
 	return &LiquidityPoolLoader{
 		sealed: false,
-		set:    map[string]interface{}{},
+		set:    set.Set[string]{},
 		ids:    map[string]int64{},
 	}
 }
@@ -51,7 +53,7 @@ func (a *LiquidityPoolLoader) GetFuture(id string) FutureLiquidityPoolID {
 		panic(errSealed)
 	}
 
-	a.set[id] = nil
+	a.set.Add(id)
 	return FutureLiquidityPoolID{
 		id:     id,
 		loader: a,
@@ -72,10 +74,7 @@ func (a *LiquidityPoolLoader) GetNow(id string) int64 {
 
 func (a *LiquidityPoolLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
 	for i := 0; i < len(ids); i += loaderLookupBatchSize {
-		end := i + loaderLookupBatchSize
-		if end > len(ids) {
-			end = len(ids)
-		}
+		end := ordered.Min(len(ids), i+loaderLookupBatchSize)
 
 		lps, err := q.LiquidityPoolsByIDs(ctx, ids[i:end])
 		if err != nil {

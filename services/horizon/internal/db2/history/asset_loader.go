@@ -8,8 +8,10 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/ordered"
 )
 
 type AssetKey struct {
@@ -38,7 +40,7 @@ func (a FutureAssetID) Value() (driver.Value, error) {
 // establish a mapping.
 type AssetLoader struct {
 	sealed bool
-	set    map[AssetKey]interface{}
+	set    set.Set[AssetKey]
 	ids    map[AssetKey]int64
 }
 
@@ -46,7 +48,7 @@ type AssetLoader struct {
 func NewAssetLoader() *AssetLoader {
 	return &AssetLoader{
 		sealed: false,
-		set:    map[AssetKey]interface{}{},
+		set:    set.Set[AssetKey]{},
 		ids:    map[AssetKey]int64{},
 	}
 }
@@ -58,7 +60,7 @@ func (a *AssetLoader) GetFuture(asset AssetKey) FutureAssetID {
 	if a.sealed {
 		panic(errSealed)
 	}
-	a.set[asset] = nil
+	a.set.Add(asset)
 	return FutureAssetID{
 		asset:  asset,
 		loader: a,
@@ -80,10 +82,7 @@ func (a *AssetLoader) GetNow(asset AssetKey) int64 {
 func (a *AssetLoader) lookupKeys(ctx context.Context, q *Q, keys []AssetKey) error {
 	var rows []Asset
 	for i := 0; i < len(keys); i += loaderLookupBatchSize {
-		end := i + loaderLookupBatchSize
-		if end > len(keys) {
-			end = len(keys)
-		}
+		end := ordered.Min(len(keys), i+loaderLookupBatchSize)
 		subset := keys[i:end]
 		keyStrings := make([]string, 0, len(subset))
 		for _, key := range subset {
