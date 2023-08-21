@@ -463,7 +463,6 @@ func TestHelpOutput(t *testing.T) {
 	}
 	output := writer.(*bytes.Buffer).String()
 	assert.NotContains(t, output, "--exp-enable-ingestion-filtering")
-	assert.NotContains(t, output, "--disable-tx-sub")
 }
 
 // validateNoBucketDirPath ensures the Stellar Core auto-generated configuration

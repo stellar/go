@@ -114,6 +114,7 @@ type Config struct {
 	// RoundingSlippageFilter excludes trades from /trade_aggregations with rounding slippage >x bps
 	RoundingSlippageFilter int
 	// Stellar network: 'testnet' or 'pubnet'
-	Network      string
+	Network string
+	// DisableTxSub disables transaction submission functionality for Horizon.
 	DisableTxSub bool
 }

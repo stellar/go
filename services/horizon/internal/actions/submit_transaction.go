@@ -162,7 +162,7 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 			Title:  "Transaction Submission Disabled",
 			Status: http.StatusMethodNotAllowed,
 			Detail: "Transaction submission has been disabled for Horizon. " +
-				"To enable it again, set env variable DISABLE_TX_SUB to false.",
+				"To enable it again, remove DISABLE_TX_SUB env variable.",
 			Extras: map[string]interface{}{
 				"envelope_xdr": raw,
 			},
