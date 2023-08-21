@@ -3,9 +3,10 @@ package history
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"sort"
 
-	"github.com/stellar/go/support/collections/set"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -28,51 +29,116 @@ func (a FutureClaimableBalanceID) Value() (driver.Value, error) {
 // the ClaimableBalanceLoader will insert into the history_claimable_balances table to
 // establish a mapping.
 type ClaimableBalanceLoader struct {
-	loader[string, FutureClaimableBalanceID]
+	sealed bool
+	set    map[string]interface{}
+	ids    map[string]int64
 }
 
 // NewClaimableBalanceLoader will construct a new ClaimableBalanceLoader instance.
 func NewClaimableBalanceLoader() *ClaimableBalanceLoader {
-	l := &ClaimableBalanceLoader{
-		loader: loader[string, FutureClaimableBalanceID]{
-			sealed: false,
-			set:    set.Set[string]{},
-			ids:    map[string]int64{},
-			sort:   sort.Strings,
-			insert: func(ctx context.Context, q *Q, keys []string) error {
-				return bulkInsert(
-					ctx,
-					q,
-					"history_claimable_balances",
-					[]string{"claimable_balance_id"},
-					[]bulkInsertField{
-						{
-							name:    "claimable_balance_id",
-							dbType:  "text",
-							objects: keys,
-						},
-					},
-				)
-			},
-		},
+	return &ClaimableBalanceLoader{
+		sealed: false,
+		set:    map[string]interface{}{},
+		ids:    map[string]int64{},
 	}
-	l.fetchAndUpdate = func(ctx context.Context, q *Q, keys []string) error {
-		cbs, err := q.ClaimableBalancesByIDs(ctx, keys)
+}
+
+// GetFuture registers the given claimable balance into the loader and
+// returns a FutureClaimableBalanceID which will hold the internal history id for
+// the claimable balance after Exec() is called.
+func (a *ClaimableBalanceLoader) GetFuture(id string) FutureClaimableBalanceID {
+	if a.sealed {
+		panic(errSealed)
+	}
+
+	a.set[id] = nil
+	return FutureClaimableBalanceID{
+		id:     id,
+		loader: a,
+	}
+}
+
+// GetNow returns the internal history id for the given claimable balance.
+// GetNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any GetNow
+// call can succeed.
+func (a *ClaimableBalanceLoader) GetNow(id string) int64 {
+	if internalID, ok := a.ids[id]; !ok {
+		panic(fmt.Errorf("id %v not present", id))
+	} else {
+		return internalID
+	}
+}
+
+func (a *ClaimableBalanceLoader) lookupKeys(ctx context.Context, q *Q, ids []string) error {
+	for i := 0; i < len(ids); i += loaderLookupBatchSize {
+		end := i + loaderLookupBatchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+
+		cbs, err := q.ClaimableBalancesByIDs(ctx, ids[i:end])
 		if err != nil {
 			return errors.Wrap(err, "could not select claimable balances")
 		}
 
 		for _, cb := range cbs {
-			l.ids[cb.BalanceID] = cb.InternalID
+			a.ids[cb.BalanceID] = cb.InternalID
 		}
+	}
+	return nil
+}
+
+// Exec will look up all the internal history ids for the claimable balances registered in the loader.
+// If there are no internal ids for a given set of claimable balances, Exec will insert rows
+// into the history_claimable_balances table.
+func (a *ClaimableBalanceLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+	a.sealed = true
+	if len(a.set) == 0 {
 		return nil
 	}
-	l.newFuture = func(key string) FutureClaimableBalanceID {
-		return FutureClaimableBalanceID{
-			id:     key,
-			loader: l,
-		}
+	q := &Q{session}
+	ids := make([]string, 0, len(a.set))
+	for id := range a.set {
+		ids = append(ids, id)
+	}
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Strings(ids)
+
+	if err := a.lookupKeys(ctx, q, ids); err != nil {
+		return err
 	}
 
-	return l
+	insert := 0
+	for _, id := range ids {
+		if _, ok := a.ids[id]; ok {
+			continue
+		}
+		ids[insert] = id
+		insert++
+	}
+	if insert == 0 {
+		return nil
+	}
+	ids = ids[:insert]
+
+	err := bulkInsert(
+		ctx,
+		q,
+		"history_claimable_balances",
+		[]string{"claimable_balance_id"},
+		[]bulkInsertField{
+			{
+				name:    "claimable_balance_id",
+				dbType:  "text",
+				objects: ids,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return a.lookupKeys(ctx, q, ids)
 }

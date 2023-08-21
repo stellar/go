@@ -12,7 +12,7 @@ func Min[T constraints.Ordered](a, b T) T {
 	return b
 }
 
-// Max returns the larger of the given items.
+// Min returns the larger of the given items.
 func Max[T constraints.Ordered](a, b T) T {
 	if a > b {
 		return a

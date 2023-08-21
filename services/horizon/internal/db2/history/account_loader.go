@@ -9,101 +9,145 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/ordered"
 )
+
+// FutureAccountID represents a future history account.
+// A FutureAccountID is created by an AccountLoader and
+// the account id is available after calling Exec() on
+// the AccountLoader.
+type FutureAccountID struct {
+	address string
+	loader  *AccountLoader
+}
 
 const loaderLookupBatchSize = 50000
 
-var errSealed = errors.New("cannot register more entries to loader after calling Exec()")
-
-type loader[K comparable, V any] struct {
-	sealed         bool
-	set            set.Set[K]
-	ids            map[K]int64
-	sort           func(keys []K)
-	fetchAndUpdate func(ctx context.Context, q *Q, keys []K) error
-	insert         func(ctx context.Context, q *Q, keys []K) error
-	newFuture      func(key K) V
+// Value implements the database/sql/driver Valuer interface.
+func (a FutureAccountID) Value() (driver.Value, error) {
+	return a.loader.GetNow(a.address), nil
 }
 
-// GetFuture registers the given key into the loader and
-// returns a future which will hold the history id for
-// the key after Exec() is called.
-func (l *loader[K, V]) GetFuture(key K) V {
-	if l.sealed {
+// AccountLoader will map account addresses to their history
+// account ids. If there is no existing mapping for a given address,
+// the AccountLoader will insert into the history_accounts table to
+// establish a mapping.
+type AccountLoader struct {
+	sealed bool
+	set    map[string]interface{}
+	ids    map[string]int64
+}
+
+var errSealed = errors.New("cannot register more entries to loader after calling Exec()")
+
+// NewAccountLoader will construct a new AccountLoader instance.
+func NewAccountLoader() *AccountLoader {
+	return &AccountLoader{
+		sealed: false,
+		set:    map[string]interface{}{},
+		ids:    map[string]int64{},
+	}
+}
+
+// GetFuture registers the given account address into the loader and
+// returns a FutureAccountID which will hold the history account id for
+// the address after Exec() is called.
+func (a *AccountLoader) GetFuture(address string) FutureAccountID {
+	if a.sealed {
 		panic(errSealed)
 	}
 
-	l.set.Add(key)
-	return l.newFuture(key)
+	a.set[address] = nil
+	return FutureAccountID{
+		address: address,
+		loader:  a,
+	}
 }
 
-// GetNow returns the history id for the given key.
+// GetNow returns the history account id for the given address.
 // GetNow should only be called on values which were registered by
 // GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (l *loader[K, V]) GetNow(key K) int64 {
-	if id, ok := l.ids[key]; !ok {
-		panic(fmt.Errorf("key %v not present", key))
+func (a *AccountLoader) GetNow(address string) int64 {
+	if id, ok := a.ids[address]; !ok {
+		panic(fmt.Errorf("address %v not present", address))
 	} else {
 		return id
 	}
 }
 
-func (l *loader[K, V]) lookupKeys(ctx context.Context, q *Q, keys []K) error {
-	for i := 0; i < len(keys); i += loaderLookupBatchSize {
-		end := ordered.Min(len(keys), i+loaderLookupBatchSize)
+func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
+	for i := 0; i < len(addresses); i += loaderLookupBatchSize {
+		end := i + loaderLookupBatchSize
+		if end > len(addresses) {
+			end = len(addresses)
+		}
 
-		if err := l.fetchAndUpdate(ctx, q, keys[i:end]); err != nil {
-			return err
+		var accounts []Account
+		if err := q.AccountsByAddresses(ctx, &accounts, addresses[i:end]); err != nil {
+			return errors.Wrap(err, "could not select accounts")
+		}
+
+		for _, account := range accounts {
+			a.ids[account.Address] = account.ID
 		}
 	}
 	return nil
 }
 
-// Exec will look up all the history ids for the keys registered in the loader.
-// If there are no history ids for a given set of keys, Exec will insert rows
-// into the history table.
-func (l *loader[K, V]) Exec(ctx context.Context, session db.SessionInterface) error {
-	l.sealed = true
-	if len(l.set) == 0 {
+// Exec will look up all the history account ids for the addresses registered in the loader.
+// If there are no history account ids for a given set of addresses, Exec will insert rows
+// into the history_accounts table to establish a mapping between address and history account id.
+func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) error {
+	a.sealed = true
+	if len(a.set) == 0 {
 		return nil
 	}
 	q := &Q{session}
-	keys := make([]K, 0, len(l.set))
-	for address := range l.set {
-		keys = append(keys, address)
+	addresses := make([]string, 0, len(a.set))
+	for address := range a.set {
+		addresses = append(addresses, address)
 	}
 	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
 	// https://github.com/stellar/go/issues/2370
-	l.sort(keys)
+	sort.Strings(addresses)
 
-	if err := l.lookupKeys(ctx, q, keys); err != nil {
+	if err := a.lookupKeys(ctx, q, addresses); err != nil {
 		return err
 	}
 
 	insert := 0
-	for _, address := range keys {
-		if _, ok := l.ids[address]; ok {
+	for _, address := range addresses {
+		if _, ok := a.ids[address]; ok {
 			continue
 		}
-		keys[insert] = address
+		addresses[insert] = address
 		insert++
 	}
 	if insert == 0 {
 		return nil
 	}
-	keys = keys[:insert]
+	addresses = addresses[:insert]
 
-	err := l.insert(ctx, q, keys)
+	err := bulkInsert(
+		ctx,
+		q,
+		"history_accounts",
+		[]string{"address"},
+		[]bulkInsertField{
+			{
+				name:    "address",
+				dbType:  "character varying(64)",
+				objects: addresses,
+			},
+		},
+	)
 	if err != nil {
 		return err
 	}
 
-	return l.lookupKeys(ctx, q, keys)
+	return a.lookupKeys(ctx, q, addresses)
 }
 
 type bulkInsertField struct {
@@ -146,72 +190,4 @@ func bulkInsert(ctx context.Context, q *Q, table string, conflictFields []string
 		pqArrays...,
 	)
 	return err
-}
-
-// FutureAccountID represents a future history account.
-// A FutureAccountID is created by an AccountLoader and
-// the account id is available after calling Exec() on
-// the AccountLoader.
-type FutureAccountID struct {
-	address string
-	loader  *AccountLoader
-}
-
-// Value implements the database/sql/driver Valuer interface.
-func (a FutureAccountID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.address), nil
-}
-
-// AccountLoader will map account addresses to their history
-// account ids. If there is no existing mapping for a given address,
-// the AccountLoader will insert into the history_accounts table to
-// establish a mapping.
-type AccountLoader struct {
-	loader[string, FutureAccountID]
-}
-
-// NewAccountLoader will construct a new AccountLoader instance.
-func NewAccountLoader() *AccountLoader {
-	l := &AccountLoader{
-		loader: loader[string, FutureAccountID]{
-			sealed: false,
-			set:    set.Set[string]{},
-			ids:    map[string]int64{},
-			sort:   sort.Strings,
-			insert: func(ctx context.Context, q *Q, keys []string) error {
-				return bulkInsert(
-					ctx,
-					q,
-					"history_accounts",
-					[]string{"address"},
-					[]bulkInsertField{
-						{
-							name:    "address",
-							dbType:  "character varying(64)",
-							objects: keys,
-						},
-					},
-				)
-			},
-		},
-	}
-	l.fetchAndUpdate = func(ctx context.Context, q *Q, keys []string) error {
-		var accounts []Account
-		if err := q.AccountsByAddresses(ctx, &accounts, keys); err != nil {
-			return errors.Wrap(err, "could not select accounts")
-		}
-
-		for _, account := range accounts {
-			l.ids[account.Address] = account.ID
-		}
-		return nil
-	}
-	l.newFuture = func(key string) FutureAccountID {
-		return FutureAccountID{
-			address: key,
-			loader:  l,
-		}
-	}
-
-	return l
 }
