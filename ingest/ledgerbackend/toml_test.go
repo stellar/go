@@ -2,7 +2,9 @@ package ledgerbackend
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -217,16 +219,29 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 	}
 }
 
+func checkTestingAboveProtocol19() bool {
+	str := os.Getenv("HORIZON_INTEGRATION_TESTS_CORE_MAX_SUPPORTED_PROTOCOL")
+	if str == "" {
+		return false
+	}
+	version, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return false
+	}
+	return uint32(version) > 19
+}
+
 func TestGenerateConfig(t *testing.T) {
-	for _, testCase := range []struct {
-		name         string
-		appendPath   string
-		mode         stellarCoreRunnerMode
-		expectedPath string
-		httpPort     *uint
-		peerPort     *uint
-		logPath      *string
-		useDB        bool
+	testCases := []struct {
+		name                           string
+		appendPath                     string
+		mode                           stellarCoreRunnerMode
+		expectedPath                   string
+		httpPort                       *uint
+		peerPort                       *uint
+		logPath                        *string
+		useDB                          bool
+		enforceSorobanDiagnosticEvents bool
 	}{
 		{
 			name:         "offline config with no appendix",
@@ -300,19 +315,67 @@ func TestGenerateConfig(t *testing.T) {
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
 			logPath:      nil,
-		},
-	} {
+		}}
+	if checkTestingAboveProtocol19() {
+		testCases = append(testCases, []struct {
+			name                           string
+			appendPath                     string
+			mode                           stellarCoreRunnerMode
+			expectedPath                   string
+			httpPort                       *uint
+			peerPort                       *uint
+			logPath                        *string
+			useDB                          bool
+			enforceSorobanDiagnosticEvents bool
+		}{
+			{
+				name:                           "offline config with enforce diagnostic events",
+				mode:                           stellarCoreRunnerModeOffline,
+				expectedPath:                   filepath.Join("testdata", "expected-offline-enforce-diagnostic-events.cfg"),
+				logPath:                        nil,
+				enforceSorobanDiagnosticEvents: true,
+			},
+			{
+				name:                           "offline config disabling enforced diagnostic events",
+				mode:                           stellarCoreRunnerModeOffline,
+				expectedPath:                   filepath.Join("testdata", "expected-offline-enforce-disabled-diagnostic-events.cfg"),
+				appendPath:                     filepath.Join("testdata", "appendix-disable-diagnostic-events.cfg"),
+				logPath:                        nil,
+				enforceSorobanDiagnosticEvents: true,
+			},
+			{
+				name:                           "online config with enforce diagnostic events",
+				mode:                           stellarCoreRunnerModeOnline,
+				appendPath:                     filepath.Join("testdata", "sample-appendix.cfg"),
+				expectedPath:                   filepath.Join("testdata", "expected-online-with-no-http-port-diag-events.cfg"),
+				httpPort:                       nil,
+				peerPort:                       newUint(12345),
+				logPath:                        nil,
+				enforceSorobanDiagnosticEvents: true,
+			},
+			{
+				name:         "offline config with minimum persistent entry in appendix",
+				mode:         stellarCoreRunnerModeOnline,
+				appendPath:   filepath.Join("testdata", "appendix-with-minimum-persistent-entry.cfg"),
+				expectedPath: filepath.Join("testdata", "expected-online-with-appendix-minimum-persistent-entry.cfg"),
+				logPath:      nil,
+			},
+		}...)
+	}
+
+	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			var err error
 			var captiveCoreToml *CaptiveCoreToml
 			params := CaptiveCoreTomlParams{
-				NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
-				HistoryArchiveURLs: []string{"http://localhost:1170"},
-				HTTPPort:           testCase.httpPort,
-				PeerPort:           testCase.peerPort,
-				LogPath:            testCase.logPath,
-				Strict:             false,
-				UseDB:              testCase.useDB,
+				NetworkPassphrase:              "Public Global Stellar Network ; September 2015",
+				HistoryArchiveURLs:             []string{"http://localhost:1170"},
+				HTTPPort:                       testCase.httpPort,
+				PeerPort:                       testCase.peerPort,
+				LogPath:                        testCase.logPath,
+				Strict:                         false,
+				UseDB:                          testCase.useDB,
+				EnforceSorobanDiagnosticEvents: testCase.enforceSorobanDiagnosticEvents,
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
@@ -414,4 +477,15 @@ func TestNonDBConfigDoesNotUpdateDatabase(t *testing.T) {
 	toml := CaptiveCoreToml{}
 	require.NoError(t, toml.unmarshal(configBytes, true))
 	assert.Equal(t, toml.Database, "")
+}
+
+func TestCheckCoreVersion(t *testing.T) {
+	coreBin := os.Getenv("HORIZON_INTEGRATION_TESTS_CAPTIVE_CORE_BIN")
+	if coreBin == "" {
+		t.SkipNow()
+		return
+	}
+	var cctoml CaptiveCoreToml
+	version := cctoml.checkCoreVersion(coreBin)
+	require.True(t, version.IsEqualOrAbove(19, 0))
 }

@@ -40,6 +40,9 @@ var (
 	// ErrCancelled is an error returned by Session methods when request has
 	// been canceled (ex. context canceled).
 	ErrCancelled = errors.New("canceling statement due to user request")
+	// ErrAlreadyRolledback is an error returned by Session methods when the transaction
+	// containing the request has already been rolled back.
+	ErrAlreadyRolledback = errors.New("transaction has already been committed or rolled back")
 	// ErrConflictWithRecovery is an error returned by Session methods when
 	// read replica cancels the query due to conflict with about-to-be-applied
 	// WAL entries (https://www.postgresql.org/docs/current/hot-standby.html).
@@ -120,8 +123,8 @@ type Session struct {
 }
 
 type SessionInterface interface {
-	BeginTx(opts *sql.TxOptions) error
-	Begin() error
+	BeginTx(ctx context.Context, opts *sql.TxOptions) error
+	Begin(ctx context.Context) error
 	Rollback() error
 	Commit() error
 	GetTx() *sqlx.Tx

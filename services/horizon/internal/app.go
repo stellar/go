@@ -20,7 +20,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
-	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/reap"
@@ -29,6 +28,7 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/logmetrics"
 )
 
 // App represents the root of the state of a horizon instance.
@@ -464,7 +464,8 @@ func (a *App) init() error {
 
 	// log
 	log.DefaultLogger.SetLevel(a.config.LogLevel)
-	log.DefaultLogger.AddHook(logmetrics.DefaultMetrics)
+	logMetrics := logmetrics.New("horizon")
+	log.DefaultLogger.AddHook(logMetrics)
 
 	// sentry
 	initSentry(a)
@@ -474,8 +475,8 @@ func (a *App) init() error {
 
 	// metrics and log.metrics
 	a.prometheusRegistry = prometheus.NewRegistry()
-	for _, meter := range *logmetrics.DefaultMetrics {
-		a.prometheusRegistry.MustRegister(meter)
+	for _, counter := range logMetrics {
+		a.prometheusRegistry.MustRegister(counter)
 	}
 
 	// stellarCoreInfo

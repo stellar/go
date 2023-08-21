@@ -172,7 +172,7 @@ func loadTransactionRecords(ctx context.Context, hq *history.Q, qp TransactionsQ
 			var resultXDR xdr.TransactionResult
 			err = xdr.SafeUnmarshalBase64(t.TxResult, &resultXDR)
 			if err != nil {
-				return nil, errors.Wrap(err, "unmarshalling tx result")
+				return nil, errors.Wrap(err, "unmarshaling tx result")
 			}
 
 			if !resultXDR.Successful() {

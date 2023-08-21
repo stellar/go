@@ -48,7 +48,7 @@ func TestReapLookupTables(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 
-	err = q.Begin()
+	err = q.Begin(tt.Ctx)
 	tt.Require.NoError(err)
 
 	deletedCount, newOffsets, err := q.ReapLookupTables(tt.Ctx, nil)

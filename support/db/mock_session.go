@@ -17,13 +17,13 @@ type MockSession struct {
 	mock.Mock
 }
 
-func (m *MockSession) Begin() error {
-	args := m.Called()
+func (m *MockSession) Begin(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *MockSession) BeginTx(opts *sql.TxOptions) error {
-	args := m.Called(opts)
+func (m *MockSession) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
+	args := m.Called(ctx, opts)
 	return args.Error(0)
 }
 

@@ -10,6 +10,8 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
+
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -27,7 +29,7 @@ type AssetStatsProcessorTestSuiteState struct {
 func (s *AssetStatsProcessorTestSuiteState) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
-	s.processor = NewAssetStatsProcessor(s.mockQ, false)
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", false)
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TearDownTest() {
@@ -68,6 +70,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 				Unauthorized:                    "0",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
+				Contracts:                       "0",
 			},
 			Amount:      "0",
 			NumAccounts: 1,
@@ -135,6 +138,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineWithClawback() {
 				Unauthorized:                    "0",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
+				Contracts:                       "0",
 			},
 			Amount:      "0",
 			NumAccounts: 1,
@@ -173,6 +177,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 				Unauthorized:                    "0",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
+				Contracts:                       "0",
 			},
 			Amount:      "0",
 			NumAccounts: 0,
@@ -195,7 +200,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) SetupTest() {
 	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
 
-	s.processor = NewAssetStatsProcessor(s.mockQ, true)
+	s.processor = NewAssetStatsProcessor(s.mockQ, "", true)
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TearDownTest() {
@@ -314,6 +319,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "24",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -337,6 +343,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "46",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -470,6 +477,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "10",
 		NumAccounts: 1,
@@ -493,10 +501,341 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 			Unauthorized:                    "10",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractID() {
+	// add trust line
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	eurID, err := trustLine.Asset.ToAsset().ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	usdContractData, err := AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
+	s.Assert().NoError(err)
+
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  usdContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "0",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return eurAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"USD",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+
+	usdAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "USD",
+		Accounts:    history.ExpAssetStatAccounts{},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+	usdAssetStat.SetContractID(usdID)
+	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return usdAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractBalance() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
+		},
+	}))
+
+	usdAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "USD",
+		Accounts: history.ExpAssetStatAccounts{
+			Contracts: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "150",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+	usdAssetStat.SetContractID(usdID)
+	s.mockQ.On("GetAssetStatByContract", s.ctx, usdID).
+		Return(usdAssetStat, nil).Once()
+
+	usdAssetStat.Accounts.Contracts++
+	usdAssetStat.Balances.Contracts = "350"
+	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return usdAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractBalance() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(usdID, [32]byte{1}, 200),
+		},
+	}))
+
+	usdAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "USD",
+		Accounts: history.ExpAssetStatAccounts{
+			Contracts: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "200",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+	usdAssetStat.SetContractID(usdID)
+	s.mockQ.On("GetAssetStatByContract", s.ctx, usdID).
+		Return(usdAssetStat, nil).Once()
+
+	usdAssetStat.Accounts.Contracts = 0
+	usdAssetStat.Balances.Contracts = "0"
+	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return usdAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestInsertContractIDWithBalance() {
+	// add trust line
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	eurID, err := trustLine.Asset.ToAsset().ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	usdContractData, err := AssetToContractData(false, "USD", trustLineIssuer.Address(), usdID)
+	s.Assert().NoError(err)
+
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  usdContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(usdID, [32]byte{1}, 150),
+		},
+	}))
+
+	btcID := [32]byte{1, 2, 3}
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(btcID, [32]byte{1}, 20),
+		},
+	}))
+
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "0",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return eurAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"USD",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+
+	s.mockQ.On("GetAssetStatByContract", s.ctx, btcID).
+		Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+
+	usdAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "USD",
+		Accounts: history.ExpAssetStatAccounts{
+			Contracts: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "150",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+	usdAssetStat.SetContractID(usdID)
+	s.mockQ.On("InsertAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return usdAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
@@ -595,12 +934,379 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 			Unauthorized:                    "0",
 			ClaimableBalances:               "12",
 			LiquidityPools:                  "100",
+			Contracts:                       "0",
 		},
 		Amount:      "9",
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
 	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractID() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}, nil).Once()
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return eurAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDWithBalance() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(eurID, [32]byte{1}, 150),
+		},
+	}))
+
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}, nil).Once()
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+			Contracts:  1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "150",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return eurAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateContractIDError() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(usdID)
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(eurAssetStat, nil).Once()
+
+	s.Assert().EqualError(
+		s.processor.Commit(s.ctx),
+		"attempting to set contract id 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab but row credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H already has contract id set: c9cd6bbf712cfd4e086f0e25f90722c1af24416c0303728ad4527a6967ddc51b",
+	)
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndContractIDError() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	usdID, err := xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &updatedTrustLine,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(usdID)
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(eurAssetStat, nil).Once()
+
+	s.Assert().EqualError(
+		s.processor.Commit(s.ctx),
+		"attempting to set contract id 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab but row credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H already has contract id set: c9cd6bbf712cfd4e086f0e25f90722c1af24416c0303728ad4527a6967ddc51b",
+	)
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDError() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.mockQ.On("GetAssetStatByContract", s.ctx, eurID).
+		Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
+
+	s.Assert().EqualError(
+		s.processor.Commit(s.ctx),
+		"row for asset with contract 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab is missing",
+	)
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContractIDError() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &updatedTrustLine,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(eurAssetStat, nil).Once()
+
+	s.Assert().EqualError(
+		s.processor.Commit(s.ctx),
+		"row has no contract id to remove 67b1f192e30d8cd56dcb103c783cfee753588a434ad1092ef8a39375c9738bab: AssetTypeAssetTypeCreditAlphanum4 EUR GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+	)
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
@@ -653,6 +1359,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "100",
 		NumAccounts: 1,
@@ -668,6 +1375,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "110",
 		NumAccounts: 1,
@@ -793,6 +1501,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			Unauthorized:                    "100",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -810,6 +1519,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "10",
 		NumAccounts: 1,
@@ -832,6 +1542,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "100",
 		NumAccounts: 1,
@@ -849,6 +1560,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			Unauthorized:                    "10",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -871,6 +1583,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "100",
 		NumAccounts: 1,
@@ -888,6 +1601,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -955,6 +1669,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "12",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -983,6 +1698,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "21",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -998,6 +1714,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -1060,6 +1777,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 1,
@@ -1087,6 +1805,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "0",
 		NumAccounts: 0,
@@ -1094,6 +1813,323 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
+		trustLineIssuer.Address(),
+	).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractID() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("GetAssetStatByContract", s.ctx, eurID).
+		Return(eurAssetStat, nil).Once()
+
+	eurAssetStat.ContractID = nil
+	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return eurAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustlineAndRemoveContractID() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	trustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	updatedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   10,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &trustLine,
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &updatedTrustLine,
+			},
+		},
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "100",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "100",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(eurAssetStat, nil).Once()
+
+	eurAssetStat = history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "110",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "110",
+		NumAccounts: 1,
+	}
+	s.mockQ.On("UpdateAssetStat", s.ctx, mock.MatchedBy(func(assetStat history.ExpAssetStat) bool {
+		return eurAssetStat.Equals(assetStat)
+	})).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDFromZeroRow() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("GetAssetStatByContract", s.ctx, eurID).
+		Return(eurAssetStat, nil).Once()
+
+	s.mockQ.On("RemoveAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndBalanceZeroRow() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(eurID, [32]byte{1}, 9),
+		},
+	}))
+
+	s.Assert().NoError(s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  BalanceToContractData(eurID, [32]byte{2}, 1),
+		},
+	}))
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts:    history.ExpAssetStatAccounts{Contracts: 2},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "10",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("GetAssetStatByContract", s.ctx, eurID).
+		Return(eurAssetStat, nil).Once()
+
+	s.mockQ.On("RemoveAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(int64(1), nil).Once()
+
+	s.Assert().NoError(s.processor.Commit(s.ctx))
+}
+
+func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveContractIDAndRow() {
+	lastModifiedLedgerSeq := xdr.Uint32(1234)
+
+	eurID, err := xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ContractID("")
+	s.Assert().NoError(err)
+	eurContractData, err := AssetToContractData(false, "EUR", trustLineIssuer.Address(), eurID)
+	s.Assert().NoError(err)
+
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeContractData,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+			Data:                  eurContractData,
+		},
+	})
+	s.Assert().NoError(err)
+
+	authorizedTrustLine := xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
+		Balance:   0,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+	}
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
+		Type: xdr.LedgerEntryTypeTrustline,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:      xdr.LedgerEntryTypeTrustline,
+				TrustLine: &authorizedTrustLine,
+			},
+		},
+		Post: nil,
+	})
+	s.Assert().NoError(err)
+
+	eurAssetStat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetIssuer: trustLineIssuer.Address(),
+		AssetCode:   "EUR",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+			ClaimableBalances:               "0",
+			LiquidityPools:                  "0",
+			Contracts:                       "0",
+		},
+		Amount:      "0",
+		NumAccounts: 1,
+	}
+	eurAssetStat.SetContractID(eurID)
+	s.mockQ.On("GetAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
+		trustLineIssuer.Address(),
+	).Return(eurAssetStat, nil).Once()
+
+	s.mockQ.On("RemoveAssetStat", s.ctx,
+		xdr.AssetTypeAssetTypeCreditAlphanum4,
+		"EUR",
 		trustLineIssuer.Address(),
 	).Return(int64(1), nil).Once()
 
@@ -1166,6 +2202,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
+			Contracts:                       "0",
 		},
 		Amount:      "10",
 		NumAccounts: 1,
