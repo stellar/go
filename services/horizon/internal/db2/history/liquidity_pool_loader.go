@@ -101,9 +101,6 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	for id := range a.set {
 		ids = append(ids, id)
 	}
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Strings(ids)
 
 	if err := a.lookupKeys(ctx, q, ids); err != nil {
 		return err
@@ -121,6 +118,9 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 		return nil
 	}
 	ids = ids[:insert]
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Strings(ids)
 
 	err := bulkInsert(
 		ctx,

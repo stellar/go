@@ -119,20 +119,6 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 	for key := range a.set {
 		keys = append(keys, key)
 	}
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Type < keys[j].Type {
-			return true
-		}
-		if keys[i].Code < keys[j].Code {
-			return true
-		}
-		if keys[i].Issuer < keys[j].Issuer {
-			return true
-		}
-		return false
-	})
 
 	if err := a.lookupKeys(ctx, q, keys); err != nil {
 		return err
@@ -156,6 +142,20 @@ func (a *AssetLoader) Exec(ctx context.Context, session db.SessionInterface) err
 		return nil
 	}
 	keys = keys[:insert]
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].Type < keys[j].Type {
+			return true
+		}
+		if keys[i].Code < keys[j].Code {
+			return true
+		}
+		if keys[i].Issuer < keys[j].Issuer {
+			return true
+		}
+		return false
+	})
 
 	err := bulkInsert(
 		ctx,

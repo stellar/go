@@ -108,9 +108,6 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	for address := range a.set {
 		addresses = append(addresses, address)
 	}
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Strings(addresses)
 
 	if err := a.lookupKeys(ctx, q, addresses); err != nil {
 		return err
@@ -128,6 +125,9 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 		return nil
 	}
 	addresses = addresses[:insert]
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Strings(addresses)
 
 	err := bulkInsert(
 		ctx,
