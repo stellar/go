@@ -9,8 +9,10 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/stellar/go/support/collections/set"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/ordered"
 )
 
 // FutureAccountID represents a future history account.
@@ -26,7 +28,7 @@ const loaderLookupBatchSize = 50000
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAccountID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.address), nil
+	return a.loader.getNow(a.address), nil
 }
 
 // AccountLoader will map account addresses to their history
@@ -35,7 +37,7 @@ func (a FutureAccountID) Value() (driver.Value, error) {
 // establish a mapping.
 type AccountLoader struct {
 	sealed bool
-	set    map[string]interface{}
+	set    set.Set[string]
 	ids    map[string]int64
 }
 
@@ -45,7 +47,7 @@ var errSealed = errors.New("cannot register more entries to loader after calling
 func NewAccountLoader() *AccountLoader {
 	return &AccountLoader{
 		sealed: false,
-		set:    map[string]interface{}{},
+		set:    set.Set[string]{},
 		ids:    map[string]int64{},
 	}
 }
@@ -58,18 +60,18 @@ func (a *AccountLoader) GetFuture(address string) FutureAccountID {
 		panic(errSealed)
 	}
 
-	a.set[address] = nil
+	a.set.Add(address)
 	return FutureAccountID{
 		address: address,
 		loader:  a,
 	}
 }
 
-// GetNow returns the history account id for the given address.
-// GetNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any GetNow
+// getNow returns the history account id for the given address.
+// getNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any getNow
 // call can succeed.
-func (a *AccountLoader) GetNow(address string) int64 {
+func (a *AccountLoader) getNow(address string) int64 {
 	if id, ok := a.ids[address]; !ok {
 		panic(fmt.Errorf("address %v not present", address))
 	} else {
@@ -79,10 +81,7 @@ func (a *AccountLoader) GetNow(address string) int64 {
 
 func (a *AccountLoader) lookupKeys(ctx context.Context, q *Q, addresses []string) error {
 	for i := 0; i < len(addresses); i += loaderLookupBatchSize {
-		end := i + loaderLookupBatchSize
-		if end > len(addresses) {
-			end = len(addresses)
-		}
+		end := ordered.Min(len(addresses), i+loaderLookupBatchSize)
 
 		var accounts []Account
 		if err := q.AccountsByAddresses(ctx, &accounts, addresses[i:end]); err != nil {
@@ -109,9 +108,6 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 	for address := range a.set {
 		addresses = append(addresses, address)
 	}
-	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
-	// https://github.com/stellar/go/issues/2370
-	sort.Strings(addresses)
 
 	if err := a.lookupKeys(ctx, q, addresses); err != nil {
 		return err
@@ -129,6 +125,9 @@ func (a *AccountLoader) Exec(ctx context.Context, session db.SessionInterface) e
 		return nil
 	}
 	addresses = addresses[:insert]
+	// sort entries before inserting rows to prevent deadlocks on acquiring a ShareLock
+	// https://github.com/stellar/go/issues/2370
+	sort.Strings(addresses)
 
 	err := bulkInsert(
 		ctx,
