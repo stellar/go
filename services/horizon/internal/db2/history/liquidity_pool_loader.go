@@ -23,7 +23,7 @@ type FutureLiquidityPoolID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureLiquidityPoolID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.id), nil
+	return a.loader.getNow(a.id), nil
 }
 
 // LiquidityPoolLoader will map liquidity pools to their internal
@@ -60,11 +60,11 @@ func (a *LiquidityPoolLoader) GetFuture(id string) FutureLiquidityPoolID {
 	}
 }
 
-// GetNow returns the internal history id for the given liquidity pool.
-// GetNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any GetNow
+// getNow returns the internal history id for the given liquidity pool.
+// getNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any getNow
 // call can succeed.
-func (a *LiquidityPoolLoader) GetNow(id string) int64 {
+func (a *LiquidityPoolLoader) getNow(id string) int64 {
 	if id, ok := a.ids[id]; !ok {
 		panic(fmt.Errorf("id %v not present", id))
 	} else {

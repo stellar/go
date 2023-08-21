@@ -23,7 +23,7 @@ type FutureClaimableBalanceID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureClaimableBalanceID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.id), nil
+	return a.loader.getNow(a.id), nil
 }
 
 // ClaimableBalanceLoader will map claimable balance ids to their internal
@@ -60,11 +60,11 @@ func (a *ClaimableBalanceLoader) GetFuture(id string) FutureClaimableBalanceID {
 	}
 }
 
-// GetNow returns the internal history id for the given claimable balance.
-// GetNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any GetNow
+// getNow returns the internal history id for the given claimable balance.
+// getNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any getNow
 // call can succeed.
-func (a *ClaimableBalanceLoader) GetNow(id string) int64 {
+func (a *ClaimableBalanceLoader) getNow(id string) int64 {
 	if internalID, ok := a.ids[id]; !ok {
 		panic(fmt.Errorf("id %v not present", id))
 	} else {

@@ -28,7 +28,7 @@ const loaderLookupBatchSize = 50000
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAccountID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.address), nil
+	return a.loader.getNow(a.address), nil
 }
 
 // AccountLoader will map account addresses to their history
@@ -67,11 +67,11 @@ func (a *AccountLoader) GetFuture(address string) FutureAccountID {
 	}
 }
 
-// GetNow returns the history account id for the given address.
-// GetNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any GetNow
+// getNow returns the history account id for the given address.
+// getNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any getNow
 // call can succeed.
-func (a *AccountLoader) GetNow(address string) int64 {
+func (a *AccountLoader) getNow(address string) int64 {
 	if id, ok := a.ids[address]; !ok {
 		panic(fmt.Errorf("address %v not present", address))
 	} else {

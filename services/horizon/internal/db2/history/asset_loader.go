@@ -31,7 +31,7 @@ type FutureAssetID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAssetID) Value() (driver.Value, error) {
-	return a.loader.GetNow(a.asset), nil
+	return a.loader.getNow(a.asset), nil
 }
 
 // AssetLoader will map assets to their history
@@ -67,11 +67,11 @@ func (a *AssetLoader) GetFuture(asset AssetKey) FutureAssetID {
 	}
 }
 
-// GetNow returns the history asset id for the given asset.
-// GetNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any GetNow
+// getNow returns the history asset id for the given asset.
+// getNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any getNow
 // call can succeed.
-func (a *AssetLoader) GetNow(asset AssetKey) int64 {
+func (a *AssetLoader) getNow(asset AssetKey) int64 {
 	if id, ok := a.ids[asset]; !ok {
 		panic(fmt.Errorf("asset %v not present", asset))
 	} else {

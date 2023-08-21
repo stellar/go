@@ -41,7 +41,7 @@ func TestAssetLoader(t *testing.T) {
 		future := loader.GetFuture(key)
 		futures = append(futures, future)
 		assert.Panics(t, func() {
-			loader.GetNow(key)
+			loader.getNow(key)
 		})
 		assert.Panics(t, func() {
 			future.Value()
@@ -56,7 +56,7 @@ func TestAssetLoader(t *testing.T) {
 	q := &Q{session}
 	for i, key := range keys {
 		future := futures[i]
-		internalID := loader.GetNow(key)
+		internalID := loader.getNow(key)
 		val, err := future.Value()
 		assert.NoError(t, err)
 		assert.Equal(t, internalID, val)

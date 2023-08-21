@@ -33,7 +33,7 @@ func TestClaimableBalanceLoader(t *testing.T) {
 		future := loader.GetFuture(id)
 		futures = append(futures, future)
 		assert.Panics(t, func() {
-			loader.GetNow(id)
+			loader.getNow(id)
 		})
 		assert.Panics(t, func() {
 			future.Value()
@@ -48,7 +48,7 @@ func TestClaimableBalanceLoader(t *testing.T) {
 	q := &Q{session}
 	for i, id := range ids {
 		future := futures[i]
-		internalID := loader.GetNow(id)
+		internalID := loader.getNow(id)
 		val, err := future.Value()
 		assert.NoError(t, err)
 		assert.Equal(t, internalID, val)
