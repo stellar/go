@@ -156,7 +156,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "disables the transaction submission functionality of Horizon.",
 			ConfigKey:   &config.DisableTxSub,
-			Hidden:      true,
+			Hidden:      false,
 		},
 		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,

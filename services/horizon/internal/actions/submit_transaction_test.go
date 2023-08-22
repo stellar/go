@@ -20,10 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	TransactionEnvelopeXDR = "AAAAAAGUcmKO5465JxTSLQOQljwk2SfqAJmZSG6JH6wtqpwhAAABLAAAAAAAAAABAAAAAAAAAAEAAAALaGVsbG8gd29ybGQAAAAAAwAAAAAAAAAAAAAAABbxCy3mLg3hiTqX4VUEEp60pFOrJNxYM1JtxXTwXhY2AAAAAAvrwgAAAAAAAAAAAQAAAAAW8Qst5i4N4Yk6l+FVBBKetKRTqyTcWDNSbcV08F4WNgAAAAAN4Lazj4x61AAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLaqcIQAAAEBKwqWy3TaOxoGnfm9eUjfTRBvPf34dvDA0Nf+B8z4zBob90UXtuCqmQqwMCyH+okOI3c05br3khkH0yP4kCwcE"
-)
-
 func TestStellarCoreMalformedTx(t *testing.T) {
 	handler := SubmitTransactionHandler{}
 
@@ -177,17 +173,14 @@ func TestDisableTxSubFlagSubmission(t *testing.T) {
 	}
 
 	form := url.Values{}
-	form.Set("tx", TransactionEnvelopeXDR)
 
 	var p = &problem.P{
 		Type:   "transaction_submission_disabled",
 		Title:  "Transaction Submission Disabled",
 		Status: http.StatusMethodNotAllowed,
 		Detail: "Transaction submission has been disabled for Horizon. " +
-			"To enable it again, set env variable DISABLE_TX_SUB to false.",
-		Extras: map[string]interface{}{
-			"envelope_xdr": TransactionEnvelopeXDR,
-		},
+			"To enable it again, remove env variable DISABLE_TX_SUB.",
+		Extras: map[string]interface{}{},
 	}
 
 	request, err := http.NewRequest(

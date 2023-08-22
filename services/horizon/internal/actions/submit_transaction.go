@@ -129,6 +129,17 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
+	if handler.DisableTxSub {
+		return nil, &problem.P{
+			Type:   "transaction_submission_disabled",
+			Title:  "Transaction Submission Disabled",
+			Status: http.StatusMethodNotAllowed,
+			Detail: "Transaction submission has been disabled for Horizon. " +
+				"To enable it again, remove env variable DISABLE_TX_SUB.",
+			Extras: map[string]interface{}{},
+		}
+	}
+
 	raw, err := getString(r, "tx")
 	if err != nil {
 		return nil, err
@@ -154,19 +165,6 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 	coreState := handler.GetCoreState()
 	if !coreState.Synced {
 		return nil, hProblem.StaleHistory
-	}
-
-	if handler.DisableTxSub {
-		return nil, &problem.P{
-			Type:   "transaction_submission_disabled",
-			Title:  "Transaction Submission Disabled",
-			Status: http.StatusMethodNotAllowed,
-			Detail: "Transaction submission has been disabled for Horizon. " +
-				"To enable it again, remove DISABLE_TX_SUB env variable.",
-			Extras: map[string]interface{}{
-				"envelope_xdr": raw,
-			},
-		}
 	}
 
 	submission := handler.Submitter.Submit(r.Context(), info.raw, info.parsed, info.hash)
