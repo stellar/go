@@ -224,8 +224,8 @@ func Flags() (*Config, support.ConfigOptions) {
 		},
 		&support.ConfigOption{
 			Name:        EnableIngestionFilteringFlagName,
-			OptType:     types.Bool,
-			FlagDefault: true,
+			OptType:     types.String,
+			FlagDefault: "",
 			Required:    false,
 			ConfigKey:   &config.EnableIngestionFiltering,
 			CustomSetValue: func(opt *support.ConfigOption) error {
