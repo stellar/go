@@ -92,7 +92,7 @@ func (q *Q) ClaimableBalanceByID(ctx context.Context, id string) (dest HistoryCl
 }
 
 type OperationClaimableBalanceBatchInsertBuilder interface {
-	Add(operationID, internalID int64) error
+	Add(operationID int64, claimableBalance FutureClaimableBalanceID) error
 	Exec(ctx context.Context, session db.SessionInterface) error
 }
 
@@ -109,10 +109,10 @@ func (q *Q) NewOperationClaimableBalanceBatchInsertBuilder() OperationClaimableB
 }
 
 // Add adds a new operation claimable balance to the batch
-func (i *operationClaimableBalanceBatchInsertBuilder) Add(operationID, internalID int64) error {
+func (i *operationClaimableBalanceBatchInsertBuilder) Add(operationID int64, claimableBalance FutureClaimableBalanceID) error {
 	return i.builder.Row(map[string]interface{}{
 		"history_operation_id":         operationID,
-		"history_claimable_balance_id": internalID,
+		"history_claimable_balance_id": claimableBalance,
 	})
 }
 
@@ -122,7 +122,7 @@ func (i *operationClaimableBalanceBatchInsertBuilder) Exec(ctx context.Context, 
 }
 
 type TransactionClaimableBalanceBatchInsertBuilder interface {
-	Add(transactionID, internalID int64) error
+	Add(transactionID int64, claimableBalance FutureClaimableBalanceID) error
 	Exec(ctx context.Context, session db.SessionInterface) error
 }
 
@@ -139,10 +139,10 @@ func (q *Q) NewTransactionClaimableBalanceBatchInsertBuilder() TransactionClaima
 }
 
 // Add adds a new transaction claimable balance to the batch
-func (i *transactionClaimableBalanceBatchInsertBuilder) Add(transactionID, internalID int64) error {
+func (i *transactionClaimableBalanceBatchInsertBuilder) Add(transactionID int64, claimableBalance FutureClaimableBalanceID) error {
 	return i.builder.Row(map[string]interface{}{
 		"history_transaction_id":       transactionID,
-		"history_claimable_balance_id": internalID,
+		"history_claimable_balance_id": claimableBalance,
 	})
 }
 
