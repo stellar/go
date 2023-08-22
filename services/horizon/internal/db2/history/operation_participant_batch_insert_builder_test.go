@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
+
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -13,13 +15,15 @@ func TestAddOperationParticipants(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
+	accountLoader := NewAccountLoader()
+	address := keypair.MustRandom().Address()
 	tt.Assert.NoError(q.Begin())
 	builder := q.NewOperationParticipantBatchInsertBuilder()
-	err := builder.Add(240518172673, 1)
+	err := builder.Add(240518172673, accountLoader.GetFuture(address))
 	tt.Assert.NoError(err)
 
-	err = builder.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
+	tt.Assert.NoError(builder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
 	type hop struct {
@@ -39,6 +43,6 @@ func TestAddOperationParticipants(t *testing.T) {
 
 		op := ops[0]
 		tt.Assert.Equal(int64(240518172673), op.OperationID)
-		tt.Assert.Equal(int64(1), op.AccountID)
+		tt.Assert.Equal(accountLoader.getNow(address), op.AccountID)
 	}
 }

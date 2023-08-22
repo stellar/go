@@ -14,8 +14,8 @@ type MockOperationParticipantBatchInsertBuilder struct {
 }
 
 // Add mock
-func (m *MockOperationParticipantBatchInsertBuilder) Add(operationID int64, accountID int64) error {
-	a := m.Called(operationID, accountID)
+func (m *MockOperationParticipantBatchInsertBuilder) Add(operationID int64, account FutureAccountID) error {
+	a := m.Called(operationID, account)
 	return a.Error(0)
 }
 

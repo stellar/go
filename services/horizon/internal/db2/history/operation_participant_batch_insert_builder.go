@@ -11,7 +11,7 @@ import (
 type OperationParticipantBatchInsertBuilder interface {
 	Add(
 		operationID int64,
-		accountID int64,
+		accountID FutureAccountID,
 	) error
 	Exec(ctx context.Context, session db.SessionInterface) error
 }
@@ -33,7 +33,7 @@ func (q *Q) NewOperationParticipantBatchInsertBuilder() OperationParticipantBatc
 // Add adds an operation participant to the batch
 func (i *operationParticipantBatchInsertBuilder) Add(
 	operationID int64,
-	accountID int64,
+	accountID FutureAccountID,
 ) error {
 	return i.builder.Row(map[string]interface{}{
 		"history_operation_id": operationID,
