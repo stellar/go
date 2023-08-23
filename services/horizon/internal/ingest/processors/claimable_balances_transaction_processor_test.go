@@ -84,6 +84,20 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 				},
 			},
 			change,
+			// add a duplicate change to test that the processor
+			// does not insert duplicate rows
+			{
+				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+				State: &xdr.LedgerEntry{
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeClaimableBalance,
+						ClaimableBalance: &xdr.ClaimableBalanceEntry{
+							BalanceId: balanceID,
+						},
+					},
+				},
+			},
+			change,
 		}},
 	}
 

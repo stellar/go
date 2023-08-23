@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -47,17 +48,12 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "abcde"
-	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
-	tt.Assert.NoError(err)
+	lpLoader := NewLiquidityPoolLoader()
 
 	operationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
-	tt.Assert.NoError(err)
-	internalID, ok := toInternalID[liquidityPoolID]
-	tt.Assert.True(ok)
-	err = operationBuilder.Add(opID, internalID)
-	tt.Assert.NoError(err)
-	err = operationBuilder.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(operationBuilder.Add(opID, lpLoader.GetFuture(liquidityPoolID)))
+	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
+	tt.Assert.NoError(operationBuilder.Exec(tt.Ctx, q))
 
 	tt.Assert.NoError(q.Commit())
 

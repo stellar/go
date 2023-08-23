@@ -54,7 +54,7 @@ func (p *ClaimableBalancesTransactionProcessor) addTransactionClaimableBalances(
 		return errors.Wrap(err, "Could not determine claimable balances for transaction")
 	}
 
-	for _, cb := range transactionClaimableBalances {
+	for _, cb := range dedupeStrings(transactionClaimableBalances) {
 		if err = p.txBatch.Add(transactionID, p.cbLoader.GetFuture(cb)); err != nil {
 			return err
 		}
@@ -81,7 +81,6 @@ func claimableBalancesForChanges(
 	changes []ingest.Change,
 ) ([]string, error) {
 	var cbs []string
-	set := map[string]bool{}
 
 	for _, c := range changes {
 		if c.Type != xdr.LedgerEntryTypeClaimableBalance {
@@ -103,11 +102,7 @@ func claimableBalancesForChanges(
 		if err != nil {
 			return nil, err
 		}
-		if set[id] {
-			continue
-		}
 		cbs = append(cbs, id)
-		set[id] = true
 	}
 
 	return cbs, nil
@@ -116,27 +111,6 @@ func claimableBalancesForChanges(
 func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(
 	sequence uint32, transaction ingest.LedgerTransaction,
 ) error {
-	claimableBalances, err := claimableBalancesForOperations(transaction, sequence)
-	if err != nil {
-		return errors.Wrap(err, "could not determine operation claimable balances")
-	}
-
-	for operationID, cbs := range claimableBalances {
-		for _, cb := range cbs {
-			if err = p.opBatch.Add(operationID, p.cbLoader.GetFuture(cb)); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func claimableBalancesForOperations(
-	transaction ingest.LedgerTransaction, sequence uint32,
-) (map[int64][]string, error) {
-	cbs := map[int64][]string{}
-
 	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
@@ -147,16 +121,21 @@ func claimableBalancesForOperations(
 
 		changes, err := transaction.GetOperationChanges(uint32(opi))
 		if err != nil {
-			return cbs, err
+			return err
 		}
-		c, err := claimableBalancesForChanges(changes)
+		cbs, err := claimableBalancesForChanges(changes)
 		if err != nil {
-			return cbs, errors.Wrapf(err, "reading operation %v claimable balances", operation.ID())
+			return errors.Wrapf(err, "reading operation %v claimable balances", operation.ID())
 		}
-		cbs[operation.ID()] = c
+
+		for _, cb := range dedupeStrings(cbs) {
+			if err = p.opBatch.Add(operation.ID(), p.cbLoader.GetFuture(cb)); err != nil {
+				return err
+			}
+		}
 	}
 
-	return cbs, nil
+	return nil
 }
 
 func (p *ClaimableBalancesTransactionProcessor) Commit(ctx context.Context, session db.SessionInterface) error {

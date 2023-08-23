@@ -38,6 +38,8 @@ func TestClaimableBalanceLoader(t *testing.T) {
 		assert.Panics(t, func() {
 			future.Value()
 		})
+		duplicateFuture := loader.GetFuture(id)
+		assert.Equal(t, future, duplicateFuture)
 	}
 
 	assert.NoError(t, loader.Exec(context.Background(), session))

@@ -29,8 +29,8 @@ type MockTransactionLiquidityPoolBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockTransactionLiquidityPoolBatchInsertBuilder) Add(transactionID, accountID int64) error {
-	a := m.Called(transactionID, accountID)
+func (m *MockTransactionLiquidityPoolBatchInsertBuilder) Add(transactionID int64, lp FutureLiquidityPoolID) error {
+	a := m.Called(transactionID, lp)
 	return a.Error(0)
 }
 
@@ -51,8 +51,8 @@ type MockOperationLiquidityPoolBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockOperationLiquidityPoolBatchInsertBuilder) Add(transactionID, accountID int64) error {
-	a := m.Called(transactionID, accountID)
+func (m *MockOperationLiquidityPoolBatchInsertBuilder) Add(operationID int64, lp FutureLiquidityPoolID) error {
+	a := m.Called(operationID, lp)
 	return a.Error(0)
 }
 
