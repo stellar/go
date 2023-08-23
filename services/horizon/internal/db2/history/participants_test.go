@@ -1,7 +1,6 @@
 package history
 
 import (
-	"sort"
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
@@ -52,7 +51,7 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	tt.Assert.NoError(batch.Add(otherTransactionID, accountLoader.GetFuture(address)))
 
 	tt.Assert.NoError(q.Begin())
-	accountLoader.Exec(tt.Ctx, q)
+	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
 	tt.Assert.NoError(batch.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
@@ -66,14 +65,5 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	for i := range expected {
 		expected[i].AccountID = accountLoader.getNow(addresses[i])
 	}
-	sort.Slice(expected, func(i, j int) bool {
-		if expected[i].TransactionID == expected[j].TransactionID {
-			return expected[i].AccountID < expected[j].AccountID
-		}
-		return expected[i].TransactionID < expected[j].TransactionID
-	})
-	tt.Assert.Equal(
-		expected,
-		participants,
-	)
+	tt.Assert.ElementsMatch(expected, participants)
 }
