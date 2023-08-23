@@ -863,7 +863,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 				StellarCoreBinaryPathName, captiveCoreConfigFlag)
 		}
 		if config.StellarCoreDatabaseURL != "" {
-			return fmt.Errorf("invalid config: --%s passed but --ingest not setcccccbgkvrnudnhglgvtnbcnunfghkgkjrdvrcekflli"+
+			return fmt.Errorf("invalid config: --%s passed but --ingest not set"+
 				"", StellarCoreDBURLFlagName)
 		}
 	}
