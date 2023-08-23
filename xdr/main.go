@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	xdr "github.com/stellar/go-xdr/xdr3"
+
 	"github.com/stellar/go/support/errors"
 )
 
@@ -228,6 +229,11 @@ func (e *EncodingBuffer) LedgerKeyUnsafeMarshalBinaryCompress(key LedgerKey) ([]
 		return nil, err
 	}
 	return e.xdrEncoderBuf.Bytes(), nil
+}
+
+// GetBinaryCompressedLedgerKeyType gets the key type from the result of LedgerKeyUnsafeMarshalBinaryCompress
+func GetBinaryCompressedLedgerKeyType(compressedKey []byte) LedgerEntryType {
+	return LedgerEntryType(compressedKey[0])
 }
 
 func (e *EncodingBuffer) MarshalBase64(encodable EncoderTo) (string, error) {

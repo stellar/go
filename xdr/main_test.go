@@ -217,8 +217,9 @@ func TestLedgerKeyBinaryCompressCoverage(t *testing.T) {
 		)
 		assert.NoError(t, gxdr.Convert(shape, &ledgerKey))
 
-		_, err := e.LedgerKeyUnsafeMarshalBinaryCompress(ledgerKey)
+		compressed, err := e.LedgerKeyUnsafeMarshalBinaryCompress(ledgerKey)
 		assert.NoError(t, err)
+		assert.Equal(t, ledgerKey.Type, GetBinaryCompressedLedgerKeyType(compressed))
 	}
 }
 
