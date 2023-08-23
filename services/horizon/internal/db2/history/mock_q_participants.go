@@ -3,8 +3,9 @@ package history
 import (
 	"context"
 
-	"github.com/stellar/go/support/db"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/support/db"
 )
 
 // MockQParticipants is a mock implementation of the QParticipants interface
@@ -28,7 +29,7 @@ type MockTransactionParticipantsBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockTransactionParticipantsBatchInsertBuilder) Add(transactionID, accountID int64) error {
+func (m *MockTransactionParticipantsBatchInsertBuilder) Add(transactionID int64, accountID FutureAccountID) error {
 	a := m.Called(transactionID, accountID)
 	return a.Error(0)
 }

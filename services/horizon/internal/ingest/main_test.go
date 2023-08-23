@@ -420,7 +420,7 @@ func (m *mockDBQ) NewTransactionParticipantsBatchInsertBuilder() history.Transac
 
 func (m *mockDBQ) NewOperationParticipantBatchInsertBuilder() history.OperationParticipantBatchInsertBuilder {
 	args := m.Called()
-	return args.Get(0).(history.TransactionParticipantsBatchInsertBuilder)
+	return args.Get(0).(history.OperationParticipantBatchInsertBuilder)
 }
 
 func (m *mockDBQ) NewTradeBatchInsertBuilder() history.TradeBatchInsertBuilder {
