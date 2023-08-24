@@ -232,8 +232,15 @@ func (e *EncodingBuffer) LedgerKeyUnsafeMarshalBinaryCompress(key LedgerKey) ([]
 }
 
 // GetBinaryCompressedLedgerKeyType gets the key type from the result of LedgerKeyUnsafeMarshalBinaryCompress
-func GetBinaryCompressedLedgerKeyType(compressedKey []byte) LedgerEntryType {
-	return LedgerEntryType(compressedKey[0])
+func GetBinaryCompressedLedgerKeyType(compressedKey []byte) (LedgerEntryType, error) {
+	if len(compressedKey) < 1 {
+		return 0, errors.New("empty compressed ledger key")
+	}
+	result := LedgerEntryType(compressedKey[0])
+	if int(result) > len(ledgerEntryTypeMap)-1 {
+		return 0, fmt.Errorf("incorrect key type %d", result)
+	}
+	return result, nil
 }
 
 func (e *EncodingBuffer) MarshalBase64(encodable EncoderTo) (string, error) {
