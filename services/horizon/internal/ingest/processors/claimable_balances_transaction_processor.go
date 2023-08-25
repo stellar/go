@@ -138,7 +138,7 @@ func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(
 	return nil
 }
 
-func (p *ClaimableBalancesTransactionProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
+func (p *ClaimableBalancesTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	err := p.txBatch.Exec(ctx, session)
 	if err != nil {
 		return err

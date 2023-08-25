@@ -43,6 +43,6 @@ func TestAddOperationParticipants(t *testing.T) {
 
 		op := ops[0]
 		tt.Assert.Equal(int64(240518172673), op.OperationID)
-		tt.Assert.Equal(accountLoader.getNow(address), op.AccountID)
+		tt.Assert.Equal(accountLoader.GetNow(address), op.AccountID)
 	}
 }

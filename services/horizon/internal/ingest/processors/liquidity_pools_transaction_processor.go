@@ -139,7 +139,7 @@ func (p *LiquidityPoolsTransactionProcessor) addOperationLiquidityPools(sequence
 	return nil
 }
 
-func (p *LiquidityPoolsTransactionProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
+func (p *LiquidityPoolsTransactionProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	if err := p.txBatch.Exec(ctx, session); err != nil {
 		return errors.Wrap(err, "Could not flush transaction liquidity pools to db")
 	}

@@ -30,7 +30,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 		future := loader.GetFuture(id)
 		futures = append(futures, future)
 		assert.Panics(t, func() {
-			loader.getNow(id)
+			loader.GetNow(id)
 		})
 		assert.Panics(t, func() {
 			future.Value()
@@ -47,7 +47,7 @@ func TestLiquidityPoolLoader(t *testing.T) {
 	q := &Q{session}
 	for i, id := range ids {
 		future := futures[i]
-		internalID := loader.getNow(id)
+		internalID := loader.GetNow(id)
 		val, err := future.Value()
 		assert.NoError(t, err)
 		assert.Equal(t, internalID, val)

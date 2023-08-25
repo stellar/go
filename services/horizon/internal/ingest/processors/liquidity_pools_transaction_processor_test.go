@@ -62,7 +62,7 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) TestEmptyLiquidityPo
 	s.mockTransactionBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 	s.mockOperationBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
-	err := s.processor.Commit(context.Background(), s.mockSession)
+	err := s.processor.Flush(context.Background(), s.mockSession)
 	s.Assert().NoError(err)
 }
 
@@ -138,7 +138,7 @@ func (s *LiquidityPoolsTransactionProcessorTestSuiteLedger) testOperationInserts
 	// Process the transaction
 	err := s.processor.ProcessTransaction(s.lcm, txn)
 	s.Assert().NoError(err)
-	err = s.processor.Commit(s.ctx, s.mockSession)
+	err = s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().NoError(err)
 }
 

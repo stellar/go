@@ -62,7 +62,7 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestEmptyClaimabl
 	s.mockTransactionBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 	s.mockOperationBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
-	s.Assert().NoError(s.processor.Commit(s.ctx, s.mockSession))
+	s.Assert().NoError(s.processor.Flush(s.ctx, s.mockSession))
 }
 
 func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInserts(balanceID xdr.ClaimableBalanceId, body xdr.OperationBody, change xdr.LedgerEntryChange) {
@@ -138,7 +138,7 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 	// Process the transaction
 	err = s.processor.ProcessTransaction(s.lcm, txn)
 	s.Assert().NoError(err)
-	err = s.processor.Commit(s.ctx, s.mockSession)
+	err = s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().NoError(err)
 }
 
