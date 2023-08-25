@@ -9,7 +9,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -39,7 +38,6 @@ type System struct {
 	DB                func(context.Context) HorizonDB
 	Pending           OpenSubmissionList
 	Submitter         Submitter
-	SubmissionQueue   *sequence.Manager
 	SubmissionTimeout time.Duration
 	Log               *log.Entry
 
@@ -47,14 +45,6 @@ type System struct {
 		// SubmissionDuration exposes timing metrics about the rate and latency of
 		// submissions to stellar-core
 		SubmissionDuration prometheus.Summary
-
-		// BufferedSubmissionGauge tracks the count of submissions buffered
-		// behind this system's SubmissionQueue
-		BufferedSubmissionsGauge prometheus.Gauge
-
-		// OpenSubmissionsGauge tracks the count of "open" submissions (i.e.
-		// submissions whose transactions haven't been confirmed successful or failed
-		OpenSubmissionsGauge prometheus.Gauge
 
 		// FailedSubmissionsCounter tracks the rate of failed transactions that have
 		// been submitted to this process
@@ -81,8 +71,6 @@ type System struct {
 // RegisterMetrics registers the prometheus metrics
 func (sys *System) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(sys.Metrics.SubmissionDuration)
-	registry.MustRegister(sys.Metrics.BufferedSubmissionsGauge)
-	registry.MustRegister(sys.Metrics.OpenSubmissionsGauge)
 	registry.MustRegister(sys.Metrics.FailedSubmissionsCounter)
 	registry.MustRegister(sys.Metrics.SuccessfulSubmissionsCounter)
 	registry.MustRegister(sys.Metrics.V0TransactionsCounter)
@@ -122,7 +110,7 @@ func (sys *System) Submit(
 		return
 	}
 
-	tx, sequenceNumber, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
+	tx, _, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
 		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
@@ -134,73 +122,36 @@ func (sys *System) Submit(
 		return
 	}
 
-	// queue the submission and get the channel that will emit when
-	// submission is valid
-	var pMinSeqNum *uint64
-	if minSeqNum != nil {
-		uMinSeqNum := uint64(*minSeqNum)
-		pMinSeqNum = &uMinSeqNum
-	}
-	submissionWait := sys.SubmissionQueue.Push(sourceAddress, uint64(seqNum), pMinSeqNum)
+	sr := sys.submitOnce(ctx, rawTx)
+	sys.updateTransactionTypeMetrics(envelope)
 
-	// update the submission queue with the source accounts current sequence value
-	// which will cause the channel returned by Push() to emit if possible.
-	sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
-		sourceAddress: sequenceNumber,
-	})
-
-	select {
-	case err := <-submissionWait:
-		if err == sequence.ErrBadSequence {
-			// convert the internal only ErrBadSequence into the FailedTransactionError
-			err = ErrBadSequence
-		}
-
+	if sr.Err != nil {
+		// any error other than "txBAD_SEQ" is a failure
+		isBad, err := sr.IsBadSeq()
 		if err != nil {
 			sys.finish(ctx, hash, resultCh, Result{Err: err})
 			return
 		}
-
-		sr := sys.submitOnce(ctx, rawTx)
-		sys.updateTransactionTypeMetrics(envelope)
-
-		if sr.Err != nil {
-			// any error other than "txBAD_SEQ" is a failure
-			isBad, err := sr.IsBadSeq()
-			if err != nil {
-				sys.finish(ctx, hash, resultCh, Result{Err: err})
-				return
-			}
-			if !isBad {
-				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
-				return
-			}
-
-			if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
-				sys.finish(ctx, hash, resultCh, Result{Err: err})
-				return
-			}
-
-			// If error is txBAD_SEQ, check for the result again
-			tx, err = txResultByHash(ctx, db, hash)
-			if err != nil {
-				// finally, return the bad_seq error if no result was found on 2nd attempt
-				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
-				return
-			}
-			// If we found the result, use it as the result
-			sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
+		if !isBad {
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
 			return
 		}
 
-		// add transactions to open list
-		sys.Pending.Add(ctx, hash, resultCh)
-		// update the submission queue, allowing the next submission to proceed
-		sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
-			sourceAddress: uint64(envelope.SeqNum()),
-		})
-	case <-ctx.Done():
-		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
+		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
+			sys.finish(ctx, hash, resultCh, Result{Err: err})
+			return
+		}
+
+		// If error is txBAD_SEQ, check for the result again
+		tx, err = txResultByHash(ctx, db, hash)
+		if err != nil {
+			// finally, return the bad_seq error if no result was found on 2nd attempt
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
+			return
+		}
+		// If we found the result, use it as the result
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
+		return
 	}
 
 	return
@@ -255,7 +206,7 @@ func (sys *System) submitOnce(ctx context.Context, env string) SubmissionResult 
 	sr := sys.Submitter.Submit(ctx, env)
 	sys.Metrics.SubmissionDuration.Observe(float64(sr.Duration.Seconds()))
 
-	// if received or duplicate, add to the open submissions list
+	// Update submission metrics
 	if sr.Err == nil {
 		sys.Metrics.SuccessfulSubmissionsCounter.Inc()
 	} else {
@@ -299,109 +250,6 @@ func (sys *System) unsetTickInProgress() {
 	sys.tickInProgress = false
 }
 
-// Tick triggers the system to update itself with any new data available.
-func (sys *System) Tick(ctx context.Context) {
-	sys.Init()
-	logger := log.Ctx(ctx)
-
-	// Make sure Tick is not run concurrently
-	if !sys.setTickInProgress(ctx) {
-		return
-	}
-
-	defer sys.unsetTickInProgress()
-
-	logger.
-		WithField("queued", sys.SubmissionQueue.String()).
-		Debug("ticking txsub system")
-
-	db := sys.DB(ctx)
-	options := &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}
-	if err := db.BeginTx(ctx, options); err != nil {
-		logger.WithError(err).Error("could not start repeatable read transaction for txsub tick")
-		return
-	}
-	defer db.Rollback()
-
-	addys := sys.SubmissionQueue.Addresses()
-	if len(addys) > 0 {
-		curSeq, err := db.GetSequenceNumbers(ctx, addys)
-		if err != nil {
-			logger.WithStack(err).Error(err)
-			return
-		} else {
-			sys.SubmissionQueue.NotifyLastAccountSequences(curSeq)
-		}
-	}
-
-	pending := sys.Pending.Pending(ctx)
-
-	if len(pending) > 0 {
-		latestLedger, err := db.GetLatestHistoryLedger(ctx)
-		if err != nil {
-			logger.WithError(err).Error("error getting latest history ledger")
-			return
-		}
-
-		// In Tick we only check txs in a queue so those which did not have results before Tick
-		// so we check for them in the last 5 mins of ledgers: 60.
-		sinceLedgerSeq := int32(latestLedger) - 60
-		if sinceLedgerSeq < 0 {
-			sinceLedgerSeq = 0
-		}
-
-		txs, err := db.AllTransactionsByHashesSinceLedger(ctx, pending, uint32(sinceLedgerSeq))
-		if err != nil && !db.NoRows(err) {
-			logger.WithError(err).Error("error getting transactions by hashes")
-			return
-		}
-
-		txMap := make(map[string]history.Transaction, len(txs))
-		for _, tx := range txs {
-			txMap[tx.TransactionHash] = tx
-			if tx.InnerTransactionHash.Valid {
-				txMap[tx.InnerTransactionHash.String] = tx
-			}
-		}
-
-		for _, hash := range pending {
-			tx, found := txMap[hash]
-			if !found {
-				continue
-			}
-			_, err := txResultFromHistory(tx)
-
-			if err == nil {
-				logger.WithField("hash", hash).Debug("finishing open submission")
-				sys.Pending.Finish(ctx, hash, Result{Transaction: tx})
-				continue
-			}
-
-			if _, ok := err.(*FailedTransactionError); ok {
-				logger.WithField("hash", hash).Debug("finishing open submission")
-				sys.Pending.Finish(ctx, hash, Result{Transaction: tx, Err: err})
-				continue
-			}
-
-			if err != nil {
-				logger.WithStack(err).Error(err)
-			}
-		}
-	}
-
-	stillOpen, err := sys.Pending.Clean(ctx, sys.SubmissionTimeout)
-	if err != nil {
-		logger.WithStack(err).Error(err)
-		return
-	}
-
-	sys.Metrics.OpenSubmissionsGauge.Set(float64(stillOpen))
-	sys.Metrics.BufferedSubmissionsGauge.Set(float64(sys.SubmissionQueue.Size()))
-}
-
 // Init initializes `sys`
 func (sys *System) Init() {
 	sys.initializer.Do(func() {
@@ -416,12 +264,6 @@ func (sys *System) Init() {
 		})
 		sys.Metrics.SuccessfulSubmissionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "succeeded",
-		})
-		sys.Metrics.OpenSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "txsub", Name: "open",
-		})
-		sys.Metrics.BufferedSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "txsub", Name: "buffered",
 		})
 		sys.Metrics.V0TransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "v0",

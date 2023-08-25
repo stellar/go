@@ -448,11 +448,6 @@ func (a *App) Tick(ctx context.Context) error {
 		return err
 	}
 
-	wg.Add(1)
-	go func() { a.submitter.Tick(ctx); wg.Done() }()
-	wg.Wait()
-
-	log.Debug("finished ticking app")
 	return ctx.Err()
 }
 
