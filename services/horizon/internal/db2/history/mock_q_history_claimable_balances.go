@@ -29,8 +29,8 @@ type MockTransactionClaimableBalanceBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockTransactionClaimableBalanceBatchInsertBuilder) Add(transactionID, accountID int64) error {
-	a := m.Called(transactionID, accountID)
+func (m *MockTransactionClaimableBalanceBatchInsertBuilder) Add(transactionID int64, claimableBalance FutureClaimableBalanceID) error {
+	a := m.Called(transactionID, claimableBalance)
 	return a.Error(0)
 }
 
@@ -51,8 +51,8 @@ type MockOperationClaimableBalanceBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockOperationClaimableBalanceBatchInsertBuilder) Add(transactionID, accountID int64) error {
-	a := m.Called(transactionID, accountID)
+func (m *MockOperationClaimableBalanceBatchInsertBuilder) Add(operationID int64, claimableBalance FutureClaimableBalanceID) error {
+	a := m.Called(operationID, claimableBalance)
 	return a.Error(0)
 }
 

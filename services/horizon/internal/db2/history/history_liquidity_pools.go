@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 )
@@ -101,7 +102,7 @@ func (q *Q) LiquidityPoolByID(ctx context.Context, poolID string) (dest HistoryL
 }
 
 type OperationLiquidityPoolBatchInsertBuilder interface {
-	Add(operationID, internalID int64) error
+	Add(operationID int64, lp FutureLiquidityPoolID) error
 	Exec(ctx context.Context, session db.SessionInterface) error
 }
 
@@ -118,10 +119,10 @@ func (q *Q) NewOperationLiquidityPoolBatchInsertBuilder() OperationLiquidityPool
 }
 
 // Add adds a new operation claimable balance to the batch
-func (i *operationLiquidityPoolBatchInsertBuilder) Add(operationID, internalID int64) error {
+func (i *operationLiquidityPoolBatchInsertBuilder) Add(operationID int64, lp FutureLiquidityPoolID) error {
 	return i.builder.Row(map[string]interface{}{
 		"history_operation_id":      operationID,
-		"history_liquidity_pool_id": internalID,
+		"history_liquidity_pool_id": lp,
 	})
 }
 
@@ -131,7 +132,7 @@ func (i *operationLiquidityPoolBatchInsertBuilder) Exec(ctx context.Context, ses
 }
 
 type TransactionLiquidityPoolBatchInsertBuilder interface {
-	Add(transactionID, internalID int64) error
+	Add(transactionID int64, lp FutureLiquidityPoolID) error
 	Exec(ctx context.Context, session db.SessionInterface) error
 }
 
@@ -148,10 +149,10 @@ func (q *Q) NewTransactionLiquidityPoolBatchInsertBuilder() TransactionLiquidity
 }
 
 // Add adds a new transaction claimable balance to the batch
-func (i *transactionLiquidityPoolBatchInsertBuilder) Add(transactionID, internalID int64) error {
+func (i *transactionLiquidityPoolBatchInsertBuilder) Add(transactionID int64, lp FutureLiquidityPoolID) error {
 	return i.builder.Row(map[string]interface{}{
 		"history_transaction_id":    transactionID,
-		"history_liquidity_pool_id": internalID,
+		"history_liquidity_pool_id": lp,
 	})
 }
 

@@ -23,7 +23,7 @@ type FutureLiquidityPoolID struct {
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureLiquidityPoolID) Value() (driver.Value, error) {
-	return a.loader.getNow(a.id), nil
+	return a.loader.GetNow(a.id), nil
 }
 
 // LiquidityPoolLoader will map liquidity pools to their internal
@@ -60,11 +60,11 @@ func (a *LiquidityPoolLoader) GetFuture(id string) FutureLiquidityPoolID {
 	}
 }
 
-// getNow returns the internal history id for the given liquidity pool.
-// getNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any getNow
+// GetNow returns the internal history id for the given liquidity pool.
+// GetNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a *LiquidityPoolLoader) getNow(id string) int64 {
+func (a *LiquidityPoolLoader) GetNow(id string) int64 {
 	if id, ok := a.ids[id]; !ok {
 		panic(fmt.Errorf("id %v not present", id))
 	} else {
@@ -140,4 +140,21 @@ func (a *LiquidityPoolLoader) Exec(ctx context.Context, session db.SessionInterf
 	}
 
 	return a.lookupKeys(ctx, q, ids)
+}
+
+// LiquidityPoolLoaderStub is a stub wrapper around LiquidityPoolLoader which allows
+// you to manually configure the mapping of liquidity pools to history liquidity ppol ids
+type LiquidityPoolLoaderStub struct {
+	Loader *LiquidityPoolLoader
+}
+
+// NewLiquidityPoolLoaderStub returns a new LiquidityPoolLoader instance
+func NewLiquidityPoolLoaderStub() LiquidityPoolLoaderStub {
+	return LiquidityPoolLoaderStub{Loader: NewLiquidityPoolLoader()}
+}
+
+// Insert updates the wrapped LiquidityPoolLoader so that the given liquidity pool
+// is mapped to the provided history liquidity pool id
+func (a LiquidityPoolLoaderStub) Insert(lp string, id int64) {
+	a.Loader.ids[lp] = id
 }

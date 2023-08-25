@@ -155,7 +155,7 @@ func (p *ParticipantsProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, tran
 	return nil
 }
 
-func (p *ParticipantsProcessor) Commit(ctx context.Context, session db.SessionInterface) error {
+func (p *ParticipantsProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	if err := p.txBatch.Exec(ctx, session); err != nil {
 		return errors.Wrap(err, "Could not flush transaction participants to db")
 	}

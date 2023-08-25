@@ -5,6 +5,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/toid"
@@ -122,18 +123,13 @@ func TestOperationByLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
-	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
-	tt.Assert.NoError(err)
+	lpLoader := NewLiquidityPoolLoader()
+
 	lpOperationBuilder := q.NewOperationLiquidityPoolBatchInsertBuilder()
-	tt.Assert.NoError(err)
-	internalID, ok := toInternalID[liquidityPoolID]
-	tt.Assert.True(ok)
-	err = lpOperationBuilder.Add(opID1, internalID)
-	tt.Assert.NoError(err)
-	err = lpOperationBuilder.Add(opID2, internalID)
-	tt.Assert.NoError(err)
-	err = lpOperationBuilder.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(lpOperationBuilder.Add(opID1, lpLoader.GetFuture(liquidityPoolID)))
+	tt.Assert.NoError(lpOperationBuilder.Add(opID2, lpLoader.GetFuture(liquidityPoolID)))
+	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
+	tt.Assert.NoError(lpOperationBuilder.Exec(tt.Ctx, q))
 
 	tt.Assert.NoError(q.Commit())
 

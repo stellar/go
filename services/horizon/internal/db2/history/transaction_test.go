@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/xdr"
 
 	"github.com/stellar/go/ingest"
@@ -77,22 +78,17 @@ func TestTransactionByLiquidityPool(t *testing.T) {
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "a2f38836a839de008cf1d782c81f45e1253cc5d3dad9110b872965484fec0a49"
-	toInternalID, err := q.CreateHistoryLiquidityPools(tt.Ctx, []string{liquidityPoolID}, 2)
-	tt.Assert.NoError(err)
+	lpLoader := NewLiquidityPoolLoader()
 	lpTransactionBuilder := q.NewTransactionLiquidityPoolBatchInsertBuilder()
-	tt.Assert.NoError(err)
-	internalID, ok := toInternalID[liquidityPoolID]
-	tt.Assert.True(ok)
-	err = lpTransactionBuilder.Add(txID, internalID)
-	tt.Assert.NoError(err)
-	err = lpTransactionBuilder.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
-
+	tt.Assert.NoError(lpTransactionBuilder.Add(txID, lpLoader.GetFuture(liquidityPoolID)))
+	tt.Assert.NoError(lpLoader.Exec(tt.Ctx, q))
+	tt.Assert.NoError(lpTransactionBuilder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
 	var records []Transaction
-	err = q.Transactions().ForLiquidityPool(tt.Ctx, liquidityPoolID).Select(tt.Ctx, &records)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(
+		q.Transactions().ForLiquidityPool(tt.Ctx, liquidityPoolID).Select(tt.Ctx, &records),
+	)
 	tt.Assert.Len(records, 1)
 
 }

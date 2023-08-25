@@ -27,11 +27,13 @@ func TestAccountLoader(t *testing.T) {
 		future := loader.GetFuture(address)
 		futures = append(futures, future)
 		assert.Panics(t, func() {
-			loader.getNow(address)
+			loader.GetNow(address)
 		})
 		assert.Panics(t, func() {
 			future.Value()
 		})
+		duplicateFuture := loader.GetFuture(address)
+		assert.Equal(t, future, duplicateFuture)
 	}
 
 	assert.NoError(t, loader.Exec(context.Background(), session))
@@ -42,7 +44,7 @@ func TestAccountLoader(t *testing.T) {
 	q := &Q{session}
 	for i, address := range addresses {
 		future := futures[i]
-		id := loader.getNow(address)
+		id := loader.GetNow(address)
 		val, err := future.Value()
 		assert.NoError(t, err)
 		assert.Equal(t, id, val)

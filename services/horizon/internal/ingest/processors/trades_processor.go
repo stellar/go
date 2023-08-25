@@ -19,18 +19,25 @@ import (
 
 // TradeProcessor operations processor
 type TradeProcessor struct {
-	session db.SessionInterface
-	tradesQ history.QTrades
-	ledger  xdr.LedgerHeaderHistoryEntry
-	trades  []ingestTrade
-	stats   TradeStats
+	accountLoader *history.AccountLoader
+	lpLoader      *history.LiquidityPoolLoader
+	assetLoader   *history.AssetLoader
+	batch         history.TradeBatchInsertBuilder
+	trades        []ingestTrade
+	stats         TradeStats
 }
 
-func NewTradeProcessor(session db.SessionInterface, tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEntry) *TradeProcessor {
+func NewTradeProcessor(
+	accountLoader *history.AccountLoader,
+	lpLoader *history.LiquidityPoolLoader,
+	assetLoader *history.AssetLoader,
+	batch history.TradeBatchInsertBuilder,
+) *TradeProcessor {
 	return &TradeProcessor{
-		session: session,
-		tradesQ: tradesQ,
-		ledger:  ledger,
+		accountLoader: accountLoader,
+		lpLoader:      lpLoader,
+		assetLoader:   assetLoader,
+		batch:         batch,
 	}
 }
 
@@ -48,14 +55,28 @@ func (stats *TradeStats) Map() map[string]interface{} {
 }
 
 // ProcessTransaction process the given transaction
-func (p *TradeProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (err error) {
+func (p *TradeProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) (err error) {
 	if !transaction.Result.Successful() {
 		return nil
 	}
 
-	trades, err := p.extractTrades(p.ledger, transaction)
+	trades, err := p.extractTrades(lcm.LedgerHeaderHistoryEntry(), transaction)
 	if err != nil {
 		return err
+	}
+
+	for _, trade := range trades {
+		if trade.buyerAccount != "" {
+			p.accountLoader.GetFuture(trade.buyerAccount)
+		}
+		if trade.sellerAccount != "" {
+			p.accountLoader.GetFuture(trade.sellerAccount)
+		}
+		if trade.liquidityPoolID != "" {
+			p.lpLoader.GetFuture(trade.liquidityPoolID)
+		}
+		p.assetLoader.GetFuture(history.AssetKeyFromXDR(trade.boughtAsset))
+		p.assetLoader.GetFuture(history.AssetKeyFromXDR(trade.soldAsset))
 	}
 
 	p.trades = append(p.trades, trades...)
@@ -63,64 +84,25 @@ func (p *TradeProcessor) ProcessTransaction(ctx context.Context, transaction ing
 	return nil
 }
 
-func (p *TradeProcessor) Commit(ctx context.Context) error {
+func (p *TradeProcessor) Flush(ctx context.Context, session db.SessionInterface) error {
 	if len(p.trades) == 0 {
 		return nil
 	}
 
-	batch := p.tradesQ.NewTradeBatchInsertBuilder()
-	var poolIDs, accounts []string
-	var assets []xdr.Asset
-	for _, trade := range p.trades {
-		if trade.buyerAccount != "" {
-			accounts = append(accounts, trade.buyerAccount)
-		}
-		if trade.sellerAccount != "" {
-			accounts = append(accounts, trade.sellerAccount)
-		}
-		if trade.liquidityPoolID != "" {
-			poolIDs = append(poolIDs, trade.liquidityPoolID)
-		}
-		assets = append(assets, trade.boughtAsset)
-		assets = append(assets, trade.soldAsset)
-	}
-
-	accountSet, err := p.tradesQ.CreateAccounts(ctx, accounts, maxBatchSize)
-	if err != nil {
-		return errors.Wrap(err, "Error creating account ids")
-	}
-
-	var assetMap map[string]history.Asset
-	assetMap, err = p.tradesQ.CreateAssets(ctx, assets, maxBatchSize)
-	if err != nil {
-		return errors.Wrap(err, "Error creating asset ids")
-	}
-
-	var poolMap map[string]int64
-	poolMap, err = p.tradesQ.CreateHistoryLiquidityPools(ctx, poolIDs, maxBatchSize)
-	if err != nil {
-		return errors.Wrap(err, "Error creating pool ids")
-	}
-
 	for _, trade := range p.trades {
 		row := trade.row
-		if id, ok := accountSet[trade.sellerAccount]; ok {
-			row.BaseAccountID = null.IntFrom(id)
-		} else if len(trade.sellerAccount) > 0 {
-			return errors.Errorf("Could not find history account id for %s", trade.sellerAccount)
+		if trade.sellerAccount != "" {
+			row.BaseAccountID = null.IntFrom(p.accountLoader.GetNow(trade.sellerAccount))
 		}
-		if id, ok := accountSet[trade.buyerAccount]; ok {
-			row.CounterAccountID = null.IntFrom(id)
-		} else if len(trade.buyerAccount) > 0 {
-			return errors.Errorf("Could not find history account id for %s", trade.buyerAccount)
+		if trade.buyerAccount != "" {
+			row.CounterAccountID = null.IntFrom(p.accountLoader.GetNow(trade.buyerAccount))
 		}
-		if id, ok := poolMap[trade.liquidityPoolID]; ok {
-			row.BaseLiquidityPoolID = null.IntFrom(id)
-		} else if len(trade.liquidityPoolID) > 0 {
-			return errors.Errorf("Could not find history liquidity pool id for %s", trade.liquidityPoolID)
+		if trade.liquidityPoolID != "" {
+			row.BaseLiquidityPoolID = null.IntFrom(p.lpLoader.GetNow(trade.liquidityPoolID))
 		}
-		row.BaseAssetID = assetMap[trade.soldAsset.String()].ID
-		row.CounterAssetID = assetMap[trade.boughtAsset.String()].ID
+
+		row.BaseAssetID = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.soldAsset))
+		row.CounterAssetID = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.boughtAsset))
 
 		if row.BaseAssetID > row.CounterAssetID {
 			row.BaseIsSeller = false
@@ -136,12 +118,12 @@ func (p *TradeProcessor) Commit(ctx context.Context) error {
 			}
 		}
 
-		if err = batch.Add(row); err != nil {
+		if err := p.batch.Add(row); err != nil {
 			return errors.Wrap(err, "Error adding trade to batch")
 		}
 	}
 
-	if err = batch.Exec(ctx, p.session); err != nil {
+	if err := p.batch.Exec(ctx, session); err != nil {
 		return errors.Wrap(err, "Error flushing operation batch")
 	}
 	return nil

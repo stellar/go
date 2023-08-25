@@ -145,7 +145,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 	s.mockBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
-	err := s.processor.Commit(s.ctx, s.mockSession)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().NoError(err)
 }
 
@@ -190,7 +190,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
 	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx, s.mockSession).Return(nil).Once()
 
 	s.Assert().NoError(s.processor.ProcessTransaction(s.lcm, feeBumpTx))
-	s.Assert().NoError(s.processor.Commit(s.ctx, s.mockSession))
+	s.Assert().NoError(s.processor.Flush(s.ctx, s.mockSession))
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
@@ -204,7 +204,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 		err := s.processor.ProcessTransaction(s.lcm, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit(s.ctx, s.mockSession)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().NoError(err)
 }
 
@@ -240,7 +240,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 		err := s.processor.ProcessTransaction(s.lcm, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit(s.ctx, s.mockSession)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().EqualError(err, "Could not flush transaction participants to db: transient error")
 }
 
@@ -255,6 +255,6 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationBatchAddExecFails() 
 		err := s.processor.ProcessTransaction(s.lcm, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit(s.ctx, s.mockSession)
+	err := s.processor.Flush(s.ctx, s.mockSession)
 	s.Assert().EqualError(err, "Could not flush operation participants to db: transient error")
 }

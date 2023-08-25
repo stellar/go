@@ -28,7 +28,7 @@ const loaderLookupBatchSize = 50000
 
 // Value implements the database/sql/driver Valuer interface.
 func (a FutureAccountID) Value() (driver.Value, error) {
-	return a.loader.getNow(a.address), nil
+	return a.loader.GetNow(a.address), nil
 }
 
 // AccountLoader will map account addresses to their history
@@ -67,11 +67,11 @@ func (a *AccountLoader) GetFuture(address string) FutureAccountID {
 	}
 }
 
-// getNow returns the history account id for the given address.
-// getNow should only be called on values which were registered by
-// GetFuture() calls. Also, Exec() must be called before any getNow
+// GetNow returns the history account id for the given address.
+// GetNow should only be called on values which were registered by
+// GetFuture() calls. Also, Exec() must be called before any GetNow
 // call can succeed.
-func (a *AccountLoader) getNow(address string) int64 {
+func (a *AccountLoader) GetNow(address string) int64 {
 	if id, ok := a.ids[address]; !ok {
 		panic(fmt.Errorf("address %v not present", address))
 	} else {
@@ -189,4 +189,21 @@ func bulkInsert(ctx context.Context, q *Q, table string, conflictFields []string
 		pqArrays...,
 	)
 	return err
+}
+
+// AccountLoaderStub is a stub wrapper around AccountLoader which allows
+// you to manually configure the mapping of addresses to history account ids
+type AccountLoaderStub struct {
+	Loader *AccountLoader
+}
+
+// NewAccountLoaderStub returns a new AccountLoaderStub instance
+func NewAccountLoaderStub() AccountLoaderStub {
+	return AccountLoaderStub{Loader: NewAccountLoader()}
+}
+
+// Insert updates the wrapped AccountLoader so that the given account
+// address is mapped to the provided history account id
+func (a AccountLoaderStub) Insert(address string, id int64) {
+	a.Loader.ids[address] = id
 }
