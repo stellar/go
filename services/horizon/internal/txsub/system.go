@@ -36,7 +36,6 @@ type System struct {
 	accountSeqPollInterval time.Duration
 
 	DB                func(context.Context) HorizonDB
-	Pending           OpenSubmissionList
 	Submitter         Submitter
 	SubmissionTimeout time.Duration
 	Log               *log.Entry

@@ -41,7 +41,6 @@ func TestDefaultSubmitter(t *testing.T) {
 	assert.NotNil(t, sr.Err)
 
 	//errors when the stellar-core url is not parseable
-
 	s = NewDefaultSubmitter(http.DefaultClient, "http://Not a url")
 	sr = s.Submit(ctx, "hello")
 	assert.NotNil(t, sr.Err)
