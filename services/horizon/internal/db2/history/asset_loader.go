@@ -12,12 +12,22 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/ordered"
+	"github.com/stellar/go/xdr"
 )
 
 type AssetKey struct {
 	Type   string
 	Code   string
 	Issuer string
+}
+
+// AssetKeyFromXDR constructs an AssetKey from an xdr asset
+func AssetKeyFromXDR(asset xdr.Asset) AssetKey {
+	return AssetKey{
+		Type:   xdr.AssetTypeToString[asset.Type],
+		Code:   asset.GetCode(),
+		Issuer: asset.GetIssuer(),
+	}
 }
 
 // FutureAssetID represents a future history asset.

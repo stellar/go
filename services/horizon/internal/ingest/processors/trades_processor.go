@@ -54,14 +54,6 @@ func (stats *TradeStats) Map() map[string]interface{} {
 	}
 }
 
-func assetToKey(asset xdr.Asset) history.AssetKey {
-	return history.AssetKey{
-		Type:   xdr.AssetTypeToString[asset.Type],
-		Code:   asset.GetCode(),
-		Issuer: asset.GetIssuer(),
-	}
-}
-
 // ProcessTransaction process the given transaction
 func (p *TradeProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction ingest.LedgerTransaction) (err error) {
 	if !transaction.Result.Successful() {
@@ -83,8 +75,8 @@ func (p *TradeProcessor) ProcessTransaction(lcm xdr.LedgerCloseMeta, transaction
 		if trade.liquidityPoolID != "" {
 			p.lpLoader.GetFuture(trade.liquidityPoolID)
 		}
-		p.assetLoader.GetFuture(assetToKey(trade.boughtAsset))
-		p.assetLoader.GetFuture(assetToKey(trade.soldAsset))
+		p.assetLoader.GetFuture(history.AssetKeyFromXDR(trade.boughtAsset))
+		p.assetLoader.GetFuture(history.AssetKeyFromXDR(trade.soldAsset))
 	}
 
 	p.trades = append(p.trades, trades...)
@@ -109,8 +101,8 @@ func (p *TradeProcessor) Flush(ctx context.Context, session db.SessionInterface)
 			row.BaseLiquidityPoolID = null.IntFrom(p.lpLoader.GetNow(trade.liquidityPoolID))
 		}
 
-		row.BaseAssetID = p.assetLoader.GetNow(assetToKey(trade.soldAsset))
-		row.CounterAssetID = p.assetLoader.GetNow(assetToKey(trade.boughtAsset))
+		row.BaseAssetID = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.soldAsset))
+		row.CounterAssetID = p.assetLoader.GetNow(history.AssetKeyFromXDR(trade.boughtAsset))
 
 		if row.BaseAssetID > row.CounterAssetID {
 			row.BaseIsSeller = false
