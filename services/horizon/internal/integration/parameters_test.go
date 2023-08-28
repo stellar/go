@@ -398,7 +398,7 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 }
 
 func TestDisableTxSub(t *testing.T) {
-	t.Run("DISABLE_TX_SUB=false, INGEST=false, STELLAR_CORE_URL=''", func(t *testing.T) {
+	t.Run("require stellar-core-url when both DISABLE_TX_SUB=false and INGEST=false", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName:          "testnet",
 			horizon.IngestFlagName:           "false",
@@ -413,7 +413,7 @@ func TestDisableTxSub(t *testing.T) {
 		assert.ErrorContains(t, err, "cannot initialize Horizon: flag --stellar-core-url cannot be empty")
 		test.Shutdown()
 	})
-	t.Run("DISABLE_TX_SUB=false, INGEST=false, STELLAR_CORE_URL=xxxx", func(t *testing.T) {
+	t.Run("horizon starts successfully when DISABLE_TX_SUB=false, INGEST=false and stellar-core-url is provided", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName:          "testnet",
 			horizon.IngestFlagName:           "false",
@@ -429,7 +429,7 @@ func TestDisableTxSub(t *testing.T) {
 		assert.NoError(t, err)
 		test.Shutdown()
 	})
-	t.Run("DISABLE_TX_SUB=true, INGEST=true", func(t *testing.T) {
+	t.Run("horizon starts successfully when DISABLE_TX_SUB=true and INGEST=true", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName:           "testnet",
 			horizon.IngestFlagName:            "true",
