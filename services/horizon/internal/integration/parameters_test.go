@@ -397,6 +397,54 @@ func TestIngestionFilteringAlwaysDefaultingToTrue(t *testing.T) {
 	})
 }
 
+func TestDisableTxSub(t *testing.T) {
+	t.Run("DISABLE_TX_SUB=false, INGEST=false, STELLAR_CORE_URL=''", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName:          "testnet",
+			horizon.IngestFlagName:           "false",
+			horizon.DisableTxSubFlagName:     "false",
+			horizon.StellarCoreDBURLFlagName: "",
+		})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = localParams
+		testConfig.SkipCoreContainerCreation = true
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.ErrorContains(t, err, "cannot initialize Horizon: flag --stellar-core-url cannot be empty")
+		test.Shutdown()
+	})
+	t.Run("DISABLE_TX_SUB=false, INGEST=false, STELLAR_CORE_URL=xxxx", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName:          "testnet",
+			horizon.IngestFlagName:           "false",
+			horizon.DisableTxSubFlagName:     "false",
+			horizon.StellarCoreDBURLFlagName: "",
+			horizon.StellarCoreURLFlagName:   "http://localhost:11626",
+		})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = localParams
+		testConfig.SkipCoreContainerCreation = true
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.Shutdown()
+	})
+	t.Run("DISABLE_TX_SUB=true, INGEST=true", func(t *testing.T) {
+		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
+			horizon.NetworkFlagName:      "testnet",
+			horizon.IngestFlagName:       "true",
+			horizon.DisableTxSubFlagName: "true",
+		})
+		testConfig := integration.GetTestConfig()
+		testConfig.HorizonIngestParameters = localParams
+		testConfig.SkipCoreContainerCreation = true
+		test := integration.NewTest(t, *testConfig)
+		err := test.StartHorizon()
+		assert.NoError(t, err)
+		test.Shutdown()
+	})
+}
+
 func TestDeprecatedOutputForIngestionFilteringFlag(t *testing.T) {
 	originalStderr := os.Stderr
 	r, w, _ := os.Pipe()
