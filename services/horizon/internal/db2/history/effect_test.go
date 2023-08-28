@@ -23,8 +23,7 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 	// Insert Effect
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accountIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
-	tt.Assert.NoError(err)
+	accountLoader := NewAccountLoader()
 
 	builder := q.NewEffectBatchInsertBuilder()
 	sequence := int32(56)
@@ -32,19 +31,19 @@ func TestEffectsForLiquidityPool(t *testing.T) {
 		"amount":     "1000.0000000",
 		"asset_type": "native",
 	})
+	tt.Assert.NoError(err)
 	opID := toid.New(sequence, 1, 1).ToInt64()
-	err = builder.Add(
-		accountIDs[address],
+	tt.Assert.NoError(builder.Add(
+		accountLoader.GetFuture(address),
 		null.StringFrom(muxedAddres),
 		opID,
 		1,
 		3,
 		details,
-	)
-	tt.Assert.NoError(err)
+	))
 
-	err = builder.Exec(tt.Ctx, q)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(accountLoader.Exec(tt.Ctx, q))
+	tt.Assert.NoError(builder.Exec(tt.Ctx, q))
 
 	// Insert Liquidity Pool history
 	liquidityPoolID := "abcde"
@@ -79,8 +78,7 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 
 	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
 	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
-	accountIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
-	tt.Assert.NoError(err)
+	accountLoader := NewAccountLoader()
 
 	builder := q.NewEffectBatchInsertBuilder()
 	sequence := int32(56)
@@ -142,27 +140,24 @@ func TestEffectsForTrustlinesSponsorshipEmptyAssetType(t *testing.T) {
 
 	for i, test := range tests {
 		var bytes []byte
-		bytes, err = json.Marshal(test.details)
+		bytes, err := json.Marshal(test.details)
 		tt.Require.NoError(err)
 
-		err = builder.Add(
-			accountIDs[address],
+		tt.Require.NoError(builder.Add(
+			accountLoader.GetFuture(address),
 			null.StringFrom(muxedAddres),
 			opID,
 			uint32(i),
 			test.effectType,
 			bytes,
-		)
-		tt.Require.NoError(err)
+		))
 	}
-
-	err = builder.Exec(tt.Ctx, q)
-	tt.Require.NoError(err)
+	tt.Require.NoError(accountLoader.Exec(tt.Ctx, q))
+	tt.Require.NoError(builder.Exec(tt.Ctx, q))
 	tt.Assert.NoError(q.Commit())
 
 	var results []Effect
-	err = q.Effects().Select(tt.Ctx, &results)
-	tt.Require.NoError(err)
+	tt.Require.NoError(q.Effects().Select(tt.Ctx, &results))
 	tt.Require.Len(results, len(tests))
 
 	for i, test := range tests {

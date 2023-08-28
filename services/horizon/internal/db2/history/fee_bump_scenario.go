@@ -10,12 +10,13 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/toid"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func ledgerToMap(ledger Ledger) map[string]interface{} {
@@ -285,11 +286,10 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	details, err = json.Marshal(map[string]interface{}{"new_seq": 98})
 	tt.Assert.NoError(err)
 
-	accounIDs, err := q.CreateAccounts(ctx, []string{account.Address()}, 1)
-	tt.Assert.NoError(err)
+	accountLoader := NewAccountLoader()
 
 	err = effectBuilder.Add(
-		accounIDs[account.Address()],
+		accountLoader.GetFuture(account.Address()),
 		null.String{},
 		toid.New(fixture.Ledger.Sequence, 1, 1).ToInt64(),
 		1,
@@ -297,6 +297,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		details,
 	)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(accountLoader.Exec(ctx, q))
 	tt.Assert.NoError(effectBuilder.Exec(ctx, q))
 
 	tt.Assert.NoError(q.Commit())

@@ -16,7 +16,7 @@ type MockEffectBatchInsertBuilder struct {
 
 // Add mock
 func (m *MockEffectBatchInsertBuilder) Add(
-	accountID int64,
+	accountID FutureAccountID,
 	muxedAccount null.String,
 	operationID int64,
 	order uint32,

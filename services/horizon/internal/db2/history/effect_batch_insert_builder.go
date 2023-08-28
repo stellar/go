@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/support/db"
 )
 
@@ -11,7 +12,7 @@ import (
 // history_effects table
 type EffectBatchInsertBuilder interface {
 	Add(
-		accountID int64,
+		accountID FutureAccountID,
 		muxedAccount null.String,
 		operationID int64,
 		order uint32,
@@ -37,7 +38,7 @@ func (q *Q) NewEffectBatchInsertBuilder() EffectBatchInsertBuilder {
 
 // Add adds a effect to the batch
 func (i *effectBatchInsertBuilder) Add(
-	accountID int64,
+	accountID FutureAccountID,
 	muxedAccount null.String,
 	operationID int64,
 	order uint32,
