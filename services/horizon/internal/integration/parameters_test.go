@@ -414,6 +414,7 @@ func TestDisableTxSub(t *testing.T) {
 		test.Shutdown()
 	})
 	t.Run("horizon starts successfully when DISABLE_TX_SUB=false, INGEST=false and stellar-core-url is provided", func(t *testing.T) {
+		// TODO: Remove explicit mention of stellar-core-db-url once this issue is done: https://github.com/stellar/go/issues/4855
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
 			horizon.NetworkFlagName:          "testnet",
 			horizon.IngestFlagName:           "false",
