@@ -431,9 +431,10 @@ func TestDisableTxSub(t *testing.T) {
 	})
 	t.Run("DISABLE_TX_SUB=true, INGEST=true", func(t *testing.T) {
 		localParams := integration.MergeMaps(networkParamArgs, map[string]string{
-			horizon.NetworkFlagName:      "testnet",
-			horizon.IngestFlagName:       "true",
-			horizon.DisableTxSubFlagName: "true",
+			horizon.NetworkFlagName:           "testnet",
+			horizon.IngestFlagName:            "true",
+			horizon.DisableTxSubFlagName:      "true",
+			horizon.StellarCoreBinaryPathName: "/usr/bin/stellar-core",
 		})
 		testConfig := integration.GetTestConfig()
 		testConfig.HorizonIngestParameters = localParams
