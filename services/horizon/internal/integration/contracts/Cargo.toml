@@ -24,5 +24,5 @@ lto = true
 [workspace.dependencies.soroban-sdk]
 # TODO: Does a new version need to be released to update to 8a7d2c3c8c5bc1664ab38f977ff947cc2a26d694
 version = "0.9.1"
-git = "https://github.com/stellar/rs-soroban-sdk"
-rev = "df9334d4e3a1a2c2e0034cfabb643972d4d7f717"
+git = "https://github.com/sisuresh/rs-soroban-sdk"
+rev = "e15e552974a1070fc48027384bdee9ae9f539943"
