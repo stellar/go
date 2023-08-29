@@ -23,7 +23,7 @@ func TestHappyClawbackAccount(t *testing.T) {
 
 	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
 
-	// Clawback all of the asset
+	// Clawback all the asset
 	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &txnbuild.Clawback{
 		From:   fromKey.Address(),
 		Amount: "10",

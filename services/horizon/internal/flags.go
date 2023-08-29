@@ -51,8 +51,11 @@ const (
 	// HistoryArchiveURLsFlagName is the command line flag for specifying the history archive URLs
 	HistoryArchiveURLsFlagName = "history-archive-urls"
 	// NetworkFlagName is the command line flag for specifying the "network"
-	NetworkFlagName              = "network"
-	EnableIngestionFilteringFlag = "exp-enable-ingestion-filtering"
+	NetworkFlagName = "network"
+	// EnableIngestionFilteringFlagName is the command line flag for enabling the experimental ingestion filtering feature (now enabled by default)
+	EnableIngestionFilteringFlagName = "exp-enable-ingestion-filtering"
+	// DisableTxSubFlagName is the command line flag for disabling transaction submission feature of Horizon
+	DisableTxSubFlagName = "disable-tx-sub"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 	// StellarPubnet is a constant representing the Stellar public network
@@ -147,6 +150,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.CaptiveCoreBinaryPath,
 		},
 		&support.ConfigOption{
+			Name:        DisableTxSubFlagName,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "disables the transaction submission functionality of Horizon.",
+			ConfigKey:   &config.DisableTxSub,
+			Hidden:      false,
+		},
+		&support.ConfigOption{
 			Name:        captiveCoreConfigAppendPathName,
 			OptType:     types.String,
 			FlagDefault: "",
@@ -211,9 +223,9 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        EnableIngestionFilteringFlag,
-			OptType:     types.Bool,
-			FlagDefault: true,
+			Name:        EnableIngestionFilteringFlagName,
+			OptType:     types.String,
+			FlagDefault: "",
 			Required:    false,
 			ConfigKey:   &config.EnableIngestionFiltering,
 			CustomSetValue: func(opt *support.ConfigOption) error {
@@ -251,7 +263,7 @@ func Flags() (*Config, support.ConfigOptions) {
 				if existingValue == "" || existingValue == "." {
 					cwd, err := os.Getwd()
 					if err != nil {
-						return fmt.Errorf("Unable to determine the current directory: %s", err)
+						return fmt.Errorf("unable to determine the current directory: %s", err)
 					}
 					existingValue = cwd
 				}
@@ -388,7 +400,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			CustomSetValue: func(co *support.ConfigOption) error {
 				ll, err := logrus.ParseLevel(viper.GetString(co.Name))
 				if err != nil {
-					return fmt.Errorf("Could not parse log-level: %v", viper.GetString(co.Name))
+					return fmt.Errorf("could not parse log-level: %v", viper.GetString(co.Name))
 				}
 				*(co.ConfigKey.(*logrus.Level)) = ll
 				return nil
@@ -820,8 +832,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		config.Ingest = true
 	}
 
-	config.EnableIngestionFiltering = true
-
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
 		// only on ingesting instances which are required to have write-access
@@ -849,11 +859,12 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			if viper.GetString(CaptiveCoreConfigPathName) != "" {
 				captiveCoreConfigFlag = CaptiveCoreConfigPathName
 			}
-			return fmt.Errorf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
+			return fmt.Errorf("invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set"+captiveCoreMigrationHint,
 				StellarCoreBinaryPathName, captiveCoreConfigFlag)
 		}
 		if config.StellarCoreDatabaseURL != "" {
-			return fmt.Errorf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+			return fmt.Errorf("invalid config: --%s passed but --ingest not set"+
+				"", StellarCoreDBURLFlagName)
 		}
 	}
 
@@ -863,7 +874,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 		if err == nil {
 			log.DefaultLogger.SetOutput(logFile)
 		} else {
-			return fmt.Errorf("Failed to open file to log: %s", err)
+			return fmt.Errorf("failed to open file to log: %s", err)
 		}
 	}
 
@@ -878,7 +889,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 	}
 
 	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
-		return fmt.Errorf("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
+		return fmt.Errorf("invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed." +
+			" If Horizon is behind both, use --behind-cloudflare only")
 	}
 
 	return nil

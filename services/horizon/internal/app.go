@@ -513,22 +513,24 @@ func (a *App) init() error {
 	initTxSubMetrics(a)
 
 	routerConfig := httpx.RouterConfig{
-		DBSession:               a.historyQ.SessionInterface,
-		TxSubmitter:             a.submitter,
-		RateQuota:               a.config.RateQuota,
-		BehindCloudflare:        a.config.BehindCloudflare,
-		BehindAWSLoadBalancer:   a.config.BehindAWSLoadBalancer,
-		SSEUpdateFrequency:      a.config.SSEUpdateFrequency,
-		StaleThreshold:          a.config.StaleThreshold,
-		ConnectionTimeout:       a.config.ConnectionTimeout,
-		NetworkPassphrase:       a.config.NetworkPassphrase,
-		MaxPathLength:           a.config.MaxPathLength,
-		MaxAssetsPerPathRequest: a.config.MaxAssetsPerPathRequest,
-		PathFinder:              a.paths,
-		PrometheusRegistry:      a.prometheusRegistry,
-		CoreGetter:              a,
-		HorizonVersion:          a.horizonVersion,
-		FriendbotURL:            a.config.FriendbotURL,
+		DBSession:                a.historyQ.SessionInterface,
+		TxSubmitter:              a.submitter,
+		RateQuota:                a.config.RateQuota,
+		BehindCloudflare:         a.config.BehindCloudflare,
+		BehindAWSLoadBalancer:    a.config.BehindAWSLoadBalancer,
+		SSEUpdateFrequency:       a.config.SSEUpdateFrequency,
+		StaleThreshold:           a.config.StaleThreshold,
+		ConnectionTimeout:        a.config.ConnectionTimeout,
+		NetworkPassphrase:        a.config.NetworkPassphrase,
+		MaxPathLength:            a.config.MaxPathLength,
+		MaxAssetsPerPathRequest:  a.config.MaxAssetsPerPathRequest,
+		PathFinder:               a.paths,
+		PrometheusRegistry:       a.prometheusRegistry,
+		CoreGetter:               a,
+		HorizonVersion:           a.horizonVersion,
+		FriendbotURL:             a.config.FriendbotURL,
+		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
+		DisableTxSub:             a.config.DisableTxSub,
 		HealthCheck: healthCheck{
 			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,
@@ -538,7 +540,6 @@ func (a *App) init() error {
 			},
 			cache: newHealthCache(healthCacheTTL),
 		},
-		EnableIngestionFiltering: a.config.EnableIngestionFiltering,
 	}
 
 	if a.primaryHistoryQ != nil {

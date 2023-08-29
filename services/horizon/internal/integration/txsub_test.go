@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test/integration"
@@ -9,61 +8,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTxsub(t *testing.T) {
-	t.SkipNow()
+func TestTxSub(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, integration.Config{})
-	master := itest.Master()
 
-	// Sanity check: create 20 accounts and submit 2 txs from each of them as
-	// a source at the same time. Then check if the results are correct.
-	t.Run("Sanity", func(t *testing.T) {
-		testAccounts := 20
-		subsPerAccont := 2
-		keys, accounts := itest.CreateAccounts(testAccounts, "1000")
+	t.Run("transaction submission is successful when DISABLE_TX_SUB=false", func(t *testing.T) {
+		itest := integration.NewTest(t, integration.Config{})
+		master := itest.Master()
 
-		var wg sync.WaitGroup
-
-		for i := 0; i < testAccounts; i++ {
-			for j := 0; j < subsPerAccont; j++ {
-				wg.Add(1)
-
-				seq, err := accounts[i].GetSequenceNumber()
-				assert.NoError(t, err)
-
-				var account txnbuild.SimpleAccount
-				if j == 0 {
-					account = txnbuild.SimpleAccount{
-						AccountID: keys[i].Address(),
-						Sequence:  seq,
-					}
-				} else {
-					account = txnbuild.SimpleAccount{
-						AccountID: keys[i].Address(),
-						Sequence:  seq + 1,
-					}
-				}
-
-				go func(i int, j int, account txnbuild.SimpleAccount) {
-					defer wg.Done()
-
-					op := txnbuild.Payment{
-						Destination: master.Address(),
-						Amount:      "10",
-						Asset:       txnbuild.NativeAsset{},
-					}
-
-					txResp := itest.MustSubmitOperations(&account, keys[i], &op)
-
-					tt.Equal(accounts[i].GetAccountID(), txResp.Account)
-					seq, err := account.GetSequenceNumber()
-					assert.NoError(t, err)
-					tt.Equal(seq, txResp.AccountSequence)
-					t.Logf("%d/%d done", i, j)
-				}(i, j, account)
-			}
+		op := txnbuild.Payment{
+			Destination: master.Address(),
+			Amount:      "10",
+			Asset:       txnbuild.NativeAsset{},
 		}
 
-		wg.Wait()
+		txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
+		assert.NoError(t, err)
+
+		var seq int64
+		tt.Equal(itest.MasterAccount().GetAccountID(), txResp.Account)
+		seq, err = itest.MasterAccount().GetSequenceNumber()
+		assert.NoError(t, err)
+		tt.Equal(seq, txResp.AccountSequence)
+		t.Logf("Done")
+	})
+
+	t.Run("transaction submission is not successful when DISABLE_TX_SUB=true", func(t *testing.T) {
+		itest := integration.NewTest(t, integration.Config{
+			HorizonEnvironment: map[string]string{
+				"DISABLE_TX_SUB": "true",
+			},
+		})
+		master := itest.Master()
+
+		op := txnbuild.Payment{
+			Destination: master.Address(),
+			Amount:      "10",
+			Asset:       txnbuild.NativeAsset{},
+		}
+
+		_, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
+		assert.Error(t, err)
 	})
 }

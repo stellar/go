@@ -69,7 +69,7 @@ type ConfigOption struct {
 	CustomSetValue func(*ConfigOption) error // Optional function for custom validation/transformation
 	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
 	flag           *pflag.Flag               // The persistent flag that the config option is attached to
-	Hidden         bool                      // A flag which indicates whether to hide the flag from --help output
+	Hidden         bool                      // Indicates whether to hide the flag from --help output
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
