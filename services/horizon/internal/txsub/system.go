@@ -166,12 +166,6 @@ func (sys *System) Submit(
 
 	// add transactions to open list
 	sys.Pending.Add(ctx, hash, resultCh)
-
-	select {
-	case <-ctx.Done():
-		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
-	}
-
 	return
 }
 
