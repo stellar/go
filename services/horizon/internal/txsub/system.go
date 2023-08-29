@@ -132,11 +132,6 @@ func (sys *System) Submit(
 		return
 	}
 
-	if err != nil {
-		sys.finish(ctx, hash, resultCh, Result{Err: err})
-		return
-	}
-
 	sr := sys.submitOnce(ctx, rawTx)
 	sys.updateTransactionTypeMetrics(envelope)
 
