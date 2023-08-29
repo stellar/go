@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 )
@@ -239,9 +238,8 @@ func initWebMetrics(app *App) {
 
 func initSubmissionSystem(app *App) {
 	app.submitter = &txsub.System{
-		Pending:         txsub.NewDefaultSubmissionList(),
-		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
-		SubmissionQueue: sequence.NewManager(),
+		Pending:   txsub.NewDefaultSubmissionList(),
+		Submitter: txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		DB: func(ctx context.Context) txsub.HorizonDB {
 			return &history.Q{SessionInterface: app.HorizonSession()}
 		},
