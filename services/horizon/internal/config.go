@@ -115,4 +115,6 @@ type Config struct {
 	RoundingSlippageFilter int
 	// Stellar network: 'testnet' or 'pubnet'
 	Network string
+	// DisableTxSub disables transaction submission functionality for Horizon.
+	DisableTxSub bool
 }
