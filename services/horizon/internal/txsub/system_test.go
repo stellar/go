@@ -19,7 +19,6 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/xdr"
 )
 
@@ -42,9 +41,8 @@ func (suite *SystemTestSuite) SetupTest() {
 	suite.db = &mockDBQ{}
 
 	suite.system = &System{
-		Pending:         NewDefaultSubmissionList(),
-		Submitter:       suite.submitter,
-		SubmissionQueue: sequence.NewManager(),
+		Pending:   NewDefaultSubmissionList(),
+		Submitter: suite.submitter,
 		DB: func(ctx context.Context) HorizonDB {
 			return suite.db
 		},
@@ -368,31 +366,6 @@ func (suite *SystemTestSuite) TestTick_Noop() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-
-	suite.system.Tick(suite.ctx)
-}
-
-// TestTick_Deadlock is a regression test for Tick() deadlock: if for any reason
-// call to Tick() takes more time and another Tick() is called.
-// This test starts two go routines: both calling Tick() but the call to
-// `sys.Sequences.Get(addys)` is delayed by 1 second. It allows to simulate two
-// calls to `Tick()` executed at the same time.
-func (suite *SystemTestSuite) TestTick_Deadlock() {
-	suite.db.On("BeginTx", mock.AnythingOfType("*context.valueCtx"), &sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	}).Return(nil).Once()
-	suite.db.On("Rollback").Return(nil).Once()
-
-	// Start first Tick
-	suite.system.SubmissionQueue.Push("address", 0, nil)
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"address"}).
-		Return(map[string]uint64{}, nil).
-		Run(func(args mock.Arguments) {
-			// Start second tick
-			suite.system.Tick(suite.ctx)
-		}).
-		Once()
 
 	suite.system.Tick(suite.ctx)
 }

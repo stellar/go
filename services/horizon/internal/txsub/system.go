@@ -9,7 +9,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -39,7 +38,6 @@ type System struct {
 	DB                func(context.Context) HorizonDB
 	Pending           OpenSubmissionList
 	Submitter         Submitter
-	SubmissionQueue   *sequence.Manager
 	SubmissionTimeout time.Duration
 	Log               *log.Entry
 
@@ -122,7 +120,7 @@ func (sys *System) Submit(
 		return
 	}
 
-	tx, sequenceNumber, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
+	tx, _, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
 		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
@@ -134,71 +132,47 @@ func (sys *System) Submit(
 		return
 	}
 
-	// queue the submission and get the channel that will emit when
-	// submission is valid
-	var pMinSeqNum *uint64
-	if minSeqNum != nil {
-		uMinSeqNum := uint64(*minSeqNum)
-		pMinSeqNum = &uMinSeqNum
+	if err != nil {
+		sys.finish(ctx, hash, resultCh, Result{Err: err})
+		return
 	}
-	submissionWait := sys.SubmissionQueue.Push(sourceAddress, uint64(seqNum), pMinSeqNum)
 
-	// update the submission queue with the source accounts current sequence value
-	// which will cause the channel returned by Push() to emit if possible.
-	sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
-		sourceAddress: sequenceNumber,
-	})
+	sr := sys.submitOnce(ctx, rawTx)
+	sys.updateTransactionTypeMetrics(envelope)
 
-	select {
-	case err := <-submissionWait:
-		if err == sequence.ErrBadSequence {
-			// convert the internal only ErrBadSequence into the FailedTransactionError
-			err = ErrBadSequence
-		}
-
+	if sr.Err != nil {
+		// any error other than "txBAD_SEQ" is a failure
+		isBad, err := sr.IsBadSeq()
 		if err != nil {
 			sys.finish(ctx, hash, resultCh, Result{Err: err})
 			return
 		}
-
-		sr := sys.submitOnce(ctx, rawTx)
-		sys.updateTransactionTypeMetrics(envelope)
-
-		if sr.Err != nil {
-			// any error other than "txBAD_SEQ" is a failure
-			isBad, err := sr.IsBadSeq()
-			if err != nil {
-				sys.finish(ctx, hash, resultCh, Result{Err: err})
-				return
-			}
-			if !isBad {
-				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
-				return
-			}
-
-			if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
-				sys.finish(ctx, hash, resultCh, Result{Err: err})
-				return
-			}
-
-			// If error is txBAD_SEQ, check for the result again
-			tx, err = txResultByHash(ctx, db, hash)
-			if err != nil {
-				// finally, return the bad_seq error if no result was found on 2nd attempt
-				sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
-				return
-			}
-			// If we found the result, use it as the result
-			sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
+		if !isBad {
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
 			return
 		}
 
-		// add transactions to open list
-		sys.Pending.Add(ctx, hash, resultCh)
-		// update the submission queue, allowing the next submission to proceed
-		sys.SubmissionQueue.NotifyLastAccountSequences(map[string]uint64{
-			sourceAddress: uint64(envelope.SeqNum()),
-		})
+		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
+			sys.finish(ctx, hash, resultCh, Result{Err: err})
+			return
+		}
+
+		// If error is txBAD_SEQ, check for the result again
+		tx, err = txResultByHash(ctx, db, hash)
+		if err != nil {
+			// finally, return the bad_seq error if no result was found on 2nd attempt
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
+			return
+		}
+		// If we found the result, use it as the result
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
+		return
+	}
+
+	// add transactions to open list
+	sys.Pending.Add(ctx, hash, resultCh)
+
+	select {
 	case <-ctx.Done():
 		sys.finish(ctx, hash, resultCh, Result{Err: sys.deriveTxSubError(ctx)})
 	}
@@ -311,9 +285,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 	defer sys.unsetTickInProgress()
 
-	logger.
-		WithField("queued", sys.SubmissionQueue.String()).
-		Debug("ticking txsub system")
+	logger.Debug("ticking txsub system")
 
 	db := sys.DB(ctx)
 	options := &sql.TxOptions{
@@ -325,17 +297,6 @@ func (sys *System) Tick(ctx context.Context) {
 		return
 	}
 	defer db.Rollback()
-
-	addys := sys.SubmissionQueue.Addresses()
-	if len(addys) > 0 {
-		curSeq, err := db.GetSequenceNumbers(ctx, addys)
-		if err != nil {
-			logger.WithStack(err).Error(err)
-			return
-		} else {
-			sys.SubmissionQueue.NotifyLastAccountSequences(curSeq)
-		}
-	}
 
 	pending := sys.Pending.Pending(ctx)
 
@@ -399,7 +360,6 @@ func (sys *System) Tick(ctx context.Context) {
 	}
 
 	sys.Metrics.OpenSubmissionsGauge.Set(float64(stillOpen))
-	sys.Metrics.BufferedSubmissionsGauge.Set(float64(sys.SubmissionQueue.Size()))
 }
 
 // Init initializes `sys`
