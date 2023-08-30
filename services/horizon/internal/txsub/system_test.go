@@ -198,9 +198,6 @@ func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
-		Return(map[string]uint64{suite.unmuxedSource.Address(): 1}, nil).
-		Once()
 	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Twice()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
@@ -242,9 +239,6 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
-		Times(3)
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
-		Return(map[string]uint64{suite.unmuxedSource.Address(): 1}, nil).
 		Once()
 
 	// set poll interval to 1ms so we don't need to wait 3 seconds for the test to complete
