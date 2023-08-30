@@ -258,10 +258,7 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 
 	if query.Claimant != nil {
 		var selectClaimableBalanceClaimants = sq.Select("id").From("claimable_balance_claimants").
-			Where("destination = ?", query.Claimant.Address()).
-			// Given that each destination can be a claimant for each balance maximum once
-			// we can LIMIT the subquery.
-			Limit(query.PageQuery.Limit)
+			Where("destination = ?", query.Claimant.Address())
 		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, l, r, query.PageQuery.Order)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not apply subquery to page")
