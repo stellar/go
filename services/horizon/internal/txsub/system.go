@@ -164,13 +164,6 @@ func (sys *System) Submit(
 	return
 }
 
-func (sys *System) deriveTxSubError(ctx context.Context) error {
-	if ctx.Err() == context.Canceled {
-		return ErrCanceled
-	}
-	return ErrTimeout
-}
-
 // Submit submits the provided base64 encoded transaction envelope to the
 // network using this submission system.
 func (sys *System) submitOnce(ctx context.Context, env string) SubmissionResult {
