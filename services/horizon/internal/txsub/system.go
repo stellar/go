@@ -147,11 +147,6 @@ func (sys *System) Submit(
 			return
 		}
 
-		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
-			sys.finish(ctx, hash, resultCh, Result{Err: err})
-			return
-		}
-
 		// If error is txBAD_SEQ, check for the result again
 		tx, err = txResultByHash(ctx, db, hash)
 		if err != nil {
@@ -164,44 +159,9 @@ func (sys *System) Submit(
 		return
 	}
 
-	// add transactions to open list
+	// add transaction to open list
 	sys.Pending.Add(ctx, hash, resultCh)
 	return
-}
-
-// waitUntilAccountSequence blocks until either the context times out or the sequence number of the
-// given source account is greater than or equal to `seq`
-func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) error {
-	timer := time.NewTimer(sys.accountSeqPollInterval)
-	defer timer.Stop()
-
-	for {
-		sequenceNumbers, err := db.GetSequenceNumbers(ctx, []string{sourceAddress})
-		if err != nil {
-			sys.Log.Ctx(ctx).
-				WithError(err).
-				WithField("sourceAddress", sourceAddress).
-				Warn("cannot fetch sequence number")
-		} else {
-			num, ok := sequenceNumbers[sourceAddress]
-			if !ok {
-				sys.Log.Ctx(ctx).
-					WithField("sequenceNumbers", sequenceNumbers).
-					WithField("sourceAddress", sourceAddress).
-					Warn("missing sequence number for account")
-			}
-			if num >= seq {
-				return nil
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return sys.deriveTxSubError(ctx)
-		case <-timer.C:
-			timer.Reset(sys.accountSeqPollInterval)
-		}
-	}
 }
 
 func (sys *System) deriveTxSubError(ctx context.Context) error {
