@@ -20,9 +20,10 @@ import (
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/support/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stellar/go/support/config"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
