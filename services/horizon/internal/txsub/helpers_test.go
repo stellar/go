@@ -9,7 +9,6 @@ package txsub
 import (
 	"context"
 	"database/sql"
-
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stretchr/testify/mock"
 )
@@ -61,11 +60,6 @@ func (m *mockDBQ) AllTransactionsByHashesSinceLedger(ctx context.Context, hashes
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]history.Transaction), args.Error(1)
-}
-
-func (m *mockDBQ) PreFilteredTransactionByHash(ctx context.Context, dest interface{}, hash string) error {
-	args := m.Called(ctx, dest, hash)
-	return args.Error(0)
 }
 
 func (m *mockDBQ) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {

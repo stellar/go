@@ -307,14 +307,8 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder)
 
-	q.MockQTransactions.On("NewTransactionFilteredTmpBatchInsertBuilder", maxBatchSize).
-		Return(mockTransactionsBatchInsertBuilder)
-
 	q.MockQClaimableBalances.On("NewClaimableBalanceClaimantBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockClaimableBalanceClaimantBatchInsertBuilder{}).Once()
-
-	q.On("DeleteTransactionsFilteredTmpOlderThan", ctx, mock.AnythingOfType("uint64")).
-		Return(int64(0), nil)
 
 	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()

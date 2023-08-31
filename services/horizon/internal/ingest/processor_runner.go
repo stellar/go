@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/filters"
@@ -17,11 +15,10 @@ import (
 type ingestionSource int
 
 const (
-	_                               = iota
-	historyArchiveSource            = ingestionSource(iota)
-	ledgerSource                    = ingestionSource(iota)
-	logFrequency                    = 50000
-	transactionsFilteredTmpGCPeriod = 5 * time.Minute
+	_                    = iota
+	historyArchiveSource = ingestionSource(iota)
+	ledgerSource         = ingestionSource(iota)
+	logFrequency         = 50000
 )
 
 type horizonChangeProcessor interface {
@@ -86,12 +83,11 @@ var _ ProcessorRunnerInterface = (*ProcessorRunner)(nil)
 type ProcessorRunner struct {
 	config Config
 
-	ctx                   context.Context
-	historyQ              history.IngestionQ
-	historyAdapter        historyArchiveAdapterInterface
-	logMemoryStats        bool
-	filters               filters.Filters
-	lastTransactionsTmpGC time.Time
+	ctx            context.Context
+	historyQ       history.IngestionQ
+	historyAdapter historyArchiveAdapterInterface
+	logMemoryStats bool
+	filters        filters.Filters
 }
 
 func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
@@ -161,17 +157,6 @@ func (s *ProcessorRunner) buildTransactionFilterer() *groupTransactionFilterers 
 	}
 
 	return newGroupTransactionFilterers(f)
-}
-
-func (s *ProcessorRunner) buildFilteredOutProcessor(ledger xdr.LedgerHeaderHistoryEntry) *groupTransactionProcessors {
-	// when in online mode, the submission result processor must always run (regardless of filtering)
-	var p []horizonTransactionProcessor
-	if s.config.EnableIngestionFiltering {
-		txSubProc := processors.NewTransactionFilteredTmpProcessor(s.historyQ, uint32(ledger.Header.LedgerSeq))
-		p = append(p, txSubProc)
-	}
-
-	return newGroupTransactionProcessors(p)
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
@@ -328,29 +313,16 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	}
 	header := transactionReader.GetHeader()
 	groupTransactionFilterers := s.buildTransactionFilterer()
-	groupFilteredOutProcessors := s.buildFilteredOutProcessor(header)
 	groupTransactionProcessors := s.buildTransactionProcessor(
 		&ledgerTransactionStats, &tradeProcessor, header)
 	err = processors.StreamLedgerTransactions(s.ctx,
 		groupTransactionFilterers,
-		groupFilteredOutProcessors,
 		groupTransactionProcessors,
 		transactionReader,
 	)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
-	}
-
-	if s.config.EnableIngestionFiltering {
-		err = groupFilteredOutProcessors.Commit(s.ctx)
-		if err != nil {
-			err = errors.Wrap(err, "Error committing filtered changes from processor")
-			return
-		}
-		if time.Since(s.lastTransactionsTmpGC) > transactionsFilteredTmpGCPeriod {
-			s.historyQ.DeleteTransactionsFilteredTmpOlderThan(s.ctx, uint64(transactionsFilteredTmpGCPeriod.Seconds()))
-		}
 	}
 
 	err = groupTransactionProcessors.Commit(s.ctx)
@@ -362,9 +334,6 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	transactionStats = ledgerTransactionStats.GetResults()
 	transactionStats.TransactionsFiltered = groupTransactionFilterers.droppedTransactions
 	transactionDurations = groupTransactionProcessors.processorsRunDurations
-	for key, duration := range groupFilteredOutProcessors.processorsRunDurations {
-		transactionDurations[key] = duration
-	}
 	for key, duration := range groupTransactionFilterers.processorsRunDurations {
 		transactionDurations[key] = duration
 	}
