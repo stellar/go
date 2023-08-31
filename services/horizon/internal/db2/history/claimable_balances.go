@@ -259,6 +259,18 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 	if query.Claimant != nil {
 		var selectClaimableBalanceClaimants = sq.Select("id").From("claimable_balance_claimants").
 			Where("destination = ?", query.Claimant.Address())
+
+		// https://github.com/stellar/go/issues/4907
+		// If a filter by asset is provided, do not add LIMIT to the subquery. This is because
+		// claimable_balance_claimants table cannot be filtered by asset, so when the LIMIT specified is small,
+		// the balance IDs returned by this subquery might be of different asset than the one specified
+		// in the filter. This could lead to an empty result list.
+		if query.Asset == nil {
+			// Given that each destination can be a claimant for each balance maximum once
+			// we can LIMIT the subquery.
+			selectClaimableBalanceClaimants.Limit(query.PageQuery.Limit)
+		}
+
 		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, l, r, query.PageQuery.Order)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not apply subquery to page")
