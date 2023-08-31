@@ -906,10 +906,4 @@ func TestHistoryTransactionSchemasMatch(t *testing.T) {
 	var txColumns []column
 	err := db.SelectRaw(context.Background(), &txColumns, query, "history_transactions")
 	tt.Assert.NoError(err)
-
-	var txTmpFilteredTmpColumns []column
-	err = db.SelectRaw(context.Background(), &txTmpFilteredTmpColumns, query, "history_transactions_filtered_tmp")
-	tt.Assert.NoError(err)
-
-	tt.Assert.ElementsMatch(txColumns, txTmpFilteredTmpColumns)
 }

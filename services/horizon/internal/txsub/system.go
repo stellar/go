@@ -15,7 +15,6 @@ import (
 
 type HorizonDB interface {
 	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
-	PreFilteredTransactionByHash(ctx context.Context, dest interface{}, hash string) error
 	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
 	AllTransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]history.Transaction, error)
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)

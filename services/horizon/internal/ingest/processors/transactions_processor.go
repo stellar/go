@@ -14,14 +14,6 @@ type TransactionProcessor struct {
 	batch         history.TransactionBatchInsertBuilder
 }
 
-func NewTransactionFilteredTmpProcessor(transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
-	return &TransactionProcessor{
-		transactionsQ: transactionsQ,
-		sequence:      sequence,
-		batch:         transactionsQ.NewTransactionFilteredTmpBatchInsertBuilder(maxBatchSize),
-	}
-}
-
 func NewTransactionProcessor(transactionsQ history.QTransactions, sequence uint32) *TransactionProcessor {
 	return &TransactionProcessor{
 		transactionsQ: transactionsQ,

@@ -21,30 +21,15 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 	return q.Get(ctx, dest, byHashOrInnerHashHistory)
 }
 
-func (q *Q) PreFilteredTransactionByHash(ctx context.Context, dest interface{}, hash string) error {
-	innerOrOuter := sq.Or{sq.Eq{"ht.transaction_hash": hash}, sq.Eq{"ht.inner_transaction_hash": hash}}
-	byHashOrInnerHashPreFilter := selectTransactionPreFilteredTmp.Where(innerOrOuter)
-
-	return q.Get(ctx, dest, byHashOrInnerHashPreFilter)
-}
-
-// TransactionsByHashesSinceLedger fetches transactions from `history_transactions_filtered_tmp`
+// AllTransactionsByHashesSinceLedger fetches transactions from `history_transactions`
 // table which match the given hash since the given ledger sequence (for perf reasons).
 func (q *Q) AllTransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]Transaction, error) {
 	var dest []Transaction
 	innerOrOuterAndSeqGtEq :=
 		sq.And{sq.GtOrEq{"ht.ledger_sequence": sinceLedgerSeq}, sq.Or{sq.Eq{"ht.transaction_hash": hashes}, sq.Eq{"ht.inner_transaction_hash": hashes}}}
 
-	preFilteredTxs := selectTransactionPreFilteredTmp.Where(innerOrOuterAndSeqGtEq)
 	historyTxs := selectTransactionHistory.Where(innerOrOuterAndSeqGtEq)
-
-	preFilteredTxsString, args, err := preFilteredTxs.ToSql()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get string for un filtered sql query")
-	}
-
-	union := historyTxs.Suffix("UNION ALL "+preFilteredTxsString, args...)
-	if err := q.Select(ctx, &dest, union); err != nil {
+	if err := q.Select(ctx, &dest, historyTxs); err != nil {
 		return nil, err
 	}
 	return dest, nil
@@ -72,17 +57,6 @@ func (q *Q) TransactionsByIDs(ctx context.Context, ids ...int64) (map[int64]Tran
 	}
 
 	return byID, nil
-}
-
-// DeleteTransactionsFilteredTmpOlderThan deletes entries older than certain duration
-func (q *Q) DeleteTransactionsFilteredTmpOlderThan(ctx context.Context, howOldInSeconds uint64) (int64, error) {
-	sql := sq.Delete("history_transactions_filtered_tmp").
-		Where(sq.Expr("now() >= (created_at + interval '1 second' * ?)", howOldInSeconds))
-	result, err := q.Exec(ctx, sql)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
 }
 
 // Transactions provides a helper to filter rows from the `history_transactions`
@@ -233,7 +207,6 @@ func (q *TransactionsQ) Select(ctx context.Context, dest interface{}) error {
 // QTransactions defines transaction related queries.
 type QTransactions interface {
 	NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder
-	NewTransactionFilteredTmpBatchInsertBuilder(maxBatchSize int) TransactionBatchInsertBuilder
 }
 
 func selectTransaction(table string) sq.SelectBuilder {
@@ -277,4 +250,3 @@ func selectTransaction(table string) sq.SelectBuilder {
 }
 
 var selectTransactionHistory = selectTransaction("history_transactions")
-var selectTransactionPreFilteredTmp = selectTransaction("history_transactions_filtered_tmp")
