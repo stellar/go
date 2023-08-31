@@ -90,15 +90,21 @@ func (p *AssetStatsProcessor) addToCache(ctx context.Context, change ingest.Chan
 
 func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 	if !p.useLedgerEntryCache {
-		assetStatsDeltas, err := p.assetStatSet.AllFromSnapshot()
+		assetStatsDeltas, contractStatRows, err := p.assetStatSet.AllFromSnapshot()
 		if err != nil {
 			return err
 		}
-		if len(assetStatsDeltas) == 0 {
-			return nil
+		if len(assetStatsDeltas) > 0 {
+			if err := p.assetStatsQ.InsertAssetStats(ctx, assetStatsDeltas, maxBatchSize); err != nil {
+				return errors.Wrap(err, "Error inserting asset stats")
+			}
 		}
-
-		return p.assetStatsQ.InsertAssetStats(ctx, assetStatsDeltas, maxBatchSize)
+		if len(contractStatRows) > 0 {
+			if err := p.assetStatsQ.InsertAssetContractStats(ctx, contractStatRows, maxBatchSize); err != nil {
+				return errors.Wrap(err, "Error inserting asset stats")
+			}
+		}
+		return nil
 	}
 
 	changes := p.cache.GetChanges()
@@ -132,12 +138,6 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		contractID, err := asset.ContractID(p.networkPassphrase)
 		if err != nil {
 			return errors.Wrap(err, "cannot compute contract id for asset")
-		}
-
-		if contractAssetStat, ok := contractAssetStats[contractID]; ok {
-			delta.Balances.Contracts = contractAssetStat.balance.String()
-			delta.Accounts.Contracts = contractAssetStat.numHolders
-			delete(contractAssetStats, contractID)
 		}
 
 		stat, err = p.assetStatsQ.GetAssetStat(ctx,
@@ -225,12 +225,12 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 			}
 		} else {
 			var statBalances assetStatBalances
-			if err = statBalances.Parse(&stat.Balances); err != nil {
+			if err = statBalances.Parse(stat.Balances); err != nil {
 				return errors.Wrap(err, "Error parsing balances")
 			}
 
 			var deltaBalances assetStatBalances
-			if err = deltaBalances.Parse(&delta.Balances); err != nil {
+			if err = deltaBalances.Parse(delta.Balances); err != nil {
 				return errors.Wrap(err, "Error parsing balances")
 			}
 
@@ -286,7 +286,7 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 		}
 	}
 
-	if err := p.updateContractIDs(ctx, contractToAsset, contractAssetStats); err != nil {
+	if err := p.updateContractIDs(ctx, contractToAsset); err != nil {
 		return err
 	}
 	return p.updateContractAssetStats(ctx, contractAssetStats)
@@ -295,10 +295,9 @@ func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 func (p *AssetStatsProcessor) updateContractIDs(
 	ctx context.Context,
 	contractToAsset map[[32]byte]*xdr.Asset,
-	contractAssetStats map[[32]byte]contractAssetStatValue,
 ) error {
 	for contractID, asset := range contractToAsset {
-		if err := p.updateContractID(ctx, contractAssetStats, contractID, asset); err != nil {
+		if err := p.updateContractID(ctx, contractID, asset); err != nil {
 			return err
 		}
 	}
@@ -308,7 +307,6 @@ func (p *AssetStatsProcessor) updateContractIDs(
 // updateContractID will update the asset stat row for the corresponding asset to either add or remove the given contract id
 func (p *AssetStatsProcessor) updateContractID(
 	ctx context.Context,
-	contractAssetStats map[[32]byte]contractAssetStatValue,
 	contractID [32]byte,
 	asset *xdr.Asset,
 ) error {
@@ -324,10 +322,6 @@ func (p *AssetStatsProcessor) updateContractID(
 		}
 		if err != nil {
 			return errors.Wrap(err, "error querying asset by contract id")
-		}
-
-		if err = p.maybeAddContractAssetStat(contractAssetStats, contractID, &stat); err != nil {
-			return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
 		}
 
 		if stat.Accounts.IsZero() {
@@ -346,11 +340,6 @@ func (p *AssetStatsProcessor) updateContractID(
 			if err != nil {
 				return errors.Wrap(err, "could not remove asset stat")
 			}
-		} else if stat.Accounts.Contracts != 0 || stat.Balances.Contracts != "0" {
-			return ingest.NewStateError(errors.Errorf(
-				"asset stat has contract holders but is attempting to remove contract id: %s",
-				hex.EncodeToString(contractID[:]),
-			))
 		} else {
 			// update the row to set the contract_id column to NULL
 			stat.ContractID = nil
@@ -376,9 +365,6 @@ func (p *AssetStatsProcessor) updateContractID(
 				NumAccounts: 0,
 			}
 			row.SetContractID(contractID)
-			if err = p.maybeAddContractAssetStat(contractAssetStats, contractID, &row); err != nil {
-				return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
-			}
 
 			rowsAffected, err = p.assetStatsQ.InsertAssetStat(ctx, row)
 			if err != nil {
@@ -397,10 +383,6 @@ func (p *AssetStatsProcessor) updateContractID(
 		} else {
 			// update the column_id column
 			stat.SetContractID(contractID)
-			if err = p.maybeAddContractAssetStat(contractAssetStats, contractID, &stat); err != nil {
-				return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
-			}
-
 			rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
 			if err != nil {
 				return errors.Wrap(err, "could not update asset stat")
@@ -419,67 +401,66 @@ func (p *AssetStatsProcessor) updateContractID(
 	return nil
 }
 
-func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat contractAssetStatValue, stat *history.ExpAssetStat) error {
-	stat.Accounts.Contracts += contractAssetStat.numHolders
-	contracts, ok := new(big.Int).SetString(stat.Balances.Contracts, 10)
+func (p *AssetStatsProcessor) addContractAssetStat(contractAssetStat assetContractStatValue, row *history.ContractStatRow) error {
+	row.Stat.Holders += contractAssetStat.numHolders
+	contracts, ok := new(big.Int).SetString(row.Stat.Balance, 10)
 	if !ok {
-		return errors.New("Error parsing: " + stat.Balances.Contracts)
+		return errors.New("Error parsing: " + row.Stat.Balance)
 	}
-	stat.Balances.Contracts = (new(big.Int).Add(contracts, contractAssetStat.balance)).String()
-	return nil
-}
-
-func (p *AssetStatsProcessor) maybeAddContractAssetStat(contractAssetStats map[[32]byte]contractAssetStatValue, contractID [32]byte, stat *history.ExpAssetStat) error {
-	if contractAssetStat, ok := contractAssetStats[contractID]; ok {
-		if err := p.addContractAssetStat(contractAssetStat, stat); err != nil {
-			return err
-		}
-		delete(contractAssetStats, contractID)
-	}
+	row.Stat.Balance = (new(big.Int).Add(contracts, contractAssetStat.balance)).String()
 	return nil
 }
 
 func (p *AssetStatsProcessor) updateContractAssetStats(
 	ctx context.Context,
-	contractAssetStats map[[32]byte]contractAssetStatValue,
+	contractAssetStats map[[32]byte]assetContractStatValue,
 ) error {
 	for contractID, contractAssetStat := range contractAssetStats {
-		if err := p.updateContractAssetStat(ctx, contractID, contractAssetStat); err != nil {
+		if err := p.updateAssetContractStats(ctx, contractID, contractAssetStat); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// updateContractAssetStat will look up an asset stat by contract id and, if it exists,
-// it will adjust the contract balance and holders based on contractAssetStatValue
-func (p *AssetStatsProcessor) updateContractAssetStat(
+// updateAssetContractStats will look up an asset contract stat by contract id and
+// it will adjust the contract balance and holders based on assetContractStatValue
+func (p *AssetStatsProcessor) updateAssetContractStats(
 	ctx context.Context,
 	contractID [32]byte,
-	contractAssetStat contractAssetStatValue,
+	assetContractStat assetContractStatValue,
 ) error {
-	stat, err := p.assetStatsQ.GetAssetStatByContract(ctx, contractID)
+	var rowsAffected int64
+	row, err := p.assetStatsQ.GetAssetContractStat(ctx, contractID[:])
 	if err == sql.ErrNoRows {
-		return nil
+		rowsAffected, err = p.assetStatsQ.InsertAssetContractStat(ctx, assetContractStat.ConvertToHistoryObject())
+		if err != nil {
+			return errors.Wrap(err, "error inserting asset contract stat")
+		}
 	} else if err != nil {
 		return errors.Wrap(err, "error querying asset by contract id")
-	}
-	if err = p.addContractAssetStat(contractAssetStat, &stat); err != nil {
-		return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
-	}
+	} else {
+		if err = p.addContractAssetStat(assetContractStat, &row); err != nil {
+			return errors.Wrapf(err, "could not update asset stat with contract id %v with contract delta", contractID)
+		}
 
-	var rowsAffected int64
-	rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, stat)
-	if err != nil {
-		return errors.Wrap(err, "could not update asset stat")
+		if row.Stat == (history.ContractStat{Holders: 0, Balance: "0"}) {
+			rowsAffected, err = p.assetStatsQ.RemoveAssetContractStat(ctx, contractID[:])
+		} else {
+			rowsAffected, err = p.assetStatsQ.UpdateAssetContractStat(ctx, row)
+		}
+
+		if err != nil {
+			return errors.Wrap(err, "could not update asset stat")
+		}
 	}
 
 	if rowsAffected != 1 {
 		// assert that we have updated exactly one row
 		return ingest.NewStateError(errors.Errorf(
-			"%d rows affected (expected exactly 1) when adjusting asset stat for asset: %s",
+			"%d rows affected (expected exactly 1) when adjusting asset contract stat for contract: %s",
 			rowsAffected,
-			stat.AssetCode+":"+stat.AssetIssuer,
+			contractID,
 		))
 	}
 	return nil

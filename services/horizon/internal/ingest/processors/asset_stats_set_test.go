@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"encoding/hex"
 	"math"
 	"math/big"
 	"sort"
@@ -22,8 +23,9 @@ func TestEmptyAssetStatSet(t *testing.T) {
 	assert.Empty(t, cs)
 	assert.Empty(t, m)
 
-	all, err := set.AllFromSnapshot()
+	all, contractStats, err := set.AllFromSnapshot()
 	assert.Empty(t, all)
+	assert.Empty(t, contractStats)
 	assert.NoError(t, err)
 }
 
@@ -44,10 +46,15 @@ func assertAssetStatsAreEqual(t *testing.T, all []history.ExpAssetStat, expected
 	}
 }
 
-func assertAllFromSnapshotEquals(t *testing.T, set AssetStatSet, expected []history.ExpAssetStat) {
-	all, err := set.AllFromSnapshot()
-	assert.NoError(t, err)
-	assertAssetStatsAreEqual(t, all, expected)
+func assertAssetContractStatsAreEqual(t *testing.T, expected, got []history.ContractStatRow) {
+	assert.Len(t, got, len(expected))
+	sort.Slice(expected, func(i, j int) bool {
+		return hex.EncodeToString(expected[i].ContractID) < hex.EncodeToString(expected[j].ContractID)
+	})
+	sort.Slice(got, func(i, j int) bool {
+		return hex.EncodeToString(got[i].ContractID) < hex.EncodeToString(got[j].ContractID)
+	})
+	assert.Equal(t, expected, got)
 }
 
 func TestAddContractData(t *testing.T) {
@@ -175,7 +182,6 @@ func TestAddContractData(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
-			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 1,
@@ -202,13 +208,29 @@ func TestAddContractData(t *testing.T) {
 	}
 
 	etherAssetStat.SetContractID(etherID)
-	etherAssetStat.Balances.Contracts = "200"
-	etherAssetStat.Accounts.Contracts = 2
 	usdcAssetStat.SetContractID(usdcID)
 
-	assertAllFromSnapshotEquals(t, set, []history.ExpAssetStat{
+	all, contractStats, err := set.AllFromSnapshot()
+	assert.NoError(t, err)
+	assertAssetStatsAreEqual(t, all, []history.ExpAssetStat{
 		etherAssetStat,
 		usdcAssetStat,
+	})
+	assertAssetContractStatsAreEqual(t, contractStats, []history.ContractStatRow{
+		{
+			ContractID: etherID[:],
+			Stat: history.ContractStat{
+				Balance: "200",
+				Holders: 2,
+			},
+		},
+		{
+			ContractID: btcID[:],
+			Stat: history.ContractStat{
+				Balance: "300",
+				Holders: 1,
+			},
+		},
 	})
 }
 
@@ -378,9 +400,32 @@ func TestUpdateContractBalance(t *testing.T) {
 	assert.Equal(t, cs[uniID].numHolders, int32(-2))
 	assert.Zero(t, cs[uniID].balance.Cmp(big.NewInt(-450)))
 
-	all, err = set.AllFromSnapshot()
+	all, contractStats, err := set.AllFromSnapshot()
 	assert.NoError(t, err)
 	assert.Empty(t, all)
+	assertAssetContractStatsAreEqual(t, contractStats, []history.ContractStatRow{
+		{
+			ContractID: usdcID[:],
+			Stat: history.ContractStat{
+				Balance: "220",
+				Holders: 1,
+			},
+		},
+		{
+			ContractID: etherID[:],
+			Stat: history.ContractStat{
+				Balance: "-150",
+				Holders: 0,
+			},
+		},
+		{
+			ContractID: uniID[:],
+			Stat: history.ContractStat{
+				Balance: "-450",
+				Holders: -2,
+			},
+		},
+	})
 }
 
 func TestRemoveContractData(t *testing.T) {
@@ -513,7 +558,6 @@ func TestAddAssetStats(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
-			Contracts:                       "0",
 		},
 		Amount:      "1",
 		NumAccounts: 1,
@@ -619,7 +663,6 @@ func TestAddAssetStats(t *testing.T) {
 				Unauthorized:                    "5",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
-				Contracts:                       "0",
 			},
 			Amount:      "3",
 			NumAccounts: 1,
@@ -638,7 +681,6 @@ func TestAddAssetStats(t *testing.T) {
 				Unauthorized:                    "0",
 				ClaimableBalances:               "0",
 				LiquidityPools:                  "0",
-				Contracts:                       "0",
 			},
 			Amount:      "10",
 			NumAccounts: 1,
@@ -679,7 +721,6 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
-			Contracts:                       "0",
 		},
 		Amount:      "9223372036854775807",
 		NumAccounts: 1,
@@ -717,7 +758,6 @@ func TestOverflowAssetStatSet(t *testing.T) {
 			Unauthorized:                    "0",
 			ClaimableBalances:               "0",
 			LiquidityPools:                  "0",
-			Contracts:                       "0",
 		},
 		Amount:      "18446744073709551614",
 		NumAccounts: 2,

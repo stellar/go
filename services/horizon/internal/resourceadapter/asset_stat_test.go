@@ -4,35 +4,40 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/protocols/horizon"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPopulateExpAssetStat(t *testing.T) {
-	row := history.ExpAssetStat{
-		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
-		AssetCode:   "XIM",
-		AssetIssuer: "GBZ35ZJRIKJGYH5PBKLKOZ5L6EXCNTO7BKIL7DAVVDFQ2ODJEEHHJXIM",
-		Accounts: history.ExpAssetStatAccounts{
-			Authorized:                      429,
-			AuthorizedToMaintainLiabilities: 214,
-			Unauthorized:                    107,
-			ClaimableBalances:               12,
-			Contracts:                       6,
+	row := history.AssetAndContractStat{
+		ExpAssetStat: history.ExpAssetStat{
+			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+			AssetCode:   "XIM",
+			AssetIssuer: "GBZ35ZJRIKJGYH5PBKLKOZ5L6EXCNTO7BKIL7DAVVDFQ2ODJEEHHJXIM",
+			Accounts: history.ExpAssetStatAccounts{
+				Authorized:                      429,
+				AuthorizedToMaintainLiabilities: 214,
+				Unauthorized:                    107,
+				ClaimableBalances:               12,
+			},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "100000000000000000000",
+				AuthorizedToMaintainLiabilities: "50000000000000000000",
+				Unauthorized:                    "2500000000000000000",
+				ClaimableBalances:               "1200000000000000000",
+				LiquidityPools:                  "7700000000000000000",
+			},
+			Amount:      "100000000000000000000", // 10T
+			NumAccounts: 429,
 		},
-		Balances: history.ExpAssetStatBalances{
-			Authorized:                      "100000000000000000000",
-			AuthorizedToMaintainLiabilities: "50000000000000000000",
-			Unauthorized:                    "2500000000000000000",
-			ClaimableBalances:               "1200000000000000000",
-			LiquidityPools:                  "7700000000000000000",
-			Contracts:                       "900000000000000000",
+		Contracts: history.ContractStat{
+			Balance: "900000000000000000",
+			Holders: 6,
 		},
-		Amount:      "100000000000000000000", // 10T
-		NumAccounts: 429,
 	}
 	issuer := history.AccountEntry{
 		AccountID:  "GBZ35ZJRIKJGYH5PBKLKOZ5L6EXCNTO7BKIL7DAVVDFQ2ODJEEHHJXIM",

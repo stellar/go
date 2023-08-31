@@ -364,6 +364,44 @@ type Asset struct {
 	Issuer string `db:"asset_issuer"`
 }
 
+type ContractStat struct {
+	Balance string `json:"balance"`
+	Holders int32  `json:"holders"`
+}
+
+func (c ContractStat) Value() (driver.Value, error) {
+	return json.Marshal(c)
+}
+
+func (c *ContractStat) Scan(src interface{}) error {
+	if src == nil {
+		c.Balance = "0"
+		return nil
+	}
+
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	err := json.Unmarshal(source, &c)
+	if err != nil {
+		return err
+	}
+
+	// Sets zero values for empty balances
+	if c.Balance == "" {
+		c.Balance = "0"
+	}
+
+	return nil
+}
+
+type AssetAndContractStat struct {
+	ExpAssetStat
+	Contracts ContractStat `db:"contracts"`
+}
+
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
 type ExpAssetStat struct {
 	AssetType   xdr.AssetType        `db:"asset_type"`
@@ -393,7 +431,6 @@ type ExpAssetStatAccounts struct {
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               int32 `json:"claimable_balances"`
 	LiquidityPools                  int32 `json:"liquidity_pools"`
-	Contracts                       int32 `json:"contracts"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -450,7 +487,6 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
 		LiquidityPools:                  a.LiquidityPools + b.LiquidityPools,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
-		Contracts:                       a.Contracts + b.Contracts,
 	}
 }
 
@@ -465,7 +501,6 @@ type ExpAssetStatBalances struct {
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
 	ClaimableBalances               string `json:"claimable_balances"`
 	LiquidityPools                  string `json:"liquidity_pools"`
-	Contracts                       string `json:"contracts"`
 	Unauthorized                    string `json:"unauthorized"`
 }
 
@@ -475,7 +510,6 @@ func (e ExpAssetStatBalances) IsZero() bool {
 		AuthorizedToMaintainLiabilities: "0",
 		ClaimableBalances:               "0",
 		LiquidityPools:                  "0",
-		Contracts:                       "0",
 		Unauthorized:                    "0",
 	}
 }
@@ -511,9 +545,6 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 	if e.Unauthorized == "" {
 		e.Unauthorized = "0"
 	}
-	if e.Contracts == "" {
-		e.Contracts = "0"
-	}
 
 	return nil
 }
@@ -521,13 +552,18 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
 	InsertAssetStats(ctx context.Context, stats []ExpAssetStat, batchSize int) error
+	InsertAssetContractStats(ctx context.Context, rows []ContractStatRow, batchSize int) error
 	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error)
 	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error)
 	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
 	GetAssetStatByContract(ctx context.Context, contractID [32]byte) (ExpAssetStat, error)
 	GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error)
+	GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error)
 	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
-	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error)
+	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error)
 	CountTrustLines(ctx context.Context) (int, error)
 }
 

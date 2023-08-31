@@ -344,7 +344,7 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 		Limit: assetStatsBatchSize,
 	}
 
-	assetStats, err := set.AllFromSnapshot()
+	assetStats, _, err := set.AllFromSnapshot()
 	if err != nil {
 		return errors.Wrap(err, "could not fetch asset stats from asset stat set")
 	}
@@ -377,7 +377,7 @@ func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history
 			}
 			delete(all, key)
 
-			if !fromSet.Equals(assetStat) {
+			if !fromSet.Equals(assetStat.ExpAssetStat) {
 				return ingest.NewStateError(
 					fmt.Errorf(
 						"db asset stat with code %s issuer %s does not match asset stat from HAS: expected=%v actual=%v",

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -33,6 +34,11 @@ func assetStatToPrimaryKeyMap(assetStat ExpAssetStat) map[string]interface{} {
 	}
 }
 
+type ContractStatRow struct {
+	ContractID []byte       `db:"contract_id"`
+	Stat       ContractStat `db:"stat"`
+}
+
 // InsertAssetStats a set of asset stats into the exp_asset_stats
 func (q *Q) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat, batchSize int) error {
 	builder := &db.BatchInsertBuilder{
@@ -42,6 +48,25 @@ func (q *Q) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat, bat
 
 	for _, assetStat := range assetStats {
 		if err := builder.Row(ctx, assetStatToMap(assetStat)); err != nil {
+			return errors.Wrap(err, "could not insert asset assetStat row")
+		}
+	}
+
+	if err := builder.Exec(ctx); err != nil {
+		return errors.Wrap(err, "could not exec asset assetStats insert builder")
+	}
+
+	return nil
+}
+
+func (q *Q) InsertAssetContractStats(ctx context.Context, rows []ContractStatRow, batchSize int) error {
+	builder := &db.BatchInsertBuilder{
+		Table:        q.GetTable("contract_asset_stats"),
+		MaxBatchSize: batchSize,
+	}
+
+	for _, row := range rows {
+		if err := builder.RowStruct(ctx, row); err != nil {
 			return errors.Wrap(err, "could not insert asset assetStat row")
 		}
 	}
@@ -65,12 +90,36 @@ func (q *Q) InsertAssetStat(ctx context.Context, assetStat ExpAssetStat) (int64,
 	return result.RowsAffected()
 }
 
+func (q *Q) InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+	sql := sq.Insert("contract_asset_stats").SetMap(map[string]interface{}{
+		"contract_id": row.ContractID,
+		"stat":        row.Stat,
+	})
+	result, err := q.Exec(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
 // UpdateAssetStat updates a row in the exp_asset_stats table.
 // Returns number of rows affected and error.
 func (q *Q) UpdateAssetStat(ctx context.Context, assetStat ExpAssetStat) (int64, error) {
 	sql := sq.Update("exp_asset_stats").
 		SetMap(assetStatToMap(assetStat)).
 		Where(assetStatToPrimaryKeyMap(assetStat))
+	result, err := q.Exec(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
+func (q *Q) UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+	sql := sq.Update("contract_asset_stats").Set("stat", row.Stat).
+		Where("contract_id = ?", row.ContractID)
 	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
@@ -95,6 +144,17 @@ func (q *Q) RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetC
 	return result.RowsAffected()
 }
 
+func (q *Q) RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error) {
+	sql := sq.Delete("contract_asset_stats").
+		Where("contract_id = ?", contractID)
+	result, err := q.Exec(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
 // GetAssetStat returns a row in the exp_asset_stats table.
 func (q *Q) GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error) {
 	sql := selectAssetStats.Where(map[string]interface{}{
@@ -103,6 +163,14 @@ func (q *Q) GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode
 		"asset_issuer": assetIssuer,
 	})
 	var assetStat ExpAssetStat
+	err := q.Get(ctx, &assetStat, sql)
+	return assetStat, err
+}
+
+// GetAssetContractStat returns a row in the contract_asset_stats table.
+func (q *Q) GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error) {
+	sql := sq.Select("*").From("contract_asset_stats").Where("contract_id = ?", contractID)
+	var assetStat ContractStatRow
 	err := q.Get(ctx, &assetStat, sql)
 	return assetStat, err
 }
@@ -158,8 +226,10 @@ func parseAssetStatsCursor(cursor string) (string, string, error) {
 }
 
 // GetAssetStats returns a page of exp_asset_stats rows.
-func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error) {
-	sql := selectAssetStats
+func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error) {
+	sql := sq.Select("exp_asset_stats.*, contract_asset_stats.stat as contracts").
+		From("exp_asset_stats").
+		LeftJoin("contract_asset_stats ON exp_asset_stats.contract_id = contract_asset_stats.contract_id")
 	filters := map[string]interface{}{}
 	if assetCode != "" {
 		filters["asset_code"] = assetCode
@@ -193,7 +263,7 @@ func (q *Q) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, pa
 
 	sql = sql.OrderBy("(asset_code, asset_issuer) " + orderBy).Limit(page.Limit)
 
-	var results []ExpAssetStat
+	var results []AssetAndContractStat
 	if err := q.Select(ctx, &results, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
 	}

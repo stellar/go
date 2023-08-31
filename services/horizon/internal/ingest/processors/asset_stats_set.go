@@ -29,7 +29,6 @@ type assetStatBalances struct {
 	ClaimableBalances               *big.Int
 	LiquidityPools                  *big.Int
 	Unauthorized                    *big.Int
-	Contracts                       *big.Int
 }
 
 func newAssetStatBalance() assetStatBalances {
@@ -39,11 +38,10 @@ func newAssetStatBalance() assetStatBalances {
 		ClaimableBalances:               big.NewInt(0),
 		LiquidityPools:                  big.NewInt(0),
 		Unauthorized:                    big.NewInt(0),
-		Contracts:                       big.NewInt(0),
 	}
 }
 
-func (a *assetStatBalances) Parse(b *history.ExpAssetStatBalances) error {
+func (a *assetStatBalances) Parse(b history.ExpAssetStatBalances) error {
 	authorized, ok := new(big.Int).SetString(b.Authorized, 10)
 	if !ok {
 		return errors.New("Error parsing: " + b.Authorized)
@@ -74,12 +72,6 @@ func (a *assetStatBalances) Parse(b *history.ExpAssetStatBalances) error {
 	}
 	a.Unauthorized = unauthorized
 
-	contracts, ok := new(big.Int).SetString(b.Contracts, 10)
-	if !ok {
-		return errors.New("Error parsing: " + b.Contracts)
-	}
-	a.Contracts = contracts
-
 	return nil
 }
 
@@ -90,7 +82,6 @@ func (a assetStatBalances) Add(b assetStatBalances) assetStatBalances {
 		ClaimableBalances:               big.NewInt(0).Add(a.ClaimableBalances, b.ClaimableBalances),
 		LiquidityPools:                  big.NewInt(0).Add(a.LiquidityPools, b.LiquidityPools),
 		Unauthorized:                    big.NewInt(0).Add(a.Unauthorized, b.Unauthorized),
-		Contracts:                       big.NewInt(0).Add(a.Contracts, b.Contracts),
 	}
 }
 
@@ -99,8 +90,7 @@ func (a assetStatBalances) IsZero() bool {
 		a.AuthorizedToMaintainLiabilities.Cmp(big.NewInt(0)) == 0 &&
 		a.ClaimableBalances.Cmp(big.NewInt(0)) == 0 &&
 		a.LiquidityPools.Cmp(big.NewInt(0)) == 0 &&
-		a.Unauthorized.Cmp(big.NewInt(0)) == 0 &&
-		a.Contracts.Cmp(big.NewInt(0)) == 0
+		a.Unauthorized.Cmp(big.NewInt(0)) == 0
 }
 
 func (a assetStatBalances) ConvertToHistoryObject() history.ExpAssetStatBalances {
@@ -110,7 +100,6 @@ func (a assetStatBalances) ConvertToHistoryObject() history.ExpAssetStatBalances
 		ClaimableBalances:               a.ClaimableBalances.String(),
 		LiquidityPools:                  a.LiquidityPools.String(),
 		Unauthorized:                    a.Unauthorized.String(),
-		Contracts:                       a.Contracts.String(),
 	}
 }
 
@@ -127,9 +116,20 @@ func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
 	}
 }
 
-type contractAssetStatValue struct {
+type assetContractStatValue struct {
+	contractID [32]byte
 	balance    *big.Int
 	numHolders int32
+}
+
+func (v assetContractStatValue) ConvertToHistoryObject() history.ContractStatRow {
+	return history.ContractStatRow{
+		ContractID: v.contractID[:],
+		Stat: history.ContractStat{
+			Balance: v.balance.String(),
+			Holders: v.numHolders,
+		},
+	}
 }
 
 // AssetStatSet represents a collection of asset stats and a mapping
@@ -138,7 +138,7 @@ type contractAssetStatValue struct {
 type AssetStatSet struct {
 	classicAssetStats  map[assetStatKey]*assetStatValue
 	contractToAsset    map[[32]byte]*xdr.Asset
-	contractAssetStats map[[32]byte]contractAssetStatValue
+	contractAssetStats map[[32]byte]assetContractStatValue
 	networkPassphrase  string
 }
 
@@ -147,7 +147,7 @@ func NewAssetStatSet(networkPassphrase string) AssetStatSet {
 	return AssetStatSet{
 		classicAssetStats:  map[assetStatKey]*assetStatValue{},
 		contractToAsset:    map[[32]byte]*xdr.Asset{},
-		contractAssetStats: map[[32]byte]contractAssetStatValue{},
+		contractAssetStats: map[[32]byte]assetContractStatValue{},
 		networkPassphrase:  networkPassphrase,
 	}
 }
@@ -419,7 +419,8 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 		}
 		stats, ok := s.contractAssetStats[*pContractID]
 		if !ok {
-			stats = contractAssetStatValue{
+			stats = assetContractStatValue{
+				contractID: *pContractID,
 				balance:    big.NewInt(0),
 				numHolders: 0,
 			}
@@ -478,7 +479,8 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 	// there was no balance
 	stats, ok := s.contractAssetStats[*pContractID]
 	if !ok {
-		stats = contractAssetStatValue{
+		stats = assetContractStatValue{
+			contractID: *pContractID,
 			balance:    amt,
 			numHolders: 1,
 		}
@@ -490,7 +492,7 @@ func (s AssetStatSet) ingestAssetContractBalance(change ingest.Change) {
 	s.maybeAddContractAssetStat(*pContractID, stats)
 }
 
-func (s AssetStatSet) maybeAddContractAssetStat(contractID [32]byte, stat contractAssetStatValue) {
+func (s AssetStatSet) maybeAddContractAssetStat(contractID [32]byte, stat assetContractStatValue) {
 	if stat.numHolders == 0 && stat.balance.Cmp(big.NewInt(0)) == 0 {
 		delete(s.contractAssetStats, contractID)
 	} else {
@@ -500,7 +502,7 @@ func (s AssetStatSet) maybeAddContractAssetStat(contractID [32]byte, stat contra
 
 // All returns a list of all `history.ExpAssetStat` contained within the set
 // along with all contract id attribution changes in the set.
-func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset, map[[32]byte]contractAssetStatValue) {
+func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset, map[[32]byte]assetContractStatValue) {
 	assetStats := make([]history.ExpAssetStat, 0, len(s.classicAssetStats))
 	for _, value := range s.classicAssetStats {
 		assetStats = append(assetStats, value.ConvertToHistoryObject())
@@ -509,7 +511,7 @@ func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset, ma
 	for key, val := range s.contractToAsset {
 		contractToAsset[key] = val
 	}
-	contractAssetStats := make(map[[32]byte]contractAssetStatValue, len(s.contractAssetStats))
+	contractAssetStats := make(map[[32]byte]assetContractStatValue, len(s.contractAssetStats))
 	for key, val := range s.contractAssetStats {
 		contractAssetStats[key] = val
 	}
@@ -520,7 +522,7 @@ func (s AssetStatSet) All() ([]history.ExpAssetStat, map[[32]byte]*xdr.Asset, ma
 // AllFromSnapshot should only be invoked when the AssetStatSet has been derived from ledger
 // entry changes consisting of only inserts (no updates) reflecting the current state of
 // the ledger without any missing entries (e.g. history archives).
-func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
+func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, []history.ContractStatRow, error) {
 	// merge assetStatsDeltas and contractToAsset into one list of history.ExpAssetStat.
 	assetStatsDeltas, contractToAsset, contractAssetStats := s.All()
 
@@ -531,10 +533,10 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 		asset := xdr.MustNewCreditAsset(assetStatDelta.AssetCode, assetStatDelta.AssetIssuer)
 		contractID, err := asset.ContractID(s.networkPassphrase)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot compute contract id for asset")
+			return nil, nil, errors.Wrap(err, "cannot compute contract id for asset")
 		}
 		if asset, ok := contractToAsset[contractID]; ok && asset == nil {
-			return nil, ingest.NewStateError(fmt.Errorf(
+			return nil, nil, ingest.NewStateError(fmt.Errorf(
 				"unexpected contract data removal in history archives: %s",
 				hex.EncodeToString(contractID[:]),
 			))
@@ -543,10 +545,6 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 			delete(contractToAsset, contractID)
 		}
 
-		if stats, ok := contractAssetStats[contractID]; ok {
-			assetStatDelta.Accounts.Contracts = stats.numHolders
-			assetStatDelta.Balances.Contracts = stats.balance.String()
-		}
 		assetStatsDeltas[i] = assetStatDelta
 	}
 
@@ -556,7 +554,7 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 	// with zero stats just so we can populate the contract id.
 	for contractID, asset := range contractToAsset {
 		if asset == nil {
-			return nil, ingest.NewStateError(fmt.Errorf(
+			return nil, nil, ingest.NewStateError(fmt.Errorf(
 				"unexpected contract data removal in history archives: %s",
 				hex.EncodeToString(contractID[:]),
 			))
@@ -573,15 +571,13 @@ func (s AssetStatSet) AllFromSnapshot() ([]history.ExpAssetStat, error) {
 			Amount:      "0",
 			NumAccounts: 0,
 		}
-		if stats, ok := contractAssetStats[contractID]; ok {
-			row.Accounts.Contracts = stats.numHolders
-			row.Balances.Contracts = stats.balance.String()
-		}
 		row.SetContractID(contractID)
 		assetStatsDeltas = append(assetStatsDeltas, row)
 	}
-	// all balances remaining in contractAssetStats do not belong to
-	// stellar asset contracts (because all stellar asset contracts must
-	// be in contractToAsset) so we can ignore them
-	return assetStatsDeltas, nil
+
+	contractStatRows := make([]history.ContractStatRow, 0, len(contractAssetStats))
+	for _, stat := range contractAssetStats {
+		contractStatRows = append(contractStatRows, stat.ConvertToHistoryObject())
+	}
+	return assetStatsDeltas, contractStatRows, nil
 }

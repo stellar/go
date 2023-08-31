@@ -14,6 +14,31 @@ type MockQAssetStats struct {
 	mock.Mock
 }
 
+func (m *MockQAssetStats) InsertAssetContractStats(ctx context.Context, rows []ContractStatRow, batchSize int) error {
+	a := m.Called(ctx, rows, batchSize)
+	return a.Error(0)
+}
+
+func (m *MockQAssetStats) InsertAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+	a := m.Called(ctx, row)
+	return a.Get(0).(int64), a.Error(1)
+}
+
+func (m *MockQAssetStats) UpdateAssetContractStat(ctx context.Context, row ContractStatRow) (int64, error) {
+	a := m.Called(ctx, row)
+	return a.Get(0).(int64), a.Error(1)
+}
+
+func (m *MockQAssetStats) GetAssetContractStat(ctx context.Context, contractID []byte) (ContractStatRow, error) {
+	a := m.Called(ctx, contractID)
+	return a.Get(0).(ContractStatRow), a.Error(1)
+}
+
+func (m *MockQAssetStats) RemoveAssetContractStat(ctx context.Context, contractID []byte) (int64, error) {
+	a := m.Called(ctx, contractID)
+	return a.Get(0).(int64), a.Error(1)
+}
+
 func (m *MockQAssetStats) InsertAssetStats(ctx context.Context, assetStats []ExpAssetStat, batchSize int) error {
 	a := m.Called(ctx, assetStats, batchSize)
 	return a.Error(0)
@@ -44,9 +69,9 @@ func (m *MockQAssetStats) RemoveAssetStat(ctx context.Context, assetType xdr.Ass
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQAssetStats) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error) {
+func (m *MockQAssetStats) GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]AssetAndContractStat, error) {
 	a := m.Called(ctx, assetCode, assetIssuer, page)
-	return a.Get(0).([]ExpAssetStat), a.Error(1)
+	return a.Get(0).([]AssetAndContractStat), a.Error(1)
 }
 
 func (m *MockQAssetStats) GetAssetStatByContracts(ctx context.Context, contractIDs [][32]byte) ([]ExpAssetStat, error) {
