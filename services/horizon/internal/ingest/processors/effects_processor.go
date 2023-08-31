@@ -64,7 +64,7 @@ func (p *EffectProcessor) Flush(ctx context.Context, session db.SessionInterface
 	return p.batch.Exec(ctx, session)
 }
 
-// Effects returns the operation effects
+// ingestEffects adds effects from the operation to the given EffectBatchInsertBuilder
 func (operation *transactionOperationWrapper) ingestEffects(accountLoader *history.AccountLoader, batch history.EffectBatchInsertBuilder) error {
 	if !operation.transaction.Result.Successful() {
 		return nil
