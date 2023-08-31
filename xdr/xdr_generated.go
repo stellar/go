@@ -34,13 +34,13 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-contract-config-setting.x": "10b2da88dd4148151ebddd41e4ad412d9d3aace3db35bf33e863d2a16493eaa8",
 	"xdr/Stellar-contract-env-meta.x":       "928a30de814ee589bc1d2aadd8dd81c39f71b7e6f430f56974505ccb1f49654b",
 	"xdr/Stellar-contract-meta.x":           "f01532c11ca044e19d9f9f16fe373e9af64835da473be556b9a807ee3319ae0d",
-	"xdr/Stellar-contract-spec.x":           "739e2480ba197aa859f122632a93172668cb0dbe93e30a54c192b96878af207a",
+	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
 	"xdr/Stellar-contract.x":                "6d89a51015b272d26c132f5d9316710792f2aeec8ba9ee5fba7ec7e1ade029f9",
 	"xdr/Stellar-internal.x":                "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
 	"xdr/Stellar-ledger-entries.x":          "3d1714508129ca3cf7bfd0fa0cb7b3e3bbd2f9496b7f766dda8fbb1d9c46a0ca",
 	"xdr/Stellar-ledger.x":                  "59077cbb5a1517fdaaaf7b1f0f750cf02f84984ed024441dc37b7f974866fa58",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
-	"xdr/Stellar-transaction.x":             "236ae9631757a957d0057d6cbfa8a5e5f2c7219986d3b9e6d0844571865dd6fc",
+	"xdr/Stellar-transaction.x":             "6acd73c1f9f0fe9a8d7e7911b78f9d1f9d23d512d347f32c58de47f8b895466a",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
 }
 
@@ -29738,17 +29738,12 @@ var _ xdrType = (*LedgerFootprint)(nil)
 //	     uint32 readBytes;
 //	     // The maximum number of bytes this transaction can write to ledger
 //	     uint32 writeBytes;
-//
-//	     // Maximum size of the contract events (serialized to XDR) this transaction
-//	     // can emit.
-//	     uint32 contractEventsSizeBytes;
 //	 };
 type SorobanResources struct {
-	Footprint               LedgerFootprint
-	Instructions            Uint32
-	ReadBytes               Uint32
-	WriteBytes              Uint32
-	ContractEventsSizeBytes Uint32
+	Footprint    LedgerFootprint
+	Instructions Uint32
+	ReadBytes    Uint32
+	WriteBytes   Uint32
 }
 
 // EncodeTo encodes this value using the Encoder.
@@ -29764,9 +29759,6 @@ func (s *SorobanResources) EncodeTo(e *xdr.Encoder) error {
 		return err
 	}
 	if err = s.WriteBytes.EncodeTo(e); err != nil {
-		return err
-	}
-	if err = s.ContractEventsSizeBytes.EncodeTo(e); err != nil {
 		return err
 	}
 	return nil
@@ -29794,11 +29786,6 @@ func (s *SorobanResources) DecodeFrom(d *xdr.Decoder) (int, error) {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
 	}
 	nTmp, err = s.WriteBytes.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding Uint32: %s", err)
-	}
-	nTmp, err = s.ContractEventsSizeBytes.DecodeFrom(d)
 	n += nTmp
 	if err != nil {
 		return n, fmt.Errorf("decoding Uint32: %s", err)
@@ -39473,16 +39460,18 @@ var _ xdrType = (*LiquidityPoolWithdrawResult)(nil)
 //	     INVOKE_HOST_FUNCTION_MALFORMED = -1,
 //	     INVOKE_HOST_FUNCTION_TRAPPED = -2,
 //	     INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED = -3,
-//	     INVOKE_HOST_FUNCTION_ENTRY_EXPIRED = -4
+//	     INVOKE_HOST_FUNCTION_ENTRY_EXPIRED = -4,
+//	     INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE = -5
 //	 };
 type InvokeHostFunctionResultCode int32
 
 const (
-	InvokeHostFunctionResultCodeInvokeHostFunctionSuccess               InvokeHostFunctionResultCode = 0
-	InvokeHostFunctionResultCodeInvokeHostFunctionMalformed             InvokeHostFunctionResultCode = -1
-	InvokeHostFunctionResultCodeInvokeHostFunctionTrapped               InvokeHostFunctionResultCode = -2
-	InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded InvokeHostFunctionResultCode = -3
-	InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired          InvokeHostFunctionResultCode = -4
+	InvokeHostFunctionResultCodeInvokeHostFunctionSuccess                   InvokeHostFunctionResultCode = 0
+	InvokeHostFunctionResultCodeInvokeHostFunctionMalformed                 InvokeHostFunctionResultCode = -1
+	InvokeHostFunctionResultCodeInvokeHostFunctionTrapped                   InvokeHostFunctionResultCode = -2
+	InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded     InvokeHostFunctionResultCode = -3
+	InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired              InvokeHostFunctionResultCode = -4
+	InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee InvokeHostFunctionResultCode = -5
 )
 
 var invokeHostFunctionResultCodeMap = map[int32]string{
@@ -39491,6 +39480,7 @@ var invokeHostFunctionResultCodeMap = map[int32]string{
 	-2: "InvokeHostFunctionResultCodeInvokeHostFunctionTrapped",
 	-3: "InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded",
 	-4: "InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired",
+	-5: "InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -39567,6 +39557,7 @@ var _ xdrType = (*InvokeHostFunctionResultCode)(nil)
 //	 case INVOKE_HOST_FUNCTION_TRAPPED:
 //	 case INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED:
 //	 case INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
+//	 case INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 //	     void;
 //	 };
 type InvokeHostFunctionResult struct {
@@ -39594,6 +39585,8 @@ func (u InvokeHostFunctionResult) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
 		return "", true
+	case InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee:
+		return "", true
 	}
 	return "-", false
 }
@@ -39616,6 +39609,8 @@ func NewInvokeHostFunctionResult(code InvokeHostFunctionResultCode, value interf
 	case InvokeHostFunctionResultCodeInvokeHostFunctionResourceLimitExceeded:
 		// void
 	case InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
+		// void
+	case InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee:
 		// void
 	}
 	return
@@ -39670,6 +39665,9 @@ func (u InvokeHostFunctionResult) EncodeTo(e *xdr.Encoder) error {
 	case InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
 		// Void
 		return nil
+	case InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee:
+		// Void
+		return nil
 	}
 	return fmt.Errorf("Code (InvokeHostFunctionResultCode) switch value '%d' is not valid for union InvokeHostFunctionResult", u.Code)
 }
@@ -39704,6 +39702,9 @@ func (u *InvokeHostFunctionResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
+		// Void
+		return n, nil
+	case InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee:
 		// Void
 		return n, nil
 	}
@@ -39746,20 +39747,23 @@ var _ xdrType = (*InvokeHostFunctionResult)(nil)
 //
 //	     // codes considered as "failure" for the operation
 //	     BUMP_FOOTPRINT_EXPIRATION_MALFORMED = -1,
-//	     BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED = -2
+//	     BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED = -2,
+//	     BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE = -3
 //	 };
 type BumpFootprintExpirationResultCode int32
 
 const (
-	BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess               BumpFootprintExpirationResultCode = 0
-	BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed             BumpFootprintExpirationResultCode = -1
-	BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded BumpFootprintExpirationResultCode = -2
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess                   BumpFootprintExpirationResultCode = 0
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed                 BumpFootprintExpirationResultCode = -1
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded     BumpFootprintExpirationResultCode = -2
+	BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee BumpFootprintExpirationResultCode = -3
 )
 
 var bumpFootprintExpirationResultCodeMap = map[int32]string{
 	0:  "BumpFootprintExpirationResultCodeBumpFootprintExpirationSuccess",
 	-1: "BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed",
 	-2: "BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded",
+	-3: "BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -39834,6 +39838,7 @@ var _ xdrType = (*BumpFootprintExpirationResultCode)(nil)
 //	     void;
 //	 case BUMP_FOOTPRINT_EXPIRATION_MALFORMED:
 //	 case BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+//	 case BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
 //	     void;
 //	 };
 type BumpFootprintExpirationResult struct {
@@ -39856,6 +39861,8 @@ func (u BumpFootprintExpirationResult) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
 		return "", true
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee:
+		return "", true
 	}
 	return "-", false
 }
@@ -39869,6 +39876,8 @@ func NewBumpFootprintExpirationResult(code BumpFootprintExpirationResultCode, va
 	case BumpFootprintExpirationResultCodeBumpFootprintExpirationMalformed:
 		// void
 	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		// void
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee:
 		// void
 	}
 	return
@@ -39888,6 +39897,9 @@ func (u BumpFootprintExpirationResult) EncodeTo(e *xdr.Encoder) error {
 		// Void
 		return nil
 	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		// Void
+		return nil
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee:
 		// Void
 		return nil
 	}
@@ -39913,6 +39925,9 @@ func (u *BumpFootprintExpirationResult) DecodeFrom(d *xdr.Decoder) (int, error) 
 		// Void
 		return n, nil
 	case BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
+		// Void
+		return n, nil
+	case BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee:
 		// Void
 		return n, nil
 	}
@@ -39955,20 +39970,23 @@ var _ xdrType = (*BumpFootprintExpirationResult)(nil)
 //
 //	     // codes considered as "failure" for the operation
 //	     RESTORE_FOOTPRINT_MALFORMED = -1,
-//	     RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED = -2
+//	     RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED = -2,
+//	     RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE = -3
 //	 };
 type RestoreFootprintResultCode int32
 
 const (
-	RestoreFootprintResultCodeRestoreFootprintSuccess               RestoreFootprintResultCode = 0
-	RestoreFootprintResultCodeRestoreFootprintMalformed             RestoreFootprintResultCode = -1
-	RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded RestoreFootprintResultCode = -2
+	RestoreFootprintResultCodeRestoreFootprintSuccess                   RestoreFootprintResultCode = 0
+	RestoreFootprintResultCodeRestoreFootprintMalformed                 RestoreFootprintResultCode = -1
+	RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded     RestoreFootprintResultCode = -2
+	RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee RestoreFootprintResultCode = -3
 )
 
 var restoreFootprintResultCodeMap = map[int32]string{
 	0:  "RestoreFootprintResultCodeRestoreFootprintSuccess",
 	-1: "RestoreFootprintResultCodeRestoreFootprintMalformed",
 	-2: "RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded",
+	-3: "RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -40043,6 +40061,7 @@ var _ xdrType = (*RestoreFootprintResultCode)(nil)
 //	     void;
 //	 case RESTORE_FOOTPRINT_MALFORMED:
 //	 case RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+//	 case RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE:
 //	     void;
 //	 };
 type RestoreFootprintResult struct {
@@ -40065,6 +40084,8 @@ func (u RestoreFootprintResult) ArmForSwitch(sw int32) (string, bool) {
 		return "", true
 	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
 		return "", true
+	case RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee:
+		return "", true
 	}
 	return "-", false
 }
@@ -40078,6 +40099,8 @@ func NewRestoreFootprintResult(code RestoreFootprintResultCode, value interface{
 	case RestoreFootprintResultCodeRestoreFootprintMalformed:
 		// void
 	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		// void
+	case RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee:
 		// void
 	}
 	return
@@ -40097,6 +40120,9 @@ func (u RestoreFootprintResult) EncodeTo(e *xdr.Encoder) error {
 		// Void
 		return nil
 	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		// Void
+		return nil
+	case RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee:
 		// Void
 		return nil
 	}
@@ -40122,6 +40148,9 @@ func (u *RestoreFootprintResult) DecodeFrom(d *xdr.Decoder) (int, error) {
 		// Void
 		return n, nil
 	case RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
+		// Void
+		return n, nil
+	case RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee:
 		// Void
 		return n, nil
 	}
@@ -45755,7 +45784,6 @@ const ScSpecDocLimit = 1024
 //	     SC_SPEC_TYPE_OPTION = 1000,
 //	     SC_SPEC_TYPE_RESULT = 1001,
 //	     SC_SPEC_TYPE_VEC = 1002,
-//	     SC_SPEC_TYPE_SET = 1003,
 //	     SC_SPEC_TYPE_MAP = 1004,
 //	     SC_SPEC_TYPE_TUPLE = 1005,
 //	     SC_SPEC_TYPE_BYTES_N = 1006,
@@ -45787,7 +45815,6 @@ const (
 	ScSpecTypeScSpecTypeOption    ScSpecType = 1000
 	ScSpecTypeScSpecTypeResult    ScSpecType = 1001
 	ScSpecTypeScSpecTypeVec       ScSpecType = 1002
-	ScSpecTypeScSpecTypeSet       ScSpecType = 1003
 	ScSpecTypeScSpecTypeMap       ScSpecType = 1004
 	ScSpecTypeScSpecTypeTuple     ScSpecType = 1005
 	ScSpecTypeScSpecTypeBytesN    ScSpecType = 1006
@@ -45816,7 +45843,6 @@ var scSpecTypeMap = map[int32]string{
 	1000: "ScSpecTypeScSpecTypeOption",
 	1001: "ScSpecTypeScSpecTypeResult",
 	1002: "ScSpecTypeScSpecTypeVec",
-	1003: "ScSpecTypeScSpecTypeSet",
 	1004: "ScSpecTypeScSpecTypeMap",
 	1005: "ScSpecTypeScSpecTypeTuple",
 	1006: "ScSpecTypeScSpecTypeBytesN",
@@ -46147,66 +46173,6 @@ func (s ScSpecTypeMap) xdrType() {}
 
 var _ xdrType = (*ScSpecTypeMap)(nil)
 
-// ScSpecTypeSet is an XDR Struct defines as:
-//
-//	struct SCSpecTypeSet
-//	 {
-//	     SCSpecTypeDef elementType;
-//	 };
-type ScSpecTypeSet struct {
-	ElementType ScSpecTypeDef
-}
-
-// EncodeTo encodes this value using the Encoder.
-func (s *ScSpecTypeSet) EncodeTo(e *xdr.Encoder) error {
-	var err error
-	if err = s.ElementType.EncodeTo(e); err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ decoderFrom = (*ScSpecTypeSet)(nil)
-
-// DecodeFrom decodes this value using the Decoder.
-func (s *ScSpecTypeSet) DecodeFrom(d *xdr.Decoder) (int, error) {
-	var err error
-	var n, nTmp int
-	nTmp, err = s.ElementType.DecodeFrom(d)
-	n += nTmp
-	if err != nil {
-		return n, fmt.Errorf("decoding ScSpecTypeDef: %s", err)
-	}
-	return n, nil
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s ScSpecTypeSet) MarshalBinary() ([]byte, error) {
-	b := bytes.Buffer{}
-	e := xdr.NewEncoder(&b)
-	err := s.EncodeTo(e)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ScSpecTypeSet) UnmarshalBinary(inp []byte) error {
-	r := bytes.NewReader(inp)
-	d := xdr.NewDecoder(r)
-	_, err := s.DecodeFrom(d)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*ScSpecTypeSet)(nil)
-	_ encoding.BinaryUnmarshaler = (*ScSpecTypeSet)(nil)
-)
-
-// xdrType signals that this type is an type representing
-// representing XDR values defined by this package.
-func (s ScSpecTypeSet) xdrType() {}
-
-var _ xdrType = (*ScSpecTypeSet)(nil)
-
 // ScSpecTypeTuple is an XDR Struct defines as:
 //
 //	struct SCSpecTypeTuple
@@ -46438,8 +46404,6 @@ var _ xdrType = (*ScSpecTypeUdt)(nil)
 //	     SCSpecTypeVec vec;
 //	 case SC_SPEC_TYPE_MAP:
 //	     SCSpecTypeMap map;
-//	 case SC_SPEC_TYPE_SET:
-//	     SCSpecTypeSet set;
 //	 case SC_SPEC_TYPE_TUPLE:
 //	     SCSpecTypeTuple tuple;
 //	 case SC_SPEC_TYPE_BYTES_N:
@@ -46453,7 +46417,6 @@ type ScSpecTypeDef struct {
 	Result *ScSpecTypeResult
 	Vec    *ScSpecTypeVec
 	Map    *ScSpecTypeMap
-	Set    *ScSpecTypeSet
 	Tuple  *ScSpecTypeTuple
 	BytesN *ScSpecTypeBytesN
 	Udt    *ScSpecTypeUdt
@@ -46513,8 +46476,6 @@ func (u ScSpecTypeDef) ArmForSwitch(sw int32) (string, bool) {
 		return "Vec", true
 	case ScSpecTypeScSpecTypeMap:
 		return "Map", true
-	case ScSpecTypeScSpecTypeSet:
-		return "Set", true
 	case ScSpecTypeScSpecTypeTuple:
 		return "Tuple", true
 	case ScSpecTypeScSpecTypeBytesN:
@@ -46593,13 +46554,6 @@ func NewScSpecTypeDef(aType ScSpecType, value interface{}) (result ScSpecTypeDef
 			return
 		}
 		result.Map = &tv
-	case ScSpecTypeScSpecTypeSet:
-		tv, ok := value.(ScSpecTypeSet)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be ScSpecTypeSet")
-			return
-		}
-		result.Set = &tv
 	case ScSpecTypeScSpecTypeTuple:
 		tv, ok := value.(ScSpecTypeTuple)
 		if !ok {
@@ -46719,31 +46673,6 @@ func (u ScSpecTypeDef) GetMap() (result ScSpecTypeMap, ok bool) {
 
 	if armName == "Map" {
 		result = *u.Map
-		ok = true
-	}
-
-	return
-}
-
-// MustSet retrieves the Set value from the union,
-// panicing if the value is not set.
-func (u ScSpecTypeDef) MustSet() ScSpecTypeSet {
-	val, ok := u.GetSet()
-
-	if !ok {
-		panic("arm Set is not set")
-	}
-
-	return val
-}
-
-// GetSet retrieves the Set value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ScSpecTypeDef) GetSet() (result ScSpecTypeSet, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "Set" {
-		result = *u.Set
 		ok = true
 	}
 
@@ -46906,11 +46835,6 @@ func (u ScSpecTypeDef) EncodeTo(e *xdr.Encoder) error {
 			return err
 		}
 		return nil
-	case ScSpecTypeScSpecTypeSet:
-		if err = (*u.Set).EncodeTo(e); err != nil {
-			return err
-		}
-		return nil
 	case ScSpecTypeScSpecTypeTuple:
 		if err = (*u.Tuple).EncodeTo(e); err != nil {
 			return err
@@ -47026,14 +46950,6 @@ func (u *ScSpecTypeDef) DecodeFrom(d *xdr.Decoder) (int, error) {
 		n += nTmp
 		if err != nil {
 			return n, fmt.Errorf("decoding ScSpecTypeMap: %s", err)
-		}
-		return n, nil
-	case ScSpecTypeScSpecTypeSet:
-		u.Set = new(ScSpecTypeSet)
-		nTmp, err = (*u.Set).DecodeFrom(d)
-		n += nTmp
-		if err != nil {
-			return n, fmt.Errorf("decoding ScSpecTypeSet: %s", err)
 		}
 		return n, nil
 	case ScSpecTypeScSpecTypeTuple:

@@ -504,6 +504,8 @@ func String(code interface{}) (string, error) {
 			return "resource_limit_exceeded", nil
 		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionEntryExpired:
 			return "entry_expired", nil
+		case xdr.InvokeHostFunctionResultCodeInvokeHostFunctionInsufficientRefundableFee:
+			return "insufficient_refundable_fee", nil
 		}
 	case xdr.BumpFootprintExpirationResultCode:
 		switch code {
@@ -513,6 +515,8 @@ func String(code interface{}) (string, error) {
 			return OpMalformed, nil
 		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationResourceLimitExceeded:
 			return "resource_limit_exceeded", nil
+		case xdr.BumpFootprintExpirationResultCodeBumpFootprintExpirationInsufficientRefundableFee:
+			return "insufficient_refundable_fee", nil
 		}
 	case xdr.RestoreFootprintResultCode:
 		switch code {
@@ -522,6 +526,8 @@ func String(code interface{}) (string, error) {
 			return OpMalformed, nil
 		case xdr.RestoreFootprintResultCodeRestoreFootprintResourceLimitExceeded:
 			return "resource_limit_exceeded", nil
+		case xdr.RestoreFootprintResultCodeRestoreFootprintInsufficientRefundableFee:
+			return "insufficient_refundable_fee", nil
 		}
 	}
 

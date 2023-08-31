@@ -20,9 +20,10 @@ import (
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/jhttp"
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/support/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stellar/go/support/config"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
@@ -262,6 +263,14 @@ func (i *Test) runComposeCommand(args ...string) {
 			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
 		)
 	}
+
+	if i.config.ProtocolVersion < ledgerbackend.MinimalSorobanProtocolSupport {
+		cmd.Env = append(
+			cmd.Environ(),
+			"CORE_CONFIG_FILE=stellar-core-classic-integration-tests.cfg",
+		)
+	}
+
 	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
 	if len(out) > 0 {

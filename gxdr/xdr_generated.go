@@ -2446,9 +2446,6 @@ type SorobanResources struct {
 	ReadBytes Uint32
 	// The maximum number of bytes this transaction can write to ledger
 	WriteBytes Uint32
-	// Maximum size of the contract events (serialized to XDR) this transaction
-	// can emit.
-	ContractEventsSizeBytes Uint32
 }
 
 // The transaction extension for Soroban.
@@ -3351,17 +3348,18 @@ const (
 	// codes considered as "success" for the operation
 	INVOKE_HOST_FUNCTION_SUCCESS InvokeHostFunctionResultCode = 0
 	// codes considered as "failure" for the operation
-	INVOKE_HOST_FUNCTION_MALFORMED               InvokeHostFunctionResultCode = -1
-	INVOKE_HOST_FUNCTION_TRAPPED                 InvokeHostFunctionResultCode = -2
-	INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED InvokeHostFunctionResultCode = -3
-	INVOKE_HOST_FUNCTION_ENTRY_EXPIRED           InvokeHostFunctionResultCode = -4
+	INVOKE_HOST_FUNCTION_MALFORMED                   InvokeHostFunctionResultCode = -1
+	INVOKE_HOST_FUNCTION_TRAPPED                     InvokeHostFunctionResultCode = -2
+	INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED     InvokeHostFunctionResultCode = -3
+	INVOKE_HOST_FUNCTION_ENTRY_EXPIRED               InvokeHostFunctionResultCode = -4
+	INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE InvokeHostFunctionResultCode = -5
 )
 
 type InvokeHostFunctionResult struct {
 	// The union discriminant Code selects among the following arms:
 	//   INVOKE_HOST_FUNCTION_SUCCESS:
 	//      Success() *Hash
-	//   INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
+	//   INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 	//      void
 	Code InvokeHostFunctionResultCode
 	_u   interface{}
@@ -3373,15 +3371,16 @@ const (
 	// codes considered as "success" for the operation
 	BUMP_FOOTPRINT_EXPIRATION_SUCCESS BumpFootprintExpirationResultCode = 0
 	// codes considered as "failure" for the operation
-	BUMP_FOOTPRINT_EXPIRATION_MALFORMED               BumpFootprintExpirationResultCode = -1
-	BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED BumpFootprintExpirationResultCode = -2
+	BUMP_FOOTPRINT_EXPIRATION_MALFORMED                   BumpFootprintExpirationResultCode = -1
+	BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED     BumpFootprintExpirationResultCode = -2
+	BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE BumpFootprintExpirationResultCode = -3
 )
 
 type BumpFootprintExpirationResult struct {
 	// The union discriminant Code selects among the following arms:
 	//   BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
 	//      void
-	//   BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+	//   BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
 	//      void
 	Code BumpFootprintExpirationResultCode
 	_u   interface{}
@@ -3393,15 +3392,16 @@ const (
 	// codes considered as "success" for the operation
 	RESTORE_FOOTPRINT_SUCCESS RestoreFootprintResultCode = 0
 	// codes considered as "failure" for the operation
-	RESTORE_FOOTPRINT_MALFORMED               RestoreFootprintResultCode = -1
-	RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED RestoreFootprintResultCode = -2
+	RESTORE_FOOTPRINT_MALFORMED                   RestoreFootprintResultCode = -1
+	RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED     RestoreFootprintResultCode = -2
+	RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE RestoreFootprintResultCode = -3
 )
 
 type RestoreFootprintResult struct {
 	// The union discriminant Code selects among the following arms:
 	//   RESTORE_FOOTPRINT_SUCCESS:
 	//      void
-	//   RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+	//   RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED, RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE:
 	//      void
 	Code RestoreFootprintResultCode
 	_u   interface{}
@@ -3768,7 +3768,6 @@ const (
 	SC_SPEC_TYPE_OPTION  SCSpecType = 1000
 	SC_SPEC_TYPE_RESULT  SCSpecType = 1001
 	SC_SPEC_TYPE_VEC     SCSpecType = 1002
-	SC_SPEC_TYPE_SET     SCSpecType = 1003
 	SC_SPEC_TYPE_MAP     SCSpecType = 1004
 	SC_SPEC_TYPE_TUPLE   SCSpecType = 1005
 	SC_SPEC_TYPE_BYTES_N SCSpecType = 1006
@@ -3792,10 +3791,6 @@ type SCSpecTypeVec struct {
 type SCSpecTypeMap struct {
 	KeyType   SCSpecTypeDef
 	ValueType SCSpecTypeDef
-}
-
-type SCSpecTypeSet struct {
-	ElementType SCSpecTypeDef
 }
 
 type SCSpecTypeTuple struct {
@@ -3822,8 +3817,6 @@ type SCSpecTypeDef struct {
 	//      Vec() *SCSpecTypeVec
 	//   SC_SPEC_TYPE_MAP:
 	//      Map() *SCSpecTypeMap
-	//   SC_SPEC_TYPE_SET:
-	//      Set() *SCSpecTypeSet
 	//   SC_SPEC_TYPE_TUPLE:
 	//      Tuple() *SCSpecTypeTuple
 	//   SC_SPEC_TYPE_BYTES_N:
@@ -18188,7 +18181,6 @@ func (v *SorobanResources) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%sinstructions", name), XDR_Uint32(&v.Instructions))
 	x.Marshal(x.Sprintf("%sreadBytes", name), XDR_Uint32(&v.ReadBytes))
 	x.Marshal(x.Sprintf("%swriteBytes", name), XDR_Uint32(&v.WriteBytes))
-	x.Marshal(x.Sprintf("%scontractEventsSizeBytes", name), XDR_Uint32(&v.ContractEventsSizeBytes))
 }
 func XDR_SorobanResources(v *SorobanResources) *SorobanResources { return v }
 
@@ -22803,18 +22795,20 @@ func XDR_LiquidityPoolWithdrawResult(v *LiquidityPoolWithdrawResult) *LiquidityP
 }
 
 var _XdrNames_InvokeHostFunctionResultCode = map[int32]string{
-	int32(INVOKE_HOST_FUNCTION_SUCCESS):                 "INVOKE_HOST_FUNCTION_SUCCESS",
-	int32(INVOKE_HOST_FUNCTION_MALFORMED):               "INVOKE_HOST_FUNCTION_MALFORMED",
-	int32(INVOKE_HOST_FUNCTION_TRAPPED):                 "INVOKE_HOST_FUNCTION_TRAPPED",
-	int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED): "INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED",
-	int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):           "INVOKE_HOST_FUNCTION_ENTRY_EXPIRED",
+	int32(INVOKE_HOST_FUNCTION_SUCCESS):                     "INVOKE_HOST_FUNCTION_SUCCESS",
+	int32(INVOKE_HOST_FUNCTION_MALFORMED):                   "INVOKE_HOST_FUNCTION_MALFORMED",
+	int32(INVOKE_HOST_FUNCTION_TRAPPED):                     "INVOKE_HOST_FUNCTION_TRAPPED",
+	int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED):     "INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED",
+	int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):               "INVOKE_HOST_FUNCTION_ENTRY_EXPIRED",
+	int32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE): "INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE",
 }
 var _XdrValues_InvokeHostFunctionResultCode = map[string]int32{
-	"INVOKE_HOST_FUNCTION_SUCCESS":                 int32(INVOKE_HOST_FUNCTION_SUCCESS),
-	"INVOKE_HOST_FUNCTION_MALFORMED":               int32(INVOKE_HOST_FUNCTION_MALFORMED),
-	"INVOKE_HOST_FUNCTION_TRAPPED":                 int32(INVOKE_HOST_FUNCTION_TRAPPED),
-	"INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED": int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED),
-	"INVOKE_HOST_FUNCTION_ENTRY_EXPIRED":           int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED),
+	"INVOKE_HOST_FUNCTION_SUCCESS":                     int32(INVOKE_HOST_FUNCTION_SUCCESS),
+	"INVOKE_HOST_FUNCTION_MALFORMED":                   int32(INVOKE_HOST_FUNCTION_MALFORMED),
+	"INVOKE_HOST_FUNCTION_TRAPPED":                     int32(INVOKE_HOST_FUNCTION_TRAPPED),
+	"INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED":     int32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED),
+	"INVOKE_HOST_FUNCTION_ENTRY_EXPIRED":               int32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED),
+	"INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE": int32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE),
 }
 
 func (InvokeHostFunctionResultCode) XdrEnumNames() map[int32]string {
@@ -22865,11 +22859,12 @@ func (e InvokeHostFunctionResultCode) XdrEnumComments() map[int32]string {
 }
 
 var _XdrTags_InvokeHostFunctionResult = map[int32]bool{
-	XdrToI32(INVOKE_HOST_FUNCTION_SUCCESS):                 true,
-	XdrToI32(INVOKE_HOST_FUNCTION_MALFORMED):               true,
-	XdrToI32(INVOKE_HOST_FUNCTION_TRAPPED):                 true,
-	XdrToI32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED): true,
-	XdrToI32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):           true,
+	XdrToI32(INVOKE_HOST_FUNCTION_SUCCESS):                     true,
+	XdrToI32(INVOKE_HOST_FUNCTION_MALFORMED):                   true,
+	XdrToI32(INVOKE_HOST_FUNCTION_TRAPPED):                     true,
+	XdrToI32(INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED):     true,
+	XdrToI32(INVOKE_HOST_FUNCTION_ENTRY_EXPIRED):               true,
+	XdrToI32(INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE): true,
 }
 
 func (_ InvokeHostFunctionResult) XdrValidTags() map[int32]bool {
@@ -22894,7 +22889,7 @@ func (u *InvokeHostFunctionResult) Success() *Hash {
 }
 func (u InvokeHostFunctionResult) XdrValid() bool {
 	switch u.Code {
-	case INVOKE_HOST_FUNCTION_SUCCESS, INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
+	case INVOKE_HOST_FUNCTION_SUCCESS, INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return true
 	}
 	return false
@@ -22909,7 +22904,7 @@ func (u *InvokeHostFunctionResult) XdrUnionBody() XdrType {
 	switch u.Code {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		return XDR_Hash(u.Success())
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return nil
 	}
 	return nil
@@ -22918,7 +22913,7 @@ func (u *InvokeHostFunctionResult) XdrUnionBodyName() string {
 	switch u.Code {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		return "Success"
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return ""
 	}
 	return ""
@@ -22939,7 +22934,7 @@ func (u *InvokeHostFunctionResult) XdrRecurse(x XDR, name string) {
 	case INVOKE_HOST_FUNCTION_SUCCESS:
 		x.Marshal(x.Sprintf("%ssuccess", name), XDR_Hash(u.Success()))
 		return
-	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED:
+	case INVOKE_HOST_FUNCTION_MALFORMED, INVOKE_HOST_FUNCTION_TRAPPED, INVOKE_HOST_FUNCTION_RESOURCE_LIMIT_EXCEEDED, INVOKE_HOST_FUNCTION_ENTRY_EXPIRED, INVOKE_HOST_FUNCTION_INSUFFICIENT_REFUNDABLE_FEE:
 		return
 	}
 	XdrPanic("invalid Code (%v) in InvokeHostFunctionResult", u.Code)
@@ -22947,14 +22942,16 @@ func (u *InvokeHostFunctionResult) XdrRecurse(x XDR, name string) {
 func XDR_InvokeHostFunctionResult(v *InvokeHostFunctionResult) *InvokeHostFunctionResult { return v }
 
 var _XdrNames_BumpFootprintExpirationResultCode = map[int32]string{
-	int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                 "BUMP_FOOTPRINT_EXPIRATION_SUCCESS",
-	int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):               "BUMP_FOOTPRINT_EXPIRATION_MALFORMED",
-	int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED): "BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED",
+	int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                     "BUMP_FOOTPRINT_EXPIRATION_SUCCESS",
+	int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):                   "BUMP_FOOTPRINT_EXPIRATION_MALFORMED",
+	int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED):     "BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED",
+	int32(BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE): "BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE",
 }
 var _XdrValues_BumpFootprintExpirationResultCode = map[string]int32{
-	"BUMP_FOOTPRINT_EXPIRATION_SUCCESS":                 int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS),
-	"BUMP_FOOTPRINT_EXPIRATION_MALFORMED":               int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED),
-	"BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED": int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED),
+	"BUMP_FOOTPRINT_EXPIRATION_SUCCESS":                     int32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS),
+	"BUMP_FOOTPRINT_EXPIRATION_MALFORMED":                   int32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED),
+	"BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED":     int32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED),
+	"BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE": int32(BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE),
 }
 
 func (BumpFootprintExpirationResultCode) XdrEnumNames() map[int32]string {
@@ -23009,9 +23006,10 @@ func (e BumpFootprintExpirationResultCode) XdrEnumComments() map[int32]string {
 }
 
 var _XdrTags_BumpFootprintExpirationResult = map[int32]bool{
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                 true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):               true,
-	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED): true,
+	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_SUCCESS):                     true,
+	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_MALFORMED):                   true,
+	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED):     true,
+	XdrToI32(BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE): true,
 }
 
 func (_ BumpFootprintExpirationResult) XdrValidTags() map[int32]bool {
@@ -23019,7 +23017,7 @@ func (_ BumpFootprintExpirationResult) XdrValidTags() map[int32]bool {
 }
 func (u BumpFootprintExpirationResult) XdrValid() bool {
 	switch u.Code {
-	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS, BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS, BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
 		return true
 	}
 	return false
@@ -23034,7 +23032,7 @@ func (u *BumpFootprintExpirationResult) XdrUnionBody() XdrType {
 	switch u.Code {
 	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
 		return nil
-	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
 		return nil
 	}
 	return nil
@@ -23043,7 +23041,7 @@ func (u *BumpFootprintExpirationResult) XdrUnionBodyName() string {
 	switch u.Code {
 	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
 		return ""
-	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
 		return ""
 	}
 	return ""
@@ -23063,7 +23061,7 @@ func (u *BumpFootprintExpirationResult) XdrRecurse(x XDR, name string) {
 	switch u.Code {
 	case BUMP_FOOTPRINT_EXPIRATION_SUCCESS:
 		return
-	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED:
+	case BUMP_FOOTPRINT_EXPIRATION_MALFORMED, BUMP_FOOTPRINT_EXPIRATION_RESOURCE_LIMIT_EXCEEDED, BUMP_FOOTPRINT_EXPIRATION_INSUFFICIENT_REFUNDABLE_FEE:
 		return
 	}
 	XdrPanic("invalid Code (%v) in BumpFootprintExpirationResult", u.Code)
@@ -23073,14 +23071,16 @@ func XDR_BumpFootprintExpirationResult(v *BumpFootprintExpirationResult) *BumpFo
 }
 
 var _XdrNames_RestoreFootprintResultCode = map[int32]string{
-	int32(RESTORE_FOOTPRINT_SUCCESS):                 "RESTORE_FOOTPRINT_SUCCESS",
-	int32(RESTORE_FOOTPRINT_MALFORMED):               "RESTORE_FOOTPRINT_MALFORMED",
-	int32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED): "RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED",
+	int32(RESTORE_FOOTPRINT_SUCCESS):                     "RESTORE_FOOTPRINT_SUCCESS",
+	int32(RESTORE_FOOTPRINT_MALFORMED):                   "RESTORE_FOOTPRINT_MALFORMED",
+	int32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED):     "RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED",
+	int32(RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE): "RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE",
 }
 var _XdrValues_RestoreFootprintResultCode = map[string]int32{
-	"RESTORE_FOOTPRINT_SUCCESS":                 int32(RESTORE_FOOTPRINT_SUCCESS),
-	"RESTORE_FOOTPRINT_MALFORMED":               int32(RESTORE_FOOTPRINT_MALFORMED),
-	"RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED": int32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED),
+	"RESTORE_FOOTPRINT_SUCCESS":                     int32(RESTORE_FOOTPRINT_SUCCESS),
+	"RESTORE_FOOTPRINT_MALFORMED":                   int32(RESTORE_FOOTPRINT_MALFORMED),
+	"RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED":     int32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED),
+	"RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE": int32(RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE),
 }
 
 func (RestoreFootprintResultCode) XdrEnumNames() map[int32]string {
@@ -23131,9 +23131,10 @@ func (e RestoreFootprintResultCode) XdrEnumComments() map[int32]string {
 }
 
 var _XdrTags_RestoreFootprintResult = map[int32]bool{
-	XdrToI32(RESTORE_FOOTPRINT_SUCCESS):                 true,
-	XdrToI32(RESTORE_FOOTPRINT_MALFORMED):               true,
-	XdrToI32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED): true,
+	XdrToI32(RESTORE_FOOTPRINT_SUCCESS):                     true,
+	XdrToI32(RESTORE_FOOTPRINT_MALFORMED):                   true,
+	XdrToI32(RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED):     true,
+	XdrToI32(RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE): true,
 }
 
 func (_ RestoreFootprintResult) XdrValidTags() map[int32]bool {
@@ -23141,7 +23142,7 @@ func (_ RestoreFootprintResult) XdrValidTags() map[int32]bool {
 }
 func (u RestoreFootprintResult) XdrValid() bool {
 	switch u.Code {
-	case RESTORE_FOOTPRINT_SUCCESS, RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+	case RESTORE_FOOTPRINT_SUCCESS, RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED, RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE:
 		return true
 	}
 	return false
@@ -23156,7 +23157,7 @@ func (u *RestoreFootprintResult) XdrUnionBody() XdrType {
 	switch u.Code {
 	case RESTORE_FOOTPRINT_SUCCESS:
 		return nil
-	case RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+	case RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED, RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE:
 		return nil
 	}
 	return nil
@@ -23165,7 +23166,7 @@ func (u *RestoreFootprintResult) XdrUnionBodyName() string {
 	switch u.Code {
 	case RESTORE_FOOTPRINT_SUCCESS:
 		return ""
-	case RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+	case RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED, RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE:
 		return ""
 	}
 	return ""
@@ -23185,7 +23186,7 @@ func (u *RestoreFootprintResult) XdrRecurse(x XDR, name string) {
 	switch u.Code {
 	case RESTORE_FOOTPRINT_SUCCESS:
 		return
-	case RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED:
+	case RESTORE_FOOTPRINT_MALFORMED, RESTORE_FOOTPRINT_RESOURCE_LIMIT_EXCEEDED, RESTORE_FOOTPRINT_INSUFFICIENT_REFUNDABLE_FEE:
 		return
 	}
 	XdrPanic("invalid Code (%v) in RestoreFootprintResult", u.Code)
@@ -25446,7 +25447,6 @@ var _XdrNames_SCSpecType = map[int32]string{
 	int32(SC_SPEC_TYPE_OPTION):    "SC_SPEC_TYPE_OPTION",
 	int32(SC_SPEC_TYPE_RESULT):    "SC_SPEC_TYPE_RESULT",
 	int32(SC_SPEC_TYPE_VEC):       "SC_SPEC_TYPE_VEC",
-	int32(SC_SPEC_TYPE_SET):       "SC_SPEC_TYPE_SET",
 	int32(SC_SPEC_TYPE_MAP):       "SC_SPEC_TYPE_MAP",
 	int32(SC_SPEC_TYPE_TUPLE):     "SC_SPEC_TYPE_TUPLE",
 	int32(SC_SPEC_TYPE_BYTES_N):   "SC_SPEC_TYPE_BYTES_N",
@@ -25474,7 +25474,6 @@ var _XdrValues_SCSpecType = map[string]int32{
 	"SC_SPEC_TYPE_OPTION":    int32(SC_SPEC_TYPE_OPTION),
 	"SC_SPEC_TYPE_RESULT":    int32(SC_SPEC_TYPE_RESULT),
 	"SC_SPEC_TYPE_VEC":       int32(SC_SPEC_TYPE_VEC),
-	"SC_SPEC_TYPE_SET":       int32(SC_SPEC_TYPE_SET),
 	"SC_SPEC_TYPE_MAP":       int32(SC_SPEC_TYPE_MAP),
 	"SC_SPEC_TYPE_TUPLE":     int32(SC_SPEC_TYPE_TUPLE),
 	"SC_SPEC_TYPE_BYTES_N":   int32(SC_SPEC_TYPE_BYTES_N),
@@ -25584,20 +25583,6 @@ func (v *SCSpecTypeMap) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%svalueType", name), XDR_SCSpecTypeDef(&v.ValueType))
 }
 func XDR_SCSpecTypeMap(v *SCSpecTypeMap) *SCSpecTypeMap { return v }
-
-type XdrType_SCSpecTypeSet = *SCSpecTypeSet
-
-func (v *SCSpecTypeSet) XdrPointer() interface{}       { return v }
-func (SCSpecTypeSet) XdrTypeName() string              { return "SCSpecTypeSet" }
-func (v SCSpecTypeSet) XdrValue() interface{}          { return v }
-func (v *SCSpecTypeSet) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *SCSpecTypeSet) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%selementType", name), XDR_SCSpecTypeDef(&v.ElementType))
-}
-func XDR_SCSpecTypeSet(v *SCSpecTypeSet) *SCSpecTypeSet { return v }
 
 type _XdrVec_12_SCSpecTypeDef []SCSpecTypeDef
 
@@ -25721,7 +25706,6 @@ var _XdrTags_SCSpecTypeDef = map[int32]bool{
 	XdrToI32(SC_SPEC_TYPE_RESULT):    true,
 	XdrToI32(SC_SPEC_TYPE_VEC):       true,
 	XdrToI32(SC_SPEC_TYPE_MAP):       true,
-	XdrToI32(SC_SPEC_TYPE_SET):       true,
 	XdrToI32(SC_SPEC_TYPE_TUPLE):     true,
 	XdrToI32(SC_SPEC_TYPE_BYTES_N):   true,
 	XdrToI32(SC_SPEC_TYPE_UDT):       true,
@@ -25790,21 +25774,6 @@ func (u *SCSpecTypeDef) Map() *SCSpecTypeMap {
 		return nil
 	}
 }
-func (u *SCSpecTypeDef) Set() *SCSpecTypeSet {
-	switch u.Type {
-	case SC_SPEC_TYPE_SET:
-		if v, ok := u._u.(*SCSpecTypeSet); ok {
-			return v
-		} else {
-			var zero SCSpecTypeSet
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("SCSpecTypeDef.Set accessed when Type == %v", u.Type)
-		return nil
-	}
-}
 func (u *SCSpecTypeDef) Tuple() *SCSpecTypeTuple {
 	switch u.Type {
 	case SC_SPEC_TYPE_TUPLE:
@@ -25852,7 +25821,7 @@ func (u *SCSpecTypeDef) Udt() *SCSpecTypeUDT {
 }
 func (u SCSpecTypeDef) XdrValid() bool {
 	switch u.Type {
-	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_ERROR, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_SET, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
+	case SC_SPEC_TYPE_VAL, SC_SPEC_TYPE_BOOL, SC_SPEC_TYPE_VOID, SC_SPEC_TYPE_ERROR, SC_SPEC_TYPE_U32, SC_SPEC_TYPE_I32, SC_SPEC_TYPE_U64, SC_SPEC_TYPE_I64, SC_SPEC_TYPE_TIMEPOINT, SC_SPEC_TYPE_DURATION, SC_SPEC_TYPE_U128, SC_SPEC_TYPE_I128, SC_SPEC_TYPE_U256, SC_SPEC_TYPE_I256, SC_SPEC_TYPE_BYTES, SC_SPEC_TYPE_STRING, SC_SPEC_TYPE_SYMBOL, SC_SPEC_TYPE_ADDRESS, SC_SPEC_TYPE_OPTION, SC_SPEC_TYPE_RESULT, SC_SPEC_TYPE_VEC, SC_SPEC_TYPE_MAP, SC_SPEC_TYPE_TUPLE, SC_SPEC_TYPE_BYTES_N, SC_SPEC_TYPE_UDT:
 		return true
 	}
 	return false
@@ -25875,8 +25844,6 @@ func (u *SCSpecTypeDef) XdrUnionBody() XdrType {
 		return XDR_SCSpecTypeVec(u.Vec())
 	case SC_SPEC_TYPE_MAP:
 		return XDR_SCSpecTypeMap(u.Map())
-	case SC_SPEC_TYPE_SET:
-		return XDR_SCSpecTypeSet(u.Set())
 	case SC_SPEC_TYPE_TUPLE:
 		return XDR_SCSpecTypeTuple(u.Tuple())
 	case SC_SPEC_TYPE_BYTES_N:
@@ -25898,8 +25865,6 @@ func (u *SCSpecTypeDef) XdrUnionBodyName() string {
 		return "Vec"
 	case SC_SPEC_TYPE_MAP:
 		return "Map"
-	case SC_SPEC_TYPE_SET:
-		return "Set"
 	case SC_SPEC_TYPE_TUPLE:
 		return "Tuple"
 	case SC_SPEC_TYPE_BYTES_N:
@@ -25935,9 +25900,6 @@ func (u *SCSpecTypeDef) XdrRecurse(x XDR, name string) {
 		return
 	case SC_SPEC_TYPE_MAP:
 		x.Marshal(x.Sprintf("%smap", name), XDR_SCSpecTypeMap(u.Map()))
-		return
-	case SC_SPEC_TYPE_SET:
-		x.Marshal(x.Sprintf("%sset", name), XDR_SCSpecTypeSet(u.Set()))
 		return
 	case SC_SPEC_TYPE_TUPLE:
 		x.Marshal(x.Sprintf("%stuple", name), XDR_SCSpecTypeTuple(u.Tuple()))
