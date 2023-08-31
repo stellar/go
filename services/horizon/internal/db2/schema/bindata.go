@@ -51,6 +51,7 @@
 // migrations/53_add_trades_rounding_slippage.sql (274B)
 // migrations/54_tx_preconditions_and_account_fields.sql (1.478kB)
 // migrations/55_filter_rules.sql (893B)
+// migrations/56_txsub_read_only.sql (423B)
 // migrations/57_trade_aggregation_autovac.sql (282B)
 // migrations/58_add_index_by_id_optimization.sql (868B)
 // migrations/59_remove_foreign_key_constraints.sql (981B)
@@ -1153,6 +1154,26 @@ func migrations55_filter_rulesSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations56_txsub_read_onlySql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xcf\x41\x4b\xc3\x40\x10\x05\xe0\xfb\xfe\x8a\x39\x26\xd8\x78\x12\x2f\x3d\x45\xb3\x82\x10\x12\x2d\xbb\x78\x0c\xd3\x76\x31\x03\xdd\x4d\x99\x99\x68\xf4\xd7\x7b\x29\x24\xa8\x34\x73\x1c\x1e\xdf\xe3\x15\x05\xdc\x44\x7a\x67\xd4\x00\xfe\x6c\x4c\xb5\x6b\x5f\xc0\x95\x0f\xb5\x05\x9d\x64\xdc\x77\x1c\x64\x3c\xa9\x6c\x8d\x59\x46\xab\xe1\x33\x19\xf3\xb8\xb3\xa5\xb3\xff\xc5\x21\x33\x70\xfd\x94\x31\x09\x1e\x94\x86\xd4\xf5\x28\xfd\xe5\xfd\x81\x7c\xe8\x91\xb3\xfb\xbb\x1c\x9a\xd6\x41\xe3\xeb\x1a\x7c\xf3\xfc\xea\xed\x66\x8d\xa4\x94\x02\x77\x7f\xe0\x05\xb9\x4a\xe8\x74\x59\xf0\xeb\x1d\x26\xdd\x40\x51\x80\x04\x26\x3c\xd1\x77\x38\x42\x4f\xa2\x03\x7f\xdd\xba\xb9\x6f\x4d\x97\x71\x1f\x49\x35\x1c\x3b\x5c\x16\x28\xc5\x20\x8a\xf1\x3c\x2f\xae\xec\x53\xe9\x6b\x07\x4d\xfb\x96\xe5\x26\xdf\xfe\x04\x00\x00\xff\xff\x92\x92\x20\x24\xa7\x01\x00\x00")
+
+func migrations56_txsub_read_onlySqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations56_txsub_read_onlySql,
+		"migrations/56_txsub_read_only.sql",
+	)
+}
+
+func migrations56_txsub_read_onlySql() (*asset, error) {
+	bytes, err := migrations56_txsub_read_onlySqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/56_txsub_read_only.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x91, 0x8f, 0xd1, 0xca, 0x89, 0x97, 0xac, 0x9f, 0x67, 0xe3, 0x3, 0xc, 0x99, 0xc6, 0xeb, 0xd1, 0x62, 0x86, 0xda, 0x19, 0x1f, 0xb6, 0x30, 0x98, 0x64, 0x6b, 0xa6, 0xa7, 0xbe, 0x22, 0x9d, 0x93}}
+	return a, nil
+}
+
 var _migrations57_trade_aggregation_autovacSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x4a\xcc\x29\x49\x2d\x52\x28\x49\x4c\xca\x49\x55\xc8\xc8\x2c\x2e\xc9\x2f\xaa\x8c\x2f\x29\x4a\x4c\x49\x2d\x8e\x37\x33\x30\x30\x30\x50\x28\x4e\x2d\x51\xd0\xe0\x52\x50\x48\x2c\x2d\xc9\x2f\x4b\x4c\x2e\x2d\xcd\x8d\x87\x52\xc5\xc9\x89\x39\xa9\xf1\x69\x89\xc9\x25\xf9\x45\x0a\xb6\x0a\x06\x7a\x06\xa6\x3a\xa8\x0a\x13\xf3\x12\x73\x2a\xab\x52\xb1\xa8\x34\x32\xe5\xd2\xb4\xe6\xe2\x42\x76\x8d\x4b\x7e\x79\x1e\x75\xdd\x63\x48\xac\x73\xc0\x8e\x01\x04\x00\x00\xff\xff\x9e\xb7\x27\x2f\x1a\x01\x00\x00")
 
 func migrations57_trade_aggregation_autovacSqlBytes() ([]byte, error) {
@@ -1575,6 +1596,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/53_add_trades_rounding_slippage.sql":                     migrations53_add_trades_rounding_slippageSql,
 	"migrations/54_tx_preconditions_and_account_fields.sql":              migrations54_tx_preconditions_and_account_fieldsSql,
 	"migrations/55_filter_rules.sql":                                     migrations55_filter_rulesSql,
+	"migrations/56_txsub_read_only.sql":                                  migrations56_txsub_read_onlySql,
 	"migrations/57_trade_aggregation_autovac.sql":                        migrations57_trade_aggregation_autovacSql,
 	"migrations/58_add_index_by_id_optimization.sql":                     migrations58_add_index_by_id_optimizationSql,
 	"migrations/59_remove_foreign_key_constraints.sql":                   migrations59_remove_foreign_key_constraintsSql,
@@ -1686,6 +1708,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"53_add_trades_rounding_slippage.sql":                     {migrations53_add_trades_rounding_slippageSql, map[string]*bintree{}},
 		"54_tx_preconditions_and_account_fields.sql":              {migrations54_tx_preconditions_and_account_fieldsSql, map[string]*bintree{}},
 		"55_filter_rules.sql":                                     {migrations55_filter_rulesSql, map[string]*bintree{}},
+		"56_txsub_read_only.sql":                                  {migrations56_txsub_read_onlySql, map[string]*bintree{}},
 		"57_trade_aggregation_autovac.sql":                        {migrations57_trade_aggregation_autovacSql, map[string]*bintree{}},
 		"58_add_index_by_id_optimization.sql":                     {migrations58_add_index_by_id_optimizationSql, map[string]*bintree{}},
 		"59_remove_foreign_key_constraints.sql":                   {migrations59_remove_foreign_key_constraintsSql, map[string]*bintree{}},
