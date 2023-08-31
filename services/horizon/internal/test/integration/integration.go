@@ -263,6 +263,14 @@ func (i *Test) runComposeCommand(args ...string) {
 			fmt.Sprintf("SOROBAN_RPC_IMAGE=%s", sorobanRPCOverride),
 		)
 	}
+
+	if i.config.ProtocolVersion < ledgerbackend.MinimalSorobanProtocolSupport {
+		cmd.Env = append(
+			cmd.Environ(),
+			"CORE_CONFIG_FILE=stellar-core-classic-integration-tests.cfg",
+		)
+	}
+
 	i.t.Log("Running", cmd.Args)
 	out, innerErr := cmd.Output()
 	if len(out) > 0 {
