@@ -53,6 +53,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustClaimableBalance()
 		r := other.MustClaimableBalance()
 		return l.BalanceId.MustV0() == r.BalanceId.MustV0()
+	case LedgerEntryTypeExpiration:
+		l := key.MustExpiration()
+		r := other.MustExpiration()
+		return l.KeyHash == r.KeyHash
 	default:
 		panic(fmt.Errorf("unknown ledger key type: %v", key.Type))
 	}
