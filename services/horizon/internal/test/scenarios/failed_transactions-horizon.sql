@@ -1106,6 +1106,10 @@ CREATE TABLE asset_filter_rules (
                                     last_modified bigint NOT NULL
 );
 
+--- insert the default disabled state for each supported filter implementation
+INSERT INTO account_filter_rules VALUES (false, '{}', 0);
+INSERT INTO asset_filter_rules VALUES (false, '{}', 0);
+
 --
 -- PostgreSQL database dump complete
 --
