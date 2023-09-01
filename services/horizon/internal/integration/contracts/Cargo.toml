@@ -22,7 +22,6 @@ codegen-units = 1
 lto = true
 
 [workspace.dependencies.soroban-sdk]
-# TODO: Does a new version need to be released to update to 8a7d2c3c8c5bc1664ab38f977ff947cc2a26d694
 version = "0.9.1"
-git = "https://github.com/sisuresh/rs-soroban-sdk"
-rev = "e15e552974a1070fc48027384bdee9ae9f539943"
+git = "https://github.com/stellar/rs-soroban-sdk"
+rev = "18b8fa1a358aa84afd196e2f6d44942798c8f335"

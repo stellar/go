@@ -50,6 +50,10 @@ type StatsChangeProcessorResults struct {
 	ConfigSettingsCreated int64
 	ConfigSettingsUpdated int64
 	ConfigSettingsRemoved int64
+
+	ExpirationCreated int64
+	ExpirationUpdated int64
+	ExpirationRemoved int64
 }
 
 func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change) error {
@@ -134,6 +138,15 @@ func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change)
 			p.results.ConfigSettingsUpdated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			p.results.ConfigSettingsRemoved++
+		}
+	case xdr.LedgerEntryTypeExpiration:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.ExpirationCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.ExpirationUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.ExpirationRemoved++
 		}
 	default:
 		return fmt.Errorf("unsupported ledger entry type: %s", change.Type.String())

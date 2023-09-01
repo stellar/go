@@ -44,7 +44,7 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 	case LedgerEntryTypeContractData:
 		l := key.MustContractData()
 		r := other.MustContractData()
-		return l.Contract.Equals(r.Contract) && l.Key.Equals(r.Key) && l.Durability == r.Durability && l.BodyType == r.BodyType
+		return l.Contract.Equals(r.Contract) && l.Key.Equals(r.Key) && l.Durability == r.Durability
 	case LedgerEntryTypeContractCode:
 		l := key.MustContractCode()
 		r := other.MustContractCode()
@@ -53,6 +53,10 @@ func (key *LedgerKey) Equals(other LedgerKey) bool {
 		l := key.MustClaimableBalance()
 		r := other.MustClaimableBalance()
 		return l.BalanceId.MustV0() == r.BalanceId.MustV0()
+	case LedgerEntryTypeExpiration:
+		l := key.MustExpiration()
+		r := other.MustExpiration()
+		return l.KeyHash == r.KeyHash
 	default:
 		panic(fmt.Errorf("unknown ledger key type: %v", key.Type))
 	}
@@ -139,13 +143,11 @@ func (key *LedgerKey) SetLiquidityPool(poolID PoolId) error {
 // contract data entry.
 func (key *LedgerKey) SetContractData(contract ScAddress,
 	keyVal ScVal,
-	keyDurability ContractDataDurability,
-	keyBodyType ContractEntryBodyType) error {
+	keyDurability ContractDataDurability) error {
 	data := LedgerKeyContractData{
 		Contract:   contract,
 		Key:        keyVal,
 		Durability: keyDurability,
-		BodyType:   keyBodyType,
 	}
 	nkey, err := NewLedgerKey(LedgerEntryTypeContractData, data)
 	if err != nil {
@@ -178,6 +180,21 @@ func (key *LedgerKey) SetConfigSetting(configSettingID ConfigSettingId) error {
 		ConfigSettingId: configSettingID,
 	}
 	nkey, err := NewLedgerKey(LedgerEntryTypeConfigSetting, data)
+	if err != nil {
+		return err
+	}
+
+	*key = nkey
+	return nil
+}
+
+// SetExpiration mutates `key` such that it represents the identity of an
+// expiration entry.
+func (key *LedgerKey) SetExpiration(keyHash Hash) error {
+	data := LedgerKeyExpiration{
+		KeyHash: keyHash,
+	}
+	nkey, err := NewLedgerKey(LedgerEntryTypeExpiration, data)
 	if err != nil {
 		return err
 	}
@@ -235,17 +252,15 @@ func (e *EncodingBuffer) ledgerKeyCompressEncodeTo(key LedgerKey) error {
 		if err := key.ContractData.Key.EncodeTo(e.encoder); err != nil {
 			return err
 		}
-		// type
-		if err := e.xdrEncoderBuf.WriteByte(byte(key.ContractData.Durability)); err != nil {
-			return err
-		}
-		// letype
-		return e.xdrEncoderBuf.WriteByte(byte(key.ContractData.BodyType))
+		// durability
+		return e.xdrEncoderBuf.WriteByte(byte(key.ContractData.Durability))
 	case LedgerEntryTypeContractCode:
 		_, err := e.xdrEncoderBuf.Write(key.ContractCode.Hash[:])
 		return err
 	case LedgerEntryTypeConfigSetting:
 		return key.ConfigSetting.ConfigSettingId.EncodeTo(e.encoder)
+	case LedgerEntryTypeExpiration:
+		return key.Expiration.KeyHash.EncodeTo(e.encoder)
 	default:
 		panic("Unknown type")
 	}

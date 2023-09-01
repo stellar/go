@@ -76,11 +76,10 @@ func AssetFromContractData(ledgerEntry xdr.LedgerEntry, passphrase string) *xdr.
 	if !ok {
 		return nil
 	}
-	if contractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance ||
-		contractData.Body.BodyType != xdr.ContractEntryBodyTypeDataEntry {
+	if contractData.Key.Type != xdr.ScValTypeScvLedgerKeyContractInstance {
 		return nil
 	}
-	contractInstanceData, ok := contractData.Body.Data.Val.GetInstance()
+	contractInstanceData, ok := contractData.Val.GetInstance()
 	if !ok || contractInstanceData.Storage == nil {
 		return nil
 	}
@@ -219,7 +218,7 @@ func ContractBalanceFromContractData(ledgerEntry xdr.LedgerEntry, passphrase str
 		return [32]byte{}, nil, false
 	}
 
-	balanceMapPtr, ok := contractData.Body.Data.Val.GetMap()
+	balanceMapPtr, ok := contractData.Val.GetMap()
 	if !ok || balanceMapPtr == nil {
 		return [32]byte{}, nil, false
 	}
@@ -434,26 +433,15 @@ func AssetToContractData(isNative bool, code, issuer string, contractID [32]byte
 				Type: xdr.ScValTypeScvLedgerKeyContractInstance,
 			},
 			Durability: xdr.ContractDataDurabilityPersistent,
-			Body: xdr.ContractDataEntryBody{
-				BodyType: xdr.ContractEntryBodyTypeDataEntry,
-				Data: &xdr.ContractDataEntryData{
-					Val: xdr.ScVal{
-						Type: xdr.ScValTypeScvContractInstance,
-						Instance: &xdr.ScContractInstance{
-							Executable: xdr.ContractExecutable{
-								Type: xdr.ContractExecutableTypeContractExecutableToken,
-							},
-							Storage: storageMap,
-						},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvContractInstance,
+				Instance: &xdr.ScContractInstance{
+					Executable: xdr.ContractExecutable{
+						Type: xdr.ContractExecutableTypeContractExecutableToken,
 					},
-					// No flags written by the contract:
-					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/asset_info.rs#L12
-					Flags: 0,
+					Storage: storageMap,
 				},
 			},
-			// Not realistic, but doesn't matter since this is only used in tests.
-			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
-			ExpirationLedgerSeq: 0,
 		},
 	}, nil
 }
@@ -531,21 +519,10 @@ func balanceToContractData(assetContractId, holderID [32]byte, amt xdr.Int128Par
 				Vec:  &keyVec,
 			},
 			Durability: xdr.ContractDataDurabilityPersistent,
-			Body: xdr.ContractDataEntryBody{
-				BodyType: xdr.ContractEntryBodyTypeDataEntry,
-				Data: &xdr.ContractDataEntryData{
-					Val: xdr.ScVal{
-						Type: xdr.ScValTypeScvMap,
-						Map:  &dataMap,
-					},
-					// No flags written by the contract:
-					// https://github.com/stellar/rs-soroban-env/blob/c43bbd47959dde2e39eeeb5b7207868a44e96c7d/soroban-env-host/src/native_contract/token/balance.rs#L60
-					Flags: 0,
-				},
+			Val: xdr.ScVal{
+				Type: xdr.ScValTypeScvMap,
+				Map:  &dataMap,
 			},
-			// Not realistic, but doesn't matter since this is only used in tests.
-			// IRL This is determined by the minRestorableLedgerEntryExpiration config setting.
-			ExpirationLedgerSeq: 0,
 		},
 	}
 }
