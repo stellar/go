@@ -302,10 +302,10 @@ func TestProcessorRunnerWithFilterEnabled(t *testing.T) {
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
-	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Twice()
+	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
-		Return(mockTransactionsBatchInsertBuilder)
+		Return(mockTransactionsBatchInsertBuilder).Twice()
 
 	q.MockQClaimableBalances.On("NewClaimableBalanceClaimantBatchInsertBuilder", maxBatchSize).
 		Return(&history.MockClaimableBalanceClaimantBatchInsertBuilder{}).Once()
