@@ -231,7 +231,6 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				// contract data is a special case.
 				// we don't store contract data entries in the db,
 				// however, we ingest contract data entries for asset stats.
-
 				if err = verifier.Write(entry); err != nil {
 					return err
 				}
@@ -243,6 +242,13 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 					return errors.Wrap(err, "Error running assetStats.AddContractData")
 				}
 				totalByType["contract_data"]++
+			case xdr.LedgerEntryTypeExpiration:
+				// we don't store expiration entries in the db,
+				// so there is nothing to verify in that case.
+				if err = verifier.Write(entry); err != nil {
+					return err
+				}
+				totalByType["expiration"]++
 			default:
 				return errors.New("GetLedgerEntries return unexpected type")
 			}
@@ -316,7 +322,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	err = verifier.Verify(
 		countAccounts + countData + countOffers + countTrustLines + countClaimableBalances +
-			countLiquidityPools + int(totalByType["contract_data"]),
+			countLiquidityPools + int(totalByType["contract_data"]) + int(totalByType["expiration"]),
 	)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")

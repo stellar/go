@@ -174,6 +174,20 @@ func genContractCode(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	return change
 }
 
+func genExpiration(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
+	change := xdr.LedgerEntryChange{}
+	shape := &gxdr.LedgerEntryChange{}
+	gen.Next(
+		shape,
+		[]randxdr.Preset{
+			{randxdr.FieldEquals("type"), randxdr.SetU32(gxdr.LEDGER_ENTRY_CREATED.GetU32())},
+			{randxdr.FieldEquals("created.data.type"), randxdr.SetU32(gxdr.EXPIRATION.GetU32())},
+		},
+	)
+	tt.Assert.NoError(gxdr.Convert(shape, &change))
+	return change
+}
+
 func genConfigSetting(tt *test.T, gen randxdr.Generator) xdr.LedgerEntryChange {
 	change := xdr.LedgerEntryChange{}
 	shape := &gxdr.LedgerEntryChange{}
@@ -326,6 +340,7 @@ func TestStateVerifier(t *testing.T) {
 			genAccountData(tt, gen),
 			genContractCode(tt, gen),
 			genConfigSetting(tt, gen),
+			genExpiration(tt, gen),
 		)
 		changes = append(changes, genAssetContractMetadata(tt, gen)...)
 	}
