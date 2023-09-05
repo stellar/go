@@ -184,5 +184,21 @@ func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
 		"stats_liquidity_pools_created": stats.LiquidityPoolsCreated,
 		"stats_liquidity_pools_updated": stats.LiquidityPoolsUpdated,
 		"stats_liquidity_pools_removed": stats.LiquidityPoolsRemoved,
+
+		"stats_contract_data_created": stats.ContractDataCreated,
+		"stats_contract_data_updated": stats.ContractDataUpdated,
+		"stats_contract_data_removed": stats.ContractDataRemoved,
+
+		"stats_contract_code_created": stats.ContractCodeCreated,
+		"stats_contract_code_updated": stats.ContractCodeUpdated,
+		"stats_contract_code_removed": stats.ContractCodeRemoved,
+
+		"stats_config_settings_created": stats.ConfigSettingsCreated,
+		"stats_config_settings_updated": stats.ConfigSettingsUpdated,
+		"stats_config_settings_removed": stats.ConfigSettingsRemoved,
+
+		"stats_expiration_created": stats.ExpirationCreated,
+		"stats_expiration_updated": stats.ExpirationUpdated,
+		"stats_expiration_removed": stats.ExpirationRemoved,
 	}
 }

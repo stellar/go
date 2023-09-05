@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/xdr"
 )
 
 func TestStatsChangeProcessor(t *testing.T) {
@@ -44,6 +45,7 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ContractDataCreated)
 	assert.Equal(t, int64(1), results.ContractCodeCreated)
 	assert.Equal(t, int64(1), results.ConfigSettingsCreated)
+	assert.Equal(t, int64(1), results.ExpirationCreated)
 
 	assert.Equal(t, int64(1), results.AccountsUpdated)
 	assert.Equal(t, int64(1), results.ClaimableBalancesUpdated)
@@ -54,6 +56,7 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ContractDataUpdated)
 	assert.Equal(t, int64(1), results.ContractCodeUpdated)
 	assert.Equal(t, int64(1), results.ConfigSettingsUpdated)
+	assert.Equal(t, int64(1), results.ExpirationUpdated)
 
 	assert.Equal(t, int64(1), results.AccountsRemoved)
 	assert.Equal(t, int64(1), results.ClaimableBalancesRemoved)
@@ -64,4 +67,7 @@ func TestStatsChangeProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.ContractCodeRemoved)
 	assert.Equal(t, int64(1), results.ContractDataRemoved)
 	assert.Equal(t, int64(1), results.ConfigSettingsRemoved)
+	assert.Equal(t, int64(1), results.ExpirationRemoved)
+
+	assert.Equal(t, len(xdr.LedgerEntryTypeMap)*3, len(results.Map()))
 }
