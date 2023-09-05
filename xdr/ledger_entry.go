@@ -130,17 +130,6 @@ func (data *LedgerEntryData) SetContractCode(entry *ContractCodeEntry) error {
 	return nil
 }
 
-func (data *LedgerEntryData) ExpirationLedgerSeq() (Uint32, bool) {
-	switch data.Type {
-	case LedgerEntryTypeContractData:
-		return data.ContractData.ExpirationLedgerSeq, true
-	case LedgerEntryTypeContractCode:
-		return data.ContractCode.ExpirationLedgerSeq, true
-	default:
-		return 0, false
-	}
-}
-
 // LedgerKey implements the `Keyer` interface
 func (data *LedgerEntryData) LedgerKey() (LedgerKey, error) {
 	var key LedgerKey
@@ -157,8 +146,7 @@ func (data *LedgerEntryData) LedgerKey() (LedgerKey, error) {
 		if err := key.SetContractData(
 			data.ContractData.Contract,
 			data.ContractData.Key,
-			data.ContractData.Durability,
-			data.ContractData.Body.BodyType); err != nil {
+			data.ContractData.Durability); err != nil {
 			return key, err
 		}
 	case LedgerEntryTypeContractCode:
@@ -183,6 +171,10 @@ func (data *LedgerEntryData) LedgerKey() (LedgerKey, error) {
 		}
 	case LedgerEntryTypeConfigSetting:
 		if err := key.SetConfigSetting(data.ConfigSetting.ConfigSettingId); err != nil {
+			return key, err
+		}
+	case LedgerEntryTypeExpiration:
+		if err := key.SetExpiration(data.Expiration.KeyHash); err != nil {
 			return key, err
 		}
 	default:

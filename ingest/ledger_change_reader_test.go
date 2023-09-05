@@ -99,9 +99,6 @@ func isContractDataExtension(contract xdr.ScAddress, key xdr.ScVal, extension ui
 		assert.Equal(t, xdr.LedgerEntryTypeContractData.String(), change.Post.Data.Type.String(), msg)
 		assert.Equal(t, contract, change.Post.Data.ContractData.Contract, msg)
 		assert.Equal(t, key, change.Post.Data.ContractData.Key, msg)
-		newExpiry := change.Post.Data.ContractData.ExpirationLedgerSeq
-		oldExpiry := change.Pre.Data.ContractData.ExpirationLedgerSeq
-		assert.EqualValues(t, extension, newExpiry-oldExpiry, msg)
 	}
 }
 
@@ -388,7 +385,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 	baseFee := xdr.Int64(100)
 	tempKey := xdr.ScSymbol("TEMPKEY")
 	persistentKey := xdr.ScSymbol("TEMPVAL")
-	persistentVal := xdr.ScSymbol("PERSVAL")
 	contractIDBytes, err := hex.DecodeString("df06d62447fd25da07c0135eed7557e5a5497ee7d15b7fe345bd47e191d8f577")
 	assert.NoError(t, err)
 	var contractID xdr.Hash
@@ -397,7 +393,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 		Type:       xdr.ScAddressTypeScAddressTypeContract,
 		ContractId: &contractID,
 	}
-	val := xdr.Uint32(123)
 	ledger := xdr.LedgerCloseMeta{
 		V: 2,
 		V2: &xdr.LedgerCloseMetaV2{
@@ -460,17 +455,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 															Sym:  &persistentKey,
 														},
 														Durability: xdr.ContractDataDurabilityPersistent,
-														Body: xdr.ContractDataEntryBody{
-															BodyType: xdr.ContractEntryBodyTypeDataEntry,
-															Data: &xdr.ContractDataEntryData{
-																Flags: 0,
-																Val: xdr.ScVal{
-																	Type: xdr.ScValTypeScvU32,
-																	U32:  &val,
-																},
-															},
-														},
-														ExpirationLedgerSeq: 4097,
 													},
 												},
 											},
@@ -491,17 +475,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 															Sym:  &persistentKey,
 														},
 														Durability: xdr.ContractDataDurabilityPersistent,
-														Body: xdr.ContractDataEntryBody{
-															BodyType: xdr.ContractEntryBodyTypeDataEntry,
-															Data: &xdr.ContractDataEntryData{
-																Flags: 0,
-																Val: xdr.ScVal{
-																	Type: xdr.ScValTypeScvU32,
-																	U32:  &val,
-																},
-															},
-														},
-														ExpirationLedgerSeq: 10001,
 													},
 												},
 											},
@@ -560,7 +533,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 							Sym:  &tempKey,
 						},
 						Durability: xdr.ContractDataDurabilityTemporary,
-						BodyType:   xdr.ContractEntryBodyTypeDataEntry,
 					},
 				},
 			},
@@ -576,16 +548,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 								Sym:  &persistentKey,
 							},
 							Durability: xdr.ContractDataDurabilityTemporary,
-							Body: xdr.ContractDataEntryBody{
-								BodyType: xdr.ContractEntryBodyTypeDataEntry,
-								Data: &xdr.ContractDataEntryData{
-									Val: xdr.ScVal{
-										Type: xdr.ScValTypeScvSymbol,
-										Sym:  &persistentVal,
-									},
-								},
-							},
-							ExpirationLedgerSeq: xdr.Uint32(123),
 						},
 					},
 				},
@@ -619,13 +581,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 		isBalance(metaAddress, 900),
 
 		// Evictions
-		isContractDataEviction(
-			contractAddress,
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &tempKey,
-			},
-		),
 		isContractDataEviction(
 			contractAddress,
 			xdr.ScVal{

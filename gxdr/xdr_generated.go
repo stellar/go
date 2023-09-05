@@ -205,6 +205,7 @@ const (
 	CONTRACT_DATA     LedgerEntryType = 6
 	CONTRACT_CODE     LedgerEntryType = 7
 	CONFIG_SETTING    LedgerEntryType = 8
+	EXPIRATION        LedgerEntryType = 9
 )
 
 type Signer struct {
@@ -623,23 +624,6 @@ type XdrAnon_LiquidityPoolEntry_Body_ConstantProduct struct {
 	PoolSharesTrustLineCount Int64
 }
 
-type ContractEntryBodyType int32
-
-const (
-	DATA_ENTRY           ContractEntryBodyType = 0
-	EXPIRATION_EXTENSION ContractEntryBodyType = 1
-)
-
-const MASK_CONTRACT_DATA_FLAGS_V20 = 0x1
-
-type ContractDataFlags int32
-
-const (
-	// When set, the given entry does not recieve automatic expiration bumps
-	// on access. Note that entries can still be bumped manually via the footprint.
-	NO_AUTOBUMP ContractDataFlags = ContractDataFlags(0x1)
-)
-
 type ContractDataDurability int32
 
 const (
@@ -648,40 +632,23 @@ const (
 )
 
 type ContractDataEntry struct {
-	Contract            SCAddress
-	Key                 SCVal
-	Durability          ContractDataDurability
-	Body                XdrAnon_ContractDataEntry_Body
-	ExpirationLedgerSeq Uint32
-}
-type XdrAnon_ContractDataEntry_Body struct {
-	// The union discriminant BodyType selects among the following arms:
-	//   DATA_ENTRY:
-	//      Data() *XdrAnon_ContractDataEntry_Body_Data
-	//   EXPIRATION_EXTENSION:
-	//      void
-	BodyType ContractEntryBodyType
-	_u       interface{}
-}
-type XdrAnon_ContractDataEntry_Body_Data struct {
-	Flags Uint32
-	Val   SCVal
+	Ext        ExtensionPoint
+	Contract   SCAddress
+	Key        SCVal
+	Durability ContractDataDurability
+	Val        SCVal
 }
 
 type ContractCodeEntry struct {
-	Ext                 ExtensionPoint
-	Hash                Hash
-	Body                XdrAnon_ContractCodeEntry_Body
-	ExpirationLedgerSeq Uint32
+	Ext  ExtensionPoint
+	Hash Hash
+	Code []byte
 }
-type XdrAnon_ContractCodeEntry_Body struct {
-	// The union discriminant BodyType selects among the following arms:
-	//   DATA_ENTRY:
-	//      Code() *[]byte
-	//   EXPIRATION_EXTENSION:
-	//      void
-	BodyType ContractEntryBodyType
-	_u       interface{}
+
+type ExpirationEntry struct {
+	// Hash of the LedgerKey that is associated with this ExpirationEntry
+	KeyHash             Hash
+	ExpirationLedgerSeq Uint32
 }
 
 type LedgerEntryExtensionV1 struct {
@@ -722,6 +689,8 @@ type XdrAnon_LedgerEntry_Data struct {
 	//      ContractCode() *ContractCodeEntry
 	//   CONFIG_SETTING:
 	//      ConfigSetting() *ConfigSettingEntry
+	//   EXPIRATION:
+	//      Expiration() *ExpirationEntry
 	Type LedgerEntryType
 	_u   interface{}
 }
@@ -757,6 +726,8 @@ type LedgerKey struct {
 	//      ContractCode() *XdrAnon_LedgerKey_ContractCode
 	//   CONFIG_SETTING:
 	//      ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting
+	//   EXPIRATION:
+	//      Expiration() *XdrAnon_LedgerKey_Expiration
 	Type LedgerEntryType
 	_u   interface{}
 }
@@ -785,14 +756,16 @@ type XdrAnon_LedgerKey_ContractData struct {
 	Contract   SCAddress
 	Key        SCVal
 	Durability ContractDataDurability
-	BodyType   ContractEntryBodyType
 }
 type XdrAnon_LedgerKey_ContractCode struct {
-	Hash     Hash
-	BodyType ContractEntryBodyType
+	Hash Hash
 }
 type XdrAnon_LedgerKey_ConfigSetting struct {
 	ConfigSettingID ConfigSettingID
+}
+type XdrAnon_LedgerKey_Expiration struct {
+	// Hash of the LedgerKey that is associated with this ExpirationEntry
+	KeyHash Hash
 }
 
 // list of all envelope types used in the application
@@ -3535,8 +3508,8 @@ const (
 	TxBAD_MIN_SEQ_AGE_OR_GAP TransactionResultCode = -15
 	// precondition is invalid
 	TxMALFORMED TransactionResultCode = -16
-	// declared Soroban resource usage exceeds the network limit
-	TxSOROBAN_RESOURCE_LIMIT_EXCEEDED TransactionResultCode = -17
+	// soroban-specific preconditions were not met
+	TxSOROBAN_INVALID TransactionResultCode = -17
 )
 
 // InnerTransactionResult must be binary compatible with TransactionResult
@@ -3551,7 +3524,7 @@ type XdrAnon_InnerTransactionResult_Result struct {
 	// The union discriminant Code selects among the following arms:
 	//   TxSUCCESS, TxFAILED:
 	//      Results() *[]OperationResult
-	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 	//      void
 	Code TransactionResultCode
 	_u   interface{}
@@ -3585,7 +3558,7 @@ type XdrAnon_TransactionResult_Result struct {
 	//      InnerResultPair() *InnerTransactionResultPair
 	//   TxSUCCESS, TxFAILED:
 	//      Results() *[]OperationResult
-	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	//   TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 	//      void
 	Code TransactionResultCode
 	_u   interface{}
@@ -3989,40 +3962,50 @@ const (
 type SCErrorType int32
 
 const (
+	// Contract-specific, user-defined codes.
 	SCE_CONTRACT SCErrorType = 0
-	SCE_WASM_VM  SCErrorType = 1
-	SCE_CONTEXT  SCErrorType = 2
-	SCE_STORAGE  SCErrorType = 3
-	SCE_OBJECT   SCErrorType = 4
-	SCE_CRYPTO   SCErrorType = 5
-	SCE_EVENTS   SCErrorType = 6
-	SCE_BUDGET   SCErrorType = 7
-	SCE_VALUE    SCErrorType = 8
-	SCE_AUTH     SCErrorType = 9
+	// Errors while interpreting WASM bytecode.
+	SCE_WASM_VM SCErrorType = 1
+	// Errors in the contract's host context.
+	SCE_CONTEXT SCErrorType = 2
+	// Errors accessing host storage.
+	SCE_STORAGE SCErrorType = 3
+	// Errors working with host objects.
+	SCE_OBJECT SCErrorType = 4
+	// Errors in cryptographic operations.
+	SCE_CRYPTO SCErrorType = 5
+	// Errors while emitting events.
+	SCE_EVENTS SCErrorType = 6
+	// Errors relating to budget limits.
+	SCE_BUDGET SCErrorType = 7
+	// Errors working with host values or SCVals.
+	SCE_VALUE SCErrorType = 8
+	// Errors from the authentication subsystem.
+	SCE_AUTH SCErrorType = 9
 )
 
 type SCErrorCode int32
 
 const (
-	// some arithmetic wasn't defined (overflow, divide-by-zero)
+	// Some arithmetic was undefined (overflow, divide-by-zero).
 	SCEC_ARITH_DOMAIN SCErrorCode = 0
-	// something was indexed beyond its bounds
+	// Something was indexed beyond its bounds.
 	SCEC_INDEX_BOUNDS SCErrorCode = 1
-	// user provided some otherwise-bad data
+	// User provided some otherwise-bad data.
 	SCEC_INVALID_INPUT SCErrorCode = 2
-	// some value was required but not provided
+	// Some value was required but not provided.
 	SCEC_MISSING_VALUE SCErrorCode = 3
-	// some value was provided where not allowed
+	// Some value was provided where not allowed.
 	SCEC_EXISTING_VALUE SCErrorCode = 4
-	// some arbitrary limit -- gas or otherwise -- was hit
+	// Some arbitrary limit -- gas or otherwise -- was hit.
 	SCEC_EXCEEDED_LIMIT SCErrorCode = 5
-	// data was valid but action requested was not
+	// Data was valid but action requested was not.
 	SCEC_INVALID_ACTION SCErrorCode = 6
-	// the internal state of the host was otherwise-bad
+	// The host detected an error in its own logic.
 	SCEC_INTERNAL_ERROR SCErrorCode = 7
-	// some type wasn't as expected
+	// Some type wasn't as expected.
 	SCEC_UNEXPECTED_TYPE SCErrorCode = 8
-	// something's size wasn't as expected
+	// Something's size wasn't as expected.
 	SCEC_UNEXPECTED_SIZE SCErrorCode = 9
 )
 
@@ -4366,7 +4349,6 @@ type StateExpirationSettings struct {
 	MaxEntryExpiration           Uint32
 	MinTempEntryExpiration       Uint32
 	MinPersistentEntryExpiration Uint32
-	AutoBumpLedgers              Uint32
 	// rent_fee = wfee_rate_average / rent_rate_denominator_for_type
 	PersistentRentRateDenominator Int64
 	TempRentRateDenominator       Int64
@@ -5519,6 +5501,7 @@ var _XdrNames_LedgerEntryType = map[int32]string{
 	int32(CONTRACT_DATA):     "CONTRACT_DATA",
 	int32(CONTRACT_CODE):     "CONTRACT_CODE",
 	int32(CONFIG_SETTING):    "CONFIG_SETTING",
+	int32(EXPIRATION):        "EXPIRATION",
 }
 var _XdrValues_LedgerEntryType = map[string]int32{
 	"ACCOUNT":           int32(ACCOUNT),
@@ -5530,6 +5513,7 @@ var _XdrValues_LedgerEntryType = map[string]int32{
 	"CONTRACT_DATA":     int32(CONTRACT_DATA),
 	"CONTRACT_CODE":     int32(CONTRACT_CODE),
 	"CONFIG_SETTING":    int32(CONFIG_SETTING),
+	"EXPIRATION":        int32(EXPIRATION),
 }
 
 func (LedgerEntryType) XdrEnumNames() map[int32]string {
@@ -7891,111 +7875,6 @@ func (v *LiquidityPoolEntry) XdrRecurse(x XDR, name string) {
 }
 func XDR_LiquidityPoolEntry(v *LiquidityPoolEntry) *LiquidityPoolEntry { return v }
 
-var _XdrNames_ContractEntryBodyType = map[int32]string{
-	int32(DATA_ENTRY):           "DATA_ENTRY",
-	int32(EXPIRATION_EXTENSION): "EXPIRATION_EXTENSION",
-}
-var _XdrValues_ContractEntryBodyType = map[string]int32{
-	"DATA_ENTRY":           int32(DATA_ENTRY),
-	"EXPIRATION_EXTENSION": int32(EXPIRATION_EXTENSION),
-}
-
-func (ContractEntryBodyType) XdrEnumNames() map[int32]string {
-	return _XdrNames_ContractEntryBodyType
-}
-func (v ContractEntryBodyType) String() string {
-	if s, ok := _XdrNames_ContractEntryBodyType[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("ContractEntryBodyType#%d", v)
-}
-func (v *ContractEntryBodyType) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_ContractEntryBodyType[stok]; ok {
-			*v = ContractEntryBodyType(val)
-			return nil
-		} else if stok == "ContractEntryBodyType" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid ContractEntryBodyType.", stok))
-	}
-}
-func (v ContractEntryBodyType) GetU32() uint32                 { return uint32(v) }
-func (v *ContractEntryBodyType) SetU32(n uint32)               { *v = ContractEntryBodyType(n) }
-func (v *ContractEntryBodyType) XdrPointer() interface{}       { return v }
-func (ContractEntryBodyType) XdrTypeName() string              { return "ContractEntryBodyType" }
-func (v ContractEntryBodyType) XdrValue() interface{}          { return v }
-func (v *ContractEntryBodyType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_ContractEntryBodyType = *ContractEntryBodyType
-
-func XDR_ContractEntryBodyType(v *ContractEntryBodyType) *ContractEntryBodyType { return v }
-
-var _XdrNames_ContractDataFlags = map[int32]string{
-	int32(NO_AUTOBUMP): "NO_AUTOBUMP",
-}
-var _XdrValues_ContractDataFlags = map[string]int32{
-	"NO_AUTOBUMP": int32(NO_AUTOBUMP),
-}
-
-func (ContractDataFlags) XdrEnumNames() map[int32]string {
-	return _XdrNames_ContractDataFlags
-}
-func (v ContractDataFlags) String() string {
-	if s, ok := _XdrNames_ContractDataFlags[int32(v)]; ok {
-		return s
-	}
-	return fmt.Sprintf("ContractDataFlags#%d", v)
-}
-func (v *ContractDataFlags) Scan(ss fmt.ScanState, _ rune) error {
-	if tok, err := ss.Token(true, XdrSymChar); err != nil {
-		return err
-	} else {
-		stok := string(tok)
-		if val, ok := _XdrValues_ContractDataFlags[stok]; ok {
-			*v = ContractDataFlags(val)
-			return nil
-		} else if stok == "ContractDataFlags" {
-			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
-				return nil
-			}
-		}
-		return XdrError(fmt.Sprintf("%s is not a valid ContractDataFlags.", stok))
-	}
-}
-func (v ContractDataFlags) GetU32() uint32                 { return uint32(v) }
-func (v *ContractDataFlags) SetU32(n uint32)               { *v = ContractDataFlags(n) }
-func (v *ContractDataFlags) XdrPointer() interface{}       { return v }
-func (ContractDataFlags) XdrTypeName() string              { return "ContractDataFlags" }
-func (v ContractDataFlags) XdrValue() interface{}          { return v }
-func (v *ContractDataFlags) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-
-type XdrType_ContractDataFlags = *ContractDataFlags
-
-func XDR_ContractDataFlags(v *ContractDataFlags) *ContractDataFlags { return v }
-
-var _XdrComments_ContractDataFlags = map[int32]string{
-	int32(NO_AUTOBUMP): "When set, the given entry does not recieve automatic expiration bumps on access. Note that entries can still be bumped manually via the footprint.",
-}
-
-func (e ContractDataFlags) XdrEnumComments() map[int32]string {
-	return _XdrComments_ContractDataFlags
-}
-func (v *ContractDataFlags) XdrInitialize() {
-	switch ContractDataFlags(0) {
-	case NO_AUTOBUMP:
-	default:
-		if *v == ContractDataFlags(0) {
-			*v = NO_AUTOBUMP
-		}
-	}
-}
-
 var _XdrNames_ContractDataDurability = map[int32]string{
 	int32(TEMPORARY):  "TEMPORARY",
 	int32(PERSISTENT): "PERSISTENT",
@@ -8041,104 +7920,6 @@ type XdrType_ContractDataDurability = *ContractDataDurability
 
 func XDR_ContractDataDurability(v *ContractDataDurability) *ContractDataDurability { return v }
 
-type XdrType_XdrAnon_ContractDataEntry_Body_Data = *XdrAnon_ContractDataEntry_Body_Data
-
-func (v *XdrAnon_ContractDataEntry_Body_Data) XdrPointer() interface{} { return v }
-func (XdrAnon_ContractDataEntry_Body_Data) XdrTypeName() string {
-	return "XdrAnon_ContractDataEntry_Body_Data"
-}
-func (v XdrAnon_ContractDataEntry_Body_Data) XdrValue() interface{}          { return v }
-func (v *XdrAnon_ContractDataEntry_Body_Data) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (v *XdrAnon_ContractDataEntry_Body_Data) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	x.Marshal(x.Sprintf("%sflags", name), XDR_Uint32(&v.Flags))
-	x.Marshal(x.Sprintf("%sval", name), XDR_SCVal(&v.Val))
-}
-func XDR_XdrAnon_ContractDataEntry_Body_Data(v *XdrAnon_ContractDataEntry_Body_Data) *XdrAnon_ContractDataEntry_Body_Data {
-	return v
-}
-
-var _XdrTags_XdrAnon_ContractDataEntry_Body = map[int32]bool{
-	XdrToI32(DATA_ENTRY):           true,
-	XdrToI32(EXPIRATION_EXTENSION): true,
-}
-
-func (_ XdrAnon_ContractDataEntry_Body) XdrValidTags() map[int32]bool {
-	return _XdrTags_XdrAnon_ContractDataEntry_Body
-}
-func (u *XdrAnon_ContractDataEntry_Body) Data() *XdrAnon_ContractDataEntry_Body_Data {
-	switch u.BodyType {
-	case DATA_ENTRY:
-		if v, ok := u._u.(*XdrAnon_ContractDataEntry_Body_Data); ok {
-			return v
-		} else {
-			var zero XdrAnon_ContractDataEntry_Body_Data
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("XdrAnon_ContractDataEntry_Body.Data accessed when BodyType == %v", u.BodyType)
-		return nil
-	}
-}
-func (u XdrAnon_ContractDataEntry_Body) XdrValid() bool {
-	switch u.BodyType {
-	case DATA_ENTRY, EXPIRATION_EXTENSION:
-		return true
-	}
-	return false
-}
-func (u *XdrAnon_ContractDataEntry_Body) XdrUnionTag() XdrNum32 {
-	return XDR_ContractEntryBodyType(&u.BodyType)
-}
-func (u *XdrAnon_ContractDataEntry_Body) XdrUnionTagName() string {
-	return "BodyType"
-}
-func (u *XdrAnon_ContractDataEntry_Body) XdrUnionBody() XdrType {
-	switch u.BodyType {
-	case DATA_ENTRY:
-		return XDR_XdrAnon_ContractDataEntry_Body_Data(u.Data())
-	case EXPIRATION_EXTENSION:
-		return nil
-	}
-	return nil
-}
-func (u *XdrAnon_ContractDataEntry_Body) XdrUnionBodyName() string {
-	switch u.BodyType {
-	case DATA_ENTRY:
-		return "Data"
-	case EXPIRATION_EXTENSION:
-		return ""
-	}
-	return ""
-}
-
-type XdrType_XdrAnon_ContractDataEntry_Body = *XdrAnon_ContractDataEntry_Body
-
-func (v *XdrAnon_ContractDataEntry_Body) XdrPointer() interface{}       { return v }
-func (XdrAnon_ContractDataEntry_Body) XdrTypeName() string              { return "XdrAnon_ContractDataEntry_Body" }
-func (v XdrAnon_ContractDataEntry_Body) XdrValue() interface{}          { return v }
-func (v *XdrAnon_ContractDataEntry_Body) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *XdrAnon_ContractDataEntry_Body) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_ContractEntryBodyType(&u.BodyType).XdrMarshal(x, x.Sprintf("%sbodyType", name))
-	switch u.BodyType {
-	case DATA_ENTRY:
-		x.Marshal(x.Sprintf("%sdata", name), XDR_XdrAnon_ContractDataEntry_Body_Data(u.Data()))
-		return
-	case EXPIRATION_EXTENSION:
-		return
-	}
-	XdrPanic("invalid BodyType (%v) in XdrAnon_ContractDataEntry_Body", u.BodyType)
-}
-func XDR_XdrAnon_ContractDataEntry_Body(v *XdrAnon_ContractDataEntry_Body) *XdrAnon_ContractDataEntry_Body {
-	return v
-}
-
 type XdrType_ContractDataEntry = *ContractDataEntry
 
 func (v *ContractDataEntry) XdrPointer() interface{}       { return v }
@@ -8149,92 +7930,13 @@ func (v *ContractDataEntry) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
+	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
 	x.Marshal(x.Sprintf("%scontract", name), XDR_SCAddress(&v.Contract))
 	x.Marshal(x.Sprintf("%skey", name), XDR_SCVal(&v.Key))
 	x.Marshal(x.Sprintf("%sdurability", name), XDR_ContractDataDurability(&v.Durability))
-	x.Marshal(x.Sprintf("%sbody", name), XDR_XdrAnon_ContractDataEntry_Body(&v.Body))
-	x.Marshal(x.Sprintf("%sexpirationLedgerSeq", name), XDR_Uint32(&v.ExpirationLedgerSeq))
+	x.Marshal(x.Sprintf("%sval", name), XDR_SCVal(&v.Val))
 }
 func XDR_ContractDataEntry(v *ContractDataEntry) *ContractDataEntry { return v }
-
-var _XdrTags_XdrAnon_ContractCodeEntry_Body = map[int32]bool{
-	XdrToI32(DATA_ENTRY):           true,
-	XdrToI32(EXPIRATION_EXTENSION): true,
-}
-
-func (_ XdrAnon_ContractCodeEntry_Body) XdrValidTags() map[int32]bool {
-	return _XdrTags_XdrAnon_ContractCodeEntry_Body
-}
-func (u *XdrAnon_ContractCodeEntry_Body) Code() *[]byte {
-	switch u.BodyType {
-	case DATA_ENTRY:
-		if v, ok := u._u.(*[]byte); ok {
-			return v
-		} else {
-			var zero []byte
-			u._u = &zero
-			return &zero
-		}
-	default:
-		XdrPanic("XdrAnon_ContractCodeEntry_Body.Code accessed when BodyType == %v", u.BodyType)
-		return nil
-	}
-}
-func (u XdrAnon_ContractCodeEntry_Body) XdrValid() bool {
-	switch u.BodyType {
-	case DATA_ENTRY, EXPIRATION_EXTENSION:
-		return true
-	}
-	return false
-}
-func (u *XdrAnon_ContractCodeEntry_Body) XdrUnionTag() XdrNum32 {
-	return XDR_ContractEntryBodyType(&u.BodyType)
-}
-func (u *XdrAnon_ContractCodeEntry_Body) XdrUnionTagName() string {
-	return "BodyType"
-}
-func (u *XdrAnon_ContractCodeEntry_Body) XdrUnionBody() XdrType {
-	switch u.BodyType {
-	case DATA_ENTRY:
-		return XdrVecOpaque{u.Code(), 0xffffffff}
-	case EXPIRATION_EXTENSION:
-		return nil
-	}
-	return nil
-}
-func (u *XdrAnon_ContractCodeEntry_Body) XdrUnionBodyName() string {
-	switch u.BodyType {
-	case DATA_ENTRY:
-		return "Code"
-	case EXPIRATION_EXTENSION:
-		return ""
-	}
-	return ""
-}
-
-type XdrType_XdrAnon_ContractCodeEntry_Body = *XdrAnon_ContractCodeEntry_Body
-
-func (v *XdrAnon_ContractCodeEntry_Body) XdrPointer() interface{}       { return v }
-func (XdrAnon_ContractCodeEntry_Body) XdrTypeName() string              { return "XdrAnon_ContractCodeEntry_Body" }
-func (v XdrAnon_ContractCodeEntry_Body) XdrValue() interface{}          { return v }
-func (v *XdrAnon_ContractCodeEntry_Body) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *XdrAnon_ContractCodeEntry_Body) XdrRecurse(x XDR, name string) {
-	if name != "" {
-		name = x.Sprintf("%s.", name)
-	}
-	XDR_ContractEntryBodyType(&u.BodyType).XdrMarshal(x, x.Sprintf("%sbodyType", name))
-	switch u.BodyType {
-	case DATA_ENTRY:
-		x.Marshal(x.Sprintf("%scode", name), XdrVecOpaque{u.Code(), 0xffffffff})
-		return
-	case EXPIRATION_EXTENSION:
-		return
-	}
-	XdrPanic("invalid BodyType (%v) in XdrAnon_ContractCodeEntry_Body", u.BodyType)
-}
-func XDR_XdrAnon_ContractCodeEntry_Body(v *XdrAnon_ContractCodeEntry_Body) *XdrAnon_ContractCodeEntry_Body {
-	return v
-}
 
 type XdrType_ContractCodeEntry = *ContractCodeEntry
 
@@ -8248,10 +7950,24 @@ func (v *ContractCodeEntry) XdrRecurse(x XDR, name string) {
 	}
 	x.Marshal(x.Sprintf("%sext", name), XDR_ExtensionPoint(&v.Ext))
 	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
-	x.Marshal(x.Sprintf("%sbody", name), XDR_XdrAnon_ContractCodeEntry_Body(&v.Body))
-	x.Marshal(x.Sprintf("%sexpirationLedgerSeq", name), XDR_Uint32(&v.ExpirationLedgerSeq))
+	x.Marshal(x.Sprintf("%scode", name), XdrVecOpaque{&v.Code, 0xffffffff})
 }
 func XDR_ContractCodeEntry(v *ContractCodeEntry) *ContractCodeEntry { return v }
+
+type XdrType_ExpirationEntry = *ExpirationEntry
+
+func (v *ExpirationEntry) XdrPointer() interface{}       { return v }
+func (ExpirationEntry) XdrTypeName() string              { return "ExpirationEntry" }
+func (v ExpirationEntry) XdrValue() interface{}          { return v }
+func (v *ExpirationEntry) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *ExpirationEntry) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%skeyHash", name), XDR_Hash(&v.KeyHash))
+	x.Marshal(x.Sprintf("%sexpirationLedgerSeq", name), XDR_Uint32(&v.ExpirationLedgerSeq))
+}
+func XDR_ExpirationEntry(v *ExpirationEntry) *ExpirationEntry { return v }
 
 var _XdrTags_XdrAnon_LedgerEntryExtensionV1_Ext = map[int32]bool{
 	XdrToI32(0): true,
@@ -8336,6 +8052,7 @@ var _XdrTags_XdrAnon_LedgerEntry_Data = map[int32]bool{
 	XdrToI32(CONTRACT_DATA):     true,
 	XdrToI32(CONTRACT_CODE):     true,
 	XdrToI32(CONFIG_SETTING):    true,
+	XdrToI32(EXPIRATION):        true,
 }
 
 func (_ XdrAnon_LedgerEntry_Data) XdrValidTags() map[int32]bool {
@@ -8476,9 +8193,24 @@ func (u *XdrAnon_LedgerEntry_Data) ConfigSetting() *ConfigSettingEntry {
 		return nil
 	}
 }
+func (u *XdrAnon_LedgerEntry_Data) Expiration() *ExpirationEntry {
+	switch u.Type {
+	case EXPIRATION:
+		if v, ok := u._u.(*ExpirationEntry); ok {
+			return v
+		} else {
+			var zero ExpirationEntry
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_LedgerEntry_Data.Expiration accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u XdrAnon_LedgerEntry_Data) XdrValid() bool {
 	switch u.Type {
-	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING:
+	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING, EXPIRATION:
 		return true
 	}
 	return false
@@ -8509,6 +8241,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrUnionBody() XdrType {
 		return XDR_ContractCodeEntry(u.ContractCode())
 	case CONFIG_SETTING:
 		return XDR_ConfigSettingEntry(u.ConfigSetting())
+	case EXPIRATION:
+		return XDR_ExpirationEntry(u.Expiration())
 	}
 	return nil
 }
@@ -8532,6 +8266,8 @@ func (u *XdrAnon_LedgerEntry_Data) XdrUnionBodyName() string {
 		return "ContractCode"
 	case CONFIG_SETTING:
 		return "ConfigSetting"
+	case EXPIRATION:
+		return "Expiration"
 	}
 	return ""
 }
@@ -8574,6 +8310,9 @@ func (u *XdrAnon_LedgerEntry_Data) XdrRecurse(x XDR, name string) {
 		return
 	case CONFIG_SETTING:
 		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_ConfigSettingEntry(u.ConfigSetting()))
+		return
+	case EXPIRATION:
+		x.Marshal(x.Sprintf("%sexpiration", name), XDR_ExpirationEntry(u.Expiration()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in XdrAnon_LedgerEntry_Data", u.Type)
@@ -8781,7 +8520,6 @@ func (v *XdrAnon_LedgerKey_ContractData) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%scontract", name), XDR_SCAddress(&v.Contract))
 	x.Marshal(x.Sprintf("%skey", name), XDR_SCVal(&v.Key))
 	x.Marshal(x.Sprintf("%sdurability", name), XDR_ContractDataDurability(&v.Durability))
-	x.Marshal(x.Sprintf("%sbodyType", name), XDR_ContractEntryBodyType(&v.BodyType))
 }
 func XDR_XdrAnon_LedgerKey_ContractData(v *XdrAnon_LedgerKey_ContractData) *XdrAnon_LedgerKey_ContractData {
 	return v
@@ -8798,7 +8536,6 @@ func (v *XdrAnon_LedgerKey_ContractCode) XdrRecurse(x XDR, name string) {
 		name = x.Sprintf("%s.", name)
 	}
 	x.Marshal(x.Sprintf("%shash", name), XDR_Hash(&v.Hash))
-	x.Marshal(x.Sprintf("%sbodyType", name), XDR_ContractEntryBodyType(&v.BodyType))
 }
 func XDR_XdrAnon_LedgerKey_ContractCode(v *XdrAnon_LedgerKey_ContractCode) *XdrAnon_LedgerKey_ContractCode {
 	return v
@@ -8820,6 +8557,22 @@ func XDR_XdrAnon_LedgerKey_ConfigSetting(v *XdrAnon_LedgerKey_ConfigSetting) *Xd
 	return v
 }
 
+type XdrType_XdrAnon_LedgerKey_Expiration = *XdrAnon_LedgerKey_Expiration
+
+func (v *XdrAnon_LedgerKey_Expiration) XdrPointer() interface{}       { return v }
+func (XdrAnon_LedgerKey_Expiration) XdrTypeName() string              { return "XdrAnon_LedgerKey_Expiration" }
+func (v XdrAnon_LedgerKey_Expiration) XdrValue() interface{}          { return v }
+func (v *XdrAnon_LedgerKey_Expiration) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *XdrAnon_LedgerKey_Expiration) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%skeyHash", name), XDR_Hash(&v.KeyHash))
+}
+func XDR_XdrAnon_LedgerKey_Expiration(v *XdrAnon_LedgerKey_Expiration) *XdrAnon_LedgerKey_Expiration {
+	return v
+}
+
 var _XdrTags_LedgerKey = map[int32]bool{
 	XdrToI32(ACCOUNT):           true,
 	XdrToI32(TRUSTLINE):         true,
@@ -8830,6 +8583,7 @@ var _XdrTags_LedgerKey = map[int32]bool{
 	XdrToI32(CONTRACT_DATA):     true,
 	XdrToI32(CONTRACT_CODE):     true,
 	XdrToI32(CONFIG_SETTING):    true,
+	XdrToI32(EXPIRATION):        true,
 }
 
 func (_ LedgerKey) XdrValidTags() map[int32]bool {
@@ -8970,9 +8724,24 @@ func (u *LedgerKey) ConfigSetting() *XdrAnon_LedgerKey_ConfigSetting {
 		return nil
 	}
 }
+func (u *LedgerKey) Expiration() *XdrAnon_LedgerKey_Expiration {
+	switch u.Type {
+	case EXPIRATION:
+		if v, ok := u._u.(*XdrAnon_LedgerKey_Expiration); ok {
+			return v
+		} else {
+			var zero XdrAnon_LedgerKey_Expiration
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("LedgerKey.Expiration accessed when Type == %v", u.Type)
+		return nil
+	}
+}
 func (u LedgerKey) XdrValid() bool {
 	switch u.Type {
-	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING:
+	case ACCOUNT, TRUSTLINE, OFFER, DATA, CLAIMABLE_BALANCE, LIQUIDITY_POOL, CONTRACT_DATA, CONTRACT_CODE, CONFIG_SETTING, EXPIRATION:
 		return true
 	}
 	return false
@@ -9003,6 +8772,8 @@ func (u *LedgerKey) XdrUnionBody() XdrType {
 		return XDR_XdrAnon_LedgerKey_ContractCode(u.ContractCode())
 	case CONFIG_SETTING:
 		return XDR_XdrAnon_LedgerKey_ConfigSetting(u.ConfigSetting())
+	case EXPIRATION:
+		return XDR_XdrAnon_LedgerKey_Expiration(u.Expiration())
 	}
 	return nil
 }
@@ -9026,6 +8797,8 @@ func (u *LedgerKey) XdrUnionBodyName() string {
 		return "ContractCode"
 	case CONFIG_SETTING:
 		return "ConfigSetting"
+	case EXPIRATION:
+		return "Expiration"
 	}
 	return ""
 }
@@ -9068,6 +8841,9 @@ func (u *LedgerKey) XdrRecurse(x XDR, name string) {
 		return
 	case CONFIG_SETTING:
 		x.Marshal(x.Sprintf("%sconfigSetting", name), XDR_XdrAnon_LedgerKey_ConfigSetting(u.ConfigSetting()))
+		return
+	case EXPIRATION:
+		x.Marshal(x.Sprintf("%sexpiration", name), XDR_XdrAnon_LedgerKey_Expiration(u.Expiration()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in LedgerKey", u.Type)
@@ -24015,46 +23791,46 @@ func (u *OperationResult) XdrRecurse(x XDR, name string) {
 func XDR_OperationResult(v *OperationResult) *OperationResult { return v }
 
 var _XdrNames_TransactionResultCode = map[int32]string{
-	int32(TxFEE_BUMP_INNER_SUCCESS):          "txFEE_BUMP_INNER_SUCCESS",
-	int32(TxSUCCESS):                         "txSUCCESS",
-	int32(TxFAILED):                          "txFAILED",
-	int32(TxTOO_EARLY):                       "txTOO_EARLY",
-	int32(TxTOO_LATE):                        "txTOO_LATE",
-	int32(TxMISSING_OPERATION):               "txMISSING_OPERATION",
-	int32(TxBAD_SEQ):                         "txBAD_SEQ",
-	int32(TxBAD_AUTH):                        "txBAD_AUTH",
-	int32(TxINSUFFICIENT_BALANCE):            "txINSUFFICIENT_BALANCE",
-	int32(TxNO_ACCOUNT):                      "txNO_ACCOUNT",
-	int32(TxINSUFFICIENT_FEE):                "txINSUFFICIENT_FEE",
-	int32(TxBAD_AUTH_EXTRA):                  "txBAD_AUTH_EXTRA",
-	int32(TxINTERNAL_ERROR):                  "txINTERNAL_ERROR",
-	int32(TxNOT_SUPPORTED):                   "txNOT_SUPPORTED",
-	int32(TxFEE_BUMP_INNER_FAILED):           "txFEE_BUMP_INNER_FAILED",
-	int32(TxBAD_SPONSORSHIP):                 "txBAD_SPONSORSHIP",
-	int32(TxBAD_MIN_SEQ_AGE_OR_GAP):          "txBAD_MIN_SEQ_AGE_OR_GAP",
-	int32(TxMALFORMED):                       "txMALFORMED",
-	int32(TxSOROBAN_RESOURCE_LIMIT_EXCEEDED): "txSOROBAN_RESOURCE_LIMIT_EXCEEDED",
+	int32(TxFEE_BUMP_INNER_SUCCESS): "txFEE_BUMP_INNER_SUCCESS",
+	int32(TxSUCCESS):                "txSUCCESS",
+	int32(TxFAILED):                 "txFAILED",
+	int32(TxTOO_EARLY):              "txTOO_EARLY",
+	int32(TxTOO_LATE):               "txTOO_LATE",
+	int32(TxMISSING_OPERATION):      "txMISSING_OPERATION",
+	int32(TxBAD_SEQ):                "txBAD_SEQ",
+	int32(TxBAD_AUTH):               "txBAD_AUTH",
+	int32(TxINSUFFICIENT_BALANCE):   "txINSUFFICIENT_BALANCE",
+	int32(TxNO_ACCOUNT):             "txNO_ACCOUNT",
+	int32(TxINSUFFICIENT_FEE):       "txINSUFFICIENT_FEE",
+	int32(TxBAD_AUTH_EXTRA):         "txBAD_AUTH_EXTRA",
+	int32(TxINTERNAL_ERROR):         "txINTERNAL_ERROR",
+	int32(TxNOT_SUPPORTED):          "txNOT_SUPPORTED",
+	int32(TxFEE_BUMP_INNER_FAILED):  "txFEE_BUMP_INNER_FAILED",
+	int32(TxBAD_SPONSORSHIP):        "txBAD_SPONSORSHIP",
+	int32(TxBAD_MIN_SEQ_AGE_OR_GAP): "txBAD_MIN_SEQ_AGE_OR_GAP",
+	int32(TxMALFORMED):              "txMALFORMED",
+	int32(TxSOROBAN_INVALID):        "txSOROBAN_INVALID",
 }
 var _XdrValues_TransactionResultCode = map[string]int32{
-	"txFEE_BUMP_INNER_SUCCESS":          int32(TxFEE_BUMP_INNER_SUCCESS),
-	"txSUCCESS":                         int32(TxSUCCESS),
-	"txFAILED":                          int32(TxFAILED),
-	"txTOO_EARLY":                       int32(TxTOO_EARLY),
-	"txTOO_LATE":                        int32(TxTOO_LATE),
-	"txMISSING_OPERATION":               int32(TxMISSING_OPERATION),
-	"txBAD_SEQ":                         int32(TxBAD_SEQ),
-	"txBAD_AUTH":                        int32(TxBAD_AUTH),
-	"txINSUFFICIENT_BALANCE":            int32(TxINSUFFICIENT_BALANCE),
-	"txNO_ACCOUNT":                      int32(TxNO_ACCOUNT),
-	"txINSUFFICIENT_FEE":                int32(TxINSUFFICIENT_FEE),
-	"txBAD_AUTH_EXTRA":                  int32(TxBAD_AUTH_EXTRA),
-	"txINTERNAL_ERROR":                  int32(TxINTERNAL_ERROR),
-	"txNOT_SUPPORTED":                   int32(TxNOT_SUPPORTED),
-	"txFEE_BUMP_INNER_FAILED":           int32(TxFEE_BUMP_INNER_FAILED),
-	"txBAD_SPONSORSHIP":                 int32(TxBAD_SPONSORSHIP),
-	"txBAD_MIN_SEQ_AGE_OR_GAP":          int32(TxBAD_MIN_SEQ_AGE_OR_GAP),
-	"txMALFORMED":                       int32(TxMALFORMED),
-	"txSOROBAN_RESOURCE_LIMIT_EXCEEDED": int32(TxSOROBAN_RESOURCE_LIMIT_EXCEEDED),
+	"txFEE_BUMP_INNER_SUCCESS": int32(TxFEE_BUMP_INNER_SUCCESS),
+	"txSUCCESS":                int32(TxSUCCESS),
+	"txFAILED":                 int32(TxFAILED),
+	"txTOO_EARLY":              int32(TxTOO_EARLY),
+	"txTOO_LATE":               int32(TxTOO_LATE),
+	"txMISSING_OPERATION":      int32(TxMISSING_OPERATION),
+	"txBAD_SEQ":                int32(TxBAD_SEQ),
+	"txBAD_AUTH":               int32(TxBAD_AUTH),
+	"txINSUFFICIENT_BALANCE":   int32(TxINSUFFICIENT_BALANCE),
+	"txNO_ACCOUNT":             int32(TxNO_ACCOUNT),
+	"txINSUFFICIENT_FEE":       int32(TxINSUFFICIENT_FEE),
+	"txBAD_AUTH_EXTRA":         int32(TxBAD_AUTH_EXTRA),
+	"txINTERNAL_ERROR":         int32(TxINTERNAL_ERROR),
+	"txNOT_SUPPORTED":          int32(TxNOT_SUPPORTED),
+	"txFEE_BUMP_INNER_FAILED":  int32(TxFEE_BUMP_INNER_FAILED),
+	"txBAD_SPONSORSHIP":        int32(TxBAD_SPONSORSHIP),
+	"txBAD_MIN_SEQ_AGE_OR_GAP": int32(TxBAD_MIN_SEQ_AGE_OR_GAP),
+	"txMALFORMED":              int32(TxMALFORMED),
+	"txSOROBAN_INVALID":        int32(TxSOROBAN_INVALID),
 }
 
 func (TransactionResultCode) XdrEnumNames() map[int32]string {
@@ -24094,25 +23870,25 @@ type XdrType_TransactionResultCode = *TransactionResultCode
 func XDR_TransactionResultCode(v *TransactionResultCode) *TransactionResultCode { return v }
 
 var _XdrComments_TransactionResultCode = map[int32]string{
-	int32(TxFEE_BUMP_INNER_SUCCESS):          "fee bump inner transaction succeeded",
-	int32(TxSUCCESS):                         "all operations succeeded",
-	int32(TxFAILED):                          "one of the operations failed (none were applied)",
-	int32(TxTOO_EARLY):                       "ledger closeTime before minTime",
-	int32(TxTOO_LATE):                        "ledger closeTime after maxTime",
-	int32(TxMISSING_OPERATION):               "no operation was specified",
-	int32(TxBAD_SEQ):                         "sequence number does not match source account",
-	int32(TxBAD_AUTH):                        "too few valid signatures / wrong network",
-	int32(TxINSUFFICIENT_BALANCE):            "fee would bring account below reserve",
-	int32(TxNO_ACCOUNT):                      "source account not found",
-	int32(TxINSUFFICIENT_FEE):                "fee is too small",
-	int32(TxBAD_AUTH_EXTRA):                  "unused signatures attached to transaction",
-	int32(TxINTERNAL_ERROR):                  "an unknown error occurred",
-	int32(TxNOT_SUPPORTED):                   "transaction type not supported",
-	int32(TxFEE_BUMP_INNER_FAILED):           "fee bump inner transaction failed",
-	int32(TxBAD_SPONSORSHIP):                 "sponsorship not confirmed",
-	int32(TxBAD_MIN_SEQ_AGE_OR_GAP):          "minSeqAge or minSeqLedgerGap conditions not met",
-	int32(TxMALFORMED):                       "precondition is invalid",
-	int32(TxSOROBAN_RESOURCE_LIMIT_EXCEEDED): "declared Soroban resource usage exceeds the network limit",
+	int32(TxFEE_BUMP_INNER_SUCCESS): "fee bump inner transaction succeeded",
+	int32(TxSUCCESS):                "all operations succeeded",
+	int32(TxFAILED):                 "one of the operations failed (none were applied)",
+	int32(TxTOO_EARLY):              "ledger closeTime before minTime",
+	int32(TxTOO_LATE):               "ledger closeTime after maxTime",
+	int32(TxMISSING_OPERATION):      "no operation was specified",
+	int32(TxBAD_SEQ):                "sequence number does not match source account",
+	int32(TxBAD_AUTH):               "too few valid signatures / wrong network",
+	int32(TxINSUFFICIENT_BALANCE):   "fee would bring account below reserve",
+	int32(TxNO_ACCOUNT):             "source account not found",
+	int32(TxINSUFFICIENT_FEE):       "fee is too small",
+	int32(TxBAD_AUTH_EXTRA):         "unused signatures attached to transaction",
+	int32(TxINTERNAL_ERROR):         "an unknown error occurred",
+	int32(TxNOT_SUPPORTED):          "transaction type not supported",
+	int32(TxFEE_BUMP_INNER_FAILED):  "fee bump inner transaction failed",
+	int32(TxBAD_SPONSORSHIP):        "sponsorship not confirmed",
+	int32(TxBAD_MIN_SEQ_AGE_OR_GAP): "minSeqAge or minSeqLedgerGap conditions not met",
+	int32(TxMALFORMED):              "precondition is invalid",
+	int32(TxSOROBAN_INVALID):        "soroban-specific preconditions were not met",
 }
 
 func (e TransactionResultCode) XdrEnumComments() map[int32]string {
@@ -24177,23 +23953,23 @@ func (v _XdrVec_unbounded_OperationResult) XdrValue() interface{}          { ret
 func (v *_XdrVec_unbounded_OperationResult) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
 
 var _XdrTags_XdrAnon_InnerTransactionResult_Result = map[int32]bool{
-	XdrToI32(TxSUCCESS):                         true,
-	XdrToI32(TxFAILED):                          true,
-	XdrToI32(TxTOO_EARLY):                       true,
-	XdrToI32(TxTOO_LATE):                        true,
-	XdrToI32(TxMISSING_OPERATION):               true,
-	XdrToI32(TxBAD_SEQ):                         true,
-	XdrToI32(TxBAD_AUTH):                        true,
-	XdrToI32(TxINSUFFICIENT_BALANCE):            true,
-	XdrToI32(TxNO_ACCOUNT):                      true,
-	XdrToI32(TxINSUFFICIENT_FEE):                true,
-	XdrToI32(TxBAD_AUTH_EXTRA):                  true,
-	XdrToI32(TxINTERNAL_ERROR):                  true,
-	XdrToI32(TxNOT_SUPPORTED):                   true,
-	XdrToI32(TxBAD_SPONSORSHIP):                 true,
-	XdrToI32(TxBAD_MIN_SEQ_AGE_OR_GAP):          true,
-	XdrToI32(TxMALFORMED):                       true,
-	XdrToI32(TxSOROBAN_RESOURCE_LIMIT_EXCEEDED): true,
+	XdrToI32(TxSUCCESS):                true,
+	XdrToI32(TxFAILED):                 true,
+	XdrToI32(TxTOO_EARLY):              true,
+	XdrToI32(TxTOO_LATE):               true,
+	XdrToI32(TxMISSING_OPERATION):      true,
+	XdrToI32(TxBAD_SEQ):                true,
+	XdrToI32(TxBAD_AUTH):               true,
+	XdrToI32(TxINSUFFICIENT_BALANCE):   true,
+	XdrToI32(TxNO_ACCOUNT):             true,
+	XdrToI32(TxINSUFFICIENT_FEE):       true,
+	XdrToI32(TxBAD_AUTH_EXTRA):         true,
+	XdrToI32(TxINTERNAL_ERROR):         true,
+	XdrToI32(TxNOT_SUPPORTED):          true,
+	XdrToI32(TxBAD_SPONSORSHIP):        true,
+	XdrToI32(TxBAD_MIN_SEQ_AGE_OR_GAP): true,
+	XdrToI32(TxMALFORMED):              true,
+	XdrToI32(TxSOROBAN_INVALID):        true,
 }
 
 func (_ XdrAnon_InnerTransactionResult_Result) XdrValidTags() map[int32]bool {
@@ -24216,7 +23992,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) Results() *[]OperationResult {
 }
 func (u XdrAnon_InnerTransactionResult_Result) XdrValid() bool {
 	switch u.Code {
-	case TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return true
 	}
 	return false
@@ -24231,7 +24007,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrUnionBody() XdrType {
 	switch u.Code {
 	case TxSUCCESS, TxFAILED:
 		return (*_XdrVec_unbounded_OperationResult)(u.Results())
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return nil
 	}
 	return nil
@@ -24240,7 +24016,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrUnionBodyName() string {
 	switch u.Code {
 	case TxSUCCESS, TxFAILED:
 		return "Results"
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return ""
 	}
 	return ""
@@ -24263,7 +24039,7 @@ func (u *XdrAnon_InnerTransactionResult_Result) XdrRecurse(x XDR, name string) {
 	case TxSUCCESS, TxFAILED:
 		x.Marshal(x.Sprintf("%sresults", name), (*_XdrVec_unbounded_OperationResult)(u.Results()))
 		return
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return
 	}
 	XdrPanic("invalid Code (%v) in XdrAnon_InnerTransactionResult_Result", u.Code)
@@ -24364,25 +24140,25 @@ func XDR_InnerTransactionResultPair(v *InnerTransactionResultPair) *InnerTransac
 }
 
 var _XdrTags_XdrAnon_TransactionResult_Result = map[int32]bool{
-	XdrToI32(TxFEE_BUMP_INNER_SUCCESS):          true,
-	XdrToI32(TxFEE_BUMP_INNER_FAILED):           true,
-	XdrToI32(TxSUCCESS):                         true,
-	XdrToI32(TxFAILED):                          true,
-	XdrToI32(TxTOO_EARLY):                       true,
-	XdrToI32(TxTOO_LATE):                        true,
-	XdrToI32(TxMISSING_OPERATION):               true,
-	XdrToI32(TxBAD_SEQ):                         true,
-	XdrToI32(TxBAD_AUTH):                        true,
-	XdrToI32(TxINSUFFICIENT_BALANCE):            true,
-	XdrToI32(TxNO_ACCOUNT):                      true,
-	XdrToI32(TxINSUFFICIENT_FEE):                true,
-	XdrToI32(TxBAD_AUTH_EXTRA):                  true,
-	XdrToI32(TxINTERNAL_ERROR):                  true,
-	XdrToI32(TxNOT_SUPPORTED):                   true,
-	XdrToI32(TxBAD_SPONSORSHIP):                 true,
-	XdrToI32(TxBAD_MIN_SEQ_AGE_OR_GAP):          true,
-	XdrToI32(TxMALFORMED):                       true,
-	XdrToI32(TxSOROBAN_RESOURCE_LIMIT_EXCEEDED): true,
+	XdrToI32(TxFEE_BUMP_INNER_SUCCESS): true,
+	XdrToI32(TxFEE_BUMP_INNER_FAILED):  true,
+	XdrToI32(TxSUCCESS):                true,
+	XdrToI32(TxFAILED):                 true,
+	XdrToI32(TxTOO_EARLY):              true,
+	XdrToI32(TxTOO_LATE):               true,
+	XdrToI32(TxMISSING_OPERATION):      true,
+	XdrToI32(TxBAD_SEQ):                true,
+	XdrToI32(TxBAD_AUTH):               true,
+	XdrToI32(TxINSUFFICIENT_BALANCE):   true,
+	XdrToI32(TxNO_ACCOUNT):             true,
+	XdrToI32(TxINSUFFICIENT_FEE):       true,
+	XdrToI32(TxBAD_AUTH_EXTRA):         true,
+	XdrToI32(TxINTERNAL_ERROR):         true,
+	XdrToI32(TxNOT_SUPPORTED):          true,
+	XdrToI32(TxBAD_SPONSORSHIP):        true,
+	XdrToI32(TxBAD_MIN_SEQ_AGE_OR_GAP): true,
+	XdrToI32(TxMALFORMED):              true,
+	XdrToI32(TxSOROBAN_INVALID):        true,
 }
 
 func (_ XdrAnon_TransactionResult_Result) XdrValidTags() map[int32]bool {
@@ -24420,7 +24196,7 @@ func (u *XdrAnon_TransactionResult_Result) Results() *[]OperationResult {
 }
 func (u XdrAnon_TransactionResult_Result) XdrValid() bool {
 	switch u.Code {
-	case TxFEE_BUMP_INNER_SUCCESS, TxFEE_BUMP_INNER_FAILED, TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxFEE_BUMP_INNER_SUCCESS, TxFEE_BUMP_INNER_FAILED, TxSUCCESS, TxFAILED, TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return true
 	}
 	return false
@@ -24437,7 +24213,7 @@ func (u *XdrAnon_TransactionResult_Result) XdrUnionBody() XdrType {
 		return XDR_InnerTransactionResultPair(u.InnerResultPair())
 	case TxSUCCESS, TxFAILED:
 		return (*_XdrVec_unbounded_OperationResult)(u.Results())
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return nil
 	}
 	return nil
@@ -24448,7 +24224,7 @@ func (u *XdrAnon_TransactionResult_Result) XdrUnionBodyName() string {
 		return "InnerResultPair"
 	case TxSUCCESS, TxFAILED:
 		return "Results"
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return ""
 	}
 	return ""
@@ -24474,7 +24250,7 @@ func (u *XdrAnon_TransactionResult_Result) XdrRecurse(x XDR, name string) {
 	case TxSUCCESS, TxFAILED:
 		x.Marshal(x.Sprintf("%sresults", name), (*_XdrVec_unbounded_OperationResult)(u.Results()))
 		return
-	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_RESOURCE_LIMIT_EXCEEDED:
+	case TxTOO_EARLY, TxTOO_LATE, TxMISSING_OPERATION, TxBAD_SEQ, TxBAD_AUTH, TxINSUFFICIENT_BALANCE, TxNO_ACCOUNT, TxINSUFFICIENT_FEE, TxBAD_AUTH_EXTRA, TxINTERNAL_ERROR, TxNOT_SUPPORTED, TxBAD_SPONSORSHIP, TxBAD_MIN_SEQ_AGE_OR_GAP, TxMALFORMED, TxSOROBAN_INVALID:
 		return
 	}
 	XdrPanic("invalid Code (%v) in XdrAnon_TransactionResult_Result", u.Code)
@@ -26963,6 +26739,23 @@ type XdrType_SCErrorType = *SCErrorType
 
 func XDR_SCErrorType(v *SCErrorType) *SCErrorType { return v }
 
+var _XdrComments_SCErrorType = map[int32]string{
+	int32(SCE_CONTRACT): "Contract-specific, user-defined codes.",
+	int32(SCE_WASM_VM):  "Errors while interpreting WASM bytecode.",
+	int32(SCE_CONTEXT):  "Errors in the contract's host context.",
+	int32(SCE_STORAGE):  "Errors accessing host storage.",
+	int32(SCE_OBJECT):   "Errors working with host objects.",
+	int32(SCE_CRYPTO):   "Errors in cryptographic operations.",
+	int32(SCE_EVENTS):   "Errors while emitting events.",
+	int32(SCE_BUDGET):   "Errors relating to budget limits.",
+	int32(SCE_VALUE):    "Errors working with host values or SCVals.",
+	int32(SCE_AUTH):     "Errors from the authentication subsystem.",
+}
+
+func (e SCErrorType) XdrEnumComments() map[int32]string {
+	return _XdrComments_SCErrorType
+}
+
 var _XdrNames_SCErrorCode = map[int32]string{
 	int32(SCEC_ARITH_DOMAIN):    "SCEC_ARITH_DOMAIN",
 	int32(SCEC_INDEX_BOUNDS):    "SCEC_INDEX_BOUNDS",
@@ -27025,16 +26818,16 @@ type XdrType_SCErrorCode = *SCErrorCode
 func XDR_SCErrorCode(v *SCErrorCode) *SCErrorCode { return v }
 
 var _XdrComments_SCErrorCode = map[int32]string{
-	int32(SCEC_ARITH_DOMAIN):    "some arithmetic wasn't defined (overflow, divide-by-zero)",
-	int32(SCEC_INDEX_BOUNDS):    "something was indexed beyond its bounds",
-	int32(SCEC_INVALID_INPUT):   "user provided some otherwise-bad data",
-	int32(SCEC_MISSING_VALUE):   "some value was required but not provided",
-	int32(SCEC_EXISTING_VALUE):  "some value was provided where not allowed",
-	int32(SCEC_EXCEEDED_LIMIT):  "some arbitrary limit -- gas or otherwise -- was hit",
-	int32(SCEC_INVALID_ACTION):  "data was valid but action requested was not",
-	int32(SCEC_INTERNAL_ERROR):  "the internal state of the host was otherwise-bad",
-	int32(SCEC_UNEXPECTED_TYPE): "some type wasn't as expected",
-	int32(SCEC_UNEXPECTED_SIZE): "something's size wasn't as expected",
+	int32(SCEC_ARITH_DOMAIN):    "Some arithmetic was undefined (overflow, divide-by-zero).",
+	int32(SCEC_INDEX_BOUNDS):    "Something was indexed beyond its bounds.",
+	int32(SCEC_INVALID_INPUT):   "User provided some otherwise-bad data.",
+	int32(SCEC_MISSING_VALUE):   "Some value was required but not provided.",
+	int32(SCEC_EXISTING_VALUE):  "Some value was provided where not allowed.",
+	int32(SCEC_EXCEEDED_LIMIT):  "Some arbitrary limit -- gas or otherwise -- was hit.",
+	int32(SCEC_INVALID_ACTION):  "Data was valid but action requested was not.",
+	int32(SCEC_INTERNAL_ERROR):  "The host detected an error in its own logic.",
+	int32(SCEC_UNEXPECTED_TYPE): "Some type wasn't as expected.",
+	int32(SCEC_UNEXPECTED_SIZE): "Something's size wasn't as expected.",
 }
 
 func (e SCErrorCode) XdrEnumComments() map[int32]string {
@@ -28847,7 +28640,6 @@ func (v *StateExpirationSettings) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%smaxEntryExpiration", name), XDR_Uint32(&v.MaxEntryExpiration))
 	x.Marshal(x.Sprintf("%sminTempEntryExpiration", name), XDR_Uint32(&v.MinTempEntryExpiration))
 	x.Marshal(x.Sprintf("%sminPersistentEntryExpiration", name), XDR_Uint32(&v.MinPersistentEntryExpiration))
-	x.Marshal(x.Sprintf("%sautoBumpLedgers", name), XDR_Uint32(&v.AutoBumpLedgers))
 	x.Marshal(x.Sprintf("%spersistentRentRateDenominator", name), XDR_Int64(&v.PersistentRentRateDenominator))
 	x.Marshal(x.Sprintf("%stempRentRateDenominator", name), XDR_Int64(&v.TempRentRateDenominator))
 	x.Marshal(x.Sprintf("%smaxEntriesToExpire", name), XDR_Uint32(&v.MaxEntriesToExpire))
