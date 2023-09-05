@@ -125,14 +125,19 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 		}
 		return r.Read()
 	case evictionChangesState:
-		// Get contract ledgerEntry evictions
-		keys, err := r.ledgerCloseMeta.EvictedLedgerKeys()
+		entries, err := r.ledgerCloseMeta.EvictedPersistentLedgerEntries()
 		if err != nil {
 			return Change{}, err
 		}
-		changes, err := GetChangesFromLedgerEntryEvictions(keys)
-		if err != nil {
-			return Change{}, err
+		changes := make([]Change, len(entries))
+		for i := range entries {
+			entry := entries[i]
+			// when a ledger entry is evicted it is removed from the ledger
+			changes[i] = Change{
+				Type: entry.Data.Type,
+				Pre:  &entry,
+				Post: nil,
+			}
 		}
 		r.pending = append(r.pending, changes...)
 		r.state++
