@@ -585,13 +585,6 @@ func TestLedgerChangeLedgerCloseMetaV2(t *testing.T) {
 			contractAddress,
 			xdr.ScVal{
 				Type: xdr.ScValTypeScvSymbol,
-				Sym:  &tempKey,
-			},
-		),
-		isContractDataEviction(
-			contractAddress,
-			xdr.ScVal{
-				Type: xdr.ScValTypeScvSymbol,
 				Sym:  &persistentKey,
 			},
 		),
