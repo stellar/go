@@ -127,7 +127,7 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*history.Transaction)
 			*ptr = suite.successTx.Transaction
@@ -162,11 +162,9 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
-		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
-	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
+	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
@@ -198,12 +196,8 @@ func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
-	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
-		Return(sql.ErrNoRows).Twice()
-	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
-	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*history.Transaction)
@@ -231,9 +225,6 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
-		Return(sql.ErrNoRows).Twice()
-	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Twice()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
@@ -263,11 +254,9 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
-		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
-	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
+	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
@@ -355,11 +344,9 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("PreFilteredTransactionByHash", suite.ctx, mock.Anything, innerHash).
-		Return(sql.ErrNoRows).Once()
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, innerHash).
 		Return(sql.ErrNoRows).Once()
-	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
+	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
 		Return(map[string]uint64{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX": 96}, nil).
 		Once()
