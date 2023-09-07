@@ -122,7 +122,7 @@ jobs:
         run: go test -race -timeout 45m -v ./services/horizon/internal/integration/...
 
       - name: Save Horizon binary and integration tests source hash to cache
-        if: ${{ success() }}
+        if: ${{ success() && steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v3
         with:
           path: ./empty
