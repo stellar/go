@@ -116,6 +116,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: ./empty
+          lookup-only: true
           key: ${{ env.COMBINED_SOURCE_HASH }}
 
       - if: ${{ steps.horizon_binary_tests_hash.outputs.cache-hit != 'true' }}
