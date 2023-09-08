@@ -54,12 +54,28 @@ func TestGetFailedTx(t *testing.T) {
 	tt.Assert.Equal("AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=", err.(*FailedTransactionError).ResultXDR)
 }
 
+func TestFilteredQueryErrs(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+
+	q := &mockDBQ{}
+	hash := "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf"
+
+	q.On("PreFilteredTransactionByHash", tt.Ctx, mock.Anything, hash).Return(sql.ErrConnDone).Once()
+	q.On("NoRows", sql.ErrConnDone).Return(false).Once()
+	_, err := txResultByHash(tt.Ctx, q, hash)
+	tt.Assert.True(errors.Is(err, sql.ErrConnDone))
+}
+
 func TestHistoryQueryErrs(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 
 	q := &mockDBQ{}
 	hash := "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf"
+
+	q.On("PreFilteredTransactionByHash", tt.Ctx, mock.Anything, hash).Return(sql.ErrNoRows).Once()
+	q.On("NoRows", sql.ErrNoRows).Return(true).Once()
 
 	q.On("TransactionByHash", tt.Ctx, mock.Anything, hash).Return(sql.ErrConnDone).Once()
 	q.On("NoRows", sql.ErrConnDone).Return(false).Once()

@@ -12,7 +12,16 @@ import (
 func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Transaction, error) {
 	// query history database
 	var hr history.Transaction
-	err := db.TransactionByHash(ctx, &hr, hash)
+	err := db.PreFilteredTransactionByHash(ctx, &hr, hash)
+	if err == nil {
+		return txResultFromHistory(hr)
+	}
+
+	if !db.NoRows(err) {
+		return hr, errors.Wrap(err, "server error, could not query prefiltered transaction by hash")
+	}
+
+	err = db.TransactionByHash(ctx, &hr, hash)
 	if err == nil {
 		return txResultFromHistory(hr)
 	}
