@@ -146,7 +146,7 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 	assert.False(suite.T(), suite.submitter.WasSubmittedTo)
 }
 
-func (suite *SystemTestSuite) TestTimeoutDuringSequnceLoop() {
+func (suite *SystemTestSuite) TestTimeoutDuringSequenceLoop() {
 	var cancel context.CancelFunc
 	suite.ctx, cancel = context.WithTimeout(suite.ctx, time.Duration(0))
 	defer cancel()
@@ -176,7 +176,7 @@ func (suite *SystemTestSuite) TestTimeoutDuringSequnceLoop() {
 	assert.Equal(suite.T(), ErrTimeout, r.Err)
 }
 
-func (suite *SystemTestSuite) TestClientDisconnectedDuringSequnceLoop() {
+func (suite *SystemTestSuite) TestClientDisconnectedDuringSequenceLoop() {
 	var cancel context.CancelFunc
 	suite.ctx, cancel = context.WithCancel(suite.ctx)
 
@@ -194,7 +194,7 @@ func (suite *SystemTestSuite) TestClientDisconnectedDuringSequnceLoop() {
 	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Run(func(args mock.Arguments) {
-			// simulate client disconnecting while looping on sequnce number check
+			// simulate client disconnecting while looping on sequence number check
 			cancel()
 			suite.ctx.Deadline()
 		}).

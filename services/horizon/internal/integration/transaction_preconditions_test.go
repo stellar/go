@@ -218,7 +218,7 @@ func TestTransactionPreconditionsMinSequenceNumberLedgerGap(t *testing.T) {
 	txParams := buildTXParams(master, masterAccount, currentAccountSeq+1)
 
 	// this txsub will error because the tx preconditions require a min sequence gap
-	// which has been set 10000 sequnce numbers greater than the current difference between
+	// which has been set 10000 sequence numbers greater than the current difference between
 	// network ledger sequence and account sequnece numbers
 	txParams.Preconditions.MinSequenceNumberLedgerGap = uint32(int64(networkLedger) - currentAccountSeq + 10000)
 	_, err = itest.SubmitMultiSigTransaction([]*keypair.Full{master}, txParams)
