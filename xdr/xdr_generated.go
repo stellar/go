@@ -37,8 +37,8 @@ var XdrFilesSHA256 = map[string]string{
 	"xdr/Stellar-contract-spec.x":           "c7ffa21d2e91afb8e666b33524d307955426ff553a486d670c29217ed9888d49",
 	"xdr/Stellar-contract.x":                "234d2adf0c9bdf7c42ea64a2650884d8e36ed31cd1cbe13fb8d12b335fb4e5c3",
 	"xdr/Stellar-internal.x":                "368706dd6e2efafd16a8f63daf3374845b791d097b15c502aa7653a412b68b68",
-	"xdr/Stellar-ledger-entries.x":          "32408e1b76a9b9901b7623635dbb470d4d1e471bc3709e74d47eee5682f52d98",
-	"xdr/Stellar-ledger.x":                  "59077cbb5a1517fdaaaf7b1f0f750cf02f84984ed024441dc37b7f974866fa58",
+	"xdr/Stellar-ledger-entries.x":          "73b467bce654c5b19d0fba24008c9ccae77b439320a4c9eef9128e1818fdd76d",
+	"xdr/Stellar-ledger.x":                  "247d1b486d546f5c37f3d8a719b195e3331106302bcdc54cd1f52a6f94a9a7ed",
 	"xdr/Stellar-overlay.x":                 "de3957c58b96ae07968b3d3aebea84f83603e95322d1fa336360e13e3aba737a",
 	"xdr/Stellar-transaction.x":             "ce8194511afb4cbb165921c720d057381bcd4829999027d42753c11d5dcaa7f8",
 	"xdr/Stellar-types.x":                   "6e3b13f0d3e360b09fa5e2b0e55d43f4d974a769df66afb34e8aecbb329d3f15",
@@ -10719,8 +10719,8 @@ var _ xdrType = (*StellarValue)(nil)
 
 // MaskLedgerHeaderFlags is an XDR Const defines as:
 //
-//	const MASK_LEDGER_HEADER_FLAGS = 0x7F;
-const MaskLedgerHeaderFlags = 0x7F
+//	const MASK_LEDGER_HEADER_FLAGS = 0x7;
+const MaskLedgerHeaderFlags = 0x7
 
 // LedgerHeaderFlags is an XDR Enum defines as:
 //
@@ -10728,11 +10728,7 @@ const MaskLedgerHeaderFlags = 0x7F
 //	 {
 //	     DISABLE_LIQUIDITY_POOL_TRADING_FLAG = 0x1,
 //	     DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG = 0x2,
-//	     DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG = 0x4,
-//	     DISABLE_CONTRACT_CREATE = 0x8,
-//	     DISABLE_CONTRACT_UPDATE = 0x10,
-//	     DISABLE_CONTRACT_REMOVE = 0x20,
-//	     DISABLE_CONTRACT_INVOKE = 0x40
+//	     DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG = 0x4
 //	 };
 type LedgerHeaderFlags int32
 
@@ -10740,20 +10736,12 @@ const (
 	LedgerHeaderFlagsDisableLiquidityPoolTradingFlag    LedgerHeaderFlags = 1
 	LedgerHeaderFlagsDisableLiquidityPoolDepositFlag    LedgerHeaderFlags = 2
 	LedgerHeaderFlagsDisableLiquidityPoolWithdrawalFlag LedgerHeaderFlags = 4
-	LedgerHeaderFlagsDisableContractCreate              LedgerHeaderFlags = 8
-	LedgerHeaderFlagsDisableContractUpdate              LedgerHeaderFlags = 16
-	LedgerHeaderFlagsDisableContractRemove              LedgerHeaderFlags = 32
-	LedgerHeaderFlagsDisableContractInvoke              LedgerHeaderFlags = 64
 )
 
 var ledgerHeaderFlagsMap = map[int32]string{
-	1:  "LedgerHeaderFlagsDisableLiquidityPoolTradingFlag",
-	2:  "LedgerHeaderFlagsDisableLiquidityPoolDepositFlag",
-	4:  "LedgerHeaderFlagsDisableLiquidityPoolWithdrawalFlag",
-	8:  "LedgerHeaderFlagsDisableContractCreate",
-	16: "LedgerHeaderFlagsDisableContractUpdate",
-	32: "LedgerHeaderFlagsDisableContractRemove",
-	64: "LedgerHeaderFlagsDisableContractInvoke",
+	1: "LedgerHeaderFlagsDisableLiquidityPoolTradingFlag",
+	2: "LedgerHeaderFlagsDisableLiquidityPoolDepositFlag",
+	4: "LedgerHeaderFlagsDisableLiquidityPoolWithdrawalFlag",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -11547,7 +11535,7 @@ var _ xdrType = (*ConfigUpgradeSetKey)(nil)
 //	 case LEDGER_UPGRADE_FLAGS:
 //	     uint32 newFlags; // update flags
 //	 case LEDGER_UPGRADE_CONFIG:
-//	     // Update arbitray `ConfigSetting` entries identified by the key.
+//	     // Update arbitrary `ConfigSetting` entries identified by the key.
 //	     ConfigUpgradeSetKey newConfig;
 //	 case LEDGER_UPGRADE_MAX_SOROBAN_TX_SET_SIZE:
 //	     // Update ConfigSettingContractExecutionLanesV0.ledgerMaxTxCount without

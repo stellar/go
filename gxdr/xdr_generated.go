@@ -829,7 +829,7 @@ type XdrAnon_StellarValue_Ext struct {
 	_u interface{}
 }
 
-const MASK_LEDGER_HEADER_FLAGS = 0x7F
+const MASK_LEDGER_HEADER_FLAGS = 0x7
 
 type LedgerHeaderFlags int32
 
@@ -837,10 +837,6 @@ const (
 	DISABLE_LIQUIDITY_POOL_TRADING_FLAG    LedgerHeaderFlags = LedgerHeaderFlags(0x1)
 	DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG    LedgerHeaderFlags = LedgerHeaderFlags(0x2)
 	DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG LedgerHeaderFlags = LedgerHeaderFlags(0x4)
-	DISABLE_CONTRACT_CREATE                LedgerHeaderFlags = LedgerHeaderFlags(0x8)
-	DISABLE_CONTRACT_UPDATE                LedgerHeaderFlags = LedgerHeaderFlags(0x10)
-	DISABLE_CONTRACT_REMOVE                LedgerHeaderFlags = LedgerHeaderFlags(0x20)
-	DISABLE_CONTRACT_INVOKE                LedgerHeaderFlags = LedgerHeaderFlags(0x40)
 )
 
 type LedgerHeaderExtensionV1 struct {
@@ -9136,19 +9132,11 @@ var _XdrNames_LedgerHeaderFlags = map[int32]string{
 	int32(DISABLE_LIQUIDITY_POOL_TRADING_FLAG):    "DISABLE_LIQUIDITY_POOL_TRADING_FLAG",
 	int32(DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG):    "DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG",
 	int32(DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG): "DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG",
-	int32(DISABLE_CONTRACT_CREATE):                "DISABLE_CONTRACT_CREATE",
-	int32(DISABLE_CONTRACT_UPDATE):                "DISABLE_CONTRACT_UPDATE",
-	int32(DISABLE_CONTRACT_REMOVE):                "DISABLE_CONTRACT_REMOVE",
-	int32(DISABLE_CONTRACT_INVOKE):                "DISABLE_CONTRACT_INVOKE",
 }
 var _XdrValues_LedgerHeaderFlags = map[string]int32{
 	"DISABLE_LIQUIDITY_POOL_TRADING_FLAG":    int32(DISABLE_LIQUIDITY_POOL_TRADING_FLAG),
 	"DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG":    int32(DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG),
 	"DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG": int32(DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG),
-	"DISABLE_CONTRACT_CREATE":                int32(DISABLE_CONTRACT_CREATE),
-	"DISABLE_CONTRACT_UPDATE":                int32(DISABLE_CONTRACT_UPDATE),
-	"DISABLE_CONTRACT_REMOVE":                int32(DISABLE_CONTRACT_REMOVE),
-	"DISABLE_CONTRACT_INVOKE":                int32(DISABLE_CONTRACT_INVOKE),
 }
 
 func (LedgerHeaderFlags) XdrEnumNames() map[int32]string {
@@ -9188,7 +9176,7 @@ type XdrType_LedgerHeaderFlags = *LedgerHeaderFlags
 func XDR_LedgerHeaderFlags(v *LedgerHeaderFlags) *LedgerHeaderFlags { return v }
 func (v *LedgerHeaderFlags) XdrInitialize() {
 	switch LedgerHeaderFlags(0) {
-	case DISABLE_LIQUIDITY_POOL_TRADING_FLAG, DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG, DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG, DISABLE_CONTRACT_CREATE, DISABLE_CONTRACT_UPDATE, DISABLE_CONTRACT_REMOVE, DISABLE_CONTRACT_INVOKE:
+	case DISABLE_LIQUIDITY_POOL_TRADING_FLAG, DISABLE_LIQUIDITY_POOL_DEPOSIT_FLAG, DISABLE_LIQUIDITY_POOL_WITHDRAWAL_FLAG:
 	default:
 		if *v == LedgerHeaderFlags(0) {
 			*v = DISABLE_LIQUIDITY_POOL_TRADING_FLAG
@@ -9568,7 +9556,7 @@ func (u *LedgerUpgrade) NewFlags() *Uint32 {
 	}
 }
 
-// Update arbitray `ConfigSetting` entries identified by the key.
+// Update arbitrary `ConfigSetting` entries identified by the key.
 func (u *LedgerUpgrade) NewConfig() *ConfigUpgradeSetKey {
 	switch u.Type {
 	case LEDGER_UPGRADE_CONFIG:
