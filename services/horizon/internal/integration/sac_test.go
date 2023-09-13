@@ -833,7 +833,7 @@ func assertEventPayments(itest *integration.Test, txHash string, asset xdr.Asset
 
 	invokeHostFn := ops.Embedded.Records[0].(operations.InvokeHostFunction)
 	assert.Equal(itest.CurrentTest(), invokeHostFn.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
-	assert.Equal(itest.CurrentTest(), 1, len(invokeHostFn.AssetBalanceChanges))
+	require.Equal(itest.CurrentTest(), 1, len(invokeHostFn.AssetBalanceChanges))
 	assetBalanceChange := invokeHostFn.AssetBalanceChanges[0]
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, amount)
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.From, from)
