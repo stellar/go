@@ -38,6 +38,7 @@ type RouterConfig struct {
 	SSEUpdateFrequency       time.Duration
 	StaleThreshold           uint
 	ConnectionTimeout        time.Duration
+	MaxHTTPRequestSize       uint
 	NetworkPassphrase        string
 	MaxPathLength            uint
 	MaxAssetsPerPathRequest  int
@@ -89,6 +90,11 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	}))
 	r.Use(loggerMiddleware(serverMetrics))
 	r.Use(timeoutMiddleware(config.ConnectionTimeout))
+	if config.MaxHTTPRequestSize > 0 {
+		r.Use(func(handler http.Handler) http.Handler {
+			return http.MaxBytesHandler(handler, int64(config.MaxHTTPRequestSize))
+		})
+	}
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
