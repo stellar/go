@@ -40,6 +40,8 @@ type Config struct {
 
 	SSEUpdateFrequency time.Duration
 	ConnectionTimeout  time.Duration
+	// MaxHTTPRequestSize is the maximum allowed request payload size
+	MaxHTTPRequestSize uint
 	RateQuota          *throttled.RateQuota
 	FriendbotURL       *url.URL
 	LogLevel           logrus.Level

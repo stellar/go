@@ -6,6 +6,7 @@ import (
 	"mime"
 	"net/http"
 
+	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -37,6 +38,9 @@ type envelopeInfo struct {
 
 func extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
 	result := envelopeInfo{raw: raw}
+	if err := gxdr.ValidateTransactionEnvelope(raw, gxdr.DefaultMaxDepth); err != nil {
+		return result, err
+	}
 	err := xdr.SafeUnmarshalBase64(raw, &result.parsed)
 	if err != nil {
 		return result, err
