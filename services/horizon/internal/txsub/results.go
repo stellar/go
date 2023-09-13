@@ -55,7 +55,7 @@ func txResultFromHistory(tx history.Transaction) (history.Transaction, error) {
 // queries execute on different ledgers. In this case, txsub can mistakenly respond with a bad_seq error
 // because the first query occurs when the tx is not yet ingested and the second query occurs when the tx
 // is ingested.
-func checkTxAlreadyExists(ctx context.Context, db HorizonDB, hash, sourceAddress string) (history.Transaction, error) {
+func checkTxAlreadyExists(ctx context.Context, db HorizonDB, hash string) (history.Transaction, error) {
 	err := db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,

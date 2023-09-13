@@ -120,7 +120,7 @@ func (sys *System) Submit(
 		return
 	}
 
-	tx, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
+	tx, err := checkTxAlreadyExists(ctx, db, hash)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
 		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
