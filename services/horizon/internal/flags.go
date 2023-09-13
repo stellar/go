@@ -12,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
+	"github.com/stellar/throttled"
+
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
@@ -20,7 +22,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/throttled"
 )
 
 const (
@@ -62,6 +63,8 @@ const (
 	StellarPubnet = "pubnet"
 	// StellarTestnet is a constant representing the Stellar test network
 	StellarTestnet = "testnet"
+
+	defaultMaxHTTPRequestSize = uint(200 * 1024)
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -365,6 +368,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault:    55,
 			CustomSetValue: support.SetDuration,
 			Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout, does not apply to POST /transactions",
+		},
+		&support.ConfigOption{
+			Name:        "max-http-request-size",
+			ConfigKey:   &config.MaxHTTPRequestSize,
+			OptType:     types.Uint,
+			FlagDefault: defaultMaxHTTPRequestSize,
+			Usage:       "sets the limit on the maximum allowed http request payload size, default is 200kb, to disable the limit check, set to 0, only do so if you acknowledge the implications of accepting unbounded http request payload sizes.",
 		},
 		&support.ConfigOption{
 			Name:        "per-hour-rate-limit",
