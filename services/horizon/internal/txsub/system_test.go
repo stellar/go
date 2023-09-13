@@ -234,9 +234,6 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
-		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
-		Once()
 
 	suite.submitter.R.Err = errors.New("busted for some reason")
 	r := <-suite.system.Submit(
@@ -341,9 +338,6 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
-		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
-		Once()
 
 	suite.system.Submit(
 		suite.ctx,
@@ -433,9 +427,6 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, innerHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
-		Return(map[string]uint64{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX": 96}, nil).
-		Once()
 
 	l := suite.system.Submit(suite.ctx, innerTxEnvelope, parsedInnerTx, innerHash)
 	assert.Equal(suite.T(), 0, len(l))
