@@ -85,6 +85,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestCreatesClaimableBal
 		BalanceID:          id,
 		Destination:        "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 		LastModifiedLedger: uint32(lastModifiedLedgerSeq),
+		Asset:              cBalance.Asset,
 	}).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()

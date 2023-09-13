@@ -240,6 +240,7 @@ func insertClaimants(q *Q, tt *test.T, cBalance ClaimableBalance) error {
 			BalanceID:          cBalance.BalanceID,
 			Destination:        claimant.Destination,
 			LastModifiedLedger: cBalance.LastModifiedLedger,
+			Asset:              cBalance.Asset,
 		}
 		err := claimantsInsertBuilder.Add(tt.Ctx, claimant)
 		if err != nil {

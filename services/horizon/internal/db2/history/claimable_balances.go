@@ -88,9 +88,10 @@ func applyClaimableBalancesQueriesCursor(sql sq.SelectBuilder, lCursor int64, rC
 // ClaimableBalanceClaimant is a row of data from the `claimable_balances_claimants` table.
 // This table exists to allow faster querying for claimable balances for a specific claimant.
 type ClaimableBalanceClaimant struct {
-	BalanceID          string `db:"id"`
-	Destination        string `db:"destination"`
-	LastModifiedLedger uint32 `db:"last_modified_ledger"`
+	BalanceID          string    `db:"id"`
+	Destination        string    `db:"destination"`
+	LastModifiedLedger uint32    `db:"last_modified_ledger"`
+	Asset              xdr.Asset `db:"asset"`
 }
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
@@ -261,15 +262,10 @@ func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQue
 			Where("destination = ?", query.Claimant.Address())
 
 		// https://github.com/stellar/go/issues/4907
-		// If a filter by asset is provided, do not add LIMIT to the subquery. This is because
-		// claimable_balance_claimants table cannot be filtered by asset, so when the LIMIT specified is small,
-		// the balance IDs returned by this subquery might be of different asset than the one specified
-		// in the filter. This could lead to an empty result list.
-		if query.Asset == nil {
-			// Given that each destination can be a claimant for each balance maximum once
-			// we can LIMIT the subquery.
-			selectClaimableBalanceClaimants.Limit(query.PageQuery.Limit)
+		if query.Asset != nil {
+			selectClaimableBalanceClaimants = selectClaimableBalanceClaimants.Where("asset = ?", query.Asset)
 		}
+		selectClaimableBalanceClaimants.Limit(query.PageQuery.Limit)
 
 		subSql, err := applyClaimableBalancesQueriesCursor(selectClaimableBalanceClaimants, l, r, query.PageQuery.Order)
 		if err != nil {

@@ -29,7 +29,7 @@ const assetStatsBatchSize = 500
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 17
+const stateVerifierExpectedIngestionVersion = 18
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -774,14 +774,19 @@ func addClaimableBalanceToStateVerifier(
 
 		for i, claimant := range claimants {
 			if claimant.MustV0().Destination.Address() != cBalancesClaimants[row.BalanceID][i].Destination ||
-				row.LastModifiedLedger != cBalancesClaimants[row.BalanceID][i].LastModifiedLedger {
+				row.LastModifiedLedger != cBalancesClaimants[row.BalanceID][i].LastModifiedLedger ||
+				!row.Asset.Equals(cBalancesClaimants[row.BalanceID][i].Asset) {
 				return fmt.Errorf(
-					"claimable_balance_claimants table for balance %s does not match. expectedDestination=%s actualDestination=%s, expectedLastModifiedLedger=%d actualLastModifiedLedger=%d",
+					"claimable_balance_claimants table for balance %s does not match. expectedDestination=%s"+
+						" actualDestination=%s, expectedLastModifiedLedger=%d actualLastModifiedLedger=%d,"+
+						" expectedAsset=%s actualAsset=%s",
 					row.BalanceID,
 					claimant.MustV0().Destination.Address(),
 					cBalancesClaimants[row.BalanceID][i].Destination,
 					row.LastModifiedLedger,
 					cBalancesClaimants[row.BalanceID][i].LastModifiedLedger,
+					row.Asset,
+					cBalancesClaimants[row.BalanceID][i].Asset,
 				)
 			}
 		}

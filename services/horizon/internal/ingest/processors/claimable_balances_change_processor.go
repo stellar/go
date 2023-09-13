@@ -96,6 +96,7 @@ func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 					BalanceID:          cb.BalanceID,
 					Destination:        claimant.Destination,
 					LastModifiedLedger: cb.LastModifiedLedger,
+					Asset:              cb.Asset,
 				}
 				if err := p.claimantsInsertBuilder.Add(ctx, claimant); err != nil {
 					return errors.Wrap(err, "error adding to claimantsInsertBuilder")
