@@ -65,19 +65,5 @@ func checkTxAlreadyExists(ctx context.Context, db HorizonDB, hash, sourceAddress
 	}
 	defer db.Rollback()
 
-	tx, err := txResultByHash(ctx, db, hash)
-	if err == ErrNoResults {
-		var sequenceNumbers map[string]uint64
-		sequenceNumbers, err = db.GetSequenceNumbers(ctx, []string{sourceAddress})
-		if err != nil {
-			return tx, errors.Wrapf(err, "cannot fetch sequence number for %v", sourceAddress)
-		}
-
-		_, ok := sequenceNumbers[sourceAddress]
-		if !ok {
-			return tx, ErrNoAccount
-		}
-		return tx, ErrNoResults
-	}
-	return tx, err
+	return txResultByHash(ctx, db, hash)
 }

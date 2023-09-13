@@ -165,7 +165,9 @@ func (sys *System) Submit(
 	}
 
 	// add transaction to open list
-	sys.Pending.Add(ctx, hash, resultCh)
+	if err := sys.Pending.Add(ctx, hash, resultCh); err != nil {
+		sys.finish(ctx, hash, resultCh, Result{Err: err})
+	}
 	return
 }
 
