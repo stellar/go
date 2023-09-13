@@ -6,6 +6,7 @@ import (
 	"mime"
 	"net/http"
 
+	"github.com/stellar/go/gxdr"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -24,6 +25,7 @@ type NetworkSubmitter interface {
 type SubmitTransactionHandler struct {
 	Submitter         NetworkSubmitter
 	NetworkPassphrase string
+	DisableTxSub      bool
 	CoreStateGetter
 }
 
@@ -36,6 +38,9 @@ type envelopeInfo struct {
 
 func extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
 	result := envelopeInfo{raw: raw}
+	if err := gxdr.ValidateTransactionEnvelope(raw, gxdr.DefaultMaxDepth); err != nil {
+		return result, err
+	}
 	err := xdr.SafeUnmarshalBase64(raw, &result.parsed)
 	if err != nil {
 		return result, err
@@ -126,6 +131,17 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	if err := handler.validateBodyType(r); err != nil {
 		return nil, err
+	}
+
+	if handler.DisableTxSub {
+		return nil, &problem.P{
+			Type:   "transaction_submission_disabled",
+			Title:  "Transaction Submission Disabled",
+			Status: http.StatusMethodNotAllowed,
+			Detail: "Transaction submission has been disabled for Horizon. " +
+				"To enable it again, remove env variable DISABLE_TX_SUB.",
+			Extras: map[string]interface{}{},
+		}
 	}
 
 	raw, err := getString(r, "tx")

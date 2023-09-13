@@ -23,10 +23,10 @@ type ConfigOptions []*ConfigOption
 // Init calls Init on each ConfigOption passing on the cobra.Command.
 func (cos ConfigOptions) Init(cmd *cobra.Command) error {
 	for _, co := range cos {
-		err := co.Init(cmd)
-		if err != nil {
+		if err := co.Init(cmd); err != nil {
 			return err
 		}
+		co.SetDeprecated(cmd)
 	}
 	return nil
 }
@@ -69,6 +69,7 @@ type ConfigOption struct {
 	CustomSetValue func(*ConfigOption) error // Optional function for custom validation/transformation
 	ConfigKey      interface{}               // Pointer to the final key in the linked Config struct
 	flag           *pflag.Flag               // The persistent flag that the config option is attached to
+	Hidden         bool                      // Indicates whether to hide the flag from --help output
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -80,6 +81,13 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 	}
 	// Initialise and bind the persistent flags
 	return co.setFlag(cmd)
+}
+
+// SetDeprecated Hides the deprecated flag from --help output
+func (co *ConfigOption) SetDeprecated(cmd *cobra.Command) {
+	if co.Hidden {
+		co.flag.Hidden = true
+	}
 }
 
 // Bind binds the config option to viper.

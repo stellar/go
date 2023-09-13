@@ -153,3 +153,49 @@ func TestClientDisconnectSubmission(t *testing.T) {
 	_, err = handler.GetResource(w, request)
 	assert.Equal(t, hProblem.ClientDisconnected, err)
 }
+
+func TestDisableTxSubFlagSubmission(t *testing.T) {
+	mockSubmitChannel := make(chan txsub.Result)
+
+	mock := &coreStateGetterMock{}
+	mock.On("GetCoreState").Return(corestate.State{
+		Synced: true,
+	})
+
+	mockSubmitter := &networkSubmitterMock{}
+	mockSubmitter.On("Submit").Return(mockSubmitChannel)
+
+	handler := SubmitTransactionHandler{
+		Submitter:         mockSubmitter,
+		NetworkPassphrase: network.PublicNetworkPassphrase,
+		DisableTxSub:      true,
+		CoreStateGetter:   mock,
+	}
+
+	form := url.Values{}
+
+	var p = &problem.P{
+		Type:   "transaction_submission_disabled",
+		Title:  "Transaction Submission Disabled",
+		Status: http.StatusMethodNotAllowed,
+		Detail: "Transaction submission has been disabled for Horizon. " +
+			"To enable it again, remove env variable DISABLE_TX_SUB.",
+		Extras: map[string]interface{}{},
+	}
+
+	request, err := http.NewRequest(
+		"POST",
+		"https://horizon.stellar.org/transactions",
+		strings.NewReader(form.Encode()),
+	)
+
+	require.NoError(t, err)
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	ctx, cancel := context.WithCancel(request.Context())
+	cancel()
+	request = request.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	_, err = handler.GetResource(w, request)
+	assert.Equal(t, p, err)
+}

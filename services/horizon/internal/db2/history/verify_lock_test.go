@@ -18,7 +18,7 @@ func TestTryStateVerificationLock(t *testing.T) {
 	_, err := q.TryStateVerificationLock(context.Background())
 	tt.Assert.EqualError(err, "cannot be called outside of a transaction")
 
-	tt.Assert.NoError(q.BeginTx(&sql.TxOptions{
+	tt.Assert.NoError(q.BeginTx(tt.Ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}))
@@ -27,7 +27,7 @@ func TestTryStateVerificationLock(t *testing.T) {
 	tt.Assert.True(ok)
 
 	// lock is already held by q so we will not succeed
-	tt.Assert.NoError(otherQ.BeginTx(&sql.TxOptions{
+	tt.Assert.NoError(otherQ.BeginTx(tt.Ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}))

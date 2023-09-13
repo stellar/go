@@ -78,8 +78,8 @@ func submitLiquidityPoolOps(itest *integration.Test, tt *assert.Assertions) (sub
 		LiquidityPoolID: [32]byte(poolID),
 		MaxAmountA:      "400",
 		MaxAmountB:      "777",
-		MinPrice:        xdr.Price{1, 2},
-		MaxPrice:        xdr.Price{2, 1},
+		MinPrice:        xdr.Price{N: 1, D: 2},
+		MaxPrice:        xdr.Price{N: 2, D: 1},
 	}
 	allOps = append(allOps, op)
 	itest.MustSubmitOperations(shareAccount, shareKeys, op)
@@ -159,6 +159,25 @@ func submitPaymentOps(itest *integration.Test, tt *assert.Assertions) (submitted
 	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), ops...)
 
 	return ops, txResp.Ledger
+}
+
+//lint:ignore U1000 Ignore unused function temporarily until fees/preflight are working in test
+func submitSorobanOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
+	installContractOp := assembleInstallContractCodeOp(itest.CurrentTest(), itest.Master().Address(), add_u64_contract)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), installContractOp)
+
+	bumpFootprintExpirationOp := &txnbuild.BumpFootprintExpiration{
+		LedgersToExpire: 100,
+		SourceAccount:   itest.Master().Address(),
+	}
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), bumpFootprintExpirationOp)
+
+	restoreFootprintOp := &txnbuild.RestoreFootprint{
+		SourceAccount: itest.Master().Address(),
+	}
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), restoreFootprintOp)
+
+	return []txnbuild.Operation{installContractOp, bumpFootprintExpirationOp, restoreFootprintOp}, txResp.Ledger
 }
 
 func submitSponsorshipOps(itest *integration.Test, tt *assert.Assertions) (submittedOperations []txnbuild.Operation, lastLedger int32) {
@@ -312,21 +331,21 @@ func submitOfferAndTrustlineOps(itest *integration.Test, tt *assert.Assertions) 
 			Selling: txnbuild.NativeAsset{},
 			Buying:  pesetasAsset,
 			Amount:  "10",
-			Price:   xdr.Price{1, 1},
+			Price:   xdr.Price{N: 1, D: 1},
 			OfferID: 0,
 		},
 		&txnbuild.ManageBuyOffer{
 			Selling: txnbuild.NativeAsset{},
 			Buying:  pesetasAsset,
 			Amount:  "10",
-			Price:   xdr.Price{1, 1},
+			Price:   xdr.Price{N: 1, D: 1},
 			OfferID: 0,
 		},
 		&txnbuild.CreatePassiveSellOffer{
 			Selling: txnbuild.NativeAsset{},
 			Buying:  pesetasAsset,
 			Amount:  "10",
-			Price:   xdr.Price{1, 1},
+			Price:   xdr.Price{N: 1, D: 1},
 		},
 	}
 	allOps := ops
@@ -414,6 +433,17 @@ func initializeDBIntegrationTest(t *testing.T) (*integration.Test, int32) {
 		submitClawbackOps,
 		submitLiquidityPoolOps,
 	}
+
+	// TODO - re-enable invoke host function 'submitSorobanOps' test
+	// once fees/footprint from preflight are working in test
+	if false && integration.GetCoreMaxSupportedProtocol() > 19 {
+		submitters = append(submitters, submitSorobanOps)
+	} else {
+		delete(allOpTypes, xdr.OperationTypeInvokeHostFunction)
+		delete(allOpTypes, xdr.OperationTypeBumpFootprintExpiration)
+		delete(allOpTypes, xdr.OperationTypeRestoreFootprint)
+	}
+
 	// Inflation is not supported
 	delete(allOpTypes, xdr.OperationTypeInflation)
 
@@ -593,7 +623,7 @@ func TestFillGaps(t *testing.T) {
 	// Initialize the DB schema
 	dbConn, err := db.Open("postgres", freshHorizonPostgresURL)
 	tt.NoError(err)
-	historyQ := history.Q{dbConn}
+	historyQ := history.Q{SessionInterface: dbConn}
 	defer func() {
 		historyQ.Close()
 		newDB.Close()
