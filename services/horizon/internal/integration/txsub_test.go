@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +9,6 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 )
 
 func TestTxSub(t *testing.T) {
@@ -65,7 +63,7 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 		ProtocolVersion:  20,
 		EnableSorobanRPC: true,
 		HorizonEnvironment: map[string]string{
-			"MAX_HTTP_REQUEST_SIZE": "5000",
+			"MAX_HTTP_REQUEST_SIZE": "1800",
 		},
 	})
 
@@ -75,14 +73,7 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	contract := []byte(strings.Repeat("a", 10*1024))
-	installContractOp := &txnbuild.InvokeHostFunction{
-		HostFunction: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
-			Wasm: &contract,
-		},
-		SourceAccount: itest.Master().Address(),
-	}
+	installContractOp := assembleInstallContractCodeOp(t, itest.Master().Address(), "soroban_sac_test.wasm")
 	preFlightOp, minFee := itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
 	_, err = itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
 	assert.EqualError(
@@ -95,14 +86,7 @@ func TestTxSubLimitsBodySize(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	contract = []byte(strings.Repeat("a", 2*1024))
-	installContractOp = &txnbuild.InvokeHostFunction{
-		HostFunction: xdr.HostFunction{
-			Type: xdr.HostFunctionTypeHostFunctionTypeUploadContractWasm,
-			Wasm: &contract,
-		},
-		SourceAccount: itest.Master().Address(),
-	}
+	installContractOp = assembleInstallContractCodeOp(t, itest.Master().Address(), "soroban_add_u64.wasm")
 	preFlightOp, minFee = itest.PreflightHostFunctions(&sourceAccount, *installContractOp)
 	tx, err := itest.SubmitOperationsWithFee(&sourceAccount, itest.Master(), minFee, &preFlightOp)
 	require.NoError(t, err)
