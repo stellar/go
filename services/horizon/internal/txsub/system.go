@@ -147,6 +147,9 @@ func (sys *System) Submit(
 			return
 		}
 
+		// Even if a transaction is successfully submitted to core, Horizon ingestion might
+		// be lagging behind leading to txBAD_SEQ. This function will block a txsub request
+		// until the request times out or account sequence is bumped to txn sequence.
 		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
 			sys.finish(ctx, hash, resultCh, Result{Err: err})
 			return
@@ -164,7 +167,9 @@ func (sys *System) Submit(
 		return
 	}
 
-	// add transaction to open list
+	// Add transaction to open list of pending txns: the transaction has been successfully submitted to core
+	// but that does not mean it is included in the ledger. The txn status remains pending
+	// until we see an ingestion in the db.
 	if err := sys.Pending.Add(ctx, hash, resultCh); err != nil {
 		sys.finish(ctx, hash, resultCh, Result{Err: err})
 	}
