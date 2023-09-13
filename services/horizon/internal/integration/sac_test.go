@@ -502,9 +502,10 @@ func TestContractBurnFromAccount(t *testing.T) {
 	)
 
 	fx := getTxEffects(itest, burnTx, asset)
-	assert.Len(t, fx, 1)
-	burnEffect := assertContainsEffect(t, fx,
-		effects.EffectAccountDebited)[0].(effects.AccountDebited)
+	require.Len(t, fx, 1)
+	assetEffects := assertContainsEffect(t, fx, effects.EffectAccountDebited)
+	require.GreaterOrEqual(t, len(assetEffects), 1)
+	burnEffect := assetEffects[0].(effects.AccountDebited)
 
 	assert.Equal(t, issuer, burnEffect.Asset.Issuer)
 	assert.Equal(t, code, burnEffect.Asset.Code)
