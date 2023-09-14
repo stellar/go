@@ -502,9 +502,10 @@ func TestContractBurnFromAccount(t *testing.T) {
 	)
 
 	fx := getTxEffects(itest, burnTx, asset)
-	assert.Len(t, fx, 1)
-	burnEffect := assertContainsEffect(t, fx,
-		effects.EffectAccountDebited)[0].(effects.AccountDebited)
+	require.Len(t, fx, 1)
+	assetEffects := assertContainsEffect(t, fx, effects.EffectAccountDebited)
+	require.GreaterOrEqual(t, len(assetEffects), 1)
+	burnEffect := assetEffects[0].(effects.AccountDebited)
 
 	assert.Equal(t, issuer, burnEffect.Asset.Issuer)
 	assert.Equal(t, code, burnEffect.Asset.Code)
@@ -833,7 +834,7 @@ func assertEventPayments(itest *integration.Test, txHash string, asset xdr.Asset
 
 	invokeHostFn := ops.Embedded.Records[0].(operations.InvokeHostFunction)
 	assert.Equal(itest.CurrentTest(), invokeHostFn.Function, "HostFunctionTypeHostFunctionTypeInvokeContract")
-	assert.Equal(itest.CurrentTest(), 1, len(invokeHostFn.AssetBalanceChanges))
+	require.Equal(itest.CurrentTest(), 1, len(invokeHostFn.AssetBalanceChanges))
 	assetBalanceChange := invokeHostFn.AssetBalanceChanges[0]
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.Amount, amount)
 	assert.Equal(itest.CurrentTest(), assetBalanceChange.From, from)
