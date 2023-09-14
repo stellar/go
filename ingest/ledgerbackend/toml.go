@@ -82,6 +82,9 @@ type captiveCoreTomlValues struct {
 	UnsafeQuorum                          bool                 `toml:"UNSAFE_QUORUM,omitempty"`
 	RunStandalone                         bool                 `toml:"RUN_STANDALONE,omitempty"`
 	ArtificiallyAccelerateTimeForTesting  bool                 `toml:"ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING,omitempty"`
+	PreferredPeers                        []string             `toml:"PREFERRED_PEERS,omitempty"`
+	PreferredPeerKeys                     []string             `toml:"PREFERRED_PEER_KEYS,omitempty"`
+	PreferredPeersOnly                    bool                 `toml:"PREFERRED_PEERS_ONLY,omitempty"`
 	HomeDomains                           []HomeDomain         `toml:"HOME_DOMAINS,omitempty"`
 	Validators                            []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                        map[string]History   `toml:"-"`
