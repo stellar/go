@@ -120,7 +120,7 @@ func (sys *System) Submit(
 		return
 	}
 
-	tx, err := checkTxAlreadyExists(ctx, db, hash)
+	tx, err := txResultByHash(ctx, db, hash)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
 		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
@@ -170,9 +170,7 @@ func (sys *System) Submit(
 	// Add transaction to open list of pending txns: the transaction has been successfully submitted to core
 	// but that does not mean it is included in the ledger. The txn status remains pending
 	// until we see an ingestion in the db.
-	if err := sys.Pending.Add(ctx, hash, resultCh); err != nil {
-		sys.finish(ctx, hash, resultCh, Result{Err: err})
-	}
+	sys.Pending.Add(hash, resultCh)
 	return
 }
 
@@ -294,7 +292,7 @@ func (sys *System) Tick(ctx context.Context) {
 	}
 	defer db.Rollback()
 
-	pending := sys.Pending.Pending(ctx)
+	pending := sys.Pending.Pending()
 
 	if len(pending) > 0 {
 		latestLedger, err := db.GetLatestHistoryLedger(ctx)
@@ -333,13 +331,13 @@ func (sys *System) Tick(ctx context.Context) {
 
 			if err == nil {
 				logger.WithField("hash", hash).Debug("finishing open submission")
-				sys.Pending.Finish(ctx, hash, Result{Transaction: tx})
+				sys.Pending.Finish(hash, Result{Transaction: tx})
 				continue
 			}
 
 			if _, ok := err.(*FailedTransactionError); ok {
 				logger.WithField("hash", hash).Debug("finishing open submission")
-				sys.Pending.Finish(ctx, hash, Result{Transaction: tx, Err: err})
+				sys.Pending.Finish(hash, Result{Transaction: tx, Err: err})
 				continue
 			}
 
@@ -349,12 +347,7 @@ func (sys *System) Tick(ctx context.Context) {
 		}
 	}
 
-	stillOpen, err := sys.Pending.Clean(ctx, sys.SubmissionTimeout)
-	if err != nil {
-		logger.WithStack(err).Error(err)
-		return
-	}
-
+	stillOpen := sys.Pending.Clean(sys.SubmissionTimeout)
 	sys.Metrics.OpenSubmissionsGauge.Set(float64(stillOpen))
 }
 
