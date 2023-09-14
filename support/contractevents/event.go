@@ -173,7 +173,7 @@ func parseCanonicalAsset(assetStr string) (*xdr.Asset, error) {
 		Ed25519: issuerKey.Ed25519,
 	})
 
-	if len(rawCode) == 4 {
+	if len(rawCode) <= 4 {
 		code := [4]byte{}
 		copy(code[:], rawCode[:])
 
@@ -182,7 +182,7 @@ func parseCanonicalAsset(assetStr string) (*xdr.Asset, error) {
 			AssetCode: xdr.AssetCode4(code),
 			Issuer:    accountId,
 		}
-	} else if len(rawCode) == 12 {
+	} else if len(rawCode) <= 12 {
 		code := [12]byte{}
 		copy(code[:], rawCode[:])
 

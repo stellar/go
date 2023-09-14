@@ -169,22 +169,8 @@ func makeAsset(asset xdr.Asset) xdr.ScVal {
 			panic(err)
 		}
 
-	case xdr.AssetTypeAssetTypeCreditAlphanum4:
-		_, err := xdr.Marshal(buffer, asset.AlphaNum4.AssetCode)
-		if err != nil {
-			panic(err)
-		}
-		buffer.WriteString(":")
-		buffer.WriteString(asset.AlphaNum4.Issuer.Address())
-
-	case xdr.AssetTypeAssetTypeCreditAlphanum12:
-		_, err := xdr.Marshal(buffer, asset.AlphaNum12.AssetCode)
-		if err != nil {
-			panic(err)
-		}
-		buffer.WriteString(":")
-		buffer.WriteString(asset.AlphaNum12.Issuer.Address())
-
+	case xdr.AssetTypeAssetTypeCreditAlphanum4, xdr.AssetTypeAssetTypeCreditAlphanum12:
+		buffer.WriteString(asset.GetCode() + ":" + asset.GetIssuer())
 	default:
 		panic("unexpected asset type")
 	}
