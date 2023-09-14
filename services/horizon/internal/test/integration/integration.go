@@ -774,6 +774,11 @@ func (i *Test) WaitForHorizon() {
 	i.t.Fatal("Horizon not ingesting...")
 }
 
+// Config returns the testing configuration for the current integration test run.
+func (i *Test) Config() Config {
+	return i.config
+}
+
 // CoreClient returns a stellar core client connected to the Stellar Core instance.
 func (i *Test) CoreClient() *stellarcore.Client {
 	return i.coreClient

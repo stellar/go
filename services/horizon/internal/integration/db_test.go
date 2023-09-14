@@ -12,6 +12,7 @@ import (
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	horizon "github.com/stellar/go/services/horizon/internal"
@@ -526,7 +527,7 @@ func TestReingestDB(t *testing.T) {
 
 	horizonConfig.CaptiveCoreConfigPath = filepath.Join(
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
-		"captive-core-reingest-range-integration-tests.cfg",
+		getCoreConfigFile(itest),
 	)
 
 	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db",
@@ -539,6 +540,14 @@ func TestReingestDB(t *testing.T) {
 
 	tt.NoError(horizoncmd.RootCmd.Execute())
 	tt.NoError(horizoncmd.RootCmd.Execute(), "Repeat the same reingest range against db, should not have errors.")
+}
+
+func getCoreConfigFile(itest *integration.Test) string {
+	coreConfigFile := "captive-core-reingest-range-classic-integration-tests.cfg"
+	if itest.Config().ProtocolVersion >= ledgerbackend.MinimalSorobanProtocolSupport {
+		coreConfigFile = "captive-core-reingest-range-integration-tests.cfg"
+	}
+	return coreConfigFile
 }
 
 func command(t *testing.T, horizonConfig horizon.Config, args ...string) []string {
@@ -679,7 +688,7 @@ func TestFillGaps(t *testing.T) {
 
 	horizonConfig.CaptiveCoreConfigPath = filepath.Join(
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
-		"captive-core-reingest-range-integration-tests.cfg",
+		getCoreConfigFile(itest),
 	)
 	horizoncmd.RootCmd.SetArgs(command(t, horizonConfig, "db", "fill-gaps", "--parallel-workers=1"))
 	tt.NoError(horizoncmd.RootCmd.Execute())
