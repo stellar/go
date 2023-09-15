@@ -46,10 +46,6 @@ type System struct {
 		// submissions to stellar-core
 		SubmissionDuration prometheus.Summary
 
-		// BufferedSubmissionGauge tracks the count of submissions buffered
-		// behind this system's SubmissionQueue
-		BufferedSubmissionsGauge prometheus.Gauge
-
 		// OpenSubmissionsGauge tracks the count of "open" submissions (i.e.
 		// submissions whose transactions haven't been confirmed successful or failed
 		OpenSubmissionsGauge prometheus.Gauge
@@ -79,7 +75,6 @@ type System struct {
 // RegisterMetrics registers the prometheus metrics
 func (sys *System) RegisterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(sys.Metrics.SubmissionDuration)
-	registry.MustRegister(sys.Metrics.BufferedSubmissionsGauge)
 	registry.MustRegister(sys.Metrics.OpenSubmissionsGauge)
 	registry.MustRegister(sys.Metrics.FailedSubmissionsCounter)
 	registry.MustRegister(sys.Metrics.SuccessfulSubmissionsCounter)
@@ -368,9 +363,6 @@ func (sys *System) Init() {
 		})
 		sys.Metrics.OpenSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "open",
-		})
-		sys.Metrics.BufferedSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "horizon", Subsystem: "txsub", Name: "buffered",
 		})
 		sys.Metrics.V0TransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "v0",
