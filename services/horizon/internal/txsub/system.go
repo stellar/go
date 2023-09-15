@@ -99,11 +99,6 @@ func (sys *System) Submit(
 	sys.Init()
 	resultCh := make(chan Result, 1)
 	resultReadCh = resultCh
-	var result Result
-
-	defer func() {
-		sys.finish(ctx, hash, resultCh, result)
-	}()
 
 	db := sys.DB(ctx)
 	// The database doesn't (yet) store muxed accounts, so we query
@@ -121,19 +116,19 @@ func (sys *System) Submit(
 	minSeqNum := envelope.MinSeqNum()
 	// Ensure sequence numbers make sense
 	if seqNum < 0 || (minSeqNum != nil && (*minSeqNum < 0 || *minSeqNum >= seqNum)) {
-		result = Result{Err: ErrBadSequence}
+		sys.finish(ctx, hash, resultCh, Result{Err: ErrBadSequence})
 		return
 	}
 
 	tx, err := txResultByHash(ctx, db, hash)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
-		result = Result{Transaction: tx}
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 		return
 	}
 	if err != ErrNoResults {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Error getting submission result from a DB")
-		result = Result{Transaction: tx, Err: err}
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx, Err: err})
 		return
 	}
 
@@ -144,11 +139,11 @@ func (sys *System) Submit(
 		// any error other than "txBAD_SEQ" is a failure
 		isBad, err := sr.IsBadSeq()
 		if err != nil {
-			result = Result{Err: err}
+			sys.finish(ctx, hash, resultCh, Result{Err: err})
 			return
 		}
 		if !isBad {
-			result = Result{Err: sr.Err}
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
 			return
 		}
 
@@ -156,7 +151,7 @@ func (sys *System) Submit(
 		// be lagging behind leading to txBAD_SEQ. This function will block a txsub request
 		// until the request times out or account sequence is bumped to txn sequence.
 		if err = sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())); err != nil {
-			result = Result{Err: err}
+			sys.finish(ctx, hash, resultCh, Result{Err: err})
 			return
 		}
 
@@ -164,11 +159,11 @@ func (sys *System) Submit(
 		tx, err = txResultByHash(ctx, db, hash)
 		if err != nil {
 			// finally, return the bad_seq error if no result was found on 2nd attempt
-			result = Result{Err: sr.Err}
+			sys.finish(ctx, hash, resultCh, Result{Err: sr.Err})
 			return
 		}
 		// If we found the result, use it as the result
-		result = Result{Transaction: tx}
+		sys.finish(ctx, hash, resultCh, Result{Transaction: tx})
 		return
 	}
 
