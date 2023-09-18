@@ -3,8 +3,18 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-
 ## Unreleased
+
+### Added
+
+- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
+- Deprecate configuration flags related to legacy non-captive core ingestion ([5100](https://github.com/stellar/go/pull/5100))
+
+## 2.27.0
+
+**Upgrading to this version from <= 2.26.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+**This release adds support for Protocol 20**
 
 ### Breaking Changes
 - The command line flag `--remote-captive-core-url` has been removed, as remote captive core functionality is now deprecated ([4940](https://github.com/stellar/go/pull/4940)).
@@ -12,8 +22,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Added new command-line flag `--network` to specify the Stellar network (pubnet or testnet), aiming at simplifying the configuration process by automatically configuring the following parameters based on the chosen network: `--history-archive-urls`, `--network-passphrase`, and `--captive-core-config-path` ([4949](https://github.com/stellar/go/pull/4949)).
-- Add a deprecation warning for using command-line flags when running Horizon ([5051](https://github.com/stellar/go/pull/5051))
-- Deprecate configuration flags related to legacy non-captive core ingestion ([5100](https://github.com/stellar/go/pull/5100))
+- Added `contract_credited` and `contract_debited` effects which are emitted whenever a Soroban contracts sends or receives a Stellar asset ([4832](https://github.com/stellar/go/pull/4832)).
+* Added `num_contracts` (total number of Soroban contracts which hold an asset) and `contracts_amount` (total amount of the asset held by all Soroban contracts) fields to asset stat summaries at `/assets` ([4805](https://github.com/stellar/go/pull/4805)).
+* Added responses for new operations introduced in protocol 20: `invoke_host_function`, `bump_footprint_expiration`, and `restore_footprint` ([4905](https://github.com/stellar/go/pull/4905)).
 
 ### Fixed
 - The same slippage calculation from the [`v2.26.1`](#2261) hotfix now properly excludes spikes for smoother trade aggregation plots ([4999](https://github.com/stellar/go/pull/4999)).
